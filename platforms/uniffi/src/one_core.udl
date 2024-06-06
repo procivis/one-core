@@ -239,10 +239,23 @@ interface HandleInvitationResponseBindingEnum {
   ProofRequest(string interaction_id, string proof_id);
 };
 
-dictionary ListQueryBindingDTO {
+dictionary CredentialSchemaListQueryBindingDTO {
   u32 page;
   u32 page_size;
   string organisation_id;
+  SortableCredentialSchemaColumnBindingEnum? sort;
+  SortDirection? sort_direction;
+  string? name;
+  sequence<string>? ids;
+  sequence<CredentialSchemaListQueryExactColumnBindingEnum>? exact;
+};
+
+enum SortableCredentialSchemaColumnBindingEnum {
+  "Name", "Format", "CreatedDate"
+};
+
+enum CredentialSchemaListQueryExactColumnBindingEnum {
+  "Name"
 };
 
 dictionary CredentialSchemaListBindingDTO {
@@ -456,6 +469,7 @@ dictionary HistoryListQueryBindingDTO {
   string? credential_id;
   string? credential_schema_id;
   HistorySearchBindingDTO? search;
+  string? proof_schema_id;
 };
 
 dictionary HistoryListBindingDTO {
@@ -471,7 +485,8 @@ enum HistorySearchEnumBindingEnum {
   "IssuerDid",
   "IssuerName",
   "VerifierDid",
-  "VerifierName"
+  "VerifierName",
+  "ProofSchemaName"
 };
 
 dictionary HistorySearchBindingDTO {
@@ -658,7 +673,7 @@ interface OneCoreBinding {
   CredentialDetailBindingDTO get_credential(string credential_id);
 
   [Throws=BindingError]
-  CredentialSchemaListBindingDTO get_credential_schemas(ListQueryBindingDTO query);
+  CredentialSchemaListBindingDTO get_credential_schemas(CredentialSchemaListQueryBindingDTO query);
 
   [Throws=BindingError]
   ProofRequestBindingDTO get_proof(string proof_id);

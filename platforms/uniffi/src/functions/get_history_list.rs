@@ -87,6 +87,12 @@ impl OneCoreBinding {
                 )));
             }
 
+            if let Some(proof_schema_id) = query.proof_schema_id {
+                conditions.push(ListFilterCondition::Value(
+                    HistoryFilterValue::ProofSchemaId(into_id(&proof_schema_id)?),
+                ));
+            }
+
             Ok(core
                 .history_service
                 .get_history_list(HistoryListQuery {

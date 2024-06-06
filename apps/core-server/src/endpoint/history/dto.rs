@@ -102,6 +102,7 @@ pub struct HistoryFilterQueryParamsRest {
     pub did_id: Option<DidId>,
     pub credential_id: Option<CredentialId>,
     pub credential_schema_id: Option<CredentialSchemaId>,
+    pub proof_schema_id: Option<Uuid>,
     pub search_text: Option<String>,
     pub search_type: Option<HistorySearchEnumRest>,
     pub organisation_id: OrganisationId,
@@ -118,4 +119,5 @@ pub enum HistorySearchEnumRest {
     IssuerName,
     VerifierDid,
     VerifierName,
+    ProofSchemaName,
 }

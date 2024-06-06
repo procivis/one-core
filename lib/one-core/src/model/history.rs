@@ -7,6 +7,7 @@ use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
+use crate::service::proof_schema::dto::ProofSchemaId;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum HistoryMetadata {
@@ -84,6 +85,7 @@ pub enum HistoryFilterValue {
     CredentialSchemaId(CredentialSchemaId),
     SearchQuery(String, HistorySearchEnum),
     OrganisationId(OrganisationId),
+    ProofSchemaId(ProofSchemaId),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -96,6 +98,7 @@ pub enum HistorySearchEnum {
     IssuerName,
     VerifierDid,
     VerifierName,
+    ProofSchemaName,
 }
 
 impl ListFilterValue for HistoryFilterValue {}

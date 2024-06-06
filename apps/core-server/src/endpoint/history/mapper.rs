@@ -54,6 +54,8 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
             .map(|search_text| search_query_to_filter_value(search_text, value.search_type));
         let organisation_id = HistoryFilterValue::OrganisationId(value.organisation_id).condition();
 
+        let proof_schema_id = value.proof_schema_id.map(HistoryFilterValue::ProofSchemaId);
+
         organisation_id
             & entity_types
             & entity_id
@@ -63,6 +65,7 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
             & did_id
             & credential_id
             & credential_schema_id
+            & proof_schema_id
             & search_query
     }
 }

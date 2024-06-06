@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use dto_mapper::{convert_inner, From, Into, TryInto};
 use one_core::model::common::ExactColumn;
 use one_core::model::credential::SortableCredentialColumn;
-use one_core::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
+use one_core::model::credential_schema::{
+    LayoutType, SortableCredentialSchemaColumn, WalletStorageTypeEnum,
+};
 use one_core::model::did::{DidType, KeyRole, SortableDidColumn};
 use one_core::model::history::{HistoryAction, HistoryEntityType, HistorySearchEnum};
 use one_core::model::proof::ProofStateEnum;
@@ -102,10 +104,29 @@ pub enum CredentialRoleBindingDTO {
     Verifier,
 }
 
-pub struct ListQueryBindingDTO {
+pub struct CredentialSchemaListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
     pub organisation_id: String,
+    pub sort: Option<SortableCredentialSchemaColumnBindingEnum>,
+    pub sort_direction: Option<SortDirection>,
+    pub name: Option<String>,
+    pub ids: Option<Vec<String>>,
+    pub exact: Option<Vec<CredentialSchemaListQueryExactColumnBindingEnum>>,
+}
+
+#[derive(Into)]
+#[into(SortableCredentialSchemaColumn)]
+pub enum SortableCredentialSchemaColumnBindingEnum {
+    Name,
+    Format,
+    CreatedDate,
+}
+
+#[derive(Clone, Debug, PartialEq, Into)]
+#[into(ExactColumn)]
+pub enum CredentialSchemaListQueryExactColumnBindingEnum {
+    Name,
 }
 
 #[derive(From)]
@@ -658,6 +679,7 @@ pub struct HistoryListQueryBindingDTO {
     pub did_id: Option<String>,
     pub credential_id: Option<String>,
     pub credential_schema_id: Option<String>,
+    pub proof_schema_id: Option<String>,
     pub search: Option<HistorySearchBindingDTO>,
 }
 
@@ -680,6 +702,7 @@ pub enum HistorySearchEnumBindingEnum {
     IssuerName,
     VerifierDid,
     VerifierName,
+    ProofSchemaName,
 }
 
 pub struct HistorySearchBindingDTO {
