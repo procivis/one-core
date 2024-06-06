@@ -12,6 +12,36 @@ pub struct StringMatch {
     pub value: String,
 }
 
+impl StringMatch {
+    pub fn equals(value: impl Into<String>) -> Self {
+        Self {
+            r#match: StringMatchType::Equals,
+            value: value.into(),
+        }
+    }
+
+    pub fn starts_with(value: impl Into<String>) -> Self {
+        Self {
+            r#match: StringMatchType::StartsWith,
+            value: value.into(),
+        }
+    }
+
+    pub fn ends_with(value: impl Into<String>) -> Self {
+        Self {
+            r#match: StringMatchType::EndsWith,
+            value: value.into(),
+        }
+    }
+
+    pub fn contains(value: impl Into<String>) -> Self {
+        Self {
+            r#match: StringMatchType::Contains,
+            value: value.into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ComparisonType {
     Equal,

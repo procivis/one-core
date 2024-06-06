@@ -2,13 +2,15 @@ use sea_orm::{
     sea_query::{
         ColumnRef, Condition, Expr, IntoCondition, IntoIden, IntoTableRef, Query, SimpleExpr,
     },
-    ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait,
+    ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, QuerySelect, QueryTrait,
+    RelationTrait,
 };
 
 use crate::{
     entity::{
-        claim, claim_schema, credential, credential_schema, did, history, proof, proof_claim,
-        proof_input_claim_schema, proof_input_schema,
+        claim, claim_schema, credential, credential_schema, did,
+        history::{self},
+        proof, proof_claim, proof_input_claim_schema, proof_input_schema, proof_schema,
     },
     list_query_generic::{
         get_comparison_condition, get_equals_condition, IntoFilterCondition, IntoJoinCondition,
@@ -84,6 +86,9 @@ impl IntoFilterCondition for HistoryFilterValue {
             }
             HistoryFilterValue::OrganisationId(organisation_id) => {
                 get_equals_condition(history::Column::OrganisationId, organisation_id.to_string())
+            }
+            HistoryFilterValue::ProofSchemaId(proof_schema_id) => {
+                get_equals_condition(history::Column::EntityId, proof_schema_id.to_string())
             }
         }
     }
@@ -205,6 +210,15 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
             proof::Column::VerifierDidId,
             did::Column::Name.contains(search_text),
         ),
+        HistorySearchEnum::ProofSchemaName => history::Column::EntityId
+            .in_subquery(
+                proof_schema::Entity::find()
+                    .filter(proof_schema::Column::Name.contains(search_text))
+                    .select_only()
+                    .column(proof_schema::Column::Id)
+                    .into_query(),
+            )
+            .into_condition(),
     }
 }
 
