@@ -19,20 +19,12 @@ impl X509Method {
 
 #[async_trait]
 impl super::DidMethod for X509Method {
-    fn get_method(&self) -> String {
-        "x509".to_string()
-    }
-
     async fn create(
         &self,
         _id: &DidId,
         _params: &Option<serde_json::Value>,
         _keys: &[Key],
     ) -> Result<DidValue, DidMethodError> {
-        todo!()
-    }
-
-    fn check_authorization(&self) -> bool {
         todo!()
     }
 

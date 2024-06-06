@@ -3,7 +3,7 @@ use crate::{
     model::organisation::{Organisation, OrganisationRelations},
     repository::{
         error::DataLayerError, history_repository::MockHistoryRepository,
-        mock::organisation_repository::MockOrganisationRepository,
+        organisation_repository::MockOrganisationRepository,
     },
     service::error::{BusinessLogicError, EntityNotFoundError, ServiceError},
 };

@@ -29,7 +29,7 @@ use crate::{
     },
     repository::{
         credential_repository::MockCredentialRepository, did_repository::MockDidRepository,
-        history_repository::MockHistoryRepository, mock::proof_repository::MockProofRepository,
+        history_repository::MockHistoryRepository, proof_repository::MockProofRepository,
     },
     service::{
         error::{BusinessLogicError, ServiceError},

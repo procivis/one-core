@@ -20,7 +20,7 @@ use one_core::repository::interaction_repository::{
     InteractionRepository, MockInteractionRepository,
 };
 use one_core::repository::key_repository::KeyRepository;
-use one_core::repository::mock::key_repository::MockKeyRepository;
+use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::proof_repository::ProofRepository;
 use one_core::repository::proof_schema_repository::MockProofSchemaRepository;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;

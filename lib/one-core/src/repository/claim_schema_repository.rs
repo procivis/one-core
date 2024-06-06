@@ -4,6 +4,7 @@ use super::error::DataLayerError;
 
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait ClaimSchemaRepository: Send + Sync {
     async fn create_claim_schema_list(

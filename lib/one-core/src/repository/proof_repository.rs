@@ -7,6 +7,7 @@ use crate::model::{
     proof::{GetProofList, GetProofQuery, Proof, ProofId, ProofRelations, ProofState},
 };
 
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait ProofRepository: Send + Sync {
     async fn create_proof(&self, request: Proof) -> Result<ProofId, DataLayerError>;

@@ -48,8 +48,8 @@ use crate::repository::credential_schema_repository::MockCredentialSchemaReposit
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::mock::key_repository::MockKeyRepository;
-use crate::repository::mock::proof_repository::MockProofRepository;
+use crate::repository::key_repository::MockKeyRepository;
+use crate::repository::proof_repository::MockProofRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialDefinitionRequestDTO,

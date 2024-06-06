@@ -59,16 +59,12 @@ pub enum DidMethodError {
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait DidMethod: Send + Sync {
-    fn get_method(&self) -> String;
-
     async fn create(
         &self,
         id: &DidId,
         params: &Option<serde_json::Value>,
         keys: &[Key],
     ) -> Result<DidValue, DidMethodError>;
-
-    fn check_authorization(&self) -> bool;
     async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, DidMethodError>;
     fn update(&self) -> Result<(), DidMethodError>;
     fn can_be_deactivated(&self) -> bool;

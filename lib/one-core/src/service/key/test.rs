@@ -16,10 +16,8 @@ use crate::{
     },
     provider::key_storage::{provider::KeyProviderImpl, GeneratedKey, KeyStorage, MockKeyStorage},
     repository::{
-        history_repository::MockHistoryRepository,
-        mock::{
-            key_repository::MockKeyRepository, organisation_repository::MockOrganisationRepository,
-        },
+        history_repository::MockHistoryRepository, key_repository::MockKeyRepository,
+        organisation_repository::MockOrganisationRepository,
     },
     service::{
         key::dto::{GetKeyQueryDTO, KeyRequestDTO},

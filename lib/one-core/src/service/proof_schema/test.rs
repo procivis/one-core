@@ -33,7 +33,7 @@ use crate::provider::credential_formatter::SelectiveDisclosureOption;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::MockHistoryRepository;
-use crate::repository::mock::organisation_repository::MockOrganisationRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::error::ErrorCode;
 use crate::service::error::{

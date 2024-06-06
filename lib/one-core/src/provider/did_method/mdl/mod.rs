@@ -76,10 +76,6 @@ impl DidMdl {
 
 #[async_trait::async_trait]
 impl DidMethod for DidMdl {
-    fn get_method(&self) -> String {
-        "MDL".to_owned()
-    }
-
     async fn create(
         &self,
         _id: &DidId,
@@ -112,10 +108,6 @@ impl DidMethod for DidMdl {
             })?;
 
         Ok(DidValue::from(did_mdl))
-    }
-
-    fn check_authorization(&self) -> bool {
-        unimplemented!()
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {

@@ -30,10 +30,6 @@ impl JWKDidMethod {
 
 #[async_trait]
 impl super::DidMethod for JWKDidMethod {
-    fn get_method(&self) -> String {
-        "jwk".to_string()
-    }
-
     async fn create(
         &self,
         _id: &DidId,
@@ -54,10 +50,6 @@ impl super::DidMethod for JWKDidMethod {
             .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
 
         encode_to_did(&jwk)
-    }
-
-    fn check_authorization(&self) -> bool {
-        todo!()
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
