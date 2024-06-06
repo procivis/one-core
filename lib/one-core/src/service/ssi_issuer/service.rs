@@ -8,12 +8,13 @@ use super::dto::{
 use super::{dto::IssuerResponseDTO, SSIIssuerService};
 use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
-use crate::config::core_config::{FormatType, Params};
+use crate::config::core_config::{ExchangeType, FormatType, Params};
 use crate::config::ConfigValidationError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError};
 use crate::service::ssi_issuer::mapper::{
     credential_rejected_history_event, generate_jsonld_context_response, get_url_with_fragment,
 };
+use crate::service::ssi_validator::validate_exchange_type;
 use crate::{
     model::{
         claim::ClaimRelations,
@@ -35,6 +36,7 @@ use time::OffsetDateTime;
 impl SSIIssuerService {
     pub async fn issuer_connect(
         &self,
+        protocol: &str,
         credential_id: &CredentialId,
     ) -> Result<ConnectIssuerResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
@@ -61,6 +63,13 @@ impl SSIIssuerService {
         let Some(mut credential) = credential else {
             return Err(EntityNotFoundError::Credential(credential_id.to_owned()).into());
         };
+
+        validate_exchange_type(ExchangeType::ProcivisTemporary, &self.config, protocol)?;
+        validate_exchange_type(
+            ExchangeType::ProcivisTemporary,
+            &self.config,
+            &credential.exchange,
+        )?;
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
 
@@ -119,6 +128,12 @@ impl SSIIssuerService {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
 
+        validate_exchange_type(
+            ExchangeType::ProcivisTemporary,
+            &self.config,
+            &credential.exchange,
+        )?;
+
         let did = get_or_create_did(
             self.did_repository.as_ref(),
             &credential.schema.and_then(|schema| schema.organisation),
@@ -165,6 +180,12 @@ impl SSIIssuerService {
         let Some(credential) = credential else {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
+
+        validate_exchange_type(
+            ExchangeType::ProcivisTemporary,
+            &self.config,
+            &credential.exchange,
+        )?;
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Offered)?;
 

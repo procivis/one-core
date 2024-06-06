@@ -6,9 +6,6 @@ use super::{
     validator::validate_proof,
     SSIVerifierService,
 };
-use crate::service::ssi_verifier::mapper::{
-    proof_accepted_history_event, proof_rejected_history_event,
-};
 use crate::{
     common_mapper::{extracted_credential_to_model, get_or_create_did},
     common_validator::throw_if_latest_proof_state_not_eq,
@@ -28,8 +25,12 @@ use crate::{
     provider::credential_formatter::model::DetailCredential,
     service::{
         error::{EntityNotFoundError, ServiceError},
-        ssi_validator::validate_config_entity_presence,
+        ssi_validator::{validate_config_entity_presence, validate_exchange_type},
     },
+};
+use crate::{
+    config::core_config::ExchangeType,
+    service::ssi_verifier::mapper::{proof_accepted_history_event, proof_rejected_history_event},
 };
 use shared_types::{CredentialSchemaId, DidValue};
 use time::OffsetDateTime;
@@ -70,6 +71,12 @@ impl SSIVerifierService {
         let Some(proof) = proof else {
             return Err(EntityNotFoundError::Proof(*proof_id).into());
         };
+
+        validate_exchange_type(
+            ExchangeType::ProcivisTemporary,
+            &self.config,
+            &proof.exchange,
+        )?;
 
         let did = proof
             .verifier_did
@@ -123,6 +130,12 @@ impl SSIVerifierService {
                 },
             )
             .await?;
+
+        validate_exchange_type(
+            ExchangeType::ProcivisTemporary,
+            &self.config,
+            &proof.exchange,
+        )?;
 
         let holder_did = get_or_create_did(
             self.did_repository.as_ref(),
@@ -193,6 +206,12 @@ impl SSIVerifierService {
             )
             .await?;
 
+        validate_exchange_type(
+            ExchangeType::ProcivisTemporary,
+            &self.config,
+            &proof.exchange,
+        )?;
+
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
         let now = OffsetDateTime::now_utc();
@@ -250,6 +269,12 @@ impl SSIVerifierService {
         proved_claims: Vec<ValidatedProofClaimDTO>,
         holder_did: Did,
     ) -> Result<(), ServiceError> {
+        validate_exchange_type(
+            ExchangeType::ProcivisTemporary,
+            &self.config,
+            &proof.exchange,
+        )?;
+
         let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
             "proof schema is None".to_string(),
         ))?;

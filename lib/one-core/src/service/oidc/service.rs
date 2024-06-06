@@ -21,6 +21,7 @@ use crate::common_mapper::{
 use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
+use crate::config::core_config::ExchangeType;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{
@@ -69,9 +70,10 @@ use crate::service::oidc::validator::{
     peek_presentation, throw_if_credential_request_invalid, throw_if_interaction_created_date,
     throw_if_interaction_data_invalid, throw_if_interaction_pre_authorized_code_used,
     throw_if_token_request_invalid, validate_claims, validate_config_entity_presence,
-    validate_credential, validate_exchange_type, validate_presentation,
+    validate_credential, validate_presentation,
 };
 use crate::service::oidc::OIDCService;
+use crate::service::ssi_validator::validate_exchange_type;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_real;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
@@ -114,7 +116,7 @@ impl OIDCService {
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
-        validate_exchange_type(&self.config, &proof.exchange)?;
+        validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &proof.exchange)?;
 
         Ok(create_open_id_for_vp_client_metadata(
             get_encryption_key_jwk_from_proof(&proof, &self.key_algorithm_provider)?,
@@ -283,6 +285,8 @@ impl OIDCService {
             );
         };
 
+        validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &credential.exchange)?;
+
         let holder_did = if request.proof.proof_type == "jwt" {
             let jwt = OpenID4VCIProofJWTFormatter::verify_proof(&request.proof.jwt).await?;
             let holder_did_value = jwt
@@ -373,9 +377,13 @@ impl OIDCService {
 
         let now = OffsetDateTime::now_utc();
 
-        let mut interaction = credentials
+        let credential = credentials
             .first()
-            .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?
+            .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?;
+
+        validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &credential.exchange)?;
+
+        let mut interaction = credential
             .interaction
             .clone()
             .ok_or(ServiceError::MappingError(
@@ -498,6 +506,7 @@ impl OIDCService {
             return Err(BusinessLogicError::MissingProofForInteraction(interaction_id).into());
         };
 
+        validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &proof.exchange)?;
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
         match self
@@ -555,8 +564,8 @@ impl OIDCService {
             .await?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
+        validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &proof.exchange)?;
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
-        validate_exchange_type(&self.config, &proof.exchange)?;
 
         let interaction = proof
             .interaction

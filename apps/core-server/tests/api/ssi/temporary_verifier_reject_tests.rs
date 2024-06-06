@@ -53,7 +53,7 @@ async fn test_temporary_verifier_reject_success() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Requested,
-        "OPENID4VC",
+        "PROCIVIS_TEMPORARY",
         None,
     )
     .await;
