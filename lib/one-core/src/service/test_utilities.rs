@@ -128,6 +128,10 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
 }
 
 pub fn dummy_credential() -> Credential {
+    dummy_credential_with_exchange("EXCHANGE")
+}
+
+pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
     let claim_schema_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
 
@@ -138,7 +142,7 @@ pub fn dummy_credential() -> Credential {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: b"credential".to_vec(),
-        exchange: "protocol".to_string(),
+        exchange: exchange.to_owned(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -219,12 +223,16 @@ pub fn dummy_did() -> Did {
 }
 
 pub fn dummy_proof() -> Proof {
+    dummy_proof_with_protocol("protocol")
+}
+
+pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
     Proof {
         id: Uuid::new_v4(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "protocol".to_string(),
+        exchange: protocol.to_string(),
         redirect_uri: None,
         state: None,
         schema: None,

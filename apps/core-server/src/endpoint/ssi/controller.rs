@@ -659,7 +659,7 @@ pub(crate) async fn ssi_issuer_connect(
     let result = state
         .core
         .ssi_issuer_service
-        .issuer_connect(&query.credential)
+        .issuer_connect(&query.protocol, &query.credential)
         .await;
     OkOrErrorResponse::from_result(result, state, "connecting to issuer")
 }

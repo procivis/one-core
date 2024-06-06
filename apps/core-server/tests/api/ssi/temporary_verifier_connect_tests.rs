@@ -54,7 +54,7 @@ async fn test_temporary_verifier_connect_success() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
-        "OPENID4VC",
+        "PROCIVIS_TEMPORARY",
         None,
     )
     .await;

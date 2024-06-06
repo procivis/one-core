@@ -5,6 +5,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::{
+    config::ConfigValidationError,
     model::{
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType},
@@ -109,7 +110,7 @@ async fn test_connect_to_holder_succeeds() {
                     }]),
                     ..dummy_proof_schema()
                 }),
-                ..dummy_proof()
+                ..dummy_proof_with_protocol("PROCIVIS_TEMPORARY")
             }))
         });
 
@@ -130,6 +131,34 @@ async fn test_connect_to_holder_succeeds() {
     let res = service.connect_to_holder(&proof_id, &None).await.unwrap();
 
     assert_eq!(verifier_did, res.verifier_did);
+}
+
+#[tokio::test]
+async fn test_connect_to_holder_incorrect_protocol() {
+    let proof_id = Uuid::new_v4();
+
+    let mut proof_repository = MockProofRepository::new();
+    proof_repository
+        .expect_get_proof()
+        .withf(move |_proof_id, _| {
+            assert_eq!(_proof_id, &proof_id);
+            true
+        })
+        .once()
+        .return_once(move |_, _| Ok(Some(dummy_proof_with_protocol("OPENID4VC"))));
+
+    let service = SSIVerifierService {
+        proof_repository: Arc::new(proof_repository),
+        ..mock_ssi_verifier_service()
+    };
+
+    assert!(service
+        .connect_to_holder(&proof_id, &None)
+        .await
+        .is_err_and(|x| matches!(
+            x,
+            ServiceError::ConfigValidationError(ConfigValidationError::InvalidType(_, _))
+        )));
 }
 
 #[tokio::test]
@@ -198,7 +227,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
                     }]),
                     ..dummy_proof_schema()
                 }),
-                ..dummy_proof()
+                ..dummy_proof_with_protocol("PROCIVIS_TEMPORARY")
             }))
         });
 
@@ -289,7 +318,7 @@ async fn test_submit_proof_succeeds() {
                     }]),
                     ..dummy_proof_schema()
                 }),
-                ..dummy_proof()
+                ..dummy_proof_with_protocol("PROCIVIS_TEMPORARY")
             }))
         });
 
@@ -444,6 +473,37 @@ async fn test_submit_proof_succeeds() {
 }
 
 #[tokio::test]
+async fn test_submit_proof_incorrect_protocol() {
+    let proof_id = Uuid::new_v4();
+    let holder_did: DidValue = "did:holder".parse().unwrap();
+
+    let mut proof_repository = MockProofRepository::new();
+
+    proof_repository
+        .expect_get_proof()
+        .withf(move |_proof_id, _| {
+            assert_eq!(_proof_id, &proof_id);
+            true
+        })
+        .once()
+        .return_once(move |_, _| Ok(Some(dummy_proof_with_protocol("OPENID4VC"))));
+
+    let service = SSIVerifierService {
+        proof_repository: Arc::new(proof_repository),
+        ..mock_ssi_verifier_service()
+    };
+
+    let presentation_content = "presentation content";
+    assert!(service
+        .submit_proof(proof_id, holder_did, presentation_content)
+        .await
+        .is_err_and(|x| matches!(
+            x,
+            ServiceError::ConfigValidationError(ConfigValidationError::InvalidType(_, _))
+        )));
+}
+
+#[tokio::test]
 async fn test_submit_proof_failed_credential_revoked() {
     let proof_id = Uuid::new_v4();
     let verifier_did = "verifier did".parse().unwrap();
@@ -507,7 +567,7 @@ async fn test_submit_proof_failed_credential_revoked() {
                     }]),
                     ..dummy_proof_schema()
                 }),
-                ..dummy_proof()
+                ..dummy_proof_with_protocol("PROCIVIS_TEMPORARY")
             }))
         });
 
@@ -703,7 +763,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                     }]),
                     ..dummy_proof_schema()
                 }),
-                ..dummy_proof()
+                ..dummy_proof_with_protocol("PROCIVIS_TEMPORARY")
             }))
         });
 
@@ -858,7 +918,7 @@ async fn test_reject_proof_succeeds() {
                     last_modified: OffsetDateTime::now_utc(),
                     state: ProofStateEnum::Requested,
                 }]),
-                ..dummy_proof()
+                ..dummy_proof_with_protocol("PROCIVIS_TEMPORARY")
             }))
         });
 
@@ -885,6 +945,34 @@ async fn test_reject_proof_succeeds() {
     };
 
     service.reject_proof(&proof_id).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_reject_proof_incorrect_protocol() {
+    let proof_id = Uuid::new_v4();
+
+    let mut proof_repository = MockProofRepository::new();
+    proof_repository
+        .expect_get_proof()
+        .withf(move |_proof_id, _| {
+            assert_eq!(_proof_id, &proof_id);
+            true
+        })
+        .once()
+        .return_once(move |_, _| Ok(Some(dummy_proof_with_protocol("OPENID4VC"))));
+
+    let service = SSIVerifierService {
+        proof_repository: Arc::new(proof_repository),
+        ..mock_ssi_verifier_service()
+    };
+
+    assert!(service
+        .reject_proof(&proof_id)
+        .await
+        .is_err_and(|x| matches!(
+            x,
+            ServiceError::ConfigValidationError(ConfigValidationError::InvalidType(_, _))
+        )));
 }
 
 fn mock_ssi_verifier_service() -> SSIVerifierService {

@@ -397,22 +397,6 @@ pub(super) fn validate_config_entity_presence(
     }
 }
 
-pub(super) fn validate_exchange_type(
-    config: &CoreConfig,
-    exchange: &str,
-) -> Result<(), ConfigValidationError> {
-    let exchange_type = config.exchange.get_fields(exchange)?.r#type;
-
-    if exchange_type != ExchangeType::OpenId4Vc {
-        Err(ConfigValidationError::InvalidType(
-            ExchangeType::OpenId4Vc.to_string(),
-            exchange.to_string(),
-        ))
-    } else {
-        Ok(())
-    }
-}
-
 pub(super) fn validate_refresh_token(
     interaction_data: &OpenID4VCIInteractionDataDTO,
     refresh_token: &str,
