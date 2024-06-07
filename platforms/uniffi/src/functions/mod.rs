@@ -17,6 +17,7 @@ mod get_history_list;
 mod get_presentation_definition;
 mod get_proof;
 mod get_proof_schemas;
+mod get_proofs;
 mod get_trust_anchor;
 mod handle_invitation;
 mod holder_accept_credential;

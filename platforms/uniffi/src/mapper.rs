@@ -12,11 +12,13 @@ use one_core::service::credential::dto::{
     DetailCredentialSchemaResponseDTO,
 };
 use one_core::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
-use one_core::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
+use one_core::service::did::dto::{
+    CreateDidRequestDTO, CreateDidRequestKeysDTO, DidListItemResponseDTO,
+};
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDTO};
 use one_core::service::key::dto::KeyRequestDTO;
-use one_core::service::proof::dto::ProofDetailResponseDTO;
+use one_core::service::proof::dto::{GetProofQueryDTO, ProofDetailResponseDTO};
 use one_core::service::ssi_holder::dto::InvitationResponseDTO;
 use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, ListTrustAnchorsQueryDTO, TrustAnchorFilterValue,
@@ -36,7 +38,7 @@ use crate::utils::{into_id, TimestampFormat};
 use crate::{
     CreateTrustAnchorRequestBindingDTO, CredentialSchemaTypeBindingEnum,
     ExactTrustAnchorFilterColumnBindings, HistoryListItemBindingDTO, HistoryMetadataBinding,
-    ListProofSchamasFiltersBindingDTO, ListTrustAnchorsFiltersBindings,
+    ListProofSchamasFiltersBindingDTO, ListTrustAnchorsFiltersBindings, ProofListQueryBindingDTO,
 };
 
 pub(crate) fn serialize_config_entity(
@@ -56,7 +58,7 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
             issuance_date: value.issuance_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
             revocation_date: value.revocation_date.map(|inner| inner.format_timestamp()),
-            issuer_did: value.issuer_did.map(|inner| inner.did.to_string()),
+            issuer_did: optional_did_string(value.issuer_did),
             state: value.state.into(),
             schema: value.schema.into(),
             claims: convert_inner(value.claims),
@@ -80,7 +82,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             issuance_date: value.issuance_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
             revocation_date: value.revocation_date.map(|inner| inner.format_timestamp()),
-            issuer_did: value.issuer_did.map(|inner| inner.did.to_string()),
+            issuer_did: optional_did_string(value.issuer_did),
             state: value.state.into(),
             schema: value.schema.into(),
             role: value.role.into(),
@@ -98,7 +100,8 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             created_date: value.created_date.format_timestamp(),
             state: value.state.into(),
             last_modified: value.last_modified.format_timestamp(),
-            verifier_did: value.verifier_did.map(|inner| inner.did.to_string()),
+            proof_schema: convert_inner(value.schema),
+            verifier_did: optional_did_string(value.verifier_did),
             exchange: value.exchange,
             redirect_uri: value.redirect_uri,
             proof_inputs: convert_inner(value.proof_inputs),
@@ -352,6 +355,32 @@ impl TryFrom<ListProofSchamasFiltersBindingDTO> for GetListQueryParams<SortableP
     }
 }
 
+impl TryFrom<ProofListQueryBindingDTO> for GetProofQueryDTO {
+    type Error = BindingError;
+
+    fn try_from(value: ProofListQueryBindingDTO) -> Result<Self, Self::Error> {
+        Ok({
+            Self {
+                page: value.page,
+                page_size: value.page_size,
+                sort: convert_inner(value.sort),
+                sort_direction: convert_inner(value.sort_direction),
+                name: value.name,
+                organisation_id: into_id(&value.organisation_id)?,
+                exact: convert_inner_of_inner(value.exact),
+                ids: value
+                    .ids
+                    .map(|ids| ids.into_iter().map(|id| into_id(&id)).collect())
+                    .transpose()?,
+            }
+        })
+    }
+}
+
 pub fn optional_time(value: Option<OffsetDateTime>) -> Option<String> {
     value.as_ref().map(TimestampFormat::format_timestamp)
+}
+
+pub fn optional_did_string(value: Option<DidListItemResponseDTO>) -> Option<String> {
+    value.map(|inner| inner.id.to_string())
 }

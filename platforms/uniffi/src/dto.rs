@@ -8,7 +8,7 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::did::{DidType, KeyRole, SortableDidColumn};
 use one_core::model::history::{HistoryAction, HistoryEntityType, HistorySearchEnum};
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{ProofStateEnum, SortableProofColumn};
 use one_core::model::proof_schema::SortableProofSchemaColumn;
 use one_core::model::trust_anchor::TrustAnchorRole;
 use one_core::provider::exchange_protocol::dto::{
@@ -35,7 +35,10 @@ use one_core::service::did::dto::{DidListItemResponseDTO, GetDidListResponseDTO}
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::GetHistoryListResponseDTO;
 use one_core::service::key::dto::KeyListItemResponseDTO;
-use one_core::service::proof::dto::{ProofClaimDTO, ProofClaimValueDTO, ProofInputDTO};
+use one_core::service::proof::dto::{
+    GetProofListResponseDTO, ProofClaimDTO, ProofClaimValueDTO, ProofInputDTO,
+    ProofListItemResponseDTO,
+};
 use one_core::service::proof_schema::dto::{
     GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, ProofClaimSchemaResponseDTO,
 };
@@ -46,7 +49,7 @@ use one_core::service::trust_anchor::dto::{
 };
 
 use crate::error::{BindingError, NativeKeyStorageError};
-use crate::mapper::{optional_time, serialize_config_entity};
+use crate::mapper::{optional_did_string, optional_time, serialize_config_entity};
 use crate::utils::{format_timestamp_opt, into_id, try_into_url, TimestampFormat};
 
 #[derive(From)]
@@ -187,6 +190,62 @@ pub enum CredentialListIncludeEntityTypeBindingEnum {
 pub struct CredentialListBindingDTO {
     #[from(with_fn = convert_inner)]
     pub values: Vec<CredentialListItemBindingDTO>,
+    pub total_pages: u64,
+    pub total_items: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Into)]
+#[into(ExactColumn)]
+pub enum ProofListQueryExactColumnBindingEnum {
+    Name,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(SortableProofColumn)]
+pub enum SortableProofListColumnBinding {
+    SchemaName,
+    VerifierDid,
+    State,
+    CreatedDate,
+}
+pub struct ProofListQueryBindingDTO {
+    pub page: u32,
+    pub page_size: u32,
+    pub organisation_id: String,
+    pub sort: Option<SortableProofListColumnBinding>,
+    pub sort_direction: Option<SortDirection>,
+    pub name: Option<String>,
+    pub ids: Option<Vec<String>>,
+    pub exact: Option<Vec<ProofListQueryExactColumnBindingEnum>>,
+}
+
+#[derive(From)]
+#[from(ProofListItemResponseDTO)]
+pub struct ProofListItemBindingDTO {
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub issuance_date: String,
+    #[from(with_fn = optional_time)]
+    pub requested_date: Option<String>,
+    #[from(with_fn = optional_time)]
+    pub completed_date: Option<String>,
+    #[from(with_fn = optional_did_string)]
+    pub verifier_did: Option<String>,
+    pub exchange: String,
+    pub state: ProofStateBindingEnum,
+    #[from(with_fn = convert_inner)]
+    pub schema: Option<GetProofSchemaListItemBindingDTO>,
+}
+
+#[derive(From)]
+#[from(GetProofListResponseDTO)]
+pub struct ProofListBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub values: Vec<ProofListItemBindingDTO>,
     pub total_pages: u64,
     pub total_items: u64,
 }
@@ -426,6 +485,7 @@ pub struct ProofRequestBindingDTO {
     pub last_modified: String,
     pub verifier_did: Option<String>,
     pub state: ProofStateBindingEnum,
+    pub proof_schema: Option<GetProofSchemaListItemBindingDTO>,
     pub exchange: String,
     pub redirect_uri: Option<String>,
     pub proof_inputs: Vec<ProofInputBindingDTO>,
