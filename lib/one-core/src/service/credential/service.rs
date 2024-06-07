@@ -956,12 +956,12 @@ async fn update_mso_interaction_access_token(
 
         interaction_data.access_token = token_response.access_token;
         interaction_data.access_token_expires_at =
-            Some(OffsetDateTime::now_utc() + time::Duration::seconds(token_response.expires_in.0));
+            OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
 
         interaction_data.refresh_token = token_response.refresh_token;
         interaction_data.refresh_token_expires_at = token_response
             .refresh_token_expires_in
-            .map(|expires_in| OffsetDateTime::now_utc() + time::Duration::seconds(expires_in.0));
+            .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
 
         let mut interaction = credential
             .interaction

@@ -569,7 +569,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 ssi::dto::NestedPresentationSubmissionDescriptorRestDTO,
                 ssi::dto::PresentationSubmissionMappingRestDTO,
                 ssi::dto::PresentationSubmissionDescriptorRestDTO,
-                ssi::dto::DurationSecondsRest,
+                ssi::dto::TimestampRest,
                 ssi::dto::JsonLDContextResponseRestDTO,
                 ssi::dto::JsonLDContextRestDTO,
                 ssi::dto::JsonLDEntityRestDTO,

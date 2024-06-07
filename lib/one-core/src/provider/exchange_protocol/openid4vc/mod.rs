@@ -979,13 +979,12 @@ async fn handle_credential_invitation(
         issuer_url: issuer_metadata.credential_issuer,
         credential_endpoint: issuer_metadata.credential_endpoint,
         access_token: token_response.access_token,
-        access_token_expires_at: Some(
-            OffsetDateTime::now_utc() + Duration::seconds(token_response.expires_in.0),
-        ),
+        access_token_expires_at: OffsetDateTime::from_unix_timestamp(token_response.expires_in.0)
+            .ok(),
         refresh_token: token_response.refresh_token,
         refresh_token_expires_at: token_response
             .refresh_token_expires_in
-            .map(|expires_in| OffsetDateTime::now_utc() + Duration::seconds(expires_in.0)),
+            .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok()),
     };
     let data = serialize_interaction_data(&holder_data)?;
 
