@@ -233,7 +233,13 @@ impl ProofSchemaService {
 
         let proof_schema = self
             .proof_schema_repository
-            .get_proof_schema(&id, &Default::default())
+            .get_proof_schema(
+                &id,
+                &ProofSchemaRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                    ..Default::default()
+                },
+            )
             .await?
             .ok_or(EntityNotFoundError::ProofSchema(id))?;
 

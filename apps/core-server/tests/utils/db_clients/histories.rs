@@ -6,7 +6,12 @@ use uuid::Uuid;
 
 use one_core::{
     model::{
-        history::{History, HistoryAction, HistoryEntityType, HistoryMetadata},
+        history::{
+            GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
+            HistoryListQuery, HistoryMetadata,
+        },
+        list_filter::ListFilterCondition,
+        list_query::ListPagination,
         organisation::Organisation,
     },
     repository::history_repository::HistoryRepository,
@@ -55,5 +60,22 @@ impl HistoriesDB {
             .unwrap();
 
         history
+    }
+
+    pub async fn get_by_entity_id(&self, entity_id: &EntityId) -> GetHistoryList {
+        let query = HistoryListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 10,
+            }),
+            sorting: None,
+            filtering: Some(ListFilterCondition::Value(HistoryFilterValue::EntityId(
+                *entity_id,
+            ))),
+
+            include: None,
+        };
+
+        self.repository.get_history_list(query).await.unwrap()
     }
 }
