@@ -72,17 +72,17 @@ pub struct OpenID4VCIDiscoveryResponseDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
-pub struct DurationSeconds(pub i64);
+pub struct Timestamp(pub i64);
 
 #[derive(Debug, Deserialize)]
 pub struct OpenID4VCITokenResponseDTO {
     pub access_token: String,
     pub token_type: String,
-    pub expires_in: DurationSeconds,
+    pub expires_in: Timestamp,
     #[serde(default)]
     pub refresh_token: Option<String>,
     #[serde(default)]
-    pub refresh_token_expires_in: Option<DurationSeconds>,
+    pub refresh_token_expires_in: Option<Timestamp>,
 }
 
 #[derive(Clone, Debug)]

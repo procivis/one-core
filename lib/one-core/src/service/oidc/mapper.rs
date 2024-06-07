@@ -5,10 +5,10 @@ use crate::model::interaction::{Interaction, InteractionId};
 use crate::service::error::ServiceError;
 use crate::service::oidc::{
     dto::{
-        DurationSeconds, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
-        OpenID4VCIInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+        OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError, OpenID4VCIInteractionDataDTO,
+        OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
         OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
-        OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenResponseDTO,
+        OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenResponseDTO, Timestamp,
     },
     model::OpenID4VPInteractionContent,
 };
@@ -230,7 +230,7 @@ impl TryFrom<OpenID4VCIInteractionDataDTO> for OpenID4VCITokenResponseDTO {
         Ok(Self {
             access_token: value.access_token.to_string(),
             token_type: "bearer".to_string(),
-            expires_in: DurationSeconds(
+            expires_in: Timestamp(
                 value
                     .access_token_expires_at
                     .ok_or(ServiceError::MappingError(
@@ -241,7 +241,7 @@ impl TryFrom<OpenID4VCIInteractionDataDTO> for OpenID4VCITokenResponseDTO {
             refresh_token: value.refresh_token,
             refresh_token_expires_in: value
                 .refresh_token_expires_at
-                .map(|dt| DurationSeconds(dt.unix_timestamp())),
+                .map(|dt| Timestamp(dt.unix_timestamp())),
         })
     }
 }

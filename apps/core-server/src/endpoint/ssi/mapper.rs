@@ -4,13 +4,15 @@ use dto_mapper::{convert_inner, convert_inner_of_inner};
 use one_core::provider::exchange_protocol::openid4vc::dto::OpenID4VCICredentialOfferClaimValue;
 use one_core::service::error::ServiceError;
 use one_core::service::oidc::dto::{
-    DurationSeconds, OpenID4VCIError, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
-    OpenID4VCITokenRequestDTO,
+    OpenID4VCIError, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCITokenRequestDTO,
+    Timestamp,
 };
 
-use super::dto::{OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO, OpenID4VCITokenRequestRestDTO};
+use super::dto::{
+    OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO, OpenID4VCITokenRequestRestDTO, TimestampRest,
+};
 use crate::endpoint::ssi::dto::{
-    DurationSecondsRest, OpenID4VCICredentialOfferClaimValueDTO, OpenID4VCIErrorResponseRestDTO,
+    OpenID4VCICredentialOfferClaimValueDTO, OpenID4VCIErrorResponseRestDTO,
 };
 
 impl From<OpenID4VCIError> for OpenID4VCIErrorResponseRestDTO {
@@ -21,8 +23,8 @@ impl From<OpenID4VCIError> for OpenID4VCIErrorResponseRestDTO {
     }
 }
 
-impl From<DurationSeconds> for DurationSecondsRest {
-    fn from(value: DurationSeconds) -> Self {
+impl From<Timestamp> for TimestampRest {
+    fn from(value: Timestamp) -> Self {
         Self(value.0)
     }
 }

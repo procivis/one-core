@@ -299,20 +299,20 @@ pub struct PublicKeyJwkEllipticDataRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(transparent)]
-pub struct DurationSecondsRest(pub i64);
+pub struct TimestampRest(pub i64);
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(OpenID4VCITokenResponseDTO)]
 pub struct OpenID4VCITokenResponseRestDTO {
     pub access_token: String,
     pub token_type: String,
-    pub expires_in: DurationSecondsRest,
+    pub expires_in: TimestampRest,
     #[from(with_fn = convert_inner)]
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub refresh_token: Option<String>,
     #[from(with_fn = convert_inner)]
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub refresh_token_expires_in: Option<DurationSecondsRest>,
+    pub refresh_token_expires_in: Option<TimestampRest>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
