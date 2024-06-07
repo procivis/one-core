@@ -222,6 +222,7 @@ dictionary ProofRequestBindingDTO {
   string created_date;
   string last_modified;
   string? verifier_did;
+  GetProofSchemaListItemBindingDTO? proof_schema;
   string exchange;
   string? redirect_uri;
   ProofStateBindingEnum state;
@@ -255,6 +256,44 @@ enum SortableCredentialSchemaColumnBindingEnum {
 };
 
 enum CredentialSchemaListQueryExactColumnBindingEnum {
+  "Name"
+};
+
+dictionary ProofListItemBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  string issuance_date;
+  string? requested_date;
+  string? completed_date;
+  string? verifier_did;
+  string exchange;
+  ProofStateBindingEnum state;
+  GetProofSchemaListItemBindingDTO? schema;
+};
+
+dictionary ProofListBindingDTO {
+  sequence<ProofListItemBindingDTO> values;
+  u64 total_pages;
+  u64 total_items;
+};
+
+dictionary ProofListQueryBindingDTO {
+  u32 page;
+  u32 page_size;
+  string organisation_id;
+  SortableProofListColumnBinding? sort;
+  SortDirection? sort_direction;
+  string? name;
+  sequence<string>? ids;
+  sequence<ProofListQueryExactColumnBindingEnum>? exact;
+};
+
+enum SortableProofListColumnBinding {
+  "SchemaName", "VerifierDid", "State", "CreatedDate"
+};
+
+enum ProofListQueryExactColumnBindingEnum {
   "Name"
 };
 
@@ -677,6 +716,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   ProofRequestBindingDTO get_proof(string proof_id);
+
+  [Throws=BindingError]
+  ProofListBindingDTO get_proofs(ProofListQueryBindingDTO query);
 
   [Throws=BindingError]
   sequence<CredentialRevocationCheckResponseBindingDTO> check_revocation(sequence<string> credential_ids);
