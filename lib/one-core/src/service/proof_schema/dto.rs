@@ -89,3 +89,8 @@ pub struct ProofSchemaImportRequestDTO {
     pub url: Url,
     pub organisation_id: OrganisationId,
 }
+
+#[derive(Clone, Debug)]
+pub struct ProofSchemaImportResponseDTO {
+    pub id: ProofSchemaId,
+}

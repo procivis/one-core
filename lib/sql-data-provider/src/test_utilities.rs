@@ -14,7 +14,7 @@ use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::entity::credential_schema::{CredentialSchemaType, LayoutType};
+use crate::entity::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageType};
 use crate::entity::did::DidType;
 use crate::entity::history::{self, HistoryAction, HistoryEntityType};
 use crate::entity::key_did::KeyRole;
@@ -105,7 +105,7 @@ pub async fn insert_credential_schema_to_database(
         name: Set(name.to_owned()),
         revocation_method: Set(revocation_method.to_owned()),
         organisation_id: Set(organisation_id),
-        wallet_storage_type: Set(None),
+        wallet_storage_type: Set(Some(WalletStorageType::Software)),
         deleted_at: Set(deleted_at),
         layout_type: Set(LayoutType::Card),
         layout_properties: Set(None),

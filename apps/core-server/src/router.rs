@@ -520,7 +520,6 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
 
                 proof_schema::dto::CreateProofSchemaRequestRestDTO,
                 proof_schema::dto::ClaimProofSchemaRequestRestDTO,
-                proof_schema::dto::ProofSchemaImportRequestRestDTO,
                 proof_schema::dto::SortableProofSchemaColumnRestEnum,
                 proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
                 proof_schema::dto::GetProofSchemaResponseRestDTO,
@@ -528,6 +527,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 proof_schema::dto::ProofInputSchemaRequestRestDTO,
                 proof_schema::dto::ProofInputSchemaResponseRestDTO,
                 proof_schema::dto::ProofSchemaShareResponseRestDTO,
+                proof_schema::dto::ProofSchemaImportRequestRestDTO,
 
                 ssi::dto::ConnectIssuerResponseRestDTO,
                 ssi::dto::ConnectVerifierResponseRestDTO,

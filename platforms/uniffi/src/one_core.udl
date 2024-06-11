@@ -760,5 +760,5 @@ interface OneCoreBinding {
   void uninitialize(boolean delete_data);
 
   [Throws=BindingError]
-  void import_proof_schema(ProofSchemaImportRequestDTO request);
+  string import_proof_schema(ProofSchemaImportRequestDTO request);
 };

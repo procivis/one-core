@@ -4,7 +4,7 @@ impl OneCoreBinding {
     pub fn import_proof_schema(
         &self,
         request: ProofSchemaImportRequestDTO,
-    ) -> Result<(), BindingError> {
+    ) -> Result<String, BindingError> {
         let request = request.try_into()?;
 
         self.block_on(async {
@@ -12,7 +12,8 @@ impl OneCoreBinding {
             Ok(core
                 .proof_schema_service
                 .import_proof_schema(request)
-                .await?)
+                .await
+                .map(|schema| schema.id.to_string())?)
         })
     }
 }

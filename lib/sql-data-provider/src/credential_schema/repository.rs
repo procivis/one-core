@@ -332,6 +332,24 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             _ => DataLayerError::Db(e.into()),
         })?;
 
+        if let Some(claim_schemas) = request.claim_schemas {
+            let credential_schema_claim_schema_relations =
+                claim_schemas_to_relations(&claim_schemas, &request.id.to_string());
+            let claim_schema_models = claim_schemas_to_model_vec(claim_schemas);
+
+            claim_schema::Entity::insert_many(claim_schema_models)
+                .exec(&self.db)
+                .await
+                .map_err(|e| DataLayerError::Db(e.into()))?;
+
+            credential_schema_claim_schema::Entity::insert_many(
+                credential_schema_claim_schema_relations,
+            )
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+        }
+
         Ok(())
     }
 
@@ -339,6 +357,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         &self,
         schema_id: &str,
         organisation_id: OrganisationId,
+        relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
         let credential_schema = credential_schema::Entity::find()
             .filter(credential_schema::Column::SchemaId.eq(schema_id))
@@ -351,6 +370,51 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             return Ok(None);
         };
 
-        Ok(credential_schema_from_models(credential_schema, None, None, true).ok())
+        let mut claim_schemas = None;
+        if relations.claim_schemas.is_some() {
+            let schemas = credential_schema
+                .find_related(claim_schema::Entity)
+                .select_also(credential_schema_claim_schema::Entity)
+                .all(&self.db)
+                .await
+                .map_err(to_data_layer_error)?;
+
+            if schemas.is_empty() {
+                return Err(DataLayerError::MappingError);
+            }
+
+            claim_schemas = Some(
+                schemas
+                    .into_iter()
+                    .map(|(claim_schema, credential_schema_claim_schema)| {
+                        let credential_schema_claim_schema =
+                            credential_schema_claim_schema.ok_or(DataLayerError::MappingError)?;
+
+                        Ok(CredentialSchemaClaim {
+                            schema: claim_schema.into(),
+                            required: credential_schema_claim_schema.required,
+                        })
+                    })
+                    .collect::<Result<_, DataLayerError>>()?,
+            );
+        }
+
+        let mut organisation = None;
+        if relations.organisation.is_some() {
+            organisation = Some(
+                credential_schema
+                    .find_related(organisation::Entity)
+                    .one(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?
+                    .map(Into::into)
+                    .ok_or(DataLayerError::MappingError)?,
+            );
+        }
+
+        Ok(
+            credential_schema_from_models(credential_schema, claim_schemas, organisation, true)
+                .ok(),
+        )
     }
 }

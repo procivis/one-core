@@ -53,12 +53,12 @@ pub(super) fn credential_schema_from_proof_input_schema(
     now: OffsetDateTime,
 ) -> CredentialSchema {
     let claims = unnest_proof_claim_schemas(&input_schema.claim_schemas, "".into())
-        .iter()
+        .into_iter()
         .map(|imported_schema| CredentialSchemaClaim {
             schema: ClaimSchema {
                 id: imported_schema.id,
-                key: imported_schema.key.clone(),
-                data_type: imported_schema.data_type.clone(),
+                key: imported_schema.key,
+                data_type: imported_schema.data_type,
                 created_date: now,
                 last_modified: now,
             },

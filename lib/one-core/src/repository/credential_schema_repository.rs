@@ -1,15 +1,8 @@
 use shared_types::{CredentialSchemaId, OrganisationId};
 
-use crate::{
-    model::{
-        credential_schema::{
-            CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList,
-            GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
-        },
-        list_filter::{ListFilterValue, StringMatch, StringMatchType},
-        list_query::ListPagination,
-    },
-    service::credential_schema::dto::CredentialSchemaFilterValue,
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList, GetCredentialSchemaQuery,
+    UpdateCredentialSchemaRequest,
 };
 
 use super::error::DataLayerError;
@@ -46,35 +39,6 @@ pub trait CredentialSchemaRepository: Send + Sync {
         &self,
         schema_id: &str,
         organisation_id: OrganisationId,
+        relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError>;
-}
-
-impl dyn CredentialSchemaRepository {
-    pub async fn get_by_name_and_organisation(
-        &self,
-        name: &str,
-        organisation_id: OrganisationId,
-    ) -> Result<Option<CredentialSchema>, DataLayerError> {
-        let mut schema = self
-            .get_credential_schema_list(
-                GetCredentialSchemaQuery {
-                    pagination: Some(ListPagination {
-                        page: 0,
-                        page_size: 1,
-                    }),
-                    filtering: Some(
-                        CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
-                            & CredentialSchemaFilterValue::Name(StringMatch {
-                                r#match: StringMatchType::Equals,
-                                value: name.to_owned(),
-                            }),
-                    ),
-                    ..Default::default()
-                },
-                &Default::default(),
-            )
-            .await?;
-
-        Ok(schema.values.pop())
-    }
 }

@@ -133,7 +133,7 @@ pub(crate) async fn share_proof_schema(
     post,
     path = "/api/proof-schema/v1/import",
     request_body = ProofSchemaImportRequestRestDTO,
-    responses(EmptyOrErrorResponse),
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "proof_schema_management",
     security(
         ("bearer" = [])
@@ -145,12 +145,13 @@ pub(crate) async fn import_proof_schema(
         Json<ProofSchemaImportRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> EmptyOrErrorResponse {
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state
         .core
         .proof_schema_service
         .import_proof_schema(request.into())
-        .await;
+        .await
+        .map(|resp| EntityResponseRestDTO { id: resp.id });
 
-    EmptyOrErrorResponse::from_result(result, state, "importing proof schema")
+    CreatedOrErrorResponse::from_result(result, state, "importing proof schema")
 }
