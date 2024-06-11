@@ -15,8 +15,8 @@ import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
 import java.security.Signature
-import java.security.interfaces.ECPublicKey
 import java.security.spec.ECGenParameterSpec
+import java.util.Arrays
 
 class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage {
     override fun generateKey(keyAlias: String): GeneratedKeyBindingDto {
@@ -84,9 +84,10 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
             }
 
             // convert to compressed form
-            val publicKey = pair.public as ECPublicKey
-            val x = toRawBytes(publicKey.w.affineX.toByteArray())
-            val y = toRawBytes(publicKey.w.affineY.toByteArray())
+            val encoded = pair.public.encoded
+            val pubKeyUncompressedParts = encoded.copyOfRange(encoded.size - 64, encoded.size)
+            val x = pubKeyUncompressedParts.copyOfRange(0, 32)
+            val y = pubKeyUncompressedParts.copyOfRange(32, 64)
             val ySign = ((y[31].toInt() and 0x01) + 0x02).toByte()
             val compressed = byteArrayOf(ySign) + x
 
@@ -123,11 +124,9 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
     }
 
     private fun toRawBytes(value: ByteArray): ByteArray {
-        // strip leading zero
-        if (value.size == 33 && value[0].toInt() == 0x00) {
-            return value.copyOfRange(1, 33)
-        }
-        return value
+        val combined = ByteArray(value.size + 32)
+        System.arraycopy(value, 0, combined, 32, value.size)
+        return Arrays.copyOfRange(combined, combined.size - 32, combined.size)
     }
 
     private fun extractSignatureBytes(signature: ByteArray): ByteArray {
