@@ -268,3 +268,9 @@ pub enum CredentialSchemaCodeTypeRestEnum {
     Mrz,
     QrCode,
 }
+
+#[derive(Debug, Clone, From, Serialize, ToSchema)]
+#[from(one_core::service::credential_schema::dto::CredentialSchemaShareResponseDTO)]
+pub struct CredentialSchemaShareResponseRestDTO {
+    pub url: String,
+}

@@ -151,6 +151,10 @@ pub(super) fn schema_delete_history_event(schema: CredentialSchema) -> History {
     history_event(schema, HistoryAction::Deleted)
 }
 
+pub(super) fn schema_share_history_event(schema: CredentialSchema) -> History {
+    history_event(schema, HistoryAction::Shared)
+}
+
 fn history_event(schema: CredentialSchema, action: HistoryAction) -> History {
     History {
         id: Uuid::new_v4().into(),

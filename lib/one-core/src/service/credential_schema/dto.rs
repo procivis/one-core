@@ -181,3 +181,7 @@ pub enum CredentialSchemaCodeTypeEnum {
     Mrz,
     QrCode,
 }
+
+pub struct CredentialSchemaShareResponseDTO {
+    pub url: String,
+}

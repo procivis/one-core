@@ -3,7 +3,9 @@ use axum::Json;
 use axum_extra::extract::WithRejection;
 use shared_types::CredentialSchemaId;
 
-use super::dto::{CredentialSchemaResponseRestDTO, GetCredentialSchemaQuery};
+use super::dto::{
+    CredentialSchemaResponseRestDTO, CredentialSchemaShareResponseRestDTO, GetCredentialSchemaQuery,
+};
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemasResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
@@ -109,4 +111,28 @@ pub(crate) async fn post_credential_schema(
         .create_credential_schema(request.into())
         .await;
     CreatedOrErrorResponse::from_result(result, state, "creating credential schema")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/credential-schema/v1/{id}/share",
+    responses(CreatedOrErrorResponse<CredentialSchemaShareResponseRestDTO>),
+    params(
+        ("id" = CredentialSchemaId, Path, description = "Schema id")
+    ),
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn share_credential_schema(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<CredentialSchemaShareResponseRestDTO> {
+    let result = state
+        .core
+        .credential_schema_service
+        .share_credential_schema(&id)
+        .await;
+    OkOrErrorResponse::from_result(result, state, "sharing credential schema")
 }

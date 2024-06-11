@@ -2109,3 +2109,31 @@ fn dummy_request() -> CreateCredentialSchemaRequestDTO {
         schema_id: None,
     }
 }
+
+#[tokio::test]
+async fn test_share_credential_schema_success() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
+    let organisation_repository = MockOrganisationRepository::default();
+
+    let schema_id: CredentialSchemaId = Uuid::new_v4().into();
+
+    repository
+        .expect_get_credential_schema()
+        .returning(|_, _| Ok(Some(generic_credential_schema())));
+
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        MockCredentialFormatterProvider::default(),
+        generic_config().core,
+    );
+
+    let result = service.share_credential_schema(&schema_id).await;
+    assert!(result.is_ok());
+}

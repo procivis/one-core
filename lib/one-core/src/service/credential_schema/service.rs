@@ -7,10 +7,12 @@ use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
-    GetCredentialSchemaListResponseDTO, GetCredentialSchemaQueryDTO,
+    CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
+    GetCredentialSchemaQueryDTO,
 };
 use crate::service::credential_schema::mapper::{
     from_create_request, schema_create_history_event, schema_delete_history_event,
+    schema_share_history_event,
 };
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
@@ -162,5 +164,38 @@ impl CredentialSchemaService {
             .get_credential_schema_list(query, &Default::default())
             .await?;
         Ok(list_response_into(result))
+    }
+
+    pub async fn share_credential_schema(
+        &self,
+        credential_schema_id: &CredentialSchemaId,
+    ) -> Result<CredentialSchemaShareResponseDTO, ServiceError> {
+        let core_base_url = self
+            .core_base_url
+            .as_ref()
+            .ok_or_else(|| ServiceError::Other("Missing core base_url".to_string()))?;
+
+        let credential_schema = self
+            .credential_schema_repository
+            .get_credential_schema(
+                credential_schema_id,
+                &CredentialSchemaRelations {
+                    claim_schemas: Some(ClaimSchemaRelations::default()),
+                    organisation: Some(OrganisationRelations::default()),
+                },
+            )
+            .await?
+            .ok_or(ServiceError::EntityNotFound(
+                EntityNotFoundError::CredentialSchema(*credential_schema_id),
+            ))?;
+
+        let _ = self
+            .history_repository
+            .create_history(schema_share_history_event(credential_schema))
+            .await;
+
+        Ok(CredentialSchemaShareResponseDTO {
+            url: format!("{core_base_url}/ssi/schema/v1/{credential_schema_id}"),
+        })
     }
 }
