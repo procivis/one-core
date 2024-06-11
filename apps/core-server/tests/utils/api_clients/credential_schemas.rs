@@ -74,4 +74,9 @@ impl CredentialSchemasApi {
         let url = format!("/api/credential-schema/v1/{schema_id}");
         self.client.delete(&url).await
     }
+
+    pub async fn share(&self, schema_id: &impl Display) -> Response {
+        let url = format!("/api/credential-schema/v1/{schema_id}/share");
+        self.client.post(&url, None).await
+    }
 }

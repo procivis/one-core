@@ -108,6 +108,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 .post(credential_schema::controller::post_credential_schema),
         )
         .route(
+            "/api/credential-schema/v1/:id/share",
+            post(credential_schema::controller::share_credential_schema),
+        )
+        .route(
             "/api/proof-schema/v1/:id",
             delete(proof_schema::controller::delete_proof_schema)
                 .get(proof_schema::controller::get_proof_schema_detail),
@@ -372,6 +376,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             credential_schema::controller::get_credential_schema,
             credential_schema::controller::get_credential_schema_list,
             credential_schema::controller::post_credential_schema,
+            credential_schema::controller::share_credential_schema,
 
             did::controller::get_did,
             did::controller::get_did_list,
@@ -480,6 +485,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 credential_schema::dto::CredentialSchemaCodePropertiesRestDTO,
                 credential_schema::dto::CredentialSchemaCodeTypeRestEnum,
                 credential_schema::dto::CredentialSchemaType,
+                credential_schema::dto::CredentialSchemaShareResponseRestDTO,
 
                 did::dto::CreateDidRequestRestDTO,
                 did::dto::CreateDidRequestKeysRestDTO,
