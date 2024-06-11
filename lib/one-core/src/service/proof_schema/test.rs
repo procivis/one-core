@@ -715,7 +715,7 @@ async fn test_create_proof_schema_duplicit_claims() {
 }
 
 #[tokio::test]
-async fn test_import_proof_schema_ok() {
+async fn test_import_proof_schema_ok_for_new_credential_schema() {
     let now = OffsetDateTime::now_utc();
     let organisation_id: OrganisationId = Uuid::new_v4().into();
 
@@ -738,6 +738,15 @@ async fn test_import_proof_schema_ok() {
         .returning(|_| Ok(Uuid::new_v4()));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
+    credential_schema_repository
+        .expect_get_by_schema_id_and_organisation()
+        .withf(move |schema_id, org, relations| {
+            schema_id == "iso-org-test123"
+                && org == &organisation_id
+                && relations.claim_schemas.is_some()
+        })
+        .once()
+        .returning(|_, _, _| Ok(None));
     credential_schema_repository
         .expect_create_credential_schema()
         .once()

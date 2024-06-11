@@ -3,16 +3,16 @@ use std::sync::Arc;
 use one_core::{
     model::{
         claim_schema::ClaimSchema,
-        credential_schema::CredentialSchema,
+        credential_schema::{CredentialSchema, CredentialSchemaRelations},
         organisation::{Organisation, OrganisationRelations},
         proof_schema::{
-            GetProofSchemaQuery, ProofInputClaimSchema, ProofInputSchema,
-            ProofInputSchemaRelations, ProofSchema, ProofSchemaId, ProofSchemaRelations,
+            ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
+            ProofSchemaId, ProofSchemaRelations,
         },
     },
     repository::proof_schema_repository::ProofSchemaRepository,
 };
-use shared_types::{ClaimSchemaId, OrganisationId};
+use shared_types::ClaimSchemaId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -96,34 +96,16 @@ impl ProofSchemasDB {
                     organisation: Some(OrganisationRelations {}),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(Default::default()),
-                        credential_schema: Some(Default::default()),
+                        credential_schema: Some(CredentialSchemaRelations {
+                            claim_schemas: Some(Default::default()),
+                            ..Default::default()
+                        }),
                     }),
                 },
             )
             .await
             .unwrap()
             .unwrap()
-    }
-
-    pub async fn get_all(&self, organisation_id: &OrganisationId) -> Vec<ProofSchema> {
-        let res = self
-            .repository
-            .get_proof_schema_list(GetProofSchemaQuery {
-                page: 0,
-                page_size: 100,
-                organisation_id: *organisation_id,
-                sort: None,
-                sort_direction: None,
-                name: None,
-                exact: None,
-                ids: None,
-            })
-            .await
-            .unwrap();
-
-        assert!(res.total_items <= 100);
-
-        res.values
     }
 
     pub async fn delete(&self, id: &ProofSchemaId) {

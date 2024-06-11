@@ -130,4 +130,5 @@ pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
     pub revocation_method: Option<RevocationMethod>,
     pub format: Option<String>,
+    pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
 }

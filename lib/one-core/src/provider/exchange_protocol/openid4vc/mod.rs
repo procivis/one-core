@@ -467,6 +467,7 @@ impl ExchangeProtocol for OpenID4VC {
                 id: schema.id,
                 revocation_method,
                 format: Some(real_format),
+                claim_schemas: None,
             })
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
@@ -1002,7 +1003,7 @@ async fn handle_credential_invitation(
     let credential_id = Uuid::new_v4().into();
     let (claims, credential_schema) = match deps
         .credential_schema_repository
-        .get_by_schema_id_and_organisation(&schema_id, organisation.id)
+        .get_by_schema_id_and_organisation(&schema_id, organisation.id, &Default::default())
         .await
         .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
     {

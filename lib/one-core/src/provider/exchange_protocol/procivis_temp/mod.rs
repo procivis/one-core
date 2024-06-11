@@ -436,7 +436,11 @@ async fn handle_credential_invitation(
     let now = OffsetDateTime::now_utc();
     let credential_schema = match deps
         .credential_schema_repository
-        .get_by_schema_id_and_organisation(&issuer_response.schema.schema_id, organisation.id)
+        .get_by_schema_id_and_organisation(
+            &issuer_response.schema.schema_id,
+            organisation.id,
+            &Default::default(),
+        )
         .await
         .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
     {

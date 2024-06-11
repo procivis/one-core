@@ -126,10 +126,10 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
                             id: claim.id,
                             created_date: get_dummy_date(),
                             last_modified: get_dummy_date(),
-                            key: "key1".to_string(),
-                            data_type: "STRING".to_string(),
+                            key: claim.key.to_owned(),
+                            data_type: claim.datatype.to_owned(),
                         },
-                        required: true,
+                        required: claim.required,
                     })
                     .collect(),
             ),
@@ -137,7 +137,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-            schema_id: "CredentialSchemaId".to_owned(),
+            schema_id: credential_schema_id.to_string(),
         },
         organisation,
         repository,
@@ -504,6 +504,7 @@ async fn test_update_credential_schema_success() {
             id: credential_schema.id,
             revocation_method: Some(new_revocation_method.to_string()),
             format: Some(new_format.to_string()),
+            claim_schemas: None,
         })
         .await;
     assert!(result.is_ok());
@@ -515,4 +516,31 @@ async fn test_update_credential_schema_success() {
     assert_eq!(db_schemas.len(), 1);
     assert_eq!(db_schemas[0].revocation_method, new_revocation_method);
     assert_eq!(db_schemas[0].format, new_format);
+}
+
+#[tokio::test]
+async fn test_get_by_schema_id_and_organisation() {
+    let TestSetupWithCredentialSchema {
+        credential_schema,
+        repository,
+        ..
+    } = setup_with_schema(Repositories::default()).await;
+
+    let res = repository
+        .get_by_schema_id_and_organisation(
+            &credential_schema.schema_id,
+            credential_schema.organisation.as_ref().unwrap().id,
+            &CredentialSchemaRelations {
+                claim_schemas: Some(Default::default()),
+                organisation: Some(Default::default()),
+            },
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert!(&res.claim_schemas.is_some());
+    assert!(&res.organisation.is_some());
+
+    assert_eq!(res, credential_schema);
 }
