@@ -249,6 +249,11 @@ dictionary CredentialSchemaListQueryBindingDTO {
   string? name;
   sequence<string>? ids;
   sequence<CredentialSchemaListQueryExactColumnBindingEnum>? exact;
+  sequence<CredentialSchemaListIncludeEntityType>? include;
+};
+
+enum CredentialSchemaListIncludeEntityType {
+  "LayoutProperties"
 };
 
 enum SortableCredentialSchemaColumnBindingEnum {
