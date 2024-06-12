@@ -1,10 +1,10 @@
 use crate::error::BindingError;
-use crate::{ListProofSchamasFiltersBindingDTO, OneCoreBinding, ProofSchemaListBindingDTO};
+use crate::{ListProofSchemasFiltersBindingDTO, OneCoreBinding, ProofSchemaListBindingDTO};
 
 impl OneCoreBinding {
     pub fn get_proof_schemas(
         &self,
-        filter: ListProofSchamasFiltersBindingDTO,
+        filter: ListProofSchemasFiltersBindingDTO,
     ) -> Result<ProofSchemaListBindingDTO, BindingError> {
         self.block_on(async {
             let core = self.use_core().await?;

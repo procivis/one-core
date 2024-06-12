@@ -38,7 +38,7 @@ use crate::utils::{into_id, TimestampFormat};
 use crate::{
     CreateTrustAnchorRequestBindingDTO, CredentialSchemaTypeBindingEnum,
     ExactTrustAnchorFilterColumnBindings, HistoryListItemBindingDTO, HistoryMetadataBinding,
-    ListProofSchamasFiltersBindingDTO, ListTrustAnchorsFiltersBindings, ProofListQueryBindingDTO,
+    ListProofSchemasFiltersBindingDTO, ListTrustAnchorsFiltersBindings, ProofListQueryBindingDTO,
 };
 
 pub(crate) fn serialize_config_entity(
@@ -335,10 +335,10 @@ impl TryFrom<ListTrustAnchorsFiltersBindings> for ListTrustAnchorsQueryDTO {
     }
 }
 
-impl TryFrom<ListProofSchamasFiltersBindingDTO> for GetListQueryParams<SortableProofSchemaColumn> {
+impl TryFrom<ListProofSchemasFiltersBindingDTO> for GetListQueryParams<SortableProofSchemaColumn> {
     type Error = BindingError;
 
-    fn try_from(value: ListProofSchamasFiltersBindingDTO) -> Result<Self, Self::Error> {
+    fn try_from(value: ListProofSchemasFiltersBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
             page: value.page,
             page_size: value.page_size,

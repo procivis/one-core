@@ -40,7 +40,8 @@ use one_core::service::proof::dto::{
     ProofListItemResponseDTO,
 };
 use one_core::service::proof_schema::dto::{
-    GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, ProofClaimSchemaResponseDTO,
+    GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, GetProofSchemaResponseDTO,
+    ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
 };
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::service::trust_anchor::dto::{
@@ -527,7 +528,7 @@ impl From<ProofClaimValueDTO> for ProofRequestClaimValueBindingDTO {
     }
 }
 
-#[derive(From)]
+#[derive(Debug, From)]
 #[from(ProofClaimSchemaResponseDTO)]
 pub struct ProofClaimSchemaBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -914,7 +915,7 @@ pub enum ProofSchemaListQueryExactColumnBinding {
 }
 
 #[derive(Clone, Debug)]
-pub struct ListProofSchamasFiltersBindingDTO {
+pub struct ListProofSchemasFiltersBindingDTO {
     pub page: u32,
     pub page_size: u32,
 
@@ -958,4 +959,30 @@ pub struct ProofSchemaImportRequestDTO {
     pub url: String,
     #[try_into(with_fn_ref = into_id)]
     pub organisation_id: String,
+}
+
+#[derive(Debug, From)]
+#[from(GetProofSchemaResponseDTO)]
+pub struct GetProofSchemaBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub organisation_id: String,
+    pub expire_duration: u32,
+    #[from(with_fn = convert_inner)]
+    pub proof_input_schemas: Vec<ProofInputSchemaBindingDTO>,
+}
+
+#[derive(Debug, From)]
+#[from(ProofInputSchemaResponseDTO)]
+pub struct ProofInputSchemaBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub claim_schemas: Vec<ProofClaimSchemaBindingDTO>,
+    pub credential_schema: CredentialSchemaBindingDTO,
+    pub validity_constraint: Option<i64>,
 }

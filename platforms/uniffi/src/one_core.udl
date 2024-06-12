@@ -633,7 +633,7 @@ enum ProofSchemaListQueryExactColumnBinding {
   "Name",
 };
 
-dictionary ListProofSchamasFiltersBindingDTO {
+dictionary ListProofSchemasFiltersBindingDTO {
   u32 page;
   u32 page_size;
 
@@ -664,6 +664,22 @@ dictionary ProofSchemaListBindingDTO {
 dictionary ProofSchemaImportRequestDTO {
   string url;
   string organisation_id;
+};
+
+dictionary GetProofSchemaBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  string name;
+  string organisation_id;
+  u32 expire_duration;
+  sequence<ProofInputSchemaBindingDTO> proof_input_schemas;
+};
+
+dictionary ProofInputSchemaBindingDTO {
+  sequence<ProofClaimSchemaBindingDTO> claim_schemas;
+  CredentialSchemaBindingDTO credential_schema;
+  i64? validity_constraint;
 };
 
 interface OneCoreBinding {
@@ -754,7 +770,10 @@ interface OneCoreBinding {
   TrustAnchorsListBindingDTO list_trust_anchors(ListTrustAnchorsFiltersBindings filters);
 
   [Throws=BindingError]
-  ProofSchemaListBindingDTO get_proof_schemas(ListProofSchamasFiltersBindingDTO filters);
+  ProofSchemaListBindingDTO get_proof_schemas(ListProofSchemasFiltersBindingDTO filters);
+
+  [Throws=BindingError]
+  GetProofSchemaBindingDTO get_proof_schema(string proof_id);
 
   [Throws=BindingError]
   void uninitialize(boolean delete_data);
