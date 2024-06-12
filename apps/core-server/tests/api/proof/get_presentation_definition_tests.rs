@@ -305,9 +305,9 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
 
-    let claim_schemas_1: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "first_f0", true, "STRING"),
-        (Uuid::new_v4(), "first_f1", false, "STRING"),
+    let claim_schemas_1: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "first_f0", true, "STRING", false),
+        (Uuid::new_v4(), "first_f1", false, "STRING", false),
     ];
     let credential_schema_1 = fixtures::create_credential_schema_with_claims(
         &db_conn,
@@ -327,9 +327,9 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
     )
     .await;
 
-    let claim_schemas_2: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "second_f0", true, "STRING"),
-        (Uuid::new_v4(), "second_f1", false, "STRING"),
+    let claim_schemas_2: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "second_f0", true, "STRING", false),
+        (Uuid::new_v4(), "second_f1", false, "STRING", false),
     ];
     let credential_schema_2 = fixtures::create_credential_schema_with_claims(
         &db_conn,
@@ -741,9 +741,9 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
 
-    let claim_schemas_1: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "first.f0", true, "STRING"),
-        (Uuid::new_v4(), "first_f1", false, "STRING"),
+    let claim_schemas_1: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "first.f0", true, "STRING", false),
+        (Uuid::new_v4(), "first_f1", false, "STRING", false),
     ];
     let credential_schema_1 = fixtures::create_credential_schema_with_claims(
         &db_conn,
@@ -763,9 +763,9 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
     )
     .await;
 
-    let claim_schemas_2: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "second_f0", true, "STRING"),
-        (Uuid::new_v4(), "second_f1", false, "STRING"),
+    let claim_schemas_2: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "second_f0", true, "STRING", false),
+        (Uuid::new_v4(), "second_f1", false, "STRING", false),
     ];
     let credential_schema_2 = fixtures::create_credential_schema_with_claims(
         &db_conn,

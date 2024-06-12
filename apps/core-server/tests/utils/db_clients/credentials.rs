@@ -68,6 +68,7 @@ impl CredentialsDB {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 value: "test".to_string(),
+                path: claim_schema.schema.key.clone(),
                 schema: Some(claim_schema.schema.to_owned()),
             })
             .collect();

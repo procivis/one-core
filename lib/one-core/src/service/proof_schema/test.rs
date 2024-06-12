@@ -346,6 +346,7 @@ async fn test_create_proof_schema_success() {
         data_type: "STRING".to_string(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
+        array: false,
     };
 
     let mut formatter = MockCredentialFormatter::default();
@@ -545,6 +546,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                         data_type: "STRING".to_string(),
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
+                        array: false,
                     },
                     required: false,
                 }]),
@@ -1003,6 +1005,7 @@ async fn test_get_proof_schema_success_nested_claims() {
         data_type: "OBJECT".to_string(),
         created_date: now,
         last_modified: now,
+        array: false,
     };
     let location_x_claim_schema = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -1010,6 +1013,7 @@ async fn test_get_proof_schema_success_nested_claims() {
         data_type: "STRING".to_string(),
         created_date: now,
         last_modified: now,
+        array: false,
     };
 
     let mut proof_schema = generic_proof_schema();
@@ -1179,6 +1183,7 @@ async fn test_create_proof_schema_verify_nested_generic(
             data_type: "OBJECT".to_string(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
+            array: false,
         })
         .collect();
 

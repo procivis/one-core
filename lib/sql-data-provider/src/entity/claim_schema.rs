@@ -7,6 +7,8 @@ use serde::Deserialize;
 use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
 
+use crate::common::bool_from_int;
+
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Into, Deserialize)]
 #[into(ClaimSchema)]
 #[sea_orm(table_name = "claim_schema")]
@@ -21,6 +23,8 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
     #[into(rename = "data_type")]
     pub datatype: String,
+    #[serde(deserialize_with = "bool_from_int")]
+    pub array: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

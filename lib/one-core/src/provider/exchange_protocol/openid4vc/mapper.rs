@@ -626,6 +626,7 @@ pub(super) fn create_claims_from_credential_definition(
                 data_type: value_details.value_type.to_string(),
                 created_date: now,
                 last_modified: now,
+                array: false,
             },
             required: false,
         };
@@ -636,6 +637,7 @@ pub(super) fn create_claims_from_credential_definition(
             created_date: now,
             last_modified: now,
             value: value_details.value.to_string(),
+            path: new_schema_claim.schema.key.to_owned(),
             schema: Some(new_schema_claim.schema.to_owned()),
         };
 
@@ -659,6 +661,7 @@ pub(super) fn create_claims_from_credential_definition(
                 data_type: DatatypeType::Object.to_string(),
                 created_date: now,
                 last_modified: now,
+                array: false, // FIXME!
             },
             required: false,
         })
@@ -822,6 +825,7 @@ pub(super) fn map_offered_claims_to_credential_schema(
                     created_date: now,
                     last_modified: now,
                     value: value_details.value.to_owned(),
+                    path: claim_schema.schema.key.to_owned(),
                     schema: Some(claim_schema.schema.to_owned()),
                 };
 

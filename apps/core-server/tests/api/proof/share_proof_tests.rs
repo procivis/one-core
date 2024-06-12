@@ -44,6 +44,7 @@ async fn test_share_proof_success() {
                 key: &claim_schema.key,
                 required: true,
                 data_type: &claim_schema.data_type,
+                array: false,
             }],
             credential_schema: &credential_schema,
             validity_constraint: None,
@@ -90,30 +91,34 @@ async fn test_share_proof_success_mdoc() {
     // GIVEN
     let (context, organisation, did, key) = TestContext::new_with_did().await;
 
-    let claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![
+    let claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
         (
             Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap(),
             "namespace",
             true,
             "OBJECT",
+            false,
         ),
         (
             Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c41").unwrap(),
             "namespace/location",
             true,
             "OBJECT",
+            false,
         ),
         (
             Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c42").unwrap(),
             "namespace/location/X",
             true,
             "STRING",
+            false,
         ),
         (
             Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c43").unwrap(),
             "namespace/location/Y",
             true,
             "STRING",
+            false,
         ),
     ];
 
@@ -226,11 +231,12 @@ async fn test_share_proof_success_jsonld() {
     // GIVEN
     let (context, organisation, did, key) = TestContext::new_with_did().await;
 
-    let claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![(
+    let claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![(
         Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c42").unwrap(),
         "location_x",
         true,
         "STRING",
+        false,
     )];
 
     let credential_schema = context

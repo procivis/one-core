@@ -119,17 +119,18 @@ pub async fn insert_credential_schema_to_database(
 
 pub async fn insert_many_claims_to_database(
     database: &DatabaseConnection,
-    claims: &[(ClaimId, ClaimSchemaId, CredentialId, Vec<u8>)],
+    claims: &[(ClaimId, ClaimSchemaId, CredentialId, Vec<u8>, String)],
 ) -> Result<(), DbErr> {
     let models =
         claims.iter().map(
-            |(id, claim_schema_id, credential_id, value)| claim::ActiveModel {
+            |(id, claim_schema_id, credential_id, value, path)| claim::ActiveModel {
                 id: Set(*id),
                 claim_schema_id: Set(*claim_schema_id),
                 credential_id: Set(*credential_id),
                 value: Set(value.to_owned()),
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
+                path: Set(path.to_owned()),
             },
         );
 
@@ -149,6 +150,7 @@ pub async fn insert_many_claims_schema_to_database<'a>(
             last_modified: Set(get_dummy_date()),
             key: Set(claim_schema.key.to_string()),
             datatype: Set(claim_schema.datatype.to_string()),
+            array: Set(claim_schema.array),
         }
         .insert(database)
         .await?;
@@ -221,6 +223,7 @@ pub struct ClaimInsertInfo<'a> {
     pub required: bool,
     pub order: u32,
     pub datatype: &'a str,
+    pub array: bool,
 }
 
 pub struct ProofInput<'a> {

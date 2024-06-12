@@ -13,6 +13,7 @@ impl TryFrom<Claim> for claim::ActiveModel {
             last_modified: Set(value.last_modified),
             value: Set(value.value.as_bytes().to_owned()),
             claim_schema_id: Set(value.schema.ok_or(DataLayerError::IncorrectParameters)?.id),
+            path: Set(value.path),
         })
     }
 }
@@ -25,6 +26,7 @@ impl From<claim::Model> for Claim {
             value: String::from_utf8_lossy(&value.value).into_owned(),
             created_date: value.created_date,
             last_modified: value.last_modified,
+            path: value.path,
             schema: None,
         }
     }

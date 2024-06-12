@@ -46,6 +46,7 @@ impl From<CredentialClaimSchemaDTO> for CredentialSchemaClaim {
                 data_type: value.datatype,
                 created_date: value.created_date,
                 last_modified: value.last_modified,
+                array: false, //FIXME!
             },
             required: value.required,
         }

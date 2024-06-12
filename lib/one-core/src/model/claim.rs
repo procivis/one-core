@@ -13,6 +13,7 @@ pub struct Claim {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub value: String,
+    pub path: String,
 
     // Relations
     pub schema: Option<ClaimSchema>,

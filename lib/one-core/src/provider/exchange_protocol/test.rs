@@ -339,6 +339,7 @@ fn mdoc_credential() -> Credential {
             data_type: "OBJECT".to_string(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
+            array: false,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -346,6 +347,7 @@ fn mdoc_credential() -> Credential {
             data_type: "STRING".to_string(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
+            array: false,
         },
     ];
 
@@ -374,6 +376,7 @@ fn mdoc_credential() -> Credential {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: "john".to_string(),
+        path: new_claim_schemas[1].key.clone(),
         schema: Some(new_claim_schemas[1].to_owned()),
     }];
 
@@ -819,12 +822,14 @@ fn dummy_credential() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             value: "claim value".to_string(),
+            path: "key".to_string(),
             schema: Some(ClaimSchema {
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
+                array: false,
             }),
         }]),
         issuer_did: None,
@@ -845,6 +850,7 @@ fn dummy_credential() -> Credential {
                     data_type: "STRING".to_string(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
+                    array: false,
                 },
                 required: true,
             }]),

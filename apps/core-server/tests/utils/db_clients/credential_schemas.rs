@@ -42,6 +42,7 @@ impl CredentialSchemasDB {
             data_type: "STRING".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            array: false,
         };
         let claim_schemas = vec![CredentialSchemaClaim {
             schema: claim_schema.to_owned(),
@@ -105,6 +106,7 @@ impl CredentialSchemasDB {
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_address = ClaimSchema {
+            array: false,
             id: Uuid::new_v4().into(),
             key: "address".to_string(),
             data_type: "OBJECT".to_string(),
@@ -112,6 +114,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
         };
         let claim_schema_address_street = ClaimSchema {
+            array: false,
             id: Uuid::new_v4().into(),
             key: "address/street".to_string(),
             data_type: "STRING".to_string(),
@@ -119,6 +122,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
         };
         let claim_schema_address_coordinates = ClaimSchema {
+            array: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates".to_string(),
             data_type: "OBJECT".to_string(),
@@ -126,6 +130,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
         };
         let claim_schema_address_coordinates_x = ClaimSchema {
+            array: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates/x".to_string(),
             data_type: "NUMBER".to_string(),
@@ -133,6 +138,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
         };
         let claim_schema_address_coordinates_y = ClaimSchema {
+            array: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates/y".to_string(),
             data_type: "NUMBER".to_string(),
@@ -208,8 +214,10 @@ impl CredentialSchemasDB {
             data_type: "STRING".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            array: false,
         };
         let claim_schema_address = ClaimSchema {
+            array: false,
             id: Uuid::new_v4().into(),
             key: "address".to_string(),
             data_type: "OBJECT".to_string(),
@@ -217,6 +225,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
         };
         let claim_schema_address_street = ClaimSchema {
+            array: false,
             id: Uuid::new_v4().into(),
             key: "address/street".to_string(),
             data_type: "STRING".to_string(),
@@ -224,6 +233,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
         };
         let claim_schema_address_coordinates = ClaimSchema {
+            array: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates".to_string(),
             data_type: "OBJECT".to_string(),
@@ -231,6 +241,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
         };
         let claim_schema_address_coordinates_x = ClaimSchema {
+            array: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates/x".to_string(),
             data_type: "NUMBER".to_string(),
@@ -238,6 +249,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
         };
         let claim_schema_address_coordinates_y = ClaimSchema {
+            array: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates/y".to_string(),
             data_type: "NUMBER".to_string(),
@@ -310,6 +322,7 @@ impl CredentialSchemasDB {
         organisation: &Organisation,
     ) -> CredentialSchema {
         let claim_schema = ClaimSchema {
+            array: false,
             id: Uuid::new_v4().into(),
             key: "firstName".to_string(),
             data_type: "PICTURE".to_string(),
@@ -355,22 +368,25 @@ impl CredentialSchemasDB {
         name: &str,
         organisation: &Organisation,
         revocation_method: &str,
-        new_claim_schemas: &[(Uuid, &str, bool, &str)],
+        new_claim_schemas: &[(Uuid, &str, bool, &str, bool)],
         format: &str,
         schema_id: &str,
     ) -> CredentialSchema {
         let claim_schemas = new_claim_schemas
             .iter()
-            .map(|(id, name, required, data_type)| CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: (*id).into(),
-                    key: name.to_string(),
-                    data_type: data_type.to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
+            .map(
+                |(id, name, required, data_type, array)| CredentialSchemaClaim {
+                    schema: ClaimSchema {
+                        id: (*id).into(),
+                        key: name.to_string(),
+                        data_type: data_type.to_string(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        array: *array,
+                    },
+                    required: *required,
                 },
-                required: *required,
-            })
+            )
             .collect();
 
         let credential_schema = CredentialSchema {

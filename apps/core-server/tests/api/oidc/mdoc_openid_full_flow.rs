@@ -128,9 +128,9 @@ async fn test_openid4vc_mdoc_flow(
 
     let key_data = get_key_data(issuer_key_type, server_local_key.clone());
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "root", true, "OBJECT"),
-        (Uuid::new_v4(), "root/Key", true, "STRING"),
+    let new_claim_schemas = vec![
+        (Uuid::new_v4(), "root", true, "OBJECT", false),
+        (Uuid::new_v4(), "root/Key", true, "STRING", false),
     ];
 
     let schema_id = Uuid::new_v4();
@@ -479,22 +479,24 @@ async fn test_openid4vc_mdoc_flow_selective_nested(
 
     let key_data = get_key_data(issuer_key_type, server_local_key.clone());
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "root", false, "OBJECT"),
-        (Uuid::new_v4(), "root/KeyDisclosed", false, "STRING"),
-        (Uuid::new_v4(), "root/KeyHidden", false, "STRING"),
-        (Uuid::new_v4(), "root/nested", false, "OBJECT"),
+    let new_claim_schemas = vec![
+        (Uuid::new_v4(), "root", false, "OBJECT", false),
+        (Uuid::new_v4(), "root/KeyDisclosed", false, "STRING", false),
+        (Uuid::new_v4(), "root/KeyHidden", false, "STRING", false),
+        (Uuid::new_v4(), "root/nested", false, "OBJECT", false),
         (
             Uuid::new_v4(),
             "root/nested/NestedKeyDisclosed",
             false,
             "STRING",
+            false,
         ),
         (
             Uuid::new_v4(),
             "root/nested/NestedKeyHidden",
             false,
             "STRING",
+            false,
         ),
     ];
 

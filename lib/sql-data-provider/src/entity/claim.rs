@@ -19,6 +19,7 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
+    pub path: String,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

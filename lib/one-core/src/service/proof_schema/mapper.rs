@@ -61,6 +61,7 @@ pub(super) fn credential_schema_from_proof_input_schema(
                 data_type: imported_schema.data_type,
                 created_date: now,
                 last_modified: now,
+                array: false, //FIXME!
             },
             required: imported_schema.required,
         })
@@ -108,6 +109,7 @@ pub(super) fn proof_input_from_import_response(
                 data_type: claim_schema.data_type.clone(),
                 created_date: now,
                 last_modified: now,
+                array: false, //FIXME!
             },
             required: claim_schema.required,
             order: i as u32,

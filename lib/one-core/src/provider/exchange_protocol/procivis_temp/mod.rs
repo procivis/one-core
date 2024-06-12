@@ -597,6 +597,7 @@ fn extract_claim_schemas_from_incoming(
                 data_type: incoming_claim.datatype.to_owned(),
                 created_date: now,
                 last_modified: now,
+                array: false,
             },
             required: incoming_claim.required,
         });
@@ -636,6 +637,7 @@ fn unnest_incoming_claim(
             Ok(vec![Claim {
                 id: ClaimId::new_v4(),
                 credential_id,
+                path: current_claim_schema.schema.key.to_owned(),
                 schema: Some(current_claim_schema.schema.to_owned()),
                 value: value.to_owned(),
                 created_date: now,

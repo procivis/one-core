@@ -166,9 +166,9 @@ async fn test_post_issuer_credential_mdoc() {
         )
         .await;
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "root", true, "OBJECT"),
-        (Uuid::new_v4(), "root/other", true, "STRING"),
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "root", true, "OBJECT", false),
+        (Uuid::new_v4(), "root/other", true, "STRING", false),
     ];
 
     let credential_schema = context

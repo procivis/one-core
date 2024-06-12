@@ -28,6 +28,7 @@ async fn test_delete_proof_schema_success() {
                     key: &claim_schema.key,
                     required: true,
                     data_type: &claim_schema.data_type,
+                    array: false,
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,

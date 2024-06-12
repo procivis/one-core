@@ -62,14 +62,26 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     let server_local_verifier_did = verifier_did.unwrap();
     let server_local_verifier_key = local_verifier_key.unwrap();
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "Key 1", true, "STRING"),
-        (Uuid::new_v4(), "Address root", true, "OBJECT"),
-        (Uuid::new_v4(), "Address root/Address1", true, "STRING"),
-        (Uuid::new_v4(), "Address root/Address2", true, "STRING"),
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "Key 1", true, "STRING", false),
+        (Uuid::new_v4(), "Address root", true, "OBJECT", false),
+        (
+            Uuid::new_v4(),
+            "Address root/Address1",
+            true,
+            "STRING",
+            false,
+        ),
+        (
+            Uuid::new_v4(),
+            "Address root/Address2",
+            true,
+            "STRING",
+            false,
+        ),
     ];
 
-    let mut proof_claim_schemas: Vec<(Uuid, &str, bool, &str)> = new_claim_schemas[..2].to_vec();
+    let mut proof_claim_schemas = new_claim_schemas[..2].to_vec();
     proof_claim_schemas[0].2 = false; //Key is optional
 
     let schema_id = Uuid::new_v4();
@@ -452,8 +464,7 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
     .await;
     let holder_did = holder_did.unwrap();
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> =
-        vec![(Uuid::new_v4(), "Key", true, "STRING")];
+    let new_claim_schemas = vec![(Uuid::new_v4(), "Key", true, "STRING", false)];
 
     let schema_id = Uuid::new_v4();
 

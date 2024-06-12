@@ -59,9 +59,9 @@ async fn test_direct_post_one_credential_correct() {
     let organisation = fixtures::create_organisation(&db_conn).await;
     let nonce = "nonce123";
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "cat1", true, "STRING"), // Presentation 2 token 1
-        (Uuid::new_v4(), "cat2", false, "STRING"), // Optional - not provided
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "cat1", true, "STRING", false), // Presentation 2 token 1
+        (Uuid::new_v4(), "cat2", false, "STRING", false), // Optional - not provided
     ];
 
     let credential_schema = create_credential_schema_with_claims(
@@ -203,9 +203,9 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     let organisation = fixtures::create_organisation(&db_conn).await;
     let nonce = "nonce123";
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "cat1", true, "STRING"), // Presentation 2 token 1
-        (Uuid::new_v4(), "cat2", true, "STRING"), // required - not provided
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "cat1", true, "STRING", false), // Presentation 2 token 1
+        (Uuid::new_v4(), "cat2", true, "STRING", false), // required - not provided
     ];
 
     let credential_schema = create_credential_schema_with_claims(
@@ -336,18 +336,18 @@ async fn test_direct_post_multiple_presentations() {
     let nonce = "nonce123";
 
     let credential1_claims = vec![
-        (Uuid::new_v4(), "name1", true, "STRING"), // Presentation 1 token 1
-        (Uuid::new_v4(), "name2", false, "STRING"), // Provided, not requested
+        (Uuid::new_v4(), "name1", true, "STRING", false), // Presentation 1 token 1
+        (Uuid::new_v4(), "name2", false, "STRING", false), // Provided, not requested
     ];
 
     let credential2_claims = vec![
-        (Uuid::new_v4(), "pet1", true, "STRING"), // Presentation 1 token 0
-        (Uuid::new_v4(), "pet2", false, "STRING"), // Provided, not requested
+        (Uuid::new_v4(), "pet1", true, "STRING", false), // Presentation 1 token 0
+        (Uuid::new_v4(), "pet2", false, "STRING", false), // Provided, not requested
     ];
 
     let credential3_claims = vec![
-        (Uuid::new_v4(), "cat1", true, "STRING"), // Presentation 2 token 0
-        (Uuid::new_v4(), "cat2", false, "STRING"), // Optional - not provided but requested
+        (Uuid::new_v4(), "cat1", true, "STRING", false), // Presentation 2 token 0
+        (Uuid::new_v4(), "cat2", false, "STRING", false), // Optional - not provided but requested
     ];
 
     let credential_schema1 = create_credential_schema_with_claims(

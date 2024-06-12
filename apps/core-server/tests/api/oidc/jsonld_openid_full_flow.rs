@@ -60,8 +60,7 @@ async fn test_openid4vc_jsonld_flow(
     )
     .await;
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> =
-        vec![(Uuid::new_v4(), "Key", true, "STRING")];
+    let new_claim_schemas = vec![(Uuid::new_v4(), "Key", true, "STRING", false)];
 
     let schema_id = Uuid::new_v4();
     let credential_schema = server_context

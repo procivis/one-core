@@ -174,6 +174,7 @@ fn from_jwt_request_claim_schema(
             data_type: claim_schema.datatype,
             created_date: now,
             last_modified: now,
+            array: false,
         },
         required: claim_schema.required,
     }

@@ -84,6 +84,7 @@ async fn setup(
             required: i % 2 == 0,
             order: i as u32,
             datatype: "STRING",
+            array: false,
         })
         .collect();
 
@@ -484,6 +485,7 @@ async fn test_get_proof_with_relations() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 value: "value".to_string(),
+                path: String::new(),
                 schema: None,
             }])
         });
@@ -596,6 +598,7 @@ async fn test_get_proof_with_relations() {
         value: Set("value".as_bytes().to_owned()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
+        ..Default::default()
     }
     .insert(&db)
     .await
@@ -909,6 +912,7 @@ async fn test_set_proof_claims_success() {
         last_modified: get_dummy_date(),
         value: "value".to_string(),
         schema: None,
+        path: String::default(),
     };
 
     // necessary to pass db consistency checks
@@ -919,6 +923,7 @@ async fn test_set_proof_claims_success() {
         value: Set("value".into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
+        ..Default::default()
     }
     .insert(&db)
     .await
