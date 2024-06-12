@@ -156,12 +156,14 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             value: "claim value".to_string(),
+            path: "key".to_string(),
             schema: Some(ClaimSchema {
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "data type".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
+                array: false,
             }),
         }]),
         issuer_did: None,
@@ -182,6 +184,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                     data_type: "data type".to_string(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
+                    array: false,
                 },
                 required: true,
             }]),
@@ -305,6 +308,7 @@ pub fn dummy_claim_schema() -> ClaimSchema {
         data_type: "data type".to_string(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
+        array: false,
     }
 }
 

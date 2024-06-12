@@ -36,6 +36,7 @@ async fn test_share_proof_schema() {
                     key: &claim_schema.key,
                     required: true,
                     data_type: &claim_schema.data_type,
+                    array: false,
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: Some(10),

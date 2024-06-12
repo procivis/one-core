@@ -306,6 +306,7 @@ pub async fn create_credential_schema(
         data_type: "STRING".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
+        array: false,
     };
     let claim_schemas = vec![CredentialSchemaClaim {
         schema: claim_schema.to_owned(),
@@ -344,22 +345,25 @@ pub async fn create_credential_schema_with_claims(
     name: &str,
     organisation: &Organisation,
     revocation_method: &str,
-    claims: &[(Uuid, &str, bool, &str)],
+    claims: &[(Uuid, &str, bool, &str, bool)],
 ) -> CredentialSchema {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let claim_schemas = claims
         .iter()
-        .map(|(id, key, required, data_type)| CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: (*id).into(),
-                key: key.to_string(),
-                data_type: data_type.to_string(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
+        .map(
+            |(id, key, required, data_type, array)| CredentialSchemaClaim {
+                schema: ClaimSchema {
+                    id: (*id).into(),
+                    key: key.to_string(),
+                    data_type: data_type.to_string(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    array: *array,
+                },
+                required: required.to_owned(),
             },
-            required: required.to_owned(),
-        })
+        )
         .collect();
     let id = Uuid::new_v4();
     let credential_schema = CredentialSchema {
@@ -410,6 +414,7 @@ pub async fn create_proof_schema(
                         data_type: claim.data_type.to_string(),
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
+                        array: false,
                     },
                     required: claim.required.to_owned(),
                     order: order as _,
@@ -551,6 +556,7 @@ pub async fn create_credential(
             last_modified: get_dummy_date(),
             value: "test".to_string(),
             schema: Some(claim_schema.schema.to_owned()),
+            path: claim_schema.schema.key.clone(),
         })
         .collect();
 

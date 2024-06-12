@@ -90,6 +90,7 @@ fn generic_credential() -> Credential {
     let now = OffsetDateTime::now_utc();
 
     let claim_schema = ClaimSchema {
+        array: false,
         id: Uuid::new_v4().into(),
         key: "NUMBER".to_string(),
         data_type: "NUMBER".to_string(),
@@ -124,6 +125,7 @@ fn generic_credential() -> Credential {
             created_date: now,
             last_modified: now,
             value: "123".to_string(),
+            path: claim_schema.key.clone(),
             schema: Some(claim_schema.clone()),
         }]),
         issuer_did: Some(Did {
@@ -885,6 +887,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         claim_schemas: Some(vec![
             CredentialSchemaClaim {
                 schema: ClaimSchema {
+                    array: false,
                     id: Uuid::new_v4().into(),
                     key: "required".to_string(),
                     data_type: "STRING".to_string(),
@@ -895,6 +898,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
             },
             CredentialSchemaClaim {
                 schema: ClaimSchema {
+                    array: false,
                     id: Uuid::new_v4().into(),
                     key: "optional".to_string(),
                     data_type: "STRING".to_string(),
@@ -982,6 +986,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         claim_schemas: Some(vec![
             CredentialSchemaClaim {
                 schema: ClaimSchema {
+                    array: false,
                     id: Uuid::new_v4().into(),
                     key: "required".to_string(),
                     data_type: "STRING".to_string(),
@@ -992,6 +997,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
             },
             CredentialSchemaClaim {
                 schema: ClaimSchema {
+                    array: false,
                     id: Uuid::new_v4().into(),
                     key: "optional".to_string(),
                     data_type: "STRING".to_string(),
@@ -2465,6 +2471,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
     let schema = generate_credential_schema_with_claim_schemas(vec![
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: address_claim_id,
                 key: "address".to_string(),
                 data_type: "STRING".to_string(),
@@ -2475,6 +2482,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
         },
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: location_claim_id,
                 key: "location".to_string(),
                 data_type: "OBJECT".to_string(),
@@ -2485,6 +2493,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
         },
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: location_x_claim_id,
                 key: "location/x".to_string(),
                 data_type: "STRING".to_string(),
@@ -2495,6 +2504,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
         },
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: location_y_claim_id,
                 key: "location/y".to_string(),
                 data_type: "STRING".to_string(),
@@ -2540,6 +2550,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
     let schema = generate_credential_schema_with_claim_schemas(vec![
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: address_claim_id,
                 key: "address".to_string(),
                 data_type: "STRING".to_string(),
@@ -2550,6 +2561,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
         },
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: location_claim_id,
                 key: "location".to_string(),
                 data_type: "OBJECT".to_string(),
@@ -2560,6 +2572,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
         },
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: location_x_claim_id,
                 key: "location/x".to_string(),
                 data_type: "STRING".to_string(),
@@ -2570,6 +2583,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
         },
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: location_y_claim_id,
                 key: "location/y".to_string(),
                 data_type: "STRING".to_string(),
@@ -2652,6 +2666,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
     let schema = generate_credential_schema_with_claim_schemas(vec![
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: address_claim_id,
                 key: "address".to_string(),
                 data_type: "STRING".to_string(),
@@ -2662,6 +2677,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         },
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: location_claim_id,
                 key: "location".to_string(),
                 data_type: "OBJECT".to_string(),
@@ -2672,6 +2688,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         },
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: location_x_claim_id,
                 key: "location/x".to_string(),
                 data_type: "STRING".to_string(),
@@ -2682,6 +2699,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         },
         CredentialSchemaClaim {
             schema: ClaimSchema {
+                array: false,
                 id: location_y_claim_id,
                 key: "location/y".to_string(),
                 data_type: "STRING".to_string(),
@@ -2889,6 +2907,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
     let now = OffsetDateTime::now_utc();
 
     let location_claim_schema = ClaimSchema {
+        array: false,
         id: Uuid::new_v4().into(),
         key: "location".to_string(),
         data_type: "OBJECT".to_string(),
@@ -2896,6 +2915,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         last_modified: now,
     };
     let location_x_claim_schema = ClaimSchema {
+        array: false,
         id: Uuid::new_v4().into(),
         key: "location/X".to_string(),
         data_type: "STRING".to_string(),
@@ -2928,6 +2948,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         created_date: now,
         last_modified: now,
         value: "123".to_string(),
+        path: location_x_claim_schema.key.clone(),
         schema: Some(location_x_claim_schema.clone()),
     }];
 

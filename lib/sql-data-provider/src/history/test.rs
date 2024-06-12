@@ -170,6 +170,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
             required: i % 2 == 0,
             order: i as u32,
             datatype: "STRING",
+            array: false,
         })
         .collect();
 
@@ -183,11 +184,12 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         .unwrap();
 
     let claim_value = "claim_value";
-    let claims: Vec<(ClaimId, ClaimSchemaId, CredentialId, Vec<u8>)> = vec![(
+    let claims: Vec<(ClaimId, ClaimSchemaId, CredentialId, Vec<u8>, String)> = vec![(
         Uuid::new_v4().into(),
         new_claim_schemas[0].id,
         credential_id,
         claim_value.as_bytes().to_vec(),
+        new_claim_schemas[0].key.to_string(),
     )];
     insert_many_claims_to_database(&db, claims.as_slice())
         .await

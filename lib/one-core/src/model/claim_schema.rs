@@ -8,6 +8,7 @@ pub struct ClaimSchema {
     pub data_type: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub array: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

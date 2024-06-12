@@ -42,10 +42,10 @@ async fn test_correct() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
 
-    let new_claim_schemas_credential_1: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "pet1", true, "STRING"),
-        (Uuid::new_v4(), "pet2", true, "STRING"),
-        (Uuid::new_v4(), "pet3", false, "STRING"), // Optional, not provided in credentials
+    let new_claim_schemas_credential_1: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "pet1", true, "STRING", false),
+        (Uuid::new_v4(), "pet2", true, "STRING", false),
+        (Uuid::new_v4(), "pet3", false, "STRING", false), // Optional, not provided in credentials
     ];
 
     let credential_schema1 = fixtures::create_credential_schema_with_claims(
@@ -57,9 +57,9 @@ async fn test_correct() {
     )
     .await;
 
-    let new_claim_schemas_credential_2: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "name1", true, "STRING"),
-        (Uuid::new_v4(), "name2", true, "STRING"),
+    let new_claim_schemas_credential_2: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "name1", true, "STRING", false),
+        (Uuid::new_v4(), "name2", true, "STRING", false),
     ];
 
     let credential_schema2 = fixtures::create_credential_schema_with_claims(

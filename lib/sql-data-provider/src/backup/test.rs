@@ -86,6 +86,7 @@ async fn insert_credential_to_database(
         required: false,
         order: 0,
         datatype: "STRING",
+        array: false,
     };
 
     let proof_input = ProofInput {
@@ -103,6 +104,7 @@ async fn insert_credential_to_database(
             claim_schema_id,
             credential_id,
             vec![255],
+            "name".to_owned(),
         )],
     )
     .await

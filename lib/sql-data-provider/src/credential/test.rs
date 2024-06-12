@@ -69,6 +69,7 @@ async fn setup_empty() -> TestSetup {
             required: i % 2 == 0,
             order: i as u32,
             datatype: "STRING",
+            array: false,
         })
         .collect();
 
@@ -100,6 +101,7 @@ async fn setup_empty() -> TestSetup {
                         data_type: schema.datatype.to_string(),
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
+                        array: false,
                     },
                     required: true,
                 })
@@ -212,6 +214,9 @@ async fn test_create_credential_success() {
     };
 
     let credential_id = Uuid::new_v4().into();
+    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
+        .to_owned()
+        .schema;
     let claims = vec![
         Claim {
             id: ClaimId::new_v4(),
@@ -219,11 +224,8 @@ async fn test_create_credential_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value1".to_string(),
-            schema: Some(
-                credential_schema.claim_schemas.as_ref().unwrap()[0]
-                    .to_owned()
-                    .schema,
-            ),
+            path: claim_schema.key.to_string(),
+            schema: Some(claim_schema.clone()),
         },
         Claim {
             id: ClaimId::new_v4(),
@@ -231,11 +233,8 @@ async fn test_create_credential_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value2".to_string(),
-            schema: Some(
-                credential_schema.claim_schemas.as_ref().unwrap()[1]
-                    .to_owned()
-                    .schema,
-            ),
+            path: claim_schema.key.to_string(),
+            schema: Some(claim_schema),
         },
     ];
 
@@ -348,17 +347,17 @@ async fn test_create_credential_already_exists() {
         key_repository: Arc::new(MockKeyRepository::default()),
     };
 
+    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
+        .to_owned()
+        .schema;
     let claims = vec![Claim {
         id: ClaimId::new_v4(),
         credential_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: "value1".to_string(),
-        schema: Some(
-            credential_schema.claim_schemas.as_ref().unwrap()[0]
-                .to_owned()
-                .schema,
-        ),
+        path: claim_schema.key.to_owned(),
+        schema: Some(claim_schema),
     }];
 
     let result = provider
@@ -793,6 +792,12 @@ async fn test_get_credential_success() {
     .await
     .unwrap();
 
+    let claim_schema1 = credential_schema.claim_schemas.as_ref().unwrap()[1]
+        .to_owned()
+        .schema;
+    let claim_schema2 = credential_schema.claim_schemas.as_ref().unwrap()[0]
+        .to_owned()
+        .schema;
     let claims = vec![
         Claim {
             id: ClaimId::new_v4(),
@@ -800,12 +805,8 @@ async fn test_get_credential_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value1".to_string(),
-            schema: Some(
-                // order intentionally changed to check ordering of claims later
-                credential_schema.claim_schemas.as_ref().unwrap()[1]
-                    .to_owned()
-                    .schema,
-            ),
+            path: claim_schema1.key.to_owned(),
+            schema: Some(claim_schema1),
         },
         Claim {
             id: ClaimId::new_v4(),
@@ -813,11 +814,8 @@ async fn test_get_credential_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value2".to_string(),
-            schema: Some(
-                credential_schema.claim_schemas.as_ref().unwrap()[0]
-                    .to_owned()
-                    .schema,
-            ),
+            path: claim_schema2.key.to_owned(),
+            schema: Some(claim_schema2),
         },
     ];
 
@@ -832,6 +830,7 @@ async fn test_get_credential_success() {
                 value: Set(claim.value.to_owned().into()),
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
+                path: Set(claim.path.to_string()),
             })
             .collect::<Vec<claim::ActiveModel>>(),
     )
@@ -1070,17 +1069,17 @@ async fn test_get_credential_by_claim_id_success() {
     .await
     .unwrap();
 
+    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
+        .to_owned()
+        .schema;
     let claim = Claim {
         id: ClaimId::new_v4(),
         credential_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: "value1".to_string(),
-        schema: Some(
-            credential_schema.claim_schemas.as_ref().unwrap()[0]
-                .to_owned()
-                .schema,
-        ),
+        path: claim_schema.key.clone(),
+        schema: Some(claim_schema.clone()),
     };
 
     claim::ActiveModel {
@@ -1090,6 +1089,7 @@ async fn test_get_credential_by_claim_id_success() {
         value: Set(claim.value.as_bytes().to_owned()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
+        path: Set(claim.path),
     }
     .insert(&db)
     .await

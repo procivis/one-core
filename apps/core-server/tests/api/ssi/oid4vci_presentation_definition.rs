@@ -14,7 +14,7 @@ use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 pub struct TestContextWithOID4VCIData {
     pub context: TestContext,
     pub organisation: Organisation,
-    pub new_claim_schemas: Vec<(Uuid, &'static str, bool, &'static str)>,
+    pub new_claim_schemas: Vec<(Uuid, &'static str, bool, &'static str, bool)>,
     pub interaction_data: serde_json::Value,
     pub proof_schema: ProofSchema,
     pub verifier_did: Did,
@@ -26,9 +26,9 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
     let (context, organisation) = TestContext::new_with_organisation().await;
 
     let nonce = "nonce123";
-    let new_claim_schemas: Vec<(Uuid, &'static str, bool, &'static str)> = vec![
-        (Uuid::new_v4(), "cat1", true, "STRING"),
-        (Uuid::new_v4(), "cat2", true, "STRING"),
+    let new_claim_schemas: Vec<(Uuid, &'static str, bool, &'static str, bool)> = vec![
+        (Uuid::new_v4(), "cat1", true, "STRING", false),
+        (Uuid::new_v4(), "cat2", true, "STRING", false),
     ];
     let interaction_data = json!({
         "nonce": nonce,

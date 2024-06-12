@@ -36,6 +36,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
             last_modified: Set(get_dummy_date()),
             key: Set("TestKey".to_string()),
             datatype: Set("STRING".to_string()),
+            array: Set(false),
         }
         .insert(&db)
         .await
@@ -95,6 +96,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
                 data_type: "STRING".to_string(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
+                array: false,
             })
             .collect(),
     }
@@ -124,6 +126,7 @@ async fn test_create_claim_list_success() {
                     value: "value".to_string(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
+                    path: schema.key.to_owned(),
                     schema: Some(schema),
                 })
                 .collect(),
@@ -156,6 +159,7 @@ async fn test_create_claim_list_missing_schema() {
             value: "value".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            path: String::default(),
             schema: None,
         }])
         .await;
@@ -179,6 +183,7 @@ async fn test_get_claim_list() {
             value: "value".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            path: schema.key.to_owned(),
             schema: Some(schema.to_owned()),
         })
         .collect();
@@ -235,6 +240,7 @@ async fn test_get_claim_list_with_relation() {
                     data_type: "STRING".to_string(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
+                    array: false,
                 })
                 .collect())
         });
@@ -254,6 +260,7 @@ async fn test_get_claim_list_with_relation() {
             value: "value".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            path: schema.key.to_owned(),
             schema: Some(schema.to_owned()),
         })
         .collect();

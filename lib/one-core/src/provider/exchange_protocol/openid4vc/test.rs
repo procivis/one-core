@@ -120,6 +120,7 @@ fn construct_proof_with_state() -> Proof {
                         data_type: "STRING".to_string(),
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
+                        array: false,
                     },
                     required: true,
                     order: 0,
@@ -195,6 +196,7 @@ fn generic_credential() -> Credential {
         data_type: "NUMBER".to_string(),
         created_date: now,
         last_modified: now,
+        array: false,
     };
     let organisation = Organisation {
         id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
@@ -228,6 +230,7 @@ fn generic_credential() -> Credential {
             created_date: now,
             last_modified: now,
             value: "123".to_string(),
+            path: claim_schema.key.to_owned(),
             schema: Some(claim_schema.clone()),
         }]),
         issuer_did: Some(Did {
@@ -782,6 +785,7 @@ fn test_prepare_claims_success_nested() {
                 data_type: "OBJECT".to_string(),
                 created_date: now,
                 last_modified: now,
+                array: false,
             },
             required: true,
         },
@@ -794,6 +798,7 @@ fn test_prepare_claims_success_nested() {
                 data_type: "STRING".to_string(),
                 created_date: now,
                 last_modified: now,
+                array: false,
             },
             required: true,
         },
@@ -807,6 +812,7 @@ fn test_prepare_claims_success_nested() {
         created_date: now,
         last_modified: now,
         value: "123".to_string(),
+        path: claim_schemas[1].schema.key.clone(),
         schema: Some(claim_schemas[1].schema.to_owned()),
     }];
 
@@ -844,6 +850,7 @@ fn test_prepare_claims_success_failed_missing_credential_schema_parent_claim_sch
             data_type: "STRING".to_string(),
             created_date: now,
             last_modified: now,
+            array: false,
         },
         required: true,
     }];
@@ -856,6 +863,7 @@ fn test_prepare_claims_success_failed_missing_credential_schema_parent_claim_sch
         created_date: now,
         last_modified: now,
         value: "123".to_string(),
+        path: claim_schemas[0].schema.key.to_owned(),
         schema: Some(claim_schemas[0].schema.to_owned()),
     }];
 

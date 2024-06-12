@@ -170,6 +170,7 @@ fn object_to_model_claims(
                     created_date: now,
                     last_modified: now,
                     value: value.to_string(),
+                    path: schema_name.to_string(),
                     schema: Some(claim_schema.schema.to_owned()),
                 });
             }
@@ -211,6 +212,7 @@ pub fn extracted_credential_to_model(
                     created_date: now,
                     last_modified: now,
                     value: value.to_string(),
+                    path: claim_schema.key.to_string(),
                     schema: Some(claim_schema),
                 });
             }

@@ -295,6 +295,7 @@ pub(super) fn claims_from_create_request(
                 created_date: now,
                 last_modified: now,
                 value: claim.value,
+                path: schema.schema.key.clone(),
                 schema: Some(schema.schema.clone()),
             })
         })

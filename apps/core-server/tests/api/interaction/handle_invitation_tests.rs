@@ -217,11 +217,12 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_match_existi
     let (context, organisation) = TestContext::new_with_organisation().await;
     let credential_id = Uuid::new_v4();
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![(
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![(
         Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap(),
         "firstName",
         true,
         "STRING",
+        false,
     )];
 
     let schema_id = Uuid::new_v4();
@@ -810,11 +811,12 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation().await;
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![(
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![(
         Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap(),
         "key",
         true,
         "STRING",
+        false,
     )];
 
     let schema_id = Uuid::new_v4();

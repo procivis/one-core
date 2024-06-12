@@ -32,6 +32,7 @@ pub struct CreateProofClaim<'a> {
     pub key: &'a str,
     pub required: bool,
     pub data_type: &'a str,
+    pub array: bool,
 }
 
 impl ProofSchemasDB {
@@ -56,6 +57,7 @@ impl ProofSchemasDB {
                     data_type: claim.data_type.to_owned(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
+                    array: claim.array,
                 },
                 required: claim.required,
                 order: order as _,
@@ -117,11 +119,17 @@ impl ProofSchemasDB {
     }
 }
 
-impl<'a> From<(&'a [(Uuid, &'a str, bool, &'a str)], &'a CredentialSchema)>
-    for CreateProofInputSchema<'a>
+impl<'a>
+    From<(
+        &'a [(Uuid, &'a str, bool, &'a str, bool)],
+        &'a CredentialSchema,
+    )> for CreateProofInputSchema<'a>
 {
     fn from(
-        (claims, credential_schema): (&'a [(Uuid, &'a str, bool, &'a str)], &'a CredentialSchema),
+        (claims, credential_schema): (
+            &'a [(Uuid, &'a str, bool, &'a str, bool)],
+            &'a CredentialSchema,
+        ),
     ) -> Self {
         Self {
             claims: claims.iter().map(Into::into).collect(),
@@ -131,13 +139,14 @@ impl<'a> From<(&'a [(Uuid, &'a str, bool, &'a str)], &'a CredentialSchema)>
     }
 }
 
-impl<'a> From<&'a (Uuid, &'a str, bool, &'a str)> for CreateProofClaim<'a> {
-    fn from((id, key, required, data_type): &(Uuid, &'a str, bool, &'a str)) -> Self {
+impl<'a> From<&'a (Uuid, &'a str, bool, &'a str, bool)> for CreateProofClaim<'a> {
+    fn from((id, key, required, data_type, array): &(Uuid, &'a str, bool, &'a str, bool)) -> Self {
         Self {
             id: (*id).into(),
             key,
             required: *required,
             data_type,
+            array: *array,
         }
     }
 }

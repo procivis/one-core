@@ -283,6 +283,7 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
                     key: &claim_schema.key,
                     required: true,
                     data_type: &claim_schema.data_type,
+                    array: false,
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
