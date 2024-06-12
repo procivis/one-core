@@ -16,6 +16,7 @@ mod get_history_entry;
 mod get_history_list;
 mod get_presentation_definition;
 mod get_proof;
+mod get_proof_schema;
 mod get_proof_schemas;
 mod get_proofs;
 mod get_trust_anchor;
