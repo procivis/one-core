@@ -728,6 +728,9 @@ interface OneCoreBinding {
   CredentialDetailBindingDTO get_credential(string credential_id);
 
   [Throws=BindingError]
+  CredentialSchemaBindingDTO get_credential_schema(string credential_schema_id);
+
+  [Throws=BindingError]
   CredentialSchemaListBindingDTO get_credential_schemas(CredentialSchemaListQueryBindingDTO query);
 
   [Throws=BindingError]
