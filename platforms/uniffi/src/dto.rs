@@ -28,8 +28,8 @@ use one_core::service::credential::dto::{
 use one_core::service::credential_schema::dto::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
     CredentialSchemaCodeTypeEnum, CredentialSchemaDetailResponseDTO,
-    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
-    GetCredentialSchemaListResponseDTO,
+    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaListIncludeEntityTypeEnum,
+    CredentialSchemaLogoPropertiesRequestDTO, GetCredentialSchemaListResponseDTO,
 };
 use one_core::service::did::dto::{DidListItemResponseDTO, GetDidListResponseDTO};
 use one_core::service::error::ServiceError;
@@ -117,6 +117,13 @@ pub struct CredentialSchemaListQueryBindingDTO {
     pub name: Option<String>,
     pub ids: Option<Vec<String>>,
     pub exact: Option<Vec<CredentialSchemaListQueryExactColumnBindingEnum>>,
+    pub include: Option<Vec<CredentialSchemaListIncludeEntityType>>,
+}
+
+#[derive(Into)]
+#[into(CredentialSchemaListIncludeEntityTypeEnum)]
+pub enum CredentialSchemaListIncludeEntityType {
+    LayoutProperties,
 }
 
 #[derive(Into)]

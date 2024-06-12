@@ -56,7 +56,9 @@ impl OneCoreBinding {
                     }),
                     filtering: Some(ListFilterCondition::And(conditions)),
                     sorting,
-                    ..Default::default()
+                    include: query
+                        .include
+                        .map(|incl| incl.into_iter().map(Into::into).collect()),
                 })
                 .await?
                 .into())
