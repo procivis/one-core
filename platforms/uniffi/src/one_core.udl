@@ -687,6 +687,24 @@ dictionary ProofInputSchemaBindingDTO {
   i64? validity_constraint;
 };
 
+dictionary CreateProofSchemaRequestDTO {
+  string name;
+  string organisation_id;
+  u32 expire_duration;
+  sequence<ProofInputSchemaRequestDTO> proof_input_schemas;
+};
+
+dictionary ProofInputSchemaRequestDTO {
+  string credential_schema_id;
+  i64? validity_constraint; 
+  sequence<CreateProofSchemaClaimRequestDTO> claim_schemas;
+};
+
+dictionary CreateProofSchemaClaimRequestDTO {
+  string id;
+  boolean required;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
@@ -739,6 +757,9 @@ interface OneCoreBinding {
   CredentialSchemaListBindingDTO get_credential_schemas(CredentialSchemaListQueryBindingDTO query);
 
   [Throws=BindingError]
+  void delete_credential_schema(string credential_schema_id);
+
+  [Throws=BindingError]
   ProofRequestBindingDTO get_proof(string proof_id);
 
   [Throws=BindingError]
@@ -778,10 +799,16 @@ interface OneCoreBinding {
   TrustAnchorsListBindingDTO list_trust_anchors(ListTrustAnchorsFiltersBindings filters);
 
   [Throws=BindingError]
+  string create_proof_schema(CreateProofSchemaRequestDTO request);
+
+  [Throws=BindingError]
   ProofSchemaListBindingDTO get_proof_schemas(ListProofSchemasFiltersBindingDTO filters);
 
   [Throws=BindingError]
-  GetProofSchemaBindingDTO get_proof_schema(string proof_id);
+  GetProofSchemaBindingDTO get_proof_schema(string proof_schema_id);
+
+  [Throws=BindingError]
+  void delete_proof_schema(string proof_schema_id);
 
   [Throws=BindingError]
   void uninitialize(boolean delete_data);
