@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdCredentialSubject};
 use crate::provider::credential_formatter::json_ld_bbsplus::remove_undisclosed_keys::remove_undisclosed_keys;
@@ -38,7 +38,9 @@ async fn test_canonize_any() {
     let did_method_provider = MockDidMethodProvider::default();
 
     let ld_formatter = JsonLdBbsplus::new(
-        Params {},
+        Params {
+            leeway: Duration::seconds(10),
+        },
         Arc::new(crypto),
         Some("base".to_owned()),
         prepare_json_ld_context_config(),
@@ -80,7 +82,9 @@ async fn test_transform_canonized() {
     let did_method_provider = MockDidMethodProvider::default();
 
     let ld_formatter = JsonLdBbsplus::new(
-        Params {},
+        Params {
+            leeway: Duration::seconds(10),
+        },
         Arc::new(crypto),
         Some("base".to_owned()),
         prepare_json_ld_context_config(),
@@ -128,7 +132,9 @@ async fn test_transform_grouped() {
     let did_method_provider = MockDidMethodProvider::default();
 
     let ld_formatter = JsonLdBbsplus::new(
-        Params {},
+        Params {
+            leeway: Duration::seconds(10),
+        },
         Arc::new(crypto),
         Some("base".to_owned()),
         prepare_json_ld_context_config(),

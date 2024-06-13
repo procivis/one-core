@@ -3,8 +3,9 @@ use std::vec;
 
 use async_trait::async_trait;
 use serde::Deserialize;
+use serde_with::{serde_as, DurationSeconds};
 use shared_types::DidValue;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 use crate::config::core_config::JsonLdContextConfig;
 use crate::crypto::CryptoProvider;
@@ -29,9 +30,13 @@ pub struct JsonLdClassic {
     params: Params,
 }
 
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {}
+pub struct Params {
+    #[serde_as(as = "DurationSeconds<i64>")]
+    leeway: Duration,
+}
 
 #[async_trait]
 impl CredentialFormatter for JsonLdClassic {
@@ -204,7 +209,7 @@ impl CredentialFormatter for JsonLdClassic {
     }
 
     fn get_leeway(&self) -> u64 {
-        0
+        self.params.leeway.whole_seconds() as u64
     }
 
     fn get_capabilities(&self) -> FormatterCapabilities {
