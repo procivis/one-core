@@ -70,6 +70,10 @@ pub enum DatatypeValidationError {
     // object
     #[error("Object value should not be specified in request")]
     ObjectValueShouldNotBeSpecifiedInRequest,
+
+    // array
+    #[error("Array value should not be specified in request")]
+    ArrayValueShouldNotBeSpecifiedInRequest,
 }
 
 pub fn validate_datatypes<'a>(
@@ -96,6 +100,7 @@ pub fn validate_datatype_value(
         DatatypeType::Date => validate_date(value, config.get(datatype)?)?,
         DatatypeType::File => validate_file(value, config.get(datatype)?)?,
         DatatypeType::Object => validate_object(value, config.get(datatype)?)?,
+        DatatypeType::Array => validate_array(value, config.get(datatype)?)?,
     };
 
     Ok(())
@@ -267,6 +272,15 @@ struct ObjectParams {}
 
 fn validate_object(_value: &str, _params: ObjectParams) -> Result<(), DatatypeValidationError> {
     Err(DatatypeValidationError::ObjectValueShouldNotBeSpecifiedInRequest)
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ArrayParams {}
+
+fn validate_array(_value: &str, _params: ArrayParams) -> Result<(), DatatypeValidationError> {
+    Err(DatatypeValidationError::ArrayValueShouldNotBeSpecifiedInRequest)
 }
 
 fn parse_min_max_date(value: &str) -> Result<OffsetDateTime, DatatypeValidationError> {
