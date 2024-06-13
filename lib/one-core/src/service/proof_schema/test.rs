@@ -466,6 +466,339 @@ async fn test_create_proof_schema_success() {
 }
 
 #[tokio::test]
+async fn test_create_proof_schema_array_object_fail() {
+    let claim_schema_root = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "root".to_string(),
+        data_type: "OBJECT".to_string(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        array: false,
+    };
+
+    let claim_schema_array = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "root/nested_array".to_string(),
+        data_type: "OBJECT".to_string(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        array: true,
+    };
+
+    let claim_schema_array_object = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "root/nested_array/0".to_string(),
+        data_type: "OBJECT".to_string(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        array: false,
+    };
+
+    let claim_schema_array_object_item = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "root/nested_array/0/item".to_string(),
+        data_type: "STRING".to_string(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        array: false,
+    };
+
+    let claim_id = claim_schema_array_object_item.id;
+    let mut capabilities = generic_formatter_capabilities();
+    capabilities.features = vec!["SELECTIVE_DISCLOSURE".to_string()];
+    capabilities.selective_disclosure = vec![SelectiveDisclosureOption::AnyLevel];
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(move || capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(move |_| Some(Arc::new(formatter)));
+
+    let organisation_id = Uuid::new_v4().into();
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .times(1)
+        .with(eq(organisation_id), eq(OrganisationRelations::default()))
+        .returning(|id, _| {
+            Ok(Some(Organisation {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }))
+        });
+
+    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .times(1)
+        .returning(move |_, _| {
+            let schema = CredentialSchema {
+                id: credential_schema_id,
+                deleted_at: None,
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "credential-schema".to_string(),
+                format: "SD-JWT".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: None,
+                claim_schemas: Some(vec![
+                    CredentialSchemaClaim {
+                        schema: claim_schema_root.clone(),
+                        required: false,
+                    },
+                    CredentialSchemaClaim {
+                        schema: claim_schema_array.clone(),
+                        required: false,
+                    },
+                    CredentialSchemaClaim {
+                        schema: claim_schema_array_object.clone(),
+                        required: false,
+                    },
+                    CredentialSchemaClaim {
+                        schema: claim_schema_array_object_item.clone(),
+                        required: false,
+                    },
+                ]),
+                organisation: None,
+                layout_type: LayoutType::Card,
+                layout_properties: None,
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                schema_id: "CredentialSchemaId".to_owned(),
+            };
+
+            Ok(GetListResponse {
+                values: vec![schema],
+                total_pages: 1,
+                total_items: 1,
+            })
+        });
+
+    let create_request = CreateProofSchemaRequestDTO {
+        name: "name".to_string(),
+        expire_duration: 0,
+        organisation_id,
+        proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+            claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
+                id: claim_id,
+                required: true,
+            }],
+            credential_schema_id,
+            validity_constraint: None,
+        }],
+    };
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+
+    let proof_schema = generic_proof_schema();
+
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .times(1)
+        .returning(move |_| {
+            Ok(GetProofSchemaList {
+                values: vec![proof_schema.clone()],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+
+    let service = setup_service(
+        proof_schema_repository,
+        credential_schema_repository,
+        organisation_repository,
+        formatter_provider,
+    );
+
+    let result = service.create_proof_schema(create_request).await;
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::Validation(ValidationError::NestedClaimInArrayRequested)
+    )));
+}
+
+#[tokio::test]
+async fn test_create_proof_schema_array_success() {
+    let claim_schema_root = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "root".to_string(),
+        data_type: "OBJECT".to_string(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        array: false,
+    };
+
+    let claim_schema_array = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "root/nested_array".to_string(),
+        data_type: "OBJECT".to_string(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        array: true,
+    };
+
+    let claim_schema_array_object = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "root/nested_array/0".to_string(),
+        data_type: "OBJECT".to_string(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        array: false,
+    };
+
+    let claim_schema_array_object_item = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "root/nested_array/0/item".to_string(),
+        data_type: "STRING".to_string(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        array: false,
+    };
+
+    let claim_id = claim_schema_array.id;
+
+    let mut capabilities = generic_formatter_capabilities();
+    capabilities.features = vec!["SELECTIVE_DISCLOSURE".to_string()];
+    capabilities.selective_disclosure = vec![SelectiveDisclosureOption::AnyLevel];
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(move || capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(move |_| Some(Arc::new(formatter)));
+
+    let organisation_id = Uuid::new_v4().into();
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .times(1)
+        .with(eq(organisation_id), eq(OrganisationRelations::default()))
+        .returning(|id, _| {
+            Ok(Some(Organisation {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }))
+        });
+
+    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .times(1)
+        .returning(move |_, _| {
+            let schema = CredentialSchema {
+                id: credential_schema_id,
+                deleted_at: None,
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "credential-schema".to_string(),
+                format: "SD-JWT".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: None,
+                claim_schemas: Some(vec![
+                    CredentialSchemaClaim {
+                        schema: claim_schema_root.clone(),
+                        required: false,
+                    },
+                    CredentialSchemaClaim {
+                        schema: claim_schema_array.clone(),
+                        required: false,
+                    },
+                    CredentialSchemaClaim {
+                        schema: claim_schema_array_object.clone(),
+                        required: false,
+                    },
+                    CredentialSchemaClaim {
+                        schema: claim_schema_array_object_item.clone(),
+                        required: false,
+                    },
+                ]),
+                organisation: None,
+                layout_type: LayoutType::Card,
+                layout_properties: None,
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                schema_id: "CredentialSchemaId".to_owned(),
+            };
+
+            Ok(GetListResponse {
+                values: vec![schema],
+                total_pages: 1,
+                total_items: 1,
+            })
+        });
+
+    let create_request = CreateProofSchemaRequestDTO {
+        name: "name".to_string(),
+        expire_duration: 0,
+        organisation_id,
+        proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+            claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
+                id: claim_id,
+                required: true,
+            }],
+            credential_schema_id,
+            validity_constraint: None,
+        }],
+    };
+
+    let create_request_clone = create_request.clone();
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+
+    let proof_schema = generic_proof_schema();
+
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .times(1)
+        .returning(move |_| {
+            Ok(GetProofSchemaList {
+                values: vec![proof_schema.clone()],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+
+    proof_schema_repository
+        .expect_create_proof_schema()
+        .times(1)
+        .withf(move |proof_schema| {
+            let input_schemas = proof_schema.input_schemas.as_ref().unwrap();
+            assert_eq!(1, input_schemas.len());
+
+            let claim_schemas = input_schemas[0].claim_schemas.as_ref().unwrap();
+            claim_schemas.len() == 1
+                && claim_schemas[0].schema.id == claim_id
+                && proof_schema.organisation.as_ref().unwrap().id == organisation_id
+                && proof_schema.name == create_request_clone.name
+                && proof_schema.expire_duration == create_request_clone.expire_duration
+        })
+        .returning(|request| Ok(request.id));
+
+    let service = setup_service(
+        proof_schema_repository,
+        credential_schema_repository,
+        organisation_repository,
+        formatter_provider,
+    );
+
+    let result = service.create_proof_schema(create_request).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
 async fn test_create_proof_schema_unique_name_error() {
     let claim_schema_id = Uuid::new_v4().into();
     let organisation_id = Uuid::new_v4().into();
