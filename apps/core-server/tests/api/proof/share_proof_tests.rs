@@ -177,6 +177,8 @@ async fn test_share_proof_success_mdoc() {
                 "type": "string"
               },
               "id": null,
+              "name": null,
+              "purpose": null,
               "optional": null,
               "path": [
                 "$.credentialSchema.id"
@@ -185,6 +187,8 @@ async fn test_share_proof_success_mdoc() {
             {
               "filter": null,
               "id": "48db4654-01c4-4a43-9df4-300f1f425c41",
+              "name": null,
+              "purpose": null,
               "intent_to_retain": true,
               "optional": false,
               "path": [
@@ -194,6 +198,8 @@ async fn test_share_proof_success_mdoc() {
             {
               "filter": null,
               "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
+              "name": null,
+              "purpose": null,
               "intent_to_retain": true,
               "optional": false,
               "path": [
@@ -203,6 +209,8 @@ async fn test_share_proof_success_mdoc() {
             {
               "filter": null,
               "id": "48db4654-01c4-4a43-9df4-300f1f425c43",
+              "name": null,
+              "purpose": null,
               "intent_to_retain": true,
               "optional": false,
               "path": [
@@ -220,7 +228,9 @@ async fn test_share_proof_success_mdoc() {
             ]
           }
         },
-        "id": "input_0"
+        "id": "input_0",
+        "name": "test",
+        "purpose": null
     });
 
     assert_eq!(expected, input_descriptor);
@@ -286,6 +296,9 @@ async fn test_share_proof_success_jsonld() {
     let input_descriptor = data["presentation_definition"]["input_descriptors"][0].to_owned();
 
     let expected = serde_json::json!({
+        "id": "input_0",
+        "name": "test",
+        "purpose": null,
         "constraints": {
           "fields": [
             {
@@ -294,6 +307,8 @@ async fn test_share_proof_success_jsonld() {
                 "type": "string"
               },
               "id": null,
+              "name": null,
+              "purpose": null,
               "optional": null,
               "path": [
                 "$.credentialSchema.id"
@@ -302,6 +317,8 @@ async fn test_share_proof_success_jsonld() {
             {
               "filter": null,
               "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
+              "name": null,
+              "purpose": null,
               "optional": false,
               "path": [
                 "$.vc.credentialSubject.location_x"
@@ -316,8 +333,7 @@ async fn test_share_proof_success_jsonld() {
               "DataIntegrityProof"
             ]
           }
-        },
-        "id": "input_0"
+        }
     });
 
     assert_eq!(expected, input_descriptor);

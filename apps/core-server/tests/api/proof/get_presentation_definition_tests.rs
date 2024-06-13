@@ -427,25 +427,17 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
         json!([
             {
                 "id": proof.id,
-                "name": null,
-                "purpose": null,
                 "rule": {
-                    "type": "all",
-                    "count": null,
-                    "max": null,
-                    "min": null
+                    "type": "all"
                 },
                 "requestedCredentials": [
                     {
                         "id": "input_0",
-                        "name": null,
-                        "purpose": null,
-                        "validityCredentialNbf": null,
+                        "name": "test",
                         "fields": [
                             {
                                 "id": "839915f5-e4e2-4591-9d80-fd6178aa84f5",
                                 "name": "first_f0",
-                                "purpose": null,
                                 "required": true,
                                 "keyMap": {
                                     credential_1.id.to_string(): "first_f0"
@@ -456,14 +448,11 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
                     },
                     {
                         "id": "input_1",
-                        "name": null,
-                        "purpose": null,
-                        "validityCredentialNbf": null,
+                        "name": "test",
                         "fields": [
                             {
                                 "id": "ba2c4567-7c5b-4ee5-b3d6-6eac9161892e",
                                 "name": "second_f0",
-                                "purpose": null,
                                 "required": true,
                                 "keyMap": {
                                     credential_2.id.to_string(): "second_f0"
@@ -943,25 +932,16 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         json!([
             {
                 "id": proof.id,
-                "name": null,
-                "purpose": null,
                 "rule": {
-                    "type": "all",
-                    "count": null,
-                    "max": null,
-                    "min": null
+                    "type": "all"
                 },
                 "requestedCredentials": [
                     {
                         "id": "input_0",
-                        "name": null,
-                        "purpose": null,
-                        "validityCredentialNbf": null,
                         "fields": [
                             {
                                 "id": "109562f7-2374-4b84-ab84-67709ad25f92",
                                 "name": "first.f0",
-                                "purpose": null,
                                 "required": true,
                                 "keyMap": {
                                     credential_1.id.to_string(): "first.f0"
@@ -970,7 +950,6 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                             {
                                 "id": "a85dd383-91c0-4999-9953-e857c238a4bf",
                                 "name": "first_f1",
-                                "purpose": null,
                                 "required": false,
                                 "keyMap": {
                                     credential_1.id.to_string(): "first_f1"
@@ -981,14 +960,10 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                     },
                     {
                         "id": "input_1",
-                        "name": null,
-                        "purpose": null,
-                        "validityCredentialNbf": null,
                         "fields": [
                             {
                                 "id": "a50ff87a-fedc-4650-8b69-044bd8411f8c",
                                 "name": "second_f0",
-                                "purpose": null,
                                 "required": true,
                                 "keyMap": {
                                     credential_2.id.to_string(): "second_f0"
@@ -997,7 +972,6 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                             {
                                 "id": "3fad2e18-ebb9-457a-9ed9-f818de957fdc",
                                 "name": "second_f1",
-                                "purpose": null,
                                 "required": true,
                                 "keyMap": {
                                     credential_2.id.to_string(): "second_f1"

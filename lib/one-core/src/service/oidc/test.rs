@@ -1278,12 +1278,16 @@ async fn test_oidc_verifier_presentation_definition_success() {
         presentation_definition: OpenID4VPPresentationDefinition {
             id: Uuid::new_v4(),
             input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
-                format: jwt_format_map(),
                 id: "123".to_string(),
+                name: None,
+                purpose: None,
+                format: jwt_format_map(),
                 constraints: OpenID4VPPresentationDefinitionConstraint {
                     validity_credential_nbf: None,
                     fields: vec![OpenID4VPPresentationDefinitionConstraintField {
                         id: Some(Uuid::new_v4().into()),
+                        name: None,
+                        purpose: None,
                         path: vec!["123".to_string()],
                         optional: Some(false),
                         filter: None,
@@ -1464,12 +1468,16 @@ async fn test_submit_proof_failed_credential_suspended() {
         presentation_definition: OpenID4VPPresentationDefinition {
             id: interaction_id.to_owned(),
             input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
-                format: jwt_format_map(),
                 id: "input_0".to_string(),
+                name: None,
+                purpose: None,
+                format: jwt_format_map(),
                 constraints: OpenID4VPPresentationDefinitionConstraint {
                     fields: vec![
                         OpenID4VPPresentationDefinitionConstraintField {
                             id: None,
+                            name: None,
+                            purpose: None,
                             path: vec!["$.credentialSchema.id".to_string()],
                             optional: None,
                             filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
@@ -1480,6 +1488,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                         },
                         OpenID4VPPresentationDefinitionConstraintField {
                             id: Some(claim_id),
+                            name: None,
+                            purpose: None,
                             path: vec!["$.vc.credentialSubject.string".to_string()],
                             optional: Some(false),
                             filter: None,

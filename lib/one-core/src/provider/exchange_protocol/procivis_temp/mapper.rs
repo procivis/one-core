@@ -51,16 +51,19 @@ pub fn get_base_url(url: &Url) -> Result<Url, ExchangeProtocolError> {
         .parse()
         .map_err(|_| ExchangeProtocolError::Failed("Invalid URL".to_string()))
 }
-pub fn create_requested_credential(
+
+fn create_requested_credential(
     index: usize,
+    name: Option<String>,
+    purpose: Option<String>,
     fields: Vec<CredentialGroupItem>,
     applicable_credentials: Vec<Credential>,
     validity_credential_nbf: Option<OffsetDateTime>,
 ) -> Result<PresentationDefinitionRequestedCredentialResponseDTO, ExchangeProtocolError> {
     Ok(PresentationDefinitionRequestedCredentialResponseDTO {
-        id: format!("input_{}", index),
-        name: None,
-        purpose: None,
+        id: format!("input_{index}"),
+        name,
+        purpose,
         fields: fields
             .into_iter()
             .map(|field| create_presentation_definition_field(field, &applicable_credentials))
@@ -95,6 +98,8 @@ pub(super) fn presentation_definition_from_proof(
                 .map(|(index, group)| {
                     create_requested_credential(
                         index,
+                        group.name,
+                        group.purpose,
                         group.claims,
                         group.applicable_credentials,
                         group.validity_credential_nbf,

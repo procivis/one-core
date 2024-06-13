@@ -237,6 +237,8 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
         &repository,
         vec![CredentialGroup {
             id: "input_0".to_string(),
+            name: None,
+            purpose: None,
             claims: vec![CredentialGroupItem {
                 id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
                 key: "key".to_string(),
@@ -271,6 +273,8 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
         &repository,
         vec![CredentialGroup {
             id: "input_0".to_string(),
+            name: None,
+            purpose: None,
             claims: vec![CredentialGroupItem {
                 id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
                 key: "key".to_string(),
@@ -311,6 +315,8 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
         &repository,
         vec![CredentialGroup {
             id: "input_0".to_string(),
+            name: None,
+            purpose: None,
             claims: vec![CredentialGroupItem {
                 id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
                 key: "key".to_string(),
@@ -398,6 +404,8 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
         &repository,
         vec![CredentialGroup {
             id: "input_0".to_string(),
+            name: None,
+            purpose: None,
             claims: vec![CredentialGroupItem {
                 id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
                 key: "namespace/name".to_string(),
@@ -431,6 +439,8 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_first_level_
         &repository,
         vec![CredentialGroup {
             id: "input_0".to_string(),
+            name: None,
+            purpose: None,
             claims: vec![CredentialGroupItem {
                 id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
                 key: "namespace".to_string(),

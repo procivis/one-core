@@ -609,9 +609,13 @@ pub struct OpenID4VPPresentationDefinitionResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPPresentationDefinitionInputDescriptor)]
 pub struct OpenID4VPPresentationDefinitionInputDescriptorRestDTO {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub purpose: Option<String>,
     #[from(with_fn = convert_inner)]
     pub format: HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormatRestDTO>,
-    pub id: String,
     pub constraints: OpenID4VPPresentationDefinitionConstraintRestDTO,
 }
 

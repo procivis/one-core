@@ -26,7 +26,7 @@ use crate::endpoint::proof_schema::dto::{
 };
 use crate::serialize::{front_time, front_time_option};
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(ProofStateEnum)]
 pub enum ProofStateRestEnum {
@@ -39,7 +39,7 @@ pub enum ProofStateRestEnum {
 }
 
 // create endpoint
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateProofRequestRestDTO {
@@ -65,7 +65,7 @@ pub enum SortableProofColumnRestEnum {
 
 pub type GetProofQuery = GetListQueryParams<SortableProofColumnRestEnum>;
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(ProofListItemResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofListItemResponseRestDTO {
@@ -101,7 +101,7 @@ pub struct ProofListItemResponseRestDTO {
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionResponseRestDTO {
@@ -111,46 +111,56 @@ pub struct PresentationDefinitionResponseRestDTO {
     pub credentials: Vec<GetCredentialResponseRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionRequestGroupResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionRequestGroupResponseRestDTO {
     pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub purpose: Option<String>,
     pub rule: PresentationDefinitionRuleRestDTO,
     #[from(with_fn = convert_inner)]
     pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionRequestedCredentialResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub purpose: Option<String>,
     #[from(with_fn = convert_inner)]
     pub fields: Vec<PresentationDefinitionFieldRestDTO>,
     #[from(with_fn = convert_inner)]
     pub applicable_credentials: Vec<String>,
-    #[serde(serialize_with = "front_time_option")]
+    #[serde(
+        serialize_with = "front_time_option",
+        skip_serializing_if = "Option::is_none"
+    )]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     validity_credential_nbf: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationDefinitionFieldDTO)]
 pub struct PresentationDefinitionFieldRestDTO {
     pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub purpose: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub required: Option<bool>,
     pub key_map: HashMap<String, String>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionRuleTypeEnum)]
 pub enum PresentationDefinitionRuleTypeRestEnum {
     #[serde(rename = "all")]
@@ -159,19 +169,21 @@ pub enum PresentationDefinitionRuleTypeRestEnum {
     Pick,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationDefinitionRuleDTO)]
 pub struct PresentationDefinitionRuleRestDTO {
-    //#[serde(serialize_with = "type")]
     pub r#type: PresentationDefinitionRuleTypeRestEnum,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub min: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub max: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub count: Option<u32>,
 }
 
 // detail endpoint
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(ProofDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofDetailResponseRestDTO {
@@ -212,7 +224,7 @@ pub struct ProofDetailResponseRestDTO {
     pub proof_inputs: Vec<ProofInputRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofClaimDTO)]
 pub struct ProofClaimRestDTO {
@@ -221,7 +233,7 @@ pub struct ProofClaimRestDTO {
     pub value: Option<ProofClaimValueRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(ProofClaimValueDTO)]
 #[serde(untagged)]
 pub enum ProofClaimValueRestDTO {
@@ -229,7 +241,7 @@ pub enum ProofClaimValueRestDTO {
     Claims(#[from(with_fn = convert_inner)] Vec<ProofClaimRestDTO>),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofInputDTO)]
 pub struct ProofInputRestDTO {

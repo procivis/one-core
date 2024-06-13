@@ -407,6 +407,8 @@ impl ExchangeProtocol for ProcivisTemp {
                 );
                 credential_groups.push(CredentialGroup {
                     id: group_id,
+                    name: Some(requested_claim.credential_schema.name),
+                    purpose: None,
                     claims: vec![credential_group_item],
                     applicable_credentials: vec![],
                     validity_credential_nbf: None,
