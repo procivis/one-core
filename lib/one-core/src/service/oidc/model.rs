@@ -24,8 +24,10 @@ pub struct OpenID4VPPresentationDefinition {
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionInputDescriptor {
-    pub format: HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
     pub id: String,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
+    pub format: HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
     pub constraints: OpenID4VPPresentationDefinitionConstraint,
 }
 
@@ -47,6 +49,8 @@ pub struct OpenID4VPPresentationDefinitionConstraint {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionConstraintField {
     pub id: Option<ClaimSchemaId>,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
     pub path: Vec<String>,
     pub optional: Option<bool>,
     pub filter: Option<OpenID4VPPresentationDefinitionConstraintFieldFilter>,

@@ -139,8 +139,10 @@ pub struct OpenID4VPPresentationDefinition {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionInputDescriptor {
-    pub format: HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
     pub id: String,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
+    pub format: HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
     pub constraints: OpenID4VPPresentationDefinitionConstraint,
 }
 
@@ -163,6 +165,8 @@ pub struct OpenID4VPPresentationDefinitionConstraint {
 pub struct OpenID4VPPresentationDefinitionConstraintField {
     pub id: Option<ClaimSchemaId>,
     pub path: Vec<String>,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
     pub optional: Option<bool>,
     pub filter: Option<OpenID4VPPresentationDefinitionConstraintFieldFilter>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -747,6 +747,8 @@ impl ExchangeProtocol for OpenID4VC {
             group_id_to_schema_id.insert(input_descriptor.id.clone(), schema_id_filter.r#const);
             credential_groups.push(CredentialGroup {
                 id: input_descriptor.id,
+                name: input_descriptor.name,
+                purpose: input_descriptor.purpose,
                 claims: fields
                     .iter()
                     .filter(|requested| requested.id.is_some())

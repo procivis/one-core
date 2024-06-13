@@ -133,8 +133,8 @@ pub(super) fn presentation_definition_from_interaction_data(
                 .map(|group| {
                     Ok(PresentationDefinitionRequestedCredentialResponseDTO {
                         id: group.id,
-                        name: None,
-                        purpose: None,
+                        name: group.name,
+                        purpose: group.purpose,
                         fields: group
                             .claims
                             .into_iter()
@@ -260,6 +260,8 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
 ) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, ExchangeProtocolError> {
     let schema_id_field = OpenID4VPPresentationDefinitionConstraintField {
         id: None,
+        name: None,
+        purpose: None,
         path: vec!["$.credentialSchema.id".to_string()],
         optional: None,
         filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
@@ -286,6 +288,8 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
         .map(|claim| {
             Ok(OpenID4VPPresentationDefinitionConstraintField {
                 id: Some(claim.schema.id),
+                name: None,
+                purpose: None,
                 path: vec![format_path(&claim.schema.key, format_type)?],
                 optional: Some(!claim.required),
                 filter: None,
@@ -298,8 +302,10 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
     fields.extend(constraint_fields);
 
     Ok(OpenID4VPPresentationDefinitionInputDescriptor {
-        format: create_format_map(format_type)?,
         id: format!("input_{index}"),
+        name: Some(credential_schema.name),
+        purpose: None,
+        format: create_format_map(format_type)?,
         constraints: OpenID4VPPresentationDefinitionConstraint {
             fields,
             validity_credential_nbf: None,

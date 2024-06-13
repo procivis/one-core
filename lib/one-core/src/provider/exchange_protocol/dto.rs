@@ -123,6 +123,8 @@ pub struct PresentationDefinitionRuleDTO {
 #[derive(Clone, Debug)]
 pub struct CredentialGroup {
     pub id: String,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
     pub claims: Vec<CredentialGroupItem>,
     pub applicable_credentials: Vec<Credential>,
     pub validity_credential_nbf: Option<OffsetDateTime>,
