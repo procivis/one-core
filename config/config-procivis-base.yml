@@ -209,6 +209,11 @@ datatype:
     type: "OBJECT"
     order: 500
     params: null
+  ARRAY:
+    display: "datatype.array"
+    type: "ARRAY"
+    order: 101
+    params: null
 keyAlgorithm:
   EDDSA:
     display: "keyAlgorithm.eddsa"
