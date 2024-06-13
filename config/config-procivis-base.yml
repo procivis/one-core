@@ -17,12 +17,16 @@ format:
     type: "JSON_LD_CLASSIC"
     display: "format.jsonld_classic"
     order: 2
-    params: null
+    params:
+      public:
+        leeway: 60
   JSON_LD_BBSPLUS:
     type: "JSON_LD_BBSPLUS"
     display: "format.jsonld_bbsplus"
     order: 3
-    params: null
+    params:
+      public:
+        leeway: 60
   MDOC:
     type: "MDOC"
     display: "format.mdoc"
