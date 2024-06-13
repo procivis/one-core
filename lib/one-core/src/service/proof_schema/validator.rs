@@ -4,9 +4,10 @@ use std::sync::Arc;
 use itertools::Itertools;
 use shared_types::OrganisationId;
 
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::{CredentialFormatter, SelectiveDisclosureOption};
 use crate::service::error::{BusinessLogicError, MissingProviderError, ValidationError};
@@ -88,6 +89,8 @@ pub fn extract_claims_from_credential_schema(
                 ServiceError::MappingError("Missing credential schema claims".into())
             })?;
 
+            let arrays = collect_lists(claims);
+
             Ok::<_, ServiceError>(proof_input.claim_schemas.iter().map(move |proof_claim| {
                 claims
                     .iter()
@@ -100,12 +103,39 @@ pub fn extract_claims_from_credential_schema(
                     })
                     .and_then(|claim_schema| {
                         validate_proof_schema_nesting(&claim_schema, &formatter)?;
+                        validate_proof_schema_claim_not_in_array(&claim_schema.key, &arrays)?;
                         Ok(claim_schema)
                     })
             }))
         })
         .flatten_ok()
         .map(|r| r.and_then(std::convert::identity))
+        .collect()
+}
+
+fn validate_proof_schema_claim_not_in_array(
+    key: &str,
+    arrays: &HashSet<String>,
+) -> Result<(), ServiceError> {
+    match key.rsplit_once(NESTED_CLAIM_MARKER) {
+        Some((parent, _)) => {
+            if arrays.contains(parent) {
+                Err(ValidationError::NestedClaimInArrayRequested.into())
+            } else {
+                validate_proof_schema_claim_not_in_array(parent, arrays)
+            }
+        }
+        None => Ok(()),
+    }
+}
+
+fn collect_lists(claims: &[CredentialSchemaClaim]) -> HashSet<String> {
+    claims
+        .iter()
+        .filter_map(|c| match c.schema.array {
+            true => Some(c.schema.key.to_owned()),
+            _ => None,
+        })
         .collect()
 }
 

@@ -361,6 +361,9 @@ pub enum ValidationError {
 
     #[error("Certificate requested for more than 457 days of validity")]
     CertificateRequestedForMoreThan457Days,
+
+    #[error("Nested claims in arrays cannot be requested")]
+    NestedClaimInArrayRequested,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -732,6 +735,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Trust anchor must be publish")]
     BR_0123,
 
+    #[strum(to_string = "Nested claims in arrays cannot be requested")]
+    BR_0125,
+
     #[strum(to_string = "Claim schema key exceeded max length (255)")]
     BR_0126,
 
@@ -915,6 +921,7 @@ impl ValidationError {
             ValidationError::MissingLayoutAttribute(_) => ErrorCode::BR_0105,
             ValidationError::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
             ValidationError::CertificateRequestedForMoreThan457Days => ErrorCode::BR_0084,
+            ValidationError::NestedClaimInArrayRequested => ErrorCode::BR_0125,
         }
     }
 }
