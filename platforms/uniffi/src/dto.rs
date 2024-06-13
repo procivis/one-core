@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use dto_mapper::{convert_inner, From, Into, TryInto};
+use dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 use one_core::model::common::ExactColumn;
 use one_core::model::credential::SortableCredentialColumn;
 use one_core::model::credential_schema::{
@@ -992,4 +992,37 @@ pub struct ProofInputSchemaBindingDTO {
     pub claim_schemas: Vec<ProofClaimSchemaBindingDTO>,
     pub credential_schema: CredentialSchemaBindingDTO,
     pub validity_constraint: Option<i64>,
+}
+
+#[derive(Debug, TryInto)]
+#[try_into(T = one_core::service::proof_schema::dto::CreateProofSchemaRequestDTO, Error = ServiceError)]
+pub struct CreateProofSchemaRequestDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub name: String,
+    #[try_into(with_fn_ref = into_id)]
+    pub organisation_id: String,
+    #[try_into(infallible)]
+    pub expire_duration: u32,
+    #[try_into(with_fn = try_convert_inner)]
+    pub proof_input_schemas: Vec<ProofInputSchemaRequestDTO>,
+}
+
+#[derive(Debug, TryInto)]
+#[try_into(T = one_core::service::proof_schema::dto::ProofInputSchemaRequestDTO, Error = ServiceError)]
+pub struct ProofInputSchemaRequestDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub credential_schema_id: String,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub validity_constraint: Option<i64>,
+    #[try_into(with_fn = try_convert_inner)]
+    pub claim_schemas: Vec<CreateProofSchemaClaimRequestDTO>,
+}
+
+#[derive(Debug, TryInto)]
+#[try_into(T = one_core::service::proof_schema::dto::CreateProofSchemaClaimRequestDTO, Error = ServiceError)]
+pub struct CreateProofSchemaClaimRequestDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub id: String,
+    #[try_into(infallible)]
+    pub required: bool,
 }
