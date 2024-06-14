@@ -1,4 +1,5 @@
 use one_core::service::error::ServiceError;
+use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -26,6 +27,10 @@ pub fn format_timestamp_opt(datetime: Option<OffsetDateTime>) -> Option<String> 
 
 pub fn into_id<T: From<Uuid>>(input: &str) -> Result<T, ServiceError> {
     Uuid::parse_str(input).map_err(Into::into).map(Into::into)
+}
+
+pub fn into_timestamp(input: &str) -> Result<OffsetDateTime, ServiceError> {
+    OffsetDateTime::parse(input, &Rfc3339).map_err(|e| ServiceError::MappingError(e.to_string()))
 }
 
 pub fn try_into_url<T: AsRef<str>>(input: T) -> Result<Url, BindingError> {

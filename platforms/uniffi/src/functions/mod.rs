@@ -29,6 +29,7 @@ mod holder_accept_credential;
 mod holder_reject_credential;
 mod holder_reject_proof;
 mod holder_submit_proof;
+mod import_credential_schema;
 mod import_proof_schema;
 mod list_trust_anchors;
 mod rollback_import;

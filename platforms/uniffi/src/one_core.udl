@@ -705,6 +705,47 @@ dictionary CreateProofSchemaClaimRequestDTO {
   boolean required;
 };
 
+dictionary ImportCredentialSchemaRequestBindingDTO {
+  string organisation_id;
+  ImportCredentialSchemaRequestSchemaBindingDTO schema;
+};
+
+dictionary ImportCredentialSchemaRequestSchemaBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  string name;
+  string format;
+  string revocation_method;
+  string organisation_id;
+
+  sequence<ImportCredentialSchemaClaimSchemaBindingDTO> claims;
+  WalletStorageTypeBindingEnum? wallet_storage_type;
+  string schema_id;
+  CredentialSchemaTypeBindingEnum schema_type;
+  LayoutTypeBindingEnum? layout_type;
+  ImportCredentialSchemaLayoutPropertiesBindingDTO? layout_properties;
+};
+
+dictionary ImportCredentialSchemaClaimSchemaBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  boolean required;
+  string key;
+  string datatype;
+  sequence<ImportCredentialSchemaClaimSchemaBindingDTO> claims;
+};
+
+dictionary ImportCredentialSchemaLayoutPropertiesBindingDTO {
+  CredentialSchemaBackgroundPropertiesBindingDTO? background;
+  CredentialSchemaLogoPropertiesBindingDTO? logo;
+  string? primary_attribute;
+  string? secondary_attribute;
+  string? picture_attribute;
+  CredentialSchemaCodePropertiesBindingDTO? code;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
@@ -815,4 +856,7 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   string import_proof_schema(ProofSchemaImportRequestDTO request);
+  
+  [Throws=BindingError]
+  string import_credential_schema(ImportCredentialSchemaRequestBindingDTO request);
 };

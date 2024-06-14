@@ -1,0 +1,21 @@
+use crate::{
+    binding::OneCoreBinding, dto::ImportCredentialSchemaRequestBindingDTO, error::BindingError,
+};
+
+impl OneCoreBinding {
+    pub fn import_credential_schema(
+        &self,
+        request: ImportCredentialSchemaRequestBindingDTO,
+    ) -> Result<String, BindingError> {
+        let request = request.try_into()?;
+
+        self.block_on(async {
+            let core = self.use_core().await?;
+            Ok(core
+                .credential_schema_service
+                .import_credential_schema(request)
+                .await
+                .map(|schema| schema.to_string())?)
+        })
+    }
+}

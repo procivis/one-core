@@ -1307,7 +1307,7 @@ checksum = "1435fa1053d8b2fbbe9be7e97eca7f33d37b28409959813daefc1446a14247f1"
 [[package]]
 name = "dto_mapper"
 version = "0.1.0"
-source = "git+https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git?tag=0.1.5#8d6b01b91ab55311923194f4a7724f6b0e990d4a"
+source = "git+https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git?tag=0.1.6#5ec2c54961a0250b55398d8c9fbf92fcb0f0483b"
 dependencies = [
  "dto_mapper_derive",
  "fmap",
@@ -1316,7 +1316,7 @@ dependencies = [
 [[package]]
 name = "dto_mapper_derive"
 version = "0.1.0"
-source = "git+https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git?tag=0.1.5#8d6b01b91ab55311923194f4a7724f6b0e990d4a"
+source = "git+https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git?tag=0.1.6#5ec2c54961a0250b55398d8c9fbf92fcb0f0483b"
 dependencies = [
  "darling",
  "proc-macro2",

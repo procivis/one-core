@@ -1,14 +1,14 @@
 use dto_mapper::convert_inner;
-use shared_types::OrganisationId;
+use shared_types::{ClaimSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::CredentialSchemaFilterValue;
+use super::dto::{CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO};
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::config::core_config::FormatType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
 };
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
@@ -99,6 +99,7 @@ pub fn from_create_request(
     organisation: Organisation,
     core_base_url: &str,
     format_type: FormatType,
+    schema_type: Option<CredentialSchemaType>,
 ) -> Result<CredentialSchema, ServiceError> {
     if request.claims.is_empty() {
         return Err(ServiceError::ValidationError(
@@ -115,10 +116,10 @@ pub fn from_create_request(
     let schema_id = request
         .schema_id
         .unwrap_or(format!("{core_base_url}/ssi/schema/v1/{id}"));
-    let schema_type = match format_type {
+    let schema_type = schema_type.unwrap_or(match format_type {
         FormatType::Mdoc => CredentialSchemaType::Mdoc,
         _ => CredentialSchemaType::ProcivisOneSchema2024,
-    };
+    });
 
     Ok(CredentialSchema {
         id: id.into(),
@@ -132,7 +133,15 @@ pub fn from_create_request(
         claim_schemas: Some(
             claim_schemas
                 .into_iter()
-                .map(|claim_schema| from_jwt_request_claim_schema(claim_schema, now))
+                .map(|claim_schema| {
+                    from_jwt_request_claim_schema(
+                        now,
+                        Uuid::new_v4().into(),
+                        claim_schema.key,
+                        claim_schema.datatype,
+                        claim_schema.required,
+                    )
+                })
                 .collect(),
         ),
         organisation: Some(organisation),
@@ -149,6 +158,10 @@ pub(super) fn schema_create_history_event(schema: CredentialSchema) -> History {
 
 pub(super) fn schema_delete_history_event(schema: CredentialSchema) -> History {
     history_event(schema, HistoryAction::Deleted)
+}
+
+pub(super) fn schema_import_history_event(schema: CredentialSchema) -> History {
+    history_event(schema, HistoryAction::Imported)
 }
 
 pub(super) fn schema_share_history_event(schema: CredentialSchema) -> History {
@@ -168,19 +181,22 @@ fn history_event(schema: CredentialSchema, action: HistoryAction) -> History {
 }
 
 fn from_jwt_request_claim_schema(
-    claim_schema: CredentialClaimSchemaRequestDTO,
     now: OffsetDateTime,
+    id: ClaimSchemaId,
+    key: String,
+    datatype: String,
+    required: bool,
 ) -> CredentialSchemaClaim {
     CredentialSchemaClaim {
         schema: ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: claim_schema.key,
-            data_type: claim_schema.datatype,
+            id,
+            key,
+            data_type: datatype,
             created_date: now,
             last_modified: now,
             array: false,
         },
-        required: claim_schema.required,
+        required,
     }
 }
 
@@ -255,4 +271,20 @@ fn unnest_claim_schemas_inner(
     }
 
     result
+}
+
+impl From<ImportCredentialSchemaRequestSchemaDTO> for CreateCredentialSchemaRequestDTO {
+    fn from(value: ImportCredentialSchemaRequestSchemaDTO) -> Self {
+        CreateCredentialSchemaRequestDTO {
+            name: value.name,
+            format: value.format,
+            revocation_method: value.revocation_method,
+            organisation_id: value.organisation_id.into(),
+            claims: value.claims.into_iter().map(Into::into).collect(),
+            wallet_storage_type: convert_inner(value.wallet_storage_type),
+            layout_type: value.layout_type.unwrap_or(LayoutType::Card),
+            layout_properties: convert_inner(value.layout_properties),
+            schema_id: Some(value.schema_id),
+        }
+    }
 }
