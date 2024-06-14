@@ -733,6 +733,7 @@ dictionary ImportCredentialSchemaClaimSchemaBindingDTO {
   string last_modified;
   boolean required;
   string key;
+  boolean? array;
   string datatype;
   sequence<ImportCredentialSchemaClaimSchemaBindingDTO> claims;
 };

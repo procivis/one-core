@@ -32,7 +32,8 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
         "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
         "key": "firstName",
         "lastModified": "2023-11-08T15:46:14.997Z",
-        "required": true
+        "required": true,
+        "array": false,
     });
     context
         .server_mock
@@ -96,6 +97,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
                         "datatype": "OBJECT",
                         "id": "0cda8742-e93c-424f-94e7-15145953264f",
                         "key": "location",
+                        "array": false,
                         "lastModified": "2023-11-08T15:46:14.997Z",
                         "required": true
                     },
@@ -104,6 +106,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
                             "schema": {
                                 "createdDate": "2023-11-08T15:46:14.997Z",
                                 "datatype": "OBJECT",
+                                "array": false,
                                 "id": "77c2dd86-8fa9-41b6-af2a-bc3ee5fb357e",
                                 "key": "coordinates",
                                 "lastModified": "2023-11-08T15:46:14.997Z",
@@ -114,6 +117,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
                                     "schema": {
                                         "createdDate": "2023-11-08T15:46:14.997Z",
                                         "datatype": "STRING",
+                                        "array": false,
                                         "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
                                         "key": "X",
                                         "lastModified": "2023-11-08T15:46:14.997Z",
@@ -132,6 +136,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
                     "datatype": "OBJECT",
                     "id": "0cda8742-e93c-424f-94e7-15145953264f",
                     "key": "location",
+                    "array": false,
                     "lastModified": "2023-11-08T15:46:14.997Z",
                     "required": true,
                     "claims": [
@@ -142,12 +147,14 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
                             "key": "coordinates",
                             "lastModified": "2023-11-08T15:46:14.997Z",
                             "required": true,
+                            "array": false,
                             "claims": [
                                 {
                                     "createdDate": "2023-11-08T15:46:14.997Z",
                                     "datatype": "STRING",
                                     "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
                                     "key": "X",
+                                    "array": false,
                                     "lastModified": "2023-11-08T15:46:14.997Z",
                                     "required": true
                                 },
@@ -156,6 +163,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
                                     "datatype": "STRING",
                                     "id": "569724b0-3cae-42d6-99db-01713d9f8422",
                                     "key": "optional",
+                                    "array": false,
                                     "lastModified": "2023-11-08T15:46:14.997Z",
                                     "required": false
                                 }
@@ -252,6 +260,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_match_existi
                     "datatype": "STRING",
                     "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
                     "key": "firstName",
+                    "array": false,
                     "lastModified": "2023-11-08T15:46:14.997Z",
                     "required": true
                 },
@@ -262,6 +271,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_match_existi
                 "datatype": "STRING",
                 "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
                 "key": "firstName",
+                "array": false,
                 "lastModified": "2023-11-08T15:46:14.997Z",
                 "required": true
             }]),
@@ -556,7 +566,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
                 "lastModified": "2024-05-16T10:47:48.093Z",
                 "key": "field",
                 "datatype": "STRING",
-                "required": true
+                "required": true,
+                "array": false,
               }
             ],
             "walletStorageType": "SOFTWARE",
@@ -716,6 +727,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         "lastModified": "2024-05-16T18:34:34.115Z",
         "key": "address",
         "datatype": "OBJECT",
+        "array": false,
         "required": true,
         "claims": [{
             "id": "545f984b-4fdf-4e26-aba0-61b72d21dbd9",
@@ -723,6 +735,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
             "lastModified": "2024-05-16T18:34:34.115Z",
             "key": "location",
             "datatype": "OBJECT",
+            "array": false,
             "required": true,
             "claims": [{
                 "id": "545f984b-4fdf-4e26-aba0-61b72d21dbd9",
@@ -730,12 +743,14 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
                 "lastModified": "2024-05-16T18:34:34.115Z",
                 "key": "position",
                 "datatype": "OBJECT",
+                "array": false,
                 "required": true,
                 "claims": [{
                     "id": "e4f1b7c1-809b-41a1-8f59-a6ee34011480",
                     "createdDate": "2024-05-16T18:34:34.115Z",
                     "lastModified": "2024-05-16T18:34:34.115Z",
                     "key": "x",
+                    "array": false,
                     "datatype": "STRING",
                     "required": true
                 }],
@@ -1099,6 +1114,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
                 "lastModified": "2024-05-16T10:47:48.093Z",
                 "key": "field",
                 "datatype": "STRING",
+                "array": false,
                 "required": true
               }
             ],

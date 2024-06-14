@@ -101,6 +101,7 @@ pub struct CredentialClaimSchemaResponseRestDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
+    pub array: bool,
     #[from(with_fn = convert_inner)]
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
@@ -197,6 +198,7 @@ pub struct CredentialClaimSchemaRequestRestDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
+    pub array: Option<bool>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[into(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
@@ -325,6 +327,7 @@ pub struct ImportCredentialSchemaClaimSchemaRestDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
+    pub array: Option<bool>,
     #[into(with_fn = convert_inner)]
     #[serde(default)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,

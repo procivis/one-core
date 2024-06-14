@@ -733,6 +733,7 @@ pub(super) fn parse_procivis_schema_claim(
         key: claim.key,
         datatype: claim.datatype,
         required: claim.required,
+        array: Some(claim.array),
         claims: claim
             .claims
             .into_iter()
@@ -751,6 +752,7 @@ pub(super) fn parse_mdoc_schema_claims(
             key: namespace,
             datatype: DatatypeType::Object.to_string(),
             required: true,
+            array: Some(false), // TODO: Needs to be covered with ONE-2261
             claims: parse_mdoc_schema_elements(elements),
         })
         .collect();
@@ -797,6 +799,7 @@ fn parse_mdoc_schema_elements(
                 key,
                 datatype: claim.value_type,
                 required: claim.mandatory.unwrap_or(false),
+                array: Some(false), // TODO: Needs to be covered with ONE-2261
                 claims,
             }
         })
