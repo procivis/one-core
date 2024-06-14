@@ -60,6 +60,7 @@ impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
             last_modified: value.schema.last_modified,
             key: value.schema.key,
             datatype: value.schema.data_type,
+            array: value.schema.array,
             required: value.required,
             claims: vec![],
         }
@@ -140,6 +141,7 @@ pub fn from_create_request(
                         claim_schema.key,
                         claim_schema.datatype,
                         claim_schema.required,
+                        claim_schema.array,
                     )
                 })
                 .collect(),
@@ -186,6 +188,7 @@ fn from_jwt_request_claim_schema(
     key: String,
     datatype: String,
     required: bool,
+    array: Option<bool>,
 ) -> CredentialSchemaClaim {
     CredentialSchemaClaim {
         schema: ClaimSchema {
@@ -194,7 +197,7 @@ fn from_jwt_request_claim_schema(
             data_type: datatype,
             created_date: now,
             last_modified: now,
-            array: false,
+            array: array.unwrap_or(false),
         },
         required,
     }

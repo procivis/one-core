@@ -1090,6 +1090,8 @@ pub struct ImportCredentialSchemaClaimSchemaBindingDTO {
     pub key: String,
     #[try_into(infallible)]
     pub datatype: String,
+    #[try_into(infallible)]
+    pub array: Option<bool>,
     #[try_into(with_fn = try_convert_inner)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaBindingDTO>,
 }

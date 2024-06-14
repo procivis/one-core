@@ -379,6 +379,7 @@ async fn test_create_credential_schema_success() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
+                array: Some(false),
                 required: true,
                 claims: vec![],
             }],
@@ -478,11 +479,13 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "OBJECT".to_string(),
+                array: Some(false),
                 required: true,
                 claims: vec![CredentialClaimSchemaRequestDTO {
                     key: "X".to_string(),
                     datatype: "STRING".to_string(),
                     required: true,
+                    array: Some(false),
                     claims: vec![],
                 }],
             }],
@@ -577,18 +580,21 @@ async fn test_create_credential_schema_success_nested_claims() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "location".to_string(),
                 datatype: "OBJECT".to_string(),
+                array: Some(false),
                 required: true,
                 claims: vec![
                     CredentialClaimSchemaRequestDTO {
                         key: "x".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
+                        array: Some(false),
                         claims: vec![],
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "y".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
+                        array: Some(false),
                         claims: vec![],
                     },
                 ],
@@ -623,6 +629,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
                 key: "location/x".to_string(),
                 datatype: "STRING".to_string(),
                 required: true,
+                array: Some(false),
                 claims: vec![],
             }],
             layout_type: LayoutType::Card,
@@ -660,17 +667,20 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
                 key: "location".to_string(),
                 datatype: "STRING".to_string(),
                 required: true,
+                array: Some(false),
                 claims: vec![
                     CredentialClaimSchemaRequestDTO {
                         key: "x".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
+                        array: Some(false),
                         claims: vec![],
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "y".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
+                        array: Some(false),
                         claims: vec![],
                     },
                 ],
@@ -709,6 +719,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "location".to_string(),
                 datatype: "OBJECT".to_string(),
+                array: Some(false),
                 required: true,
                 claims: vec![],
             }],
@@ -745,10 +756,12 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
                 key: "location".to_string(),
                 datatype: "OBJECT".to_string(),
                 required: true,
+                array: Some(false),
                 claims: vec![CredentialClaimSchemaRequestDTO {
                     key: "x".to_string(),
                     datatype: "NON_EXISTING_TYPE".to_string(),
                     required: true,
+                    array: Some(false),
                     claims: vec![],
                 }],
             }],
@@ -825,6 +838,7 @@ async fn test_create_credential_schema_unique_name_error() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
+                array: Some(false),
                 required: true,
                 claims: vec![],
             }],
@@ -860,6 +874,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
                 CredentialClaimSchemaRequestDTO {
                     key: "sameRoot".to_string(),
                     datatype: "STRING".to_string(),
+                    array: Some(false),
                     required: true,
                     claims: vec![],
                 },
@@ -867,6 +882,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
                     key: "sameRoot".to_string(),
                     datatype: "STRING".to_string(),
                     required: true,
+                    array: Some(false),
                     claims: vec![],
                 },
             ],
@@ -891,16 +907,19 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "parent".to_string(),
                 datatype: "OBJECT".to_string(),
+                array: Some(false),
                 required: true,
                 claims: vec![
                     CredentialClaimSchemaRequestDTO {
                         key: "sameNested".to_string(),
                         datatype: "STRING".to_string(),
+                        array: Some(false),
                         required: true,
                         claims: vec![],
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "sameNested".to_string(),
+                        array: Some(false),
                         datatype: "STRING".to_string(),
                         required: true,
                         claims: vec![],
@@ -942,6 +961,7 @@ async fn test_create_credential_schema_fail_validation() {
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
+                array: Some(false),
                 datatype: "STRING".to_string(),
                 required: true,
                 claims: vec![],
@@ -964,6 +984,7 @@ async fn test_create_credential_schema_fail_validation() {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
                 required: true,
+                array: Some(false),
                 claims: vec![],
             }],
             layout_type: LayoutType::Card,
@@ -985,6 +1006,7 @@ async fn test_create_credential_schema_fail_validation() {
                 key: "test".to_string(),
                 datatype: "BLABLA".to_string(),
                 required: true,
+                array: Some(false),
                 claims: vec![],
             }],
             layout_type: LayoutType::Card,
@@ -1073,6 +1095,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
+                array: Some(false),
                 required: true,
                 claims: vec![],
             }],
@@ -1120,6 +1143,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
+                array: Some(false),
                 required: true,
                 claims: vec![],
             }],
@@ -1170,17 +1194,20 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
                 CredentialClaimSchemaRequestDTO {
                     key: "test".to_string(),
                     datatype: "OBJECT".to_string(),
+                    array: Some(false),
                     required: true,
                     claims: vec![CredentialClaimSchemaRequestDTO {
                         key: "nested".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
+                        array: Some(false),
                         claims: vec![],
                     }],
                 },
                 CredentialClaimSchemaRequestDTO {
                     key: "test2".to_string(),
                     datatype: "STRING".to_string(),
+                    array: Some(false),
                     required: true,
                     claims: vec![],
                 },
@@ -1223,6 +1250,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: str_of_len_256,
                 datatype: "STRING".to_string(),
+                array: Some(false),
                 required: true,
                 claims: vec![],
             }],
@@ -1248,9 +1276,11 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: str_of_len_128.to_owned(),
                 datatype: "OBJECT".to_string(),
+                array: Some(false),
                 required: true,
                 claims: vec![CredentialClaimSchemaRequestDTO {
                     key: str_of_len_128,
+                    array: Some(false),
                     datatype: "STRING".to_string(),
                     required: true,
                     claims: vec![],
@@ -1278,6 +1308,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: unicode_str_of_len_130_but_byte_len_of_260,
                 datatype: "STRING".to_string(),
+                array: Some(false),
                 required: true,
                 claims: vec![],
             }],
@@ -1300,12 +1331,14 @@ async fn test_unnest_claim_schemas_from_request_no_nested_claims() {
         key: "test".to_string(),
         datatype: "STRING".to_string(),
         required: true,
+        array: Some(false),
         claims: vec![],
     }];
 
     let expected = vec![CredentialClaimSchemaRequestDTO {
         key: "test".to_string(),
         datatype: "STRING".to_string(),
+        array: Some(false),
         required: true,
         claims: vec![],
     }];
@@ -1318,18 +1351,21 @@ async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() 
     let request = vec![CredentialClaimSchemaRequestDTO {
         key: "location".to_string(),
         datatype: "OBJECT".to_string(),
+        array: Some(false),
         required: true,
         claims: vec![
             CredentialClaimSchemaRequestDTO {
                 key: "x".to_string(),
                 datatype: "STRING".to_string(),
                 required: true,
+                array: Some(false),
                 claims: vec![],
             },
             CredentialClaimSchemaRequestDTO {
                 key: "y".to_string(),
                 datatype: "STRING".to_string(),
                 required: true,
+                array: Some(false),
                 claims: vec![],
             },
         ],
@@ -1340,12 +1376,14 @@ async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() 
             key: "location".to_string(),
             datatype: "OBJECT".to_string(),
             required: true,
+            array: Some(false),
             claims: vec![],
         },
         CredentialClaimSchemaRequestDTO {
             key: "location/x".to_string(),
             datatype: "STRING".to_string(),
             required: true,
+            array: Some(false),
             claims: vec![],
         },
         CredentialClaimSchemaRequestDTO {
@@ -1353,6 +1391,7 @@ async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() 
             datatype: "STRING".to_string(),
             required: true,
             claims: vec![],
+            array: Some(false),
         },
     ];
 
@@ -1365,22 +1404,26 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
         key: "address".to_string(),
         datatype: "OBJECT".to_string(),
         required: true,
+        array: Some(false),
         claims: vec![
             CredentialClaimSchemaRequestDTO {
                 key: "location".to_string(),
                 datatype: "OBJECT".to_string(),
                 required: true,
+                array: Some(false),
                 claims: vec![
                     CredentialClaimSchemaRequestDTO {
                         key: "x".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
+                        array: Some(false),
                         claims: vec![],
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "y".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
+                        array: Some(false),
                         claims: vec![],
                     },
                 ],
@@ -1389,17 +1432,20 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
                 key: "postal_data".to_string(),
                 datatype: "OBJECT".to_string(),
                 required: true,
+                array: Some(false),
                 claims: vec![
                     CredentialClaimSchemaRequestDTO {
                         key: "code".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
                         claims: vec![],
+                        array: Some(false),
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "street".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
+                        array: Some(false),
                         claims: vec![],
                     },
                 ],
@@ -1412,6 +1458,7 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             key: "address".to_string(),
             datatype: "OBJECT".to_string(),
             required: true,
+            array: Some(false),
             claims: vec![],
         },
         CredentialClaimSchemaRequestDTO {
@@ -1419,35 +1466,41 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             datatype: "OBJECT".to_string(),
             required: true,
             claims: vec![],
+            array: Some(false),
         },
         CredentialClaimSchemaRequestDTO {
             key: "address/location/x".to_string(),
             datatype: "STRING".to_string(),
             required: true,
             claims: vec![],
+            array: Some(false),
         },
         CredentialClaimSchemaRequestDTO {
             key: "address/location/y".to_string(),
             datatype: "STRING".to_string(),
             required: true,
+            array: Some(false),
             claims: vec![],
         },
         CredentialClaimSchemaRequestDTO {
             key: "address/postal_data".to_string(),
             datatype: "OBJECT".to_string(),
             required: true,
+            array: Some(false),
             claims: vec![],
         },
         CredentialClaimSchemaRequestDTO {
             key: "address/postal_data/code".to_string(),
             datatype: "STRING".to_string(),
             required: true,
+            array: Some(false),
             claims: vec![],
         },
         CredentialClaimSchemaRequestDTO {
             key: "address/postal_data/street".to_string(),
             datatype: "STRING".to_string(),
             required: true,
+            array: Some(false),
             claims: vec![],
         },
     ];
@@ -1469,6 +1522,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             created_date: now,
             last_modified: now,
             key: "location".to_string(),
+            array: false,
             datatype: "OBJECT".to_string(),
             required: true,
             claims: vec![],
@@ -1479,6 +1533,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             last_modified: now,
             key: "location/x".to_string(),
             datatype: "STRING".to_string(),
+            array: false,
             required: true,
             claims: vec![],
         },
@@ -1486,6 +1541,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             id: uuid_location_y,
             created_date: now,
             last_modified: now,
+            array: false,
             key: "location/y".to_string(),
             datatype: "STRING".to_string(),
             required: true,
@@ -1498,6 +1554,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
         created_date: now,
         last_modified: now,
         key: "location".to_string(),
+        array: false,
         datatype: "OBJECT".to_string(),
         required: true,
         claims: vec![
@@ -1506,6 +1563,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
                 created_date: now,
                 last_modified: now,
                 key: "x".to_string(),
+                array: false,
                 datatype: "STRING".to_string(),
                 required: true,
                 claims: vec![],
@@ -1513,6 +1571,7 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             CredentialClaimSchemaDTO {
                 id: uuid_location_y,
                 created_date: now,
+                array: false,
                 last_modified: now,
                 key: "y".to_string(),
                 datatype: "STRING".to_string(),
@@ -1542,6 +1601,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             id: uuid_address,
             created_date: now,
             last_modified: now,
+            array: false,
             key: "address".to_string(),
             datatype: "OBJECT".to_string(),
             required: true,
@@ -1551,6 +1611,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             id: uuid_address_location,
             created_date: now,
             last_modified: now,
+            array: false,
             key: "address/location".to_string(),
             datatype: "OBJECT".to_string(),
             required: true,
@@ -1560,6 +1621,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             id: uuid_address_postal_data,
             created_date: now,
             last_modified: now,
+            array: false,
             key: "address/postal_data".to_string(),
             datatype: "OBJECT".to_string(),
             required: true,
@@ -1569,6 +1631,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             id: uuid_address_location_x,
             created_date: now,
             last_modified: now,
+            array: false,
             key: "address/location/x".to_string(),
             datatype: "STRING".to_string(),
             required: true,
@@ -1577,6 +1640,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
         CredentialClaimSchemaDTO {
             id: uuid_address_location_y,
             created_date: now,
+            array: false,
             last_modified: now,
             key: "address/location/y".to_string(),
             datatype: "STRING".to_string(),
@@ -1587,6 +1651,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             id: uuid_address_postal_data_street,
             created_date: now,
             last_modified: now,
+            array: false,
             key: "address/postal_data/street".to_string(),
             datatype: "STRING".to_string(),
             required: true,
@@ -1595,6 +1660,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
         CredentialClaimSchemaDTO {
             id: uuid_address_postal_data_code,
             created_date: now,
+            array: false,
             last_modified: now,
             key: "address/postal_data/code".to_string(),
             datatype: "STRING".to_string(),
@@ -1608,6 +1674,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
         created_date: now,
         last_modified: now,
         key: "address".to_string(),
+        array: false,
         datatype: "OBJECT".to_string(),
         required: true,
         claims: vec![
@@ -1615,6 +1682,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                 id: uuid_address_location,
                 created_date: now,
                 last_modified: now,
+                array: false,
                 key: "location".to_string(),
                 datatype: "OBJECT".to_string(),
                 required: true,
@@ -1623,6 +1691,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         id: uuid_address_location_x,
                         created_date: now,
                         last_modified: now,
+                        array: false,
                         key: "x".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
@@ -1631,6 +1700,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                     CredentialClaimSchemaDTO {
                         id: uuid_address_location_y,
                         created_date: now,
+                        array: false,
                         last_modified: now,
                         key: "y".to_string(),
                         datatype: "STRING".to_string(),
@@ -1643,6 +1713,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                 id: uuid_address_postal_data,
                 created_date: now,
                 last_modified: now,
+                array: false,
                 key: "postal_data".to_string(),
                 datatype: "OBJECT".to_string(),
                 required: true,
@@ -1651,6 +1722,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         id: uuid_address_postal_data_street,
                         created_date: now,
                         last_modified: now,
+                        array: false,
                         key: "street".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
@@ -1660,6 +1732,7 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         id: uuid_address_postal_data_code,
                         created_date: now,
                         last_modified: now,
+                        array: false,
                         key: "code".to_string(),
                         datatype: "STRING".to_string(),
                         required: true,
@@ -1684,6 +1757,7 @@ fn test_renest_claim_schemas_failed_missing_parent_claim_schema() {
         created_date: now,
         last_modified: now,
         key: "location/x".to_string(),
+        array: false,
         datatype: "STRING".to_string(),
         required: true,
         claims: vec![],
@@ -1704,33 +1778,39 @@ fn test_claims_presence_in_layout_properties_validation_ok() {
             datatype: "STRING".to_owned(),
             required: true,
             claims: vec![],
+            array: Some(false),
         },
         CredentialClaimSchemaRequestDTO {
             key: "claim2".to_owned(),
             datatype: "STRING".to_owned(),
             required: true,
+            array: Some(false),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "claim21".to_owned(),
                 datatype: "STRING".to_owned(),
                 required: true,
+                array: Some(false),
                 claims: vec![
                     CredentialClaimSchemaRequestDTO {
                         key: "claim211".to_owned(),
                         datatype: "STRING".to_owned(),
                         required: true,
                         claims: vec![],
+                        array: Some(false),
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "claim212".to_owned(),
                         datatype: "STRING".to_owned(),
                         required: true,
                         claims: vec![],
+                        array: Some(false),
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "claim213".to_owned(),
                         datatype: "STRING".to_owned(),
                         required: true,
                         claims: vec![],
+                        array: Some(false),
                     },
                 ],
             }],
@@ -1763,15 +1843,18 @@ fn test_claims_presence_in_layout_properties_validation_missing_primary_attribut
         key: "claim2".to_owned(),
         datatype: "STRING".to_owned(),
         required: true,
+        array: Some(false),
         claims: vec![CredentialClaimSchemaRequestDTO {
             key: "claim21".to_owned(),
             datatype: "STRING".to_owned(),
             required: true,
+            array: Some(false),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "claim211".to_owned(),
                 datatype: "STRING".to_owned(),
                 required: true,
                 claims: vec![],
+                array: Some(false),
             }],
         }],
     }];
@@ -2058,6 +2141,7 @@ fn test_claims_presence_in_layout_properties_validation_missing_secondary_attrib
         datatype: "STRING".to_owned(),
         required: true,
         claims: vec![],
+        array: Some(false),
     }];
     let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
         background: None,
@@ -2086,6 +2170,7 @@ fn test_claims_presence_in_layout_properties_validation_attributes_not_specified
         datatype: "STRING".to_owned(),
         required: true,
         claims: vec![],
+        array: Some(false),
     }];
 
     let request = CreateCredentialSchemaRequestDTO {
@@ -2221,6 +2306,7 @@ async fn test_import_credential_schema_success() {
                     key: "name".to_string(),
                     datatype: "STRING".to_string(),
                     required: true,
+                    array: Some(false),
                     claims: vec![],
                 }],
                 wallet_storage_type: None,

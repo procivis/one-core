@@ -202,6 +202,11 @@ fn validate_claim_schema(
     let claim_type = config.datatype.get_fields(&claim_schema.datatype)?.r#type();
     validate_claim_schema_name(claim_schema)?;
     validate_claim_schema_type(claim_schema, claim_type)?;
+    if let Some(is_array) = claim_schema.array {
+        if is_array {
+            let _ = config.datatype.get_if_enabled("ARRAY")?;
+        }
+    }
 
     Ok(())
 }
