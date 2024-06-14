@@ -270,6 +270,21 @@ impl From<CredentialSchemaType> for CredentialSchemaTypeBindingEnum {
     }
 }
 
+impl From<CredentialSchemaTypeBindingEnum> for CredentialSchemaType {
+    fn from(value: CredentialSchemaTypeBindingEnum) -> Self {
+        match value {
+            CredentialSchemaTypeBindingEnum::ProcivisOneSchema2024 { .. } => {
+                CredentialSchemaType::ProcivisOneSchema2024
+            }
+            CredentialSchemaTypeBindingEnum::FallbackSchema2024 { .. } => {
+                CredentialSchemaType::FallbackSchema2024
+            }
+            CredentialSchemaTypeBindingEnum::Mdoc { .. } => CredentialSchemaType::Mdoc,
+            CredentialSchemaTypeBindingEnum::Other { value } => CredentialSchemaType::Other(value),
+        }
+    }
+}
+
 impl TryFrom<CreateTrustAnchorRequestBindingDTO> for CreateTrustAnchorRequestDTO {
     type Error = ServiceError;
     fn try_from(value: CreateTrustAnchorRequestBindingDTO) -> Result<Self, Self::Error> {

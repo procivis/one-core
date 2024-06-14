@@ -4,7 +4,8 @@ use axum_extra::extract::WithRejection;
 use shared_types::CredentialSchemaId;
 
 use super::dto::{
-    CredentialSchemaResponseRestDTO, CredentialSchemaShareResponseRestDTO, GetCredentialSchemaQuery,
+    CredentialSchemaResponseRestDTO, CredentialSchemaShareResponseRestDTO,
+    GetCredentialSchemaQuery, ImportCredentialSchemaRequestRestDTO,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemasResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
@@ -86,6 +87,32 @@ pub(crate) async fn get_credential_schema_list(
         .get_credential_schema_list(query.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "getting credential schemas")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/credential-schema/v1/import",
+    request_body = ImportCredentialSchemaRequestRestDTO,
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn import_credential_schema(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<ImportCredentialSchemaRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    eprintln!("we got here");
+    let result = state
+        .core
+        .credential_schema_service
+        .import_credential_schema(request.into())
+        .await;
+    CreatedOrErrorResponse::from_result(result, state, "importing credential schema")
 }
 
 #[utoipa::path(

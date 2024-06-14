@@ -48,8 +48,9 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
 #[from(one_core::service::credential::dto::CredentialSchemaType)]
+#[into(one_core::service::credential::dto::CredentialSchemaType)]
 pub enum CredentialSchemaType {
     ProcivisOneSchema2024,
     FallbackSchema2024,
@@ -273,4 +274,79 @@ pub enum CredentialSchemaCodeTypeRestEnum {
 #[from(one_core::service::credential_schema::dto::CredentialSchemaShareResponseDTO)]
 pub struct CredentialSchemaShareResponseRestDTO {
     pub url: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Into, ToSchema)]
+#[into(one_core::service::credential_schema::dto::ImportCredentialSchemaRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportCredentialSchemaRequestRestDTO {
+    pub organisation_id: OrganisationId,
+    pub schema: ImportCredentialSchemaRequestSchemaRestDTO,
+}
+
+#[derive(Clone, Debug, Deserialize, Into, ToSchema)]
+#[into(one_core::service::credential_schema::dto::ImportCredentialSchemaRequestSchemaDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportCredentialSchemaRequestSchemaRestDTO {
+    pub id: Uuid,
+    #[serde(with = "time::serde::rfc3339")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub format: String,
+    pub revocation_method: String,
+    pub organisation_id: Uuid,
+    #[into(with_fn = convert_inner)]
+    pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
+    #[into(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaType,
+    #[into(with_fn = convert_inner)]
+    pub layout_type: Option<CredentialSchemaLayoutType>,
+    #[into(with_fn = convert_inner)]
+    pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Into, ToSchema)]
+#[into(one_core::service::credential_schema::dto::ImportCredentialSchemaClaimSchemaDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportCredentialSchemaClaimSchemaRestDTO {
+    pub id: Uuid,
+    #[serde(with = "time::serde::rfc3339")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub key: String,
+    pub datatype: String,
+    pub required: bool,
+    #[into(with_fn = convert_inner)]
+    #[serde(default)]
+    pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Into, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[into(one_core::service::credential_schema::dto::ImportCredentialSchemaLayoutPropertiesDTO)]
+pub struct ImportCredentialSchemaLayoutPropertiesRestDTO {
+    #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    pub background: Option<CredentialSchemaBackgroundPropertiesRestDTO>,
+    #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    pub logo: Option<CredentialSchemaLogoPropertiesRestDTO>,
+    #[serde(default)]
+    pub primary_attribute: Option<String>,
+    #[serde(default)]
+    pub secondary_attribute: Option<String>,
+    #[serde(default)]
+    pub picture_attribute: Option<String>,
+    #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    pub code: Option<CredentialSchemaCodePropertiesRestDTO>,
 }

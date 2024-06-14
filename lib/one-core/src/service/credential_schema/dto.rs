@@ -4,6 +4,7 @@ use strum_macros::{Display, EnumString};
 use time::OffsetDateTime;
 
 use dto_mapper::{convert_inner, From, Into};
+use uuid::Uuid;
 
 use crate::model;
 use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
@@ -111,11 +112,13 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub schema_id: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, From)]
+#[from(ImportCredentialSchemaClaimSchemaDTO)]
 pub struct CredentialClaimSchemaRequestDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
+    #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
 }
 
@@ -184,4 +187,52 @@ pub enum CredentialSchemaCodeTypeEnum {
 
 pub struct CredentialSchemaShareResponseDTO {
     pub url: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportCredentialSchemaRequestDTO {
+    pub organisation_id: OrganisationId,
+    pub schema: ImportCredentialSchemaRequestSchemaDTO,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportCredentialSchemaRequestSchemaDTO {
+    pub id: Uuid,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub format: String,
+    pub revocation_method: String,
+    pub organisation_id: Uuid,
+    pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaType,
+    pub layout_type: Option<LayoutType>,
+    pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportCredentialSchemaClaimSchemaDTO {
+    pub id: Uuid,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub key: String,
+    pub datatype: String,
+    pub required: bool,
+    pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(CredentialSchemaLayoutPropertiesRequestDTO)]
+pub struct ImportCredentialSchemaLayoutPropertiesDTO {
+    #[into(with_fn = convert_inner)]
+    pub background: Option<CredentialSchemaBackgroundPropertiesRequestDTO>,
+    #[into(with_fn = convert_inner)]
+    pub logo: Option<CredentialSchemaLogoPropertiesRequestDTO>,
+    pub primary_attribute: Option<String>,
+    pub secondary_attribute: Option<String>,
+    pub picture_attribute: Option<String>,
+    #[into(with_fn = convert_inner)]
+    pub code: Option<CredentialSchemaCodePropertiesRequestDTO>,
 }

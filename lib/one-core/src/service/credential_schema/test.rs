@@ -13,7 +13,8 @@ use crate::provider::credential_formatter::{FormatterCapabilities, MockCredentia
 use crate::service::credential_schema::dto::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
     CredentialSchemaCodeTypeEnum, CredentialSchemaFilterValue,
-    CredentialSchemaLogoPropertiesRequestDTO,
+    CredentialSchemaLogoPropertiesRequestDTO, ImportCredentialSchemaClaimSchemaDTO,
+    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
 };
 use crate::service::test_utilities::generic_formatter_capabilities;
 use crate::{
@@ -2136,4 +2137,100 @@ async fn test_share_credential_schema_success() {
 
     let result = service.share_credential_schema(&schema_id).await;
     assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_import_credential_schema_success() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
+    let mut organisation_repository = MockOrganisationRepository::default();
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    let now = OffsetDateTime::now_utc();
+    let own_organisation_id = Uuid::new_v4();
+    let organisation = Organisation {
+        id: own_organisation_id.to_owned().into(),
+        created_date: now,
+        last_modified: now,
+    };
+    organisation_repository
+        .expect_get_organisation()
+        .return_once(|_, _| Ok(Some(organisation)));
+
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            revocation_methods: vec!["NONE".to_string()],
+            ..Default::default()
+        });
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
+    repository
+        .expect_get_credential_schema_list()
+        .times(1)
+        .returning(move |_, _| {
+            Ok(GetCredentialSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+
+    repository
+        .expect_create_credential_schema()
+        .return_once(move |new_schema| {
+            assert_eq!(
+                own_organisation_id,
+                new_schema.organisation.unwrap().id.into()
+            );
+            Ok(new_schema.id)
+        });
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        formatter_provider,
+        generic_config().core,
+    );
+
+    let external_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let result = service
+        .import_credential_schema(ImportCredentialSchemaRequestDTO {
+            organisation_id: own_organisation_id.into(),
+            schema: ImportCredentialSchemaRequestSchemaDTO {
+                id: external_schema_id.into(),
+                created_date: now,
+                last_modified: now,
+                name: "external schema".to_string(),
+                format: "JWT".to_string(),
+                revocation_method: "NONE".to_string(),
+                organisation_id: Uuid::new_v4(),
+                claims: vec![ImportCredentialSchemaClaimSchemaDTO {
+                    id: Uuid::new_v4(),
+                    created_date: now,
+                    last_modified: now,
+                    key: "name".to_string(),
+                    datatype: "STRING".to_string(),
+                    required: true,
+                    claims: vec![],
+                }],
+                wallet_storage_type: None,
+                schema_id: "http://127.0.0.1/ssi/schema/some_schmea".to_string(),
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024.into(),
+                layout_type: None,
+                layout_properties: None,
+            },
+        })
+        .await
+        .unwrap();
+    assert_ne!(external_schema_id, result);
 }

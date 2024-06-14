@@ -1063,6 +1063,7 @@ async fn handle_credential_invitation(
                         organisation,
                         "",
                         core_config::FormatType::Jwt,
+                        None,
                     )
                     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
@@ -1120,6 +1121,7 @@ async fn handle_credential_invitation(
                         organisation,
                         "",
                         core_config::FormatType::Mdoc,
+                        None,
                     )
                     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
