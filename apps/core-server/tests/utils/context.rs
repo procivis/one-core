@@ -33,7 +33,6 @@ impl TestContext {
     pub async fn new_with_token(token: &str) -> Self {
         let server_mock = MockServer::new().await;
         let stdout_log = tracing_subscriber::fmt::layer().with_test_writer();
-        let _ = tracing_subscriber::registry().with(stdout_log).try_init();
 
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let base_url = format!("http://{}", listener.local_addr().unwrap());
@@ -41,6 +40,22 @@ impl TestContext {
         let config = fixtures::create_config(&base_url, Some(server_mock.uri()));
         let db = fixtures::create_db(&config).await;
         let _handle = run_server(listener, config.to_owned(), &db);
+
+        let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+            .or_else(|_| {
+                tracing_subscriber::EnvFilter::try_new(
+                    config
+                        .app
+                        .trace_level
+                        .as_ref()
+                        .unwrap_or(&"debug".to_string()),
+                )
+            })
+            .expect("Failed to create env filter");
+        let _ = tracing_subscriber::registry()
+            .with(stdout_log)
+            .with(filter)
+            .try_init();
 
         Self {
             db: DbClient::new(db),
