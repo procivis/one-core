@@ -102,7 +102,7 @@ pub fn create_config(
         trace_json: None,
         sentry_dsn: None,
         sentry_environment: None,
-        trace_level: Some("debug".into()),
+        trace_level: Some("debug,hyper=error,sea_orm=info,sqlx::query=error".into()),
         hide_error_response_cause: true,
         json_ld_context: Some(JsonLdContextConfig {
             cache_refresh_timeout: Duration::seconds(86400),
