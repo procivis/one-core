@@ -120,6 +120,7 @@ pub struct ProofClaimSchemaResponseRestDTO {
     #[from(with_fn = convert_inner)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub claims: Vec<ProofClaimSchemaResponseRestDTO>,
+    pub array: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

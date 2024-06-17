@@ -141,6 +141,7 @@ fn unnest_proof_claim_schemas(
             key,
             data_type: claim_schema.data_type.clone(),
             claims: vec![],
+            array: claim_schema.array,
         });
 
         result.extend(nested);
@@ -162,8 +163,8 @@ fn convert_input_schema_to_response(
 
     let credential_schema_claims =
         credential_schema
-            .to_owned()
             .claim_schemas
+            .as_ref()
             .ok_or(ServiceError::MappingError(
                 "claim_schemas is None".to_string(),
             ))?;
@@ -172,7 +173,7 @@ fn convert_input_schema_to_response(
         claim_schemas: nest_claim_schemas(
             append_object_claim_schemas(
                 convert_inner(claim_schemas),
-                &credential_schema_claims,
+                credential_schema_claims,
                 datatype_config,
             )?,
             datatype_config,
@@ -189,6 +190,7 @@ fn append_object_claim_schemas(
 ) -> Result<Vec<ProofClaimSchemaResponseDTO>, ServiceError> {
     let mut nested_claim_schemas: Vec<_> = claim_schemas
         .iter()
+        // todo: can arrays be root objects
         .filter(|cs| is_object(&cs.data_type, datatype_config).unwrap_or(false))
         .flat_map(|os| {
             // Add all nested claims for object
@@ -206,6 +208,7 @@ fn append_object_claim_schemas(
                     key: child_claim.schema.key.to_owned(),
                     data_type: child_claim.schema.data_type.to_owned(),
                     claims: vec![],
+                    array: child_claim.schema.array,
                 })
                 .collect::<Vec<_>>()
         })
@@ -221,6 +224,7 @@ fn append_object_claim_schemas(
                 key: value.schema.key.to_owned(),
                 data_type: value.schema.data_type.to_owned(),
                 claims: vec![],
+                array: value.schema.array,
             });
         }
 
@@ -298,6 +302,7 @@ impl From<ProofInputClaimSchema> for ProofClaimSchemaResponseDTO {
             key: value.schema.key,
             data_type: value.schema.data_type,
             claims: vec![],
+            array: value.schema.array,
         }
     }
 }
@@ -310,6 +315,7 @@ impl From<CredentialSchemaClaim> for ProofClaimSchemaResponseDTO {
             key: value.schema.key,
             data_type: value.schema.data_type,
             claims: vec![],
+            array: value.schema.array,
         }
     }
 }

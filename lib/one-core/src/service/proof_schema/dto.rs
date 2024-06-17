@@ -20,6 +20,8 @@ pub struct ProofClaimSchemaResponseDTO {
     pub data_type: String,
     #[serde(default)]
     pub claims: Vec<ProofClaimSchemaResponseDTO>,
+    #[serde(default)]
+    pub array: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]
