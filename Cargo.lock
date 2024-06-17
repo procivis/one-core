@@ -3491,7 +3491,7 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 [[package]]
 name = "pqc_dilithium"
 version = "0.2.0"
-source = "git+https://github.com/kibernetikos/dilithium?rev=b7106801cf#b7106801cf1d2797950f3fda50b7526278fc3ae0"
+source = "git+https://github.com/ihor-rud/dilithium?rev=e02a683#e02a683173f6b89cb0d903816ed8266344bb39b7"
 dependencies = [
  "rand",
  "rand_core",
