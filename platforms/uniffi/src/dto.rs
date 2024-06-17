@@ -553,6 +553,7 @@ pub struct ProofClaimSchemaBindingDTO {
     pub data_type: String,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<ProofClaimSchemaBindingDTO>,
+    pub array: bool,
 }
 
 #[derive(From)]

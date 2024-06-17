@@ -208,6 +208,7 @@ dictionary ProofClaimSchemaBindingDTO {
   string key;
   string data_type;
   sequence<ProofClaimSchemaBindingDTO> claims;
+  boolean array;
 };
 
 dictionary ProofInputBindingDTO {

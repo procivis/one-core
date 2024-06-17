@@ -355,6 +355,7 @@ fn renest_proof_claims(claims: Vec<ProofClaimDTO>) -> Vec<ProofClaimDTO> {
                 key: root_key,
                 data_type: DatatypeType::Object.to_string(),
                 claims: vec![],
+                array: false,
             },
             value: Some(ProofClaimValueDTO::Claims(renest_proof_claims(
                 inner_claims,
@@ -419,6 +420,7 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
                 key: claim_schema.key.clone(),
                 data_type: claim_schema.data_type.clone(),
                 claims: vec![],
+                array: claim_schema.array,
             },
             value: Some(ProofClaimValueDTO::Value(
                 proof_claim.claim.value.to_string(),
