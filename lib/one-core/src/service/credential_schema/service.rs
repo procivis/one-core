@@ -176,11 +176,6 @@ impl CredentialSchemaService {
         &self,
         request: ImportCredentialSchemaRequestDTO,
     ) -> Result<CredentialSchemaId, ServiceError> {
-        let core_base_url = self
-            .core_base_url
-            .as_ref()
-            .ok_or_else(|| ServiceError::Other("Missing core base_url".to_string()))?;
-
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
@@ -218,7 +213,7 @@ impl CredentialSchemaService {
         let credential_schema = from_create_request(
             create_request,
             organisation,
-            core_base_url,
+            "", // importing credential schema will always contain the schema_id
             format_type,
             Some(request.schema.schema_type.to_owned().into()),
         )?;
