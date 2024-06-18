@@ -21,7 +21,7 @@ impl TryFrom<ProofListItemModel> for Proof {
 
     fn try_from(value: ProofListItemModel) -> Result<Self, Self::Error> {
         let id = Uuid::from_str(&value.id)?;
-        let schema_id = Uuid::from_str(&value.schema_id)?;
+        let schema_id = Uuid::from_str(&value.schema_id)?.into();
         let verifier_did_id = value
             .verifier_did_id
             .map(|did_id| Uuid::from_str(&did_id).map(DidId::from))

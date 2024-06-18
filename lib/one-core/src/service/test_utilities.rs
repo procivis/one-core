@@ -271,7 +271,7 @@ pub fn dummy_organisation() -> Organisation {
 
 pub fn dummy_proof_schema() -> ProofSchema {
     ProofSchema {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,

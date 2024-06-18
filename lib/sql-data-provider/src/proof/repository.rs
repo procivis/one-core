@@ -339,7 +339,7 @@ impl ProofProvider {
 
         if let Some(proof_schema_relations) = &relations.schema {
             if let Some(proof_schema_id) = proof_model.proof_schema_id {
-                let proof_schema_id = Uuid::from_str(&proof_schema_id)?;
+                let proof_schema_id = Uuid::from_str(&proof_schema_id)?.into();
                 proof.schema = Some(
                     self.proof_schema_repository
                         .get_proof_schema(&proof_schema_id, proof_schema_relations)

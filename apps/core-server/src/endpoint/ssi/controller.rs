@@ -6,10 +6,9 @@ use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use headers::Authorization;
-use one_core::model::proof_schema::ProofSchemaId;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use one_core::service::oidc::dto::OpenID4VCITokenRequestDTO;
-use shared_types::{CredentialId, CredentialSchemaId, DidId, TrustAnchorId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId, ProofSchemaId, TrustAnchorId};
 use uuid::Uuid;
 
 use super::dto::{

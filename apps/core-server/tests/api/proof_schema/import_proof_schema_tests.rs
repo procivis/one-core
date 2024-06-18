@@ -10,7 +10,7 @@ use crate::utils::context::TestContext;
 async fn test_import_proof_schema_ok() {
     let (context, organisation) = TestContext::new_with_organisation().await;
 
-    let proof_schema_id = Uuid::new_v4();
+    let proof_schema_id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
 
     context
@@ -95,7 +95,7 @@ async fn test_import_proof_schema_ok() {
 async fn test_import_proof_schema_for_existing_credential_schema() {
     let (context, organisation) = TestContext::new_with_organisation().await;
 
-    let proof_schema_id = Uuid::new_v4();
+    let proof_schema_id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
 
     let credential_schema = context

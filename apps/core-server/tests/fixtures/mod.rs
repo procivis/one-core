@@ -430,7 +430,7 @@ pub async fn create_proof_schema(
         .collect();
 
     let proof_schema = ProofSchema {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: name.to_owned(),

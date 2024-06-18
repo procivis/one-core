@@ -19,27 +19,35 @@ impl CredentialSchemasApi {
         &self,
         name: &str,
         organisation_id: impl Into<Uuid>,
+        format: &str,
         schema_id: Option<&str>,
     ) -> Response {
         let body = json!({
           "claims": [
             {
-              "datatype": "STRING",
-              "key": "firstName",
-              "required": true
+              "datatype": "OBJECT",
+              "key": "firstObject",
+              "required": true,
+              "claims": [
+                {
+                  "datatype": "STRING",
+                  "key": "firstName",
+                  "required": true
+                }
+              ],
             }
           ],
-          "format": "JWT",
+          "format": format,
           "name": name,
           "organisationId": organisation_id.into(),
-          "revocationMethod": "BITSTRINGSTATUSLIST",
+          "revocationMethod": "NONE",
           "layoutType": "CARD",
           "layoutProperties": {
             "backgroundColor": "bg-color",
             "backgroundImage": "bg-image",
             "labelColor": "label-color",
             "labelImage": "label-image",
-            "primaryAttribute": "firstName",
+            "primaryAttribute": "firstObject/firstName",
           },
           "schemaId": schema_id,
         });

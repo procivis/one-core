@@ -5,6 +5,7 @@ use mockall::PredicateBooleanExt;
 use reqwest::Method;
 use shared_types::CredentialSchemaId;
 use shared_types::OrganisationId;
+use shared_types::ProofSchemaId;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -158,7 +159,7 @@ async fn test_get_proof_schema_missing() {
         MockCredentialFormatterProvider::default(),
     );
 
-    let result = service.get_proof_schema(&Uuid::new_v4()).await;
+    let result = service.get_proof_schema(&Uuid::new_v4().into()).await;
     assert!(result.is_err_and(|e| matches!(
         e,
         ServiceError::EntityNotFound(EntityNotFoundError::ProofSchema(_))
@@ -170,7 +171,7 @@ async fn test_get_proof_schema_list_success() {
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
     let proof_schema = ProofSchema {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
@@ -263,7 +264,7 @@ async fn test_delete_proof_schema_success() {
         .expect_get_proof_schema()
         .returning(|_, _| {
             Ok(Some(ProofSchema {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -274,7 +275,7 @@ async fn test_delete_proof_schema_success() {
             }))
         });
 
-    let proof_schema_id = Uuid::new_v4();
+    let proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
     proof_schema_repository
         .expect_delete_proof_schema()
         .times(1)
@@ -305,7 +306,7 @@ async fn test_delete_proof_schema_failure() {
         .expect_get_proof_schema()
         .returning(|_, _| {
             Ok(Some(ProofSchema {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -328,7 +329,7 @@ async fn test_delete_proof_schema_failure() {
         MockCredentialFormatterProvider::default(),
     );
 
-    let result = service.delete_proof_schema(&Uuid::new_v4()).await;
+    let result = service.delete_proof_schema(&Uuid::new_v4().into()).await;
     assert!(matches!(
         result,
         Err(ServiceError::BusinessLogic(
@@ -1070,7 +1071,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     proof_schema_repository
         .expect_create_proof_schema()
         .once()
-        .returning(|_| Ok(Uuid::new_v4()));
+        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
@@ -1312,7 +1313,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
 
 fn generic_proof_schema() -> ProofSchema {
     ProofSchema {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
@@ -1507,7 +1508,7 @@ async fn test_create_proof_schema_verify_nested_generic(
     keys: &[&str],
     features: &[String],
     disclosure_features: &[SelectiveDisclosureOption],
-) -> Result<Uuid, ServiceError> {
+) -> Result<ProofSchemaId, ServiceError> {
     let claim_schemas: Vec<_> = keys
         .iter()
         .map(|key| ClaimSchema {

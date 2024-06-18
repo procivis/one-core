@@ -1,4 +1,4 @@
-use one_core::model::proof_schema::ProofSchemaId;
+use shared_types::ProofSchemaId;
 
 use crate::{error::BindingError, utils::into_id, OneCoreBinding};
 

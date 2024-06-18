@@ -1,6 +1,6 @@
 use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
-    OrganisationId, TrustAnchorId, TrustEntityId,
+    OrganisationId, ProofSchemaId, TrustAnchorId, TrustEntityId,
 };
 use strum_macros::Display;
 use thiserror::Error;
@@ -14,7 +14,6 @@ use crate::crypto::signer::error::SignerError;
 use crate::model::credential::CredentialStateEnum;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{ProofId, ProofStateEnum};
-use crate::model::proof_schema::ProofSchemaId;
 use crate::model::revocation_list::RevocationListId;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::DidMethodError;
@@ -180,7 +179,7 @@ pub enum BusinessLogicError {
     MissingRevocationListForDid { did_id: DidId },
 
     #[error("Proof schema {proof_schema_id} is deleted")]
-    ProofSchemaDeleted { proof_schema_id: Uuid },
+    ProofSchemaDeleted { proof_schema_id: ProofSchemaId },
 
     #[error("Missing credentials for credential: {credential_id}")]
     MissingCredentialData { credential_id: CredentialId },
@@ -195,7 +194,7 @@ pub enum BusinessLogicError {
     MissingParentClaimSchema { claim_schema_id: ClaimSchemaId },
 
     #[error("Missing proof schema: {proof_schema_id}")]
-    MissingProofSchema { proof_schema_id: Uuid },
+    MissingProofSchema { proof_schema_id: ProofSchemaId },
 
     #[error("Missing interaction for access token: {interaction_id}")]
     MissingInteractionForAccessToken { interaction_id: Uuid },
@@ -249,6 +248,12 @@ pub enum BusinessLogicError {
 
     #[error("Invalid claim type (mdoc top level only objects allowed)")]
     InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
+
+    #[error("Missing MDOC doctype")]
+    MissingMdocDoctype,
+
+    #[error("Schema ID not allowed")]
+    SchemaIdNotAllowed,
 
     #[error("Claim schema key exceeded max length (255)")]
     ClaimSchemaKeyTooLong,
@@ -758,6 +763,12 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Imported proof schema error")]
     BR_0135,
+
+    #[strum(to_string = "Missing MDOC doctype")]
+    BR_0138,
+
+    #[strum(to_string = "Schema ID not allowed")]
+    BR_0139,
 }
 
 impl From<FormatError> for ServiceError {
@@ -889,6 +900,8 @@ impl BusinessLogicError {
             BusinessLogicError::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
             BusinessLogicError::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,
             BusinessLogicError::ProofSchemaImport(_) => ErrorCode::BR_0135,
+            BusinessLogicError::MissingMdocDoctype => ErrorCode::BR_0138,
+            BusinessLogicError::SchemaIdNotAllowed => ErrorCode::BR_0139,
         }
     }
 }

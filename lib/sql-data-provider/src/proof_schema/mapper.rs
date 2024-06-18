@@ -14,7 +14,7 @@ impl TryFrom<proof_schema::Model> for ProofSchema {
     type Error = DataLayerError;
 
     fn try_from(value: proof_schema::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id)?;
+        let id = Uuid::from_str(&value.id)?.into();
 
         Ok(Self {
             id,

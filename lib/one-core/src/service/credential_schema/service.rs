@@ -36,6 +36,7 @@ impl CredentialSchemaService {
             &request,
             &self.config,
             &self.formatter_provider,
+            false,
         )?;
 
         super::validator::credential_schema_already_exists(
@@ -194,6 +195,7 @@ impl CredentialSchemaService {
             &create_request,
             &self.config,
             &self.formatter_provider,
+            true,
         )?;
 
         super::validator::credential_schema_already_exists(

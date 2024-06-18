@@ -10,6 +10,7 @@ mod json_ld_context_id;
 mod key_id;
 mod macros;
 mod organisation_id;
+mod proof_schema_id;
 mod trust_anchor_id;
 mod trust_entity_id;
 
@@ -24,5 +25,6 @@ pub use history_id::HistoryId;
 pub use json_ld_context_id::JsonLdContextId;
 pub use key_id::KeyId;
 pub use organisation_id::OrganisationId;
+pub use proof_schema_id::ProofSchemaId;
 pub use trust_anchor_id::TrustAnchorId;
 pub use trust_entity_id::TrustEntityId;
