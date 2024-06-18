@@ -38,6 +38,7 @@ use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::proof_schema::mapper::convert_proof_schema_to_response;
+use crate::service::proof_schema::validator::throw_if_validity_constraint_missing_for_lvvc;
 
 impl ProofSchemaService {
     /// Returns details of a proof schema
@@ -152,6 +153,8 @@ impl ProofSchemaService {
         if credential_schemas.len() != expected_credential_schemas {
             return Err(BusinessLogicError::MissingCredentialSchema.into());
         }
+
+        throw_if_validity_constraint_missing_for_lvvc(&credential_schemas, &request)?;
 
         let claim_schemas = extract_claims_from_credential_schema(
             &request.proof_input_schemas,

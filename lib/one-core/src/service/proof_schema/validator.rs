@@ -35,6 +35,25 @@ pub async fn proof_schema_name_already_exists(
     Ok(())
 }
 
+pub fn throw_if_validity_constraint_missing_for_lvvc(
+    credential_schemas: &Vec<CredentialSchema>,
+    request: &CreateProofSchemaRequestDTO,
+) -> Result<(), ValidationError> {
+    for credential_schema in credential_schemas {
+        let input_schema = request
+            .proof_input_schemas
+            .iter()
+            .find(|input| input.credential_schema_id == credential_schema.id)
+            .ok_or(ValidationError::ProofSchemaMissingProofInputSchemas)?;
+        if credential_schema.revocation_method == "LVVC"
+            && input_schema.validity_constraint.is_none()
+        {
+            return Err(ValidationError::ValidityConstraintMissingForLvvc);
+        }
+    }
+    Ok(())
+}
+
 pub fn validate_create_request(
     request: &CreateProofSchemaRequestDTO,
 ) -> Result<(), ValidationError> {
