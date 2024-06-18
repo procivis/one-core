@@ -1,15 +1,12 @@
 use dto_mapper::From;
 use serde::Deserialize;
-use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
+use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use url::Url;
-use uuid::Uuid;
 
 use crate::model::common::{GetListQueryParams, GetListResponse};
 use crate::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
-
-pub type ProofSchemaId = Uuid;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

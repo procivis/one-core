@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 use dto_mapper::convert_inner;
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO,
-    ProofInputSchemaResponseDTO, ProofSchemaId,
+    ProofInputSchemaResponseDTO,
 };
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
@@ -387,7 +387,7 @@ pub fn proof_schema_from_create_request(
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(ProofSchema {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         name: request.name,

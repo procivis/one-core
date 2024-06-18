@@ -1,5 +1,5 @@
+use shared_types::ProofSchemaId;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::{
     claim_schema::ClaimSchema,
@@ -7,8 +7,6 @@ use super::{
     credential_schema::{CredentialSchema, CredentialSchemaRelations},
     organisation::{Organisation, OrganisationRelations},
 };
-
-pub type ProofSchemaId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProofSchema {

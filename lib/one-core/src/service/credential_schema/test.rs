@@ -1214,7 +1214,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
             ],
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: None,
+            schema_id: Some("schema.id".to_string()),
         })
         .await
         .unwrap_err();
@@ -1223,6 +1223,108 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
         ServiceError::BusinessLogic(
             BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed
         )
+    ));
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(generic_formatter_capabilities);
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockHistoryRepository::default(),
+        MockOrganisationRepository::default(),
+        formatter_provider,
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "MDOC".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "test".to_string(),
+                datatype: "OBJECT".to_string(),
+                array: Some(false),
+                required: true,
+                claims: vec![CredentialClaimSchemaRequestDTO {
+                    key: "nested".to_string(),
+                    datatype: "STRING".to_string(),
+                    required: true,
+                    array: Some(false),
+                    claims: vec![],
+                }],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: Some("".to_string()),
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::BusinessLogic(BusinessLogicError::MissingMdocDoctype)
+    ));
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_failed_schema_id_not_allowed() {
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(generic_formatter_capabilities);
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockHistoryRepository::default(),
+        MockOrganisationRepository::default(),
+        formatter_provider,
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "test".to_string(),
+                datatype: "STRING".to_string(),
+                array: Some(false),
+                required: true,
+                claims: vec![],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: Some("schema.id".to_string()),
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::BusinessLogic(BusinessLogicError::SchemaIdNotAllowed)
     ));
 }
 

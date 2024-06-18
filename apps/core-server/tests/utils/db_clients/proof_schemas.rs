@@ -7,12 +7,12 @@ use one_core::{
         organisation::{Organisation, OrganisationRelations},
         proof_schema::{
             ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
-            ProofSchemaId, ProofSchemaRelations,
+            ProofSchemaRelations,
         },
     },
     repository::proof_schema_repository::ProofSchemaRepository,
 };
-use shared_types::ClaimSchemaId;
+use shared_types::{ClaimSchemaId, ProofSchemaId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -71,7 +71,7 @@ impl ProofSchemasDB {
         }];
 
         let proof_schema = ProofSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),

@@ -140,8 +140,7 @@ async fn test_succeed_to_fetch_claims_nested_root_object() {
         .as_ref()
         .unwrap()
         // We only put a nested (coordinates) root component in proof schema
-        .iter()
-        .nth(2)
+        .get(2)
         .unwrap();
 
     let proof_schema = context

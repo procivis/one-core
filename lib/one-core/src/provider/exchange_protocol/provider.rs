@@ -40,6 +40,7 @@ use crate::service::oidc::dto::OpenID4VCIError;
 
 #[derive(Clone)]
 pub struct DetectedProtocol {
+    #[allow(dead_code)]
     pub invitation_type: InvitationType,
     pub protocol: Arc<dyn ExchangeProtocol>,
 }

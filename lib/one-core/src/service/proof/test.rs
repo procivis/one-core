@@ -143,7 +143,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
         }]),
         redirect_uri: None,
         schema: Some(ProofSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -262,7 +262,7 @@ async fn test_get_proof_exists() {
         }]),
         redirect_uri: None,
         schema: Some(ProofSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
@@ -430,7 +430,7 @@ async fn test_get_proof_list_success() {
             state: ProofStateEnum::Created,
         }]),
         schema: Some(ProofSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
@@ -500,7 +500,7 @@ async fn test_get_proof_list_success() {
 async fn test_create_proof_without_related_key() {
     let exchange = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
-        proof_schema_id: Uuid::new_v4(),
+        proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
         exchange: exchange.to_owned(),
         redirect_uri: None,
@@ -602,7 +602,7 @@ async fn test_create_proof_with_related_key() {
     let exchange = "PROCIVIS_TEMPORARY".to_string();
     let verifier_key_id = Uuid::new_v4().into();
     let request = CreateProofRequestDTO {
-        proof_schema_id: Uuid::new_v4(),
+        proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
         exchange: exchange.to_owned(),
         redirect_uri: None,
@@ -701,7 +701,7 @@ async fn test_create_proof_with_related_key() {
 async fn test_create_proof_failed_no_key_with_assertion_method_role() {
     let exchange = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
-        proof_schema_id: Uuid::new_v4(),
+        proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
         exchange: exchange.to_owned(),
         redirect_uri: None,
@@ -780,7 +780,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
 async fn test_create_proof_failed_incompatible_exchange() {
     let exchange = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
-        proof_schema_id: Uuid::new_v4(),
+        proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
         exchange: exchange.to_owned(),
         redirect_uri: None,
@@ -834,7 +834,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
 async fn test_create_proof_did_deactivated_error() {
     let exchange = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
-        proof_schema_id: Uuid::new_v4(),
+        proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
         exchange: exchange.to_owned(),
         redirect_uri: None,
@@ -939,7 +939,7 @@ async fn test_create_proof_schema_deleted() {
 
     let result = service
         .create_proof(CreateProofRequestDTO {
-            proof_schema_id: Uuid::new_v4(),
+            proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Uuid::new_v4().into(),
             exchange: "PROCIVIS_TEMPORARY".to_string(),
             redirect_uri: None,

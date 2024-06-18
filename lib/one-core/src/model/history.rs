@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId, OrganisationId};
+use shared_types::{
+    CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId, OrganisationId, ProofSchemaId,
+};
 use time::OffsetDateTime;
 
 use super::organisation::Organisation;
@@ -7,7 +9,6 @@ use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
-use crate::service::proof_schema::dto::ProofSchemaId;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum HistoryMetadata {

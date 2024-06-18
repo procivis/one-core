@@ -1,7 +1,7 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use uuid::Uuid;
+use shared_types::ProofSchemaId;
 
 use super::dto::{
     CreateProofSchemaRequestRestDTO, GetProofSchemaQuery, GetProofSchemaResponseRestDTO,
@@ -70,7 +70,7 @@ pub(crate) async fn get_proof_schemas(
     path = "/api/proof-schema/v1/{id}",
     responses(OkOrErrorResponse<GetProofSchemaResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Schema id")
+        ("id" = ProofSchemaId, Path, description = "Schema id")
     ),
     tag = "proof_schema_management",
     security(
@@ -79,7 +79,7 @@ pub(crate) async fn get_proof_schemas(
 )]
 pub(crate) async fn get_proof_schema_detail(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofSchemaId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetProofSchemaResponseRestDTO> {
     let result = state.core.proof_schema_service.get_proof_schema(&id).await;
     OkOrErrorResponse::from_result(result, state, "getting proof schema")
@@ -90,7 +90,7 @@ pub(crate) async fn get_proof_schema_detail(
     path = "/api/proof-schema/v1/{id}",
     responses(EmptyOrErrorResponse),
     params(
-        ("id" = Uuid, Path, description = "Schema id")
+        ("id" = ProofSchemaId, Path, description = "Schema id")
     ),
     tag = "proof_schema_management",
     security(
@@ -99,7 +99,7 @@ pub(crate) async fn get_proof_schema_detail(
 )]
 pub(crate) async fn delete_proof_schema(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofSchemaId>, ErrorResponseRestDTO>,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
@@ -114,7 +114,7 @@ pub(crate) async fn delete_proof_schema(
     path = "/api/proof-schema/v1/{id}/share",
     responses(OkOrErrorResponse<ProofSchemaShareResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Schema id")
+        ("id" = ProofSchemaId, Path, description = "Schema id")
     ),
     tag = "proof_schema_management",
     security(
@@ -123,7 +123,7 @@ pub(crate) async fn delete_proof_schema(
 )]
 pub(crate) async fn share_proof_schema(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofSchemaId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<ProofSchemaShareResponseRestDTO> {
     let result = state.core.proof_schema_service.share_proof_schema(id).await;
     OkOrErrorResponse::from_result(result, state, "sharing proof schema")
@@ -151,7 +151,7 @@ pub(crate) async fn import_proof_schema(
         .proof_schema_service
         .import_proof_schema(request.into())
         .await
-        .map(|resp| EntityResponseRestDTO { id: resp.id });
+        .map(|resp| EntityResponseRestDTO { id: resp.id.into() });
 
     CreatedOrErrorResponse::from_result(result, state, "importing proof schema")
 }

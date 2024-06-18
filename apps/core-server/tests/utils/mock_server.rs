@@ -1,10 +1,9 @@
 use std::fmt::Display;
 
-use one_core::model::proof_schema::ProofSchemaId;
 use reqwest::header::AUTHORIZATION;
 use serde::Serialize;
 use serde_json::json;
-use shared_types::{CredentialSchemaId, DidValue};
+use shared_types::{CredentialSchemaId, DidValue, ProofSchemaId};
 use time::OffsetDateTime;
 use wiremock::http::Method;
 use wiremock::matchers::{header, method, path, query_param};

@@ -1,4 +1,4 @@
-use shared_types::{DidId, KeyId, OrganisationId};
+use shared_types::{DidId, KeyId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -7,9 +7,7 @@ use crate::model::proof::{ProofStateEnum, SortableProofColumn};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::did::dto::DidListItemResponseDTO;
-use crate::service::proof_schema::dto::{
-    GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO, ProofSchemaId,
-};
+use crate::service::proof_schema::dto::{GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO};
 
 pub type ProofId = Uuid;
 

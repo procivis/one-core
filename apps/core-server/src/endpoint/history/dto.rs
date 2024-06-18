@@ -1,7 +1,9 @@
 use dto_mapper::{convert_inner, From, Into};
 use one_core::service::history::dto::HistoryResponseDTO;
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId, OrganisationId};
+use shared_types::{
+    CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId, OrganisationId, ProofSchemaId,
+};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -102,7 +104,7 @@ pub struct HistoryFilterQueryParamsRest {
     pub did_id: Option<DidId>,
     pub credential_id: Option<CredentialId>,
     pub credential_schema_id: Option<CredentialSchemaId>,
-    pub proof_schema_id: Option<Uuid>,
+    pub proof_schema_id: Option<ProofSchemaId>,
     pub search_text: Option<String>,
     pub search_type: Option<HistorySearchEnumRest>,
     pub organisation_id: OrganisationId,

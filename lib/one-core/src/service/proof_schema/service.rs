@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
 use futures::future;
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialSchemaId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaListResponseDTO, GetProofSchemaQueryDTO,
-    GetProofSchemaResponseDTO, ProofSchemaId, ProofSchemaImportRequestDTO,
-    ProofSchemaImportResponseDTO, ProofSchemaShareResponseDTO,
+    GetProofSchemaResponseDTO, ProofSchemaImportRequestDTO, ProofSchemaImportResponseDTO,
+    ProofSchemaShareResponseDTO,
 };
 use super::mapper::{
     credential_schema_from_proof_input_schema, proof_input_from_import_response,
@@ -396,7 +396,7 @@ impl ProofSchemaService {
         let proof_schema_id = self
             .proof_schema_repository
             .create_proof_schema(ProofSchema {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
                 deleted_at: None,

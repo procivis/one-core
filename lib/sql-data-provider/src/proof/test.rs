@@ -12,7 +12,7 @@ use one_core::model::proof::{
     Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
     ProofStateRelations,
 };
-use one_core::model::proof_schema::{ProofSchema, ProofSchemaId, ProofSchemaRelations};
+use one_core::model::proof_schema::{ProofSchema, ProofSchemaRelations};
 use one_core::repository::claim_repository::{ClaimRepository, MockClaimRepository};
 use one_core::repository::credential_repository::{CredentialRepository, MockCredentialRepository};
 use one_core::repository::did_repository::{DidRepository, MockDidRepository};
@@ -25,7 +25,7 @@ use one_core::repository::proof_repository::ProofRepository;
 use one_core::repository::proof_schema_repository::MockProofSchemaRepository;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
-use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId};
+use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -108,7 +108,8 @@ async fn setup(
         .await
         .unwrap(),
     )
-    .unwrap();
+    .unwrap()
+    .into();
 
     let did_id = insert_did_key(
         &db,

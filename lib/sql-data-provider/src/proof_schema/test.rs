@@ -9,7 +9,7 @@ use one_core::{
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         organisation::{Organisation, OrganisationRelations},
-        proof_schema::{GetProofSchemaQuery, ProofSchema, ProofSchemaId, ProofSchemaRelations},
+        proof_schema::{GetProofSchemaQuery, ProofSchema, ProofSchemaRelations},
     },
     repository::{
         claim_schema_repository::{self, ClaimSchemaRepository, MockClaimSchemaRepository},
@@ -22,7 +22,7 @@ use one_core::{
     },
 };
 use sea_orm::{ActiveModelTrait, Set, Unchanged};
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, ProofSchemaId};
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -87,7 +87,8 @@ async fn setup_with_proof_schema(
             .await
             .unwrap(),
     )
-    .unwrap();
+    .unwrap()
+    .into();
 
     TestSetupWithProofSchema {
         repository,
@@ -248,7 +249,7 @@ async fn test_create_proof_schema_success() {
         .await
         .unwrap();
 
-    let id = Uuid::new_v4();
+    let id = Uuid::new_v4().into();
     let result = repository
         .create_proof_schema(ProofSchema {
             id,
@@ -375,7 +376,7 @@ async fn test_delete_proof_schema_missing() {
     .await;
 
     let result = repository
-        .delete_proof_schema(&Uuid::new_v4(), get_dummy_date())
+        .delete_proof_schema(&Uuid::new_v4().into(), get_dummy_date())
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
@@ -390,7 +391,7 @@ async fn test_get_proof_schema_missing() {
     .await;
 
     let result = repository
-        .get_proof_schema(&Uuid::new_v4(), &ProofSchemaRelations::default())
+        .get_proof_schema(&Uuid::new_v4().into(), &ProofSchemaRelations::default())
         .await;
     assert!(matches!(result, Ok(None)));
 }
@@ -562,7 +563,8 @@ async fn test_get_proof_schema_with_relations() {
         .await
         .unwrap(),
     )
-    .unwrap();
+    .unwrap()
+    .into();
 
     let result = repository
         .get_proof_schema(
@@ -733,7 +735,8 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         .await
         .unwrap(),
     )
-    .unwrap();
+    .unwrap()
+    .into();
 
     let result = repository
         .get_proof_schema(

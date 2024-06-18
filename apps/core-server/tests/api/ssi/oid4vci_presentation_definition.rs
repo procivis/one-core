@@ -13,8 +13,10 @@ use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 pub struct TestContextWithOID4VCIData {
     pub context: TestContext,
+    #[allow(dead_code)]
     pub organisation: Organisation,
     pub new_claim_schemas: Vec<(Uuid, &'static str, bool, &'static str, bool)>,
+    #[allow(dead_code)]
     pub interaction_data: serde_json::Value,
     pub proof_schema: ProofSchema,
     pub verifier_did: Did,

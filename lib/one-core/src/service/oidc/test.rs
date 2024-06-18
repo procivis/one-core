@@ -1318,7 +1318,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                         state: ProofStateEnum::Pending,
                     }]),
                     schema: Some(ProofSchema {
-                        id: Default::default(),
+                        id: Uuid::default().into(),
                         created_date: now,
                         last_modified: now,
                         deleted_at: None,

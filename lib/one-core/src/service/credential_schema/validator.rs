@@ -40,6 +40,7 @@ pub(crate) fn validate_create_request(
     request: &CreateCredentialSchemaRequestDTO,
     config: &CoreConfig,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    during_import: bool,
 ) -> Result<(), ServiceError> {
     // at least one claim must be declared
     if request.claims.is_empty() {
@@ -52,6 +53,7 @@ pub(crate) fn validate_create_request(
     validate_nested_claim_schemas(&request.claims, config)?;
     validate_revocation_method_is_compatible_with_format(request, config, formatter_provider)?;
     validate_mdoc_claim_types(request, config)?;
+    validate_schema_id(request, config, during_import)?;
 
     Ok(())
 }
@@ -311,6 +313,28 @@ fn validate_mdoc_claim_types(
         if data_type != DatatypeType::Object {
             return Err(BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed.into());
         }
+    }
+
+    Ok(())
+}
+
+fn validate_schema_id(
+    request: &CreateCredentialSchemaRequestDTO,
+    config: &CoreConfig,
+    during_import: bool,
+) -> Result<(), ServiceError> {
+    let format_type = config.format.get_fields(&request.format)?.r#type;
+    if format_type == FormatType::Mdoc {
+        if request.schema_id.is_none()
+            || request
+                .schema_id
+                .as_ref()
+                .is_some_and(|schema_id| schema_id.is_empty())
+        {
+            return Err(BusinessLogicError::MissingMdocDoctype.into());
+        }
+    } else if !during_import && request.schema_id.is_some() {
+        return Err(BusinessLogicError::SchemaIdNotAllowed.into());
     }
 
     Ok(())

@@ -12,7 +12,7 @@ use one_core::{
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         proof_schema::{
             GetProofSchemaList, GetProofSchemaQuery, ProofInputClaimSchema, ProofInputSchema,
-            ProofInputSchemaRelations, ProofSchema, ProofSchemaId, ProofSchemaRelations,
+            ProofInputSchemaRelations, ProofSchema, ProofSchemaRelations,
         },
     },
     repository::{error::DataLayerError, proof_schema_repository::ProofSchemaRepository},
@@ -21,7 +21,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
     TransactionTrait, Unchanged,
 };
-use shared_types::{ClaimSchemaId, CredentialSchemaId};
+use shared_types::{ClaimSchemaId, CredentialSchemaId, ProofSchemaId};
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
