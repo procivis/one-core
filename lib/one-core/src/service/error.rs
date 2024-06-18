@@ -369,6 +369,9 @@ pub enum ValidationError {
 
     #[error("Nested claims in arrays cannot be requested")]
     NestedClaimInArrayRequested,
+
+    #[error("Validity constraint must be specified for LVVC revocation method")]
+    ValidityConstraintMissingForLvvc,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -769,6 +772,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Schema ID not allowed")]
     BR_0139,
+
+    #[strum(to_string = "Validity constraint must be specified for LVVC revocation method")]
+    BR_0140,
 }
 
 impl From<FormatError> for ServiceError {
@@ -933,6 +939,7 @@ impl ValidationError {
             ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
             ValidationError::MissingLayoutAttribute(_) => ErrorCode::BR_0105,
             ValidationError::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
+            ValidationError::ValidityConstraintMissingForLvvc => ErrorCode::BR_0140,
             ValidationError::CertificateRequestedForMoreThan457Days => ErrorCode::BR_0084,
             ValidationError::NestedClaimInArrayRequested => ErrorCode::BR_0125,
         }

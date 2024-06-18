@@ -34,6 +34,7 @@ async fn test_create_proof_schema_success() {
             organisation.id,
             claims,
             credential_schema.id,
+            Some(10),
         )
         .await;
 
@@ -80,6 +81,7 @@ async fn test_create_nested_proof_schema_success() {
             organisation.id,
             claims,
             credential_schema.id,
+            Some(10),
         )
         .await;
 
@@ -133,6 +135,7 @@ async fn test_succeed_to_create_nested_proof_schema_without_object_claim() {
             organisation.id,
             claims,
             credential_schema.id,
+            None,
         )
         .await;
 
@@ -166,6 +169,7 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
             organisation.id,
             claims,
             credential_schema.id,
+            None,
         )
         .await;
 
@@ -192,6 +196,7 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
             organisation1.id,
             claims,
             credential_schema.id,
+            None,
         )
         .await;
 
@@ -225,6 +230,7 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
             organisation.id,
             claims,
             credential_schema.id,
+            None,
         )
         .await;
     assert_eq!(resp.status(), 201);
@@ -244,6 +250,7 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
             organisation.id,
             claims,
             credential_schema.id,
+            None,
         )
         .await;
 
@@ -302,6 +309,7 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
             organisation.id,
             claims,
             credential_schema.id,
+            None,
         )
         .await;
 
@@ -342,6 +350,7 @@ async fn test_fail_to_create_proof_schema_from_deleted_credential_schema() {
             organisation.id,
             claims,
             credential_schema.id,
+            None,
         )
         .await;
 
@@ -382,10 +391,47 @@ async fn test_fail_to_create_proof_schema_with_claims_not_related_to_credential_
             organisation.id,
             claims2,
             credential_schema1.id,
+            None,
         )
         .await;
 
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0010");
+}
+
+#[tokio::test]
+async fn test_fail_missing_validity_constraint_for_lvvc() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let credential_schema2 = context
+        .db
+        .credential_schemas
+        .create("test2", &organisation, "LVVC", Default::default())
+        .await;
+
+    let claims2 = credential_schema2
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .iter()
+        .map(|v| (v.schema.id, v.required));
+
+    // WHEN
+    let resp = context
+        .api
+        .proof_schemas
+        .create(
+            "proof-schema-name",
+            organisation.id,
+            claims2,
+            credential_schema2.id,
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0140");
 }
