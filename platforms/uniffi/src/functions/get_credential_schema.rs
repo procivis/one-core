@@ -1,11 +1,13 @@
-use crate::{error::BindingError, utils::into_id, CredentialSchemaBindingDTO, OneCoreBinding};
+use crate::{
+    error::BindingError, utils::into_id, CredentialSchemaDetailBindingDTO, OneCoreBinding,
+};
 use shared_types::CredentialSchemaId;
 
 impl OneCoreBinding {
     pub fn get_credential_schema(
         &self,
         credential_schema_id: String,
-    ) -> Result<CredentialSchemaBindingDTO, BindingError> {
+    ) -> Result<CredentialSchemaDetailBindingDTO, BindingError> {
         let credential_schema_id: CredentialSchemaId = into_id(&credential_schema_id)?;
 
         self.block_on(async {
