@@ -124,6 +124,32 @@ dictionary CredentialSchemaBindingDTO {
   CredentialSchemaLayoutPropertiesBindingDTO? layout_properties;
 };
 
+dictionary CredentialSchemaDetailBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  string name;
+  string format;
+  string revocation_method;
+  sequence<CredentialClaimSchemaBindingDTO> claims;
+  WalletStorageTypeBindingEnum? wallet_storage_type;
+  string schema_id;
+  CredentialSchemaTypeBindingEnum schema_type;
+  LayoutTypeBindingEnum? layout_type;
+  CredentialSchemaLayoutPropertiesBindingDTO? layout_properties;
+};
+
+dictionary CredentialClaimSchemaBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  boolean required;
+  string key;
+  boolean array;
+  string datatype;
+  sequence<CredentialClaimSchemaBindingDTO> claims; 
+};
+
 dictionary ClaimBindingDTO {
   string id;
   string key;
@@ -794,7 +820,7 @@ interface OneCoreBinding {
   CredentialDetailBindingDTO get_credential(string credential_id);
 
   [Throws=BindingError]
-  CredentialSchemaBindingDTO get_credential_schema(string credential_schema_id);
+  CredentialSchemaDetailBindingDTO get_credential_schema(string credential_schema_id);
 
   [Throws=BindingError]
   CredentialSchemaListBindingDTO get_credential_schemas(CredentialSchemaListQueryBindingDTO query);

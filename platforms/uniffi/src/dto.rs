@@ -26,12 +26,13 @@ use one_core::service::credential::dto::{
     CredentialStateEnum, GetCredentialListResponseDTO,
 };
 use one_core::service::credential_schema::dto::{
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
-    CredentialSchemaCodeTypeEnum, CredentialSchemaDetailResponseDTO,
-    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaListIncludeEntityTypeEnum,
-    CredentialSchemaLogoPropertiesRequestDTO, GetCredentialSchemaListResponseDTO,
-    ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaLayoutPropertiesDTO,
-    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
+    CredentialClaimSchemaDTO, CredentialSchemaBackgroundPropertiesRequestDTO,
+    CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
+    CredentialSchemaDetailResponseDTO, CredentialSchemaLayoutPropertiesRequestDTO,
+    CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaLogoPropertiesRequestDTO,
+    GetCredentialSchemaListResponseDTO, ImportCredentialSchemaClaimSchemaDTO,
+    ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
+    ImportCredentialSchemaRequestSchemaDTO,
 };
 use one_core::service::did::dto::{DidListItemResponseDTO, GetDidListResponseDTO};
 use one_core::service::error::ServiceError;
@@ -375,9 +376,24 @@ pub struct DidListItemBindingDTO {
     pub deactivated: bool,
 }
 
+#[derive(Debug, Clone)]
+pub struct CredentialSchemaBindingDTO {
+    pub id: String,
+    pub created_date: String,
+    pub last_modified: String,
+    pub name: String,
+    pub format: String,
+    pub revocation_method: String,
+    pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaTypeBindingEnum,
+    pub layout_type: Option<LayoutTypeBindingEnum>,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
+}
+
 #[derive(Debug, Clone, From)]
 #[from(CredentialSchemaDetailResponseDTO)]
-pub struct CredentialSchemaBindingDTO {
+pub struct CredentialSchemaDetailBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
@@ -388,6 +404,8 @@ pub struct CredentialSchemaBindingDTO {
     pub format: String,
     pub revocation_method: String,
     #[from(with_fn = convert_inner)]
+    pub claims: Vec<CredentialClaimSchemaBindingDTO>,
+    #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaTypeBindingEnum,
@@ -395,6 +413,23 @@ pub struct CredentialSchemaBindingDTO {
     pub layout_type: Option<LayoutTypeBindingEnum>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(CredentialClaimSchemaDTO)]
+pub struct CredentialClaimSchemaBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub key: String,
+    pub datatype: String,
+    pub required: bool,
+    pub array: bool,
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<CredentialClaimSchemaBindingDTO>,
 }
 
 #[derive(Debug, Clone, From)]
@@ -1006,7 +1041,7 @@ pub struct ProofInputSchemaBindingDTO {
 #[derive(Debug, TryInto)]
 #[try_into(T = one_core::service::proof_schema::dto::CreateProofSchemaRequestDTO, Error = ServiceError)]
 pub struct CreateProofSchemaRequestDTO {
-    #[try_into(with_fn_ref = into_id)]
+    #[try_into(infallible)]
     pub name: String,
     #[try_into(with_fn_ref = into_id)]
     pub organisation_id: String,
