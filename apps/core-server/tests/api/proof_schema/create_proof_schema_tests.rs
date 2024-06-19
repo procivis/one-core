@@ -49,7 +49,7 @@ async fn test_create_proof_schema_success() {
     let input_schemas = proof_schema.input_schemas.unwrap();
     assert_eq!(input_schemas.len(), 1);
     assert_eq!(input_schemas[0].validity_constraint, Some(10));
-    assert_eq!(input_schemas[0].claim_schemas.as_ref().unwrap().len(), 1);
+    assert_eq!(input_schemas[0].claim_schemas.as_ref().unwrap().len(), 2);
 }
 
 #[tokio::test]

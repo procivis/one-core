@@ -44,10 +44,24 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
             array: false,
         };
-        let claim_schemas = vec![CredentialSchemaClaim {
-            schema: claim_schema.to_owned(),
-            required: true,
-        }];
+        let claim_schema1 = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "isOver18".to_string(),
+            data_type: "BOOLEAN".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: false,
+        };
+        let claim_schemas = vec![
+            CredentialSchemaClaim {
+                schema: claim_schema.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema1.to_owned(),
+                required: false,
+            },
+        ];
 
         let credential_schema = CredentialSchema {
             id: id.into(),

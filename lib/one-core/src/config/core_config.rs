@@ -245,6 +245,9 @@ pub enum DatatypeType {
     #[serde(rename = "ARRAY")]
     #[strum(serialize = "ARRAY")]
     Array,
+    #[serde(rename = "BOOLEAN")]
+    #[strum(serialize = "BOOLEAN")]
+    Boolean,
 }
 
 pub type KeyAlgorithmConfig = ConfigBlock<KeyAlgorithmType>;

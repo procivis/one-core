@@ -28,7 +28,7 @@ async fn test_get_credential_schema_success() {
     let resp = resp.json_value().await;
 
     resp["id"].assert_eq(&credential_schema.id);
-    assert_eq!(resp["claims"].as_array().unwrap().len(), 1);
+    assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
     assert_eq!(resp["revocationMethod"], "LVVC");
     assert_eq!(resp["organisationId"], organisation.id.to_string());
     assert_eq!(resp["layoutProperties"]["background"]["color"], "#DA2727");
