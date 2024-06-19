@@ -32,7 +32,7 @@ async fn test_get_credential_schema_success() {
 
     resp["id"].assert_eq(&credential_schema.id);
     resp["schemaId"].assert_eq(&credential_schema.id);
-    assert_eq!(resp["claims"].as_array().unwrap().len(), 1);
+    assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
     assert_eq!(resp["revocationMethod"], "STATUSLIST2021");
     assert_eq!(resp["layoutType"], "CARD");
     assert_eq!(resp["schemaType"], "ProcivisOneSchema2024");

@@ -209,6 +209,11 @@ datatype:
     type: "OBJECT"
     order: 500
     params: null
+  BOOLEAN:
+    display: "datatype.boolean"
+    type: "BOOLEAN"
+    order: 301
+    params: null
   ARRAY:
     display: "datatype.array"
     type: "ARRAY"

@@ -18,7 +18,10 @@ async fn test_create_credential_success() {
         .credential_schemas
         .create("test", &organisation, "NONE", Default::default())
         .await;
-    let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
+    let claim_id = credential_schema.claim_schemas.clone().unwrap()[0]
+        .schema
+        .id;
+    let claim_id1 = credential_schema.claim_schemas.unwrap()[1].schema.id;
 
     // WHEN
     let resp = context
@@ -32,6 +35,10 @@ async fn test_create_credential_success() {
                 {
                     "claimId": claim_id.to_string(),
                     "value": "foo",
+                },
+                {
+                    "claimId": claim_id1.to_string(),
+                    "value": "true",
                 }
             ]),
             None,
@@ -47,7 +54,7 @@ async fn test_create_credential_success() {
         CredentialStateEnum::Created,
         credential.state.unwrap()[0].state
     );
-    assert_eq!(1, credential.claims.unwrap().len());
+    assert_eq!(2, credential.claims.unwrap().len());
     assert_eq!("OPENID4VC", credential.exchange);
 }
 
@@ -351,6 +358,47 @@ async fn test_create_credential_failed_specified_object_claim() {
                 {
                     "claimId": object_claim_id.to_string(),
                     "value": "foo",
+                }
+            ]),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0061", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_create_credential_boolean_value_wrong() {
+    // GIVEN
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+    let claim_id = credential_schema.claim_schemas.clone().unwrap()[0]
+        .schema
+        .id;
+    let claim_id1 = credential_schema.claim_schemas.unwrap()[1].schema.id;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                },
+                {
+                    "claimId": claim_id1.to_string(),
+                    "value": "test",
                 }
             ]),
             None,

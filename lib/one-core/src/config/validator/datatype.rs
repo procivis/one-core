@@ -1,4 +1,5 @@
 use std::num::{ParseFloatError, ParseIntError};
+use std::str::ParseBoolError;
 
 use serde::Deserialize;
 use thiserror::Error;
@@ -30,6 +31,10 @@ pub enum DatatypeValidationError {
     NumberTooSmall(f64, f64),
     #[error("Number too big (`{0}` > `{1}`)")]
     NumberTooBig(f64, f64),
+
+    // boolean
+    #[error("Boolean parse failure: `{0}`")]
+    BooleanParseFailure(ParseBoolError),
 
     // date
     #[error("Date parse failure: `{0}`")]
@@ -101,6 +106,7 @@ pub fn validate_datatype_value(
         DatatypeType::File => validate_file(value, config.get(datatype)?)?,
         DatatypeType::Object => validate_object(value, config.get(datatype)?)?,
         DatatypeType::Array => validate_array(value, config.get(datatype)?)?,
+        DatatypeType::Boolean => validate_boolean(value, config.get(datatype)?)?,
     };
 
     Ok(())
@@ -124,6 +130,18 @@ fn validate_string(value: &str, params: StringParams) -> Result<(), DatatypeVali
             ));
         }
     }
+
+    Ok(())
+}
+#[allow(dead_code)]
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BooleanParams {}
+
+fn validate_boolean(value: &str, _params: BooleanParams) -> Result<(), DatatypeValidationError> {
+    let _: bool = value
+        .parse()
+        .map_err(DatatypeValidationError::BooleanParseFailure)?;
 
     Ok(())
 }

@@ -110,7 +110,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         .await;
 
     let mut claim_schema = credential_schema.claim_schemas.unwrap();
-    assert_eq!(1, claim_schema.len());
+    assert_eq!(2, claim_schema.len());
     let claim_schema = claim_schema.swap_remove(0);
 
     context
@@ -199,7 +199,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         .iter()
         .map(|c| c.schema.key.as_str())
         .collect();
-    assert_eq!(3, claim_schemas.len());
+    assert_eq!(4, claim_schemas.len());
     assert!(claim_schemas.contains("root/name"));
     assert!(claim_schemas.contains("root/age"));
     assert!(claim_schemas.contains(claim_schema.schema.key.as_str()));
