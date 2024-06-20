@@ -1,3 +1,4 @@
+use crate::config::core_config::CoreConfig;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
@@ -80,6 +81,7 @@ pub(super) fn presentation_definition_from_proof(
     proof: &Proof,
     credentials: Vec<Credential>,
     credential_groups: Vec<CredentialGroup>,
+    config: &CoreConfig,
 ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
@@ -107,7 +109,7 @@ pub(super) fn presentation_definition_from_proof(
                 })
                 .collect::<Result<Vec<_>, ExchangeProtocolError>>()?,
         }],
-        credentials: credential_model_to_credential_dto(credentials)?,
+        credentials: credential_model_to_credential_dto(credentials, config)?,
     })
 }
 

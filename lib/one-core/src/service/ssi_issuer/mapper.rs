@@ -1,4 +1,5 @@
 use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::config::core_config::CoreConfig;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
@@ -113,25 +114,24 @@ pub fn get_url_with_fragment(base_url: &str, fragment: &str) -> Result<String, S
     Ok(url.to_string())
 }
 
-impl TryFrom<Credential> for ConnectIssuerResponseDTO {
-    type Error = ServiceError;
-
-    fn try_from(value: Credential) -> Result<Self, Self::Error> {
-        let schema = value.schema.ok_or(ServiceError::MappingError(
-            "credential_schema is None".to_string(),
-        ))?;
-        let issuer_did = value
-            .issuer_did
-            .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
-        let claims = value
-            .claims
-            .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
-        Ok(Self {
-            id: value.id,
-            issuer_did: issuer_did.into(),
-            claims: from_vec_claim(claims, &schema)?,
-            schema: schema.try_into()?,
-            redirect_uri: value.redirect_uri,
-        })
-    }
+pub(super) fn connect_issuer_response_from_credential(
+    value: Credential,
+    config: &CoreConfig,
+) -> Result<ConnectIssuerResponseDTO, ServiceError> {
+    let schema = value.schema.ok_or(ServiceError::MappingError(
+        "credential_schema is None".to_string(),
+    ))?;
+    let issuer_did = value
+        .issuer_did
+        .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
+    let claims = value
+        .claims
+        .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
+    Ok(ConnectIssuerResponseDTO {
+        id: value.id,
+        issuer_did: issuer_did.into(),
+        claims: from_vec_claim(claims, &schema, config)?,
+        schema: schema.try_into()?,
+        redirect_uri: value.redirect_uri,
+    })
 }

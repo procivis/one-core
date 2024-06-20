@@ -12,7 +12,8 @@ use crate::config::core_config::{ExchangeType, FormatType, Params};
 use crate::config::ConfigValidationError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError};
 use crate::service::ssi_issuer::mapper::{
-    credential_rejected_history_event, generate_jsonld_context_response, get_url_with_fragment,
+    connect_issuer_response_from_credential, credential_rejected_history_event,
+    generate_jsonld_context_response, get_url_with_fragment,
 };
 use crate::service::ssi_validator::validate_exchange_type;
 use crate::{
@@ -101,7 +102,7 @@ impl SSIIssuerService {
             });
         }
 
-        credential.try_into()
+        connect_issuer_response_from_credential(credential, &self.config)
     }
 
     pub async fn issuer_submit(

@@ -92,7 +92,7 @@ impl ProofService {
         if proof.schema.is_some() {
             get_verifier_proof_detail(proof, &self.config)
         } else {
-            get_holder_proof_detail(proof)
+            get_holder_proof_detail(proof, &self.config)
         }
     }
 

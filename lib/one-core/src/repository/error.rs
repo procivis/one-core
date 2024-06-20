@@ -1,3 +1,4 @@
+use shared_types::{ClaimId, ClaimSchemaId};
 use thiserror::Error;
 
 use crate::{model::proof::ProofId, service::error::ErrorCode};
@@ -28,6 +29,9 @@ pub enum DataLayerError {
     #[error("Mismatch in size for claim schema list: expected {expected} claims, got {got}")]
     IncompleteClaimsSchemaList { expected: usize, got: usize },
 
+    #[error("Missing claim schema `{0}` for claim `{1}`")]
+    MissingClaimsSchemaForClaim(ClaimSchemaId, ClaimId),
+
     #[error("Missing proof state for proof: {proof}")]
     MissingProofState { proof: ProofId },
 }
@@ -43,7 +47,8 @@ impl DataLayerError {
             | DataLayerError::IncompleteClaimsList { .. }
             | DataLayerError::IncompleteClaimsSchemaList { .. }
             | DataLayerError::MissingProofState { .. }
-            | DataLayerError::MissingRequiredRelation { .. } => ErrorCode::BR_0000,
+            | DataLayerError::MissingRequiredRelation { .. }
+            | DataLayerError::MissingClaimsSchemaForClaim(_, _) => ErrorCode::BR_0000,
         }
     }
 }

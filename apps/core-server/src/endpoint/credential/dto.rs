@@ -127,6 +127,7 @@ pub struct CredentialDetailSchemaResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(DetailCredentialClaimResponseDTO)]
 pub struct CredentialDetailClaimResponseRestDTO {
+    pub path: String,
     pub schema: CredentialClaimSchemaResponseRestDTO,
     pub value: CredentialDetailClaimValueResponseRestDTO,
 }
@@ -212,6 +213,7 @@ pub struct CredentialRequestClaimRestDTO {
     #[into(rename = "claim_schema_id")]
     pub claim_id: Uuid,
     pub value: String,
+    pub path: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]

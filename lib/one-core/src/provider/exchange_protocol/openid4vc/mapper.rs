@@ -116,6 +116,7 @@ pub(super) fn presentation_definition_from_interaction_data(
     proof_id: ProofId,
     credentials: Vec<Credential>,
     credential_groups: Vec<CredentialGroup>,
+    config: &CoreConfig,
 ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
@@ -155,7 +156,7 @@ pub(super) fn presentation_definition_from_interaction_data(
                 })
                 .collect::<Result<Vec<_>, _>>()?,
         }],
-        credentials: credential_model_to_credential_dto(credentials)?,
+        credentials: credential_model_to_credential_dto(credentials, config)?,
     })
 }
 

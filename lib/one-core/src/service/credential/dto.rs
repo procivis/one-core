@@ -94,6 +94,7 @@ pub enum CredentialSchemaType {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailCredentialClaimResponseDTO {
+    pub path: String,
     pub schema: CredentialClaimSchemaDTO,
     pub value: DetailCredentialClaimValueResponseDTO,
 }
@@ -170,6 +171,7 @@ pub struct SuspendCredentialRequestDTO {
 pub struct CredentialRequestClaimDTO {
     pub claim_schema_id: ClaimSchemaId,
     pub value: String,
+    pub path: String,
 }
 
 #[derive(Clone, Debug)]

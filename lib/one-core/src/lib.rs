@@ -254,6 +254,7 @@ impl OneCore {
                 data_provider.get_backup_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
+                config.clone(),
             ),
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),

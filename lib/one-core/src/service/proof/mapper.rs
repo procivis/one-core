@@ -11,7 +11,7 @@ use super::dto::{
     ProofInputDTO, ProofListItemResponseDTO,
 };
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::{self, DatatypeType};
+use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
@@ -19,6 +19,7 @@ use crate::model::key::Key;
 use crate::model::proof::{self, Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::error::ServiceError;
 use crate::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
@@ -136,7 +137,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
 
 pub fn get_verifier_proof_detail(
     proof: Proof,
-    config: &core_config::CoreConfig,
+    config: &CoreConfig,
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
     let holder_did_id = proof.holder_did.as_ref().map(|did| did.id);
 
@@ -174,7 +175,7 @@ pub fn get_verifier_proof_detail(
                         credential.id
                     ))
                 })?;
-                let credential = CredentialDetailResponseDTO::try_from(credential)?;
+                let credential = credential_detail_response_from_model(credential, config)?;
 
                 Ok((credential_schema.id, credential))
             })
@@ -490,7 +491,10 @@ fn renest_proof_claims(claims: Vec<ProofClaimDTO>, prefix: &str) -> Vec<ProofCla
     result
 }
 
-pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, ServiceError> {
+pub fn get_holder_proof_detail(
+    value: Proof,
+    config: &CoreConfig,
+) -> Result<ProofDetailResponseDTO, ServiceError> {
     let organisation_id = value
         .holder_did
         .as_ref()
@@ -557,7 +561,7 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
             Entry::Vacant(entry) => {
                 entry.insert((
                     vec![claim],
-                    CredentialDetailResponseDTO::try_from(credential.clone())?,
+                    credential_detail_response_from_model(credential.clone(), config)?,
                     credential_schema.clone().into(),
                 ));
             }

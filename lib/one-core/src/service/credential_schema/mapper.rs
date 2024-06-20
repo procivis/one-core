@@ -60,8 +60,8 @@ impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
             last_modified: value.schema.last_modified,
             key: value.schema.key,
             datatype: value.schema.data_type,
-            array: value.schema.array,
             required: value.required,
+            array: value.schema.array,
             claims: vec![],
         }
     }

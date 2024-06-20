@@ -792,7 +792,12 @@ impl ExchangeProtocol for OpenID4VC {
             &allowed_schema_formats,
         )
         .await?;
-        presentation_definition_from_interaction_data(proof.id, credentials, credential_groups)
+        presentation_definition_from_interaction_data(
+            proof.id,
+            credentials,
+            credential_groups,
+            &self.config,
+        )
     }
 }
 

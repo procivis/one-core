@@ -65,6 +65,7 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
     let actual = CredentialData::from_credential_detail_response(
         generate_credential_detail_response(vec![
             DetailCredentialClaimResponseDTO {
+                path: "location".to_string(),
                 schema: CredentialClaimSchemaDTO {
                     id: Uuid::new_v4().into(),
                     created_date: now,
@@ -77,27 +78,29 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
                 },
                 value: DetailCredentialClaimValueResponseDTO::Nested(vec![
                     DetailCredentialClaimResponseDTO {
+                        path: "location/x".to_string(),
                         schema: CredentialClaimSchemaDTO {
                             id: Uuid::new_v4().into(),
                             created_date: now,
                             last_modified: now,
                             key: "x".to_string(),
                             datatype: "STRING".to_string(),
-                            array: false,
                             required: false,
+                            array: false,
                             claims: vec![],
                         },
                         value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
                     },
                     DetailCredentialClaimResponseDTO {
+                        path: "location/y".to_string(),
                         schema: CredentialClaimSchemaDTO {
                             id: Uuid::new_v4().into(),
                             created_date: now,
                             last_modified: now,
                             key: "y".to_string(),
-                            array: false,
                             datatype: "STRING".to_string(),
                             required: false,
+                            array: false,
                             claims: vec![],
                         },
                         value: DetailCredentialClaimValueResponseDTO::String("456".to_string()),
@@ -105,14 +108,15 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
                 ]),
             },
             DetailCredentialClaimResponseDTO {
+                path: "street".to_string(),
                 schema: CredentialClaimSchemaDTO {
                     id: Uuid::new_v4().into(),
                     created_date: now,
                     last_modified: now,
                     key: "street".to_string(),
-                    array: false,
                     datatype: "STRING".to_string(),
                     required: false,
+                    array: false,
                     claims: vec![],
                 },
                 value: DetailCredentialClaimValueResponseDTO::String("some street".to_string()),

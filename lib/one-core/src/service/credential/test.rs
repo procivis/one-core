@@ -3,6 +3,8 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use mockall::predicate::*;
+use serde_json::json;
+use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -27,6 +29,7 @@ use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
@@ -744,6 +747,7 @@ async fn test_create_credential_success() {
                     .id
                     .to_owned(),
                 value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
         })
@@ -813,6 +817,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
                     .id
                     .to_owned(),
                 value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
         })
@@ -969,6 +974,10 @@ async fn test_create_credential_one_required_claim_missing_success() {
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: required_claim_schema_id,
                 value: "value".to_string(),
+                path: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                    .schema
+                    .key
+                    .to_owned(),
             }],
             ..create_request_template
         })
@@ -1060,6 +1069,10 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: optional_claim_schema_id,
                 value: "value".to_string(),
+                path: credential_schema.claim_schemas.as_ref().unwrap()[1]
+                    .schema
+                    .key
+                    .to_owned(),
             }],
             ..create_request_template.clone()
         })
@@ -1130,6 +1143,10 @@ async fn test_create_credential_schema_deleted() {
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id,
                 value: "value".to_string(),
+                path: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                    .schema
+                    .key
+                    .to_owned(),
             }],
             redirect_uri: None,
         })
@@ -1580,6 +1597,7 @@ async fn test_create_credential_key_with_issuer_key() {
                     .id
                     .to_owned(),
                 value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
         })
@@ -1691,6 +1709,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
                     .id
                     .to_owned(),
                 value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
         })
@@ -1770,6 +1789,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
                     .id
                     .to_owned(),
                 value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
         })
@@ -1835,6 +1855,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
                     .id
                     .to_owned(),
                 value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
         })
@@ -1917,6 +1938,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
                     .id
                     .to_owned(),
                 value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
         })
@@ -1999,6 +2021,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
                     .id
                     .to_owned(),
                 value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
         })
@@ -2069,6 +2092,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
                     .id
                     .to_owned(),
                 value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
             }],
             redirect_uri: None,
         })
@@ -2522,14 +2546,17 @@ fn test_validate_create_request_all_nested_claims_are_required() {
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
                 value: "Somewhere".to_string(),
+                path: "address".to_string(),
             },
             CredentialRequestClaimDTO {
                 claim_schema_id: location_x_claim_id,
                 value: "123".to_string(),
+                path: "location/x".to_string(),
             },
             CredentialRequestClaimDTO {
                 claim_schema_id: location_y_claim_id,
                 value: "456".to_string(),
+                path: "location/y".to_string(),
             },
         ],
         &schema,
@@ -2601,14 +2628,17 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
                 value: "Somewhere".to_string(),
+                path: "address".to_string(),
             },
             CredentialRequestClaimDTO {
                 claim_schema_id: location_x_claim_id,
                 value: "123".to_string(),
+                path: "location/x".to_string(),
             },
             CredentialRequestClaimDTO {
                 claim_schema_id: location_y_claim_id,
                 value: "456".to_string(),
+                path: "location/y".to_string(),
             },
         ],
         &schema,
@@ -2623,6 +2653,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
             value: "Somewhere".to_string(),
+            path: "address".to_string(),
         }],
         &schema,
         &generic_formatter_capabilities(),
@@ -2637,10 +2668,12 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
                 value: "Somewhere".to_string(),
+                path: "address".to_string(),
             },
             CredentialRequestClaimDTO {
                 claim_schema_id: location_x_claim_id,
                 value: "123".to_string(),
+                path: "location/x".to_string(),
             },
         ],
         &schema,
@@ -2717,14 +2750,17 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
                 value: "Somewhere".to_string(),
+                path: "address".to_string(),
             },
             CredentialRequestClaimDTO {
                 claim_schema_id: location_x_claim_id,
                 value: "123".to_string(),
+                path: "location/x".to_string(),
             },
             CredentialRequestClaimDTO {
                 claim_schema_id: location_y_claim_id,
                 value: "456".to_string(),
+                path: "location/y".to_string(),
             },
         ],
         &schema,
@@ -2739,6 +2775,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
             value: "Somewhere".to_string(),
+            path: "address".to_string(),
         }],
         &schema,
         &generic_formatter_capabilities(),
@@ -2758,10 +2795,12 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
                 value: "Somewhere".to_string(),
+                path: "address".to_string(),
             },
             CredentialRequestClaimDTO {
                 claim_schema_id: location_x_claim_id,
                 value: "123".to_string(),
+                path: "location/x".to_string(),
             },
         ],
         &schema,
@@ -2780,27 +2819,29 @@ fn test_renest_claims_success_single_claim_and_layer() {
 
     let request = vec![
         DetailCredentialClaimResponseDTO {
+            path: "location".to_string(),
             schema: CredentialClaimSchemaDTO {
                 id: uuid_location,
                 created_date: now,
                 last_modified: now,
                 key: "location".to_string(),
                 datatype: "OBJECT".to_string(),
-                array: false,
                 required: true,
+                array: false,
                 claims: vec![],
             },
             value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
         },
         DetailCredentialClaimResponseDTO {
+            path: "location/x".to_string(),
             schema: CredentialClaimSchemaDTO {
                 id: uuid_location_x,
                 created_date: now,
                 last_modified: now,
                 key: "location/x".to_string(),
-                array: false,
                 datatype: "STRING".to_string(),
                 required: true,
+                array: false,
                 claims: vec![],
             },
             value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
@@ -2808,18 +2849,20 @@ fn test_renest_claims_success_single_claim_and_layer() {
     ];
 
     let expected = vec![DetailCredentialClaimResponseDTO {
+        path: "location".to_string(),
         schema: CredentialClaimSchemaDTO {
             id: uuid_location,
             created_date: now,
             last_modified: now,
             key: "location".to_string(),
             datatype: "OBJECT".to_string(),
-            array: false,
             required: true,
+            array: false,
             claims: vec![],
         },
         value: DetailCredentialClaimValueResponseDTO::Nested(vec![
             DetailCredentialClaimResponseDTO {
+                path: "location/x".to_string(),
                 schema: CredentialClaimSchemaDTO {
                     id: uuid_location_x,
                     created_date: now,
@@ -2847,27 +2890,29 @@ fn test_renest_claims_success_multiple_claims_and_layers() {
 
     let request = vec![
         DetailCredentialClaimResponseDTO {
+            path: "location".to_string(),
             schema: CredentialClaimSchemaDTO {
                 id: uuid_location,
                 created_date: now,
                 last_modified: now,
-                array: false,
                 key: "location".to_string(),
                 datatype: "OBJECT".to_string(),
                 required: true,
+                array: false,
                 claims: vec![],
             },
             value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
         },
         DetailCredentialClaimResponseDTO {
+            path: "location/x".to_string(),
             schema: CredentialClaimSchemaDTO {
                 id: uuid_location_x,
                 created_date: now,
                 last_modified: now,
-                array: false,
                 key: "location/x".to_string(),
                 datatype: "STRING".to_string(),
                 required: true,
+                array: false,
                 claims: vec![],
             },
             value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
@@ -2875,18 +2920,20 @@ fn test_renest_claims_success_multiple_claims_and_layers() {
     ];
 
     let expected = vec![DetailCredentialClaimResponseDTO {
+        path: "location".to_string(),
         schema: CredentialClaimSchemaDTO {
             id: uuid_location,
             created_date: now,
             last_modified: now,
-            array: false,
             key: "location".to_string(),
             datatype: "OBJECT".to_string(),
             required: true,
+            array: false,
             claims: vec![],
         },
         value: DetailCredentialClaimValueResponseDTO::Nested(vec![
             DetailCredentialClaimResponseDTO {
+                path: "location/x".to_string(),
                 schema: CredentialClaimSchemaDTO {
                     id: uuid_location_x,
                     created_date: now,
@@ -2987,4 +3034,1135 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         result.claims[0].value,
         DetailCredentialClaimValueResponseDTO::Nested(_)
     ));
+}
+
+fn generate_claim_schema(key: &str, datatype: &str, array: bool) -> ClaimSchema {
+    let now = get_dummy_date();
+    ClaimSchema {
+        array,
+        id: Uuid::new_v4().into(),
+        key: key.to_string(),
+        data_type: datatype.to_string(),
+        created_date: now,
+        last_modified: now,
+    }
+}
+
+fn generate_claim(
+    credential_id: CredentialId,
+    claim_schema: &ClaimSchema,
+    value: &str,
+    path: &str,
+) -> Claim {
+    let now = get_dummy_date();
+
+    Claim {
+        id: Uuid::new_v4(),
+        credential_id,
+        created_date: now,
+        last_modified: now,
+        value: value.to_string(),
+        path: path.to_string(),
+        schema: Some(claim_schema.to_owned()),
+    }
+}
+
+#[tokio::test]
+async fn test_get_credential_success_array_complex_nested_all() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+
+    let now = get_dummy_date();
+
+    let schema_root = generate_claim_schema("root", "OBJECT", true);
+    let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
+    let schema_root_name = generate_claim_schema("root/name", "STRING", false);
+    let schema_root_cap = generate_claim_schema("root/cap", "STRING", true);
+
+    let schema_other = generate_claim_schema("other", "OBJECT", false);
+    let schema_other_0 = generate_claim_schema("other/0", "OBJECT", true);
+    let schema_other_0_name = generate_claim_schema("other/0/name", "STRING", false);
+    let schema_other_1 = generate_claim_schema("other/1", "STRING", true);
+
+    let schema_str = generate_claim_schema("str", "STRING", true);
+
+    let claim_schemas = vec![
+        schema_root.to_owned(),
+        schema_root_index_list.to_owned(),
+        schema_root_name.to_owned(),
+        schema_root_cap.to_owned(),
+        schema_other.to_owned(),
+        schema_other_0.to_owned(),
+        schema_other_0_name.to_owned(),
+        schema_other_1.to_owned(),
+        schema_str.to_owned(),
+    ];
+    let organisation = Organisation {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+    };
+
+    let id = Uuid::new_v4().into();
+
+    let claims = vec![
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/1"),
+        generate_claim(id, &schema_root_name, "123", "root/0/name"),
+        generate_claim(id, &schema_root_cap, "invoke", "root/0/cap/0"),
+        generate_claim(id, &schema_root_cap, "revoke", "root/0/cap/1"),
+        generate_claim(id, &schema_root_cap, "delete", "root/0/cap/2"),
+        generate_claim(id, &schema_root_index_list, "456", "root/1/indexlist/0"),
+        generate_claim(id, &schema_root_index_list, "456", "root/1/indexlist/1"),
+        generate_claim(id, &schema_root_name, "456", "root/1/name"),
+        generate_claim(id, &schema_root_cap, "invoke", "root/1/cap/0"),
+        generate_claim(id, &schema_root_cap, "revoke", "root/1/cap/1"),
+        generate_claim(id, &schema_root_cap, "delete", "root/1/cap/2"),
+        generate_claim(id, &schema_other_0_name, "name1", "other/0/0/name"),
+        generate_claim(id, &schema_other_0_name, "name2", "other/0/1/name"),
+        generate_claim(id, &schema_other_1, "other1", "other/1/0"),
+        generate_claim(id, &schema_other_1, "other2", "other/1/1"),
+        generate_claim(id, &schema_other_1, "other3", "other/1/2"),
+        generate_claim(id, &schema_str, "str1", "str/0"),
+        generate_claim(id, &schema_str, "str1", "str/1"),
+        generate_claim(id, &schema_str, "str1", "str/2"),
+    ];
+
+    let credential = Credential {
+        id,
+        created_date: now,
+        issuance_date: now,
+        last_modified: now,
+        deleted_at: None,
+        credential: vec![],
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        redirect_uri: None,
+        role: CredentialRole::Issuer,
+        state: Some(vec![CredentialState {
+            created_date: now,
+            state: CredentialStateEnum::Created,
+            suspend_end_date: None,
+        }]),
+        claims: Some(claims.to_owned()),
+        issuer_did: Some(Did {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name: "did1".to_string(),
+            organisation: Some(organisation.clone()),
+            did: "did1".parse().unwrap(),
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::AssertionMethod,
+                key: Key {
+                    id: Uuid::new_v4().into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    public_key: vec![],
+                    name: "key_name".to_string(),
+                    key_reference: vec![],
+                    storage_type: "INTERNAL".to_string(),
+                    key_type: "EDDSA".to_string(),
+                    organisation: None,
+                },
+            }]),
+            deactivated: false,
+        }),
+        holder_did: None,
+        schema: Some(CredentialSchema {
+            id: Uuid::new_v4().into(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "schema".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_string(),
+            claim_schemas: Some(
+                claim_schemas
+                    .into_iter()
+                    .map(|schema| CredentialSchemaClaim {
+                        required: true,
+                        schema,
+                    })
+                    .collect(),
+            ),
+            organisation: Some(organisation),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: "CredentialSchemaId".to_owned(),
+        }),
+        interaction: None,
+        revocation_list: None,
+        key: None,
+    };
+
+    {
+        let clone = credential.clone();
+        credential_repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        did_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.get_credential(&credential.id).await.unwrap();
+
+    let expected_claims = json!([
+      {
+        "path": "root",
+        "schema": {
+          "id": schema_root.id,
+          "createdDate": "2005-04-02T21:37:00+01:00",
+          "lastModified": "2005-04-02T21:37:00+01:00",
+          "key": "root",
+          "datatype": "OBJECT",
+          "required": true,
+          "array": true
+        },
+        "value": [
+          {
+            "path": "root/0",
+            "schema": {
+              "id": schema_root.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "root",
+              "datatype": "OBJECT",
+              "required": true,
+              "array": true
+            },
+            "value": [
+              {
+                "path": "root/0/name",
+                "schema": {
+                  "id": schema_root_name.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "name",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": false
+                },
+                "value": "123"
+              },
+              {
+                "path": "root/0/cap",
+                "schema": {
+                  "id": schema_root_cap.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "cap",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": true
+                },
+                "value": [
+                  {
+                    "path": "root/0/cap/0",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "invoke"
+                  },
+                  {
+                    "path": "root/0/cap/1",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "revoke"
+                  },
+                  {
+                    "path": "root/0/cap/2",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "delete"
+                  }
+                ]
+              },
+              {
+                "path": "root/0/indexlist",
+                "schema": {
+                  "id": schema_root_index_list.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "indexlist",
+                  "datatype": "NUMBER",
+                  "required": true,
+                  "array": true
+                },
+                "value": [
+                  {
+                    "path": "root/0/indexlist/0",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "123"
+                  },
+                  {
+                    "path": "root/0/indexlist/1",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "123"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "path": "root/1",
+            "schema": {
+              "id": schema_root.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "root",
+              "datatype": "OBJECT",
+              "required": true,
+              "array": true
+            },
+            "value": [
+              {
+                "path": "root/1/name",
+                "schema": {
+                  "id": schema_root_name.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "name",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": false
+                },
+                "value": "456"
+              },
+              {
+                "path": "root/1/cap",
+                "schema": {
+                  "id": schema_root_cap.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "cap",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": true
+                },
+                "value": [
+                  {
+                    "path": "root/1/cap/0",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "invoke"
+                  },
+                  {
+                    "path": "root/1/cap/1",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "revoke"
+                  },
+                  {
+                    "path": "root/1/cap/2",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "delete"
+                  }
+                ]
+              },
+              {
+                "path": "root/1/indexlist",
+                "schema": {
+                  "id": schema_root_index_list.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "indexlist",
+                  "datatype": "NUMBER",
+                  "required": true,
+                  "array": true
+                },
+                "value": [
+                  {
+                    "path": "root/1/indexlist/0",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "456"
+                  },
+                  {
+                    "path": "root/1/indexlist/1",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "456"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "path": "other",
+        "schema": {
+          "id": schema_other.id,
+          "createdDate": "2005-04-02T21:37:00+01:00",
+          "lastModified": "2005-04-02T21:37:00+01:00",
+          "key": "other",
+          "datatype": "OBJECT",
+          "required": true,
+          "array": false
+        },
+        "value": [
+          {
+            "path": "other/0",
+            "schema": {
+              "id": schema_other_0.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "0",
+              "datatype": "OBJECT",
+              "required": true,
+              "array": true
+            },
+            "value": [
+              {
+                "path": "other/0/0",
+                "schema": {
+                  "id": schema_other_0.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "other/0",
+                  "datatype": "OBJECT",
+                  "required": true,
+                  "array": true
+                },
+                "value": [
+                  {
+                    "path": "other/0/0/name",
+                    "schema": {
+                      "id": schema_other_0_name.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "name",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "name1"
+                  }
+                ]
+              },
+              {
+                "path": "other/0/1",
+                "schema": {
+                  "id": schema_other_0.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "other/0",
+                  "datatype": "OBJECT",
+                  "required": true,
+                  "array": true
+                },
+                "value": [
+                  {
+                    "path": "other/0/1/name",
+                    "schema": {
+                      "id": schema_other_0_name.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "name",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "name2"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "path": "other/1",
+            "schema": {
+              "id": schema_other_1.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "1",
+              "datatype": "STRING",
+              "required": true,
+              "array": true
+            },
+            "value": [
+              {
+                "path": "other/1/0",
+                "schema": {
+                  "id": schema_other_1.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "1",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": true
+                },
+                "value": "other1"
+              },
+              {
+                "path": "other/1/1",
+                "schema": {
+                  "id": schema_other_1.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "1",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": true
+                },
+                "value": "other2"
+              },
+              {
+                "path": "other/1/2",
+                "schema": {
+                  "id": schema_other_1.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "1",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": true
+                },
+                "value": "other3"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "path": "str",
+        "schema": {
+          "id": schema_str.id,
+          "createdDate": "2005-04-02T21:37:00+01:00",
+          "lastModified": "2005-04-02T21:37:00+01:00",
+          "key": "str",
+          "datatype": "STRING",
+          "required": true,
+          "array": true
+        },
+        "value": [
+          {
+            "path": "str/0",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": true
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/1",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": true
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/2",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": true
+            },
+            "value": "str1"
+          }
+        ]
+      }
+    ]);
+
+    assert_eq!(
+        expected_claims,
+        serde_json::to_value(result.claims).unwrap()
+    );
+}
+
+#[tokio::test]
+async fn test_get_credential_success_array_complex_nested_first_case() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+
+    let now = get_dummy_date();
+
+    let schema_root = generate_claim_schema("root", "OBJECT", true);
+    let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
+
+    let claim_schemas = vec![schema_root.to_owned(), schema_root_index_list.to_owned()];
+    let organisation = Organisation {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+    };
+
+    let id = Uuid::new_v4().into();
+
+    let claims = vec![
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/1"),
+    ];
+
+    let credential = Credential {
+        id,
+        created_date: now,
+        issuance_date: now,
+        last_modified: now,
+        deleted_at: None,
+        credential: vec![],
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        redirect_uri: None,
+        role: CredentialRole::Issuer,
+        state: Some(vec![CredentialState {
+            created_date: now,
+            state: CredentialStateEnum::Created,
+            suspend_end_date: None,
+        }]),
+        claims: Some(claims.to_owned()),
+        issuer_did: Some(Did {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name: "did1".to_string(),
+            organisation: Some(organisation.clone()),
+            did: "did1".parse().unwrap(),
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::AssertionMethod,
+                key: Key {
+                    id: Uuid::new_v4().into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    public_key: vec![],
+                    name: "key_name".to_string(),
+                    key_reference: vec![],
+                    storage_type: "INTERNAL".to_string(),
+                    key_type: "EDDSA".to_string(),
+                    organisation: None,
+                },
+            }]),
+            deactivated: false,
+        }),
+        holder_did: None,
+        schema: Some(CredentialSchema {
+            id: Uuid::new_v4().into(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "schema".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_string(),
+            claim_schemas: Some(
+                claim_schemas
+                    .into_iter()
+                    .map(|schema| CredentialSchemaClaim {
+                        required: true,
+                        schema,
+                    })
+                    .collect(),
+            ),
+            organisation: Some(organisation),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: "CredentialSchemaId".to_owned(),
+        }),
+        interaction: None,
+        revocation_list: None,
+        key: None,
+    };
+
+    {
+        let clone = credential.clone();
+        credential_repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        did_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.get_credential(&credential.id).await.unwrap();
+
+    let expected_claims = json!([
+      {
+        "path": "root",
+        "schema": {
+          "id": schema_root.id,
+          "createdDate": "2005-04-02T21:37:00+01:00",
+          "lastModified": "2005-04-02T21:37:00+01:00",
+          "key": "root",
+          "datatype": "OBJECT",
+          "required": true,
+          "array": true
+        },
+        "value": [
+          {
+            "path": "root/0",
+            "schema": {
+              "id": schema_root.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "root",
+              "datatype": "OBJECT",
+              "required": true,
+              "array": true
+            },
+            "value": [
+              {
+                "path": "root/0/indexlist",
+                "schema": {
+                  "id": schema_root_index_list.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "indexlist",
+                  "datatype": "NUMBER",
+                  "required": true,
+                  "array": true
+                },
+                "value": [
+                  {
+                    "path": "root/0/indexlist/0",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "123"
+                  },
+                  {
+                    "path": "root/0/indexlist/1",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": true
+                    },
+                    "value": "123"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]);
+
+    assert_eq!(
+        expected_claims,
+        serde_json::to_value(result.claims).unwrap()
+    );
+}
+
+async fn test_create_credential_array(
+    claim_schemas: Vec<ClaimSchema>,
+    claims: Vec<Claim>,
+) -> Result<CredentialId, ServiceError> {
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut did_repository = MockDidRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+
+    let now = get_dummy_date();
+
+    let organisation = Organisation {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+    };
+    let dummy_credential = generic_credential();
+
+    let credential_schema = CredentialSchema {
+        id: Uuid::new_v4().into(),
+        deleted_at: None,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "str array".to_string(),
+        format: "JWT".to_string(),
+        revocation_method: "NONE".to_string(),
+        wallet_storage_type: None,
+        layout_type: LayoutType::Card,
+        layout_properties: None,
+        schema_id: "".to_string(),
+        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        claim_schemas: Some(
+            claim_schemas
+                .iter()
+                .map(|schema| CredentialSchemaClaim {
+                    schema: schema.to_owned(),
+                    required: true,
+                })
+                .collect(),
+        ),
+        organisation: Some(organisation.to_owned()),
+    };
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(generic_formatter_capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    {
+        let credential = dummy_credential.clone();
+        let credential_schema = credential_schema.clone();
+        did_repository
+            .expect_get_did()
+            .return_once(move |_, _| Ok(Some(credential.issuer_did.unwrap())));
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .return_once(move |_, _| Ok(Some(credential_schema)));
+        formatter_provider
+            .expect_get_formatter()
+            .once()
+            .return_once(move |_| Some(Arc::new(formatter)));
+        credential_repository
+            .expect_create_credential()
+            .return_once(move |_| Ok(Uuid::new_v4().into()));
+        history_repository
+            .expect_create_history()
+            .return_once(move |_| Ok(Uuid::new_v4().into()));
+    }
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        did_repository,
+        formatter_provider,
+        history_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: Uuid::new_v4().into(),
+            issuer_did: Uuid::new_v4().into(),
+            issuer_key: None,
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            claim_values: claims
+                .iter()
+                .map(|claim| CredentialRequestClaimDTO {
+                    claim_schema_id: claim.schema.to_owned().unwrap().id,
+                    value: claim.value.to_owned(),
+                    path: claim.path.to_owned(),
+                })
+                .collect(),
+            redirect_uri: None,
+        })
+        .await
+}
+
+#[tokio::test]
+async fn test_create_credential_array_simple_string() {
+    let schema_str = generate_claim_schema("str", "STRING", true);
+
+    let claim_schemas = vec![schema_str.to_owned()];
+    let id = Uuid::new_v4().into();
+
+    let claims = vec![
+        generate_claim(id, &schema_str, "str1", "str/0"),
+        generate_claim(id, &schema_str, "str1", "str/1"),
+        generate_claim(id, &schema_str, "str1", "str/2"),
+    ];
+
+    test_create_credential_array(claim_schemas, claims)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_create_credential_array_simple_object() {
+    let id = Uuid::new_v4().into();
+
+    let schema_root = generate_claim_schema("root", "OBJECT", true);
+    let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
+
+    let claim_schemas = vec![schema_root.to_owned(), schema_root_index_list.to_owned()];
+
+    let claims = vec![
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/1"),
+    ];
+
+    test_create_credential_array(claim_schemas, claims)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_create_credential_array_complex_structure() {
+    let schema_root = generate_claim_schema("root", "OBJECT", true);
+    let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
+    let schema_root_name = generate_claim_schema("root/name", "STRING", false);
+    let schema_root_cap = generate_claim_schema("root/cap", "STRING", true);
+
+    let schema_other = generate_claim_schema("other", "OBJECT", false);
+    let schema_other_0 = generate_claim_schema("other/0", "OBJECT", true);
+    let schema_other_0_name = generate_claim_schema("other/0/name", "STRING", false);
+    let schema_other_1 = generate_claim_schema("other/1", "STRING", true);
+
+    let schema_str = generate_claim_schema("str", "STRING", true);
+
+    let claim_schemas = vec![
+        schema_root.to_owned(),
+        schema_root_index_list.to_owned(),
+        schema_root_name.to_owned(),
+        schema_root_cap.to_owned(),
+        schema_other.to_owned(),
+        schema_other_0.to_owned(),
+        schema_other_0_name.to_owned(),
+        schema_other_1.to_owned(),
+        schema_str.to_owned(),
+    ];
+
+    let id = Uuid::new_v4().into();
+
+    let claims = vec![
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/1"),
+        generate_claim(id, &schema_root_name, "123", "root/0/name"),
+        generate_claim(id, &schema_root_cap, "invoke", "root/0/cap/0"),
+        generate_claim(id, &schema_root_cap, "revoke", "root/0/cap/1"),
+        generate_claim(id, &schema_root_cap, "delete", "root/0/cap/2"),
+        generate_claim(id, &schema_root_index_list, "456", "root/1/indexlist/0"),
+        generate_claim(id, &schema_root_index_list, "456", "root/1/indexlist/1"),
+        generate_claim(id, &schema_root_name, "456", "root/1/name"),
+        generate_claim(id, &schema_root_cap, "invoke", "root/1/cap/0"),
+        generate_claim(id, &schema_root_cap, "revoke", "root/1/cap/1"),
+        generate_claim(id, &schema_root_cap, "delete", "root/1/cap/2"),
+        generate_claim(id, &schema_other_0_name, "name1", "other/0/0/name"),
+        generate_claim(id, &schema_other_0_name, "name2", "other/0/1/name"),
+        generate_claim(id, &schema_other_1, "other1", "other/1/0"),
+        generate_claim(id, &schema_other_1, "other2", "other/1/1"),
+        generate_claim(id, &schema_other_1, "other3", "other/1/2"),
+        generate_claim(id, &schema_str, "str1", "str/0"),
+        generate_claim(id, &schema_str, "str1", "str/1"),
+        generate_claim(id, &schema_str, "str1", "str/2"),
+    ];
+
+    test_create_credential_array(claim_schemas, claims)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_create_credential_array_fail_incorrect_index() {
+    let id = Uuid::new_v4().into();
+
+    let schema_root = generate_claim_schema("root", "OBJECT", true);
+    let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
+
+    let claim_schemas = vec![schema_root.to_owned(), schema_root_index_list.to_owned()];
+
+    let unparsable_index = generate_claim(
+        id,
+        &schema_root_index_list,
+        "123",
+        "root/0/indexlist/not_an_index",
+    );
+    assert!(
+        test_create_credential_array(claim_schemas.to_owned(), vec![unparsable_index])
+            .await
+            .is_err()
+    );
+
+    let unparsable_index_parent = generate_claim(
+        id,
+        &schema_root_index_list,
+        "123",
+        "root/not_an_index/indexlist/0",
+    );
+    assert!(
+        test_create_credential_array(claim_schemas.to_owned(), vec![unparsable_index_parent])
+            .await
+            .is_err()
+    );
+
+    let missing_component = generate_claim(id, &schema_root_index_list, "123", "root/indexlist/0");
+    assert!(
+        test_create_credential_array(claim_schemas.to_owned(), vec![missing_component])
+            .await
+            .is_err()
+    );
+
+    let malformed_path = generate_claim(id, &schema_root_index_list, "123", "not_even_a_path");
+    assert!(
+        test_create_credential_array(claim_schemas.to_owned(), vec![malformed_path])
+            .await
+            .is_err()
+    );
+
+    let malformed_path = generate_claim(id, &schema_root_index_list, "123", "///////");
+    assert!(
+        test_create_credential_array(claim_schemas.to_owned(), vec![malformed_path])
+            .await
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn test_create_credential_array_fail_index_incorrect_order() {
+    let id = Uuid::new_v4().into();
+
+    let schema_root = generate_claim_schema("root", "OBJECT", true);
+    let schema_root_index_list = generate_claim_schema("root/indexlist", "NUMBER", true);
+
+    let claim_schemas = vec![schema_root.to_owned(), schema_root_index_list.to_owned()];
+
+    let claims = vec![
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/2"),
+    ];
+    assert!(
+        test_create_credential_array(claim_schemas.to_owned(), claims)
+            .await
+            .is_err()
+    );
+
+    let claims = vec![
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/1"),
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
+    ];
+    assert!(
+        test_create_credential_array(claim_schemas.to_owned(), claims)
+            .await
+            .is_err()
+    );
+
+    let claims = vec![
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
+        generate_claim(id, &schema_root_index_list, "123", "root/2/indexlist/0"),
+    ];
+    assert!(
+        test_create_credential_array(claim_schemas.to_owned(), claims)
+            .await
+            .is_err()
+    );
+
+    let claims = vec![
+        generate_claim(id, &schema_root_index_list, "123", "root/1/indexlist/0"),
+        generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/0"),
+    ];
+    assert!(
+        test_create_credential_array(claim_schemas.to_owned(), claims)
+            .await
+            .is_err()
+    );
 }

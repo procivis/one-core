@@ -31,7 +31,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
-use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -262,7 +262,8 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
             "Missing core_base_url for credential issuance".to_string(),
         ))?;
 
-        let credential_detail = CredentialDetailResponseDTO::try_from(credential.clone())?;
+        let credential_detail =
+            credential_detail_response_from_model(credential.clone(), &self.config)?;
         let credential_data = CredentialData::from_credential_detail_response(
             credential_detail,
             core_base_url,

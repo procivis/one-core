@@ -64,27 +64,29 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
         }),
         claims: vec![
             DetailCredentialClaimResponseDTO {
+                path: "name".to_string(),
                 schema: CredentialClaimSchemaDTO {
                     id: id.into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     key: "name".to_string(),
-                    array: false,
                     datatype: "STRING".to_string(),
                     required: true,
+                    array: false,
                     claims: vec![],
                 },
                 value: DetailCredentialClaimValueResponseDTO::String("John".to_string()),
             },
             DetailCredentialClaimResponseDTO {
+                path: "age".to_string(),
                 schema: CredentialClaimSchemaDTO {
                     id: id.into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
-                    array: false,
                     key: "age".to_string(),
                     datatype: "NUMBER".to_string(),
                     required: true,
+                    array: false,
                     claims: vec![],
                 },
                 value: DetailCredentialClaimValueResponseDTO::String("42".to_string()),
