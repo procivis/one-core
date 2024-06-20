@@ -95,7 +95,6 @@ async fn test_create_credential_success_with_nested_claims() {
                     "claimId": coordinate_y_claim_id.to_string(),
                     "value": "456",
                 },
-
             ]),
             None,
         )

@@ -184,6 +184,23 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                     .iter()
                     .any(|claim_schema| claim_schema.key.starts_with(&requested_claim.key))
             }) {
+                if group.claims.iter().all(|requested_claim| {
+                    claim_schemas.iter().any(|claim_schema| {
+                        claim_schema.key.starts_with(&requested_claim.key)
+                            && claim_schemas
+                                .iter()
+                                .filter(|other_schema| {
+                                    other_schema.key.starts_with(&claim_schema.key)
+                                        && other_schema.key != claim_schema.key
+                                })
+                                .any(|other_schema| other_schema.array)
+                    })
+                }) {
+                    return Err(ExchangeProtocolError::Failed(
+                        "field in array requested".into(),
+                    ));
+                }
+
                 group.applicable_credentials.push(credential.to_owned());
                 relevant_credentials.push(credential.to_owned());
             }

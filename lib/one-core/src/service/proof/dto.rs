@@ -60,6 +60,7 @@ pub struct ProofListItemResponseDTO {
 #[derive(Clone, Debug)]
 pub struct ProofClaimDTO {
     pub schema: ProofClaimSchemaResponseDTO,
+    pub path: String,
     pub value: Option<ProofClaimValueDTO>,
 }
 

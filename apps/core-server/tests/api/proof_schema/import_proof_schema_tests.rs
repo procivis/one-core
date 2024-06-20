@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
 use serde_json::json;
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
@@ -31,14 +32,16 @@ async fn test_import_proof_schema_ok() {
                             "required": true,
                             "key": "root/name",
                             "dataType": "STRING",
-                            "claims": []
+                            "claims": [],
+                            "array": false,
                         },
                         {
                             "id": Uuid::new_v4(),
                             "required": true,
                             "key": "root/age",
                             "dataType": "NUMBER",
-                            "claims": []
+                            "claims": [],
+                            "array": false,
                         }],
                         "credentialSchema": {
                             "id": Uuid::new_v4(),
@@ -131,21 +134,24 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
                             "required": true,
                             "key": "root/name",
                             "dataType": "STRING",
-                            "claims": []
+                            "claims": [],
+                            "array": false,
                         },
                         {
                             "id": Uuid::new_v4(),
                             "required": true,
                             "key": "root/age",
                             "dataType": "NUMBER",
-                            "claims": []
+                            "claims": [],
+                            "array": false,
                         },
                         {
                             "id": claim_schema.schema.id,
                             "required": claim_schema.required,
                             "key": claim_schema.schema.key,
                             "dataType": claim_schema.schema.data_type,
-                            "claims": []
+                            "claims": [],
+                            "array": false,
                         }],
                         "credentialSchema": {
                             "id": credential_schema.id,
