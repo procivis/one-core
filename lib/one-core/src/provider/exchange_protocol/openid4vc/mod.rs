@@ -790,7 +790,6 @@ impl ExchangeProtocol for OpenID4VC {
             credential_groups,
             group_id_to_schema_id,
             &allowed_schema_formats,
-            &self.config.format,
         )
         .await?;
         presentation_definition_from_interaction_data(proof.id, credentials, credential_groups)

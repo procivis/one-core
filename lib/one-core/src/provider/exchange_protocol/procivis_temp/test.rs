@@ -13,7 +13,6 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::service::test_utilities::generic_config;
 
 #[derive(Default)]
 struct Repositories {
@@ -34,7 +33,6 @@ fn setup_protocol(base_url: Option<String>, repositories: Repositories) -> Proci
         Arc::new(repositories.did_repository),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.key_provider),
-        Arc::new(generic_config().core),
     )
 }
 

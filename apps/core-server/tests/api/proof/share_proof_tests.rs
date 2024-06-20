@@ -185,6 +185,17 @@ async fn test_share_proof_success_mdoc() {
               ]
             },
             {
+              "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+              "path": [
+                  "$['namespace']"
+              ],
+              "name": null,
+              "purpose": null,
+              "optional": false,
+              "filter": null,
+              "intent_to_retain": true
+            },
+            {
               "filter": null,
               "id": "48db4654-01c4-4a43-9df4-300f1f425c41",
               "name": null,

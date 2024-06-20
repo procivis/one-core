@@ -367,19 +367,39 @@ impl CredentialFormatter for MdocFormatter {
             ));
         };
 
-        let (root_keys, suffix_paths): (IndexSet<_>, IndexSet<_>) = credential
-            .disclosed_keys
-            .iter()
-            .filter_map(|key| key.split_once('/'))
-            .unzip();
+        let disclosed_keys: IndexSet<_> = credential.disclosed_keys.iter().collect();
+
+        let mut paths_for_namespace = IndexMap::new();
+        for disclosed_key in disclosed_keys {
+            if let Some((namespace, path)) = disclosed_key.split_once('/') {
+                paths_for_namespace
+                    .entry(namespace)
+                    .or_insert(vec![])
+                    .push(path);
+            } else {
+                // we ask for the entire namespace
+                paths_for_namespace.insert(disclosed_key, vec![]);
+            }
+        }
 
         // keep only the claims that we were asked for
-        namespaces.retain(|root, claims| {
-            if !root_keys.contains(root.as_str()) {
+        namespaces.retain(|namespace, claims| {
+            let Some(related_paths) = paths_for_namespace.get(namespace.as_str()) else {
                 return false;
+            };
+
+            // we're going to keep the whole namespace
+            if related_paths.is_empty() {
+                return true;
             }
 
-            claims.retain(|claim| suffix_paths.contains(&claim.0.element_identifier.as_str()));
+            claims.retain(|Bytes(claim)| {
+                // we pull in everything starting with `path` since a `disclosed_key` for an object will contain only name of the object
+                related_paths
+                    .iter()
+                    .any(|path| claim.element_identifier.starts_with(path))
+            });
+
             !claims.is_empty()
         });
 

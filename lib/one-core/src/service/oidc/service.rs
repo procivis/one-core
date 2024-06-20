@@ -842,30 +842,39 @@ impl OIDCService {
         proof: Proof,
         proved_claims: Vec<ValidatedProofClaimDTO>,
     ) -> Result<(), ServiceError> {
-        let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
+        let proof_schema = proof.schema.ok_or(ServiceError::MappingError(
             "proof schema is None".to_string(),
         ))?;
-        let claim_schemas = proof_schema
+
+        let input_schemas = proof_schema
             .input_schemas
-            .as_ref()
             .ok_or(ServiceError::MappingError(
                 "input schemas is None".to_string(),
-            ))?
-            .first()
-            .ok_or(ServiceError::MappingError(
-                "input schemas are empty".to_string(),
-            ))?
-            .credential_schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "credential_schema is None".to_string(),
-            ))?
-            .claim_schemas
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "claim schemas is None".to_string(),
             ))?;
 
+        let mut claim_schemas_for_credential_schema = HashMap::new();
+        for input_schema in input_schemas {
+            let credential_schema =
+                input_schema
+                    .credential_schema
+                    .ok_or(ServiceError::MappingError(
+                        "credential_schema is None".to_string(),
+                    ))?;
+
+            let claim_schemas =
+                credential_schema
+                    .claim_schemas
+                    .ok_or(ServiceError::MappingError(
+                        "claim schemas is None".to_string(),
+                    ))?;
+
+            claim_schemas_for_credential_schema
+                .entry(credential_schema.id)
+                .or_insert(vec![])
+                .extend(claim_schemas);
+        }
+
+        #[derive(Debug)]
         struct ProvedClaim {
             claim_schema: ClaimSchema,
             value: serde_json::Value,
@@ -894,7 +903,7 @@ impl OIDCService {
         }
 
         let mut proof_claims: Vec<Claim> = vec![];
-        for (_, credential_claims) in claims_per_credential {
+        for (credential_schema_id, credential_claims) in claims_per_credential {
             let claims: Vec<(serde_json::Value, ClaimSchema)> = credential_claims
                 .iter()
                 .map(|claim| (claim.value.to_owned(), claim.claim_schema.to_owned()))
@@ -931,6 +940,13 @@ impl OIDCService {
             )
             .await?;
 
+            let claim_schemas = claim_schemas_for_credential_schema
+                .get(&credential_schema_id)
+                .ok_or_else(|| {
+                    ServiceError::MappingError(format!(
+                        "Claim schemas are missing for credential schema {credential_schema_id}"
+                    ))
+                })?;
             let credential = extracted_credential_to_model(
                 claim_schemas,
                 first_claim.credential_schema.to_owned(),
