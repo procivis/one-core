@@ -44,7 +44,6 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::OpenID4VCIError;
-use crate::service::test_utilities::generic_config;
 
 #[tokio::test]
 async fn test_issuer_submit_succeeds() {
@@ -249,7 +248,6 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["JWT"]),
-        &generic_config().core.format,
     )
     .await
     .unwrap();
@@ -285,7 +283,6 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["JWT"]),
-        &generic_config().core.format,
     )
     .await
     .unwrap();
@@ -327,7 +324,6 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["SDJWT"]),
-        &generic_config().core.format,
     )
     .await
     .unwrap();
@@ -416,7 +412,6 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["MDOC"]),
-        &generic_config().core.format,
     )
     .await
     .unwrap();
@@ -425,7 +420,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
 }
 
 #[tokio::test]
-async fn test_get_relevant_credentials_to_credential_schemas_failed_first_level_selected() {
+async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_selected() {
     let mut credential_repository = MockCredentialRepository::new();
     let credential = mdoc_credential();
 
@@ -451,12 +446,11 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_first_level_
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["MDOC"]),
-        &generic_config().core.format,
     )
     .await
     .unwrap();
 
-    assert_eq!(0, result_credentials.len());
+    assert_eq!(1, result_credentials.len());
 }
 
 #[tokio::test]

@@ -6,8 +6,6 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::{FormatConfig, FormatType};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -109,7 +107,6 @@ pub async fn get_relevant_credentials_to_credential_schemas(
     mut credential_groups: Vec<CredentialGroup>,
     group_id_to_schema_id_mapping: HashMap<String, String>,
     allowed_schema_formats: &HashSet<&str>,
-    format_config: &FormatConfig,
 ) -> Result<(Vec<Credential>, Vec<CredentialGroup>), ExchangeProtocolError> {
     let mut relevant_credentials: Vec<Credential> = Vec::new();
     for group in &mut credential_groups {
@@ -170,14 +167,6 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                 continue;
             }
 
-            if !mdoc_verify_if_only_second_level_claims_are_present(
-                &group.claims,
-                &schema.format,
-                format_config,
-            ) {
-                continue;
-            }
-
             let claim_schemas = credential
                 .claims
                 .as_ref()
@@ -202,24 +191,6 @@ pub async fn get_relevant_credentials_to_credential_schemas(
     }
 
     Ok((relevant_credentials, credential_groups))
-}
-
-fn mdoc_verify_if_only_second_level_claims_are_present(
-    claims: &[CredentialGroupItem],
-    format: &str,
-    config: &FormatConfig,
-) -> bool {
-    let is_mdoc = config.iter().any(|(_, fields)| {
-        fields.r#type.to_string().starts_with(format) && fields.r#type == FormatType::Mdoc
-    });
-    if !is_mdoc {
-        return true;
-    }
-
-    let level_different_than_two = claims
-        .iter()
-        .any(|claim| claim.key.matches(NESTED_CLAIM_MARKER).count() == 0);
-    !level_different_than_two
 }
 
 pub fn create_presentation_definition_field(

@@ -166,7 +166,6 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     data_provider.get_did_repository(),
                     formatter_provider.clone(),
                     key_provider.clone(),
-                    config.clone(),
                 ));
 
                 providers.insert(name.to_string(), protocol);
