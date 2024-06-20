@@ -106,7 +106,6 @@ pub(crate) async fn import_credential_schema(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
-    eprintln!("we got here");
     let result = state
         .core
         .credential_schema_service

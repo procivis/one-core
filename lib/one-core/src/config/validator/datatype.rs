@@ -79,6 +79,12 @@ pub enum DatatypeValidationError {
     // array
     #[error("Array value should not be specified in request")]
     ArrayValueShouldNotBeSpecifiedInRequest,
+    #[error("Index parse failure: `{0}`")]
+    IndexParseFailure(ParseIntError),
+
+    // general
+    #[error("Path `{0}` doesn't match claim schema key `{1}`")]
+    PathDoesntMatchClaimSchemaKey(String, String),
 }
 
 pub fn validate_datatypes<'a>(

@@ -35,10 +35,12 @@ async fn test_create_credential_success() {
                 {
                     "claimId": claim_id.to_string(),
                     "value": "foo",
+                    "path": "firstName"
                 },
                 {
                     "claimId": claim_id1.to_string(),
                     "value": "true",
+                    "path": "isOver18"
                 }
             ]),
             None,
@@ -86,14 +88,17 @@ async fn test_create_credential_success_with_nested_claims() {
                 {
                     "claimId": street_claim_id.to_string(),
                     "value": "foo",
+                    "path": "address/street"
                 },
                 {
                     "claimId": coordinate_x_claim_id.to_string(),
                     "value": "123",
+                    "path": "address/coordinates/x"
                 },
                 {
                     "claimId": coordinate_y_claim_id.to_string(),
                     "value": "456",
+                    "path": "address/coordinates/y"
                 },
             ]),
             None,
@@ -181,6 +186,7 @@ async fn test_create_credential_with_issuer_key() {
                 {
                     "claimId": claim_id.to_string(),
                     "value": "foo",
+                    "path": "firstName"
                 }
             ]),
             key3.id,
@@ -241,6 +247,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
                 {
                     "claimId": claim_id.to_string(),
                     "value": "foo",
+                    "path": "firstName"
                 }
             ]),
             key.id,
@@ -275,6 +282,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
                 {
                     "claimId": claim_id.to_string(),
                     "value": "foo",
+                    "path": "firstName"
                 }
             ]),
             KeyId::from(Uuid::new_v4()),
@@ -312,6 +320,7 @@ async fn test_create_credential_with_big_picture_success() {
                 {
                     "claimId": claim_id.to_string(),
                     "value": format!("data:image/png;base64,{data}"),
+                    "path": "firstName"
                 }
             ]),
             None,
@@ -357,6 +366,7 @@ async fn test_create_credential_failed_specified_object_claim() {
                 {
                     "claimId": object_claim_id.to_string(),
                     "value": "foo",
+                    "path": "address"
                 }
             ]),
             None,
@@ -394,10 +404,12 @@ async fn test_create_credential_boolean_value_wrong() {
                 {
                     "claimId": claim_id.to_string(),
                     "value": "foo",
+                    "path": "firstName"
                 },
                 {
                     "claimId": claim_id1.to_string(),
                     "value": "test",
+                    "path": "isOver18"
                 }
             ]),
             None,

@@ -13,6 +13,7 @@ use super::BackupService;
 use crate::crypto::encryption::{decrypt_file, encrypt_file};
 use crate::model::history::HistoryAction;
 use crate::repository::error::DataLayerError;
+use crate::service::backup::mapper::unexportable_entities_to_response_dto;
 use crate::service::error::ServiceError;
 
 impl BackupService {
@@ -29,11 +30,12 @@ impl BackupService {
             .map_err(map_error)?;
 
         let db_metadata = self.backup_repository.copy_db_to(db_copy.path()).await?;
-        let unexportable: UnexportableEntitiesResponseDTO = self
-            .backup_repository
-            .fetch_unexportable(Some(db_copy.path()))
-            .await?
-            .try_into()?;
+        let unexportable: UnexportableEntitiesResponseDTO = unexportable_entities_to_response_dto(
+            self.backup_repository
+                .fetch_unexportable(Some(db_copy.path()))
+                .await?,
+            &self.config,
+        )?;
         self.backup_repository
             .delete_unexportable(db_copy.path())
             .await?;
@@ -152,9 +154,9 @@ impl BackupService {
 
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     pub async fn backup_info(&self) -> Result<UnexportableEntitiesResponseDTO, ServiceError> {
-        self.backup_repository
-            .fetch_unexportable(None)
-            .await?
-            .try_into()
+        unexportable_entities_to_response_dto(
+            self.backup_repository.fetch_unexportable(None).await?,
+            &self.config,
+        )
     }
 }

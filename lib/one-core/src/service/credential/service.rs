@@ -4,7 +4,7 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::mapper::credential_offered_history_event;
+use super::mapper::{credential_detail_response_from_model, credential_offered_history_event};
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::{
     get_latest_state, throw_if_latest_credential_state_eq, throw_if_state_not_in,
@@ -276,7 +276,7 @@ impl CredentialService {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         }
 
-        let mut response = CredentialDetailResponseDTO::try_from(credential)
+        let mut response = credential_detail_response_from_model(credential, &self.config)
             .map_err(|err| ServiceError::ResponseMapping(err.to_string()))?;
 
         if response.schema.revocation_method == "LVVC" {

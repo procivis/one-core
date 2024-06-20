@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use autometrics::autometrics;
 use dto_mapper::convert_inner;
+use itertools::Itertools;
 use one_core::{
     model::claim_schema::{ClaimSchema, ClaimSchemaRelations},
     repository::{claim_schema_repository::ClaimSchemaRepository, error::DataLayerError},
@@ -34,7 +35,7 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
         ids: Vec<ClaimSchemaId>,
         _relations: &ClaimSchemaRelations,
     ) -> Result<Vec<ClaimSchema>, DataLayerError> {
-        let claim_schema_cnt = ids.len();
+        let claim_schema_cnt = ids.iter().unique().count();
         let claim_schema_to_index: HashMap<ClaimSchemaId, usize> = ids
             .into_iter()
             .enumerate()

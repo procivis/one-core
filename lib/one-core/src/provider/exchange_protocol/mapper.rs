@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
+use crate::config::core_config::CoreConfig;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -25,6 +26,7 @@ use crate::provider::exchange_protocol::dto::{
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential::mapper::credential_detail_response_from_model;
 
 pub(super) fn get_issued_credential_update(
     credential_id: &CredentialId,
@@ -94,10 +96,11 @@ pub fn proof_from_handle_invitation(
 
 pub fn credential_model_to_credential_dto(
     credentials: Vec<Credential>,
+    config: &CoreConfig,
 ) -> Result<Vec<CredentialDetailResponseDTO>, ExchangeProtocolError> {
     credentials
         .into_iter()
-        .map(|credential| credential.try_into())
+        .map(|credential| credential_detail_response_from_model(credential, config))
         .collect::<Result<Vec<CredentialDetailResponseDTO>, _>>()
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
 }

@@ -1,14 +1,10 @@
-use dto_mapper::{convert_inner, try_convert_inner, TryFrom};
 use serde::{Deserialize, Serialize};
 use shared_types::HistoryId;
 use time::OffsetDateTime;
 
-use crate::{
-    model::backup::UnexportableEntities,
-    service::{
-        credential::dto::CredentialDetailResponseDTO, did::dto::DidListItemResponseDTO,
-        error::ServiceError, key::dto::KeyListItemResponseDTO,
-    },
+use crate::service::{
+    credential::dto::CredentialDetailResponseDTO, did::dto::DidListItemResponseDTO,
+    key::dto::KeyListItemResponseDTO,
 };
 
 #[derive(Debug, Clone)]
@@ -18,20 +14,13 @@ pub struct BackupCreateResponseDTO {
     pub unexportable: UnexportableEntitiesResponseDTO,
 }
 
-#[derive(Debug, Clone, TryFrom, Serialize, Deserialize)]
-#[try_from(T = UnexportableEntities, Error = ServiceError)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnexportableEntitiesResponseDTO {
-    #[try_from(with_fn = try_convert_inner)]
     pub credentials: Vec<CredentialDetailResponseDTO>,
-    #[try_from(infallible, with_fn = convert_inner)]
     pub keys: Vec<KeyListItemResponseDTO>,
-    #[try_from(infallible, with_fn = convert_inner)]
     pub dids: Vec<DidListItemResponseDTO>,
-    #[try_from(infallible)]
     pub total_credentials: u64,
-    #[try_from(infallible)]
     pub total_keys: u64,
-    #[try_from(infallible)]
     pub total_dids: u64,
 }
 

@@ -16,6 +16,7 @@ use self::mapper::{
 };
 use super::mapper::get_relevant_credentials_to_credential_schemas;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::config::core_config::CoreConfig;
 use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
@@ -60,6 +61,7 @@ pub(crate) struct ProcivisTemp {
     did_repository: Arc<dyn DidRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    config: Arc<CoreConfig>,
 }
 
 impl ProcivisTemp {
@@ -72,6 +74,7 @@ impl ProcivisTemp {
         did_repository: Arc<dyn DidRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -82,6 +85,7 @@ impl ProcivisTemp {
             did_repository,
             formatter_provider,
             key_provider,
+            config,
         }
     }
 }
@@ -420,7 +424,7 @@ impl ExchangeProtocol for ProcivisTemp {
         )
         .await?;
 
-        presentation_definition_from_proof(proof, credentials, credential_groups)
+        presentation_definition_from_proof(proof, credentials, credential_groups, &self.config)
     }
 }
 

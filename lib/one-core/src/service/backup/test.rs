@@ -18,7 +18,7 @@ use crate::model::organisation::Organisation;
 use crate::repository::backup_repository::MockBackupRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
-use crate::service::test_utilities::{dummy_did, dummy_key, dummy_organisation};
+use crate::service::test_utilities::{dummy_did, dummy_key, dummy_organisation, generic_config};
 
 #[derive(Default)]
 struct Repositories {
@@ -32,6 +32,7 @@ fn setup_service(repositories: Repositories) -> BackupService {
         Arc::new(repositories.backup_repository),
         Arc::new(repositories.history_repository),
         Arc::new(repositories.organisation_repository),
+        Arc::new(generic_config().core),
     )
 }
 

@@ -65,19 +65,26 @@ impl ClaimRepository for ClaimProvider {
                 .claim_schema_repository
                 .get_claim_schema_list(claim_schema_ids.clone(), claim_schema_relations)
                 .await?;
-            let claims: Vec<Claim> = convert_inner(models);
 
+            let claims: Vec<Claim> = convert_inner(models.to_owned());
             Ok(claims
                 .into_iter()
-                .zip(claim_schema_ids)
-                .map(|(claim, schema_id)| Claim {
-                    schema: claim_schemas
+                .zip(models)
+                .map(|(claim, model)| {
+                    let claim_schema = claim_schemas
                         .iter()
-                        .find(|claim_schema| claim_schema.id == schema_id)
-                        .cloned(),
-                    ..claim
+                        .find(|schema| schema.id == model.claim_schema_id)
+                        .ok_or(DataLayerError::MissingClaimsSchemaForClaim(
+                            model.claim_schema_id,
+                            model.id,
+                        ))?;
+
+                    Ok(Claim {
+                        schema: Some(claim_schema.to_owned()),
+                        ..claim
+                    })
                 })
-                .collect())
+                .collect::<Result<Vec<_>, DataLayerError>>()?)
         } else {
             Ok(convert_inner(models))
         }
