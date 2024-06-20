@@ -1,14 +1,16 @@
-use super::ClaimProvider;
-use crate::{entity::claim, mapper::to_data_layer_error};
+use std::collections::HashMap;
+
 use autometrics::autometrics;
 use dto_mapper::convert_inner;
-use one_core::{
-    model::claim::{Claim, ClaimId, ClaimRelations},
-    repository::{claim_repository::ClaimRepository, error::DataLayerError},
-};
+use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
+use one_core::repository::claim_repository::ClaimRepository;
+use one_core::repository::error::DataLayerError;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use shared_types::ClaimSchemaId;
-use std::collections::HashMap;
+
+use super::ClaimProvider;
+use crate::entity::claim;
+use crate::mapper::to_data_layer_error;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -33,7 +35,6 @@ impl ClaimRepository for ClaimProvider {
         relations: &ClaimRelations,
     ) -> Result<Vec<Claim>, DataLayerError> {
         let claims_cnt = ids.len();
-
         let claim_id_to_index: HashMap<shared_types::ClaimId, usize> = ids
             .into_iter()
             .enumerate()
@@ -60,19 +61,20 @@ impl ClaimRepository for ClaimProvider {
                 .iter()
                 .map(|model| model.claim_schema_id)
                 .collect::<Vec<ClaimSchemaId>>();
-
             let claim_schemas = self
                 .claim_schema_repository
-                .get_claim_schema_list(claim_schema_ids, claim_schema_relations)
+                .get_claim_schema_list(claim_schema_ids.clone(), claim_schema_relations)
                 .await?;
-
             let claims: Vec<Claim> = convert_inner(models);
 
             Ok(claims
                 .into_iter()
-                .zip(claim_schemas)
-                .map(|(claim, schema)| Claim {
-                    schema: Some(schema),
+                .zip(claim_schema_ids)
+                .map(|(claim, schema_id)| Claim {
+                    schema: claim_schemas
+                        .iter()
+                        .find(|claim_schema| claim_schema.id == schema_id)
+                        .cloned(),
                     ..claim
                 })
                 .collect())

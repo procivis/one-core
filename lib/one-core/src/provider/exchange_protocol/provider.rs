@@ -6,7 +6,6 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
-use super::dto::InvitationType;
 use super::mapper::credential_accepted_history_event;
 use super::ExchangeProtocol;
 use crate::common_validator::get_latest_state;
@@ -40,8 +39,6 @@ use crate::service::oidc::dto::OpenID4VCIError;
 
 #[derive(Clone)]
 pub struct DetectedProtocol {
-    #[allow(dead_code)]
-    pub invitation_type: InvitationType,
     pub protocol: Arc<dyn ExchangeProtocol>,
 }
 
@@ -157,9 +154,8 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
 
     fn detect_protocol(&self, url: &Url) -> Option<DetectedProtocol> {
         for protocol in self.protocols.values() {
-            if let Some(invitation_type) = protocol.detect_invitation_type(url) {
+            if protocol.detect_invitation_type(url).is_some() {
                 return Some(DetectedProtocol {
-                    invitation_type,
                     protocol: protocol.to_owned(),
                 });
             }

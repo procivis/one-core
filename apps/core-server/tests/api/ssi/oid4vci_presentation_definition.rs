@@ -1,7 +1,6 @@
 use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::interaction::Interaction;
 use one_core::model::key::Key;
-use one_core::model::organisation::Organisation;
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::proof_schema::ProofSchema;
 use serde_json::json;
@@ -13,11 +12,7 @@ use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 pub struct TestContextWithOID4VCIData {
     pub context: TestContext,
-    #[allow(dead_code)]
-    pub organisation: Organisation,
     pub new_claim_schemas: Vec<(Uuid, &'static str, bool, &'static str, bool)>,
-    #[allow(dead_code)]
-    pub interaction_data: serde_json::Value,
     pub proof_schema: ProofSchema,
     pub verifier_did: Did,
     pub interaction: Interaction,
@@ -114,9 +109,7 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
 
     TestContextWithOID4VCIData {
         context,
-        organisation,
         new_claim_schemas,
-        interaction_data,
         proof_schema,
         verifier_did,
         interaction,

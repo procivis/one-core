@@ -3,16 +3,12 @@ use std::sync::Arc;
 use mockall::predicate::*;
 use mockall::PredicateBooleanExt;
 use reqwest::Method;
-use shared_types::CredentialSchemaId;
-use shared_types::OrganisationId;
-use shared_types::ProofSchemaId;
+use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
 use wiremock::matchers::method;
-use wiremock::Mock;
-use wiremock::MockServer;
-use wiremock::ResponseTemplate;
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::ProofSchemaService;
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -21,33 +17,28 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
     LayoutType,
 };
-use crate::model::history::HistoryAction;
-use crate::model::history::HistoryEntityType;
+use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
     ProofSchema, ProofSchemaRelations,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::SelectiveDisclosureOption;
+use crate::provider::credential_formatter::{MockCredentialFormatter, SelectiveDisclosureOption};
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
-use crate::service::error::ErrorCode;
 use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
+    BusinessLogicError, EntityNotFoundError, ErrorCode, ServiceError, ValidationError,
 };
-use crate::service::proof_schema::dto::ProofSchemaImportRequestDTO;
 use crate::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
-    ProofInputSchemaRequestDTO,
+    ProofInputSchemaRequestDTO, ProofSchemaImportRequestDTO,
 };
 use crate::service::proof_schema::ProofSchemaImportError;
-use crate::service::test_utilities::generic_config;
-use crate::service::test_utilities::generic_formatter_capabilities;
+use crate::service::test_utilities::{generic_config, generic_formatter_capabilities};
 
 fn setup_service(
     proof_schema_repository: MockProofSchemaRepository,
@@ -1121,7 +1112,8 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                         "required": true,
                         "key": "root/name",
                         "dataType": "STRING",
-                        "claims": []
+                        "claims": [],
+                        "array": false,
                     }],
                     "credentialSchema": {
                         "id": Uuid::new_v4(),
@@ -1193,7 +1185,8 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
                         "required": true,
                         "key": "root/name",
                         "dataType": "UNSUPPORTED_DATATYPE",
-                        "claims": []
+                        "claims": [],
+                        "array": false,
                     }],
                     "credentialSchema": {
                         "id": Uuid::new_v4(),
@@ -1268,7 +1261,8 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
                         "required": true,
                         "key": "root/name",
                         "dataType": "STRING",
-                        "claims": []
+                        "claims": [],
+                        "array": false,
                     }],
                     "credentialSchema": {
                         "id": Uuid::new_v4(),
