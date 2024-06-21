@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use serde_json::json;
+use shared_types::ProofSchemaId;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -11,63 +12,53 @@ use crate::utils::context::TestContext;
 async fn test_import_proof_schema_ok() {
     let (context, organisation) = TestContext::new_with_organisation().await;
 
-    let proof_schema_id = Uuid::new_v4().into();
+    let expected_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
 
-    context
-        .server_mock
-        .get_proof_schema(
-            proof_schema_id,
-            json!({
-                "id": proof_schema_id,
-                "createdDate": now,
-                "lastModified": now,
-                "name": "test-proof-schema",
-                "organisationId": Uuid::new_v4(),
-                "expireDuration": 1000,
-                "proofInputSchemas": [
-                    {
-                        "claimSchemas": [{
-                            "id": Uuid::new_v4(),
-                            "required": true,
-                            "key": "root/name",
-                            "dataType": "STRING",
-                            "claims": [],
-                            "array": false,
-                        },
-                        {
-                            "id": Uuid::new_v4(),
-                            "required": true,
-                            "key": "root/age",
-                            "dataType": "NUMBER",
-                            "claims": [],
-                            "array": false,
-                        }],
-                        "credentialSchema": {
-                            "id": Uuid::new_v4(),
-                            "createdDate": now,
-                            "lastModified": now,
-                            "name": "test-credential-schema",
-                            "format": "MDOC",
-                            "revocationMethod": "NONE",
-                            "walletStorageType": "HARDWARE",
-                            "schemaId": "iso-org-test123",
-                            "schemaType": "ProcivisOneSchema2024",
-                        }
-                    }
-                ]
-            }),
-        )
-        .await;
+    let proof_schema = json!({
+        "id": expected_proof_schema_id,
+        "createdDate": now,
+        "lastModified": now,
+        "name": "test-proof-schema",
+        "organisationId": Uuid::new_v4(),
+        "expireDuration": 1000,
+        "proofInputSchemas": [
+            {
+                "claimSchemas": [{
+                    "id": Uuid::new_v4(),
+                    "required": true,
+                    "key": "root/name",
+                    "dataType": "STRING",
+                    "claims": [],
+                    "array": false,
+                },
+                {
+                    "id": Uuid::new_v4(),
+                    "required": true,
+                    "key": "root/age",
+                    "dataType": "NUMBER",
+                    "claims": [],
+                    "array": false,
+                }],
+                "credentialSchema": {
+                    "id": Uuid::new_v4(),
+                    "createdDate": now,
+                    "lastModified": now,
+                    "name": "test-credential-schema",
+                    "format": "MDOC",
+                    "revocationMethod": "NONE",
+                    "walletStorageType": "HARDWARE",
+                    "schemaId": "iso-org-test123",
+                    "schemaType": "ProcivisOneSchema2024",
+                }
+            }
+        ]
+    });
 
-    let import_url = format!(
-        "{}/ssi/proof-schema/v1/{proof_schema_id}",
-        context.server_mock.uri()
-    );
     let resp = context
         .api
         .proof_schemas
-        .import(&import_url, organisation.id)
+        .import(proof_schema, organisation.id)
         .await;
 
     assert_eq!(201, resp.status());
@@ -77,6 +68,9 @@ async fn test_import_proof_schema_ok() {
         .unwrap()
         .parse()
         .unwrap();
+
+    assert_eq!(expected_proof_schema_id, proof_schema_id);
+
     let proof_schema = context.db.proof_schemas.get(&proof_schema_id).await;
     assert_eq!("test-proof-schema", &proof_schema.name);
 
@@ -98,7 +92,7 @@ async fn test_import_proof_schema_ok() {
 async fn test_import_proof_schema_for_existing_credential_schema() {
     let (context, organisation) = TestContext::new_with_organisation().await;
 
-    let proof_schema_id = Uuid::new_v4().into();
+    let expected_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
 
     let credential_schema = context
@@ -114,70 +108,60 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
 
     let mut claim_schema = credential_schema.claim_schemas.unwrap();
     assert_eq!(2, claim_schema.len());
+
     let claim_schema = claim_schema.swap_remove(0);
 
-    context
-        .server_mock
-        .get_proof_schema(
-            proof_schema_id,
-            json!({
-                "id": proof_schema_id,
-                "createdDate": now,
-                "lastModified": now,
-                "name": "test-proof-schema",
-                "organisationId": Uuid::new_v4(),
-                "expireDuration": 1000,
-                "proofInputSchemas": [
-                    {
-                        "claimSchemas": [{
-                            "id": Uuid::new_v4(),
-                            "required": true,
-                            "key": "root/name",
-                            "dataType": "STRING",
-                            "claims": [],
-                            "array": false,
-                        },
-                        {
-                            "id": Uuid::new_v4(),
-                            "required": true,
-                            "key": "root/age",
-                            "dataType": "NUMBER",
-                            "claims": [],
-                            "array": false,
-                        },
-                        {
-                            "id": claim_schema.schema.id,
-                            "required": claim_schema.required,
-                            "key": claim_schema.schema.key,
-                            "dataType": claim_schema.schema.data_type,
-                            "claims": [],
-                            "array": false,
-                        }],
-                        "credentialSchema": {
-                            "id": credential_schema.id,
-                            "createdDate": now,
-                            "lastModified": now,
-                            "name": credential_schema.name,
-                            "format": credential_schema.format,
-                            "revocationMethod": credential_schema.format,
-                            "walletStorageType": credential_schema.wallet_storage_type,
-                            "schemaId": credential_schema.schema_id,
-                            "schemaType": credential_schema.schema_type,
-                        }
-                    }
-                ]
-            }),
-        )
-        .await;
-
-    let import_url = format!(
-        "{}/ssi/proof-schema/v1/{proof_schema_id}",
-        context.server_mock.uri()
-    );
+    let proof_schema = json!({
+        "id": expected_proof_schema_id,
+        "createdDate": now,
+        "lastModified": now,
+        "name": "test-proof-schema",
+        "organisationId": Uuid::new_v4(),
+        "expireDuration": 1000,
+        "proofInputSchemas": [
+            {
+                "claimSchemas": [{
+                    "id": Uuid::new_v4(),
+                    "required": true,
+                    "key": "root/name",
+                    "dataType": "STRING",
+                    "claims": [],
+                    "array": false,
+                },
+                {
+                    "id": Uuid::new_v4(),
+                    "required": true,
+                    "key": "root/age",
+                    "dataType": "NUMBER",
+                    "claims": [],
+                    "array": false,
+                },
+                {
+                    "id": claim_schema.schema.id,
+                    "required": claim_schema.required,
+                    "key": claim_schema.schema.key,
+                    "dataType": claim_schema.schema.data_type,
+                    "claims": [],
+                    "array": false,
+                }],
+                "credentialSchema": {
+                    "id": credential_schema.id,
+                    "createdDate": now,
+                    "lastModified": now,
+                    "name": credential_schema.name,
+                    "format": credential_schema.format,
+                    "revocationMethod": credential_schema.format,
+                    "walletStorageType": credential_schema.wallet_storage_type,
+                    "schemaId": credential_schema.schema_id,
+                    "schemaType": credential_schema.schema_type,
+                }
+            }
+        ]
+    });
     let resp = context
         .api
         .proof_schemas
-        .import(&import_url, organisation.id)
+        .import(proof_schema, organisation.id)
         .await;
 
     assert_eq!(201, resp.status());
@@ -187,6 +171,9 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         .unwrap()
         .parse()
         .unwrap();
+
+    assert_eq!(expected_proof_schema_id, proof_schema_id);
+
     let proof_schema = context.db.proof_schemas.get(&proof_schema_id).await;
     assert_eq!("test-proof-schema", &proof_schema.name);
 

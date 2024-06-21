@@ -44,7 +44,9 @@ use one_core::service::proof::dto::{
 };
 use one_core::service::proof_schema::dto::{
     GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, GetProofSchemaResponseDTO,
-    ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
+    ImportProofSchemaClaimSchemaDTO, ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO,
+    ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO,
+    ProofInputSchemaResponseDTO,
 };
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::service::trust_anchor::dto::{
@@ -54,7 +56,7 @@ use one_core::service::trust_anchor::dto::{
 
 use crate::error::{BindingError, NativeKeyStorageError};
 use crate::mapper::{optional_did_string, optional_time, serialize_config_entity};
-use crate::utils::{format_timestamp_opt, into_id, into_timestamp, try_into_url, TimestampFormat};
+use crate::utils::{format_timestamp_opt, into_id, into_timestamp, TimestampFormat};
 
 #[derive(From)]
 #[from(ConfigDTO)]
@@ -391,6 +393,33 @@ pub struct CredentialSchemaBindingDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
 }
 
+#[derive(Debug, Clone, TryInto)]
+#[try_into(T = ImportProofSchemaCredentialSchemaDTO, Error = BindingError)]
+pub struct ImportProofSchemaCredentialSchemaBindingDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub id: String,
+    #[try_into(with_fn_ref = into_timestamp)]
+    pub created_date: String,
+    #[try_into(with_fn_ref = into_timestamp)]
+    pub last_modified: String,
+    #[try_into(infallible)]
+    pub name: String,
+    #[try_into(infallible)]
+    pub format: String,
+    #[try_into(infallible)]
+    pub revocation_method: String,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
+    #[try_into(infallible)]
+    pub schema_id: String,
+    #[try_into(infallible)]
+    pub schema_type: CredentialSchemaTypeBindingEnum,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub layout_type: Option<LayoutTypeBindingEnum>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
+}
+
 #[derive(Debug, Clone, From)]
 #[from(CredentialSchemaDetailResponseDTO)]
 pub struct CredentialSchemaDetailBindingDTO {
@@ -432,17 +461,21 @@ pub struct CredentialClaimSchemaBindingDTO {
     pub claims: Vec<CredentialClaimSchemaBindingDTO>,
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Debug, Clone, From, Into)]
 #[from(CredentialSchemaLayoutPropertiesRequestDTO)]
+#[into(CredentialSchemaLayoutPropertiesRequestDTO)]
 pub struct CredentialSchemaLayoutPropertiesBindingDTO {
     #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub background: Option<CredentialSchemaBackgroundPropertiesBindingDTO>,
     #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub logo: Option<CredentialSchemaLogoPropertiesBindingDTO>,
     pub primary_attribute: Option<String>,
     pub secondary_attribute: Option<String>,
     pub picture_attribute: Option<String>,
     #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub code: Option<CredentialSchemaCodePropertiesBindingDTO>,
 }
 
@@ -588,6 +621,23 @@ pub struct ProofClaimSchemaBindingDTO {
     pub data_type: String,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<ProofClaimSchemaBindingDTO>,
+    pub array: bool,
+}
+
+#[derive(Debug, TryInto)]
+#[try_into(T = ImportProofSchemaClaimSchemaDTO, Error = BindingError)]
+pub struct ImportProofSchemaClaimSchemaBindingDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub id: String,
+    #[try_into(infallible)]
+    pub required: bool,
+    #[try_into(infallible)]
+    pub key: String,
+    #[try_into(infallible)]
+    pub data_type: String,
+    #[try_into(with_fn = try_convert_inner)]
+    pub claims: Vec<ImportProofSchemaClaimSchemaBindingDTO>,
+    #[try_into(infallible)]
     pub array: bool,
 }
 
@@ -1003,13 +1053,31 @@ pub struct ProofSchemaListBindingDTO {
     pub total_items: u64,
 }
 
-#[derive(Clone, Debug, TryInto)]
-#[try_into(T = one_core::service::proof_schema::dto::ProofSchemaImportRequestDTO, Error = BindingError)]
-pub struct ProofSchemaImportRequestDTO {
-    #[try_into(with_fn_ref = try_into_url)]
-    pub url: String,
+#[derive(Debug, TryInto)]
+#[try_into(T = ImportProofSchemaRequestDTO, Error = BindingError)]
+pub struct ImportProofSchemaRequestBindingsDTO {
+    pub schema: ImportProofSchemaBindingDTO,
     #[try_into(with_fn_ref = into_id)]
     pub organisation_id: String,
+}
+
+#[derive(Debug, TryInto)]
+#[try_into(T = ImportProofSchemaDTO, Error = BindingError)]
+pub struct ImportProofSchemaBindingDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub id: String,
+    #[try_into(with_fn_ref = into_timestamp)]
+    pub created_date: String,
+    #[try_into(with_fn_ref = into_timestamp)]
+    pub last_modified: String,
+    #[try_into(infallible)]
+    pub name: String,
+    #[try_into(with_fn_ref = into_id)]
+    pub organisation_id: String,
+    #[try_into(infallible)]
+    pub expire_duration: u32,
+    #[try_into(with_fn = try_convert_inner)]
+    pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaBindingDTO>,
 }
 
 #[derive(Debug, From)]
@@ -1035,6 +1103,16 @@ pub struct ProofInputSchemaBindingDTO {
     #[from(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaBindingDTO>,
     pub credential_schema: CredentialSchemaBindingDTO,
+    pub validity_constraint: Option<i64>,
+}
+
+#[derive(Debug, TryInto)]
+#[try_into(T = ImportProofSchemaInputSchemaDTO, Error = BindingError)]
+pub struct ImportProofSchemaInputSchemaBindingDTO {
+    #[try_into(with_fn = try_convert_inner)]
+    pub claim_schemas: Vec<ImportProofSchemaClaimSchemaBindingDTO>,
+    pub credential_schema: ImportProofSchemaCredentialSchemaBindingDTO,
+    #[try_into(infallible)]
     pub validity_constraint: Option<i64>,
 }
 

@@ -2,17 +2,16 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::PredicateBooleanExt;
-use reqwest::Method;
-use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
-use time::format_description::well_known::Rfc3339;
+use shared_types::CredentialSchemaId;
+use shared_types::OrganisationId;
+use shared_types::ProofSchemaId;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use wiremock::matchers::method;
-use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::ProofSchemaService;
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::common::GetListResponse;
+use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
     LayoutType,
@@ -33,9 +32,14 @@ use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ErrorCode, ServiceError, ValidationError,
 };
+use crate::service::proof_schema::dto::ImportProofSchemaClaimSchemaDTO;
+use crate::service::proof_schema::dto::ImportProofSchemaCredentialSchemaDTO;
+use crate::service::proof_schema::dto::ImportProofSchemaDTO;
+use crate::service::proof_schema::dto::ImportProofSchemaInputSchemaDTO;
+use crate::service::proof_schema::dto::ImportProofSchemaRequestDTO;
 use crate::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
-    ProofInputSchemaRequestDTO, ProofSchemaImportRequestDTO,
+    ProofInputSchemaRequestDTO,
 };
 use crate::service::proof_schema::ProofSchemaImportError;
 use crate::service::test_utilities::{generic_config, generic_formatter_capabilities};
@@ -59,7 +63,6 @@ fn setup_service(
         formatter_provider: Arc::new(formatter_provider),
         config: Arc::new(generic_config().core),
         base_url: Default::default(),
-        client: reqwest::Client::default(),
     }
 }
 
@@ -1096,42 +1099,38 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         })
         .returning(|_| Ok(Uuid::new_v4().into()));
 
-    let mock_server = MockServer::start().await;
-    Mock::given(method(Method::GET))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "id": Uuid::new_v4(),
-            "createdDate": now.format(&Rfc3339).unwrap(),
-            "lastModified": now.format(&Rfc3339).unwrap(),
-            "name": "test-proof-schema",
-            "organisationId": Uuid::new_v4(),
-            "expireDuration": 1000,
-            "proofInputSchemas": [
-                {
-                    "claimSchemas": [{
-                        "id": Uuid::new_v4(),
-                        "required": true,
-                        "key": "root/name",
-                        "dataType": "STRING",
-                        "claims": [],
-                        "array": false,
-                    }],
-                    "credentialSchema": {
-                        "id": Uuid::new_v4(),
-                        "createdDate": now.format(&Rfc3339).unwrap(),
-                        "lastModified": now.format(&Rfc3339).unwrap(),
-                        "name": "test-credential-schema",
-                        "format": "MDOC",
-                        "revocationMethod": "NONE",
-                        "walletStorageType": "HARDWARE",
-                        "schemaId": "iso-org-test123",
-                        "schemaType": "ProcivisOneSchema2024",
-                    }
-                }
-            ]
-        })))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
+    let schema = ImportProofSchemaDTO {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        name: "test-proof-schema".to_string(),
+        organisation_id,
+        expire_duration: 1000,
+        proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
+                id: Uuid::new_v4().into(),
+                required: true,
+                key: "root/name".to_string(),
+                data_type: "STRING".to_string(),
+                claims: vec![],
+                array: false,
+            }],
+            credential_schema: ImportProofSchemaCredentialSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "test-credential-schema".to_string(),
+                format: "MDOC".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                schema_id: "iso-org-test123".to_string(),
+                schema_type: CredentialSchemaType::Mdoc,
+                layout_type: None,
+                layout_properties: None,
+            },
+            validity_constraint: None,
+        }],
+    };
 
     let service = ProofSchemaService {
         proof_schema_repository: Arc::new(proof_schema_repository),
@@ -1141,12 +1140,11 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         config: Arc::new(generic_config().core),
         base_url: None,
-        client: reqwest::Client::default(),
     };
 
     service
-        .import_proof_schema(ProofSchemaImportRequestDTO {
-            url: mock_server.uri().parse().unwrap(),
+        .import_proof_schema(ImportProofSchemaRequestDTO {
+            schema,
             organisation_id,
         })
         .await
@@ -1169,42 +1167,38 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
             }))
         });
 
-    let mock_server = MockServer::start().await;
-    Mock::given(method(Method::GET))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "id": Uuid::new_v4(),
-            "createdDate": now.format(&Rfc3339).unwrap(),
-            "lastModified": now.format(&Rfc3339).unwrap(),
-            "name": "test-proof-schema",
-            "organisationId": Uuid::new_v4(),
-            "expireDuration": 1000,
-            "proofInputSchemas": [
-                {
-                    "claimSchemas": [{
-                        "id": Uuid::new_v4(),
-                        "required": true,
-                        "key": "root/name",
-                        "dataType": "UNSUPPORTED_DATATYPE",
-                        "claims": [],
-                        "array": false,
-                    }],
-                    "credentialSchema": {
-                        "id": Uuid::new_v4(),
-                        "createdDate": now.format(&Rfc3339).unwrap(),
-                        "lastModified": now.format(&Rfc3339).unwrap(),
-                        "name": "test-credential-schema",
-                        "format": "MDOC",
-                        "revocationMethod": "NONE",
-                        "walletStorageType": "HARDWARE",
-                        "schemaId": "iso-org-test123",
-                        "schemaType": "ProcivisOneSchema2024",
-                    }
-                }
-            ]
-        })))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
+    let schema = ImportProofSchemaDTO {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        name: "test-proof-schema".to_string(),
+        organisation_id,
+        expire_duration: 1000,
+        proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
+                id: Uuid::new_v4().into(),
+                required: true,
+                key: "root/name".to_string(),
+                data_type: "UNSUPPORTED_DATATYPE".to_string(),
+                claims: vec![],
+                array: false,
+            }],
+            credential_schema: ImportProofSchemaCredentialSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "test-credential-schema".to_string(),
+                format: "MDOC".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                schema_id: "iso-org-test123".to_string(),
+                schema_type: CredentialSchemaType::Mdoc,
+                layout_type: None,
+                layout_properties: None,
+            },
+            validity_constraint: None,
+        }],
+    };
 
     let service = setup_service(
         MockProofSchemaRepository::default(),
@@ -1214,8 +1208,8 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
     );
 
     let err = service
-        .import_proof_schema(ProofSchemaImportRequestDTO {
-            url: mock_server.uri().parse().unwrap(),
+        .import_proof_schema(ImportProofSchemaRequestDTO {
+            schema,
             organisation_id,
         })
         .await
@@ -1245,42 +1239,38 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
             }))
         });
 
-    let mock_server = MockServer::start().await;
-    Mock::given(method(Method::GET))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "id": Uuid::new_v4(),
-            "createdDate": now.format(&Rfc3339).unwrap(),
-            "lastModified": now.format(&Rfc3339).unwrap(),
-            "name": "test-proof-schema",
-            "organisationId": Uuid::new_v4(),
-            "expireDuration": 1000,
-            "proofInputSchemas": [
-                {
-                    "claimSchemas": [{
-                        "id": Uuid::new_v4(),
-                        "required": true,
-                        "key": "root/name",
-                        "dataType": "STRING",
-                        "claims": [],
-                        "array": false,
-                    }],
-                    "credentialSchema": {
-                        "id": Uuid::new_v4(),
-                        "createdDate": now.format(&Rfc3339).unwrap(),
-                        "lastModified": now.format(&Rfc3339).unwrap(),
-                        "name": "test-credential-schema",
-                        "format": "OTHER_FORMAT",
-                        "revocationMethod": "NONE",
-                        "walletStorageType": "HARDWARE",
-                        "schemaId": "iso-org-test123",
-                        "schemaType": "ProcivisOneSchema2024",
-                    }
-                }
-            ]
-        })))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
+    let schema = ImportProofSchemaDTO {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        name: "test-proof-schema".to_string(),
+        organisation_id,
+        expire_duration: 1000,
+        proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
+                id: Uuid::new_v4().into(),
+                required: true,
+                key: "root/name".to_string(),
+                data_type: "UNSUPPORTED_DATATYPE".to_string(),
+                claims: vec![],
+                array: false,
+            }],
+            credential_schema: ImportProofSchemaCredentialSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "test-credential-schema".to_string(),
+                format: "OTHER_FORMAT".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                schema_id: "iso-org-test123".to_string(),
+                schema_type: CredentialSchemaType::Mdoc,
+                layout_type: None,
+                layout_properties: None,
+            },
+            validity_constraint: None,
+        }],
+    };
 
     let service = setup_service(
         MockProofSchemaRepository::default(),
@@ -1290,8 +1280,8 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
     );
 
     let err = service
-        .import_proof_schema(ProofSchemaImportRequestDTO {
-            url: mock_server.uri().parse().unwrap(),
+        .import_proof_schema(ImportProofSchemaRequestDTO {
+            schema,
             organisation_id,
         })
         .await

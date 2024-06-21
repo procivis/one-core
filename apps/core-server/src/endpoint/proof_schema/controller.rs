@@ -5,7 +5,7 @@ use shared_types::ProofSchemaId;
 
 use super::dto::{
     CreateProofSchemaRequestRestDTO, GetProofSchemaQuery, GetProofSchemaResponseRestDTO,
-    ProofSchemaImportRequestRestDTO, ProofSchemaShareResponseRestDTO,
+    ImportProofSchemaRequestRestDTO, ProofSchemaShareResponseRestDTO,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
@@ -142,7 +142,7 @@ pub(crate) async fn share_proof_schema(
 pub(crate) async fn import_proof_schema(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
-        Json<ProofSchemaImportRequestRestDTO>,
+        Json<ImportProofSchemaRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {

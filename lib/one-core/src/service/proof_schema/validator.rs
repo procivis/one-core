@@ -16,9 +16,7 @@ use crate::{
     repository::proof_schema_repository::ProofSchemaRepository, service::error::ServiceError,
 };
 
-use super::dto::{
-    CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ProofInputSchemaRequestDTO,
-};
+use super::dto::{CreateProofSchemaRequestDTO, ImportProofSchemaDTO, ProofInputSchemaRequestDTO};
 use super::ProofSchemaImportError;
 
 pub async fn proof_schema_name_already_exists(
@@ -189,7 +187,7 @@ pub(super) fn validate_proof_schema_nesting(
 }
 
 pub(super) fn validate_imported_proof_schema(
-    schema: &GetProofSchemaResponseDTO,
+    schema: &ImportProofSchemaDTO,
     config: &CoreConfig,
 ) -> Result<(), BusinessLogicError> {
     for schema in &schema.proof_input_schemas {

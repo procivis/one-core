@@ -1,9 +1,8 @@
 use std::fmt::Display;
 
 use reqwest::header::AUTHORIZATION;
-use serde::Serialize;
 use serde_json::json;
-use shared_types::{DidValue, ProofSchemaId};
+use shared_types::DidValue;
 use time::OffsetDateTime;
 use wiremock::http::Method;
 use wiremock::matchers::{header, method, path, query_param};
@@ -154,15 +153,6 @@ impl MockServer {
         Mock::given(method(Method::GET))
             .and(path(format!("/1.0/identifiers/{did}")))
             .respond_with(ResponseTemplate::new(500))
-            .expect(1)
-            .mount(&self.mock)
-            .await;
-    }
-
-    pub async fn get_proof_schema(&self, proof_schema_id: ProofSchemaId, response: impl Serialize) {
-        Mock::given(method(Method::GET))
-            .and(path(format!("/ssi/proof-schema/v1/{proof_schema_id}")))
-            .respond_with(ResponseTemplate::new(200).set_body_json(response))
             .expect(1)
             .mount(&self.mock)
             .await;

@@ -6,8 +6,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO,
-    ProofInputSchemaResponseDTO,
+    CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ImportProofSchemaClaimSchemaDTO,
+    ImportProofSchemaInputSchemaDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
 };
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
@@ -48,7 +48,7 @@ pub(super) fn convert_proof_schema_to_response(
 }
 
 pub(super) fn credential_schema_from_proof_input_schema(
-    input_schema: &ProofInputSchemaResponseDTO,
+    input_schema: &ImportProofSchemaInputSchemaDTO,
     organisation: Organisation,
     now: OffsetDateTime,
 ) -> CredentialSchema {
@@ -61,14 +61,14 @@ pub(super) fn credential_schema_from_proof_input_schema(
                 data_type: imported_schema.data_type,
                 created_date: now,
                 last_modified: now,
-                array: false, //FIXME!
+                array: imported_schema.array,
             },
             required: imported_schema.required,
         })
         .collect();
 
     CredentialSchema {
-        id: CredentialSchemaId::from(Uuid::new_v4()),
+        id: input_schema.credential_schema.id,
         deleted_at: None,
         created_date: now,
         last_modified: now,
@@ -87,14 +87,14 @@ pub(super) fn credential_schema_from_proof_input_schema(
             .clone()
             .map(Into::into),
         schema_id: input_schema.credential_schema.schema_id.clone(),
-        schema_type: input_schema.credential_schema.schema_type.clone().into(),
+        schema_type: input_schema.credential_schema.schema_type.clone(),
         claim_schemas: Some(claims),
         organisation: Some(organisation),
     }
 }
 
 pub(super) fn proof_input_from_import_response(
-    input_schema: &ProofInputSchemaResponseDTO,
+    input_schema: &ImportProofSchemaInputSchemaDTO,
     credential_schema: CredentialSchema,
     now: OffsetDateTime,
 ) -> ProofInputSchema {
@@ -109,7 +109,7 @@ pub(super) fn proof_input_from_import_response(
                 data_type: claim_schema.data_type.clone(),
                 created_date: now,
                 last_modified: now,
-                array: false, //FIXME!
+                array: claim_schema.array,
             },
             required: claim_schema.required,
             order: i as u32,
@@ -124,7 +124,7 @@ pub(super) fn proof_input_from_import_response(
 }
 
 fn unnest_proof_claim_schemas(
-    claim_schemas: &Vec<ProofClaimSchemaResponseDTO>,
+    claim_schemas: &Vec<ImportProofSchemaClaimSchemaDTO>,
     prefix: String,
 ) -> Vec<ProofClaimSchemaResponseDTO> {
     let mut result = vec![];
