@@ -1,4 +1,3 @@
-use one_core::model::claim::Claim;
 use serde_json::json;
 use shared_types::{CredentialId, DidId, KeyId, OrganisationId};
 use uuid::Uuid;
@@ -61,7 +60,7 @@ impl InteractionsApi {
         interaction_id: Uuid,
         did_id: DidId,
         credential_id: CredentialId,
-        claims_id: Vec<Claim>,
+        claims_ids: Vec<Uuid>,
     ) -> Response {
         let body = json!({
           "interactionId": interaction_id,
@@ -69,7 +68,7 @@ impl InteractionsApi {
           "submitCredentials": {
             "input_0": {
               "credentialId": credential_id,
-              "submitClaims": claims_id.into_iter().map(|claim| claim.id.to_string()).collect::<Vec<String>>(),
+              "submitClaims": claims_ids,
             }
           }
         });

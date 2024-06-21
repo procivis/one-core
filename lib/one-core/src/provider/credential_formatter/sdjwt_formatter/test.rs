@@ -12,7 +12,9 @@ use crate::{
         jwt::model::JWTPayload,
         model::{CredentialPresentation, CredentialStatus},
         sdjwt_formatter::{model::Sdvc, Params},
-        test_utilities::test_credential_detail_response_dto,
+        test_utilities::{
+            test_credential_detail_response_dto, test_credential_detail_response_dto_with_array,
+        },
         CredentialData, CredentialFormatter, ExtractPresentationCtx, MockAuth, MockTokenVerifier,
     },
 };
@@ -78,7 +80,7 @@ async fn test_format_credential() {
 
     let token = result.unwrap();
 
-    let parts: Vec<&str> = token.splitn(3, '~').collect();
+    let parts: Vec<&str> = token.splitn(4, '~').collect();
 
     assert_eq!(parts.len(), 3);
 
@@ -146,6 +148,121 @@ async fn test_format_credential() {
         first_credential_status.additional_fields.get("Field1"),
         Some(&"Val1".to_string())
     );
+}
+
+#[tokio::test]
+async fn test_format_credential_with_array() {
+    let mut hasher = MockHasher::default();
+    hasher
+        .expect_hash_base64()
+        .times(3) // Number of claims
+        .returning(|_| Ok(String::from("YWJjMTIz")));
+    let hasher = Arc::new(hasher);
+
+    let mut crypto = MockCryptoProvider::default();
+
+    crypto
+        .expect_get_hasher()
+        .once()
+        .with(eq("sha-256"))
+        .returning(move |_| Ok(hasher.clone()));
+
+    crypto
+        .expect_generate_salt_base64()
+        .times(3) // Number of claims
+        .returning(|| String::from("MTIzYWJj"));
+
+    let leeway = 45u64;
+
+    let sd_formatter = SDJWTFormatter {
+        crypto: Arc::new(crypto),
+        params: Params { leeway },
+    };
+
+    let credential_details = test_credential_detail_response_dto_with_array();
+    let credential_data = CredentialData::from_credential_detail_response(
+        credential_details,
+        "http://base_url",
+        vec![CredentialStatus {
+            id: "STATUS_ID".to_string(),
+            r#type: "TYPE".to_string(),
+            status_purpose: Some("PURPOSE".to_string()),
+            additional_fields: HashMap::new(),
+        }],
+    )
+    .unwrap();
+
+    let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
+
+    let result = sd_formatter
+        .format_credentials(
+            credential_data,
+            &"holder_did".parse().unwrap(),
+            "algorithm",
+            vec!["Context1".to_string()],
+            vec!["Type1".to_string()],
+            Box::new(auth_fn),
+            None,
+            None,
+        )
+        .await;
+
+    assert!(result.is_ok());
+
+    let token = result.unwrap();
+
+    let parts: Vec<&str> = token.splitn(4, '~').collect();
+
+    assert_eq!(parts.len(), 4);
+
+    // WARNING! It's not in line with the standard but we will adjust the implementation
+    // to the standard in a separate ticket.
+    assert_eq!(
+        parts[1],
+        &Base64UrlSafeNoPadding::encode_to_string(r#"["MTIzYWJj","root/array/0","array_item"]"#)
+            .unwrap()
+    );
+    assert_eq!(
+        parts[2],
+        &Base64UrlSafeNoPadding::encode_to_string(r#"["MTIzYWJj","root/nested","nested_item"]"#)
+            .unwrap()
+    );
+    assert_eq!(
+        parts[3],
+        &Base64UrlSafeNoPadding::encode_to_string(r#"["MTIzYWJj","root_item","root_item"]"#)
+            .unwrap()
+    );
+
+    let jwt_parts: Vec<&str> = parts[0].splitn(3, '.').collect();
+
+    assert_eq!(
+        jwt_parts[0],
+        &Base64UrlSafeNoPadding::encode_to_string(
+            r##"{"alg":"algorithm","kid":"#key0","typ":"SDJWT"}"##
+        )
+        .unwrap()
+    );
+    assert_eq!(
+        jwt_parts[2],
+        &Base64UrlSafeNoPadding::encode_to_string(r#"ABC"#).unwrap()
+    );
+
+    let payload: JWTPayload<Sdvc> = serde_json::from_str(
+        &String::from_utf8(Base64UrlSafeNoPadding::decode_to_vec(jwt_parts[1], None).unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(payload.issuer, Some(String::from("Issuer DID")));
+    assert_eq!(payload.subject, Some(String::from("holder_did")));
+
+    let vc = payload.custom.vc;
+
+    assert!(vc
+        .credential_subject
+        .claims
+        .iter()
+        .all(|hashed_claim| hashed_claim == "YWJjMTIz"));
 }
 
 #[tokio::test]
@@ -225,6 +342,79 @@ async fn test_extract_credentials() {
 
     assert_eq!(credentials.claims.values.get("name").unwrap(), "John");
     assert_eq!(credentials.claims.values.get("age").unwrap(), "42");
+}
+
+#[tokio::test]
+async fn test_extract_credentials_with_array() {
+    let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJraWQiOiIja2V5MCIsInR5cCI6IlNESldUIn0\
+        .eyJpYXQiOjE3MTgzNTkwNjMsImV4cCI6MTc4MTQzMTA2MywibmJmIjoxNzE4MzU5MDE4LCJpc3MiOiJJc\
+        3N1ZXIgRElEIiwic3ViIjoiaG9sZGVyX2RpZCIsImp0aSI6Imh0dHA6Ly9iYXNlX3VybC9zc2kvY3JlZGV\
+        udGlhbC92MS85YTQxNGE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLCJ2YyI6eyJAY29udGV4d\
+        CI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsIkNvbnRleHQxIl0sImlkIjo\
+        iaHR0cDovL2Jhc2VfdXJsL3NzaS9jcmVkZW50aWFsL3YxLzlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhY\
+        Tg3MGVmNDc4OCIsInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLCJUeXBlMSJdLCJjcmVkZW50aWF\
+        sU3ViamVjdCI6eyJfc2QiOlsiWVdKak1USXoiLCJZV0pqTVRJeiIsIllXSmpNVEl6Il19LCJjcmVkZW50a\
+        WFsU3RhdHVzIjp7ImlkIjoiU1RBVFVTX0lEIiwidHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFV\
+        SUE9TRSJ9LCJjcmVkZW50aWFsU2NoZW1hIjp7ImlkIjoiQ3JlZGVudGlhbFNjaGVtYUlkIiwidHlwZSI6I\
+        lByb2NpdmlzT25lU2NoZW1hMjAyNCJ9fSwiX3NkX2FsZyI6InNoYS0yNTYifQ";
+    let token = format!(
+        "{jwt_token}.QUJD~WyJNVEl6WVdKaiIsInJvb3QvYXJyYXkvMCIsImFycmF5X2l0ZW0iXQ~WyJNVEl6W\
+            VdKaiIsInJvb3QvbmVzdGVkIiwibmVzdGVkX2l0ZW0iXQ~WyJNVEl6WVdKaiIsInJvb3RfaXRlbSIs\
+            InJvb3RfaXRlbSJd"
+    );
+
+    let mut hasher = MockHasher::default();
+    hasher
+        .expect_hash_base64()
+        .times(3) // Number of claims
+        .returning(|_| Ok(String::from("YWJjMTIz")));
+    let hasher = Arc::new(hasher);
+
+    let mut crypto = MockCryptoProvider::default();
+
+    crypto
+        .expect_get_hasher()
+        .once()
+        .with(eq("sha-256"))
+        .returning(move |_| Ok(hasher.clone()));
+
+    let leeway = 45u64;
+
+    let sd_formatter = SDJWTFormatter {
+        crypto: Arc::new(crypto),
+        params: Params { leeway },
+    };
+
+    let mut verify_mock = MockTokenVerifier::new();
+
+    verify_mock
+        .expect_verify()
+        .withf(
+            move |issuer_did_value, _key_id, algorithm, token, signature| {
+                assert_eq!("Issuer DID", issuer_did_value.as_ref().unwrap().as_str());
+                assert_eq!("algorithm", algorithm);
+                assert_eq!(jwt_token.as_bytes(), token);
+                assert_eq!(vec![65u8, 66, 67], signature);
+                true
+            },
+        )
+        .return_once(|_, _, _, _, _| Ok(()));
+
+    let result = sd_formatter
+        .extract_credentials(&token, Box::new(verify_mock))
+        .await;
+
+    let credentials = result.unwrap();
+
+    let root_item = credentials.claims.values.get("root_item").unwrap();
+    assert_eq!(root_item.as_str(), Some("root_item"));
+
+    let root = credentials.claims.values.get("root").unwrap();
+    let nested = root.get("nested").unwrap();
+    assert_eq!(nested.as_str(), Some("nested_item"));
+
+    let array = root.get("array").unwrap().as_array().unwrap();
+    assert_eq!(array[0].as_str(), Some("array_item"));
 }
 
 #[tokio::test]

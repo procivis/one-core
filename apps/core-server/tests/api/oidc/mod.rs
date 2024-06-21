@@ -7,4 +7,6 @@ mod credential_issuer;
 mod direct_post_tests;
 mod jsonld_openid_bbs_full_flow;
 mod jsonld_openid_full_flow;
+mod jwt_openid_full_flow;
 mod mdoc_openid_full_flow;
+mod sdjwt_openid_full_flow;

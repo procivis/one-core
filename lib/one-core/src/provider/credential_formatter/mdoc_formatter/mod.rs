@@ -14,6 +14,7 @@ use coset::{
 };
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
+use mdoc::DataElementValue;
 use rand::RngCore;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -45,8 +46,8 @@ use super::common::nest_claims;
 use super::model::{CredentialPresentation, CredentialSchema, CredentialSubject, Presentation};
 use super::{
     AuthenticationFn, CredentialData, CredentialFormatter, ExtractPresentationCtx,
-    FormatPresentationCtx, FormatterCapabilities, SelectiveDisclosureOption, SignatureProvider,
-    TokenVerifier, VerificationFn,
+    FormatPresentationCtx, FormatterCapabilities, PublishedClaim, SelectiveDisclosureOption,
+    SignatureProvider, TokenVerifier, VerificationFn,
 };
 
 mod cose;
@@ -123,7 +124,6 @@ impl CredentialFormatter for MdocFormatter {
         })?;
 
         let namespaces = try_build_namespaces(credential.claims, &self.datatype_config)?;
-
         let cose_key = try_build_cose_key(&*self.did_method_provider, holder_did).await?;
 
         let device_key_info = DeviceKeyInfo {
@@ -805,56 +805,115 @@ pub async fn try_verify_detached_signature_with_provider(
 }
 
 fn try_build_namespaces(
-    claims: Vec<(String, String, Option<String>)>,
+    claims: Vec<PublishedClaim>,
     datatype_config: &DatatypeConfig,
 ) -> Result<Namespaces, FormatterError> {
     let mut namespaces = Namespaces::new();
 
-    for (digest_id, (path, value, data_type)) in claims.into_iter().enumerate() {
-        let (namespace, name) = path.split_once('/').ok_or_else(|| {
-            FormatterError::Failed(format!(
-                "Invalid claim path without top-level object: {path}"
-            ))
-        })?;
+    let nested = nest_claims(claims.clone())?;
 
-        // random has to be minimum 16 bytes
-        let random = {
-            let mut r = vec![0u8; 32];
-            rand::thread_rng().fill_bytes(&mut r);
+    let mut digest_id = 0;
 
-            Bstr(r)
-        };
+    for (namespace_key, namespace_value) in nested.iter() {
+        let namespace = namespaces.entry(namespace_key.to_owned()).or_default();
 
-        let signed_item = IssuerSignedItem {
-            digest_id: digest_id as u64,
-            random,
-            element_identifier: name.to_owned(),
-            element_value: map_to_ciborium_value(
-                value,
-                data_type.ok_or(FormatterError::Failed("Missing data type".to_string()))?,
-                datatype_config,
-            )?,
-        };
+        let namespace_object = namespace_value
+            .as_object()
+            .ok_or(FormatterError::Failed("Expected an object".to_string()))?;
 
-        namespaces
-            .entry(namespace.to_owned())
-            .or_default()
-            .push(Bytes::<IssuerSignedItem>(signed_item));
+        for (item_key, item_value) in namespace_object {
+            // random has to be minimum 16 bytes
+            let random = {
+                let mut r = vec![0u8; 32];
+                rand::thread_rng().fill_bytes(&mut r);
+
+                Bstr(r)
+            };
+
+            let signed_item = IssuerSignedItem {
+                digest_id: digest_id as u64,
+                random,
+                element_identifier: item_key.to_owned(),
+                element_value: build_ciborium_value(
+                    item_value,
+                    &format!("{namespace_key}/{item_key}"),
+                    &claims,
+                    datatype_config,
+                )?,
+            };
+
+            namespace.push(Bytes::<IssuerSignedItem>(signed_item));
+            digest_id += 1;
+        }
     }
 
     Ok(namespaces)
 }
 
+fn build_ciborium_value(
+    value: &serde_json::Value,
+    this_path: &str,
+    claims: &Vec<PublishedClaim>,
+    datatype_config: &DatatypeConfig,
+) -> Result<DataElementValue, FormatterError> {
+    match value {
+        // Basically all the types goes here. Like - picture, bool and so one.
+        serde_json::Value::String(_) => {
+            let claim =
+                claims
+                    .iter()
+                    .find(|c| c.key == this_path)
+                    .ok_or(FormatterError::Failed(format!(
+                        "Missing claim: {this_path}"
+                    )))?;
+
+            map_to_ciborium_value(claim, datatype_config)
+        }
+        serde_json::Value::Object(object) => {
+            let mut items: Vec<(ciborium::Value, ciborium::Value)> = Vec::new();
+            for (key, value) in object {
+                items.push((
+                    ciborium::Value::from(key.clone()),
+                    build_ciborium_value(
+                        value,
+                        &format!("{this_path}/{key}"),
+                        claims,
+                        datatype_config,
+                    )?,
+                ));
+            }
+            Ok(ciborium::Value::Map(items))
+        }
+        serde_json::Value::Array(array) => {
+            let mut items: Vec<ciborium::Value> = Vec::new();
+            for (i, value) in array.iter().enumerate() {
+                items.push(build_ciborium_value(
+                    value,
+                    &format!("{this_path}/{i}"),
+                    claims,
+                    datatype_config,
+                )?);
+            }
+            Ok(ciborium::Value::Array(items))
+        }
+        serde_json::Value::Null => Ok(ciborium::Value::Null),
+        _ => unimplemented!(),
+    }
+}
+
 fn map_to_ciborium_value(
-    value: String,
-    data_type: String,
+    claim: &PublishedClaim,
     datatype_config: &DatatypeConfig,
 ) -> Result<Value, FormatterError> {
+    let data_type = claim
+        .datatype
+        .as_ref()
+        .ok_or(FormatterError::Failed("Missing data type".to_string()))?;
     let fields = datatype_config
-        .get_fields(&data_type)
+        .get_fields(data_type)
         .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
     if fields.r#type == DatatypeType::File {
-        let mut file_parts = value.splitn(2, ',');
+        let mut file_parts = claim.value.splitn(2, ',');
 
         let mime_type = file_parts.next().ok_or(FormatterError::Failed(
             "Missing data type of base64".to_string(),
@@ -878,7 +937,7 @@ fn map_to_ciborium_value(
             ciborium::Value::from(content),
         ]));
     }
-    Ok(ciborium::Value::from(value))
+    Ok(ciborium::Value::from(claim.value.clone()))
 }
 
 fn build_x5chain_header(issuer_did: DidValue) -> Result<Header, FormatterError> {
@@ -1068,55 +1127,97 @@ async fn try_build_cose_key(
     Ok(cose_key)
 }
 
+fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, FormatterError> {
+    match value {
+        Value::Text(text) => Ok(serde_json::Value::String(text)),
+        Value::Bytes(bytes) => handle_bytes(&bytes),
+        Value::Array(array) => handle_array(array),
+        Value::Map(map) => {
+            let mut map_content = serde_json::Map::new();
+            for (key, value) in map {
+                let key = key
+                    .as_text()
+                    .ok_or(FormatterError::Failed("Expected a text".to_string()))?;
+                map_content.insert(key.to_owned(), build_json_value(value)?);
+            }
+            Ok(serde_json::Value::Object(map_content))
+        }
+        Value::Null => Ok(serde_json::Value::Null),
+        _ => Err(FormatterError::Failed(format!(
+            "Expected String value. Got: {:#?}",
+            value
+        ))),
+    }
+}
+
+fn handle_array(array: Vec<Value>) -> Result<serde_json::Value, FormatterError> {
+    // Check if array has all elements with the same type
+    let Some(first) = array.first() else {
+        return Ok(serde_json::Value::Array(vec![]));
+    };
+
+    // It really is an array. Let's collect items.
+    if array.iter().all(|item| {
+        item.is_array() && first.is_array()
+            || item.is_text() && first.is_text()
+            || item.is_map() && first.is_map()
+    }) {
+        //let mut items: Vec<serde_json::Value> = Vec::new();
+        let items = array
+            .into_iter()
+            .map(build_json_value)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        return Ok(serde_json::Value::Array(items));
+    }
+
+    // PICTURE
+    if array.len() == 2 {
+        let bytes = array[1]
+            .as_bytes()
+            .ok_or_else(|| FormatterError::Failed("Not a byte array".to_owned()))?;
+        let value = String::from_utf8_lossy(bytes);
+
+        let data_type_value = array[0]
+            .as_text()
+            .ok_or_else(|| FormatterError::Failed("Expected String value for key".to_owned()))?;
+
+        return Ok(serde_json::Value::String(format!(
+            "{},{}",
+            data_type_value, value
+        )));
+    }
+
+    Err(FormatterError::Failed("Unhandled array".to_owned()))
+}
+
+fn handle_bytes(bytes: &[u8]) -> Result<serde_json::Value, FormatterError> {
+    let value = String::from_utf8_lossy(bytes);
+    Ok(serde_json::Value::String(format!(
+        "data:image/jpg;base64,{}",
+        value
+    )))
+}
+
 fn try_extract_claims(
     namespaces: Namespaces,
 ) -> Result<HashMap<String, serde_json::Value>, FormatterError> {
-    let mut claims = vec![];
+    let mut result = HashMap::new();
+    for (namespace, inner_claims) in namespaces {
+        let mut namespace_object_content = serde_json::Map::new();
 
-    for (root, inner_claims) in namespaces {
-        for Bytes::<IssuerSignedItem>(claim) in inner_claims {
-            let path = format!("{root}/{}", claim.element_identifier);
-            // TODO: This needs to be refactored when we implement nested lists
-            if claim.element_value.is_array() {
-                let element_value = claim.element_value.into_array().expect("it's an array");
-                if element_value.len() == 2 {
-                    let bytes = element_value[1]
-                        .as_bytes()
-                        .ok_or_else(|| FormatterError::Failed("Not a byte array".to_owned()))?;
-                    let value = String::from_utf8_lossy(bytes);
+        for Bytes::<IssuerSignedItem>(issuer_signed) in inner_claims {
+            let val = build_json_value(issuer_signed.element_value)?;
 
-                    let data_type_value = element_value[0].as_text().ok_or_else(|| {
-                        FormatterError::Failed(format!("Expected String value for key `{path}`"))
-                    })?;
-                    claims.push((
-                        path,
-                        format!("{},{}", data_type_value, value),
-                        Some("PICTURE".to_owned()),
-                    ))
-                }
-            } else if claim.element_value.is_bytes() {
-                let bytes = claim
-                    .element_value
-                    .into_bytes()
-                    .map_err(|_| FormatterError::Failed("Not a byte array".to_owned()))?;
-                let value = String::from_utf8_lossy(&bytes);
-                claims.push((
-                    path,
-                    format!("data:image/jpg;base64,{}", value),
-                    Some("MDL_PICTURE".to_owned()),
-                ))
-            } else {
-                let value = claim.element_value.into_text().map_err(|err| {
-                    FormatterError::Failed(format!(
-                        "Expected String value for key `{path}` got {err:?}"
-                    ))
-                })?;
-                claims.push((path, value, Some("STRING".to_owned())))
-            }
+            namespace_object_content.insert(issuer_signed.element_identifier, val);
         }
+        result.insert(
+            namespace,
+            serde_json::Value::Object(namespace_object_content),
+        );
     }
 
-    nest_claims(claims)
+    Ok(result)
 }
 
 fn encode_cbor_base64<T: Serialize>(t: T) -> Result<String, FormatterError> {

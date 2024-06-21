@@ -6,7 +6,8 @@ use one_core::model::{
     key::Key,
     organisation::Organisation,
 };
-use shared_types::DidValue;
+use serde_json::json;
+use shared_types::{CredentialSchemaId, DidValue};
 
 use crate::{
     fixtures::{TestingDidParams, TestingKeyParams},
@@ -270,4 +271,135 @@ pub(super) fn bbs_key_1() -> TestKey {
             ..Default::default()
         },
     }
+}
+
+pub(super) fn get_simple_context(
+    schema_id: &CredentialSchemaId,
+    schema_name_pascal: &str,
+    base_url: &str,
+) -> (String, String) {
+    let url = format!("{base_url}/ssi/context/v1/{schema_id}");
+    let context = json!(
+        {
+            "@context": {
+                "@version": 1.1,
+                "@protected": true,
+                "id": "@id",
+                "type": "@type",
+                format!("{schema_name_pascal}Credential"): {
+                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential", base_url),
+                    "@context": {
+                        "@version": 1.1,
+                        "@protected": true,
+                        "id": "@id",
+                        "type": "@type"
+                    }
+                },
+                format!("{schema_name_pascal}Subject"): {
+                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Subject", base_url),
+                    "@context": {
+                        "@version": 1.1,
+                        "@protected": true,
+                        "id": "@id",
+                        "type": "@type",
+                        "Key": format!("{}/ssi/context/v1/{schema_id}#Key", base_url),
+                        "Name": format!("{}/ssi/context/v1/{schema_id}#Name", base_url),
+                        "Address": format!("{}/ssi/context/v1/{schema_id}#Address", base_url)
+                    }
+                }
+            }
+        }
+    ).to_string();
+    (url, context)
+}
+
+pub(super) fn get_simple_context_bbsplus(
+    schema_id: &CredentialSchemaId,
+    schema_name_pascal: &str,
+    base_url: &str,
+) -> (String, String) {
+    let url = format!("{base_url}/ssi/context/v1/{schema_id}");
+    let context = json!(
+        {
+            "@context": {
+                "@version": 1.1,
+                "@protected": true,
+                "id": "@id",
+                "type": "@type",
+                format!("{schema_name_pascal}Credential"): {
+                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential", base_url),
+                    "@context": {
+                        "@version": 1.1,
+                        "@protected": true,
+                        "id": "@id",
+                        "type": "@type"
+                    }
+                },
+                format!("{schema_name_pascal}Subject"): {
+                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Subject", base_url),
+                    "@context": {
+                        "@version": 1.1,
+                        "@protected": true,
+                        "id": "@id",
+                        "type": "@type",
+                        "Key 1": format!("{}/ssi/context/v1/{schema_id}#Key%201", base_url),
+                        "Address root": {
+                            "@context": {
+                                "Address1": format!("{}/ssi/context/v1/{schema_id}#Address1", base_url),
+                                "Address2": format!("{}/ssi/context/v1/{schema_id}#Address2", base_url),
+                            },
+                            "@id": format!("{}/ssi/context/v1/{schema_id}#Address%20root", base_url),
+                        },
+                    }
+                }
+            }
+        }
+    ).to_string();
+    (url, context)
+}
+
+pub(super) fn get_array_context(
+    schema_id: &CredentialSchemaId,
+    schema_name_pascal: &str,
+    base_url: &str,
+) -> (String, String) {
+    let url = format!("{base_url}/ssi/context/v1/{schema_id}");
+    let context = json!(
+        {
+            "@context": {
+                "@version": 1.1,
+                "@protected": true,
+                "id": "@id",
+                "type": "@type",
+                format!("{schema_name_pascal}Credential"): {
+                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential", base_url),
+                    "@context": {
+                        "@version": 1.1,
+                        "@protected": true,
+                        "id": "@id",
+                        "type": "@type"
+                    }
+                },
+                format!("{schema_name_pascal}Subject"): {
+                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Subject", base_url),
+                    "@context": {
+                        "@version": 1.1,
+                        "@protected": true,
+                        "id": "@id",
+                        "type": "@type",
+                        "root": {
+                            "@context": {
+                                "array": {
+                                    //"@container": "@list",
+                                    "@id": format!("{}/ssi/context/v1/{schema_id}#array", base_url),
+                                },
+                            },
+                            "@id": format!("{}/ssi/context/v1/{schema_id}#root", base_url),
+                        },
+                    }
+                }
+            }
+        }
+    ).to_string();
+    (url, context)
 }

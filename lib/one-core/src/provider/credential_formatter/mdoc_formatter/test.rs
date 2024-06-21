@@ -175,11 +175,12 @@ async fn test_credential_formatting_ok_for_es256() {
         id: Uuid::new_v4().to_string(),
         issuance_date: OffsetDateTime::now_utc(),
         valid_for: time::Duration::seconds(10),
-        claims: vec![(
-            "a/b/c".to_string(),
-            "15".to_string(),
-            Some("STRING".to_string()),
-        )],
+        claims: vec![PublishedClaim {
+            key: "a/b/c".to_string(),
+            value: "15".to_string(),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        }],
         issuer_did: issuer_did.clone(),
         status: vec![],
         schema: CredentialSchemaData {
@@ -282,8 +283,14 @@ async fn test_credential_formatting_ok_for_es256() {
     let signed_item = &namespaces["a"][0].0;
 
     assert_eq!(0, signed_item.digest_id);
-    assert_eq!("b/c", &signed_item.element_identifier);
-    assert_eq!("15", signed_item.element_value.as_text().unwrap());
+    assert_eq!("b", &signed_item.element_identifier);
+    assert_eq!(
+        Value::Map(vec![(
+            Value::Text("c".to_string()),
+            Value::Text("15".to_string())
+        )]),
+        signed_item.element_value
+    );
 
     // check issuer auth
 
@@ -348,11 +355,12 @@ async fn test_unverified_credential_extraction() {
         id: Uuid::new_v4().to_string(),
         issuance_date,
         valid_for,
-        claims: vec![(
-            "a/b/c".to_string(),
-            "15".to_string(),
-            Some("STRING".to_string()),
-        )],
+        claims: vec![PublishedClaim {
+            key: "a/b/c".to_string(),
+            value: "15".to_string(),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        }],
         issuer_did: issuer_did.clone(),
         status: vec![],
         schema: CredentialSchemaData {

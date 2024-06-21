@@ -530,6 +530,7 @@ pub struct TestingCredentialParams<'a> {
     pub role: Option<CredentialRole>,
     pub key: Option<Key>,
     pub suspend_end_date: Option<OffsetDateTime>,
+    pub random_claims: bool,
 }
 
 #[allow(clippy::too_many_arguments)]
