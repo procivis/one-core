@@ -1,9 +1,9 @@
-use crate::{binding::OneCoreBinding, error::BindingError, ProofSchemaImportRequestDTO};
+use crate::{binding::OneCoreBinding, error::BindingError, ImportProofSchemaRequestBindingsDTO};
 
 impl OneCoreBinding {
     pub fn import_proof_schema(
         &self,
-        request: ProofSchemaImportRequestDTO,
+        request: ImportProofSchemaRequestBindingsDTO,
     ) -> Result<String, BindingError> {
         let request = request.try_into()?;
 

@@ -20,7 +20,6 @@ pub struct ProofSchemaService {
     organisation_repository: Arc<dyn OrganisationRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    client: reqwest::Client,
     config: Arc<core_config::CoreConfig>,
     base_url: Option<String>,
 }
@@ -33,7 +32,6 @@ impl ProofSchemaService {
         organisation_repository: Arc<dyn OrganisationRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        client: reqwest::Client,
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
     ) -> Self {
@@ -43,7 +41,6 @@ impl ProofSchemaService {
             history_repository,
             credential_schema_repository,
             formatter_provider,
-            client,
             config,
             base_url,
         }

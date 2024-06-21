@@ -17,6 +17,8 @@ use crate::service::credential_schema::mapper::{
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 
+use super::mapper::from_create_request_with_id;
+
 impl CredentialSchemaService {
     /// Creates a credential schema according to request
     ///
@@ -184,6 +186,7 @@ impl CredentialSchemaService {
                 BusinessLogicError::MissingOrganisation(request.organisation_id),
             ))?;
 
+        let credential_schema_id = request.schema.id.into();
         let create_request = request.schema.to_owned().into();
 
         super::validator::validate_create_request(
@@ -210,7 +213,8 @@ impl CredentialSchemaService {
             .format
             .get_fields(&request.schema.format)?
             .r#type;
-        let credential_schema = from_create_request(
+        let credential_schema = from_create_request_with_id(
+            credential_schema_id,
             create_request,
             organisation,
             "", // importing credential schema will always contain the schema_id

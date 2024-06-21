@@ -1,5 +1,5 @@
 use dto_mapper::convert_inner;
-use shared_types::{ClaimSchemaId, OrganisationId};
+use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -102,6 +102,24 @@ pub fn from_create_request(
     format_type: FormatType,
     schema_type: Option<CredentialSchemaType>,
 ) -> Result<CredentialSchema, ServiceError> {
+    from_create_request_with_id(
+        Uuid::new_v4().into(),
+        request,
+        organisation,
+        core_base_url,
+        format_type,
+        schema_type,
+    )
+}
+
+pub(super) fn from_create_request_with_id(
+    id: CredentialSchemaId,
+    request: CreateCredentialSchemaRequestDTO,
+    organisation: Organisation,
+    core_base_url: &str,
+    format_type: FormatType,
+    schema_type: Option<CredentialSchemaType>,
+) -> Result<CredentialSchema, ServiceError> {
     if request.claims.is_empty() {
         return Err(ServiceError::ValidationError(
             "Claim schemas cannot be empty".to_string(),
@@ -112,8 +130,6 @@ pub fn from_create_request(
 
     let claim_schemas = unnest_claim_schemas(request.claims);
 
-    let id = Uuid::new_v4();
-
     let schema_id = request
         .schema_id
         .unwrap_or(format!("{core_base_url}/ssi/schema/v1/{id}"));
@@ -123,7 +139,7 @@ pub fn from_create_request(
     });
 
     Ok(CredentialSchema {
-        id: id.into(),
+        id,
         deleted_at: None,
         created_date: now,
         last_modified: now,

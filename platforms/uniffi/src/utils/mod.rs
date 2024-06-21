@@ -1,10 +1,7 @@
 use one_core::service::error::ServiceError;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
-use url::Url;
 use uuid::Uuid;
-
-use crate::error::BindingError;
 
 pub(crate) mod native_key_storage;
 
@@ -31,9 +28,4 @@ pub fn into_id<T: From<Uuid>>(input: &str) -> Result<T, ServiceError> {
 
 pub fn into_timestamp(input: &str) -> Result<OffsetDateTime, ServiceError> {
     OffsetDateTime::parse(input, &Rfc3339).map_err(|e| ServiceError::MappingError(e.to_string()))
-}
-
-pub fn try_into_url<T: AsRef<str>>(input: T) -> Result<Url, BindingError> {
-    let url = input.as_ref();
-    Url::parse(url).map_err(|err| BindingError::ValidationError(err.to_string()))
 }

@@ -2420,5 +2420,5 @@ async fn test_import_credential_schema_success() {
         })
         .await
         .unwrap();
-    assert_ne!(external_schema_id, result);
+    assert_eq!(external_schema_id, result);
 }

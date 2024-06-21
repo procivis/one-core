@@ -67,12 +67,18 @@ impl ProofSchemasApi {
         self.client.post(&url, None).await
     }
 
-    pub async fn import(&self, url: &str, organisation_id: OrganisationId) -> Response {
+    pub async fn import(
+        &self,
+        proof_schema: impl Into<serde_json::Value>,
+        organisation_id: OrganisationId,
+    ) -> Response {
+        let schema = proof_schema.into();
+
         self.client
             .post(
                 "/api/proof-schema/v1/import",
                 Some(json!({
-                    "url": url,
+                    "schema": schema,
                     "organisationId": organisation_id
                 })),
             )

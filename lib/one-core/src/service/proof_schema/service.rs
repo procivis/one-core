@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaListResponseDTO, GetProofSchemaQueryDTO,
-    GetProofSchemaResponseDTO, ProofSchemaImportRequestDTO, ProofSchemaImportResponseDTO,
+    GetProofSchemaResponseDTO, ImportProofSchemaRequestDTO, ImportProofSchemaResponseDTO,
     ProofSchemaShareResponseDTO,
 };
 use super::mapper::{
@@ -265,8 +265,8 @@ impl ProofSchemaService {
 
     pub async fn import_proof_schema(
         &self,
-        request: ProofSchemaImportRequestDTO,
-    ) -> Result<ProofSchemaImportResponseDTO, ServiceError> {
+        request: ImportProofSchemaRequestDTO,
+    ) -> Result<ImportProofSchemaResponseDTO, ServiceError> {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
@@ -275,18 +275,7 @@ impl ProofSchemaService {
                 BusinessLogicError::MissingOrganisation(request.organisation_id).into(),
             )?;
 
-        let schema = async {
-            Ok(self
-                .client
-                .get(request.url)
-                .send()
-                .await?
-                .json::<GetProofSchemaResponseDTO>()
-                .await?)
-        }
-        .await
-        .map_err(BusinessLogicError::ProofSchemaImport)?;
-
+        let schema = request.schema;
         validate_imported_proof_schema(&schema, &self.config)?;
 
         let now = OffsetDateTime::now_utc();
@@ -296,6 +285,7 @@ impl ProofSchemaService {
                 .into_iter()
                 .map(|response_input_schema| {
                     let organisation = organisation.clone();
+
                     async move {
                         // check if the credential schema already exists
                         let maybe_credential_schema = self
@@ -399,7 +389,7 @@ impl ProofSchemaService {
         let proof_schema_id = self
             .proof_schema_repository
             .create_proof_schema(ProofSchema {
-                id: Uuid::new_v4().into(),
+                id: schema.id,
                 created_date: now,
                 last_modified: now,
                 deleted_at: None,
@@ -419,7 +409,7 @@ impl ProofSchemaService {
             ))
             .await;
 
-        Ok(ProofSchemaImportResponseDTO {
+        Ok(ImportProofSchemaResponseDTO {
             id: proof_schema_id,
         })
     }

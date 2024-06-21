@@ -285,6 +285,21 @@ impl From<CredentialSchemaTypeBindingEnum> for CredentialSchemaType {
     }
 }
 
+impl From<CredentialSchemaTypeBindingEnum>
+    for one_core::model::credential_schema::CredentialSchemaType
+{
+    fn from(value: CredentialSchemaTypeBindingEnum) -> Self {
+        match value {
+            CredentialSchemaTypeBindingEnum::ProcivisOneSchema2024 { .. } => {
+                Self::ProcivisOneSchema2024
+            }
+            CredentialSchemaTypeBindingEnum::FallbackSchema2024 { .. } => Self::FallbackSchema2024,
+            CredentialSchemaTypeBindingEnum::Mdoc { .. } => Self::Mdoc,
+            CredentialSchemaTypeBindingEnum::Other { value } => Self::Other(value),
+        }
+    }
+}
+
 impl TryFrom<CreateTrustAnchorRequestBindingDTO> for CreateTrustAnchorRequestDTO {
     type Error = ServiceError;
     fn try_from(value: CreateTrustAnchorRequestBindingDTO) -> Result<Self, Self::Error> {

@@ -2,11 +2,18 @@ use dto_mapper::From;
 use serde::Deserialize;
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
-use url::Url;
 
 use crate::model::common::{GetListQueryParams, GetListResponse};
+use crate::model::credential_schema::{
+    CredentialFormat, CredentialSchemaType, LayoutType, RevocationMethod, WalletStorageTypeEnum,
+};
 use crate::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};
-use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
+use crate::service::credential_schema::dto::{
+    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaListItemResponseDTO,
+};
+
+pub type GetProofSchemaListResponseDTO = GetListResponse<GetProofSchemaListItemDTO>;
+pub type GetProofSchemaQueryDTO = GetListQueryParams<SortableProofSchemaColumn>;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,13 +27,10 @@ pub struct ProofClaimSchemaResponseDTO {
     pub array: bool,
 }
 
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug)]
 pub struct GetProofSchemaResponseDTO {
     pub id: ProofSchemaId,
-    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub organisation_id: OrganisationId,
@@ -34,8 +38,7 @@ pub struct GetProofSchemaResponseDTO {
     pub proof_input_schemas: Vec<ProofInputSchemaResponseDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug)]
 pub struct ProofInputSchemaResponseDTO {
     pub claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
     pub credential_schema: CredentialSchemaListItemResponseDTO,
@@ -52,9 +55,6 @@ pub struct GetProofSchemaListItemDTO {
     pub name: String,
     pub expire_duration: u32,
 }
-
-pub type GetProofSchemaListResponseDTO = GetListResponse<GetProofSchemaListItemDTO>;
-pub type GetProofSchemaQueryDTO = GetListQueryParams<SortableProofSchemaColumn>;
 
 #[derive(Clone, Debug)]
 pub struct CreateProofSchemaClaimRequestDTO {
@@ -83,12 +83,55 @@ pub struct ProofSchemaShareResponseDTO {
 }
 
 #[derive(Clone, Debug)]
-pub struct ProofSchemaImportRequestDTO {
-    pub url: Url,
+pub struct ImportProofSchemaRequestDTO {
+    pub schema: ImportProofSchemaDTO,
     pub organisation_id: OrganisationId,
 }
 
 #[derive(Clone, Debug)]
-pub struct ProofSchemaImportResponseDTO {
+pub struct ImportProofSchemaDTO {
+    pub id: ProofSchemaId,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub organisation_id: OrganisationId,
+    pub expire_duration: u32,
+    pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportProofSchemaInputSchemaDTO {
+    pub claim_schemas: Vec<ImportProofSchemaClaimSchemaDTO>,
+    pub credential_schema: ImportProofSchemaCredentialSchemaDTO,
+    pub validity_constraint: Option<i64>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportProofSchemaClaimSchemaDTO {
+    pub id: ClaimSchemaId,
+    pub required: bool,
+    pub key: String,
+    pub data_type: String,
+    pub claims: Vec<ImportProofSchemaClaimSchemaDTO>,
+    pub array: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportProofSchemaCredentialSchemaDTO {
+    pub id: CredentialSchemaId,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub format: CredentialFormat,
+    pub revocation_method: RevocationMethod,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaType,
+    pub layout_type: Option<LayoutType>,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportProofSchemaResponseDTO {
     pub id: ProofSchemaId,
 }

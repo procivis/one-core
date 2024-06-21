@@ -1,18 +1,24 @@
 use dto_mapper::{convert_inner, From, Into};
+use one_core::model::credential_schema::CredentialSchemaType;
 use one_core::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO,
-    GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaRequestDTO,
-    ProofInputSchemaResponseDTO, ProofSchemaImportRequestDTO, ProofSchemaShareResponseDTO,
+    GetProofSchemaResponseDTO, ImportProofSchemaClaimSchemaDTO,
+    ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO, ImportProofSchemaInputSchemaDTO,
+    ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaRequestDTO,
+    ProofInputSchemaResponseDTO, ProofSchemaShareResponseDTO,
 };
 use serde::{Deserialize, Serialize};
+use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
-use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
 use crate::dto::common::GetListQueryParams;
-use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
+use crate::endpoint::credential_schema::dto::{
+    CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaLayoutType,
+    CredentialSchemaListItemResponseRestDTO, WalletStorageTypeRestEnum,
+};
 use crate::serialize::{front_time, front_time_option};
 
 // create endpoint
@@ -49,12 +55,76 @@ pub struct ClaimProofSchemaRequestRestDTO {
     pub required: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
-#[into(ProofSchemaImportRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(ImportProofSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct ProofSchemaImportRequestRestDTO {
-    pub url: Url,
+pub struct ImportProofSchemaRequestRestDTO {
     pub organisation_id: Uuid,
+    pub schema: ImportProofSchemaRestDTO,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(ImportProofSchemaDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportProofSchemaRestDTO {
+    pub id: ProofSchemaId,
+    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
+    pub created_date: OffsetDateTime,
+    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub organisation_id: OrganisationId,
+    pub expire_duration: u32,
+    #[into(with_fn = convert_inner)]
+    pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(ImportProofSchemaInputSchemaDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportProofSchemaInputSchemaRestDTO {
+    #[into(with_fn = convert_inner)]
+    pub claim_schemas: Vec<ImportProofSchemaClaimSchemaRestDTO>,
+    pub credential_schema: ImportProofSchemaCredentialSchemaRestDTO,
+    pub validity_constraint: Option<i64>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(ImportProofSchemaClaimSchemaDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportProofSchemaClaimSchemaRestDTO {
+    pub id: Uuid,
+    pub required: bool,
+    pub key: String,
+    #[schema(example = "STRING")]
+    pub data_type: String,
+    #[into(with_fn = convert_inner)]
+    pub claims: Vec<ImportProofSchemaClaimSchemaRestDTO>,
+    pub array: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(ImportProofSchemaCredentialSchemaDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportProofSchemaCredentialSchemaRestDTO {
+    pub id: Uuid,
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
+    pub created_date: OffsetDateTime,
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub format: String,
+    pub revocation_method: String,
+    #[into(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaType,
+    #[into(with_fn = convert_inner)]
+    pub layout_type: Option<CredentialSchemaLayoutType>,
+    #[into(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
 }
 
 // list endpoint

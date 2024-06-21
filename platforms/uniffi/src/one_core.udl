@@ -110,6 +110,20 @@ enum CredentialSchemaCodeTypeBindingDTO {
   "Barcode", "Mrz", "QrCode"
 };
 
+dictionary ImportProofSchemaCredentialSchemaBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  string name;
+  string format;
+  string revocation_method;
+  WalletStorageTypeBindingEnum? wallet_storage_type;
+  string schema_id;
+  CredentialSchemaTypeBindingEnum schema_type;
+  LayoutTypeBindingEnum? layout_type;
+  CredentialSchemaLayoutPropertiesBindingDTO? layout_properties;
+};
+
 dictionary CredentialSchemaBindingDTO {
   string id;
   string created_date;
@@ -234,6 +248,15 @@ dictionary ProofClaimSchemaBindingDTO {
   string key;
   string data_type;
   sequence<ProofClaimSchemaBindingDTO> claims;
+  boolean array;
+};
+
+dictionary ImportProofSchemaClaimSchemaBindingDTO {
+  string id;
+  boolean required;
+  string key;
+  string data_type;
+  sequence<ImportProofSchemaClaimSchemaBindingDTO> claims;
   boolean array;
 };
 
@@ -693,9 +716,19 @@ dictionary ProofSchemaListBindingDTO {
   u64 total_items;
 };
 
-dictionary ProofSchemaImportRequestDTO {
-  string url;
+dictionary ImportProofSchemaRequestBindingsDTO {
+  ImportProofSchemaBindingDTO schema;
   string organisation_id;
+};
+
+dictionary ImportProofSchemaBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  string name;
+  string organisation_id;
+  u32 expire_duration;
+  sequence<ImportProofSchemaInputSchemaBindingDTO> proof_input_schemas;
 };
 
 dictionary GetProofSchemaBindingDTO {
@@ -706,6 +739,12 @@ dictionary GetProofSchemaBindingDTO {
   string organisation_id;
   u32 expire_duration;
   sequence<ProofInputSchemaBindingDTO> proof_input_schemas;
+};
+
+dictionary ImportProofSchemaInputSchemaBindingDTO {
+  sequence<ImportProofSchemaClaimSchemaBindingDTO> claim_schemas;
+  ImportProofSchemaCredentialSchemaBindingDTO credential_schema;
+  i64? validity_constraint;
 };
 
 dictionary ProofInputSchemaBindingDTO {
@@ -883,7 +922,7 @@ interface OneCoreBinding {
   void uninitialize(boolean delete_data);
 
   [Throws=BindingError]
-  string import_proof_schema(ProofSchemaImportRequestDTO request);
+  string import_proof_schema(ImportProofSchemaRequestBindingsDTO request);
   
   [Throws=BindingError]
   string import_credential_schema(ImportCredentialSchemaRequestBindingDTO request);
