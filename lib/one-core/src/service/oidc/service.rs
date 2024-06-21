@@ -404,7 +404,10 @@ impl OIDCService {
         match &request {
             OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } => {
                 throw_if_interaction_created_date(
-                    get_exchange_param_pre_authorization_expires_in(&self.config)?,
+                    get_exchange_param_pre_authorization_expires_in(
+                        &self.config,
+                        &credential.exchange,
+                    )?,
                     &interaction,
                 )?;
                 throw_if_interaction_pre_authorized_code_used(&interaction_data)?;
@@ -433,15 +436,20 @@ impl OIDCService {
                 }
 
                 interaction_data.pre_authorized_code_used = true;
-                interaction_data.access_token_expires_at =
-                    Some(now + get_exchange_param_token_expires_in(&self.config)?);
+                interaction_data.access_token_expires_at = Some(
+                    now + get_exchange_param_token_expires_in(&self.config, &credential.exchange)?,
+                );
 
                 // we add refresh token for mdoc
                 if credential_schema.format == "MDOC" {
                     interaction_data.refresh_token = Some(generate_new_token());
 
-                    interaction_data.refresh_token_expires_at =
-                        Some(now + get_exchange_param_refresh_token_expires_in(&self.config)?);
+                    interaction_data.refresh_token_expires_at = Some(
+                        now + get_exchange_param_refresh_token_expires_in(
+                            &self.config,
+                            &credential.exchange,
+                        )?,
+                    );
                 }
             }
 
@@ -449,12 +457,17 @@ impl OIDCService {
                 validate_refresh_token(&interaction_data, refresh_token)?;
                 // we update both the access token and the refresh token
                 interaction_data.access_token = generate_new_token();
-                interaction_data.access_token_expires_at =
-                    Some(now + get_exchange_param_token_expires_in(&self.config)?);
+                interaction_data.access_token_expires_at = Some(
+                    now + get_exchange_param_token_expires_in(&self.config, &credential.exchange)?,
+                );
 
                 interaction_data.refresh_token = Some(generate_new_token());
-                interaction_data.refresh_token_expires_at =
-                    Some(now + get_exchange_param_refresh_token_expires_in(&self.config)?);
+                interaction_data.refresh_token_expires_at = Some(
+                    now + get_exchange_param_refresh_token_expires_in(
+                        &self.config,
+                        &credential.exchange,
+                    )?,
+                );
             }
         };
 

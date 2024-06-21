@@ -6,7 +6,7 @@ use shared_types::{CredentialId, DidId, DidValue, KeyId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::config::core_config::{CoreConfig, ExchangeType};
+use crate::config::core_config::CoreConfig;
 use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
@@ -50,9 +50,9 @@ pub fn list_response_try_into<T, F: TryInto<T>>(
 
 pub(crate) fn get_exchange_param_pre_authorization_expires_in(
     config: &CoreConfig,
+    exchange: &str,
 ) -> Result<Duration, ServiceError> {
-    let params: OpenID4VCParams = config.exchange.get_by_type(ExchangeType::OpenId4Vc)?;
-
+    let params: OpenID4VCParams = config.exchange.get(exchange)?;
     Ok(Duration::seconds(
         params.pre_authorized_code_expires_in as _,
     ))
@@ -60,17 +60,17 @@ pub(crate) fn get_exchange_param_pre_authorization_expires_in(
 
 pub(crate) fn get_exchange_param_token_expires_in(
     config: &CoreConfig,
+    exchange: &str,
 ) -> Result<Duration, ServiceError> {
-    let params: OpenID4VCParams = config.exchange.get_by_type(ExchangeType::OpenId4Vc)?;
-
+    let params: OpenID4VCParams = config.exchange.get(exchange)?;
     Ok(Duration::seconds(params.token_expires_in as _))
 }
 
 pub(crate) fn get_exchange_param_refresh_token_expires_in(
     config: &CoreConfig,
+    exchange: &str,
 ) -> Result<Duration, ServiceError> {
-    let params: OpenID4VCParams = config.exchange.get_by_type(ExchangeType::OpenId4Vc)?;
-
+    let params: OpenID4VCParams = config.exchange.get(exchange)?;
     Ok(Duration::seconds(params.refresh_expires_in as _))
 }
 
