@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use dto_mapper::convert_inner;
+use migration::{Alias, Expr, IntoColumnRef};
 use one_core::model::credential::{Credential, CredentialState, SortableCredentialColumn};
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::did::Did;
@@ -15,9 +16,9 @@ use shared_types::{CredentialId, DidId, KeyId};
 use uuid::Uuid;
 
 use crate::credential::entity_model::CredentialListEntityModel;
-use crate::entity::{self, credential, credential_schema, credential_state, did};
+use crate::entity::{credential, credential_schema, credential_state, did};
 use crate::list_query_generic::{
-    get_comparison_condition, get_equals_condition, get_string_match_condition,
+    get_comparison_condition_expr, get_equals_condition_expr, get_string_match_condition_expr,
     IntoFilterCondition, IntoSortingColumn,
 };
 
@@ -25,9 +26,16 @@ impl IntoSortingColumn for SortableCredentialColumn {
     fn get_column(&self) -> SimpleExpr {
         match self {
             Self::CreatedDate => credential::Column::CreatedDate.into_simple_expr(),
-            Self::SchemaName => credential_schema::Column::Name.into_simple_expr(),
-            Self::IssuerDid => did::Column::Did.into_simple_expr(),
-            Self::State => credential_state::Column::State.into_simple_expr(),
+            Self::SchemaName => (credential_schema::Entity, credential_schema::Column::Name)
+                .into_column_ref()
+                .into(),
+            Self::IssuerDid => (did::Entity, did::Column::Did).into_column_ref().into(),
+            Self::State => (
+                Alias::new("credential_states"),
+                credential_state::Column::State,
+            )
+                .into_column_ref()
+                .into(),
         }
     }
 }
@@ -35,26 +43,33 @@ impl IntoSortingColumn for SortableCredentialColumn {
 impl IntoFilterCondition for CredentialFilterValue {
     fn get_condition(self) -> sea_orm::Condition {
         match self {
-            Self::Name(string_match) => {
-                get_string_match_condition(credential_schema::Column::Name, string_match)
-            }
-            Self::OrganisationId(organisation_id) => get_equals_condition(
-                credential_schema::Column::OrganisationId,
-                organisation_id.to_string(),
+            Self::Name(string_match) => get_string_match_condition_expr(
+                Expr::col((credential_schema::Entity, credential_schema::Column::Name)),
+                string_match,
             ),
-            Self::Role(role) => get_equals_condition(credential::Column::Role, role.as_ref()),
+            Self::Role(role) => get_equals_condition_expr(
+                Expr::col((credential::Entity, credential::Column::Role)),
+                role.as_ref(),
+            ),
             Self::CredentialIds(ids) => credential::Column::Id.is_in(ids.iter()).into_condition(),
-            Self::State(states) => credential_state::Column::State
-                .is_in(
-                    states
-                        .into_iter()
-                        .map(credential_state::CredentialState::from)
-                        .collect::<Vec<_>>(),
-                )
-                .into_condition(),
-            Self::SuspendEndDate(comparison) => {
-                get_comparison_condition(credential_state::Column::SuspendEndDate, comparison)
-            }
+            Self::State(states) => Expr::col((
+                Alias::new("credential_states"),
+                credential_state::Column::State,
+            ))
+            .is_in(
+                states
+                    .into_iter()
+                    .map(credential_state::CredentialState::from)
+                    .collect::<Vec<_>>(),
+            )
+            .into_condition(),
+            Self::SuspendEndDate(comparison) => get_comparison_condition_expr(
+                Expr::col((
+                    Alias::new("credential_states"),
+                    credential_state::Column::SuspendEndDate,
+                )),
+                comparison,
+            ),
         }
     }
 }
@@ -71,8 +86,8 @@ pub(super) fn get_credential_state_active_model(
     }
 }
 
-impl From<entity::credential::Model> for Credential {
-    fn from(credential: entity::credential::Model) -> Self {
+impl From<credential::Model> for Credential {
+    fn from(credential: credential::Model) -> Self {
         Self {
             id: credential.id,
             created_date: credential.created_date,
