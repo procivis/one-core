@@ -14,7 +14,7 @@ impl JsonLdContextDB {
         Self { repository }
     }
 
-    pub async fn prepare_cache(&self) {
+    pub async fn prepare_cache(&self, additional: &[(String, String)]) {
         let now = OffsetDateTime::now_utc();
 
         self.repository
@@ -34,10 +34,7 @@ impl JsonLdContextDB {
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
-                context: W3ID_ORG_SECURITY_DATA_INTEGRITY_V2
-                    .to_string()
-                    .as_bytes()
-                    .to_vec(),
+                context: W3ID_ORG_SECURITY_DATA_INTEGRITY_V2.as_bytes().to_vec(),
                 url: "https://w3id.org/security/data-integrity/v2"
                     .parse()
                     .unwrap(),
@@ -45,6 +42,20 @@ impl JsonLdContextDB {
             })
             .await
             .unwrap();
+
+        for (url, context) in additional {
+            self.repository
+                .create_json_ld_context(JsonLdContext {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    context: context.to_string().as_bytes().to_vec(),
+                    url: url.parse().unwrap(),
+                    hit_counter: 0,
+                })
+                .await
+                .unwrap();
+        }
     }
 }
 

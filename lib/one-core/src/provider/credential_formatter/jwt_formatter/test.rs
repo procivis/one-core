@@ -12,7 +12,9 @@ use crate::provider::credential_formatter::{
         Params,
     },
     model::{CredentialPresentation, CredentialStatus},
-    test_utilities::test_credential_detail_response_dto,
+    test_utilities::{
+        test_credential_detail_response_dto, test_credential_detail_response_dto_with_array,
+    },
     CredentialData, CredentialFormatter, ExtractPresentationCtx, MockAuth, MockTokenVerifier,
 };
 
@@ -110,6 +112,88 @@ async fn test_format_credential() {
 }
 
 #[tokio::test]
+async fn test_format_credential_nested_array() {
+    let leeway = 45u64;
+
+    let sd_formatter = JWTFormatter {
+        params: Params { leeway },
+    };
+
+    let credential_details = test_credential_detail_response_dto_with_array();
+    let credential_data = CredentialData::from_credential_detail_response(
+        credential_details,
+        "http://base_url",
+        vec![CredentialStatus {
+            id: "STATUS_ID".to_string(),
+            r#type: "TYPE".to_string(),
+            status_purpose: Some("PURPOSE".to_string()),
+            additional_fields: HashMap::from([("Field1".to_owned(), "Val1".to_owned())]),
+        }],
+    )
+    .unwrap();
+
+    let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
+
+    let result = sd_formatter
+        .format_credentials(
+            credential_data,
+            &"holder_did".parse().unwrap(),
+            "algorithm",
+            vec!["Context1".to_string()],
+            vec!["Type1".to_string()],
+            Box::new(auth_fn),
+            None,
+            None,
+        )
+        .await;
+
+    assert!(result.is_ok());
+
+    let token = result.unwrap();
+
+    let jwt_parts: Vec<&str> = token.splitn(3, '.').collect();
+
+    assert_eq!(
+        jwt_parts[0],
+        &Base64UrlSafeNoPadding::encode_to_string(
+            r##"{"alg":"algorithm","kid":"#key0","typ":"JWT"}"##
+        )
+        .unwrap()
+    );
+    assert_eq!(
+        jwt_parts[2],
+        &Base64UrlSafeNoPadding::encode_to_string(r#"ABC"#).unwrap()
+    );
+
+    let payload: JWTPayload<VC> = serde_json::from_str(
+        &String::from_utf8(Base64UrlSafeNoPadding::decode_to_vec(jwt_parts[1], None).unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        payload.expires_at,
+        Some(payload.issued_at.unwrap() + Duration::days(365 * 2)),
+    );
+    assert_eq!(
+        payload.invalid_before,
+        Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
+    );
+
+    let vc = payload.custom.vc;
+
+    let root_item = vc.credential_subject.values.get("root_item").unwrap();
+    assert_eq!(root_item.as_str(), Some("root_item"));
+
+    let root = vc.credential_subject.values.get("root").unwrap();
+    let nested = root.get("nested").unwrap();
+    assert_eq!(nested.as_str(), Some("nested_item"));
+
+    let array = root.get("array").unwrap().as_array().unwrap();
+    assert_eq!(array[0].as_str(), Some("array_item"));
+}
+
+#[tokio::test]
 async fn test_extract_credentials() {
     let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJKV1QifQ.eyJpYXQiOjE2OTkzNTQyMjgsI\
         mV4cCI6MTc2MjQyNjIyOCwibmJmIjoxNjk5MzU0MTgzLCJpc3MiOiJJc3N1ZXIgRElEIiwic3ViIjoiaG9sZGVy\
@@ -167,6 +251,77 @@ async fn test_extract_credentials() {
 
     assert_eq!(credentials.claims.values.get("name").unwrap(), "John");
     assert_eq!(credentials.claims.values.get("age").unwrap(), "42");
+}
+
+#[tokio::test]
+async fn test_extract_credentials_nested_array() {
+    let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJraWQiOiIja2V5MCIsInR5cCI6IkpXVCJ9.eyJpYXQ\
+        iOjE3MTgyNTk4NTYsImV4cCI6MTc4MTMzMTg1NiwibmJmIjoxNzE4MjU5ODExLCJpc3MiOiJJc3N1ZXIgRElEIi\
+        wic3ViIjoiaG9sZGVyX2RpZCIsImp0aSI6Imh0dHA6Ly9iYXNlX3VybC9zc2kvY3JlZGVudGlhbC92MS85YTQxN\
+        GE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLCJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53\
+        My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsIkNvbnRleHQxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnR\
+        pYWwiLCJUeXBlMSJdLCJpZCI6Imh0dHA6Ly9iYXNlX3VybC9zc2kvY3JlZGVudGlhbC92MS85YTQxNGE2MC05ZT\
+        ZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLCJjcmVkZW50aWFsU3ViamVjdCI6eyJyb290Ijp7ImFycmF5IjpbI\
+        mFycmF5X2l0ZW0iXSwibmVzdGVkIjoibmVzdGVkX2l0ZW0ifSwicm9vdF9pdGVtIjoicm9vdF9pdGVtIn0sImNy\
+        ZWRlbnRpYWxTdGF0dXMiOnsiaWQiOiJTVEFUVVNfSUQiLCJ0eXBlIjoiVFlQRSIsInN0YXR1c1B1cnBvc2UiOiJ\
+        QVVJQT1NFIiwiRmllbGQxIjoiVmFsMSJ9LCJjcmVkZW50aWFsU2NoZW1hIjp7ImlkIjoiQ3JlZGVudGlhbFNjaG\
+        VtYUlkIiwidHlwZSI6IlByb2NpdmlzT25lU2NoZW1hMjAyNCJ9fX0";
+
+    let token = format!("{jwt_token}.QUJD");
+
+    let leeway = 45u64;
+
+    let jwt_formatter = JWTFormatter {
+        params: Params { leeway },
+    };
+
+    let mut verify_mock = MockTokenVerifier::new();
+
+    verify_mock
+        .expect_verify()
+        .withf(
+            move |issuer_did_value, _key_id, algorithm, token, signature| {
+                assert_eq!("Issuer DID", issuer_did_value.as_ref().unwrap().as_str());
+                assert_eq!("algorithm", algorithm);
+                assert_eq!(jwt_token.as_bytes(), token);
+                assert_eq!(vec![65u8, 66, 67], signature);
+                true
+            },
+        )
+        .return_once(|_, _, _, _, _| Ok(()));
+
+    let result = jwt_formatter
+        .extract_credentials(&token, Box::new(verify_mock))
+        .await;
+
+    let credentials = result.unwrap();
+
+    assert_eq!(credentials.issuer_did, Some("Issuer DID".parse().unwrap()),);
+    assert_eq!(credentials.subject, Some("holder_did".parse().unwrap()));
+
+    assert_eq!(1, credentials.status.len());
+
+    let first_credential_status = credentials.status.first().unwrap();
+    assert_eq!(first_credential_status.id, "STATUS_ID");
+    assert_eq!(first_credential_status.r#type, "TYPE");
+    assert_eq!(
+        first_credential_status.status_purpose.as_deref(),
+        Some("PURPOSE")
+    );
+    assert_eq!(
+        first_credential_status.additional_fields.get("Field1"),
+        Some(&"Val1".to_string())
+    );
+
+    let root_item = credentials.claims.values.get("root_item").unwrap();
+    assert_eq!(root_item.as_str(), Some("root_item"));
+
+    let root = credentials.claims.values.get("root").unwrap();
+    let nested = root.get("nested").unwrap();
+    assert_eq!(nested.as_str(), Some("nested_item"));
+
+    let array = root.get("array").unwrap().as_array().unwrap();
+    assert_eq!(array[0].as_str(), Some("array_item"));
 }
 
 #[tokio::test]

@@ -131,49 +131,69 @@ pub(super) fn did_method_id_from_value(did_value: &DidValue) -> Result<String, S
     Ok(did_method.to_uppercase())
 }
 
-fn object_to_model_claims(
+fn value_to_model_claims(
     credential_id: CredentialId,
     claim_schemas: &[CredentialSchemaClaim],
-    object: &serde_json::Map<String, serde_json::Value>,
+    json_value: &serde_json::Value,
     now: OffsetDateTime,
-    prefix: &str,
+    claim_schema: &ClaimSchema,
 ) -> Result<Vec<Claim>, ServiceError> {
     let mut model_claims = vec![];
 
-    for (key, value) in object {
-        let schema_name = format!("{prefix}/{key}");
-
-        match value.as_str() {
-            None => {
-                let value_as_object = value.as_object().ok_or(ServiceError::MappingError(
-                    "value is not an Object".to_string(),
-                ))?;
-                model_claims.extend(object_to_model_claims(
-                    credential_id,
-                    claim_schemas,
-                    value_as_object,
-                    now,
-                    &schema_name,
-                )?);
-            }
-            Some(value) => {
-                let claim_schema = claim_schemas
+    match json_value {
+        serde_json::Value::String(value) => {
+            model_claims.push(Claim {
+                id: ClaimId::new_v4(),
+                credential_id,
+                created_date: now,
+                last_modified: now,
+                value: value.to_owned(),
+                path: claim_schema.key.to_owned(),
+                schema: Some(claim_schema.to_owned()),
+            });
+        }
+        serde_json::Value::Object(object) => {
+            for (key, value) in object {
+                let this_path = &claim_schema.key;
+                let child_schema_name = format!("{this_path}/{key}");
+                let child_credential_schema_claim = claim_schemas
                     .iter()
-                    .find(|claim_schema| *claim_schema.schema.key == schema_name)
+                    .find(|claim_schema| claim_schema.schema.key == child_schema_name)
                     .ok_or(ServiceError::BusinessLogic(
                         BusinessLogicError::MissingClaimSchemas,
                     ))?;
-
-                model_claims.push(Claim {
-                    id: ClaimId::new_v4(),
+                model_claims.extend(value_to_model_claims(
                     credential_id,
-                    created_date: now,
-                    last_modified: now,
-                    value: value.to_string(),
-                    path: schema_name.to_string(),
-                    schema: Some(claim_schema.schema.to_owned()),
-                });
+                    claim_schemas,
+                    value,
+                    now,
+                    &child_credential_schema_claim.schema,
+                )?);
             }
+        }
+        serde_json::Value::Array(array) => {
+            for (index, value) in array.iter().enumerate() {
+                let this_path = &claim_schema.key;
+                let child_schema_name = format!("{this_path}/{index}");
+                let child_credential_schema_claim = claim_schemas
+                    .iter()
+                    .find(|claim_schema| claim_schema.schema.key == child_schema_name)
+                    .ok_or(ServiceError::BusinessLogic(
+                        BusinessLogicError::MissingClaimSchemas,
+                    ))?;
+                model_claims.extend(value_to_model_claims(
+                    credential_id,
+                    claim_schemas,
+                    value,
+                    now,
+                    &child_credential_schema_claim.schema,
+                )?);
+            }
+        }
+        _ => {
+            return Err(ServiceError::MappingError(
+                "value type is not supported".to_string(),
+            ));
         }
     }
 
@@ -192,31 +212,13 @@ pub fn extracted_credential_to_model(
 
     let mut model_claims = vec![];
     for (value, claim_schema) in claims {
-        match value.as_str() {
-            None => {
-                let value_as_object = value.as_object().ok_or(ServiceError::MappingError(
-                    "value is not an Object".to_string(),
-                ))?;
-                model_claims.extend(object_to_model_claims(
-                    credential_id,
-                    claim_schemas,
-                    value_as_object,
-                    now,
-                    &claim_schema.key,
-                )?);
-            }
-            Some(value) => {
-                model_claims.push(Claim {
-                    id: ClaimId::new_v4(),
-                    credential_id,
-                    created_date: now,
-                    last_modified: now,
-                    value: value.to_string(),
-                    path: claim_schema.key.to_string(),
-                    schema: Some(claim_schema),
-                });
-            }
-        }
+        model_claims.extend(value_to_model_claims(
+            credential_id,
+            claim_schemas,
+            &value,
+            now,
+            &claim_schema,
+        )?);
     }
 
     Ok(Credential {

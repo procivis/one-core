@@ -2,14 +2,16 @@ use std::collections::HashMap;
 
 use crate::provider::credential_formatter::error::FormatterError;
 
+use super::PublishedClaim;
+
 pub(super) fn nest_claims(
-    claims: impl IntoIterator<Item = (String, String, Option<String>)>,
+    claims: impl IntoIterator<Item = PublishedClaim>,
 ) -> Result<HashMap<String, serde_json::Value>, FormatterError> {
     let mut data = serde_json::Value::Object(Default::default());
 
-    for (full_path, value, _) in claims {
-        let pointer = jsonptr::Pointer::try_from(format!("/{full_path}"))?;
-        pointer.assign(&mut data, value)?;
+    for claim in claims {
+        let pointer = jsonptr::Pointer::try_from(format!("/{}", claim.key))?;
+        pointer.assign(&mut data, claim.value)?;
     }
 
     Ok(data
@@ -30,9 +32,24 @@ mod tests {
     #[test]
     fn test_format_nested_vc_jwt() {
         let claims = vec![
-            ("name".to_string(), "John".to_string(), None),
-            ("location/x".to_string(), "1".to_string(), None),
-            ("location/y".to_string(), "2".to_string(), None),
+            PublishedClaim {
+                key: "name".into(),
+                value: "John".into(),
+                datatype: None,
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "location/x".into(),
+                value: "1".into(),
+                datatype: None,
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "location/y".into(),
+                value: "2".into(),
+                datatype: None,
+                array_item: false,
+            },
         ];
         let expected = HashMap::from([
             (
@@ -42,6 +59,36 @@ mod tests {
                   "y": "2"
                 }),
             ),
+            ("name".to_string(), json!("John")),
+        ]);
+
+        assert_eq!(expected, nest_claims(claims).unwrap());
+    }
+
+    #[test]
+    fn test_format_nested_vc_jwt_array() {
+        let claims = vec![
+            PublishedClaim {
+                key: "name".into(),
+                value: "John".into(),
+                datatype: None,
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "location/0".into(),
+                value: "1".into(),
+                datatype: None,
+                array_item: true,
+            },
+            PublishedClaim {
+                key: "location/1".into(),
+                value: "2".into(),
+                datatype: None,
+                array_item: true,
+            },
+        ];
+        let expected = HashMap::from([
+            ("location".to_string(), json!(["1", "2"])),
             ("name".to_string(), json!("John")),
         ]);
 

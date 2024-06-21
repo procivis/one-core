@@ -15,6 +15,7 @@ use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::common::nest_claims;
 use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 
+use super::PublishedClaim;
 use super::{error::FormatterError, AuthenticationFn, Context, CredentialData, VerificationFn};
 
 use self::model::{LdCredential, LdCredentialSubject, LdPresentation, LdProof};
@@ -127,7 +128,7 @@ pub(super) fn prepare_credential_type(
 
 pub(super) fn prepare_credential_subject(
     credential_schema_name: &str,
-    claims: Vec<(String, String, Option<String>)>,
+    claims: Vec<PublishedClaim>,
     holder_did: &DidValue,
     custom_subject_name: Option<String>,
 ) -> Result<LdCredentialSubject, FormatterError> {

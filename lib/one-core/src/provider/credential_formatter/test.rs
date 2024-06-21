@@ -5,7 +5,7 @@ use uuid::Uuid;
 use shared_types::DidValue;
 
 use crate::model::did::DidType;
-use crate::provider::credential_formatter::CredentialData;
+use crate::provider::credential_formatter::{CredentialData, PublishedClaim};
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialRole, CredentialSchemaType, CredentialStateEnum,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -128,22 +128,118 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
     .unwrap()
     .claims;
 
-    let expected: Vec<(String, String, Option<String>)> = vec![
-        (
-            "location/x".to_string(),
-            "123".to_string(),
-            Some("STRING".to_string()),
-        ),
-        (
-            "location/y".to_string(),
-            "456".to_string(),
-            Some("STRING".to_string()),
-        ),
-        (
-            "street".to_string(),
-            "some street".to_string(),
-            Some("STRING".to_string()),
-        ),
+    let expected: Vec<PublishedClaim> = vec![
+        PublishedClaim {
+            key: "location/x".to_string(),
+            value: "123".to_string(),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        },
+        PublishedClaim {
+            key: "location/y".to_string(),
+            value: "456".to_string(),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        },
+        PublishedClaim {
+            key: "street".to_string(),
+            value: "some street".to_string(),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        },
+    ];
+
+    assert_eq!(expected, actual);
+}
+
+#[test]
+fn test_from_credential_detail_response_nested_claim_mapping_array() {
+    let now = OffsetDateTime::now_utc();
+    let actual = CredentialData::from_credential_detail_response(
+        generate_credential_detail_response(vec![
+            DetailCredentialClaimResponseDTO {
+                schema: CredentialClaimSchemaDTO {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    key: "location".to_string(),
+                    datatype: "OBJECT".to_string(),
+                    required: false,
+                    array: true,
+                    claims: vec![],
+                },
+                path: "location".to_string(),
+                value: DetailCredentialClaimValueResponseDTO::Nested(vec![
+                    DetailCredentialClaimResponseDTO {
+                        schema: CredentialClaimSchemaDTO {
+                            id: Uuid::new_v4().into(),
+                            created_date: now,
+                            last_modified: now,
+                            key: "0".to_string(),
+                            datatype: "STRING".to_string(),
+                            array: false,
+                            required: false,
+                            claims: vec![],
+                        },
+                        path: "location/x".to_string(),
+                        value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
+                    },
+                    DetailCredentialClaimResponseDTO {
+                        schema: CredentialClaimSchemaDTO {
+                            id: Uuid::new_v4().into(),
+                            created_date: now,
+                            last_modified: now,
+                            key: "1".to_string(),
+                            array: false,
+                            datatype: "STRING".to_string(),
+                            required: false,
+                            claims: vec![],
+                        },
+                        path: "location/y".to_string(),
+                        value: DetailCredentialClaimValueResponseDTO::String("456".to_string()),
+                    },
+                ]),
+            },
+            DetailCredentialClaimResponseDTO {
+                schema: CredentialClaimSchemaDTO {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    key: "street".to_string(),
+                    array: false,
+                    datatype: "STRING".to_string(),
+                    required: false,
+                    claims: vec![],
+                },
+                path: "street".to_string(),
+                value: DetailCredentialClaimValueResponseDTO::String("some street".to_string()),
+            },
+        ]),
+        "http://127.0.0.1",
+        vec![],
+    )
+    .unwrap()
+    .claims;
+
+    let expected: Vec<PublishedClaim> = vec![
+        PublishedClaim {
+            key: "location/0".to_string(),
+            value: "123".to_string(),
+            datatype: Some("STRING".to_string()),
+            array_item: true,
+        },
+        PublishedClaim {
+            key: "location/1".to_string(),
+            value: "456".to_string(),
+            datatype: Some("STRING".to_string()),
+            array_item: true,
+        },
+        PublishedClaim {
+            key: "street".to_string(),
+            value: "some street".to_string(),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        },
     ];
 
     assert_eq!(expected, actual);

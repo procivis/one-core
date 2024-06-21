@@ -34,7 +34,7 @@ use super::model::{CredentialPresentation, CredentialSubject};
 use super::{
     AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential,
     ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, FormatterError,
-    Presentation, SelectiveDisclosureOption, VerificationFn,
+    Presentation, PublishedClaim, SelectiveDisclosureOption, VerificationFn,
 };
 
 pub struct SDJWTFormatter {
@@ -63,7 +63,6 @@ impl CredentialFormatter for SDJWTFormatter {
     ) -> Result<String, FormatterError> {
         let issuer = credential.issuer_did.to_string();
         let id = credential.id.clone();
-
         let issued_at = credential.issuance_date;
         let expires_at = issued_at.checked_add(credential.valid_for);
 
@@ -260,8 +259,13 @@ impl SDJWTFormatter {
                 values: nest_claims(
                     deserialized_disclosures
                         .into_iter()
-                        .map(|(dis, _, _)| (dis.key, dis.value, None))
-                        .collect::<Vec<(String, String, Option<String>)>>(),
+                        .map(|(dis, _, _)| PublishedClaim {
+                            key: dis.key,
+                            value: dis.value,
+                            datatype: None,
+                            array_item: false,
+                        })
+                        .collect::<Vec<_>>(),
                 )?,
             },
             status: jwt.payload.custom.vc.credential_status,

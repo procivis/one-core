@@ -126,7 +126,7 @@ async fn test_post_issuer_credential_with(revocation_method: &str) -> (TestConte
     let resp = context
         .api
         .ssi
-        .issuer_create_credential(credential_schema.id, &jwt)
+        .issuer_create_credential(credential_schema.id, "jwt_vc_json", &jwt)
         .await;
 
     assert_eq!(200, resp.status());

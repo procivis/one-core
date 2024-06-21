@@ -339,7 +339,8 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_match_existi
         "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
         "key": "firstName",
         "lastModified": "2023-11-08T15:46:14.997Z",
-        "required": true
+        "required": true,
+        "array": false,
     });
     context
         .server_mock

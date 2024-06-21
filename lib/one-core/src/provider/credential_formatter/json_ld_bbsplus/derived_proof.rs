@@ -263,6 +263,7 @@ fn traverse_and_collect(
     subject: &str,
     entries: &[GroupEntry],
 ) -> Result<HashSet<usize>, FormatterError> {
+    let mut indices = HashSet::new();
     match key {
         Some(key) => {
             if key.contains(NESTED_CLAIM_MARKER) {
@@ -270,41 +271,46 @@ fn traverse_and_collect(
                     .split_once(NESTED_CLAIM_MARKER)
                     .ok_or(FormatterError::Failed("Invalid key format".to_string()))?;
 
-                let this_entry = find_with_predicate(key, subject, entries)?;
-                let this_triple = to_triple(this_entry.entry.as_ref())?;
+                let this_entries = find_with_predicate(key, subject, entries)?;
+                for this_entry in this_entries {
+                    let this_triple = to_triple(this_entry.entry.as_ref())?;
 
-                let mut indices =
-                    traverse_and_collect(Some(carry_over_key), this_triple.object, entries)?;
+                    indices =
+                        traverse_and_collect(Some(carry_over_key), this_triple.object, entries)?;
 
-                indices.insert(this_entry.index);
+                    indices.insert(this_entry.index);
+                }
 
                 Ok(indices)
             } else {
-                let last_entry = find_with_predicate(key, subject, entries)?;
-                let last_triple = to_triple(last_entry.entry.as_ref())?;
+                // In case of arrays we can get more than one end node with different values.
+                let end_entries = find_with_predicate(key, subject, entries)?;
 
-                //No collect all children because it may by an object
-                let mut indices = traverse_and_collect(None, last_triple.object, entries)?;
+                for end_entry in end_entries {
+                    let last_triple = to_triple(end_entry.entry.as_ref())?;
 
-                indices.insert(last_entry.index);
+                    //No collect all children because it may by an object
+                    indices.extend(traverse_and_collect(None, last_triple.object, entries)?);
+
+                    indices.insert(end_entry.index);
+                }
+
                 Ok(indices)
             }
         }
         None => {
-            // In case we asked for an object we need to collect all it's chidren and their children.
+            // In case we asked for an object we need to collect all it's children and their children.
             let children = find_all_children(subject, entries)?;
-
-            let mut collected_indices = HashSet::new();
 
             for child in &children {
                 let entry_triple = to_triple(child.entry.as_ref())?;
                 let child_indices = traverse_and_collect(None, entry_triple.object, entries)?;
-                collected_indices.extend(child_indices);
+                indices.extend(child_indices);
             }
 
-            collected_indices.extend(children.into_iter().map(|entry| entry.index));
+            indices.extend(children.into_iter().map(|entry| entry.index));
 
-            Ok(collected_indices)
+            Ok(indices)
         }
     }
 }
@@ -330,11 +336,11 @@ fn find_with_predicate<'a>(
     key: &str,
     subject: &'a str,
     entries: &'a [GroupEntry],
-) -> Result<&'a GroupEntry, FormatterError> {
+) -> Result<Vec<&'a GroupEntry>, FormatterError> {
     let key_url_encoded = encode(key).to_string();
-    entries
+    let selected_entries: Vec<_> = entries
         .iter()
-        .find(|entry| {
+        .filter(|entry| {
             if let Ok(triple) = to_triple(entry.entry.as_ref()) {
                 triple.subject == subject
                     && triple
@@ -344,9 +350,15 @@ fn find_with_predicate<'a>(
                 false
             }
         })
-        .ok_or(FormatterError::Failed(
+        .collect();
+
+    if selected_entries.is_empty() {
+        return Err(FormatterError::Failed(
             "Could not find credential subject".to_string(),
-        ))
+        ));
+    }
+
+    Ok(selected_entries)
 }
 
 fn find_root_object(entries: &[GroupEntry]) -> Result<(&str, usize), FormatterError> {

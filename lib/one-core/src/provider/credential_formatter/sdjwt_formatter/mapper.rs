@@ -4,20 +4,21 @@ use crate::{
     crypto::{hasher::Hasher, CryptoProvider},
     provider::credential_formatter::{
         jwt::mapper::string_to_b64url_string, Context, CredentialData, FormatterError,
+        PublishedClaim,
     },
 };
 
 use super::model::{SDCredentialSubject, Sdvc, VCContent};
 
 pub(super) fn claims_to_formatted_disclosure(
-    claims: &[(String, String, Option<String>)],
+    claims: &[PublishedClaim],
     crypto: &Arc<dyn CryptoProvider>,
 ) -> Vec<String> {
     claims
         .iter()
-        .filter_map(|(key, value, _data_type)| {
+        .filter_map(|claim| {
             let salt = crypto.generate_salt_base64();
-            serde_json::to_string(&[&salt, key, value]).ok()
+            serde_json::to_string(&[&salt, &claim.key, &claim.value]).ok()
         })
         .collect()
 }

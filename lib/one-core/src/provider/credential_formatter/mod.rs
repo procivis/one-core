@@ -46,13 +46,21 @@ use crate::service::oidc::model::OpenID4VPInteractionContent;
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
 pub type VerificationFn = Box<dyn TokenVerifier>;
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct PublishedClaim {
+    pub key: String,
+    pub value: String,
+    pub datatype: Option<String>,
+    pub array_item: bool,
+}
+
 #[derive(Debug)]
 pub struct CredentialData {
     // URI
     pub id: String,
     pub issuance_date: OffsetDateTime,
     pub valid_for: Duration,
-    pub claims: Vec<(String, String, Option<String>)>,
+    pub claims: Vec<PublishedClaim>,
     pub issuer_did: DidValue,
     pub status: Vec<CredentialStatus>,
     pub schema: CredentialSchemaData,
@@ -312,7 +320,7 @@ impl CredentialData {
             id,
             issuance_date,
             valid_for,
-            claims: map_claims(&credential.claims, ""),
+            claims: map_claims(&credential.claims, "", false),
             issuer_did,
             status: credential_status,
             schema: CredentialSchemaData {
@@ -331,19 +339,25 @@ impl CredentialData {
 fn map_claims(
     claims: &[DetailCredentialClaimResponseDTO],
     prefix: &str,
-) -> Vec<(String, String, Option<String>)> {
+    array_item: bool,
+) -> Vec<PublishedClaim> {
     let mut result = vec![];
 
     claims.iter().for_each(|claim| match &claim.value {
         DetailCredentialClaimValueResponseDTO::String(value) => {
-            result.push((
-                format!("{prefix}{}", claim.schema.key),
-                value.to_owned(),
-                Some(claim.clone().schema.datatype),
-            ));
+            result.push(PublishedClaim {
+                key: format!("{prefix}{}", claim.schema.key),
+                value: value.to_owned(),
+                datatype: Some(claim.clone().schema.datatype),
+                array_item,
+            });
         }
         DetailCredentialClaimValueResponseDTO::Nested(value) => {
-            let nested_claims = map_claims(value, &format!("{prefix}{}/", claim.schema.key));
+            let nested_claims = map_claims(
+                value,
+                &format!("{prefix}{}/", claim.schema.key),
+                claim.schema.array,
+            );
             result.extend(nested_claims);
         }
     });
