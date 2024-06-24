@@ -22,6 +22,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::key::Key;
+use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::model::{
@@ -45,8 +46,8 @@ use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::credential;
 use crate::service::credential::dto::{
-    CreateCredentialRequestDTO, CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
-    DetailCredentialClaimValueResponseDTO, GetCredentialQueryDTO, GetCredentialQueryFiltersDTO,
+    CreateCredentialRequestDTO, CredentialFilterValue, CredentialRequestClaimDTO,
+    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO, GetCredentialQueryDTO,
     SuspendCredentialRequestDTO,
 };
 use crate::service::credential::mapper::renest_claims;
@@ -368,17 +369,16 @@ async fn test_get_credential_list_success() {
     });
 
     let result = service
-        .get_credential_list(GetCredentialQueryFiltersDTO {
-            query: GetCredentialQueryDTO {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: 5,
-                }),
-                sorting: None,
-                filtering: None,
-                include: None,
-            },
-            organisation_id: Some(Uuid::new_v4().into()),
+        .get_credential_list(GetCredentialQueryDTO {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            sorting: None,
+            filtering: Some(
+                CredentialFilterValue::OrganisationId(Uuid::new_v4().into()).condition(),
+            ),
+            include: None,
         })
         .await;
 
@@ -2034,7 +2034,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
 }
 
 #[tokio::test]
-async fn test_create_credential_fail_incompatible_format_and_tranport_protocol() {
+async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
 

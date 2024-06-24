@@ -7,7 +7,7 @@ use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
-    CredentialStateRelations, GetCredentialQueryFilters, UpdateCredentialRequest,
+    CredentialStateRelations, UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
@@ -497,17 +497,17 @@ async fn test_get_credential_list_success() {
     };
 
     let credentials = provider
-        .get_credential_list(GetCredentialQueryFilters {
-            query: GetCredentialQueryDTO {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: 5,
-                }),
-                sorting: None,
-                filtering: None,
-                include: None,
-            },
-            organisation_id: Some(credential_schema.organisation.unwrap().id),
+        .get_credential_list(GetCredentialQueryDTO {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            sorting: None,
+            filtering: Some(
+                CredentialFilterValue::OrganisationId(credential_schema.organisation.unwrap().id)
+                    .condition(),
+            ),
+            include: None,
         })
         .await;
     assert!(credentials.is_ok());
@@ -557,17 +557,17 @@ async fn test_get_credential_list_success_verify_state_sorting() {
     };
 
     let credentials = provider
-        .get_credential_list(GetCredentialQueryFilters {
-            query: GetCredentialQueryDTO {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: 5,
-                }),
-                sorting: None,
-                filtering: None,
-                include: None,
-            },
-            organisation_id: Some(credential_schema.organisation.unwrap().id),
+        .get_credential_list(GetCredentialQueryDTO {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            sorting: None,
+            filtering: Some(
+                CredentialFilterValue::OrganisationId(credential_schema.organisation.unwrap().id)
+                    .condition(),
+            ),
+            include: None,
         })
         .await;
     let credentials = credentials.unwrap();
@@ -649,14 +649,11 @@ async fn test_get_credential_list_success_filter_state() {
     };
 
     let credentials = provider
-        .get_credential_list(GetCredentialQueryFilters {
-            query: GetCredentialQueryDTO {
-                filtering: Some(
-                    CredentialFilterValue::State(vec![CredentialStateEnum::Offered]).condition(),
-                ),
-                ..Default::default()
-            },
-            organisation_id: None,
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(
+                CredentialFilterValue::State(vec![CredentialStateEnum::Offered]).condition(),
+            ),
+            ..Default::default()
         })
         .await;
     let credentials = credentials.unwrap();
@@ -664,14 +661,11 @@ async fn test_get_credential_list_success_filter_state() {
     assert_eq!(1, credentials.values.len());
 
     let credentials = provider
-        .get_credential_list(GetCredentialQueryFilters {
-            query: GetCredentialQueryDTO {
-                filtering: Some(
-                    CredentialFilterValue::State(vec![CredentialStateEnum::Created]).condition(),
-                ),
-                ..Default::default()
-            },
-            organisation_id: None,
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(
+                CredentialFilterValue::State(vec![CredentialStateEnum::Created]).condition(),
+            ),
+            ..Default::default()
         })
         .await;
     let credentials = credentials.unwrap();
@@ -679,18 +673,15 @@ async fn test_get_credential_list_success_filter_state() {
     assert_eq!(0, credentials.values.len());
 
     let credentials = provider
-        .get_credential_list(GetCredentialQueryFilters {
-            query: GetCredentialQueryDTO {
-                filtering: Some(
-                    CredentialFilterValue::State(vec![
-                        CredentialStateEnum::Offered,
-                        CredentialStateEnum::Revoked,
-                    ])
-                    .condition(),
-                ),
-                ..Default::default()
-            },
-            organisation_id: None,
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(
+                CredentialFilterValue::State(vec![
+                    CredentialStateEnum::Offered,
+                    CredentialStateEnum::Revoked,
+                ])
+                .condition(),
+            ),
+            ..Default::default()
         })
         .await;
     let credentials = credentials.unwrap();
@@ -729,18 +720,15 @@ async fn test_get_credential_list_success_filter_suspend_end_date() {
     };
 
     let credentials = provider
-        .get_credential_list(GetCredentialQueryFilters {
-            query: GetCredentialQueryDTO {
-                filtering: Some(
-                    CredentialFilterValue::SuspendEndDate(ValueComparison {
-                        comparison: ComparisonType::GreaterThanOrEqual,
-                        value: much_later,
-                    })
-                    .condition(),
-                ),
-                ..Default::default()
-            },
-            organisation_id: None,
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(
+                CredentialFilterValue::SuspendEndDate(ValueComparison {
+                    comparison: ComparisonType::GreaterThanOrEqual,
+                    value: much_later,
+                })
+                .condition(),
+            ),
+            ..Default::default()
         })
         .await;
     let credentials = credentials.unwrap();
@@ -748,18 +736,15 @@ async fn test_get_credential_list_success_filter_suspend_end_date() {
     assert_eq!(1, credentials.values.len());
 
     let credentials = provider
-        .get_credential_list(GetCredentialQueryFilters {
-            query: GetCredentialQueryDTO {
-                filtering: Some(
-                    CredentialFilterValue::SuspendEndDate(ValueComparison {
-                        comparison: ComparisonType::LessThan,
-                        value: much_later,
-                    })
-                    .condition(),
-                ),
-                ..Default::default()
-            },
-            organisation_id: None,
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(
+                CredentialFilterValue::SuspendEndDate(ValueComparison {
+                    comparison: ComparisonType::LessThan,
+                    value: much_later,
+                })
+                .condition(),
+            ),
+            ..Default::default()
         })
         .await;
     let credentials = credentials.unwrap();
@@ -767,18 +752,15 @@ async fn test_get_credential_list_success_filter_suspend_end_date() {
     assert_eq!(0, credentials.values.len());
 
     let credentials = provider
-        .get_credential_list(GetCredentialQueryFilters {
-            query: GetCredentialQueryDTO {
-                filtering: Some(
-                    CredentialFilterValue::SuspendEndDate(ValueComparison {
-                        comparison: ComparisonType::GreaterThan,
-                        value: much_later,
-                    })
-                    .condition(),
-                ),
-                ..Default::default()
-            },
-            organisation_id: None,
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(
+                CredentialFilterValue::SuspendEndDate(ValueComparison {
+                    comparison: ComparisonType::GreaterThan,
+                    value: much_later,
+                })
+                .condition(),
+            ),
+            ..Default::default()
         })
         .await;
     let credentials = credentials.unwrap();

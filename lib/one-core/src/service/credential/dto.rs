@@ -139,6 +139,7 @@ pub enum CredentialListIncludeEntityTypeEnum {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CredentialFilterValue {
     Name(StringMatch),
+    OrganisationId(OrganisationId),
     Role(CredentialRole),
     CredentialIds(Vec<CredentialId>),
     State(Vec<crate::model::credential::CredentialStateEnum>),
@@ -150,11 +151,6 @@ impl ListFilterValue for CredentialFilterValue {}
 pub type GetCredentialListResponseDTO = GetListResponse<CredentialListItemResponseDTO>;
 pub type GetCredentialQueryDTO =
     ListQuery<SortableCredentialColumn, CredentialFilterValue, CredentialListIncludeEntityTypeEnum>;
-
-pub struct GetCredentialQueryFiltersDTO {
-    pub query: GetCredentialQueryDTO,
-    pub organisation_id: Option<OrganisationId>,
-}
 
 #[derive(Clone, Debug)]
 pub struct CreateCredentialRequestDTO {

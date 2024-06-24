@@ -40,8 +40,3 @@ pub(super) struct CredentialListEntityModel {
     pub issuer_did_name: Option<String>,
     pub issuer_did_type_field: Option<DidType>,
 }
-
-#[derive(FromQueryResult)]
-pub(super) struct CredentialCountEntityModel {
-    pub count: i64,
-}

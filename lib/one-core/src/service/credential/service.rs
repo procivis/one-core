@@ -4,7 +4,6 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::GetCredentialQueryFiltersDTO;
 use super::mapper::{credential_detail_response_from_model, credential_offered_history_event};
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::{
@@ -37,7 +36,7 @@ use crate::repository::error::DataLayerError;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialRevocationCheckResponseDTO,
-    GetCredentialListResponseDTO, SuspendCredentialRequestDTO,
+    GetCredentialListResponseDTO, GetCredentialQueryDTO, SuspendCredentialRequestDTO,
 };
 use crate::service::credential::mapper::{
     claims_from_create_request, credential_created_history_event,
@@ -301,11 +300,11 @@ impl CredentialService {
     /// * `query` - query parameters
     pub async fn get_credential_list(
         &self,
-        query: GetCredentialQueryFiltersDTO,
+        query: GetCredentialQueryDTO,
     ) -> Result<GetCredentialListResponseDTO, ServiceError> {
         let result = self
             .credential_repository
-            .get_credential_list(query.into())
+            .get_credential_list(query)
             .await?;
 
         list_response_try_into(result)

@@ -3,24 +3,30 @@ use std::sync::Arc;
 use serde_json::Value;
 use time::OffsetDateTime;
 
+use crate::{
+    model::{
+        credential::{
+            CredentialRelations, CredentialState, CredentialStateEnum, GetCredentialQuery,
+            UpdateCredentialRequest,
+        },
+        credential_schema::CredentialSchemaRelations,
+        did::DidRelations,
+        key::KeyRelations,
+        list_filter::{ComparisonType, ListFilterValue, ValueComparison},
+        organisation::OrganisationRelations,
+    },
+    provider::revocation::{provider::RevocationMethodProvider, CredentialRevocationState},
+    repository::{
+        credential_repository::CredentialRepository, history_repository::HistoryRepository,
+    },
+    service::{
+        credential::{dto::CredentialFilterValue, mapper::credential_revocation_history_event},
+        error::{EntityNotFoundError, MissingProviderError, ServiceError},
+    },
+};
+
 use self::dto::SuspendCheckResultDTO;
 use super::Task;
-use crate::model::credential::{
-    CredentialRelations, CredentialState, CredentialStateEnum, GetCredentialQuery,
-    GetCredentialQueryFilters, UpdateCredentialRequest,
-};
-use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::DidRelations;
-use crate::model::key::KeyRelations;
-use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
-use crate::model::organisation::OrganisationRelations;
-use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::revocation::CredentialRevocationState;
-use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::history_repository::HistoryRepository;
-use crate::service::credential::dto::CredentialFilterValue;
-use crate::service::credential::mapper::credential_revocation_history_event;
-use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 
 pub mod dto;
 
@@ -47,22 +53,18 @@ impl SuspendCheckProvider {
 #[async_trait::async_trait]
 impl Task for SuspendCheckProvider {
     async fn run(&self) -> Result<Value, ServiceError> {
-        let now = OffsetDateTime::now_utc();
+        let now: OffsetDateTime = OffsetDateTime::now_utc();
         let credential_list = self
             .credential_repository
-            .get_credential_list(GetCredentialQueryFilters {
-                query: GetCredentialQuery {
-                    filtering: Some(
-                        CredentialFilterValue::State(vec![CredentialStateEnum::Suspended])
-                            .condition()
-                            & CredentialFilterValue::SuspendEndDate(ValueComparison {
-                                comparison: ComparisonType::LessThan,
-                                value: now,
-                            }),
-                    ),
-                    ..Default::default()
-                },
-                organisation_id: None,
+            .get_credential_list(GetCredentialQuery {
+                filtering: Some(
+                    CredentialFilterValue::State(vec![CredentialStateEnum::Suspended]).condition()
+                        & CredentialFilterValue::SuspendEndDate(ValueComparison {
+                            comparison: ComparisonType::LessThan,
+                            value: now,
+                        }),
+                ),
+                ..Default::default()
             })
             .await?;
 
