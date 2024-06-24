@@ -1,5 +1,4 @@
-use dto_mapper::From;
-use shared_types::{CredentialId, DidId, KeyId, OrganisationId};
+use shared_types::{CredentialId, DidId, KeyId};
 use strum_macros::Display;
 use time::OffsetDateTime;
 
@@ -11,9 +10,7 @@ use super::interaction::{Interaction, InteractionId, InteractionRelations};
 use super::key::{Key, KeyRelations};
 use super::list_query::ListQuery;
 use super::revocation_list::{RevocationList, RevocationListRelations};
-use crate::service::credential::dto::{
-    CredentialFilterValue, CredentialListIncludeEntityTypeEnum, GetCredentialQueryFiltersDTO,
-};
+use crate::service::credential::dto::{CredentialFilterValue, CredentialListIncludeEntityTypeEnum};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Credential {
@@ -82,13 +79,6 @@ pub enum SortableCredentialColumn {
 pub type GetCredentialList = GetListResponse<Credential>;
 pub type GetCredentialQuery =
     ListQuery<SortableCredentialColumn, CredentialFilterValue, CredentialListIncludeEntityTypeEnum>;
-
-#[derive(From)]
-#[from(GetCredentialQueryFiltersDTO)]
-pub struct GetCredentialQueryFilters {
-    pub query: GetCredentialQuery,
-    pub organisation_id: Option<OrganisationId>,
-}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UpdateCredentialRequest {

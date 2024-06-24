@@ -1,12 +1,15 @@
-use shared_types::{CredentialId, DidId};
+use shared_types::CredentialId;
+use shared_types::DidId;
 
 use super::error::DataLayerError;
-use crate::model::claim::ClaimId;
-use crate::model::credential::{
-    Credential, CredentialRelations, GetCredentialList, GetCredentialQueryFilters,
-    UpdateCredentialRequest,
+use crate::model::{
+    claim::ClaimId,
+    credential::{
+        Credential, CredentialRelations, GetCredentialList, GetCredentialQuery,
+        UpdateCredentialRequest,
+    },
+    interaction::InteractionId,
 };
-use crate::model::interaction::InteractionId;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -35,7 +38,7 @@ pub trait CredentialRepository: Send + Sync {
 
     async fn get_credential_list(
         &self,
-        query_params: GetCredentialQueryFilters,
+        query_params: GetCredentialQuery,
     ) -> Result<GetCredentialList, DataLayerError>;
 
     async fn update_credential(

@@ -1,8 +1,11 @@
-use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
-use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryFiltersDTO};
+use one_core::{
+    model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch, StringMatchType},
+    service::credential::dto::CredentialFilterValue,
+};
 
-use super::dto::{CredentialsFilterQueryParamsRest, GetCredentialQuery};
 use crate::dto::common::ExactColumn;
+
+use super::dto::CredentialsFilterQueryParamsRest;
 
 impl From<CredentialsFilterQueryParamsRest> for ListFilterCondition<CredentialFilterValue> {
     fn from(value: CredentialsFilterQueryParamsRest) -> Self {
@@ -14,6 +17,9 @@ impl From<CredentialsFilterQueryParamsRest> for ListFilterCondition<CredentialFi
                 StringMatchType::StartsWith
             }
         };
+
+        let organisation_id =
+            CredentialFilterValue::OrganisationId(value.organisation_id).condition();
 
         let name = value.name.map(|name| {
             CredentialFilterValue::Name(StringMatch {
@@ -32,16 +38,6 @@ impl From<CredentialsFilterQueryParamsRest> for ListFilterCondition<CredentialFi
             CredentialFilterValue::State(values.into_iter().map(|status| status.into()).collect())
         });
 
-        ListFilterCondition::default() & name & role & credential_ids & states
-    }
-}
-
-impl From<GetCredentialQuery> for GetCredentialQueryFiltersDTO {
-    fn from(value: GetCredentialQuery) -> Self {
-        let organisation_id = value.filter.organisation_id;
-        GetCredentialQueryFiltersDTO {
-            query: value.into(),
-            organisation_id: Some(organisation_id),
-        }
+        organisation_id & name & role & credential_ids & states
     }
 }

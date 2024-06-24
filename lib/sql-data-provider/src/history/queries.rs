@@ -1,20 +1,23 @@
-use one_core::model::history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn};
-use sea_orm::sea_query::{
-    ColumnRef, Condition, Expr, IntoCondition, IntoIden, IntoTableRef, Query, SimpleExpr,
-};
 use sea_orm::{
+    sea_query::{
+        ColumnRef, Condition, Expr, IntoCondition, IntoIden, IntoTableRef, Query, SimpleExpr,
+    },
     ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, QuerySelect, QueryTrait,
     RelationTrait,
 };
 
-use crate::entity::{
-    claim, claim_schema, credential, credential_schema, did, history, proof, proof_claim,
-    proof_input_claim_schema, proof_input_schema, proof_schema,
+use crate::{
+    entity::{
+        claim, claim_schema, credential, credential_schema, did,
+        history::{self},
+        proof, proof_claim, proof_input_claim_schema, proof_input_schema, proof_schema,
+    },
+    list_query_generic::{
+        get_comparison_condition, get_equals_condition, IntoFilterCondition, IntoJoinCondition,
+        IntoSortingColumn, JoinRelation,
+    },
 };
-use crate::list_query_generic::{
-    get_comparison_condition, get_equals_condition, IntoFilterCondition, IntoJoinCondition,
-    IntoSortingColumn, JoinRelation,
-};
+use one_core::model::history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn};
 
 impl IntoSortingColumn for SortableHistoryColumn {
     fn get_column(&self) -> SimpleExpr {
@@ -69,7 +72,7 @@ impl IntoFilterCondition for HistoryFilterValue {
                                 .eq(Expr::col((claim::Entity, claim::Column::Id))),
                         )
                         .cond_where(claim::Column::CredentialId.eq(credential_id))
-                        .take(),
+                        .to_owned(),
                 ))
                 .into_condition(),
             HistoryFilterValue::CredentialSchemaId(credential_schema_id) => {
@@ -105,7 +108,7 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                             .eq(Expr::col((claim::Entity, claim::Column::ClaimSchemaId))),
                     )
                     .cond_where(claim_schema::Column::Key.contains(search_text.to_owned()))
-                    .take(),
+                    .to_owned(),
             )
             .or(history::Column::EntityId.in_subquery(
                 Query::select()
@@ -141,7 +144,7 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                         .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
                     )
                     .cond_where(claim_schema::Column::Key.contains(search_text))
-                    .take(),
+                    .to_owned(),
             ))
             .into_condition(),
         HistorySearchEnum::ClaimValue => history::Column::EntityId
@@ -150,7 +153,7 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                     .expr(claim::Column::CredentialId.into_expr())
                     .from(claim::Entity)
                     .cond_where(claim::Column::Value.contains(search_text.to_owned()))
-                    .take(),
+                    .to_owned(),
             )
             .or(history::Column::EntityId.in_subquery(
                 Query::select()
@@ -181,7 +184,7 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                         .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
                     )
                     .cond_where(claim::Column::Value.contains(search_text))
-                    .take(),
+                    .to_owned(),
             ))
             .into_condition(),
         HistorySearchEnum::CredentialSchemaName => credential_schema_name_search_condition(
@@ -238,7 +241,7 @@ fn search_query_did_filter_condition(
                     .eq(Expr::col((did::Entity, did::Column::Id))),
                 )
                 .cond_where(condition.to_owned())
-                .take(),
+                .to_owned(),
         )
         .or(history::Column::EntityId.in_subquery(
             Query::select()
@@ -253,7 +256,7 @@ fn search_query_did_filter_condition(
                     .eq(Expr::col((did::Entity, did::Column::Id))),
                 )
                 .cond_where(condition)
-                .take(),
+                .to_owned(),
         ))
         .into_condition()
 }
@@ -283,7 +286,7 @@ fn credential_schema_name_search_condition(
                     ),
                 )
                 .cond_where(credential_schema_match_condition.to_owned())
-                .take(),
+                .to_owned(),
         )
         .or(history::Column::EntityId.in_subquery(
             Query::select()
@@ -296,14 +299,14 @@ fn credential_schema_name_search_condition(
                     ),
                 )
                 .cond_where(credential_schema_match_condition.to_owned())
-                .take(),
+                .to_owned(),
         ))
         .or(history::Column::EntityId.in_subquery(
             Query::select()
                 .expr(credential_schema::Column::Id.into_expr())
                 .from(credential_schema::Entity)
                 .cond_where(credential_schema_match_condition)
-                .take(),
+                .to_owned(),
         ))
         .into_condition()
 }
@@ -335,7 +338,7 @@ fn credential_schema_filter_condition(
                     ),
                 )
                 .cond_where(credential_schema_match_condition.to_owned())
-                .take(),
+                .to_owned(),
         ))
         .or(history::Column::EntityId.in_subquery(
             Query::select()
@@ -348,7 +351,7 @@ fn credential_schema_filter_condition(
                     ),
                 )
                 .cond_where(credential_schema_match_condition)
-                .take(),
+                .to_owned(),
         ))
         .into_condition()
 }

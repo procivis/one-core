@@ -58,7 +58,7 @@ impl BackupRepository for BackupProvider {
                 Alias::new("version"),
             )
             .from(Alias::new("seaql_migrations"))
-            .take();
+            .to_owned();
 
         Ok(
             VersionModel::find_by_statement(db_copy.get_database_backend().build(&select))
@@ -220,7 +220,7 @@ impl BackupRepository for BackupProvider {
                                     .is_not_in(&self.exportable_storages)
                                     .and(key::Column::DeletedAt.is_null()),
                             )
-                            .take(),
+                            .to_owned(),
                     )
                     .and(credential::Column::DeletedAt.is_null()),
             )
@@ -245,7 +245,7 @@ impl BackupRepository for BackupProvider {
                                     .is_not_in(&self.exportable_storages)
                                     .and(key::Column::DeletedAt.is_null()),
                             )
-                            .take(),
+                            .to_owned(),
                     )
                     .and(did::Column::DeletedAt.is_null()),
             )
@@ -296,7 +296,7 @@ impl BackupRepository for BackupProvider {
                                     .is_not_in(&self.exportable_storages)
                                     .and(key::Column::DeletedAt.is_null()),
                             )
-                            .take(),
+                            .to_owned(),
                     )
                     .and(credential::Column::DeletedAt.is_null()),
             )
@@ -321,7 +321,7 @@ impl BackupRepository for BackupProvider {
                                     .is_not_in(&self.exportable_storages)
                                     .and(key::Column::DeletedAt.is_null()),
                             )
-                            .take(),
+                            .to_owned(),
                     )
                     .and(did::Column::DeletedAt.is_null()),
             )

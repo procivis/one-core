@@ -1,15 +1,17 @@
-use migration::{Expr, SelectStatement};
-use one_core::model::common::SortDirection;
-use one_core::model::list_filter::{
-    ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
-    ValueComparison,
-};
-use one_core::model::list_query::ListQuery;
-use sea_orm::query::*;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, EntityTrait, RelationDef};
-
 use crate::mapper::order_from_sort_direction;
+use one_core::model::{
+    common::SortDirection,
+    list_filter::{
+        ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+        ValueComparison,
+    },
+    list_query::ListQuery,
+};
+use sea_orm::{
+    query::*,
+    sea_query::{IntoCondition, SimpleExpr},
+    ColumnTrait, EntityTrait, RelationDef,
+};
 
 pub trait IntoSortingColumn {
     /// converts declared sorting column into a sea-orm column
@@ -114,18 +116,17 @@ where
     SortableColumn: IntoSortingColumn,
     FilterValue: IntoFilterCondition,
 {
-    fn with_list_query(
-        mut self,
-        query: &ListQuery<SortableColumn, FilterValue, Include>,
-    ) -> Select<T> {
+    fn with_list_query(self, query: &ListQuery<SortableColumn, FilterValue, Include>) -> Select<T> {
+        let mut result = self;
+
         if let Some(filter) = &query.filtering {
             if !is_condition_empty(filter) {
-                self = self.filter(get_filter_condition(filter));
+                result = result.filter(get_filter_condition(filter));
             }
         }
 
         if let Some(sorting) = &query.sorting {
-            self = self.order_by(
+            result = result.order_by(
                 sorting.column.get_column(),
                 order_from_sort_direction(sorting.direction.unwrap_or(SortDirection::Ascending)),
             );
@@ -134,47 +135,10 @@ where
         if let Some(pagination) = &query.pagination {
             let limit = pagination.page_size as u64;
             let offset = (pagination.page as u64) * limit;
-            self = self.offset(offset).limit(limit)
+            result = result.offset(offset).limit(limit)
         }
 
-        self
-    }
-}
-
-impl<SortableColumn, FilterValue, Include> SelectWithListQuery<SortableColumn, FilterValue, Include>
-    for SelectStatement
-where
-    SortableColumn: IntoSortingColumn,
-    FilterValue: IntoFilterCondition,
-{
-    fn with_list_query(
-        mut self,
-        query: &ListQuery<SortableColumn, FilterValue, Include>,
-    ) -> SelectStatement {
-        if let Some(filter) = &query.filtering {
-            if !is_condition_empty(filter) {
-                self = self.cond_where(get_filter_condition(filter)).take();
-            }
-        }
-
-        if let Some(sorting) = &query.sorting {
-            self = self
-                .order_by_expr(
-                    sorting.column.get_column(),
-                    order_from_sort_direction(
-                        sorting.direction.unwrap_or(SortDirection::Ascending),
-                    ),
-                )
-                .take();
-        }
-
-        if let Some(pagination) = &query.pagination {
-            let limit = pagination.page_size as u64;
-            let offset = (pagination.page as u64) * limit;
-            self = self.offset(offset).limit(limit).take();
-        }
-
-        self
+        result
     }
 }
 
@@ -230,17 +194,6 @@ pub(crate) fn get_string_match_condition(
     .into_condition()
 }
 
-pub(crate) fn get_string_match_condition_expr(column: Expr, value: StringMatch) -> Condition {
-    let StringMatch { r#match, value } = value;
-    match r#match {
-        StringMatchType::Equals => column.eq(value),
-        StringMatchType::StartsWith => column.like(format!("{}%", value)),
-        StringMatchType::EndsWith => column.like(format!("%{}", value)),
-        StringMatchType::Contains => column.like(format!("%{}%", value)),
-    }
-    .into_condition()
-}
-
 /// helper function to construct a `sea_query::Condition` from a `DateTimeComparison`
 pub(crate) fn get_comparison_condition<T: Into<Value>>(
     column: impl ColumnTrait,
@@ -258,27 +211,7 @@ pub(crate) fn get_comparison_condition<T: Into<Value>>(
     .into_condition()
 }
 
-pub(crate) fn get_comparison_condition_expr<T: Into<Value>>(
-    column: Expr,
-    value: ValueComparison<T>,
-) -> Condition {
-    let ValueComparison { comparison, value } = value;
-    match comparison {
-        ComparisonType::Equal => column.eq(value),
-        ComparisonType::NotEqual => column.ne(value),
-        ComparisonType::LessThan => column.lt(value),
-        ComparisonType::GreaterThan => column.gt(value),
-        ComparisonType::LessThanOrEqual => column.lte(value),
-        ComparisonType::GreaterThanOrEqual => column.gte(value),
-    }
-    .into_condition()
-}
-
 /// helper function to construct an `eq` `sea_query::Condition` with a specific value
 pub(crate) fn get_equals_condition(column: impl ColumnTrait, value: impl Into<Value>) -> Condition {
-    column.eq(value).into_condition()
-}
-
-pub(crate) fn get_equals_condition_expr(column: Expr, value: impl Into<Value>) -> Condition {
     column.eq(value).into_condition()
 }

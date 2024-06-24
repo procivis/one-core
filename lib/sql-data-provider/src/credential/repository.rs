@@ -3,11 +3,10 @@ use std::sync::Arc;
 
 use autometrics::autometrics;
 use dto_mapper::convert_inner;
-use migration::{all, Asterisk, CommonTableExpression, Func, WithClause, WithQuery};
 use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
 use one_core::model::credential::{
     Credential, CredentialRelations, CredentialState, GetCredentialList, GetCredentialQuery,
-    GetCredentialQueryFilters, UpdateCredentialRequest,
+    UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::did::{Did, DidRelations};
@@ -20,16 +19,16 @@ use one_core::repository::error::DataLayerError;
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use sea_orm::sea_query::{Alias, Expr, IntoCondition, Query};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr, EntityTrait,
-    FromQueryResult, JoinType, Order, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Set,
-    SqlErr, Unchanged,
+    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait,
+    FromQueryResult, JoinType, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
+    Select, Set, SqlErr, Unchanged,
 };
-use shared_types::{CredentialId, CredentialSchemaId, DidId, OrganisationId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::common::calculate_pages_count;
-use crate::credential::entity_model::{CredentialCountEntityModel, CredentialListEntityModel};
+use crate::credential::entity_model::CredentialListEntityModel;
 use crate::credential::mapper::{
     credentials_to_repository, get_credential_state_active_model, request_to_active_model,
 };
@@ -244,400 +243,124 @@ impl CredentialProvider {
     }
 }
 
-fn get_credential_list_query(
-    organisation_id: Option<OrganisationId>,
-    query_params: &GetCredentialQuery,
-) -> WithQuery {
-    let credential_ids_name = Alias::new("credential_ids");
-    let credential_ids = Query::select()
-        .column((credential::Entity, credential::Column::Id))
-        .from(credential::Entity)
-        .inner_join(
-            credential_schema::Entity,
-            Expr::col((credential::Entity, credential::Column::CredentialSchemaId))
-                .equals((credential_schema::Entity, credential_schema::Column::Id)),
-        )
-        .and_where_option(organisation_id.map(|organisation_id| {
-            Expr::col((
-                credential_schema::Entity,
-                credential_schema::Column::OrganisationId,
-            ))
-            .eq(organisation_id)
-        }))
-        .and_where(Expr::col((credential::Entity, credential::Column::DeletedAt)).is_null())
-        .order_by(
-            (credential::Entity, credential::Column::CreatedDate),
-            Order::Desc,
-        )
-        .take();
-
-    let latest_credential_state = Alias::new("latest_credential_state");
-    let credential_states_name = Alias::new("credential_states");
-    let credential_states = Query::select()
+fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credential::Entity> {
+    let query = credential::Entity::find()
+        .select_only()
         .columns([
-            (
-                credential_state::Entity,
-                credential_state::Column::CredentialId,
-            ),
-            (
-                credential_state::Entity,
-                credential_state::Column::CreatedDate,
-            ),
-            (credential_state::Entity, credential_state::Column::State),
-            (
-                credential_state::Entity,
-                credential_state::Column::SuspendEndDate,
-            ),
+            credential::Column::Id,
+            credential::Column::CreatedDate,
+            credential::Column::LastModified,
+            credential::Column::IssuanceDate,
+            credential::Column::DeletedAt,
+            credential::Column::Credential,
+            credential::Column::RedirectUri,
+            credential::Column::Role,
         ])
-        .from(credential_state::Entity)
-        .join_subquery(
-            JoinType::InnerJoin,
-            Query::select()
-                .column((
-                    credential_state::Entity,
-                    credential_state::Column::CredentialId,
-                ))
-                .expr_as(
-                    Func::max(Expr::col((
-                        credential_state::Entity,
-                        credential_state::Column::CreatedDate,
-                    ))),
-                    Alias::new("created_date"),
-                )
-                .from(credential_state::Entity)
-                .inner_join(
-                    credential_ids_name.clone(),
-                    Expr::col((
-                        credential_state::Entity,
-                        credential_state::Column::CredentialId,
-                    ))
-                    .equals((credential_ids_name.clone(), Alias::new("id"))),
-                )
-                .group_by_col((
-                    credential_state::Entity,
-                    credential_state::Column::CredentialId,
-                ))
-                .take(),
-            latest_credential_state.clone(),
-            all![
-                Expr::col((
-                    credential_state::Entity,
-                    credential_state::Column::CredentialId
-                ))
-                .equals((latest_credential_state.clone(), Alias::new("credential_id"))),
-                Expr::col((
-                    credential_state::Entity,
+        .column_as(credential::Column::Exchange, "exchange")
+        .column_as(
+            credential_schema::Column::CreatedDate,
+            "credential_schema_created_date",
+        )
+        .column_as(
+            credential_schema::Column::Format,
+            "credential_schema_format",
+        )
+        .column_as(credential_schema::Column::Id, "credential_schema_id")
+        .column_as(
+            credential_schema::Column::LastModified,
+            "credential_schema_last_modified",
+        )
+        .column_as(credential_schema::Column::Name, "credential_schema_name")
+        .column_as(
+            credential_schema::Column::RevocationMethod,
+            "credential_schema_revocation_method",
+        )
+        .column_as(
+            credential_schema::Column::WalletStorageType,
+            "credential_schema_wallet_storage_type",
+        )
+        .column_as(
+            credential_schema::Column::SchemaId,
+            "credential_schema_schema_id",
+        )
+        .column_as(
+            credential_schema::Column::SchemaType,
+            "credential_schema_schema_type",
+        )
+        .column_as(
+            credential_state::Column::CreatedDate,
+            "credential_state_created_date",
+        )
+        .column_as(credential_state::Column::State, "credential_state_state")
+        .column_as(
+            credential_state::Column::SuspendEndDate,
+            "credential_state_suspend_end_date",
+        )
+        .column_as(did::Column::CreatedDate, "issuer_did_created_date")
+        .column_as(did::Column::Deactivated, "issuer_did_deactivated")
+        .column_as(did::Column::Did, "issuer_did_did")
+        .column_as(did::Column::Id, "issuer_did_id")
+        .column_as(did::Column::LastModified, "issuer_did_last_modified")
+        .column_as(did::Column::Method, "issuer_did_method")
+        .column_as(did::Column::Name, "issuer_did_name")
+        .column_as(did::Column::TypeField, "issuer_did_type_field")
+        // add related schema (to enable sorting by schema name)
+        .join(
+            sea_orm::JoinType::InnerJoin,
+            credential::Relation::CredentialSchema.def(),
+        )
+        // add related issuer did (to enable sorting)
+        .join(JoinType::LeftJoin, credential::Relation::IssuerDid.def())
+        // find most recent state (to enable sorting)
+        .join(
+            sea_orm::JoinType::InnerJoin,
+            credential::Relation::CredentialState.def(),
+        )
+        .filter(
+            Condition::all()
+                .add(
                     credential_state::Column::CreatedDate
-                ))
-                .equals((latest_credential_state, Alias::new("created_date"))),
-            ],
-        )
-        .take();
-
-    let with = WithClause::new()
-        .cte(
-            CommonTableExpression::new()
-                .query(credential_states)
-                .table_name(credential_states_name.clone())
-                .to_owned(),
-        )
-        .cte(
-            CommonTableExpression::new()
-                .query(credential_ids)
-                .table_name(credential_ids_name.clone())
-                .to_owned(),
-        )
-        .to_owned();
-
-    let mut query = Query::select()
-        .columns([
-            (credential::Entity, credential::Column::Id),
-            (credential::Entity, credential::Column::CreatedDate),
-            (credential::Entity, credential::Column::LastModified),
-            (credential::Entity, credential::Column::IssuanceDate),
-            (credential::Entity, credential::Column::DeletedAt),
-            (credential::Entity, credential::Column::Credential),
-            (credential::Entity, credential::Column::RedirectUri),
-            (credential::Entity, credential::Column::Role),
-        ])
-        .expr_as(
-            Expr::col((credential::Entity, credential::Column::Exchange)),
-            Alias::new("exchange"),
-        )
-        .expr_as(
-            Expr::col((
-                credential_schema::Entity,
-                credential_schema::Column::CreatedDate,
-            )),
-            Alias::new("credential_schema_created_date"),
-        )
-        .expr_as(
-            Expr::col((credential_schema::Entity, credential_schema::Column::Format)),
-            Alias::new("credential_schema_format"),
-        )
-        .expr_as(
-            Expr::col((credential_schema::Entity, credential_schema::Column::Id)),
-            Alias::new("credential_schema_id"),
-        )
-        .expr_as(
-            Expr::col((
-                credential_schema::Entity,
-                credential_schema::Column::LastModified,
-            )),
-            Alias::new("credential_schema_last_modified"),
-        )
-        .expr_as(
-            Expr::col((credential_schema::Entity, credential_schema::Column::Name)),
-            Alias::new("credential_schema_name"),
-        )
-        .expr_as(
-            Expr::col((
-                credential_schema::Entity,
-                credential_schema::Column::RevocationMethod,
-            )),
-            Alias::new("credential_schema_revocation_method"),
-        )
-        .expr_as(
-            Expr::col((
-                credential_schema::Entity,
-                credential_schema::Column::WalletStorageType,
-            )),
-            Alias::new("credential_schema_wallet_storage_type"),
-        )
-        .expr_as(
-            Expr::col((
-                credential_schema::Entity,
-                credential_schema::Column::SchemaId,
-            )),
-            Alias::new("credential_schema_schema_id"),
-        )
-        .expr_as(
-            Expr::col((
-                credential_schema::Entity,
-                credential_schema::Column::SchemaType,
-            )),
-            Alias::new("credential_schema_schema_type"),
-        )
-        .expr_as(
-            Expr::col((credential_states_name.clone(), Alias::new("created_date"))),
-            Alias::new("credential_state_created_date"),
-        )
-        .expr_as(
-            Expr::col((credential_states_name.clone(), Alias::new("state"))),
-            Alias::new("credential_state_state"),
-        )
-        .expr_as(
-            Expr::col((
-                credential_states_name.clone(),
-                Alias::new("suspend_end_date"),
-            )),
-            Alias::new("credential_state_suspend_end_date"),
-        )
-        .expr_as(
-            Expr::col((did::Entity, did::Column::CreatedDate)),
-            Alias::new("issuer_did_created_date"),
-        )
-        .expr_as(
-            Expr::col((did::Entity, did::Column::Deactivated)),
-            Alias::new("issuer_did_deactivated"),
-        )
-        .expr_as(
-            Expr::col((did::Entity, did::Column::Did)),
-            Alias::new("issuer_did_did"),
-        )
-        .expr_as(
-            Expr::col((did::Entity, did::Column::Id)),
-            Alias::new("issuer_did_id"),
-        )
-        .expr_as(
-            Expr::col((did::Entity, did::Column::LastModified)),
-            Alias::new("issuer_did_last_modified"),
-        )
-        .expr_as(
-            Expr::col((did::Entity, did::Column::Method)),
-            Alias::new("issuer_did_method"),
-        )
-        .expr_as(
-            Expr::col((did::Entity, did::Column::Name)),
-            Alias::new("issuer_did_name"),
-        )
-        .expr_as(
-            Expr::col((did::Entity, did::Column::TypeField)),
-            Alias::new("issuer_did_type_field"),
-        )
-        .from(credential_ids_name.clone())
-        .inner_join(
-            credential::Entity,
-            Expr::col((credential::Entity, credential::Column::Id))
-                .equals((credential_ids_name, Alias::new("id"))),
-        )
-        .inner_join(
-            credential_schema::Entity,
-            Expr::col((credential::Entity, credential::Column::CredentialSchemaId))
-                .equals((credential_schema::Entity, credential_schema::Column::Id)),
-        )
-        .inner_join(
-            credential_states_name.clone(),
-            Expr::col((credential::Entity, credential::Column::Id))
-                .equals((credential_states_name, Alias::new("credential_id"))),
-        )
-        .left_join(
-            did::Entity,
-            Expr::col((credential::Entity, credential::Column::IssuerDidId))
-                .equals((did::Entity, did::Column::Id)),
-        )
-        .take()
-        .with_list_query(query_params);
-
-    if let Some(include) = &query_params.include {
-        if include.contains(&CredentialListIncludeEntityTypeEnum::LayoutProperties) {
-            query = query
-                .expr_as(
-                    Expr::col((
-                        credential_schema::Entity,
-                        credential_schema::Column::LayoutProperties,
-                    )),
-                    Alias::new("credential_schema_schema_layout_properties"),
+                        .in_subquery(
+                            Query::select()
+                                .expr(
+                                    Expr::col((
+                                        Alias::new("inner_state"),
+                                        credential_state::Column::CreatedDate,
+                                    ))
+                                    .max(),
+                                )
+                                .from_as(credential_state::Entity, Alias::new("inner_state"))
+                                .cond_where(
+                                    Expr::col((
+                                        Alias::new("inner_state"),
+                                        credential_state::Column::CredentialId,
+                                    ))
+                                    .equals((
+                                        credential_state::Entity,
+                                        credential_state::Column::CredentialId,
+                                    )),
+                                )
+                                .to_owned(),
+                        )
+                        .into_condition(),
                 )
-                .take();
+                .add(credential::Column::DeletedAt.is_null()),
+        )
+        // list query
+        .with_list_query(&query_params)
+        // fallback ordering
+        .order_by_desc(credential::Column::CreatedDate)
+        .order_by_desc(credential::Column::Id);
+
+    if let Some(include) = query_params.include {
+        if include.contains(&CredentialListIncludeEntityTypeEnum::LayoutProperties) {
+            return query.column_as(
+                credential_schema::Column::LayoutProperties,
+                "credential_schema_schema_layout_properties",
+            );
         }
     }
-
-    query.with(with)
-}
-
-fn get_credential_count_query(
-    organisation_id: Option<OrganisationId>,
-    query_params: &GetCredentialQuery,
-) -> WithQuery {
-    let credential_ids_name = Alias::new("credential_ids");
-    let credential_ids = Query::select()
-        .column((credential::Entity, credential::Column::Id))
-        .from(credential::Entity)
-        .inner_join(
-            credential_schema::Entity,
-            Expr::col((credential::Entity, credential::Column::CredentialSchemaId))
-                .equals((credential_schema::Entity, credential_schema::Column::Id)),
-        )
-        .and_where_option(organisation_id.map(|organisation_id| {
-            Expr::col((
-                credential_schema::Entity,
-                credential_schema::Column::OrganisationId,
-            ))
-            .eq(organisation_id)
-        }))
-        .and_where(Expr::col((credential::Entity, credential::Column::DeletedAt)).is_null())
-        .order_by(
-            (credential::Entity, credential::Column::CreatedDate),
-            Order::Desc,
-        )
-        .take();
-
-    let latest_credential_state = Alias::new("latest_credential_state");
-    let credential_states_name = Alias::new("credential_states");
-    let credential_states = Query::select()
-        .columns([
-            (
-                credential_state::Entity,
-                credential_state::Column::CredentialId,
-            ),
-            (
-                credential_state::Entity,
-                credential_state::Column::CreatedDate,
-            ),
-            (credential_state::Entity, credential_state::Column::State),
-            (
-                credential_state::Entity,
-                credential_state::Column::SuspendEndDate,
-            ),
-        ])
-        .from(credential_state::Entity)
-        .join_subquery(
-            JoinType::InnerJoin,
-            Query::select()
-                .column((
-                    credential_state::Entity,
-                    credential_state::Column::CredentialId,
-                ))
-                .expr_as(
-                    Func::max(Expr::col((
-                        credential_state::Entity,
-                        credential_state::Column::CreatedDate,
-                    ))),
-                    Alias::new("created_date"),
-                )
-                .from(credential_state::Entity)
-                .inner_join(
-                    credential_ids_name.clone(),
-                    Expr::col((
-                        credential_state::Entity,
-                        credential_state::Column::CredentialId,
-                    ))
-                    .equals((credential_ids_name.clone(), Alias::new("id"))),
-                )
-                .group_by_col((
-                    credential_state::Entity,
-                    credential_state::Column::CredentialId,
-                ))
-                .take(),
-            latest_credential_state.clone(),
-            all![
-                Expr::col((
-                    credential_state::Entity,
-                    credential_state::Column::CredentialId
-                ))
-                .equals((latest_credential_state.clone(), Alias::new("credential_id"))),
-                Expr::col((
-                    credential_state::Entity,
-                    credential_state::Column::CreatedDate
-                ))
-                .equals((latest_credential_state, Alias::new("created_date"))),
-            ],
-        )
-        .take();
-
-    let with = WithClause::new()
-        .cte(
-            CommonTableExpression::new()
-                .query(credential_states)
-                .table_name(credential_states_name.clone())
-                .to_owned(),
-        )
-        .cte(
-            CommonTableExpression::new()
-                .query(credential_ids)
-                .table_name(credential_ids_name.clone())
-                .to_owned(),
-        )
-        .to_owned();
-
-    let query = Query::select()
-        .expr_as(Expr::col(Asterisk).count(), Alias::new("count"))
-        .from(credential_ids_name.clone())
-        .inner_join(
-            credential::Entity,
-            Expr::col((credential::Entity, credential::Column::Id))
-                .equals((credential_ids_name, Alias::new("id"))),
-        )
-        .inner_join(
-            credential_schema::Entity,
-            Expr::col((credential::Entity, credential::Column::CredentialSchemaId))
-                .equals((credential_schema::Entity, credential_schema::Column::Id)),
-        )
-        .inner_join(
-            credential_states_name.clone(),
-            Expr::col((credential::Entity, credential::Column::Id))
-                .equals((credential_states_name, Alias::new("credential_id"))),
-        )
-        .left_join(
-            did::Entity,
-            Expr::col((credential::Entity, credential::Column::IssuerDidId))
-                .equals((did::Entity, did::Column::Id)),
-        )
-        .take()
-        .with_list_query(query_params);
-
-    query.with(with)
+    query
 }
 
 #[autometrics]
@@ -784,37 +507,31 @@ impl CredentialRepository for CredentialProvider {
 
     async fn get_credential_list(
         &self,
-        query_params: GetCredentialQueryFilters,
+        query_params: GetCredentialQuery,
     ) -> Result<GetCredentialList, DataLayerError> {
         let limit = query_params
-            .query
             .pagination
             .as_ref()
             .map(|pagination| pagination.page_size as _);
 
-        let count_query =
-            get_credential_count_query(query_params.organisation_id, &query_params.query);
-        let items_count = CredentialCountEntityModel::find_by_statement(
-            self.db.get_database_backend().build(&count_query),
-        )
-        .one(&self.db)
-        .await
-        .map_err(|e| DataLayerError::Db(e.into()))?
-        .ok_or_else(|| DataLayerError::Db(anyhow::anyhow!("missing count")))?;
+        let query = get_credential_list_query(query_params);
 
-        let list_query =
-            get_credential_list_query(query_params.organisation_id, &query_params.query);
-        let credentials = CredentialListEntityModel::find_by_statement(
-            self.db.get_database_backend().build(&list_query),
-        )
-        .all(&self.db)
-        .await
-        .map_err(|e| DataLayerError::Db(e.into()))?;
+        let items_count = query
+            .to_owned()
+            .count(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        let credentials = query
+            .into_model::<CredentialListEntityModel>()
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         Ok(GetCredentialList {
             values: credentials_to_repository(credentials)?,
-            total_pages: calculate_pages_count(items_count.count as _, limit.unwrap_or(0)),
-            total_items: items_count.count as _,
+            total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
+            total_items: items_count,
         })
     }
 

@@ -1,9 +1,7 @@
 use dto_mapper::convert_inner;
-use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
+use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use one_core::model::list_query::{ListPagination, ListSorting};
-use one_core::service::credential::dto::{
-    CredentialFilterValue, GetCredentialQueryDTO, GetCredentialQueryFiltersDTO,
-};
+use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO};
 
 use crate::error::BindingError;
 use crate::utils::into_id;
@@ -29,6 +27,10 @@ impl OneCoreBinding {
                         StringMatchType::StartsWith
                     }
                 };
+
+                let organisation =
+                    CredentialFilterValue::OrganisationId(into_id(&query.organisation_id)?)
+                        .condition();
 
                 let name = query.name.map(|name| {
                     CredentialFilterValue::Name(StringMatch {
@@ -60,25 +62,22 @@ impl OneCoreBinding {
                     )
                 });
 
-                ListFilterCondition::default() & name & role & ids & states
+                organisation & name & role & ids & states
             };
 
             Ok(core
                 .credential_service
-                .get_credential_list(GetCredentialQueryFiltersDTO {
-                    query: GetCredentialQueryDTO {
-                        pagination: Some(ListPagination {
-                            page: query.page,
-                            page_size: query.page_size,
-                        }),
-                        sorting: query.sort.map(|column| ListSorting {
-                            column: column.into(),
-                            direction: convert_inner(query.sort_direction),
-                        }),
-                        filtering: Some(condition),
-                        include: query.include.map(convert_inner),
-                    },
-                    organisation_id: Some(into_id(&query.organisation_id)?),
+                .get_credential_list(GetCredentialQueryDTO {
+                    pagination: Some(ListPagination {
+                        page: query.page,
+                        page_size: query.page_size,
+                    }),
+                    sorting: query.sort.map(|column| ListSorting {
+                        column: column.into(),
+                        direction: convert_inner(query.sort_direction),
+                    }),
+                    filtering: Some(condition),
+                    include: query.include.map(convert_inner),
                 })
                 .await?
                 .into())

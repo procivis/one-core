@@ -316,7 +316,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
                             Expr::col((Alias::new("inner_state"), proof_state::Column::ProofId))
                                 .equals((proof_state::Entity, proof_state::Column::ProofId)),
                         )
-                        .take(),
+                        .to_owned(),
                 )
                 .into_condition(),
         )
