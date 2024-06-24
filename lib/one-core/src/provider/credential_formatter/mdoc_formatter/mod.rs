@@ -812,7 +812,7 @@ fn try_build_namespaces(
 
     let nested = nest_claims(claims.clone())?;
 
-    let mut digest_id = 0;
+    let mut digest_id: u64 = 0;
 
     for (namespace_key, namespace_value) in nested.iter() {
         let namespace = namespaces.entry(namespace_key.to_owned()).or_default();
@@ -831,7 +831,7 @@ fn try_build_namespaces(
             };
 
             let signed_item = IssuerSignedItem {
-                digest_id: digest_id as u64,
+                digest_id,
                 random,
                 element_identifier: item_key.to_owned(),
                 element_value: build_ciborium_value(
@@ -857,7 +857,7 @@ fn build_ciborium_value(
     datatype_config: &DatatypeConfig,
 ) -> Result<DataElementValue, FormatterError> {
     match value {
-        // Basically all the types goes here. Like - picture, bool and so one.
+        // Basically all the types goes here. Like - picture, bool and so on.
         serde_json::Value::String(_) => {
             let claim =
                 claims
@@ -901,6 +901,9 @@ fn build_ciborium_value(
     }
 }
 
+// full-date (ISO mDL 7.2.1)
+const FULL_DATE_TAG: u64 = 1004;
+
 fn map_to_ciborium_value(
     claim: &PublishedClaim,
     datatype_config: &DatatypeConfig,
@@ -912,32 +915,65 @@ fn map_to_ciborium_value(
     let fields = datatype_config
         .get_fields(data_type)
         .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-    if fields.r#type == DatatypeType::File {
-        let mut file_parts = claim.value.splitn(2, ',');
 
-        let mime_type = file_parts.next().ok_or(FormatterError::Failed(
-            "Missing data type of base64".to_string(),
-        ))?;
+    Ok(match fields.r#type {
+        DatatypeType::String => ciborium::Value::from(claim.value.clone()),
+        DatatypeType::Number => {
+            let value = claim
+                .value
+                .parse::<u32>()
+                .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
+            ciborium::Value::from(value)
+        }
+        DatatypeType::Date => ciborium::Value::Tag(
+            FULL_DATE_TAG,
+            ciborium::Value::from(claim.value.to_owned()).into(),
+        ),
+        DatatypeType::Boolean => {
+            let value: bool = match claim.value.as_str() {
+                "true" => true,
+                "false" => false,
+                _ => {
+                    return Err(FormatterError::CouldNotFormat(format!(
+                        "Invalid boolean value: {}",
+                        claim.value
+                    )));
+                }
+            };
+            ciborium::Value::from(value)
+        }
+        DatatypeType::File => {
+            let mut file_parts = claim.value.splitn(2, ',');
 
-        let content = file_parts
-            .next()
-            .map(str::as_bytes)
-            .ok_or(FormatterError::Failed("Missing base64 data".to_string()))?;
+            let mime_type = file_parts.next().ok_or(FormatterError::Failed(
+                "Missing data type of base64".to_string(),
+            ))?;
 
-        if let Some(params) = &fields.params {
-            if let Some(public) = &params.public {
-                if public["encodeAsMdlPortrait"].as_bool().unwrap_or(false) {
-                    return Ok(ciborium::Value::from(content));
+            let content = file_parts
+                .next()
+                .map(str::as_bytes)
+                .ok_or(FormatterError::Failed("Missing base64 data".to_string()))?;
+
+            if let Some(params) = &fields.params {
+                if let Some(public) = &params.public {
+                    if public["encodeAsMdlPortrait"].as_bool().unwrap_or(false) {
+                        return Ok(ciborium::Value::from(content));
+                    }
                 }
             }
-        }
 
-        return Ok(ciborium::Value::Array(vec![
-            ciborium::Value::from(mime_type),
-            ciborium::Value::from(content),
-        ]));
-    }
-    Ok(ciborium::Value::from(claim.value.clone()))
+            ciborium::Value::Array(vec![
+                ciborium::Value::from(mime_type),
+                ciborium::Value::from(content),
+            ])
+        }
+        _ => {
+            return Err(FormatterError::CouldNotFormat(format!(
+                "Invalid datatype: {}",
+                fields.r#type
+            )));
+        }
+    })
 }
 
 fn build_x5chain_header(issuer_did: DidValue) -> Result<Header, FormatterError> {
@@ -1130,6 +1166,31 @@ async fn try_build_cose_key(
 fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, FormatterError> {
     match value {
         Value::Text(text) => Ok(serde_json::Value::String(text)),
+        Value::Bool(bool_value) => Ok(serde_json::Value::String(if bool_value {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        })),
+        Value::Integer(number) => {
+            let number_value: u32 = number
+                .try_into()
+                .map_err(|e: core::num::TryFromIntError| FormatterError::Failed(e.to_string()))?;
+            Ok(serde_json::Value::String(number_value.to_string()))
+        }
+        Value::Tag(tag, tag_value) => match tag {
+            FULL_DATE_TAG => Ok(serde_json::Value::String(
+                tag_value
+                    .as_text()
+                    .ok_or(FormatterError::Failed(format!(
+                        "Unexpected full-date value. Got: {:#?}",
+                        tag_value
+                    )))?
+                    .to_string(),
+            )),
+            _ => Err(FormatterError::Failed(format!(
+                "Unexpected CBOR tag: {tag}"
+            ))),
+        },
         Value::Bytes(bytes) => handle_bytes(&bytes),
         Value::Array(array) => handle_array(array),
         Value::Map(map) => {
@@ -1144,7 +1205,7 @@ fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, Format
         }
         Value::Null => Ok(serde_json::Value::Null),
         _ => Err(FormatterError::Failed(format!(
-            "Expected String value. Got: {:#?}",
+            "Unexpected element value. Got: {:#?}",
             value
         ))),
     }
