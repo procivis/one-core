@@ -307,18 +307,45 @@ pub(super) fn renest_arrays(
 
             match result.iter_mut().find(|item| item.schema.id == schema.id) {
                 None => {
-                    if values.len() > 1 {
+                    if schema.array
+                        && values.first().is_some_and(|f| match &f.value {
+                            DetailCredentialClaimValueResponseDTO::String(_) => f.schema.array,
+                            DetailCredentialClaimValueResponseDTO::Nested(value) => {
+                                f.schema.array && value.first().is_none()
+                            }
+                        })
+                    {
                         result.push(DetailCredentialClaimResponseDTO {
                             path: format!("{prefix}{key}"),
                             schema: schema.to_owned(),
-                            value: DetailCredentialClaimValueResponseDTO::Nested(values),
+                            value: DetailCredentialClaimValueResponseDTO::Nested(
+                                values
+                                    .into_iter()
+                                    .map(|mut value| {
+                                        value.schema.array = false;
+                                        value
+                                    })
+                                    .collect(),
+                            ),
                         })
                     } else {
                         result.extend(values);
                     }
                 }
                 Some(item) => {
-                    item.value = DetailCredentialClaimValueResponseDTO::Nested(values);
+                    if item.schema.array {
+                        item.value = DetailCredentialClaimValueResponseDTO::Nested(
+                            values
+                                .into_iter()
+                                .map(|mut value| {
+                                    value.schema.array = false;
+                                    value
+                                })
+                                .collect(),
+                        );
+                    } else {
+                        item.value = DetailCredentialClaimValueResponseDTO::Nested(values);
+                    }
                 }
             };
         });
@@ -388,7 +415,7 @@ fn group_subitems(
                 key: schema.schema.key,
                 datatype: schema.schema.data_type,
                 required: schema.required,
-                array: schema.schema.array,
+                array: false,
                 claims: vec![],
             },
             value: DetailCredentialClaimValueResponseDTO::Nested(current_items),
