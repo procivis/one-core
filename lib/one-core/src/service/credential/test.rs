@@ -50,7 +50,7 @@ use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO, GetCredentialQueryDTO,
     SuspendCredentialRequestDTO,
 };
-use crate::service::credential::mapper::renest_claims;
+use crate::service::credential::mapper::{extract_index_from_path, renest_claims};
 use crate::service::credential::validator::validate_create_request;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::{
@@ -3673,6 +3673,324 @@ async fn test_get_credential_success_array_complex_nested_all() {
 }
 
 #[tokio::test]
+async fn test_get_credential_success_array_index_sorting() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+
+    let now = get_dummy_date();
+    let schema_str = generate_claim_schema("str", "STRING", true);
+
+    let claim_schemas = vec![schema_str.to_owned()];
+    let organisation = Organisation {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+    };
+
+    let id = Uuid::new_v4().into();
+
+    let claims = vec![
+        generate_claim(id, &schema_str, "str1", "str/2"),
+        generate_claim(id, &schema_str, "str1", "str/0"),
+        generate_claim(id, &schema_str, "str1", "str/1"),
+        generate_claim(id, &schema_str, "str1", "str/6"),
+        generate_claim(id, &schema_str, "str1", "str/7"),
+        generate_claim(id, &schema_str, "str1", "str/3"),
+        generate_claim(id, &schema_str, "str1", "str/4"),
+        generate_claim(id, &schema_str, "str1", "str/10"),
+        generate_claim(id, &schema_str, "str1", "str/11"),
+        generate_claim(id, &schema_str, "str1", "str/5"),
+        generate_claim(id, &schema_str, "str1", "str/9"),
+        generate_claim(id, &schema_str, "str1", "str/8"),
+        generate_claim(id, &schema_str, "str1", "str/12"),
+    ];
+
+    let credential = Credential {
+        id,
+        created_date: now,
+        issuance_date: now,
+        last_modified: now,
+        deleted_at: None,
+        credential: vec![],
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        redirect_uri: None,
+        role: CredentialRole::Issuer,
+        state: Some(vec![CredentialState {
+            created_date: now,
+            state: CredentialStateEnum::Created,
+            suspend_end_date: None,
+        }]),
+        claims: Some(claims.to_owned()),
+        issuer_did: Some(Did {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name: "did1".to_string(),
+            organisation: Some(organisation.clone()),
+            did: "did1".parse().unwrap(),
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::AssertionMethod,
+                key: Key {
+                    id: Uuid::new_v4().into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    public_key: vec![],
+                    name: "key_name".to_string(),
+                    key_reference: vec![],
+                    storage_type: "INTERNAL".to_string(),
+                    key_type: "EDDSA".to_string(),
+                    organisation: None,
+                },
+            }]),
+            deactivated: false,
+        }),
+        holder_did: None,
+        schema: Some(CredentialSchema {
+            id: Uuid::new_v4().into(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "schema".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_string(),
+            claim_schemas: Some(
+                claim_schemas
+                    .into_iter()
+                    .map(|schema| CredentialSchemaClaim {
+                        required: true,
+                        schema,
+                    })
+                    .collect(),
+            ),
+            organisation: Some(organisation),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: "CredentialSchemaId".to_owned(),
+        }),
+        interaction: None,
+        revocation_list: None,
+        key: None,
+    };
+
+    {
+        let clone = credential.clone();
+        credential_repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        did_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.get_credential(&credential.id).await.unwrap();
+
+    let expected_claims = json!([
+      {
+        "path": "str",
+        "schema": {
+          "id": schema_str.id,
+          "createdDate": "2005-04-02T21:37:00+01:00",
+          "lastModified": "2005-04-02T21:37:00+01:00",
+          "key": "str",
+          "datatype": "STRING",
+          "required": true,
+          "array": true
+        },
+        "value": [
+          {
+            "path": "str/0",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/1",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/2",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/3",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/4",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/5",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/6",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/7",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/8",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/9",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/10",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/11",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+          {
+            "path": "str/12",
+            "schema": {
+              "id": schema_str.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "str",
+              "datatype": "STRING",
+              "required": true,
+              "array": false
+            },
+            "value": "str1"
+          },
+        ]
+      }
+    ]);
+
+    assert_eq!(
+        expected_claims,
+        serde_json::to_value(result.claims).unwrap()
+    );
+}
+
+#[tokio::test]
 async fn test_get_credential_success_array_complex_nested_first_case() {
     let mut credential_repository = MockCredentialRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();
@@ -4165,4 +4483,20 @@ async fn test_create_credential_array_fail_index_incorrect_order() {
             .await
             .is_err()
     );
+}
+
+#[test]
+fn test_extract_index_from_path() {
+    assert_eq!("1", extract_index_from_path("root/1", "root/"));
+    assert_eq!("0", extract_index_from_path("root/0", "root/"));
+
+    assert_eq!("1", extract_index_from_path("root/1/somewhere", "root/"));
+
+    assert_eq!(
+        "2",
+        extract_index_from_path("root/1/somewhere/2", "root/1/somewhere/")
+    );
+
+    assert_eq!("7", extract_index_from_path("str/7", "str/"));
+    assert_eq!("3", extract_index_from_path("str/3", "str/"));
 }

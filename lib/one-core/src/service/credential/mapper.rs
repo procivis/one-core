@@ -209,7 +209,52 @@ pub(crate) fn from_vec_claim(
 
     let nested = renest_claims(result)?;
     let arrays_nested = renest_arrays(nested, "", claim_schemas, config)?;
-    Ok(arrays_nested)
+    let sorted = sort_arrays(arrays_nested);
+    Ok(sorted)
+}
+
+pub fn sort_arrays(
+    claims: Vec<DetailCredentialClaimResponseDTO>,
+) -> Vec<DetailCredentialClaimResponseDTO> {
+    claims
+        .into_iter()
+        .map(|mut claim| {
+            if claim.schema.array {
+                match &mut claim.value {
+                    DetailCredentialClaimValueResponseDTO::String(_) => {}
+                    DetailCredentialClaimValueResponseDTO::Nested(values) => {
+                        let prefix = format!("{}{NESTED_CLAIM_MARKER}", claim.path);
+                        values.sort_by(|v1, v2| {
+                            let v1_index =
+                                extract_index_from_path(&v1.path, &prefix).parse::<u64>();
+                            let v2_index =
+                                extract_index_from_path(&v2.path, &prefix).parse::<u64>();
+
+                            match (v1_index, v2_index) {
+                                (Ok(i1), Ok(i2)) => i1.cmp(&i2),
+                                _ => v1.path.cmp(&v2.path),
+                            }
+                        });
+
+                        *values = sort_arrays(values.to_owned());
+                    }
+                }
+            }
+            claim
+        })
+        .collect()
+}
+
+pub(super) fn extract_index_from_path<'a>(path: &'a str, prefix: &'a str) -> &'a str {
+    if path.len() <= prefix.len() {
+        return path;
+    }
+
+    let path = &path[prefix.len()..];
+    match path.find(NESTED_CLAIM_MARKER) {
+        None => path,
+        Some(value) => &path[0..value],
+    }
 }
 
 pub(super) fn renest_arrays(
