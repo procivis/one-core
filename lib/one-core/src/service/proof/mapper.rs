@@ -71,7 +71,8 @@ fn get_or_create_proof_claim<'a>(
                             key.into(),
                             suffix.into(),
                         )?);
-                        Ok(claims.last_mut().unwrap())
+                        let last = claims.len() - 1;
+                        Ok(&mut claims[last])
                     }
                 }
                 None | Some(ProofClaimValueDTO::Value(_)) => Err(ServiceError::MappingError(
@@ -92,7 +93,8 @@ fn get_or_create_proof_claim<'a>(
                     key.into(),
                     key.into(),
                 )?);
-                Ok(proof_claims.last_mut().unwrap())
+                let last = proof_claims.len() - 1;
+                Ok(&mut proof_claims[last])
             }
         }
     }

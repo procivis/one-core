@@ -3,12 +3,11 @@ use ed25519_compact::{KeyPair, PublicKey};
 use serde::Deserialize;
 use zeroize::Zeroizing;
 
+use super::KeyAlgorithm;
 use crate::crypto::signer::error::SignerError;
 use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::provider::key_algorithm::GeneratedKey;
 use crate::service::error::ServiceError;
-
-use super::KeyAlgorithm;
 
 pub struct Eddsa;
 
@@ -96,21 +95,15 @@ impl KeyAlgorithm for Eddsa {
             .map(Zeroizing::new)
             .map_err(|err| ServiceError::KeyAlgorithmError(err.to_string()))?;
 
-        let jwk_string = {
-            let jwk = serde_json::json!({
-                "kty": "OKP",
-                "crv": "Ed25519",
-                "x": x,
-                "d": d,
-            });
+        let jwk = serde_json::json!({
+            "kty": "OKP",
+            "crv": "Ed25519",
+            "x": x,
+            "d": d,
+        })
+        .to_string();
 
-            serde_json::to_string(&jwk)
-                .map(Zeroizing::new)
-                // SAFETY: cannot fail since it's constructed with `serde_json::json!`
-                .expect("Should be always a valid Json")
-        };
-
-        Ok(jwk_string)
+        Ok(Zeroizing::new(jwk))
     }
 
     fn public_key_from_der(&self, public_key_der: &[u8]) -> Result<Vec<u8>, ServiceError> {
