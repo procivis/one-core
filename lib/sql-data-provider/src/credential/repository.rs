@@ -244,7 +244,7 @@ impl CredentialProvider {
 }
 
 fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credential::Entity> {
-    let query = credential::Entity::find()
+    let mut query = credential::Entity::find()
         .select_only()
         .columns([
             credential::Column::Id,
@@ -252,7 +252,6 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Column::LastModified,
             credential::Column::IssuanceDate,
             credential::Column::DeletedAt,
-            credential::Column::Credential,
             credential::Column::RedirectUri,
             credential::Column::Role,
         ])
@@ -354,12 +353,17 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
 
     if let Some(include) = query_params.include {
         if include.contains(&CredentialListIncludeEntityTypeEnum::LayoutProperties) {
-            return query.column_as(
+            query = query.column_as(
                 credential_schema::Column::LayoutProperties,
                 "credential_schema_schema_layout_properties",
             );
         }
+
+        if include.contains(&CredentialListIncludeEntityTypeEnum::Credential) {
+            query = query.column(credential::Column::Credential);
+        }
     }
+
     query
 }
 
@@ -516,17 +520,15 @@ impl CredentialRepository for CredentialProvider {
 
         let query = get_credential_list_query(query_params);
 
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+        let (items_count, credentials) = tokio::join!(
+            query.to_owned().count(&self.db),
+            query
+                .into_model::<CredentialListEntityModel>()
+                .all(&self.db)
+        );
 
-        let credentials = query
-            .into_model::<CredentialListEntityModel>()
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+        let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
+        let credentials = credentials.map_err(|e| DataLayerError::Db(e.into()))?;
 
         Ok(GetCredentialList {
             values: credentials_to_repository(credentials)?,

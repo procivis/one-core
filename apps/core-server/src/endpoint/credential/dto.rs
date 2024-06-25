@@ -174,6 +174,7 @@ pub struct CredentialsFilterQueryParamsRest {
 #[into(CredentialListIncludeEntityTypeEnum)]
 pub enum CredentialListIncludeEntityTypeRestEnum {
     LayoutProperties,
+    Credential,
 }
 
 pub type GetCredentialQuery = ListQueryParamsRest<

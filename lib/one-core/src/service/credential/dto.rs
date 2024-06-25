@@ -134,6 +134,7 @@ pub enum CredentialStateEnum {
 #[strum(serialize_all = "camelCase")]
 pub enum CredentialListIncludeEntityTypeEnum {
     LayoutProperties,
+    Credential,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

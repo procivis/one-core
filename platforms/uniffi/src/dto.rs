@@ -196,6 +196,7 @@ pub struct CredentialListQueryBindingDTO {
 #[into(CredentialListIncludeEntityTypeEnum)]
 pub enum CredentialListIncludeEntityTypeBindingEnum {
     LayoutProperties,
+    Credential,
 }
 
 #[derive(From)]

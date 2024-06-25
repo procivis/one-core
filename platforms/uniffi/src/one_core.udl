@@ -161,7 +161,7 @@ dictionary CredentialClaimSchemaBindingDTO {
   string key;
   boolean array;
   string datatype;
-  sequence<CredentialClaimSchemaBindingDTO> claims; 
+  sequence<CredentialClaimSchemaBindingDTO> claims;
 };
 
 dictionary ClaimBindingDTO {
@@ -371,7 +371,7 @@ enum SortableCredentialColumnBindingEnum {
 };
 
 enum CredentialListIncludeEntityTypeBindingEnum {
-  "LayoutProperties"
+  "LayoutProperties", "Credential"
 };
 
 dictionary CredentialListQueryBindingDTO {
@@ -762,7 +762,7 @@ dictionary CreateProofSchemaRequestDTO {
 
 dictionary ProofInputSchemaRequestDTO {
   string credential_schema_id;
-  i64? validity_constraint; 
+  i64? validity_constraint;
   sequence<CreateProofSchemaClaimRequestDTO> claim_schemas;
 };
 
@@ -941,7 +941,7 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   string import_proof_schema(ImportProofSchemaRequestBindingsDTO request);
-  
+
   [Throws=BindingError]
   string import_credential_schema(ImportCredentialSchemaRequestBindingDTO request);
 };
