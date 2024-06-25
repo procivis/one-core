@@ -26,6 +26,14 @@ pub fn into_id<T: From<Uuid>>(input: &str) -> Result<T, ServiceError> {
     Uuid::parse_str(input).map_err(Into::into).map(Into::into)
 }
 
+pub fn into_id_opt<T: From<Uuid>>(input: Option<String>) -> Result<Option<T>, ServiceError> {
+    Ok(input
+        .as_deref()
+        .map(into_id::<T>)
+        .transpose()?
+        .map(Into::into))
+}
+
 pub fn into_timestamp(input: &str) -> Result<OffsetDateTime, ServiceError> {
     OffsetDateTime::parse(input, &Rfc3339).map_err(|e| ServiceError::MappingError(e.to_string()))
 }
