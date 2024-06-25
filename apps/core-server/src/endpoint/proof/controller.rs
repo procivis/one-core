@@ -1,30 +1,28 @@
+use axum::extract::{Path, State};
+use axum::Json;
+use axum_extra::extract::WithRejection;
+use shared_types::ProofId;
+
 use super::dto::{
     CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionResponseRestDTO,
     ProofDetailResponseRestDTO,
 };
-use crate::dto::common::GetProofsResponseRestDTO;
-use crate::dto::common::{EntityResponseRestDTO, EntityShareResponseRestDTO};
+use crate::dto::common::{
+    EntityResponseRestDTO, EntityShareResponseRestDTO, GetProofsResponseRestDTO,
+};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
     declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, OkOrErrorResponse,
 };
 use crate::extractor::Qs;
-
 use crate::router::AppState;
-
-use axum::{
-    extract::{Path, State},
-    Json,
-};
-use axum_extra::extract::WithRejection;
-use uuid::Uuid;
 
 #[utoipa::path(
     get,
     path = "/api/proof-request/v1/{id}/presentation-definition",
     responses(OkOrErrorResponse<PresentationDefinitionResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Proof id")
+        ("id" = ProofId, Path, description = "Proof id")
     ),
     tag = "proof_management",
     security(
@@ -33,7 +31,7 @@ use uuid::Uuid;
 )]
 pub(crate) async fn get_proof_presentation_definition(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<PresentationDefinitionResponseRestDTO> {
     let result = state
         .core
@@ -48,7 +46,7 @@ pub(crate) async fn get_proof_presentation_definition(
     path = "/api/proof-request/v1/{id}",
     responses(OkOrErrorResponse<ProofDetailResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Proof id")
+        ("id" = ProofId, Path, description = "Proof id")
     ),
     tag = "proof_management",
     security(
@@ -57,7 +55,7 @@ pub(crate) async fn get_proof_presentation_definition(
 )]
 pub(crate) async fn get_proof_details(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<ProofDetailResponseRestDTO> {
     let result = state.core.proof_service.get_proof(&id).await;
     OkOrErrorResponse::from_result(result, state, "getting proof")
@@ -109,7 +107,7 @@ pub(crate) async fn post_proof(
     path = "/api/proof-request/v1/{id}/share",
     responses(OkOrErrorResponse<EntityShareResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Proof id")
+        ("id" = ProofId, Path, description = "Proof id")
     ),
     tag = "proof_management",
     security(
@@ -118,7 +116,7 @@ pub(crate) async fn post_proof(
 )]
 pub(crate) async fn share_proof(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<EntityShareResponseRestDTO> {
     let result = state.core.proof_service.share_proof(&id).await;
     OkOrErrorResponse::from_result(result, state, "sharing proof")

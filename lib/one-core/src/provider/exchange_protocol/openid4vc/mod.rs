@@ -4,7 +4,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, ProofId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -48,9 +48,7 @@ use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::model::proof::{
-    Proof, ProofClaimRelations, ProofId, ProofRelations, UpdateProofRequest,
-};
+use crate::model::proof::{Proof, ProofClaimRelations, ProofRelations, UpdateProofRequest};
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
@@ -356,7 +354,10 @@ impl ExchangeProtocol for OpenID4VC {
                 .update_proof(UpdateProofRequest {
                     id: proof.id,
                     redirect_uri: Some(value.redirect_uri),
-                    ..Default::default()
+                    holder_did_id: None,
+                    verifier_did_id: None,
+                    state: None,
+                    interaction: None,
                 })
                 .await
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
@@ -845,7 +846,10 @@ async fn update_proof_interaction(
     let update = UpdateProofRequest {
         id: proof_id.to_owned(),
         interaction: Some(interaction_id.to_owned()),
-        ..Default::default()
+        holder_did_id: None,
+        verifier_did_id: None,
+        state: None,
+        redirect_uri: None,
     };
 
     proof_repository
@@ -1532,7 +1536,7 @@ async fn handle_proof_invitation(
     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
     let interaction_id = interaction.id.to_owned();
 
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let proof = proof_from_handle_invitation(
         &proof_id,
         "OPENID4VC",

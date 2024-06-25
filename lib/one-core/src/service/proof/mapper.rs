@@ -606,7 +606,7 @@ pub fn proof_from_create_request(
     verifier_key: Option<Key>,
 ) -> Proof {
     Proof {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         issuance_date: now,

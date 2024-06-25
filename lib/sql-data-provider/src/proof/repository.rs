@@ -8,8 +8,7 @@ use one_core::model::claim::{Claim, ClaimId};
 use one_core::model::did::Did;
 use one_core::model::interaction::InteractionId;
 use one_core::model::proof::{
-    GetProofList, GetProofQuery, Proof, ProofClaim, ProofId, ProofRelations, ProofState,
-    UpdateProofRequest,
+    GetProofList, GetProofQuery, Proof, ProofClaim, ProofRelations, ProofState, UpdateProofRequest,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::proof_repository::ProofRepository;
@@ -19,6 +18,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
+use shared_types::ProofId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -28,7 +28,7 @@ use super::mapper::{
 use super::model::ProofListItemModel;
 use super::ProofProvider;
 use crate::entity::{did, proof, proof_claim, proof_schema, proof_state};
-use crate::list_query::SelectWithListQuery;
+use crate::list_query_generic::SelectWithListQuery;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -57,7 +57,7 @@ impl ProofRepository for ProofProvider {
         proof_id: &ProofId,
         relations: &ProofRelations,
     ) -> Result<Option<Proof>, DataLayerError> {
-        let proof_model = crate::entity::proof::Entity::find_by_id(proof_id.to_string())
+        let proof_model = crate::entity::proof::Entity::find_by_id(proof_id)
             .one(&self.db)
             .await
             .map_err(|error| {
@@ -105,7 +105,10 @@ impl ProofRepository for ProofProvider {
         &self,
         query_params: GetProofQuery,
     ) -> Result<GetProofList, DataLayerError> {
-        let limit: u64 = query_params.page_size as u64;
+        let limit = query_params
+            .pagination
+            .as_ref()
+            .map(|pagination| pagination.page_size as _);
 
         let query = get_proof_list_query(&query_params);
 
@@ -139,14 +142,19 @@ impl ProofRepository for ProofProvider {
 
         let mut proof_states_map: HashMap<ProofId, Vec<ProofState>> = HashMap::new();
         for proof_state in proof_states {
-            let proof_id = Uuid::from_str(&proof_state.proof_id)?;
+            let proof_id = proof_state.proof_id;
             proof_states_map
                 .entry(proof_id)
                 .or_default()
                 .push(proof_state.into());
         }
 
-        create_list_response(proofs, proof_states_map, limit, items_count)
+        create_list_response(
+            proofs,
+            proof_states_map,
+            limit.unwrap_or(items_count),
+            items_count,
+        )
     }
 
     async fn set_proof_state(
@@ -155,7 +163,7 @@ impl ProofRepository for ProofProvider {
         state: ProofState,
     ) -> Result<(), DataLayerError> {
         let update_model = proof::ActiveModel {
-            id: Unchanged(proof_id.to_string()),
+            id: Unchanged(*proof_id),
             last_modified: Set(state.last_modified),
             ..Default::default()
         };
@@ -181,7 +189,7 @@ impl ProofRepository for ProofProvider {
         let now = OffsetDateTime::now_utc();
 
         let model = proof::ActiveModel {
-            id: Unchanged(proof_id.to_string()),
+            id: Unchanged(*proof_id),
             holder_did_id: Set(Some(holder_did.id)),
             last_modified: Set(now),
             ..Default::default()
@@ -236,7 +244,7 @@ impl ProofRepository for ProofProvider {
         };
 
         let update_model = proof::ActiveModel {
-            id: Unchanged(id.to_string()),
+            id: Unchanged(*id),
             last_modified: Set(OffsetDateTime::now_utc()),
             holder_did_id,
             verifier_did_id,
@@ -320,10 +328,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
                 )
                 .into_condition(),
         )
-        // apply query params
-        .with_list_query(query_params, &Some(vec![proof_schema::Column::Name]))
-        .with_ids(query_params, &proof::Column::Id)
-        .with_organisation_id(query_params, &proof_schema::Column::OrganisationId)
+        .with_list_query(query_params)
         // fallback ordering
         .order_by_desc(proof::Column::CreatedDate)
         .order_by_desc(proof::Column::Id)
@@ -335,11 +340,10 @@ impl ProofProvider {
         proof_model: proof::Model,
         relations: &ProofRelations,
     ) -> Result<Proof, DataLayerError> {
-        let mut proof: Proof = proof_model.clone().try_into()?;
+        let mut proof: Proof = proof_model.clone().into();
 
         if let Some(proof_schema_relations) = &relations.schema {
             if let Some(proof_schema_id) = proof_model.proof_schema_id {
-                let proof_schema_id = Uuid::from_str(&proof_schema_id)?.into();
                 proof.schema = Some(
                     self.proof_schema_repository
                         .get_proof_schema(&proof_schema_id, proof_schema_relations)
@@ -354,7 +358,7 @@ impl ProofProvider {
 
         if let Some(claim_relations) = &relations.claims {
             let proof_claims = crate::entity::proof_claim::Entity::find()
-                .filter(proof_claim::Column::ProofId.eq(&proof_model.id))
+                .filter(proof_claim::Column::ProofId.eq(proof_model.id))
                 .all(&self.db)
                 .await
                 .map_err(|e| DataLayerError::Db(e.into()))?;
@@ -421,7 +425,7 @@ impl ProofProvider {
 
         if let Some(_state_relations) = &relations.state {
             let proof_states = crate::entity::proof_state::Entity::find()
-                .filter(proof_state::Column::ProofId.eq(&proof_model.id))
+                .filter(proof_state::Column::ProofId.eq(proof_model.id))
                 .order_by_desc(proof_state::Column::CreatedDate)
                 .all(&self.db)
                 .await

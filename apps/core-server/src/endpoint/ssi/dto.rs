@@ -42,7 +42,7 @@ use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
 use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
-use shared_types::{CredentialId, DidValue, KeyId, TrustAnchorId, TrustEntityId};
+use shared_types::{CredentialId, DidValue, KeyId, ProofId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -62,14 +62,14 @@ use crate::serialize::{front_time, front_time_option};
 #[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProofRejectQueryParams {
-    pub proof: Uuid,
+    pub proof: ProofId,
 }
 
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProofSubmitQueryParams {
-    pub proof: Uuid,
+    pub proof: ProofId,
     pub did_value: DidValue,
 }
 
@@ -79,7 +79,7 @@ pub(crate) struct ProofSubmitQueryParams {
 #[serde(rename_all = "camelCase")]
 pub struct PostSsiVerifierConnectQueryParams {
     pub protocol: String,
-    pub proof: Uuid,
+    pub proof: ProofId,
     pub redirect_uri: Option<String>,
 }
 

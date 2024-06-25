@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 use serde::Deserialize;
-use shared_types::ClaimSchemaId;
+use shared_types::{ClaimSchemaId, CredentialSchemaId};
 
 use crate::common::bool_from_int;
 

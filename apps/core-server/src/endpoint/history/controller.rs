@@ -2,18 +2,13 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use shared_types::HistoryId;
 
-use crate::{
-    dto::{
-        common::GetHistoryListResponseRestDTO,
-        error::ErrorResponseRestDTO,
-        response::{declare_utoipa_alias, AliasResponse, OkOrErrorResponse},
-    },
-    endpoint::history::dto::HistoryResponseRestDTO,
-    extractor::Qs,
-    router::AppState,
-};
-
 use super::dto::GetHistoryQuery;
+use crate::dto::common::GetHistoryListResponseRestDTO;
+use crate::dto::error::ErrorResponseRestDTO;
+use crate::dto::response::{declare_utoipa_alias, AliasResponse, OkOrErrorResponse};
+use crate::endpoint::history::dto::HistoryResponseRestDTO;
+use crate::extractor::Qs;
+use crate::router::AppState;
 
 declare_utoipa_alias!(GetHistoryListResponseRestDTO);
 
@@ -46,7 +41,7 @@ pub(crate) async fn get_history_list(
     get,
     path = "/api/history/v1/{id}",
     params(
-        ("id" = Uuid, Path, description = "History id")
+        ("id" = HistoryId, Path, description = "History id")
     ),
     responses(OkOrErrorResponse<HistoryResponseRestDTO>),
     tag = "history_management",

@@ -1,8 +1,8 @@
+use shared_types::ProofId;
 use time::OffsetDateTime;
 
 use super::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
-    ProofId,
 };
 use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
@@ -151,12 +151,7 @@ impl ProofService {
         &self,
         query: GetProofQueryDTO,
     ) -> Result<GetProofListResponseDTO, ServiceError> {
-        let result = self
-            .proof_repository
-            .get_proof_list(query)
-            .await
-            .map_err(ServiceError::from)?;
-
+        let result = self.proof_repository.get_proof_list(query).await?;
         list_response_try_into(result)
     }
 

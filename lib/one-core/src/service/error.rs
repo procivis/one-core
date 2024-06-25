@@ -1,6 +1,6 @@
 use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
-    OrganisationId, ProofSchemaId, TrustAnchorId, TrustEntityId,
+    OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
 };
 use strum_macros::Display;
 use thiserror::Error;
@@ -13,7 +13,7 @@ use crate::crypto::error::CryptoProviderError;
 use crate::crypto::signer::error::SignerError;
 use crate::model::credential::CredentialStateEnum;
 use crate::model::interaction::InteractionId;
-use crate::model::proof::{ProofId, ProofStateEnum};
+use crate::model::proof::ProofStateEnum;
 use crate::model::revocation_list::RevocationListId;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::DidMethodError;

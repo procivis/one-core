@@ -21,7 +21,7 @@ use crate::router::AppState;
     path = "/api/did/v1/{id}",
     responses(OkOrErrorResponse<DidResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "DID id")
+        ("id" = DidId, Path, description = "DID id")
     ),
     tag = "did_management",
     security(

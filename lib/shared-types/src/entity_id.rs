@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::macros::{impls_for_seaorm_newtype, impls_for_uuid_newtype};
 use crate::{
-    macros::{impls_for_seaorm_newtype, impls_for_uuid_newtype},
-    CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId, ProofSchemaId, TrustAnchorId,
-    TrustEntityId,
+    CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    TrustAnchorId, TrustEntityId,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -36,3 +36,4 @@ impl_from_other_type!(OrganisationId);
 impl_from_other_type!(TrustAnchorId);
 impl_from_other_type!(TrustEntityId);
 impl_from_other_type!(ProofSchemaId);
+impl_from_other_type!(ProofId);

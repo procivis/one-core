@@ -1,4 +1,5 @@
 use sea_orm::entity::prelude::*;
+use shared_types::ProofSchemaId;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -11,7 +12,7 @@ pub struct Model {
     pub order: i32,
     pub validity_constraint: Option<i64>,
     pub credential_schema: String,
-    pub proof_schema: String,
+    pub proof_schema: ProofSchemaId,
 }
 
 #[allow(clippy::enum_variant_names)]

@@ -3,7 +3,7 @@ use one_core::model::credential_schema::{
 };
 use sea_orm::FromQueryResult;
 use serde::Deserialize;
-use shared_types::{CredentialId, OrganisationId};
+use shared_types::{CredentialId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::entity::credential::CredentialRole;
@@ -22,7 +22,7 @@ pub struct UnexportableCredentialModel {
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
 
-    pub credential_schema_id: String,
+    pub credential_schema_id: CredentialSchemaId,
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
     pub credential_schema_created_date: OffsetDateTime,
     pub credential_schema_last_modified: OffsetDateTime,

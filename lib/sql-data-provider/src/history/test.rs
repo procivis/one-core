@@ -1,25 +1,20 @@
-use std::str::FromStr;
-
+use one_core::model::credential::CredentialStateEnum;
+use one_core::model::history::{
+    GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
+    HistoryListQuery, HistorySearchEnum,
+};
+use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::list_query::ListPagination;
+use one_core::model::organisation::Organisation;
+use one_core::repository::history_repository::HistoryRepository;
+use shared_types::{
+    ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, OrganisationId, ProofId,
+};
 use uuid::Uuid;
 
-use one_core::{
-    model::{
-        credential::CredentialStateEnum,
-        history::{
-            GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
-            HistoryListQuery, HistorySearchEnum,
-        },
-        list_filter::ListFilterCondition,
-        list_query::ListPagination,
-        organisation::Organisation,
-    },
-    repository::history_repository::HistoryRepository,
-};
-use shared_types::{
-    ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, OrganisationId,
-};
-
-use crate::{entity::key_did::KeyRole, history::HistoryProvider, test_utilities::*};
+use crate::entity::key_did::KeyRole;
+use crate::history::HistoryProvider;
+use crate::test_utilities::*;
 
 struct TestSetup {
     pub provider: HistoryProvider,
@@ -47,7 +42,7 @@ async fn setup_empty() -> TestSetup {
 struct TestSetupWithCredentialsSchemaAndProof {
     pub provider: HistoryProvider,
     pub organisation: Organisation,
-    pub credential_schema_id: String,
+    pub credential_schema_id: CredentialSchemaId,
     pub credential_schema_name: &'static str,
     pub did_id: DidId,
     pub did_name: &'static str,
@@ -89,7 +84,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     insert_history(
         &db,
         HistoryAction::Created.into(),
-        Uuid::parse_str(&credential_schema_id).unwrap().into(),
+        credential_schema_id.into(),
         HistoryEntityType::CredentialSchema.into(),
         organisation.id,
     )
@@ -175,7 +170,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         .collect();
 
     let claim_input = ProofInput {
-        credential_schema_id: credential_schema_id.clone(),
+        credential_schema_id,
         claims: &new_claim_schemas,
     };
 
@@ -195,18 +190,16 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         .await
         .unwrap();
 
-    let proof_schema_id = Uuid::parse_str(
-        &insert_proof_schema_with_claims_to_database(
-            &db,
-            None,
-            vec![&claim_input],
-            organisation.id,
-            "proof schema",
-        )
-        .await
-        .unwrap(),
+    let proof_schema_id = insert_proof_schema_with_claims_to_database(
+        &db,
+        None,
+        vec![&claim_input],
+        organisation.id,
+        "proof schema",
     )
+    .await
     .unwrap();
+
     insert_history(
         &db,
         HistoryAction::Created.into(),
@@ -217,20 +210,11 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     .await
     .unwrap();
 
-    let proof_id = Uuid::parse_str(
-        &insert_proof_request_to_database(
-            &db,
-            did_id,
-            None,
-            &proof_schema_id.to_string(),
-            key_id,
-            None,
-        )
-        .await
-        .unwrap(),
-    )
-    .unwrap();
-    let proof_claim: Vec<(Uuid, ClaimId)> = vec![(proof_id.to_owned(), claims[0].0)];
+    let proof_id =
+        insert_proof_request_to_database(&db, did_id, None, &proof_schema_id, key_id, None)
+            .await
+            .unwrap();
+    let proof_claim: Vec<(ProofId, ClaimId)> = vec![(proof_id.to_owned(), claims[0].0)];
     insert_many_proof_claim_to_database(&db, proof_claim.as_slice())
         .await
         .unwrap();
@@ -377,7 +361,7 @@ async fn test_get_history_list_schema_joins_credentials() {
     insert_history(
         &db,
         HistoryAction::Created.into(),
-        Uuid::parse_str(&credential_schema_id).unwrap().into(),
+        credential_schema_id.into(),
         HistoryEntityType::CredentialSchema.into(),
         organisation.id,
     )
@@ -430,9 +414,7 @@ async fn test_get_history_list_schema_joins_credentials() {
     let result = provider
         .get_history_list(history_list_query_with_filter(
             organisation.id,
-            HistoryFilterValue::CredentialSchemaId(
-                CredentialSchemaId::from_str(&credential_schema_id).unwrap(),
-            ),
+            HistoryFilterValue::CredentialSchemaId(credential_schema_id),
         ))
         .await
         .unwrap();
@@ -454,9 +436,7 @@ async fn test_get_history_list_joins_schema_credential_claim_and_proof() {
     let result = provider
         .get_history_list(history_list_query_with_filter(
             organisation.id,
-            HistoryFilterValue::CredentialSchemaId(
-                CredentialSchemaId::from_str(&credential_schema_id).unwrap(),
-            ),
+            HistoryFilterValue::CredentialSchemaId(credential_schema_id),
         ))
         .await
         .unwrap();
@@ -491,7 +471,7 @@ async fn test_get_history_list_entity_of_another_type_should_not_get_fetched() {
     let should_be_empty = provider
         .get_history_list(history_list_query_with_filter(
             organisation.id,
-            HistoryFilterValue::DidId(Uuid::parse_str(&credential_schema_id).unwrap().into()),
+            HistoryFilterValue::DidId(Uuid::from(credential_schema_id).into()),
         ))
         .await
         .unwrap();

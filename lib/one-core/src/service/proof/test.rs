@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::Sequence;
+use shared_types::ProofId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -19,6 +20,8 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::Key;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{
     GetProofList, Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofState,
@@ -41,7 +44,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
 use crate::service::proof::dto::{
-    CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofId,
+    CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
 };
 use crate::service::test_utilities::generic_config;
 
@@ -135,7 +138,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
     let mut proof_repository = MockProofRepository::default();
 
     let proof = Proof {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -254,7 +257,7 @@ async fn test_get_proof_exists() {
     let mut proof_repository = MockProofRepository::default();
 
     let proof = Proof {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -481,7 +484,7 @@ async fn test_get_proof_with_array_holder() {
     };
 
     let proof = Proof {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -691,7 +694,7 @@ async fn test_get_proof_with_array_in_object_holder() {
     };
 
     let proof = Proof {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -906,7 +909,7 @@ async fn test_get_proof_with_object_array_holder() {
     };
 
     let proof = Proof {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -1103,7 +1106,7 @@ async fn test_get_proof_with_array() {
     };
 
     let proof = Proof {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -1331,7 +1334,7 @@ async fn test_get_proof_with_array_in_object() {
     };
 
     let proof = Proof {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -1565,7 +1568,7 @@ async fn test_get_proof_with_object_array() {
     };
 
     let proof = Proof {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -1710,7 +1713,7 @@ async fn test_get_proof_missing() {
         ..Default::default()
     });
 
-    let result = service.get_proof(&Uuid::new_v4()).await;
+    let result = service.get_proof(&Uuid::new_v4().into()).await;
     assert!(matches!(
         result,
         Err(ServiceError::EntityNotFound(EntityNotFoundError::Proof(_)))
@@ -1722,7 +1725,7 @@ async fn test_get_proof_list_success() {
     let mut proof_repository = MockProofRepository::default();
 
     let proof = Proof {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -1781,14 +1784,15 @@ async fn test_get_proof_list_success() {
 
     let result = service
         .get_proof_list(GetProofQueryDTO {
-            page: 0,
-            page_size: 1,
-            sort: None,
-            sort_direction: None,
-            exact: None,
-            name: None,
-            organisation_id: Uuid::new_v4().into(),
-            ids: None,
+            filtering: ProofFilterValue::OrganisationId(Uuid::new_v4().into())
+                .condition()
+                .into(),
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            sorting: None,
+            include: None,
         })
         .await;
     assert!(result.is_ok());
@@ -1880,7 +1884,7 @@ async fn test_create_proof_without_related_key() {
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
-    let proof_id = ProofId::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let mut proof_repository = MockProofRepository::default();
     proof_repository
         .expect_create_proof()
@@ -1980,7 +1984,7 @@ async fn test_create_proof_with_related_key() {
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
-    let proof_id = ProofId::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let mut proof_repository = MockProofRepository::default();
     proof_repository
         .expect_create_proof()
@@ -2257,7 +2261,7 @@ async fn test_create_proof_schema_deleted() {
 
 #[tokio::test]
 async fn test_share_proof_created_success() {
-    let proof_id = ProofId::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let proof = construct_proof_with_state(&proof_id, ProofStateEnum::Created);
     let mut protocol = MockExchangeProtocol::default();
     let mut protocol_provider = MockExchangeProtocolProvider::default();
@@ -2327,7 +2331,7 @@ async fn test_share_proof_created_success() {
 
 #[tokio::test]
 async fn test_share_proof_pending_success() {
-    let proof_id = ProofId::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
     let mut protocol = MockExchangeProtocol::default();
     let mut protocol_provider = MockExchangeProtocolProvider::default();
@@ -2385,7 +2389,7 @@ async fn test_share_proof_pending_success() {
 
 #[tokio::test]
 async fn test_share_proof_invalid_state() {
-    let proof_id = ProofId::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let mut proof_repository = MockProofRepository::default();
     proof_repository
         .expect_get_proof()

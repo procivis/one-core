@@ -1,32 +1,59 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 
+use migration::IntoCondition;
 use one_core::model::claim::Claim;
 use one_core::model::did::Did;
-use one_core::model::proof::{GetProofList, Proof, ProofId, ProofState, SortableProofColumn};
+use one_core::model::proof::{GetProofList, Proof, ProofState, SortableProofColumn};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::error::DataLayerError;
+use one_core::service::proof::dto::ProofFilterValue;
 use sea_orm::sea_query::SimpleExpr;
-use sea_orm::{IntoSimpleExpr, Set};
-use shared_types::DidId;
-use uuid::Uuid;
+use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
+use shared_types::ProofId;
 
 use super::model::ProofListItemModel;
 use crate::common::calculate_pages_count;
+use crate::entity::proof_state::ProofRequestState;
 use crate::entity::{did, proof, proof_claim, proof_schema, proof_state};
 use crate::list_query::GetEntityColumn;
+use crate::list_query_generic::{
+    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+};
+
+impl IntoSortingColumn for SortableProofColumn {
+    fn get_column(&self) -> SimpleExpr {
+        match self {
+            Self::CreatedDate => proof::Column::CreatedDate.into_simple_expr(),
+            Self::SchemaName => proof_schema::Column::Name.into_simple_expr(),
+            Self::VerifierDid => did::Column::Id.into_simple_expr(),
+            Self::State => proof_state::Column::State.into_simple_expr(),
+        }
+    }
+}
+
+impl IntoFilterCondition for ProofFilterValue {
+    fn get_condition(self) -> sea_orm::Condition {
+        match self {
+            Self::Name(string_match) => {
+                get_string_match_condition(proof_schema::Column::Name, string_match)
+            }
+            Self::OrganisationId(organisation_id) => {
+                get_equals_condition(proof_schema::Column::OrganisationId, organisation_id)
+            }
+            Self::ProofStates(states) => proof_state::Column::State
+                .is_in(states.into_iter().map(ProofRequestState::from))
+                .into_condition(),
+            Self::ProofSchemaIds(ids) => proof_schema::Column::Id.is_in(ids).into_condition(),
+            Self::ProofIds(ids) => proof::Column::Id.is_in(ids).into_condition(),
+        }
+    }
+}
 
 impl TryFrom<ProofListItemModel> for Proof {
     type Error = DataLayerError;
 
     fn try_from(value: ProofListItemModel) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id)?;
-        let schema_id = Uuid::from_str(&value.schema_id)?.into();
-        let verifier_did_id = value
-            .verifier_did_id
-            .map(|did_id| Uuid::from_str(&did_id).map(DidId::from))
-            .transpose()?;
-        let verifier_did = match verifier_did_id {
+        let verifier_did = match value.verifier_did_id {
             None => None,
             Some(verifier_did_id) => Some(Did {
                 id: verifier_did_id,
@@ -54,7 +81,7 @@ impl TryFrom<ProofListItemModel> for Proof {
         };
 
         Ok(Self {
-            id,
+            id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             issuance_date: value.issuance_date,
@@ -62,7 +89,7 @@ impl TryFrom<ProofListItemModel> for Proof {
             redirect_uri: value.redirect_uri,
             state: None,
             schema: Some(ProofSchema {
-                id: schema_id,
+                id: value.schema_id,
                 created_date: value.schema_created_date,
                 last_modified: value.schema_last_modified,
                 deleted_at: None,
@@ -80,14 +107,10 @@ impl TryFrom<ProofListItemModel> for Proof {
     }
 }
 
-impl TryFrom<proof::Model> for Proof {
-    type Error = DataLayerError;
-
-    fn try_from(value: proof::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id)?;
-
-        Ok(Self {
-            id,
+impl From<proof::Model> for Proof {
+    fn from(value: proof::Model) -> Self {
+        Self {
+            id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             issuance_date: value.issuance_date,
@@ -100,7 +123,7 @@ impl TryFrom<proof::Model> for Proof {
             holder_did: None,
             verifier_key: None,
             interaction: None,
-        })
+        }
     }
 }
 
@@ -109,7 +132,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
 
     fn try_from(value: Proof) -> Result<Self, Self::Error> {
         Ok(Self {
-            id: Set(value.id.to_string()),
+            id: Set(value.id),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             issuance_date: Set(value.issuance_date),
@@ -117,7 +140,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
             exchange: Set(value.exchange),
             verifier_did_id: Set(value.verifier_did.map(|did| did.id)),
             holder_did_id: Set(value.holder_did.map(|did| did.id)),
-            proof_schema_id: Set(value.schema.map(|schema| schema.id.to_string())),
+            proof_schema_id: Set(value.schema.map(|schema| schema.id)),
             verifier_key_id: Set(value.verifier_key.map(|key| key.id)),
             interaction_id: Set(value
                 .interaction
@@ -169,7 +192,7 @@ pub(super) fn get_proof_state_active_model(
     state: ProofState,
 ) -> proof_state::ActiveModel {
     proof_state::ActiveModel {
-        proof_id: Set(proof_id.to_string()),
+        proof_id: Set(*proof_id),
         created_date: Set(state.created_date),
         last_modified: Set(state.last_modified),
         state: Set(state.state.into()),

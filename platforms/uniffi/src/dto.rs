@@ -91,8 +91,9 @@ pub enum CredentialStateBindingEnum {
     Error,
 }
 
-#[derive(From)]
+#[derive(From, Into)]
 #[from(ProofStateEnum)]
+#[into(ProofStateEnum)]
 pub enum ProofStateBindingEnum {
     Created,
     Pending,
@@ -230,12 +231,15 @@ pub struct ProofListQueryBindingDTO {
     pub sort_direction: Option<SortDirection>,
     pub name: Option<String>,
     pub ids: Option<Vec<String>>,
+    pub proof_states: Option<Vec<ProofStateBindingEnum>>,
+    pub proof_schema_ids: Option<Vec<String>>,
     pub exact: Option<Vec<ProofListQueryExactColumnBindingEnum>>,
 }
 
 #[derive(From)]
 #[from(ProofListItemResponseDTO)]
 pub struct ProofListItemBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub created_date: String,

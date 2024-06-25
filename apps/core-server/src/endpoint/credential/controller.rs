@@ -26,7 +26,7 @@ use crate::router::AppState;
     path = "/api/credential/v1/{id}",
     responses(EmptyOrErrorResponse),
     params(
-        ("id" = Uuid, Path, description = "Credential id")
+        ("id" = CredentialId, Path, description = "Credential id")
     ),
     tag = "credential_management",
     security(
@@ -46,7 +46,7 @@ pub(crate) async fn delete_credential(
     path = "/api/credential/v1/{id}",
     responses(OkOrErrorResponse<GetCredentialResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Credential id")
+        ("id" = CredentialId, Path, description = "Credential id")
     ),
     tag = "credential_management",
     security(
@@ -119,7 +119,7 @@ pub(crate) async fn post_credential(
     path = "/api/credential/v1/{id}/reactivate",
     responses(EmptyOrErrorResponse),
     params(
-        ("id" = Uuid, Path, description = "Credential id")
+        ("id" = CredentialId, Path, description = "Credential id")
     ),
     tag = "credential_management",
     security(
@@ -143,7 +143,7 @@ pub(crate) async fn reactivate_credential(
     path = "/api/credential/v1/{id}/revoke",
     responses(EmptyOrErrorResponse),
     params(
-        ("id" = Uuid, Path, description = "Credential id")
+        ("id" = CredentialId, Path, description = "Credential id")
     ),
     tag = "credential_management",
     security(
@@ -164,7 +164,7 @@ pub(crate) async fn revoke_credential(
     request_body = SuspendCredentialRequestRestDTO,
     responses(EmptyOrErrorResponse),
     params(
-        ("id" = Uuid, Path, description = "Credential id")
+        ("id" = CredentialId, Path, description = "Credential id")
     ),
     tag = "credential_management",
     security(
@@ -192,7 +192,7 @@ pub(crate) async fn suspend_credential(
     path = "/api/credential/v1/{id}/share",
     responses(OkOrErrorResponse<EntityShareResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Credential id")
+        ("id" = CredentialId, Path, description = "Credential id")
     ),
     tag = "credential_management",
     security(

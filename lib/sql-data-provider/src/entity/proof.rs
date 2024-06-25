@@ -1,12 +1,12 @@
 use sea_orm::entity::prelude::*;
-use shared_types::{DidId, KeyId};
+use shared_types::{DidId, KeyId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "proof")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: String,
+    pub id: ProofId,
 
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
@@ -17,7 +17,7 @@ pub struct Model {
 
     pub verifier_did_id: Option<DidId>,
     pub holder_did_id: Option<DidId>,
-    pub proof_schema_id: Option<String>,
+    pub proof_schema_id: Option<ProofSchemaId>,
     pub verifier_key_id: Option<KeyId>,
     pub interaction_id: Option<String>,
 }

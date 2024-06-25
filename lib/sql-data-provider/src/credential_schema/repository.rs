@@ -2,39 +2,32 @@ use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::stream::{self, StreamExt};
 use itertools::Either;
-use one_core::{
-    model::{
-        credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-            GetCredentialSchemaList, GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
-        },
-        organisation::Organisation,
-    },
-    repository::{credential_schema_repository::CredentialSchemaRepository, error::DataLayerError},
-    service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum,
+use one_core::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, GetCredentialSchemaList,
+    GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
 };
+use one_core::model::organisation::Organisation;
+use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
+use one_core::repository::error::DataLayerError;
+use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
     QueryOrder, SqlErr, Unchanged,
 };
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
-use std::str::FromStr;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
-use crate::{
-    common::calculate_pages_count,
-    credential_schema::{
-        mapper::{
-            claim_schemas_to_model_vec, claim_schemas_to_relations, credential_schema_from_models,
-        },
-        CredentialSchemaProvider,
-    },
-    entity::{claim_schema, credential_schema, credential_schema_claim_schema, organisation},
-    list_query_generic::SelectWithListQuery,
-    mapper::to_data_layer_error,
+use crate::common::calculate_pages_count;
+use crate::credential_schema::mapper::{
+    claim_schemas_to_model_vec, claim_schemas_to_relations, credential_schema_from_models,
 };
+use crate::credential_schema::CredentialSchemaProvider;
+use crate::entity::{
+    claim_schema, credential_schema, credential_schema_claim_schema, organisation,
+};
+use crate::list_query_generic::SelectWithListQuery;
+use crate::mapper::to_data_layer_error;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -76,7 +69,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .map_err(|e| DataLayerError::Db(e.into()))?;
         }
 
-        Ok(Uuid::from_str(&credential_schema.id)?.into())
+        Ok(credential_schema.id)
     }
 
     async fn delete_credential_schema(
@@ -86,7 +79,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let now = OffsetDateTime::now_utc();
 
         let credential_schema = credential_schema::ActiveModel {
-            id: Unchanged(id.to_string()),
+            id: Unchanged(*id),
             deleted_at: Set(Some(now)),
             ..Default::default()
         };
@@ -108,7 +101,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         id: &CredentialSchemaId,
         relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
-        let credential_schema = credential_schema::Entity::find_by_id(id.to_string())
+        let credential_schema = credential_schema::Entity::find_by_id(id)
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
@@ -173,7 +166,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         };
 
         let credential_schema =
-            credential_schema_from_models(credential_schema, claim_schemas, organisation, false)?;
+            credential_schema_from_models(credential_schema, claim_schemas, organisation, false);
 
         Ok(Some(credential_schema))
     }
@@ -297,7 +290,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                         }),
                     )
                 })
-                .collect::<Result<_, _>>()?,
+                .collect(),
             total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
             total_items: items_count,
         })
@@ -320,7 +313,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         };
 
         let update_model = credential_schema::ActiveModel {
-            id: Unchanged(id.to_string()),
+            id: Unchanged(*id),
             last_modified: Set(OffsetDateTime::now_utc()),
             revocation_method,
             format,
@@ -334,7 +327,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
         if let Some(claim_schemas) = request.claim_schemas {
             let credential_schema_claim_schema_relations =
-                claim_schemas_to_relations(&claim_schemas, &request.id.to_string());
+                claim_schemas_to_relations(&claim_schemas, &request.id);
             let claim_schema_models = claim_schemas_to_model_vec(claim_schemas);
 
             claim_schema::Entity::insert_many(claim_schema_models)
@@ -414,7 +407,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
         Ok(
             credential_schema_from_models(credential_schema, claim_schemas, organisation, true)
-                .ok(),
+                .into(),
         )
     }
 }

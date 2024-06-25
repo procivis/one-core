@@ -1,7 +1,7 @@
-use shared_types::{ClaimId, ClaimSchemaId};
+use shared_types::{ClaimId, ClaimSchemaId, ProofId};
 use thiserror::Error;
 
-use crate::{model::proof::ProofId, service::error::ErrorCode};
+use crate::service::error::ErrorCode;
 
 #[derive(Debug, Error)]
 pub enum DataLayerError {

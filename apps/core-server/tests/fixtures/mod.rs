@@ -17,8 +17,7 @@ use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{
-    Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
-    ProofStateRelations,
+    Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
 };
 use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
@@ -31,7 +30,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::DataRepository;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
-use shared_types::{CredentialId, DidId, DidValue, KeyId};
+use shared_types::{CredentialId, DidId, DidValue, KeyId, ProofId};
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
 use time::{Duration, OffsetDateTime};
@@ -607,7 +606,7 @@ pub async fn create_proof(
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let proof = Proof {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         issuance_date: get_dummy_date(),

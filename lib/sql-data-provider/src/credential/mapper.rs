@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use dto_mapper::convert_inner;
 use one_core::model::credential::{Credential, CredentialState, SortableCredentialColumn};
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
@@ -12,7 +10,6 @@ use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
 use shared_types::{CredentialId, DidId, KeyId};
-use uuid::Uuid;
 
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::entity::{self, credential, credential_schema, credential_state, did};
@@ -106,7 +103,7 @@ pub(super) fn request_to_active_model(
 ) -> credential::ActiveModel {
     credential::ActiveModel {
         id: Set(request.id),
-        credential_schema_id: Set(schema.id.to_string()),
+        credential_schema_id: Set(schema.id),
         created_date: Set(request.created_date),
         last_modified: Set(request.last_modified),
         issuance_date: Set(request.issuance_date),
@@ -126,10 +123,10 @@ pub(super) fn request_to_active_model(
 pub(super) fn credential_list_model_to_repository_model(
     credential: CredentialListEntityModel,
 ) -> Result<Credential, DataLayerError> {
-    let schema_id = Uuid::from_str(&credential.credential_schema_id)?;
+    let schema_id = credential.credential_schema_id;
 
     let schema = CredentialSchema {
-        id: schema_id.into(),
+        id: schema_id,
         deleted_at: credential.credential_schema_deleted_at,
         created_date: credential.credential_schema_created_date,
         last_modified: credential.credential_schema_last_modified,

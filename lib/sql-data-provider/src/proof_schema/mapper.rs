@@ -1,23 +1,18 @@
-use crate::{common::calculate_pages_count, entity::proof_schema, list_query::GetEntityColumn};
 use anyhow::anyhow;
-use dto_mapper::try_convert_inner;
+use dto_mapper::convert_inner;
 use migration::SimpleExpr;
-use one_core::{
-    model::proof_schema::{GetProofSchemaList, ProofSchema, SortableProofSchemaColumn},
-    repository::error::DataLayerError,
-};
+use one_core::model::proof_schema::{GetProofSchemaList, ProofSchema, SortableProofSchemaColumn};
+use one_core::repository::error::DataLayerError;
 use sea_orm::{IntoSimpleExpr, Set};
-use std::str::FromStr;
-use uuid::Uuid;
 
-impl TryFrom<proof_schema::Model> for ProofSchema {
-    type Error = DataLayerError;
+use crate::common::calculate_pages_count;
+use crate::entity::proof_schema;
+use crate::list_query::GetEntityColumn;
 
-    fn try_from(value: proof_schema::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id)?.into();
-
-        Ok(Self {
-            id,
+impl From<proof_schema::Model> for ProofSchema {
+    fn from(value: proof_schema::Model) -> Self {
+        Self {
+            id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             deleted_at: value.deleted_at,
@@ -25,7 +20,7 @@ impl TryFrom<proof_schema::Model> for ProofSchema {
             expire_duration: value.expire_duration,
             organisation: None,
             input_schemas: None,
-        })
+        }
     }
 }
 
@@ -46,7 +41,7 @@ pub(crate) fn create_list_response(
     items_count: u64,
 ) -> Result<GetProofSchemaList, DataLayerError> {
     Ok(GetProofSchemaList {
-        values: try_convert_inner(schemas)?,
+        values: convert_inner(schemas),
         total_pages: calculate_pages_count(items_count, limit),
         total_items: items_count,
     })
@@ -57,7 +52,7 @@ impl TryFrom<&ProofSchema> for proof_schema::ActiveModel {
 
     fn try_from(value: &ProofSchema) -> Result<Self, Self::Error> {
         Ok(Self {
-            id: Set(value.id.to_string()),
+            id: Set(value.id),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             name: Set(value.name.to_owned()),

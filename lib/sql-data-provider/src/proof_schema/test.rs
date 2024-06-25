@@ -1,31 +1,34 @@
-use super::ProofSchemaProvider;
-use crate::{entity::proof_schema, test_utilities::*};
-use one_core::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use std::sync::Arc;
+
+use one_core::model::claim_schema::ClaimSchema;
+use one_core::model::credential_schema::{
+    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, LayoutType,
+    WalletStorageTypeEnum,
+};
+use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof_schema::{
-    ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchemaClaimRelations,
+    GetProofSchemaQuery, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
+    ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use one_core::{
-    model::{
-        claim_schema::ClaimSchema,
-        credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        organisation::{Organisation, OrganisationRelations},
-        proof_schema::{GetProofSchemaQuery, ProofSchema, ProofSchemaRelations},
-    },
-    repository::{
-        claim_schema_repository::{self, ClaimSchemaRepository, MockClaimSchemaRepository},
-        credential_schema_repository::MockCredentialSchemaRepository,
-        credential_schema_repository::{self, CredentialSchemaRepository},
-        error::DataLayerError,
-        organisation_repository::MockOrganisationRepository,
-        organisation_repository::{self, OrganisationRepository},
-        proof_schema_repository::ProofSchemaRepository,
-    },
+use one_core::repository::claim_schema_repository::{
+    self, ClaimSchemaRepository, MockClaimSchemaRepository,
 };
+use one_core::repository::credential_schema_repository::{
+    self, CredentialSchemaRepository, MockCredentialSchemaRepository,
+};
+use one_core::repository::error::DataLayerError;
+use one_core::repository::organisation_repository::{
+    self, MockOrganisationRepository, OrganisationRepository,
+};
+use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use sea_orm::{ActiveModelTrait, Set, Unchanged};
 use shared_types::{OrganisationId, ProofSchemaId};
-use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::ProofSchemaProvider;
+use crate::entity::proof_schema;
+use crate::test_utilities::*;
 
 struct TestSetup {
     pub repository: Box<dyn ProofSchemaRepository>,
@@ -82,13 +85,10 @@ async fn setup_with_proof_schema(
 
     let proof_schema_name = "proof schema".to_string();
 
-    let proof_schema_id = Uuid::parse_str(
-        &insert_proof_schema_to_database(&db, None, organisation_id, &proof_schema_name)
+    let proof_schema_id =
+        insert_proof_schema_to_database(&db, None, organisation_id, &proof_schema_name)
             .await
-            .unwrap(),
-    )
-    .unwrap()
-    .into();
+            .unwrap();
 
     TestSetupWithProofSchema {
         repository,
@@ -241,7 +241,7 @@ async fn test_create_proof_schema_success() {
         .collect();
 
     let claim_input = ProofInput {
-        credential_schema_id: credential_schema_id.clone(),
+        credential_schema_id,
         claims: &new_claim_schemas,
     };
 
@@ -278,7 +278,7 @@ async fn test_create_proof_schema_success() {
                     order: 0,
                 }]),
                 credential_schema: Some(CredentialSchema {
-                    id: credential_schema_id.parse().unwrap(),
+                    id: credential_schema_id,
                     deleted_at: None,
                     wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                     created_date: get_dummy_date(),
@@ -300,10 +300,7 @@ async fn test_create_proof_schema_success() {
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), id);
 
-    let db_schema = get_proof_schema_with_id(&db, &id.to_string())
-        .await
-        .unwrap()
-        .unwrap();
+    let db_schema = get_proof_schema_with_id(&db, &id).await.unwrap().unwrap();
     assert_eq!(db_schema.name, "test");
     assert_eq!(db_schema.expire_duration, 0);
     assert_eq!(db_schema.deleted_at, None);
@@ -331,7 +328,7 @@ async fn test_delete_proof_schema_existing() {
 
     assert!(result.is_ok());
 
-    let deleted_schema = get_proof_schema_with_id(&db, &proof_schema_id.to_string())
+    let deleted_schema = get_proof_schema_with_id(&db, &proof_schema_id)
         .await
         .unwrap();
     assert!(deleted_schema.is_some());
@@ -436,7 +433,7 @@ async fn test_get_proof_schema_deleted() {
 
     let delete_date = get_dummy_date();
     proof_schema::ActiveModel {
-        id: Unchanged(proof_schema_id.to_string()),
+        id: Unchanged(proof_schema_id),
         deleted_at: Set(Some(delete_date)),
         ..Default::default()
     }
@@ -544,7 +541,7 @@ async fn test_get_proof_schema_with_relations() {
         .collect();
 
     let claim_input = ProofInput {
-        credential_schema_id: credential_schema_id.clone(),
+        credential_schema_id,
         claims: &new_claim_schemas,
     };
 
@@ -552,19 +549,15 @@ async fn test_get_proof_schema_with_relations() {
         .await
         .unwrap();
 
-    let proof_schema_id = Uuid::parse_str(
-        &insert_proof_schema_with_claims_to_database(
-            &db,
-            None,
-            vec![&claim_input],
-            organisation_id,
-            "proof schema",
-        )
-        .await
-        .unwrap(),
+    let proof_schema_id = insert_proof_schema_with_claims_to_database(
+        &db,
+        None,
+        vec![&claim_input],
+        organisation_id,
+        "proof schema",
     )
-    .unwrap()
-    .into();
+    .await
+    .unwrap();
 
     let result = repository
         .get_proof_schema(
@@ -595,7 +588,7 @@ async fn test_get_proof_schema_with_relations() {
 
     assert!(input_schema.credential_schema.is_some());
     let credential_schema: &CredentialSchema = input_schema.credential_schema.as_ref().unwrap();
-    assert_eq!(credential_schema.id.to_string(), credential_schema_id);
+    assert_eq!(credential_schema.id, credential_schema_id);
 }
 
 #[tokio::test]
@@ -707,12 +700,12 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         .collect();
 
     let claim_input = ProofInput {
-        credential_schema_id: credential_schema_id.clone(),
+        credential_schema_id,
         claims: &new_claim_schemas,
     };
 
     let claim_input2 = ProofInput {
-        credential_schema_id: credential_schema_id2.clone(),
+        credential_schema_id: credential_schema_id2,
         claims: &new_claim_schemas2,
     };
 
@@ -724,19 +717,15 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         .await
         .unwrap();
 
-    let proof_schema_id = Uuid::parse_str(
-        &insert_proof_schema_with_claims_to_database(
-            &db,
-            None,
-            vec![&claim_input, &claim_input2],
-            organisation_id,
-            "proof schema",
-        )
-        .await
-        .unwrap(),
+    let proof_schema_id = insert_proof_schema_with_claims_to_database(
+        &db,
+        None,
+        vec![&claim_input, &claim_input2],
+        organisation_id,
+        "proof schema",
     )
-    .unwrap()
-    .into();
+    .await
+    .unwrap();
 
     let result = repository
         .get_proof_schema(
@@ -762,21 +751,11 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         result.input_schemas.unwrap();
     assert_eq!(proof_inputs.len(), 2);
     assert_eq!(
-        proof_inputs[0]
-            .credential_schema
-            .as_ref()
-            .unwrap()
-            .id
-            .to_string(),
+        proof_inputs[0].credential_schema.as_ref().unwrap().id,
         credential_schema_id
     );
     assert_eq!(
-        proof_inputs[1]
-            .credential_schema
-            .as_ref()
-            .unwrap()
-            .id
-            .to_string(),
+        proof_inputs[1].credential_schema.as_ref().unwrap().id,
         credential_schema_id2
     );
 
@@ -879,40 +858,34 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     .await;
 
     let date_now = OffsetDateTime::now_utc();
-    let schema1_id = Uuid::parse_str(
-        &crate::entity::proof_schema::ActiveModel {
-            id: Set(Uuid::new_v4().to_string()),
-            created_date: Set(date_now),
-            last_modified: Set(date_now),
-            name: Set("schema-1".to_string()),
-            expire_duration: Set(Default::default()),
-            organisation_id: Set(organisation_id),
-            deleted_at: Set(None),
-        }
-        .insert(&db)
-        .await
-        .unwrap()
-        .id,
-    )
-    .unwrap();
+    let schema1_id = crate::entity::proof_schema::ActiveModel {
+        id: Set(Uuid::new_v4().into()),
+        created_date: Set(date_now),
+        last_modified: Set(date_now),
+        name: Set("schema-1".to_string()),
+        expire_duration: Set(Default::default()),
+        organisation_id: Set(organisation_id),
+        deleted_at: Set(None),
+    }
+    .insert(&db)
+    .await
+    .unwrap()
+    .id;
 
     let date_later = date_now + time::Duration::seconds(1);
-    let schema2_id = Uuid::parse_str(
-        &crate::entity::proof_schema::ActiveModel {
-            id: Set(Uuid::new_v4().to_string()),
-            created_date: Set(date_later),
-            last_modified: Set(date_later),
-            name: Set("schema-2".to_string()),
-            expire_duration: Set(Default::default()),
-            organisation_id: Set(organisation_id),
-            deleted_at: Set(None),
-        }
-        .insert(&db)
-        .await
-        .unwrap()
-        .id,
-    )
-    .unwrap();
+    let schema2_id = crate::entity::proof_schema::ActiveModel {
+        id: Set(Uuid::new_v4().into()),
+        created_date: Set(date_later),
+        last_modified: Set(date_later),
+        name: Set("schema-2".to_string()),
+        expire_duration: Set(Default::default()),
+        organisation_id: Set(organisation_id),
+        deleted_at: Set(None),
+    }
+    .insert(&db)
+    .await
+    .unwrap()
+    .id;
 
     // default sorting - by created date descending
     let result = repository

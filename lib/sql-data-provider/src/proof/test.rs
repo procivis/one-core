@@ -8,8 +8,10 @@ use one_core::model::credential::{
 use one_core::model::did::{Did, DidRelations, DidType};
 use one_core::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use one_core::model::key::{Key, KeyRelations};
+use one_core::model::list_filter::ListFilterValue;
+use one_core::model::list_query::ListPagination;
 use one_core::model::proof::{
-    Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
+    GetProofQuery, Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum,
     ProofStateRelations,
 };
 use one_core::model::proof_schema::{ProofSchema, ProofSchemaRelations};
@@ -19,13 +21,14 @@ use one_core::repository::did_repository::{DidRepository, MockDidRepository};
 use one_core::repository::interaction_repository::{
     InteractionRepository, MockInteractionRepository,
 };
-use one_core::repository::key_repository::KeyRepository;
-use one_core::repository::key_repository::MockKeyRepository;
+use one_core::repository::key_repository::{KeyRepository, MockKeyRepository};
 use one_core::repository::proof_repository::ProofRepository;
-use one_core::repository::proof_schema_repository::MockProofSchemaRepository;
-use one_core::repository::proof_schema_repository::ProofSchemaRepository;
+use one_core::repository::proof_schema_repository::{
+    MockProofSchemaRepository, ProofSchemaRepository,
+};
+use one_core::service::proof::dto::ProofFilterValue;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
-use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId, ProofSchemaId};
+use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -33,7 +36,6 @@ use super::ProofProvider;
 use crate::entity::key_did::KeyRole;
 use crate::entity::proof_state::{self, ProofRequestState};
 use crate::entity::{claim, credential, proof_claim};
-use crate::list_query::from_pagination;
 use crate::test_utilities::*;
 
 struct TestSetup {
@@ -63,18 +65,15 @@ async fn setup(
         .await
         .unwrap();
 
-    let credential_schema_id = Uuid::parse_str(
-        &insert_credential_schema_to_database(
-            &db,
-            None,
-            organisation_id,
-            "credential schema",
-            "JWT",
-            "NONE",
-        )
-        .await
-        .unwrap(),
+    let credential_schema_id = insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation_id,
+        "credential schema",
+        "JWT",
+        "NONE",
     )
+    .await
     .unwrap();
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
@@ -89,7 +88,7 @@ async fn setup(
         .collect();
 
     let claim_input = ProofInput {
-        credential_schema_id: credential_schema_id.to_string(),
+        credential_schema_id,
         claims: &new_claim_schemas,
     };
 
@@ -97,19 +96,15 @@ async fn setup(
         .await
         .unwrap();
 
-    let proof_schema_id = Uuid::parse_str(
-        &insert_proof_schema_with_claims_to_database(
-            &db,
-            None,
-            vec![&claim_input],
-            organisation_id,
-            "proof schema",
-        )
-        .await
-        .unwrap(),
+    let proof_schema_id = insert_proof_schema_with_claims_to_database(
+        &db,
+        None,
+        vec![&claim_input],
+        organisation_id,
+        "proof schema",
     )
-    .unwrap()
-    .into();
+    .await
+    .unwrap();
 
     let did_id = insert_did_key(
         &db,
@@ -200,27 +195,20 @@ async fn setup_with_proof(
     )
     .await;
 
-    let proof_id = Uuid::parse_str(
-        &insert_proof_request_to_database(
-            &db,
-            did_id,
-            None,
-            &proof_schema_id.to_string(),
-            key_id,
-            Some(interaction_id.to_string()),
-        )
-        .await
-        .unwrap(),
-    )
-    .unwrap();
-
-    insert_proof_state_to_database(
+    let proof_id = insert_proof_request_to_database(
         &db,
-        &proof_id.to_string(),
-        crate::entity::proof_state::ProofRequestState::Created,
+        did_id,
+        None,
+        &proof_schema_id,
+        key_id,
+        Some(interaction_id.to_string()),
     )
     .await
     .unwrap();
+
+    insert_proof_state_to_database(&db, &proof_id, ProofRequestState::Created)
+        .await
+        .unwrap();
 
     TestSetupWithProof {
         repository,
@@ -278,7 +266,7 @@ async fn test_create_proof_success() {
     )
     .await;
 
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let proof = Proof {
         id: proof_id,
         created_date: get_dummy_date(),
@@ -368,7 +356,17 @@ async fn test_get_proof_list() {
     .await;
 
     let result = repository
-        .get_proof_list(from_pagination(0, 1, organisation_id))
+        .get_proof_list(GetProofQuery {
+            pagination: Some(ListPagination {
+                page_size: 1,
+                page: 0,
+            }),
+            filtering: ProofFilterValue::OrganisationId(organisation_id)
+                .condition()
+                .into(),
+            sorting: None,
+            include: None,
+        })
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -393,7 +391,7 @@ async fn test_get_proof_missing() {
     .await;
 
     let result = repository
-        .get_proof(&Uuid::new_v4(), &ProofRelations::default())
+        .get_proof(&Uuid::new_v4().into(), &ProofRelations::default())
         .await;
     assert!(matches!(result, Ok(None)));
 }
@@ -557,23 +555,20 @@ async fn test_get_proof_with_relations() {
     )
     .await;
 
-    let credential_schema_id = Uuid::parse_str(
-        &insert_credential_schema_to_database(
-            &db,
-            None,
-            organisation_id,
-            "credential schema 1",
-            "JWT",
-            "NONE",
-        )
-        .await
-        .unwrap(),
+    let credential_schema_id = insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation_id,
+        "credential schema 1",
+        "JWT",
+        "NONE",
     )
+    .await
     .unwrap();
 
     credential::ActiveModel {
         id: Set(credential_id),
-        credential_schema_id: Set(credential_schema_id.to_string()),
+        credential_schema_id: Set(credential_schema_id),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(get_dummy_date()),
@@ -853,10 +848,7 @@ async fn test_set_proof_holder_did() {
 
     assert!(result.is_ok());
 
-    let proof = get_proof_by_id(&db, &proof_id.to_string())
-        .await
-        .unwrap()
-        .unwrap();
+    let proof = get_proof_by_id(&db, &proof_id).await.unwrap().unwrap();
     assert!(proof.holder_did_id.is_some());
     assert_eq!(&proof.holder_did_id.unwrap(), holder_did_id);
 }
@@ -881,23 +873,20 @@ async fn test_set_proof_claims_success() {
     )
     .await;
 
-    let credential_schema_id = Uuid::parse_str(
-        &insert_credential_schema_to_database(
-            &db,
-            None,
-            organisation_id,
-            "credential schema 1",
-            "JWT",
-            "NONE",
-        )
-        .await
-        .unwrap(),
+    let credential_schema_id = insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation_id,
+        "credential schema 1",
+        "JWT",
+        "NONE",
     )
+    .await
     .unwrap();
 
     let credential_id = insert_credential(
         &db,
-        &credential_schema_id.to_string(),
+        &credential_schema_id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did_id,
