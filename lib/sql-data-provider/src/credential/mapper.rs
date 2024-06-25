@@ -191,7 +191,7 @@ pub(super) fn credential_list_model_to_repository_model(
         issuance_date: credential.issuance_date,
         last_modified: credential.last_modified,
         deleted_at: credential.deleted_at,
-        credential: credential.credential,
+        credential: credential.credential.unwrap_or_default(),
         exchange: credential.exchange,
         redirect_uri: credential.redirect_uri,
         role: credential.role.into(),
