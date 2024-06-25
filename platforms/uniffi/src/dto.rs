@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
-use one_core::model::common::ExactColumn;
+use one_core::model::common::{EntityShareResponseDTO, ExactColumn};
 use one_core::model::credential::SortableCredentialColumn;
 use one_core::model::credential_schema::{
     LayoutType, SortableCredentialSchemaColumn, WalletStorageTypeEnum,
@@ -39,8 +39,8 @@ use one_core::service::error::ServiceError;
 use one_core::service::history::dto::GetHistoryListResponseDTO;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 use one_core::service::proof::dto::{
-    GetProofListResponseDTO, ProofClaimDTO, ProofClaimValueDTO, ProofInputDTO,
-    ProofListItemResponseDTO,
+    CreateProofRequestDTO, GetProofListResponseDTO, ProofClaimDTO, ProofClaimValueDTO,
+    ProofInputDTO, ProofListItemResponseDTO,
 };
 use one_core::service::proof_schema::dto::{
     GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, GetProofSchemaResponseDTO,
@@ -56,7 +56,7 @@ use one_core::service::trust_anchor::dto::{
 
 use crate::error::{BindingError, NativeKeyStorageError};
 use crate::mapper::{optional_did_string, optional_time, serialize_config_entity};
-use crate::utils::{format_timestamp_opt, into_id, into_timestamp, TimestampFormat};
+use crate::utils::{format_timestamp_opt, into_id, into_id_opt, into_timestamp, TimestampFormat};
 
 #[derive(From)]
 #[from(ConfigDTO)]
@@ -1222,4 +1222,25 @@ pub struct ImportCredentialSchemaLayoutPropertiesBindingDTO {
     pub picture_attribute: Option<String>,
     #[into(with_fn = convert_inner)]
     pub code: Option<CredentialSchemaCodePropertiesBindingDTO>,
+}
+
+#[derive(TryInto)]
+#[try_into(T = CreateProofRequestDTO, Error = ServiceError)]
+pub struct CreateProofRequestBindingDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub proof_schema_id: String,
+    #[try_into(with_fn_ref = into_id)]
+    pub verifier_did_id: String,
+    #[try_into(infallible)]
+    pub exchange: String,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub redirect_uri: Option<String>,
+    #[try_into(with_fn = into_id_opt)]
+    pub verifier_key: Option<String>,
+}
+
+#[derive(From)]
+#[from(EntityShareResponseDTO)]
+pub struct ShareProofResponseBindingDTO {
+    pub url: String,
 }
