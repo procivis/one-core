@@ -10,7 +10,6 @@ use crate::dto::response::{
     declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
     OkOrErrorResponse,
 };
-
 use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -70,7 +69,7 @@ pub(crate) async fn delete_trust_entity(
     path = "/api/trust-entity/v1/{id}",
     responses(OkOrErrorResponse<GetTrustEntityResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Trust Entity id")
+        ("id" = TrustEntityId, Path, description = "Trust Entity id")
     ),
     tag = "trust_entity",
     security(

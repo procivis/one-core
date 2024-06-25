@@ -8,13 +8,13 @@ use one_core::model::interaction::Interaction;
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::OrganisationRelations;
 use one_core::model::proof::{
-    Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
-    ProofStateRelations,
+    Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
 };
 use one_core::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use one_core::repository::proof_repository::ProofRepository;
+use shared_types::ProofId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -30,7 +30,7 @@ impl ProofsDB {
     #[allow(clippy::too_many_arguments)]
     pub async fn create(
         &self,
-        id: Option<Uuid>,
+        id: Option<ProofId>,
         verifier_did: &Did,
         holder_did: Option<&Did>,
         proof_schema: Option<&ProofSchema>,
@@ -40,7 +40,7 @@ impl ProofsDB {
         verifier_key: Key,
     ) -> Proof {
         let proof = Proof {
-            id: id.unwrap_or_else(Uuid::new_v4),
+            id: id.unwrap_or_else(|| Uuid::new_v4().into()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             issuance_date: get_dummy_date(),

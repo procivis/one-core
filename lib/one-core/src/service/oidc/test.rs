@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use mockall::predicate::{self, always, eq};
 use serde_json::json;
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidValue, ProofId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -1271,7 +1271,7 @@ fn jwt_format_map() -> HashMap<String, OpenID4VPPresentationDefinitionInputDescr
 async fn test_oidc_verifier_presentation_definition_success() {
     let mut proof_repository = MockProofRepository::default();
 
-    let proof_id = Uuid::new_v4();
+    let proof_id: ProofId = Uuid::new_v4().into();
 
     let interaction_data = serde_json::to_vec(&OpenID4VPInteractionContent {
         nonce: "nonce".to_string(),
@@ -1393,7 +1393,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
 async fn test_oidc_verifier_presentation_definition_incorrect_protocol() {
     let mut proof_repository = MockProofRepository::default();
 
-    let proof_id = Uuid::new_v4();
+    let proof_id: ProofId = Uuid::new_v4().into();
 
     proof_repository
         .expect_get_proof()
@@ -1440,7 +1440,7 @@ async fn test_oidc_verifier_presentation_definition_incorrect_protocol() {
 
 #[tokio::test]
 async fn test_submit_proof_failed_credential_suspended() {
-    let proof_id = Uuid::new_v4();
+    let proof_id: ProofId = Uuid::new_v4().into();
     let verifier_did = "verifier did".parse().unwrap();
     let holder_did: DidValue = "did:holder".parse().unwrap();
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
@@ -1906,7 +1906,7 @@ async fn test_get_client_metadata_success() {
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
     let now = OffsetDateTime::now_utc();
-    let proof_id = Uuid::new_v4();
+    let proof_id: ProofId = Uuid::new_v4().into();
     let proof = Proof {
         id: proof_id,
         created_date: now,

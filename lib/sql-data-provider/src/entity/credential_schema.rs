@@ -1,17 +1,17 @@
 use dto_mapper::{convert_inner, From, Into};
-use one_core::model::{
-    self, credential_schema::WalletStorageTypeEnum as ModelWalletStorageTypeEnum,
-};
-use sea_orm::{entity::prelude::*, FromJsonQueryResult};
+use one_core::model;
+use one_core::model::credential_schema::WalletStorageTypeEnum as ModelWalletStorageTypeEnum;
+use sea_orm::entity::prelude::*;
+use sea_orm::FromJsonQueryResult;
 use serde::{Deserialize, Serialize};
-use shared_types::OrganisationId;
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "credential_schema")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: String,
+    pub id: CredentialSchemaId,
     pub deleted_at: Option<OffsetDateTime>,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,

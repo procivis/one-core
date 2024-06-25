@@ -1,5 +1,4 @@
 use std::ops::Add;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
@@ -28,7 +27,7 @@ use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::revocation_list_repository::MockRevocationListRepository;
 use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
-use shared_types::{CredentialId, CredentialSchemaId};
+use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -48,18 +47,15 @@ async fn setup_empty() -> TestSetup {
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
-    let credential_schema_id = CredentialSchemaId::from_str(
-        &insert_credential_schema_to_database(
-            &db,
-            None,
-            organisation_id,
-            "credential schema",
-            "JWT",
-            "NONE",
-        )
-        .await
-        .unwrap(),
+    let credential_schema_id = insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation_id,
+        "credential schema",
+        "JWT",
+        "NONE",
     )
+    .await
     .unwrap();
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
@@ -74,7 +70,7 @@ async fn setup_empty() -> TestSetup {
         .collect();
 
     let claim_input = ProofInput {
-        credential_schema_id: credential_schema_id.to_string(),
+        credential_schema_id,
         claims: &new_claim_schemas,
     };
 
@@ -170,7 +166,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
 
     let credential_id = insert_credential(
         &db,
-        &credential_schema.id.to_string(),
+        &credential_schema.id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id,
@@ -396,7 +392,7 @@ async fn test_delete_credential_success() {
 
     let credential_id = insert_credential(
         &db,
-        &credential_schema.id.to_string(),
+        &credential_schema.id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id,
@@ -456,7 +452,7 @@ async fn test_get_credential_list_success() {
 
     let _credential_one_id = insert_credential(
         &db,
-        &credential_schema.id.to_string(),
+        &credential_schema.id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id,
@@ -466,7 +462,7 @@ async fn test_get_credential_list_success() {
     .unwrap();
     let _credential_two_id = insert_credential(
         &db,
-        &credential_schema.id.to_string(),
+        &credential_schema.id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id,
@@ -477,7 +473,7 @@ async fn test_get_credential_list_success() {
 
     let credential_three_id_should_not_be_returned = insert_credential(
         &db,
-        &credential_schema.id.to_string(),
+        &credential_schema.id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id,
@@ -592,7 +588,7 @@ async fn test_get_credential_list_success_filter_state() {
 
     let credential_id_first = insert_credential(
         &db,
-        &credential_schema.id.to_string(),
+        &credential_schema.id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id,
@@ -603,7 +599,7 @@ async fn test_get_credential_list_success_filter_state() {
 
     let credential_id_second = insert_credential(
         &db,
-        &credential_schema.id.to_string(),
+        &credential_schema.id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id,
@@ -783,7 +779,7 @@ async fn test_get_credential_success() {
 
     let credential_id = insert_credential(
         &db,
-        &credential_schema.id.to_string(),
+        &credential_schema.id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id,
@@ -960,7 +956,7 @@ async fn test_update_credential_success() {
 
     let credential_id = insert_credential(
         &db,
-        &credential_schema.id.to_string(),
+        &credential_schema.id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id,
@@ -1049,7 +1045,7 @@ async fn test_get_credential_by_claim_id_success() {
     // an unrelated credential
     insert_credential(
         &db,
-        &credential_schema.id.to_string(),
+        &credential_schema.id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id,
@@ -1060,7 +1056,7 @@ async fn test_get_credential_by_claim_id_success() {
 
     let credential_id = insert_credential(
         &db,
-        &credential_schema.id.to_string(),
+        &credential_schema.id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id,

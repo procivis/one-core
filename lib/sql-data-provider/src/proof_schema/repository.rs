@@ -1,30 +1,28 @@
-use super::{mapper::create_list_response, ProofSchemaProvider};
-use crate::{
-    entity::{proof_input_claim_schema, proof_input_schema, proof_schema},
-    list_query::SelectWithListQuery,
-    mapper::to_data_layer_error,
-};
+use std::str::FromStr;
+
 use anyhow::anyhow;
 use autometrics::autometrics;
-use one_core::{
-    model::{
-        claim_schema::ClaimSchemaRelations,
-        credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        proof_schema::{
-            GetProofSchemaList, GetProofSchemaQuery, ProofInputClaimSchema, ProofInputSchema,
-            ProofInputSchemaRelations, ProofSchema, ProofSchemaRelations,
-        },
-    },
-    repository::{error::DataLayerError, proof_schema_repository::ProofSchemaRepository},
+use one_core::model::claim_schema::ClaimSchemaRelations;
+use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use one_core::model::proof_schema::{
+    GetProofSchemaList, GetProofSchemaQuery, ProofInputClaimSchema, ProofInputSchema,
+    ProofInputSchemaRelations, ProofSchema, ProofSchemaRelations,
 };
+use one_core::repository::error::DataLayerError;
+use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
     TransactionTrait, Unchanged,
 };
 use shared_types::{ClaimSchemaId, CredentialSchemaId, ProofSchemaId};
-use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::mapper::create_list_response;
+use super::ProofSchemaProvider;
+use crate::entity::{proof_input_claim_schema, proof_input_schema, proof_schema};
+use crate::list_query::SelectWithListQuery;
+use crate::mapper::to_data_layer_error;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -63,7 +61,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                     last_modified: Set(now),
                     validity_constraint: Set(schema.validity_constraint),
                     credential_schema: Set(credential_schema.id.to_string()),
-                    proof_schema: Set(proof_schema_id.to_string()),
+                    proof_schema: Set(proof_schema_id),
                     ..Default::default()
                 };
 
@@ -165,7 +163,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         id: &ProofSchemaId,
         relations: &ProofSchemaRelations,
     ) -> Result<Option<ProofSchema>, DataLayerError> {
-        let proof_schema_model = crate::entity::proof_schema::Entity::find_by_id(id.to_string())
+        let proof_schema_model = crate::entity::proof_schema::Entity::find_by_id(id)
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
@@ -175,7 +173,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         };
 
         let organisation_id = proof_schema_model.organisation_id.to_owned();
-        let mut proof_schema = ProofSchema::try_from(proof_schema_model)?;
+        let mut proof_schema = ProofSchema::from(proof_schema_model);
 
         if let Some(input_relations) = &relations.proof_inputs {
             proof_schema.input_schemas =
@@ -231,7 +229,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         deleted_at: OffsetDateTime,
     ) -> Result<(), DataLayerError> {
         let schema = proof_schema::ActiveModel {
-            id: Unchanged(id.to_string()),
+            id: Unchanged(*id),
             deleted_at: Set(Some(deleted_at)),
             ..Default::default()
         };

@@ -1,7 +1,7 @@
 use dto_mapper::{From, Into};
 use one_core::model::credential::CredentialRole as ModelCredentialRole;
 use sea_orm::entity::prelude::*;
-use shared_types::{CredentialId, DidId, KeyId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId, KeyId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -10,7 +10,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: CredentialId,
 
-    pub credential_schema_id: String,
+    pub credential_schema_id: CredentialSchemaId,
 
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,

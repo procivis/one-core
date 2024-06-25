@@ -1,17 +1,16 @@
-use shared_types::DidId;
+use shared_types::{DidId, ProofId};
 use strum_macros::Display;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::claim::{Claim, ClaimRelations};
-use super::common::{GetListQueryParams, GetListResponse};
+use super::common::GetListResponse;
 use super::credential::{Credential, CredentialRelations};
 use super::did::{Did, DidRelations};
 use super::interaction::{Interaction, InteractionId, InteractionRelations};
 use super::key::{Key, KeyRelations};
+use super::list_query::ListQuery;
 use super::proof_schema::{ProofSchema, ProofSchemaRelations};
-
-pub type ProofId = Uuid;
+use crate::service::proof::dto::ProofFilterValue;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Proof {
@@ -66,7 +65,7 @@ pub enum SortableProofColumn {
 }
 
 pub type GetProofList = GetListResponse<Proof>;
-pub type GetProofQuery = GetListQueryParams<SortableProofColumn>;
+pub type GetProofQuery = ListQuery<SortableProofColumn, ProofFilterValue>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProofRelations {
@@ -88,7 +87,7 @@ pub struct ProofClaimRelations {
     pub credential: Option<CredentialRelations>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UpdateProofRequest {
     pub id: ProofId,
 

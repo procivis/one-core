@@ -1,31 +1,25 @@
-use super::CredentialSchemaProvider;
-use crate::{entity::credential_schema, test_utilities::*};
+use std::sync::Arc;
+
+use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
-    CredentialSchemaType, GetCredentialSchemaQuery, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
+    GetCredentialSchemaQuery, LayoutType, UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
 };
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
+use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::repository::claim_schema_repository::MockClaimSchemaRepository;
+use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
+use one_core::repository::error::DataLayerError;
+use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
-use one_core::{
-    model::{
-        claim_schema::{ClaimSchema, ClaimSchemaRelations},
-        credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-            UpdateCredentialSchemaRequest,
-        },
-        organisation::{Organisation, OrganisationRelations},
-    },
-    repository::{
-        claim_schema_repository::MockClaimSchemaRepository,
-        credential_schema_repository::CredentialSchemaRepository, error::DataLayerError,
-        organisation_repository::MockOrganisationRepository,
-    },
-};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
 use shared_types::CredentialSchemaId;
-use std::str::FromStr;
-use std::sync::Arc;
 use uuid::Uuid;
+
+use super::CredentialSchemaProvider;
+use crate::entity::credential_schema;
+use crate::test_utilities::*;
 
 #[derive(Default)]
 struct Repositories {
@@ -75,18 +69,15 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
         ..
     } = setup_empty(repositories).await;
 
-    let credential_schema_id = CredentialSchemaId::from_str(
-        &insert_credential_schema_to_database(
-            &db,
-            None,
-            organisation.id,
-            "credential schema",
-            "JWT",
-            "NONE",
-        )
-        .await
-        .unwrap(),
+    let credential_schema_id = insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation.id,
+        "credential schema",
+        "JWT",
+        "NONE",
     )
+    .await
     .unwrap();
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
@@ -101,7 +92,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
         .collect();
 
     let claim_input = ProofInput {
-        credential_schema_id: credential_schema_id.to_string(),
+        credential_schema_id,
         claims: &new_claim_schemas,
     };
 
@@ -283,7 +274,7 @@ async fn test_get_credential_schema_list_deleted_schema() {
     } = setup_with_schema(Repositories::default()).await;
 
     credential_schema::ActiveModel {
-        id: Unchanged(credential_schema.id.to_string()),
+        id: Unchanged(credential_schema.id),
         deleted_at: Set(Some(get_dummy_date())),
         ..Default::default()
     }
@@ -425,7 +416,7 @@ async fn test_get_credential_schema_deleted() {
 
     let delete_date = get_dummy_date();
     credential_schema::ActiveModel {
-        id: Unchanged(credential_schema.id.to_string()),
+        id: Unchanged(credential_schema.id),
         deleted_at: Set(Some(delete_date)),
         ..Default::default()
     }

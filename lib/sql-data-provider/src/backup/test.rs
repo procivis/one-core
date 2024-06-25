@@ -2,7 +2,7 @@ use futures::StreamExt;
 use one_core::repository::backup_repository::BackupRepository;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
-use shared_types::{CredentialId, DidId, DidValue, KeyId, OrganisationId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId};
 use tempfile::NamedTempFile;
 use uuid::Uuid;
 
@@ -49,13 +49,13 @@ async fn insert_key_to_database(
 
 async fn insert_credential_to_database(
     database: &DatabaseConnection,
-    schema_id: Uuid,
+    schema_id: CredentialSchemaId,
     key_id: KeyId,
     deleted: bool,
 ) -> CredentialId {
     let credential_id = credential::ActiveModel {
         id: Set(Uuid::new_v4().into()),
-        credential_schema_id: Set(schema_id.to_string()),
+        credential_schema_id: Set(schema_id),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(get_dummy_date()),
@@ -90,7 +90,7 @@ async fn insert_credential_to_database(
     };
 
     let proof_input = ProofInput {
-        credential_schema_id: schema_id.to_string(),
+        credential_schema_id: schema_id,
         claims: &vec![claim],
     };
 
@@ -234,8 +234,6 @@ async fn add_unexportable_credentials(
         "NONE",
     )
     .await
-    .unwrap()
-    .parse()
     .unwrap();
 
     let exportable_ids = futures::stream::iter(keys_setup.exportable_ids.iter())

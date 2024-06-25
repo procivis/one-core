@@ -1,12 +1,21 @@
 use std::fmt::Display;
 
+use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
-use uuid::Uuid;
+use shared_types::{ProofId, ProofSchemaId};
 
 use super::{HttpClient, Response};
 
 pub struct ProofsApi {
     client: HttpClient,
+}
+
+#[derive(Debug, Default)]
+pub struct ProofFilters<'a> {
+    pub name: Option<&'a str>,
+    pub proof_states: Option<&'a [ProofStateEnum]>,
+    pub proof_schema_ids: Option<&'a [ProofSchemaId]>,
+    pub ids: Option<&'a [ProofId]>,
 }
 
 impl ProofsApi {
@@ -49,14 +58,32 @@ impl ProofsApi {
         page: u32,
         page_size: u32,
         organisation_id: &impl Display,
-        ids: impl IntoIterator<Item = &Uuid>,
+        filters: ProofFilters<'_>,
     ) -> Response {
         let mut url = format!(
             "/api/proof-request/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}"
         );
 
-        for id in ids {
-            url += &format!("&ids[]={id}")
+        if let Some(ids) = filters.ids {
+            url += &ids.iter().fold(Default::default(), |state, elem| {
+                format!("{state}&ids[]={elem}")
+            });
+        }
+
+        if let Some(ids) = filters.proof_schema_ids {
+            url += &ids.iter().fold(Default::default(), |state, elem| {
+                format!("{state}&proofSchemaIds[]={elem}")
+            });
+        }
+
+        if let Some(states) = filters.proof_states {
+            url += &states.iter().fold(Default::default(), |state, elem| {
+                format!("{state}&proofStates[]={}", elem.to_string().to_uppercase())
+            });
+        }
+
+        if let Some(name) = filters.name {
+            url += &format!("&name={name}");
         }
 
         self.client.get(&url).await

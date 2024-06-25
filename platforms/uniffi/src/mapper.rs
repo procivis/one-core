@@ -18,7 +18,7 @@ use one_core::service::did::dto::{
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDTO};
 use one_core::service::key::dto::KeyRequestDTO;
-use one_core::service::proof::dto::{GetProofQueryDTO, ProofDetailResponseDTO};
+use one_core::service::proof::dto::{GetProofQueryDTO, ProofDetailResponseDTO, ProofFilterValue};
 use one_core::service::ssi_holder::dto::InvitationResponseDTO;
 use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, ListTrustAnchorsQueryDTO, TrustAnchorFilterValue,
@@ -39,6 +39,7 @@ use crate::{
     CreateTrustAnchorRequestBindingDTO, CredentialSchemaTypeBindingEnum,
     ExactTrustAnchorFilterColumnBindings, HistoryListItemBindingDTO, HistoryMetadataBinding,
     ListProofSchemasFiltersBindingDTO, ListTrustAnchorsFiltersBindings, ProofListQueryBindingDTO,
+    ProofListQueryExactColumnBindingEnum,
 };
 
 pub(crate) fn serialize_config_entity(
@@ -389,19 +390,51 @@ impl TryFrom<ProofListQueryBindingDTO> for GetProofQueryDTO {
     type Error = BindingError;
 
     fn try_from(value: ProofListQueryBindingDTO) -> Result<Self, Self::Error> {
+        let exact = value.exact.unwrap_or_default();
+
+        let organisation_id =
+            ProofFilterValue::OrganisationId(into_id(&value.organisation_id)?).condition();
+
+        let name = value.name.map(|name| {
+            let filter = if exact.contains(&ProofListQueryExactColumnBindingEnum::Name) {
+                StringMatch::equals(name)
+            } else {
+                StringMatch::starts_with(name)
+            };
+
+            ProofFilterValue::Name(filter)
+        });
+
+        let proof_states = value
+            .proof_states
+            .map(|proof_states| ProofFilterValue::ProofStates(convert_inner(proof_states)));
+
+        let proof_ids = value
+            .ids
+            .map(|ids| ids.into_iter().map(|id| into_id(&id)).collect())
+            .transpose()?
+            .map(ProofFilterValue::ProofIds);
+
+        let proof_schema_ids = value
+            .proof_schema_ids
+            .map(|ids| ids.into_iter().map(|id| into_id(&id)).collect())
+            .transpose()?
+            .map(ProofFilterValue::ProofSchemaIds);
+
+        let filtering = organisation_id & name & proof_states & proof_schema_ids & proof_ids;
+
         Ok({
             Self {
-                page: value.page,
-                page_size: value.page_size,
-                sort: convert_inner(value.sort),
-                sort_direction: convert_inner(value.sort_direction),
-                name: value.name,
-                organisation_id: into_id(&value.organisation_id)?,
-                exact: convert_inner_of_inner(value.exact),
-                ids: value
-                    .ids
-                    .map(|ids| ids.into_iter().map(|id| into_id(&id)).collect())
-                    .transpose()?,
+                pagination: Some(ListPagination {
+                    page: value.page,
+                    page_size: value.page_size,
+                }),
+                sorting: value.sort.map(|sort| ListSorting {
+                    column: sort.into(),
+                    direction: convert_inner(value.sort_direction),
+                }),
+                filtering: filtering.into(),
+                include: None,
             }
         })
     }

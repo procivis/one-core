@@ -24,7 +24,7 @@ use crate::router::AppState;
     path = "/api/key/v1/{id}",
     responses(OkOrErrorResponse<KeyResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Key id")
+        ("id" = KeyId, Path, description = "Key id")
     ),
     tag = "key",
     security(
@@ -117,7 +117,7 @@ pub(crate) async fn get_key_list(
     request_body = KeyGenerateCSRRequestRestDTO,
     responses(OkOrErrorResponse<KeyGenerateCSRResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Key id")
+        ("id" = KeyId, Path, description = "Key id")
     ),
     tag = "key",
     security(

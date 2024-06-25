@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use dto_mapper::convert_inner;
 use one_core::model::claim::Claim;
 use one_core::model::credential::Credential;
@@ -8,7 +6,6 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
-use uuid::Uuid;
 
 use super::models::{ClaimWithSchema, SchemaWithClaimSchema, UnexportableCredentialModel};
 use crate::entity::credential_state;
@@ -59,7 +56,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             issuer_did: None,
             holder_did: None,
             schema: Some(CredentialSchema {
-                id: Uuid::from_str(&value.credential_schema_id)?.into(),
+                id: value.credential_schema_id,
                 deleted_at: value.credential_schema_deleted_at,
                 created_date: value.credential_schema_created_date,
                 last_modified: value.credential_schema_last_modified,

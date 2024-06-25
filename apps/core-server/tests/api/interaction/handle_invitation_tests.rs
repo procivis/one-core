@@ -8,6 +8,7 @@ use one_core::provider::exchange_protocol::openid4vc::dto::{
 };
 use one_core::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
 use serde_json::json;
+use shared_types::ProofId;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -387,12 +388,12 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_proving() {
         .create(&organisation2, Default::default())
         .await;
 
-    let proof_id = Uuid::new_v4();
+    let proof_id: ProofId = Uuid::new_v4().into();
 
     Mock::given(method(Method::POST))
         .and(path("/ssi/temporary-verifier/v1/connect"))
         .and(query_param("protocol", "PROCIVIS_TEMPORARY"))
-        .and(query_param("proof", proof_id))
+        .and(query_param("proof", proof_id.to_string()))
         .and(query_param("redirect_uri", ""))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {

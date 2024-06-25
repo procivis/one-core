@@ -48,7 +48,7 @@ use crate::service::test_utilities::{dummy_did, dummy_key, dummy_proof, generic_
 async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_pending(
 ) {
     let interaction_id = Uuid::new_v4();
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let protocol = "exchange-protocol";
 
     let mut proof_repository = MockProofRepository::new();
@@ -131,7 +131,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
 async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
     let reject_proof_for_state = |state| async {
         let interaction_id = Uuid::new_v4();
-        let proof_id = Uuid::new_v4();
+        let proof_id = Uuid::new_v4().into();
         let protocol = "exchange-protocol";
         let mut proof_repository = MockProofRepository::new();
         proof_repository
@@ -190,7 +190,7 @@ async fn test_submit_proof_succeeds() {
     let did_id = Uuid::new_v4().into();
     let interaction_id = Uuid::new_v4();
 
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let protocol = "protocol";
 
     let mut did_repository = MockDidRepository::new();
@@ -399,7 +399,7 @@ async fn test_submit_proof_succeeds() {
 async fn test_submit_proof_repeating_claims() {
     let did_id = Uuid::new_v4().into();
     let interaction_id = Uuid::new_v4();
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
     let claim_id = Uuid::new_v4();
     let protocol = "protocol";

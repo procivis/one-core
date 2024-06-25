@@ -1,53 +1,44 @@
-use std::{collections::HashMap, sync::Arc, vec};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::vec;
 
-use shared_types::{DidId, DidValue};
+use mockall::predicate::eq;
+use serde_json::json;
+use shared_types::{DidId, DidValue, ProofId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::{
-    config::ConfigValidationError,
-    model::{
-        claim_schema::ClaimSchema,
-        credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType},
-        did::{Did, DidRelations},
-        history::HistoryAction,
-        organisation::Organisation,
-        proof::{Proof, ProofState, ProofStateEnum},
-        proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema},
-    },
-    provider::{
-        credential_formatter::{
-            model::{CredentialSubject, DetailCredential, Presentation},
-            provider::MockCredentialFormatterProvider,
-            MockCredentialFormatter,
-        },
-        did_method::{
-            provider::{DidMethodProviderImpl, MockDidMethodProvider},
-            DidMethod, MockDidMethod,
-        },
-        key_algorithm::provider::MockKeyAlgorithmProvider,
-        revocation::provider::MockRevocationMethodProvider,
-    },
-    repository::{
-        credential_repository::MockCredentialRepository, did_repository::MockDidRepository,
-        history_repository::MockHistoryRepository, proof_repository::MockProofRepository,
-    },
-    service::{
-        error::{BusinessLogicError, ServiceError},
-        ssi_verifier::SSIVerifierService,
-        test_utilities::*,
-    },
+use crate::config::ConfigValidationError;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
 };
-
-use crate::model::credential_schema::WalletStorageTypeEnum;
-use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::model::did::{Did, DidRelations};
+use crate::model::history::HistoryAction;
+use crate::model::organisation::Organisation;
+use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
+use crate::provider::credential_formatter::model::{
+    CredentialStatus, CredentialSubject, DetailCredential, Presentation,
+};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
+use crate::provider::did_method::{DidMethod, MockDidMethod};
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
-use mockall::predicate::eq;
-use serde_json::json;
+use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::did_repository::MockDidRepository;
+use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::proof_repository::MockProofRepository;
+use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::service::ssi_verifier::SSIVerifierService;
+use crate::service::test_utilities::*;
 
 #[tokio::test]
 async fn test_connect_to_holder_succeeds() {
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
 
     let verifier_did: DidValue = "verifier did".parse().unwrap();
 
@@ -136,7 +127,7 @@ async fn test_connect_to_holder_succeeds() {
 
 #[tokio::test]
 async fn test_connect_to_holder_incorrect_protocol() {
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository
@@ -164,7 +155,7 @@ async fn test_connect_to_holder_incorrect_protocol() {
 
 #[tokio::test]
 async fn test_connect_to_holder_succeeds_new_did() {
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let holder_did_value: DidValue = "did:internal:key".parse().unwrap();
 
     let verifier_did: DidValue = "verifier did".parse().unwrap();
@@ -268,7 +259,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
 
 #[tokio::test]
 async fn test_submit_proof_succeeds() {
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let verifier_did = "verifier did".parse().unwrap();
     let holder_did: DidValue = "did:holder".parse().unwrap();
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
@@ -476,7 +467,7 @@ async fn test_submit_proof_succeeds() {
 
 #[tokio::test]
 async fn test_submit_proof_incorrect_protocol() {
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
     let holder_did: DidValue = "did:holder".parse().unwrap();
 
     let mut proof_repository = MockProofRepository::new();
@@ -507,7 +498,7 @@ async fn test_submit_proof_incorrect_protocol() {
 
 #[tokio::test]
 async fn test_submit_proof_failed_credential_revoked() {
-    let proof_id = Uuid::new_v4();
+    let proof_id: ProofId = Uuid::new_v4().into();
     let verifier_did = "verifier did".parse().unwrap();
     let holder_did: DidValue = "did:holder".parse().unwrap();
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
@@ -703,7 +694,7 @@ async fn test_submit_proof_failed_credential_revoked() {
 
 #[tokio::test]
 async fn test_submit_proof_failed_credential_suspended() {
-    let proof_id = Uuid::new_v4();
+    let proof_id: ProofId = Uuid::new_v4().into();
     let verifier_did = "verifier did".parse().unwrap();
     let holder_did: DidValue = "did:holder".parse().unwrap();
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
@@ -903,7 +894,7 @@ async fn test_submit_proof_failed_credential_suspended() {
 
 #[tokio::test]
 async fn test_reject_proof_succeeds() {
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository
@@ -951,7 +942,7 @@ async fn test_reject_proof_succeeds() {
 
 #[tokio::test]
 async fn test_reject_proof_incorrect_protocol() {
-    let proof_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4().into();
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository

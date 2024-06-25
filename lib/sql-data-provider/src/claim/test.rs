@@ -1,21 +1,20 @@
-use super::ClaimProvider;
-use crate::{entity::claim_schema, test_utilities::*};
-use one_core::{
-    model::{
-        claim::{Claim, ClaimId, ClaimRelations},
-        claim_schema::{ClaimSchema, ClaimSchemaRelations},
-        credential::CredentialStateEnum,
-    },
-    repository::{
-        claim_repository::ClaimRepository,
-        claim_schema_repository::{ClaimSchemaRepository, MockClaimSchemaRepository},
-        error::DataLayerError,
-    },
+use std::sync::Arc;
+
+use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
+use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use one_core::model::credential::CredentialStateEnum;
+use one_core::repository::claim_repository::ClaimRepository;
+use one_core::repository::claim_schema_repository::{
+    ClaimSchemaRepository, MockClaimSchemaRepository,
 };
+use one_core::repository::error::DataLayerError;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::{ClaimSchemaId, CredentialId};
-use std::sync::Arc;
 use uuid::Uuid;
+
+use super::ClaimProvider;
+use crate::entity::claim_schema;
+use crate::test_utilities::*;
 
 struct TestSetup {
     pub db: DatabaseConnection,
@@ -45,18 +44,15 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
-    let credential_schema_id = Uuid::parse_str(
-        &insert_credential_schema_to_database(
-            &db,
-            None,
-            organisation_id,
-            "credential schema",
-            "JWT",
-            "NONE",
-        )
-        .await
-        .unwrap(),
+    let credential_schema_id = &insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation_id,
+        "credential schema",
+        "JWT",
+        "NONE",
     )
+    .await
     .unwrap();
 
     let did_id = insert_did_key(
@@ -72,7 +68,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
 
     let credential_id = insert_credential(
         &db,
-        &credential_schema_id.to_string(),
+        credential_schema_id,
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did_id.to_owned(),

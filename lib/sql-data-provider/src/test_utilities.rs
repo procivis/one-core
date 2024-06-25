@@ -7,8 +7,8 @@ use one_core::model::interaction::InteractionId;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
-    ClaimId, ClaimSchemaId, CredentialId, DidId, DidValue, EntityId, HistoryId, KeyId,
-    OrganisationId,
+    ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, EntityId, HistoryId,
+    KeyId, OrganisationId, ProofId, ProofSchemaId,
 };
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
@@ -32,7 +32,7 @@ pub fn get_dummy_date() -> OffsetDateTime {
 
 pub async fn insert_credential(
     db: &DatabaseConnection,
-    credential_schema_id: &str,
+    credential_schema_id: &CredentialSchemaId,
     state: CredentialStateEnum,
     protocol: &str,
     did_id: DidId,
@@ -42,7 +42,7 @@ pub async fn insert_credential(
 
     let credential = credential::ActiveModel {
         id: Set(Uuid::new_v4().into()),
-        credential_schema_id: Set(credential_schema_id.to_string()),
+        credential_schema_id: Set(*credential_schema_id),
         created_date: Set(now),
         last_modified: Set(now),
         issuance_date: Set(now),
@@ -95,8 +95,8 @@ pub async fn insert_credential_schema_to_database(
     name: &str,
     format: &str,
     revocation_method: &str,
-) -> Result<String, DbErr> {
-    let new_id = Uuid::new_v4().to_string();
+) -> Result<CredentialSchemaId, DbErr> {
+    let new_id: CredentialSchemaId = Uuid::new_v4().into();
     let schema = credential_schema::ActiveModel {
         id: Set(new_id.to_owned()),
         created_date: Set(get_dummy_date()),
@@ -110,7 +110,7 @@ pub async fn insert_credential_schema_to_database(
         layout_type: Set(LayoutType::Card),
         layout_properties: Set(None),
         schema_type: Set(CredentialSchemaType::ProcivisOneSchema2024),
-        schema_id: Set(new_id),
+        schema_id: Set(new_id.to_string()),
     }
     .insert(database)
     .await?;
@@ -157,7 +157,7 @@ pub async fn insert_many_claims_schema_to_database<'a>(
 
         credential_schema_claim_schema::ActiveModel {
             claim_schema_id: Set(claim_schema.id),
-            credential_schema_id: Set(claim_input.credential_schema_id.to_owned()),
+            credential_schema_id: Set(claim_input.credential_schema_id.to_string()),
             required: Set(claim_schema.required),
             order: Set(claim_schema.order),
         }
@@ -170,7 +170,7 @@ pub async fn insert_many_claims_schema_to_database<'a>(
 
 pub async fn get_proof_by_id(
     database: &DatabaseConnection,
-    id: &str,
+    id: &ProofId,
 ) -> Result<Option<proof::Model>, DbErr> {
     proof::Entity::find_by_id(id).one(database).await
 }
@@ -179,12 +179,12 @@ pub async fn insert_proof_request_to_database(
     database: &DatabaseConnection,
     verifier_did_id: DidId,
     holder_did_id: Option<DidId>,
-    proof_schema_id: &str,
+    proof_schema_id: &ProofSchemaId,
     verifier_key_id: KeyId,
     interaction_id: Option<String>,
-) -> Result<String, DbErr> {
+) -> Result<ProofId, DbErr> {
     let proof = proof::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
+        id: Set(Uuid::new_v4().into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(get_dummy_date()),
@@ -192,7 +192,7 @@ pub async fn insert_proof_request_to_database(
         redirect_uri: Set(None),
         verifier_did_id: Set(Some(verifier_did_id)),
         holder_did_id: Set(holder_did_id),
-        proof_schema_id: Set(Some(proof_schema_id.to_string())),
+        proof_schema_id: Set(Some(*proof_schema_id)),
         verifier_key_id: Set(Some(verifier_key_id)),
         interaction_id: Set(interaction_id),
     }
@@ -203,11 +203,11 @@ pub async fn insert_proof_request_to_database(
 
 pub async fn insert_proof_state_to_database(
     database: &DatabaseConnection,
-    proof_id: &str,
+    proof_id: &ProofId,
     state: ProofRequestState,
 ) -> Result<(), DbErr> {
     proof_state::ActiveModel {
-        proof_id: Set(proof_id.to_owned()),
+        proof_id: Set(*proof_id),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         state: Set(state),
@@ -227,7 +227,7 @@ pub struct ClaimInsertInfo<'a> {
 }
 
 pub struct ProofInput<'a> {
-    pub credential_schema_id: String,
+    pub credential_schema_id: CredentialSchemaId,
     pub claims: &'a Vec<ClaimInsertInfo<'a>>,
 }
 
@@ -237,9 +237,9 @@ pub async fn insert_proof_schema_with_claims_to_database<'a>(
     proof_inputs: Vec<&ProofInput<'a>>,
     organisation_id: OrganisationId,
     name: &str,
-) -> Result<String, DbErr> {
+) -> Result<ProofSchemaId, DbErr> {
     let schema = proof_schema::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
+        id: Set(Uuid::new_v4().into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(name.to_owned()),
@@ -257,8 +257,8 @@ pub async fn insert_proof_schema_with_claims_to_database<'a>(
             last_modified: Set(get_dummy_date()),
             order: Set(i as _),
             validity_constraint: NotSet,
-            credential_schema: Set(input.credential_schema_id.to_owned()),
-            proof_schema: Set(schema.id.clone()),
+            credential_schema: Set(input.credential_schema_id.to_string()),
+            proof_schema: Set(schema.id),
         }
         .insert(database)
         .await?;
@@ -283,9 +283,9 @@ pub async fn insert_proof_schema_to_database(
     deleted_at: Option<OffsetDateTime>,
     organisation_id: OrganisationId,
     name: &str,
-) -> Result<String, DbErr> {
+) -> Result<ProofSchemaId, DbErr> {
     let schema = proof_schema::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
+        id: Set(Uuid::new_v4().into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(name.to_owned()),
@@ -300,7 +300,7 @@ pub async fn insert_proof_schema_to_database(
 
 pub async fn insert_many_proof_claim_to_database(
     database: &DatabaseConnection,
-    proof_claims: &[(Uuid, ClaimId)],
+    proof_claims: &[(ProofId, ClaimId)],
 ) -> Result<(), DbErr> {
     let models = proof_claims
         .iter()
@@ -363,7 +363,7 @@ pub async fn insert_key_to_database(
 
 pub async fn get_proof_schema_with_id(
     database: &DatabaseConnection,
-    id: &str,
+    id: &ProofSchemaId,
 ) -> Result<Option<proof_schema::Model>, DbErr> {
     proof_schema::Entity::find_by_id(id).one(database).await
 }

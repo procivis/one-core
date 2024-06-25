@@ -8,7 +8,9 @@ use headers::authorization::Bearer;
 use headers::Authorization;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use one_core::service::oidc::dto::OpenID4VCITokenRequestDTO;
-use shared_types::{CredentialId, CredentialSchemaId, DidId, ProofSchemaId, TrustAnchorId};
+use shared_types::{
+    CredentialId, CredentialSchemaId, DidId, ProofId, ProofSchemaId, TrustAnchorId,
+};
 use uuid::Uuid;
 
 use super::dto::{
@@ -58,7 +60,7 @@ pub(crate) async fn ssi_verifier_connect(
     get,
     path = "/ssi/did-web/v1/{id}/did.json",
     params(
-        ("id" = Uuid, Path, description = "Did id")
+        ("id" = DidId, Path, description = "Did id")
     ),
     responses(OkOrErrorResponse<DidDocumentRestDTO>),
     tag = "ssi",
@@ -115,7 +117,7 @@ pub(crate) async fn get_revocation_list_by_id(
     get,
     path = "/ssi/revocation/v1/lvvc/{id}",
     params(
-        ("id" = Uuid, Path, description = "Credential id")
+        ("id" = CredentialId, Path, description = "Credential id")
     ),
     responses(
         (status = 200, description = "OK", content_type = "text/plain"),
@@ -127,13 +129,13 @@ pub(crate) async fn get_revocation_list_by_id(
 )]
 pub(crate) async fn get_lvvc_by_credential_id(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
     TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
 ) -> Response {
     let result = state
         .core
         .revocation_list_service
-        .get_lvvc_by_credential_id(&id.into(), bearer.token())
+        .get_lvvc_by_credential_id(&id, bearer.token())
         .await;
 
     match result {
@@ -237,8 +239,8 @@ pub(crate) async fn oidc_service_discovery(
     get,
     path = "/ssi/oidc-issuer/v1/{credential_schema_id}/offer/{credential_id}",
     params(
-        ("credential_schema_id" = Uuid, Path, description = "Credential schema id"),
-        ("credential_id" = Uuid, Path, description = "Credential id")
+        ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id"),
+        ("credential_id" = CredentialId, Path, description = "Credential id")
     ),
     responses(
         (status = 200, description = "OK", body = OpenID4VCICredentialOfferRestDTO),
@@ -486,7 +488,7 @@ pub(crate) async fn oidc_verifier_direct_post(
     get,
     path = "/ssi/oidc-verifier/v1/{id}/presentation-definition",
     params(
-        ("id" = Uuid, Path, description = "Proof id")
+        ("id" = ProofId, Path, description = "Proof id")
     ),
     responses(
         (status = 200, description = "OK", body = OpenID4VPPresentationDefinitionResponseRestDTO),
@@ -498,7 +500,7 @@ pub(crate) async fn oidc_verifier_direct_post(
 )]
 pub(crate) async fn oidc_verifier_presentation_definition(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core
@@ -541,7 +543,7 @@ pub(crate) async fn oidc_verifier_presentation_definition(
     get,
     path = "/ssi/oidc-verifier/v1/{id}/client-metadata",
     params(
-        ("id" = Uuid, Path, description = "Proof id")
+        ("id" = ProofId, Path, description = "Proof id")
     ),
     responses(
         (status = 200, description = "OK", body = OpenID4VPClientMetadataResponseRestDTO),
@@ -553,7 +555,7 @@ pub(crate) async fn oidc_verifier_presentation_definition(
 )]
 pub(crate) async fn oidc_client_metadata(
     state: State<AppState>,
-    WithRejection(Path(proof_id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(proof_id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core

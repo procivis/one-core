@@ -1,24 +1,21 @@
 use dto_mapper::convert_inner;
-use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
-use sea_orm::sea_query::{query::IntoCondition, SimpleExpr};
-use sea_orm::ActiveValue::Set;
-use sea_orm::{ColumnTrait, IntoSimpleExpr};
-use std::str::FromStr;
-
-use uuid::Uuid;
-
-use crate::list_query_generic::{
-    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
-};
-
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, SortableCredentialSchemaColumn,
 };
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
+use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
+use sea_orm::sea_query::query::IntoCondition;
+use sea_orm::sea_query::SimpleExpr;
+use sea_orm::ActiveValue::Set;
+use sea_orm::{ColumnTrait, IntoSimpleExpr};
+use shared_types::CredentialSchemaId;
 
 use crate::entity::{claim_schema, credential_schema, credential_schema_claim_schema};
 use crate::list_query::GetEntityColumn;
+use crate::list_query_generic::{
+    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+};
 
 impl IntoSortingColumn for SortableCredentialSchemaColumn {
     fn get_column(&self) -> SimpleExpr {
@@ -57,13 +54,10 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
     type Error = DataLayerError;
 
     fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
-        let organisation_id = match value.organisation {
-            None => Err(DataLayerError::MappingError),
-            Some(value) => Ok(value.id),
-        }?;
+        let organisation_id = value.organisation.ok_or(DataLayerError::MappingError)?.id;
 
         Ok(Self {
-            id: Set(value.id.to_string()),
+            id: Set(value.id),
             deleted_at: Set(value.deleted_at),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
@@ -114,7 +108,7 @@ pub(super) fn claim_schemas_to_model_vec(
 
 pub(super) fn claim_schemas_to_relations(
     claim_schemas: &[CredentialSchemaClaim],
-    credential_schema_id: &str,
+    credential_schema_id: &CredentialSchemaId,
 ) -> Vec<credential_schema_claim_schema::ActiveModel> {
     claim_schemas
         .iter()
@@ -135,28 +129,25 @@ pub(super) fn credential_schema_from_models(
     claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     organisation: Option<Organisation>,
     skip_layout_properties: bool,
-) -> Result<CredentialSchema, DataLayerError> {
-    Uuid::from_str(&credential_schema.id)
-        .ok()
-        .map(|id| CredentialSchema {
-            id: id.into(),
-            deleted_at: credential_schema.deleted_at,
-            created_date: credential_schema.created_date,
-            last_modified: credential_schema.last_modified,
-            name: credential_schema.name,
-            wallet_storage_type: convert_inner(credential_schema.wallet_storage_type),
-            format: credential_schema.format,
-            revocation_method: credential_schema.revocation_method,
-            claim_schemas,
-            organisation,
-            layout_type: credential_schema.layout_type.into(),
-            layout_properties: if skip_layout_properties {
-                None
-            } else {
-                convert_inner(credential_schema.layout_properties)
-            },
-            schema_type: credential_schema.schema_type.into(),
-            schema_id: credential_schema.schema_id,
-        })
-        .ok_or(DataLayerError::MappingError)
+) -> CredentialSchema {
+    CredentialSchema {
+        id: credential_schema.id,
+        deleted_at: credential_schema.deleted_at,
+        created_date: credential_schema.created_date,
+        last_modified: credential_schema.last_modified,
+        name: credential_schema.name,
+        wallet_storage_type: convert_inner(credential_schema.wallet_storage_type),
+        format: credential_schema.format,
+        revocation_method: credential_schema.revocation_method,
+        claim_schemas,
+        organisation,
+        layout_type: credential_schema.layout_type.into(),
+        layout_properties: if skip_layout_properties {
+            None
+        } else {
+            convert_inner(credential_schema.layout_properties)
+        },
+        schema_type: credential_schema.schema_type.into(),
+        schema_id: credential_schema.schema_id,
+    }
 }

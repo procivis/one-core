@@ -1,12 +1,12 @@
 use sea_orm::entity::prelude::*;
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "proof_schema")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: String,
+    pub id: ProofSchemaId,
 
     pub deleted_at: Option<OffsetDateTime>,
     pub created_date: OffsetDateTime,

@@ -1,39 +1,34 @@
 use std::collections::HashMap;
 
-use super::{
-    dto::{ConnectVerifierResponseDTO, ValidatedProofClaimDTO},
-    mapper::{proof_accept_errored_history_event, proof_verifier_to_connect_verifier_response},
-    validator::validate_proof,
-    SSIVerifierService,
-};
-use crate::{
-    common_mapper::{extracted_credential_to_model, get_or_create_did},
-    common_validator::throw_if_latest_proof_state_not_eq,
-    model::{
-        claim::Claim,
-        claim_schema::ClaimSchema,
-        credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        did::{Did, DidRelations},
-        interaction::InteractionRelations,
-        organisation::OrganisationRelations,
-        proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
-        proof_schema::{
-            ProofInputClaimSchema, ProofInputSchemaRelations, ProofSchemaClaimRelations,
-            ProofSchemaRelations,
-        },
-    },
-    provider::credential_formatter::model::DetailCredential,
-    service::{
-        error::{EntityNotFoundError, ServiceError},
-        ssi_validator::{validate_config_entity_presence, validate_exchange_type},
-    },
-};
-use crate::{
-    config::core_config::ExchangeType,
-    service::ssi_verifier::mapper::{proof_accepted_history_event, proof_rejected_history_event},
-};
-use shared_types::{CredentialSchemaId, DidValue};
+use shared_types::{CredentialSchemaId, DidValue, ProofId};
 use time::OffsetDateTime;
+
+use super::dto::{ConnectVerifierResponseDTO, ValidatedProofClaimDTO};
+use super::mapper::{
+    proof_accept_errored_history_event, proof_verifier_to_connect_verifier_response,
+};
+use super::validator::validate_proof;
+use super::SSIVerifierService;
+use crate::common_mapper::{extracted_credential_to_model, get_or_create_did};
+use crate::common_validator::throw_if_latest_proof_state_not_eq;
+use crate::config::core_config::ExchangeType;
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use crate::model::did::{Did, DidRelations};
+use crate::model::interaction::InteractionRelations;
+use crate::model::organisation::OrganisationRelations;
+use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
+use crate::model::proof_schema::{
+    ProofInputClaimSchema, ProofInputSchemaRelations, ProofSchemaClaimRelations,
+    ProofSchemaRelations,
+};
+use crate::provider::credential_formatter::model::DetailCredential;
+use crate::service::error::{EntityNotFoundError, ServiceError};
+use crate::service::ssi_validator::{validate_config_entity_presence, validate_exchange_type};
+use crate::service::ssi_verifier::mapper::{
+    proof_accepted_history_event, proof_rejected_history_event,
+};
 
 impl SSIVerifierService {
     /// Holder connect to pick the proof request
@@ -479,23 +474,19 @@ mod tests {
     use uuid::Uuid;
 
     use super::*;
-    use crate::{
-        provider::{
-            credential_formatter::provider::MockCredentialFormatterProvider,
-            did_method::provider::MockDidMethodProvider,
-            key_algorithm::provider::MockKeyAlgorithmProvider,
-            revocation::provider::MockRevocationMethodProvider,
-        },
-        repository::{
-            credential_repository::MockCredentialRepository, did_repository::MockDidRepository,
-            history_repository::MockHistoryRepository, proof_repository::MockProofRepository,
-        },
-        service::test_utilities::generic_config,
-    };
+    use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+    use crate::provider::did_method::provider::MockDidMethodProvider;
+    use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+    use crate::provider::revocation::provider::MockRevocationMethodProvider;
+    use crate::repository::credential_repository::MockCredentialRepository;
+    use crate::repository::did_repository::MockDidRepository;
+    use crate::repository::history_repository::MockHistoryRepository;
+    use crate::repository::proof_repository::MockProofRepository;
+    use crate::service::test_utilities::generic_config;
 
     #[tokio::test]
     async fn test_fail_proof() {
-        let proof_id = Uuid::new_v4();
+        let proof_id = Uuid::new_v4().into();
 
         let mut proof_repository = MockProofRepository::new();
         proof_repository

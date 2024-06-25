@@ -737,7 +737,7 @@ async fn handle_proof_invitation(
         .map_err(|_| ExchangeProtocolError::Failed("Cannot parse proof id".to_string()))?;
 
     let proof = proof_from_handle_invitation(
-        &proof_id,
+        &proof_id.into(),
         protocol,
         redirect_uri,
         Some(verifier_did),

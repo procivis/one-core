@@ -1,10 +1,11 @@
+use shared_types::ProofId;
+
 use super::error::DataLayerError;
-use crate::model::proof::UpdateProofRequest;
-use crate::model::{
-    claim::Claim,
-    did::Did,
-    interaction::InteractionId,
-    proof::{GetProofList, GetProofQuery, Proof, ProofId, ProofRelations, ProofState},
+use crate::model::claim::Claim;
+use crate::model::did::Did;
+use crate::model::interaction::InteractionId;
+use crate::model::proof::{
+    GetProofList, GetProofQuery, Proof, ProofRelations, ProofState, UpdateProofRequest,
 };
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]

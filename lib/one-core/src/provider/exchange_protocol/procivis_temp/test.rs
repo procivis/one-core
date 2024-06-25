@@ -62,7 +62,7 @@ fn generate_credential(redirect_uri: Option<String>) -> Credential {
 
 fn generate_proof(redirect_uri: Option<String>) -> Proof {
     Proof {
-        id: Default::default(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -120,7 +120,7 @@ async fn test_share_proof_success_no_redirect_uri() {
     let proof = generate_proof(None);
 
     let result = protocol.share_proof(&proof).await.unwrap();
-    assert_eq!("http://base_url/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof=00000000-0000-0000-0000-000000000000", result);
+    assert_eq!(format!("http://base_url/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof={}", proof.id), result);
 }
 
 #[tokio::test]
@@ -129,5 +129,5 @@ async fn test_share_proof_success_with_redirect_uri_is_percent_encoded() {
     let proof = generate_proof(Some("http://base_url/redirect?queryParam=1".to_string()));
 
     let result = protocol.share_proof(&proof).await.unwrap();
-    assert_eq!("http://base_url/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof=00000000-0000-0000-0000-000000000000&redirect_uri=http%3A%2F%2Fbase_url%2Fredirect%3FqueryParam%3D1", result);
+    assert_eq!(format!("http://base_url/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof={}&redirect_uri=http%3A%2F%2Fbase_url%2Fredirect%3FqueryParam%3D1", proof.id), result);
 }

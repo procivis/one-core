@@ -1,10 +1,10 @@
 use serde_json::{json, Value};
-use uuid::Uuid;
 
 use crate::fixtures::{self, TestingDidParams};
 use crate::utils;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::field_match::FieldHelpers;
 use crate::utils::server::run_server;
 
 #[tokio::test]
@@ -64,11 +64,7 @@ async fn test_create_proof_success_without_related_key() {
 
     assert!(resp.get("id").is_some());
 
-    let proof = context
-        .db
-        .proofs
-        .get(&Uuid::parse_str(resp["id"].as_str().unwrap()).unwrap())
-        .await;
+    let proof = context.db.proofs.get(&resp["id"].parse()).await;
     assert_eq!(proof.exchange, "OPENID4VC");
 }
 
@@ -129,11 +125,7 @@ async fn test_create_proof_success_with_related_key() {
 
     assert!(resp.get("id").is_some());
 
-    let proof = context
-        .db
-        .proofs
-        .get(&Uuid::parse_str(resp["id"].as_str().unwrap()).unwrap())
-        .await;
+    let proof = context.db.proofs.get(&resp["id"].parse()).await;
     assert_eq!(proof.exchange, "OPENID4VC");
 }
 

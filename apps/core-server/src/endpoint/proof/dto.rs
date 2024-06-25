@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use dto_mapper::{convert_inner, From, Into};
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{ProofStateEnum, SortableProofColumn};
 use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -12,12 +12,12 @@ use one_core::service::proof::dto::{
     ProofInputDTO, ProofListItemResponseDTO,
 };
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, KeyId};
+use shared_types::{DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use crate::dto::common::GetListQueryParams;
+use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
 use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
@@ -26,9 +26,10 @@ use crate::endpoint::proof_schema::dto::{
 };
 use crate::serialize::{front_time, front_time_option};
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(ProofStateEnum)]
+#[into(ProofStateEnum)]
 pub enum ProofStateRestEnum {
     Created,
     Pending,
@@ -53,17 +54,34 @@ pub struct CreateProofRequestRestDTO {
 }
 
 // list endpoint
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
+#[into(SortableProofColumn)]
 pub enum SortableProofColumnRestEnum {
     #[serde(rename = "schema.name")]
-    ProofSchemaName,
+    SchemaName,
     VerifierDid,
     CreatedDate,
     State,
 }
 
-pub type GetProofQuery = GetListQueryParams<SortableProofColumnRestEnum>;
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct ProofsFilterQueryParamsRest {
+    pub organisation_id: OrganisationId,
+    pub name: Option<String>,
+    #[param(inline, rename = "proofStates[]")]
+    pub proof_states: Option<Vec<ProofStateRestEnum>>,
+    #[param(inline, rename = "proofSchemaIds[]")]
+    pub proof_schema_ids: Option<Vec<ProofSchemaId>>,
+    #[param(inline, rename = "ids[]")]
+    pub ids: Option<Vec<ProofId>>,
+    #[param(inline, rename = "exact[]")]
+    pub exact: Option<Vec<ExactColumn>>,
+}
+
+pub type GetProofQuery =
+    ListQueryParamsRest<ProofsFilterQueryParamsRest, SortableProofColumnRestEnum>;
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(ProofListItemResponseDTO)]

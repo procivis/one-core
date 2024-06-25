@@ -1,15 +1,14 @@
-use shared_types::{DidId, KeyId, OrganisationId, ProofSchemaId};
+use shared_types::{DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
-use crate::model::common::{GetListQueryParams, GetListResponse};
+use crate::model::common::GetListResponse;
+use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_query::ListQuery;
 use crate::model::proof::{ProofStateEnum, SortableProofColumn};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::did::dto::DidListItemResponseDTO;
 use crate::service::proof_schema::dto::{GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO};
-
-pub type ProofId = Uuid;
 
 #[derive(Clone, Debug)]
 pub struct CreateProofRequestDTO {
@@ -79,4 +78,16 @@ pub struct ProofInputDTO {
 }
 
 pub type GetProofListResponseDTO = GetListResponse<ProofListItemResponseDTO>;
-pub type GetProofQueryDTO = GetListQueryParams<SortableProofColumn>;
+
+#[derive(Debug, Clone)]
+pub enum ProofFilterValue {
+    Name(StringMatch),
+    OrganisationId(OrganisationId),
+    ProofStates(Vec<ProofStateEnum>),
+    ProofIds(Vec<ProofId>),
+    ProofSchemaIds(Vec<ProofSchemaId>),
+}
+
+impl ListFilterValue for ProofFilterValue {}
+
+pub type GetProofQueryDTO = ListQuery<SortableProofColumn, ProofFilterValue>;

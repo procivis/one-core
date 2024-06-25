@@ -1,11 +1,11 @@
-use dto_mapper::convert_inner;
-use dto_mapper::Into;
+use std::collections::HashMap;
+
+use dto_mapper::{convert_inner, Into};
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, DidId, KeyId, OrganisationId};
-use std::collections::HashMap;
+use shared_types::{CredentialId, DidId, KeyId, OrganisationId, ProofId};
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -23,7 +23,7 @@ pub struct HandleInvitationResponseRestDTO {
     pub interaction_id: Uuid,
 
     pub credential_ids: Option<Vec<CredentialId>>,
-    pub proof_id: Option<Uuid>,
+    pub proof_id: Option<ProofId>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]

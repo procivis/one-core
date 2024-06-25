@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use shared_types::CredentialId;
+use shared_types::{CredentialId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -19,7 +19,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::interaction::InteractionId;
-use crate::model::proof::{Proof, ProofId};
+use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::exchange_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,

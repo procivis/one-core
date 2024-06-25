@@ -5,7 +5,7 @@ use std::str::FromStr;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
-use shared_types::{CredentialId, CredentialSchemaId, KeyId};
+use shared_types::{CredentialId, CredentialSchemaId, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -34,9 +34,7 @@ use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{
-    Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
-};
+use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };

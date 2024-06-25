@@ -1,7 +1,11 @@
-use crate::mapper::order_from_sort_direction;
-use one_core::model::common::{ExactColumn, GetListQueryParams, SortDirection};
-use sea_orm::{entity::*, query::*, sea_query::SimpleExpr};
 use std::str::FromStr;
+
+use one_core::model::common::{ExactColumn, GetListQueryParams, SortDirection};
+use sea_orm::entity::*;
+use sea_orm::query::*;
+use sea_orm::sea_query::SimpleExpr;
+
+use crate::mapper::order_from_sort_direction;
 
 // column conversion
 pub trait GetEntityColumn {
@@ -120,26 +124,5 @@ where
             let ids = ids.iter().map(|id| id.to_string());
             query.filter(column.is_in(ids))
         })
-    }
-}
-
-#[cfg(test)]
-use shared_types::OrganisationId;
-
-#[cfg(test)]
-pub fn from_pagination<T: GetEntityColumn>(
-    page: u32,
-    page_size: u32,
-    organisation_id: OrganisationId,
-) -> GetListQueryParams<T> {
-    GetListQueryParams {
-        page,
-        page_size,
-        sort: None,
-        exact: None,
-        sort_direction: None,
-        name: None,
-        organisation_id,
-        ids: None,
     }
 }

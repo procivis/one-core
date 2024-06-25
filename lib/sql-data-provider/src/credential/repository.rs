@@ -131,9 +131,8 @@ impl CredentialProvider {
             }
         };
 
-        let schema_id = Uuid::from_str(&credential.credential_schema_id)?;
         let schema = get_credential_schema(
-            &schema_id.into(),
+            &credential.credential_schema_id,
             &relations.schema.to_owned(),
             self.credential_schema_repository.clone(),
         )

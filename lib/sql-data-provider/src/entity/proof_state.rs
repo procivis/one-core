@@ -1,8 +1,8 @@
 use dto_mapper::{From, Into};
-use sea_orm::entity::prelude::*;
-use time::OffsetDateTime;
-
 use one_core::model::proof::{ProofState, ProofStateEnum};
+use sea_orm::entity::prelude::*;
+use shared_types::ProofId;
+use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Into)]
 #[into(ProofState)]
@@ -10,7 +10,7 @@ use one_core::model::proof::{ProofState, ProofStateEnum};
 pub struct Model {
     #[into(skip)]
     #[sea_orm(primary_key, auto_increment = false)]
-    pub proof_id: String,
+    pub proof_id: ProofId,
 
     #[sea_orm(primary_key, auto_increment = false)]
     pub created_date: OffsetDateTime,

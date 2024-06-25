@@ -655,6 +655,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 shared_types::KeyId,
                 shared_types::OrganisationId,
                 shared_types::ProofSchemaId,
+                shared_types::ProofId,
                 shared_types::TrustAnchorId,
                 shared_types::TrustEntityId,
             )
