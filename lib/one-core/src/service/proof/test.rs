@@ -78,6 +78,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "PROCIVIS_TEMPORARY".to_string(),
+        transport: "HTTP".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -143,6 +144,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "PROCIVIS_TEMPORARY".to_string(),
+        transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -262,6 +264,7 @@ async fn test_get_proof_exists() {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "PROCIVIS_TEMPORARY".to_string(),
+        transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -489,6 +492,7 @@ async fn test_get_proof_with_array_holder() {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "PROCIVIS_TEMPORARY".to_string(),
+        transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -699,6 +703,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "PROCIVIS_TEMPORARY".to_string(),
+        transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -914,6 +919,7 @@ async fn test_get_proof_with_object_array_holder() {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "PROCIVIS_TEMPORARY".to_string(),
+        transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -1111,6 +1117,7 @@ async fn test_get_proof_with_array() {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "PROCIVIS_TEMPORARY".to_string(),
+        transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -1339,6 +1346,7 @@ async fn test_get_proof_with_array_in_object() {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "PROCIVIS_TEMPORARY".to_string(),
+        transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -1573,6 +1581,7 @@ async fn test_get_proof_with_object_array() {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "PROCIVIS_TEMPORARY".to_string(),
+        transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -1730,6 +1739,7 @@ async fn test_get_proof_list_success() {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "PROCIVIS_TEMPORARY".to_string(),
+        transport: "HTTP".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),

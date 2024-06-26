@@ -96,6 +96,7 @@ fn construct_proof_with_state() -> Proof {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
+        transport: "HTTP".to_string(),
         exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {

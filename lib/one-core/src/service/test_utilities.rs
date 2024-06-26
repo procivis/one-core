@@ -236,6 +236,7 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: protocol.to_string(),
+        transport: "HTTP".to_string(),
         redirect_uri: None,
         state: None,
         schema: None,

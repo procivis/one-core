@@ -1311,6 +1311,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                     last_modified: get_dummy_date(),
                     issuance_date: get_dummy_date(),
                     exchange: "OPENID4VC".to_string(),
+                    transport: "HTTP".to_string(),
                     redirect_uri: None,
                     state: Some(vec![ProofState {
                         created_date: get_dummy_date(),
@@ -1405,6 +1406,7 @@ async fn test_oidc_verifier_presentation_definition_incorrect_protocol() {
                 last_modified: get_dummy_date(),
                 issuance_date: get_dummy_date(),
                 exchange: "PROCIVIS_TEMPORARY".to_string(),
+                transport: "HTTP".to_string(),
                 redirect_uri: None,
                 state: None,
                 schema: None,
@@ -1913,6 +1915,7 @@ async fn test_get_client_metadata_success() {
         last_modified: now,
         issuance_date: now,
         exchange: "OPENID4VC".to_string(),
+        transport: "HTTP".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: now,

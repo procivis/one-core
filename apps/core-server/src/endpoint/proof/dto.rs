@@ -114,6 +114,7 @@ pub struct ProofListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub verifier_did: Option<DidListItemResponseRestDTO>,
     pub exchange: String,
+    pub transport: String,
     pub state: ProofStateRestEnum,
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
@@ -232,6 +233,7 @@ pub struct ProofDetailResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub verifier_did: Option<DidListItemResponseRestDTO>,
     pub exchange: String,
+    pub transport: String,
     pub state: ProofStateRestEnum,
     #[from(with_fn = convert_inner)]
     pub organisation_id: Option<Uuid>,
