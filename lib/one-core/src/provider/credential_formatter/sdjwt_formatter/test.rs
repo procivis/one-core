@@ -7,6 +7,7 @@ use time::Duration;
 use super::{prepare_sd_presentation, SDJWTFormatter};
 
 use crate::{
+    config::core_config,
     crypto::{hasher::MockHasher, MockCryptoProvider},
     provider::credential_formatter::{
         jwt::model::JWTPayload,
@@ -50,6 +51,7 @@ async fn test_format_credential() {
 
     let credential_details = test_credential_detail_response_dto();
     let credential_data = CredentialData::from_credential_detail_response(
+        &core_config::CoreConfig::default(),
         credential_details,
         "http://base_url",
         vec![CredentialStatus {
@@ -181,6 +183,7 @@ async fn test_format_credential_with_array() {
 
     let credential_details = test_credential_detail_response_dto_with_array();
     let credential_data = CredentialData::from_credential_detail_response(
+        &core_config::CoreConfig::default(),
         credential_details,
         "http://base_url",
         vec![CredentialStatus {

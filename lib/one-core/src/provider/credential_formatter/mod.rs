@@ -22,6 +22,8 @@ mod test;
 #[cfg(test)]
 pub(crate) mod test_utilities;
 
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
@@ -34,6 +36,7 @@ use self::model::{
     CredentialPresentation, CredentialSchema, CredentialStatus, DetailCredential, Presentation,
 };
 use super::exchange_protocol::openid4vc::dto::OpenID4VPInteractionData;
+use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::crypto::signer::error::SignerError;
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::service::credential::dto::{
@@ -302,6 +305,7 @@ impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
 
 impl CredentialData {
     pub fn from_credential_detail_response(
+        config: &CoreConfig,
         credential: CredentialDetailResponseDTO,
         core_base_url: &str,
         credential_status: Vec<CredentialStatus>,
@@ -316,11 +320,20 @@ impl CredentialData {
         let issuance_date = OffsetDateTime::now_utc();
         let valid_for = time::Duration::days(365 * 2);
 
+        let mut array_order: HashMap<String, usize> = HashMap::new();
+
         Ok(Self {
             id,
             issuance_date,
             valid_for,
-            claims: map_claims(&credential.claims, "", false),
+            claims: map_claims(
+                config,
+                &credential.claims,
+                &mut array_order,
+                "",
+                false,
+                false,
+            ),
             issuer_did,
             status: credential_status,
             schema: CredentialSchemaData {
@@ -337,26 +350,51 @@ impl CredentialData {
 }
 
 fn map_claims(
+    config: &CoreConfig,
     claims: &[DetailCredentialClaimResponseDTO],
+    array_order: &mut HashMap<String, usize>,
     prefix: &str,
     array_item: bool,
+    object_item: bool,
 ) -> Vec<PublishedClaim> {
     let mut result = vec![];
 
     claims.iter().for_each(|claim| match &claim.value {
         DetailCredentialClaimValueResponseDTO::String(value) => {
+            let key = if array_item && !object_item {
+                claim.path.clone()
+            } else {
+                format!("{prefix}{}", claim.schema.key.clone())
+            };
+
             result.push(PublishedClaim {
-                key: format!("{prefix}{}", claim.schema.key),
+                key,
                 value: value.to_owned(),
                 datatype: Some(claim.clone().schema.datatype),
                 array_item,
             });
         }
         DetailCredentialClaimValueResponseDTO::Nested(value) => {
+            let key = if array_item {
+                let array_index = array_order.entry(prefix.to_string()).or_default();
+                let current_index = array_index.to_owned();
+                *array_index += 1;
+                current_index.to_string()
+            } else {
+                claim.schema.key.clone()
+            };
+
+            let is_object = config
+                .get_datatypes_of_type(DatatypeType::Object)
+                .contains(&claim.schema.datatype.as_str());
+
             let nested_claims = map_claims(
+                config,
                 value,
-                &format!("{prefix}{}/", claim.schema.key),
+                array_order,
+                &format!("{prefix}{key}/"),
                 claim.schema.array,
+                is_object,
             );
             result.extend(nested_claims);
         }

@@ -520,6 +520,10 @@ pub async fn get_revocation_list(
     Ok(res.unwrap())
 }
 
+type ClaimPath<'a> = &'a str;
+type ClaimValue<'a> = &'a str;
+type TestClaimSchema = Uuid;
+
 #[derive(Debug, Default)]
 pub struct TestingCredentialParams<'a> {
     pub holder_did: Option<Did>,
@@ -530,6 +534,7 @@ pub struct TestingCredentialParams<'a> {
     pub key: Option<Key>,
     pub suspend_end_date: Option<OffsetDateTime>,
     pub random_claims: bool,
+    pub claims_data: Option<Vec<(TestClaimSchema, ClaimPath<'a>, ClaimValue<'a>)>>,
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -45,6 +45,21 @@ pub struct CoreConfig {
     pub(crate) trust_management: TrustManagementConfig,
 }
 
+impl CoreConfig {
+    pub fn get_datatypes_of_type(&self, datatype: DatatypeType) -> Vec<&str> {
+        self.datatype
+            .iter()
+            .filter_map(|(key, fields)| {
+                if fields.r#type == datatype {
+                    Some(key)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<&str>>()
+    }
+}
+
 #[serde_as]
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

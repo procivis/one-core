@@ -9,6 +9,9 @@ pub(super) fn nest_claims(
 ) -> Result<HashMap<String, serde_json::Value>, FormatterError> {
     let mut data = serde_json::Value::Object(Default::default());
 
+    let mut claims = claims.into_iter().collect::<Vec<PublishedClaim>>();
+    claims.sort_unstable_by(|a, b| a.key.cmp(&b.key));
+
     for claim in claims {
         let pointer = jsonptr::Pointer::try_from(format!("/{}", claim.key))?;
         pointer.assign(&mut data, claim.value)?;

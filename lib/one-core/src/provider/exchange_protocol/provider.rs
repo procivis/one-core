@@ -213,6 +213,7 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
             .ok_or(MissingProviderError::RevocationMethod(
                 credential_schema.revocation_method.clone(),
             ))?;
+
         let credential_status = revocation_method
             .add_issued_credential(&credential)
             .await?
@@ -265,6 +266,7 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
         let credential_detail =
             credential_detail_response_from_model(credential.clone(), &self.config)?;
         let credential_data = CredentialData::from_credential_detail_response(
+            &self.config,
             credential_detail,
             core_base_url,
             credential_status,

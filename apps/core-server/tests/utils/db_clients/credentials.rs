@@ -56,28 +56,49 @@ impl CredentialsDB {
         params: TestingCredentialParams<'_>,
     ) -> Credential {
         let credential_id = Uuid::new_v4().into();
-        let claims = credential_schema
-            .claim_schemas
-            .as_ref()
-            .unwrap()
-            .iter()
-            .filter(|claim_schema| {
-                claim_schema.schema.data_type != "OBJECT" && !claim_schema.schema.array
-            })
-            .map(move |claim_schema| Claim {
-                id: Uuid::new_v4(),
-                credential_id,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                value: if params.random_claims {
-                    format!("test:{}", Uuid::new_v4())
-                } else {
-                    "test".to_string()
-                },
-                path: claim_schema.schema.key.clone(),
-                schema: Some(claim_schema.schema.to_owned()),
-            })
-            .collect();
+        let claim_schemas = credential_schema.claim_schemas.as_ref().unwrap();
+
+        let claims = if let Some(claims_data) = params.claims_data {
+            claims_data
+                .into_iter()
+                .map(|new_claim| {
+                    let claim_schema = claim_schemas
+                        .iter()
+                        .find(|schema| schema.schema.id == new_claim.0)
+                        .expect("Missing claim schema id");
+
+                    Claim {
+                        id: Uuid::new_v4(),
+                        credential_id,
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        value: new_claim.2.to_owned(),
+                        path: new_claim.1.to_owned(),
+                        schema: Some(claim_schema.schema.to_owned()),
+                    }
+                })
+                .collect()
+        } else {
+            claim_schemas
+                .iter()
+                .filter(|claim_schema| {
+                    claim_schema.schema.data_type != "OBJECT" && !claim_schema.schema.array
+                })
+                .map(move |claim_schema| Claim {
+                    id: Uuid::new_v4(),
+                    credential_id,
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    value: if params.random_claims {
+                        format!("test:{}", Uuid::new_v4())
+                    } else {
+                        "test".to_string()
+                    },
+                    path: claim_schema.schema.key.clone(),
+                    schema: Some(claim_schema.schema.to_owned()),
+                })
+                .collect()
+        };
 
         let credential = Credential {
             id: credential_id,

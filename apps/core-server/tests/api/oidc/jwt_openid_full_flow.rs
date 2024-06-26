@@ -383,8 +383,21 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
     let new_claim_schemas = vec![
         (Uuid::new_v4(), "root", true, "OBJECT", false),
         (Uuid::new_v4(), "root/array", true, "STRING", true),
-        (Uuid::new_v4(), "root/array/0", true, "STRING", false),
-        (Uuid::new_v4(), "root/array/1", true, "STRING", false),
+        (Uuid::new_v4(), "root/object_array", true, "OBJECT", true),
+        (
+            Uuid::new_v4(),
+            "root/object_array/field1",
+            false,
+            "STRING",
+            false,
+        ),
+        (
+            Uuid::new_v4(),
+            "root/object_array/field2",
+            false,
+            "STRING",
+            false,
+        ),
     ];
 
     let schema_id = Uuid::new_v4();
@@ -472,6 +485,20 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_local_key.to_owned()),
                 interaction: Some(interaction.to_owned()),
+                claims_data: Some(vec![
+                    //(new_claim_schemas[3].0, "root/object_array/0/field1", "FV11"), // Optional, not present
+                    //(new_claim_schemas[4].0, "root/object_array/1/field2", "FV22"), // Optional, not present
+                    //(new_claim_schemas[3].0, "root/object_array/3/field1", "FV41"), // Optional, not present
+                    // Keep random order
+                    (new_claim_schemas[3].0, "root/object_array/1/field1", "FV21"),
+                    (new_claim_schemas[1].0, "root/array/0", "Value1"),
+                    (new_claim_schemas[4].0, "root/object_array/3/field2", "FV42"),
+                    (new_claim_schemas[1].0, "root/array/2", "Value3"),
+                    (new_claim_schemas[4].0, "root/object_array/0/field2", "FV12"),
+                    (new_claim_schemas[3].0, "root/object_array/2/field1", "FV31"),
+                    (new_claim_schemas[1].0, "root/array/1", "Value2"),
+                    (new_claim_schemas[4].0, "root/object_array/2/field2", "FV32"),
+                ]),
                 ..Default::default()
             },
         )
@@ -562,6 +589,17 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(credential_token),
+                claims_data: Some(vec![
+                    // Keep random order
+                    (new_claim_schemas[3].0, "root/object_array/1/field1", "FV21"),
+                    (new_claim_schemas[1].0, "root/array/0", "Value1"),
+                    (new_claim_schemas[4].0, "root/object_array/3/field2", "FV42"),
+                    (new_claim_schemas[1].0, "root/array/2", "Value3"),
+                    (new_claim_schemas[4].0, "root/object_array/0/field2", "FV12"),
+                    (new_claim_schemas[3].0, "root/object_array/2/field1", "FV31"),
+                    (new_claim_schemas[1].0, "root/array/1", "Value2"),
+                    (new_claim_schemas[4].0, "root/object_array/2/field2", "FV32"),
+                ]),
                 ..Default::default()
             },
         )
@@ -654,7 +692,7 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
         )
         .await;
 
-    let holder_proof = holder_context
+    let _ = holder_context
         .db
         .proofs
         .create(
@@ -687,18 +725,24 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
     let server_proof = server_context.db.proofs.get(&proof.id).await;
     let claims = server_proof.claims.unwrap();
     // Proof sent to the server
-    assert_eq!(claims.len(), 2);
     assert_eq!(claims[0].claim.path, "root/array/0");
-    assert_eq!(claims[0].claim.value, "test");
+    assert_eq!(claims[0].claim.value, "Value1");
     assert_eq!(claims[1].claim.path, "root/array/1");
-    assert_eq!(claims[1].claim.value, "test");
+    assert_eq!(claims[1].claim.value, "Value2");
+    assert_eq!(claims[2].claim.path, "root/array/2");
+    assert_eq!(claims[2].claim.value, "Value3");
 
-    let holder_proof = holder_context.db.proofs.get(&holder_proof.id).await;
-    let claims = holder_proof.claims.unwrap();
-    // Claims assigned to the proof
-    assert_eq!(claims.len(), 2);
-    assert_eq!(claims[0].claim.path, "root/array/0");
-    assert_eq!(claims[0].claim.value, "test");
-    assert_eq!(claims[1].claim.path, "root/array/1");
-    assert_eq!(claims[1].claim.value, "test");
+    assert_eq!(claims[3].claim.path, "root/object_array/0/field2");
+    assert_eq!(claims[3].claim.value, "FV12");
+
+    assert_eq!(claims[4].claim.path, "root/object_array/1/field1");
+    assert_eq!(claims[4].claim.value, "FV21");
+
+    assert_eq!(claims[5].claim.path, "root/object_array/2/field1");
+    assert_eq!(claims[5].claim.value, "FV31");
+    assert_eq!(claims[6].claim.path, "root/object_array/2/field2");
+    assert_eq!(claims[6].claim.value, "FV32");
+
+    assert_eq!(claims[7].claim.path, "root/object_array/3/field2");
+    assert_eq!(claims[7].claim.value, "FV42");
 }
