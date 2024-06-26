@@ -35,6 +35,7 @@ pub struct ProofDetailResponseDTO {
     pub verifier_did: Option<DidListItemResponseDTO>,
     pub holder_did_id: Option<DidId>,
     pub exchange: String,
+    pub transport: String,
     pub state: ProofStateEnum,
     pub organisation_id: Option<OrganisationId>,
     pub schema: Option<GetProofSchemaListItemDTO>,
@@ -52,6 +53,7 @@ pub struct ProofListItemResponseDTO {
     pub completed_date: Option<OffsetDateTime>,
     pub verifier_did: Option<DidListItemResponseDTO>,
     pub exchange: String,
+    pub transport: String,
     pub state: ProofStateEnum,
     pub schema: Option<GetProofSchemaListItemDTO>,
 }

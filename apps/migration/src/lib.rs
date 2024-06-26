@@ -39,6 +39,7 @@ mod m20240528_092240_add_type_field_to_validity_credential_table;
 mod m20240528_093449_make_trust_columns_optional;
 mod m20240528_120000_add_shared_imported_history_action;
 mod m20240611_110000_introduce_path_and_array;
+mod m20240625_090000_proof_exchange_to_transport;
 
 pub struct Migrator;
 
@@ -83,6 +84,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240528_090016_rename_lvvc_table_to_validity_credential::Migration),
             Box::new(m20240528_092240_add_type_field_to_validity_credential_table::Migration),
             Box::new(m20240611_110000_introduce_path_and_array::Migration),
+            Box::new(m20240625_090000_proof_exchange_to_transport::Migration),
         ]
     }
 }

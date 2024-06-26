@@ -323,6 +323,7 @@ dictionary ProofListItemBindingDTO {
   string? completed_date;
   string? verifier_did;
   string exchange;
+  string transport;
   ProofStateBindingEnum state;
   GetProofSchemaListItemBindingDTO? schema;
 };

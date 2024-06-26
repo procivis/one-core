@@ -254,6 +254,7 @@ pub struct ProofListItemBindingDTO {
     #[from(with_fn = optional_did_string)]
     pub verifier_did: Option<String>,
     pub exchange: String,
+    pub transport: String,
     pub state: ProofStateBindingEnum,
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemBindingDTO>,

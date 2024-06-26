@@ -80,6 +80,7 @@ pub fn proof_from_handle_invitation(
         issuance_date: now,
         exchange: protocol.to_owned(),
         redirect_uri,
+        transport: "HTTP".to_owned(),
         state: Some(vec![proof::ProofState {
             created_date: now,
             last_modified: now,

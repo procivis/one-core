@@ -230,11 +230,15 @@ impl ProofService {
             return Err(ValidationError::BBSNotSupported.into());
         }
 
+        // TODO: Will be adapted with ONE-2648
+        let transport = "HTTP".to_owned();
+
         self.proof_repository
             .create_proof(proof_from_create_request(
                 request,
                 now,
                 proof_schema,
+                &transport,
                 verifier_did,
                 Some(verifier_key),
             ))

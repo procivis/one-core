@@ -281,6 +281,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
             proof::Column::RedirectUri,
         ])
         .column_as(proof::Column::Exchange, "exchange")
+        .column_as(proof::Column::Transport, "transport")
         // add related verifierDid
         .join(
             sea_orm::JoinType::LeftJoin,

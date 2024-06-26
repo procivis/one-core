@@ -93,6 +93,7 @@ async fn test_get_proof_success() {
 
     resp["id"].assert_eq(&proof.id);
     resp["organisationId"].assert_eq(&organisation.id);
+    resp["transport"].assert_eq(&"HTTP".to_string());
     resp["schema"]["id"].assert_eq(&proof_schema.id);
 
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);

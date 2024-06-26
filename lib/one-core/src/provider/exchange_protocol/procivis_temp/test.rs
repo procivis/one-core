@@ -67,6 +67,7 @@ fn generate_proof(redirect_uri: Option<String>) -> Proof {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "PROCIVIS_TEMPORARY".to_string(),
+        transport: "HTTP".to_string(),
         redirect_uri,
         state: None,
         schema: None,

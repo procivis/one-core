@@ -189,6 +189,7 @@ pub async fn insert_proof_request_to_database(
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(get_dummy_date()),
         exchange: Set("PROCIVIS_TEMPORARY".to_string()),
+        transport: Set("HTTP".to_string()),
         redirect_uri: Set(None),
         verifier_did_id: Set(Some(verifier_did_id)),
         holder_did_id: Set(holder_did_id),
