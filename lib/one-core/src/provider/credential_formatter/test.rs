@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use shared_types::DidValue;
 
+use crate::config::core_config::{self, CoreConfig, DatatypeConfig, DatatypeType};
 use crate::model::did::DidType;
 use crate::provider::credential_formatter::{CredentialData, PublishedClaim};
 use crate::service::credential::dto::{
@@ -63,6 +64,7 @@ fn generate_credential_detail_response(
 fn test_from_credential_detail_response_nested_claim_mapping() {
     let now = OffsetDateTime::now_utc();
     let actual = CredentialData::from_credential_detail_response(
+        &core_config::CoreConfig::default(),
         generate_credential_detail_response(vec![
             DetailCredentialClaimResponseDTO {
                 path: "location".to_string(),
@@ -155,7 +157,23 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
 #[test]
 fn test_from_credential_detail_response_nested_claim_mapping_array() {
     let now = OffsetDateTime::now_utc();
+    let mut datatype_config = DatatypeConfig::default();
+    datatype_config.insert(
+        "OBJECT".to_owned(),
+        core_config::Fields {
+            r#type: DatatypeType::Object,
+            display: serde_json::Value::default(),
+            order: Some(1),
+            disabled: Some(false),
+            capabilities: None,
+            params: None,
+        },
+    );
     let actual = CredentialData::from_credential_detail_response(
+        &CoreConfig {
+            datatype: datatype_config,
+            ..Default::default()
+        },
         generate_credential_detail_response(vec![
             DetailCredentialClaimResponseDTO {
                 schema: CredentialClaimSchemaDTO {

@@ -5,17 +5,20 @@ use time::Duration;
 
 use super::JWTFormatter;
 
-use crate::provider::credential_formatter::{
-    jwt::model::JWTPayload,
-    jwt_formatter::{
-        model::{VC, VP},
-        Params,
+use crate::{
+    config::core_config,
+    provider::credential_formatter::{
+        jwt::model::JWTPayload,
+        jwt_formatter::{
+            model::{VC, VP},
+            Params,
+        },
+        model::{CredentialPresentation, CredentialStatus},
+        test_utilities::{
+            test_credential_detail_response_dto, test_credential_detail_response_dto_with_array,
+        },
+        CredentialData, CredentialFormatter, ExtractPresentationCtx, MockAuth, MockTokenVerifier,
     },
-    model::{CredentialPresentation, CredentialStatus},
-    test_utilities::{
-        test_credential_detail_response_dto, test_credential_detail_response_dto_with_array,
-    },
-    CredentialData, CredentialFormatter, ExtractPresentationCtx, MockAuth, MockTokenVerifier,
 };
 
 #[tokio::test]
@@ -28,6 +31,7 @@ async fn test_format_credential() {
 
     let credential_details = test_credential_detail_response_dto();
     let credential_data = CredentialData::from_credential_detail_response(
+        &core_config::CoreConfig::default(),
         credential_details,
         "http://base_url",
         vec![CredentialStatus {
@@ -121,6 +125,7 @@ async fn test_format_credential_nested_array() {
 
     let credential_details = test_credential_detail_response_dto_with_array();
     let credential_data = CredentialData::from_credential_detail_response(
+        &core_config::CoreConfig::default(),
         credential_details,
         "http://base_url",
         vec![CredentialStatus {

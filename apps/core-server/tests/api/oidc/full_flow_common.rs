@@ -287,7 +287,7 @@ pub(super) fn get_simple_context(
                 "id": "@id",
                 "type": "@type",
                 format!("{schema_name_pascal}Credential"): {
-                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential", base_url),
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential"),
                     "@context": {
                         "@version": 1.1,
                         "@protected": true,
@@ -296,20 +296,21 @@ pub(super) fn get_simple_context(
                     }
                 },
                 format!("{schema_name_pascal}Subject"): {
-                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Subject", base_url),
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}Subject"),
                     "@context": {
                         "@version": 1.1,
                         "@protected": true,
                         "id": "@id",
                         "type": "@type",
-                        "Key": format!("{}/ssi/context/v1/{schema_id}#Key", base_url),
-                        "Name": format!("{}/ssi/context/v1/{schema_id}#Name", base_url),
-                        "Address": format!("{}/ssi/context/v1/{schema_id}#Address", base_url)
+                        "Key": format!("{base_url}/ssi/context/v1/{schema_id}#Key"),
+                        "Name": format!("{base_url}/ssi/context/v1/{schema_id}#Name"),
+                        "Address": format!("{base_url}/ssi/context/v1/{schema_id}#Address")
                     }
                 }
             }
         }
-    ).to_string();
+    )
+    .to_string();
     (url, context)
 }
 
@@ -372,7 +373,7 @@ pub(super) fn get_array_context(
                 "id": "@id",
                 "type": "@type",
                 format!("{schema_name_pascal}Credential"): {
-                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential", base_url),
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential"),
                     "@context": {
                         "@version": 1.1,
                         "@protected": true,
@@ -381,7 +382,7 @@ pub(super) fn get_array_context(
                     }
                 },
                 format!("{schema_name_pascal}Subject"): {
-                    "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Subject", base_url),
+                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#{schema_name_pascal}Subject"),
                     "@context": {
                         "@version": 1.1,
                         "@protected": true,
@@ -391,10 +392,17 @@ pub(super) fn get_array_context(
                             "@context": {
                                 "array": {
                                     //"@container": "@list",
-                                    "@id": format!("{}/ssi/context/v1/{schema_id}#array", base_url),
+                                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#array"),
+                                },
+                                "object_array": {
+                                    "@id": format!("{base_url}/ssi/context/v1/{schema_id}#object_array"),
+                                    "@context": {
+                                        "field1": format!("{base_url}/ssi/context/v1/{schema_id}#field1"),
+                                        "field2": format!("{base_url}/ssi/context/v1/{schema_id}#field2"),
+                                    }
                                 },
                             },
-                            "@id": format!("{}/ssi/context/v1/{schema_id}#root", base_url),
+                            "@id": format!("{base_url}/ssi/context/v1/{schema_id}#root"),
                         },
                     }
                 }

@@ -137,6 +137,7 @@ fn value_to_model_claims(
     json_value: &serde_json::Value,
     now: OffsetDateTime,
     claim_schema: &ClaimSchema,
+    path: &str,
 ) -> Result<Vec<Claim>, ServiceError> {
     let mut model_claims = vec![];
 
@@ -148,14 +149,14 @@ fn value_to_model_claims(
                 created_date: now,
                 last_modified: now,
                 value: value.to_owned(),
-                path: claim_schema.key.to_owned(),
+                path: path.to_owned(),
                 schema: Some(claim_schema.to_owned()),
             });
         }
         serde_json::Value::Object(object) => {
             for (key, value) in object {
-                let this_path = &claim_schema.key;
-                let child_schema_name = format!("{this_path}/{key}");
+                let this_name = &claim_schema.key;
+                let child_schema_name = format!("{this_name}/{key}");
                 let child_credential_schema_claim = claim_schemas
                     .iter()
                     .find(|claim_schema| claim_schema.schema.key == child_schema_name)
@@ -168,25 +169,21 @@ fn value_to_model_claims(
                     value,
                     now,
                     &child_credential_schema_claim.schema,
+                    &format!("{path}/{key}"),
                 )?);
             }
         }
         serde_json::Value::Array(array) => {
             for (index, value) in array.iter().enumerate() {
-                let this_path = &claim_schema.key;
-                let child_schema_name = format!("{this_path}/{index}");
-                let child_credential_schema_claim = claim_schemas
-                    .iter()
-                    .find(|claim_schema| claim_schema.schema.key == child_schema_name)
-                    .ok_or(ServiceError::BusinessLogic(
-                        BusinessLogicError::MissingClaimSchemas,
-                    ))?;
+                let child_schema_path = format!("{path}/{index}");
+
                 model_claims.extend(value_to_model_claims(
                     credential_id,
                     claim_schemas,
                     value,
                     now,
-                    &child_credential_schema_claim.schema,
+                    claim_schema,
+                    &child_schema_path,
                 )?);
             }
         }
@@ -218,6 +215,7 @@ pub fn extracted_credential_to_model(
             &value,
             now,
             &claim_schema,
+            &claim_schema.key,
         )?);
     }
 

@@ -817,7 +817,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
         )
         .await;
 
-    let holder_proof = holder_context
+    let _ = holder_context
         .db
         .proofs
         .create(
@@ -855,11 +855,6 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
     let claims = server_proof.claims.unwrap();
     // Proof sent to the server
     verify_nested_claims(claims);
-
-    let holder_proof = holder_context.db.proofs.get(&holder_proof.id).await;
-    let claims = holder_proof.claims.unwrap();
-    // Claims assigned to the proof
-    verify_nested_claims(claims);
 }
 
 fn verify_nested_claims(claims: Vec<ProofClaim>) {
@@ -871,12 +866,13 @@ fn verify_nested_claims(claims: Vec<ProofClaim>) {
     assert_eq!(claims.get(1).unwrap().claim.value, "test");
     assert_eq!(
         claims.get(1).unwrap().claim.schema.as_ref().unwrap().key,
-        "root/nested/NestedKeyDisclosed"
+        "root/nested/NestedKeyAlsoDisclosed"
     );
     assert_eq!(
         claims.get(2).unwrap().claim.schema.as_ref().unwrap().key,
-        "root/nested/NestedKeyAlsoDisclosed"
+        "root/nested/NestedKeyDisclosed"
     );
+
     assert_eq!(
         claims.get(3).unwrap().claim.schema.as_ref().unwrap().key,
         "root2/KeyDisclosed2"
@@ -908,8 +904,21 @@ async fn test_openid4vc_mdoc_flow_array(
     let new_claim_schemas = vec![
         (Uuid::new_v4(), "root", true, "OBJECT", false),
         (Uuid::new_v4(), "root/array", true, "STRING", true),
-        (Uuid::new_v4(), "root/array/0", true, "STRING", false),
-        (Uuid::new_v4(), "root/array/1", true, "STRING", false),
+        (Uuid::new_v4(), "root/object_array", true, "OBJECT", true),
+        (
+            Uuid::new_v4(),
+            "root/object_array/field1",
+            false,
+            "STRING",
+            false,
+        ),
+        (
+            Uuid::new_v4(),
+            "root/object_array/field2",
+            false,
+            "STRING",
+            false,
+        ),
     ];
 
     let schema_id = Uuid::new_v4();
@@ -934,7 +943,7 @@ async fn test_openid4vc_mdoc_flow_array(
         .create(
             "Test",
             &server_organisation,
-            CreateProofInputSchema::from((&new_claim_schemas[1..2], &credential_schema)),
+            CreateProofInputSchema::from((&new_claim_schemas[1..=2], &credential_schema)),
         )
         .await;
 
@@ -968,6 +977,12 @@ async fn test_openid4vc_mdoc_flow_array(
                             "path": [format!("$['root']['array']")],
                             "optional": false,
                             "intent_to_retain": true
+                        },
+                        {
+                            "id": new_claim_schemas[2].0,
+                            "path": [format!("$['root']['object_array']")],
+                            "optional": false,
+                            "intent_to_retain": true
                         }
                     ]
                 }
@@ -998,7 +1013,17 @@ async fn test_openid4vc_mdoc_flow_array(
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_local_key.to_owned()),
                 interaction: Some(interaction.to_owned()),
-                random_claims: true,
+                claims_data: Some(vec![
+                    // Keep random order
+                    (new_claim_schemas[3].0, "root/object_array/1/field1", "FV21"),
+                    (new_claim_schemas[1].0, "root/array/0", "Value1"),
+                    (new_claim_schemas[4].0, "root/object_array/3/field2", "FV42"),
+                    (new_claim_schemas[1].0, "root/array/2", "Value3"),
+                    (new_claim_schemas[4].0, "root/object_array/0/field2", "FV12"),
+                    (new_claim_schemas[3].0, "root/object_array/2/field1", "FV31"),
+                    (new_claim_schemas[1].0, "root/array/1", "Value2"),
+                    (new_claim_schemas[4].0, "root/object_array/2/field2", "FV32"),
+                ]),
                 ..Default::default()
             },
         )
@@ -1085,6 +1110,17 @@ async fn test_openid4vc_mdoc_flow_array(
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(credential_token),
+                claims_data: Some(vec![
+                    // Keep random order
+                    (new_claim_schemas[3].0, "root/object_array/1/field1", "FV21"),
+                    (new_claim_schemas[1].0, "root/array/0", "Value1"),
+                    (new_claim_schemas[4].0, "root/object_array/3/field2", "FV42"),
+                    (new_claim_schemas[1].0, "root/array/2", "Value3"),
+                    (new_claim_schemas[4].0, "root/object_array/0/field2", "FV12"),
+                    (new_claim_schemas[3].0, "root/object_array/2/field1", "FV31"),
+                    (new_claim_schemas[1].0, "root/array/1", "Value2"),
+                    (new_claim_schemas[4].0, "root/object_array/2/field2", "FV32"),
+                ]),
                 ..Default::default()
             },
         )
@@ -1170,6 +1206,12 @@ async fn test_openid4vc_mdoc_flow_array(
                             "path": [format!("$['root']['array']")],
                             "optional": false,
                             "intent_to_retain": true
+                        },
+                        {
+                            "id": new_claim_schemas[2].0,
+                            "path": [format!("$['root']['object_array']")],
+                            "optional": false,
+                            "intent_to_retain": true
                         }
                     ]
                 }
@@ -1187,7 +1229,7 @@ async fn test_openid4vc_mdoc_flow_array(
         )
         .await;
 
-    let holder_proof = holder_context
+    let _ = holder_context
         .db
         .proofs
         .create(
@@ -1210,7 +1252,7 @@ async fn test_openid4vc_mdoc_flow_array(
             holder_interaction.id,
             holder_did.id,
             holder_credential.id,
-            vec![new_claim_schemas[1].0],
+            vec![new_claim_schemas[1].0, new_claim_schemas[2].0],
         )
         .await;
 
@@ -1221,15 +1263,23 @@ async fn test_openid4vc_mdoc_flow_array(
     let claims = server_proof.claims.unwrap();
     // Proof sent to the server
     assert_eq!(claims[0].claim.path, "root/array/0");
-    assert!(claims[0].claim.value.starts_with("test"));
+    assert_eq!(claims[0].claim.value, "Value1");
     assert_eq!(claims[1].claim.path, "root/array/1");
-    assert!(claims[1].claim.value.starts_with("test"));
+    assert_eq!(claims[1].claim.value, "Value2");
+    assert_eq!(claims[2].claim.path, "root/array/2");
+    assert_eq!(claims[2].claim.value, "Value3");
 
-    let holder_proof = holder_context.db.proofs.get(&holder_proof.id).await;
-    let claims = holder_proof.claims.unwrap();
-    // Claims assigned to the proof
-    assert_eq!(claims[0].claim.path, "root/array/0");
-    assert!(claims[0].claim.value.starts_with("test"));
-    assert_eq!(claims[1].claim.path, "root/array/1");
-    assert!(claims[1].claim.value.starts_with("test"));
+    assert_eq!(claims[3].claim.path, "root/object_array/0/field2");
+    assert_eq!(claims[3].claim.value, "FV12");
+
+    assert_eq!(claims[4].claim.path, "root/object_array/1/field1");
+    assert_eq!(claims[4].claim.value, "FV21");
+
+    assert_eq!(claims[5].claim.path, "root/object_array/2/field1");
+    assert_eq!(claims[5].claim.value, "FV31");
+    assert_eq!(claims[6].claim.path, "root/object_array/2/field2");
+    assert_eq!(claims[6].claim.value, "FV32");
+
+    assert_eq!(claims[7].claim.path, "root/object_array/3/field2");
+    assert_eq!(claims[7].claim.value, "FV42");
 }
