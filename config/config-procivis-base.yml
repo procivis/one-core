@@ -51,12 +51,13 @@ exchange:
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
-  MDL:
-    display: "exchange.mdl"
-    type: "MDL"
-    order: 2
-    disabled: true
-    params: null
+transport:
+  HTTP:
+    type: "HTTP"
+    display: "transport.http"
+    disabled: false
+    order: 0
+    params: {}
 revocation:
   NONE:
     display: "revocation.none"

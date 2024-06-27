@@ -12,6 +12,7 @@ use super::ProofService;
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::validator::exchange::validate_exchange_type;
+use crate::config::validator::transport::get_available_transport_type;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
@@ -230,15 +231,14 @@ impl ProofService {
             return Err(ValidationError::BBSNotSupported.into());
         }
 
-        // TODO: Will be adapted with ONE-2648
-        let transport = "HTTP".to_owned();
+        let transport = get_available_transport_type(&self.config.transport)?;
 
         self.proof_repository
             .create_proof(proof_from_create_request(
                 request,
                 now,
                 proof_schema,
-                &transport,
+                transport,
                 verifier_did,
                 Some(verifier_key),
             ))

@@ -291,6 +291,9 @@ pub enum ValidationError {
         source: anyhow::Error,
     },
 
+    #[error("No default transport specified")]
+    MissingDefaultTransport,
+
     #[error("Invalid formatter: {0}")]
     InvalidFormatter(String),
 
@@ -775,6 +778,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Validity constraint must be specified for LVVC revocation method")]
     BR_0140,
+
+    #[strum(to_string = "No default transport specified")]
+    BR_0142,
 }
 
 impl From<FormatError> for ServiceError {
@@ -916,6 +922,7 @@ impl ValidationError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
             ValidationError::InvalidExchangeType { .. } => ErrorCode::BR_0052,
+            ValidationError::MissingDefaultTransport => ErrorCode::BR_0142,
             ValidationError::UnsupportedKeyType { .. } => ErrorCode::BR_0053,
             ValidationError::DidInvalidKeyNumber => ErrorCode::BR_0030,
             ValidationError::CredentialSchemaMissingClaims => ErrorCode::BR_0008,

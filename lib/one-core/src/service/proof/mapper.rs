@@ -607,7 +607,7 @@ pub fn proof_from_create_request(
     request: CreateProofRequestDTO,
     now: OffsetDateTime,
     schema: ProofSchema,
-    transport: &String,
+    transport: &str,
     verifier_did: Did,
     verifier_key: Option<Key>,
 ) -> Proof {
