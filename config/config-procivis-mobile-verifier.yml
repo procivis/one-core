@@ -1,0 +1,13 @@
+jsonLdContext:
+  cacheSize: 100
+transport:
+  BLE:
+    type: "BLE"
+    display: "transport.ble"
+    disabled: false
+    order: 1
+    params:
+      private:
+        verifierName: "OneVerifier"
+  HTTP:
+    disabled: true

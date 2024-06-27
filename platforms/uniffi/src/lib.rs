@@ -23,17 +23,17 @@ uniffi::include_scaffolding!("one_core");
 
 fn initialize_core(
     data_dir_path: String,
+    config_mobile: &'static str,
     native_key_storage: Option<Box<dyn NativeKeyStorage>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
     let native_key_storage =
         native_key_storage.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
 
+    let config = include_str!("../../../config/config.yml");
+    let config_base = include_str!("../../../config/config-procivis-base.yml");
+
     let placeholder_config: AppConfig<MobileConfig> =
-        core_config::AppConfig::from_yaml_str_configs(vec![
-            include_str!("../../../config/config.yml"),
-            include_str!("../../../config/config-procivis-base.yml"),
-            include_str!("../../../config/config-procivis-mobile.yml"),
-        ])?;
+        core_config::AppConfig::from_yaml_str_configs(vec![config, config_base, config_mobile])?;
 
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -75,6 +75,28 @@ fn initialize_core(
     core_binding.initialize(core_binding.main_db_path.clone())?;
 
     Ok(core_binding)
+}
+
+fn initialize_verifier_core(
+    data_dir_path: String,
+    native_key_storage: Option<Box<dyn NativeKeyStorage>>,
+) -> Result<Arc<OneCoreBinding>, BindingError> {
+    initialize_core(
+        data_dir_path,
+        include_str!("../../../config/config-procivis-mobile-verifier.yml"),
+        native_key_storage,
+    )
+}
+
+fn initialize_holder_core(
+    data_dir_path: String,
+    native_key_storage: Option<Box<dyn NativeKeyStorage>>,
+) -> Result<Arc<OneCoreBinding>, BindingError> {
+    initialize_core(
+        data_dir_path,
+        include_str!("../../../config/config-procivis-mobile-holder.yml"),
+        native_key_storage,
+    )
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

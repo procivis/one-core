@@ -36,6 +36,7 @@ pub struct AppConfig<Custom> {
 pub struct CoreConfig {
     pub(crate) format: FormatConfig,
     pub(crate) exchange: ExchangeConfig,
+    pub(crate) transport: TransportConfig,
     pub(crate) revocation: RevocationConfig,
     pub(crate) did: DidConfig,
     pub(crate) datatype: DatatypeConfig,
@@ -174,6 +175,20 @@ pub enum FormatType {
     #[serde(rename = "MDOC")]
     #[strum(serialize = "MDOC")]
     Mdoc,
+}
+
+pub type TransportConfig = ConfigBlock<TransportType>;
+
+#[derive(
+    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+)]
+pub enum TransportType {
+    #[serde(rename = "HTTP")]
+    #[strum(serialize = "HTTP")]
+    Ble,
+    #[serde(rename = "BLE")]
+    #[strum(serialize = "BLE")]
+    Http,
 }
 
 pub type ExchangeConfig = ConfigBlock<ExchangeType>;

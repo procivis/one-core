@@ -42,6 +42,13 @@ rusty_fork_test! {
                     params:
                         public:
                             leeway: 90
+            transport:
+                HTTP:
+                    type: 'HTTP'
+                    display: 'transport.http'
+                    disabled: false
+                    order: 0
+                    params: {}
             exchange:
                 PROCIVIS_TEMPORARY:
                     display: 'display'

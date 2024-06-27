@@ -48,6 +48,7 @@ fn convert_internal_structure_to_dto() {
               "type": "STRING"
             }
           },
+          "transport": {},
           "keyAlgorithm": {},
           "keyStorage": {},
           "trustManagement": {},
@@ -84,6 +85,7 @@ fn do_not_serialize_private_parameters() {
         json!({
           "format": {},
           "exchange": {},
+          "transport": {},
           "revocation": {},
           "did": {},
           "datatype": {

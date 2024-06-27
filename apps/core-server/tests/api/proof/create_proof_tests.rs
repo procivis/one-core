@@ -66,6 +66,7 @@ async fn test_create_proof_success_without_related_key() {
 
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
     assert_eq!(proof.exchange, "OPENID4VC");
+    assert_eq!(proof.transport, "HTTP");
 }
 
 #[tokio::test]

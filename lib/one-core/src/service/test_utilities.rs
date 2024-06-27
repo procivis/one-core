@@ -25,6 +25,13 @@ pub struct CustomConfig {}
 
 pub fn generic_config() -> AppConfig<CustomConfig> {
     let config = indoc! {"
+        transport:
+            HTTP:
+                type: 'HTTP'
+                display: 'transport.http'
+                disabled: false
+                order: 0
+                params: {}
         format:
             JWT:
                 type: 'JWT'
