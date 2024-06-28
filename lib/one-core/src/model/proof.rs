@@ -95,6 +95,6 @@ pub struct UpdateProofRequest {
     pub holder_did_id: Option<DidId>,
     pub verifier_did_id: Option<DidId>,
     pub state: Option<ProofState>,
-    pub interaction: Option<InteractionId>,
+    pub interaction: Option<Option<InteractionId>>,
     pub redirect_uri: Option<Option<String>>,
 }

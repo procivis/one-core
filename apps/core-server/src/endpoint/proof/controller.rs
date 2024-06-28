@@ -121,3 +121,29 @@ pub(crate) async fn share_proof(
     let result = state.core.proof_service.share_proof(&id).await;
     OkOrErrorResponse::from_result(result, state, "sharing proof")
 }
+
+#[utoipa::path(
+    post,
+    path = "/api/proof-request/v1/{id}/retract",
+    responses(OkOrErrorResponse<EntityResponseRestDTO>),
+    params(
+        ("id" = ProofId, Path, description = "Proof id")
+    ),
+    tag = "proof_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn retract_proof(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<EntityResponseRestDTO> {
+    let result = state
+        .core
+        .proof_service
+        .retract_proof(id)
+        .await
+        .map(|id| EntityResponseRestDTO { id: id.into() });
+
+    OkOrErrorResponse::from_result(result, state, " retracting proof")
+}

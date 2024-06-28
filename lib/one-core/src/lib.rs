@@ -343,6 +343,7 @@ impl OneCore {
                 data_provider.get_proof_schema_repository(),
                 data_provider.get_did_repository(),
                 data_provider.get_history_repository(),
+                data_provider.get_interaction_repository(),
                 formatter_provider.clone(),
                 protocol_provider.clone(),
                 config.clone(),

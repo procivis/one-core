@@ -5,9 +5,10 @@ use time::OffsetDateTime;
 
 use crate::model::common::{GetListQueryParams, GetListResponse};
 use crate::model::credential_schema::{
-    CredentialFormat, CredentialSchemaType, LayoutType, RevocationMethod, WalletStorageTypeEnum,
+    CredentialFormat, LayoutType, RevocationMethod, WalletStorageTypeEnum,
 };
 use crate::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};
+use crate::service::credential::dto::CredentialSchemaType;
 use crate::service::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaListItemResponseDTO,
 };

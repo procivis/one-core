@@ -236,7 +236,7 @@ impl ProofRepository for ProofProvider {
 
         let interaction_id = match proof.interaction {
             None => Unchanged(Default::default()),
-            Some(interaction_id) => Set(Some(interaction_id.to_string())),
+            Some(interaction_id) => Set(interaction_id.map(Into::into)),
         };
         let redirect_uri = match proof.redirect_uri {
             None => Unchanged(Default::default()),

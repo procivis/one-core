@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::Sequence;
+use rstest::rstest;
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -18,6 +19,8 @@ use crate::model::credential_schema::{
     LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
+use crate::model::interaction::Interaction;
+use crate::model::interaction::InteractionId;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue;
@@ -38,6 +41,7 @@ use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::error::{
@@ -54,6 +58,7 @@ struct Repositories {
     pub proof_schema_repository: MockProofSchemaRepository,
     pub did_repository: MockDidRepository,
     pub history_repository: MockHistoryRepository,
+    pub interaction_repository: MockInteractionRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockExchangeProtocolProvider,
     pub config: CoreConfig,
@@ -65,6 +70,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
         Arc::new(repositories.history_repository),
+        Arc::new(repositories.interaction_repository),
         Arc::new(repositories.credential_formatter_provider),
         Arc::new(repositories.protocol_provider),
         Arc::new(repositories.config),
@@ -2423,4 +2429,129 @@ async fn test_share_proof_invalid_state() {
             BusinessLogicError::InvalidProofState { .. }
         ))
     ));
+}
+
+#[rstest]
+#[tokio::test]
+async fn test_retract_proof_ok_for_allowed_state(
+    #[values(ProofStateEnum::Pending, ProofStateEnum::Requested)] state: ProofStateEnum,
+) {
+    let proof_id = ProofId::from(Uuid::new_v4());
+    let interaction_id = InteractionId::from(Uuid::new_v4());
+
+    let mut proof = construct_proof_with_state(&proof_id, state);
+    proof.exchange = "OPENID4VC".to_string();
+    proof.transport = "HTTP".to_string();
+    proof.interaction = Some(Interaction {
+        id: interaction_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        host: None,
+        data: None,
+    });
+
+    let mut proof_repository = MockProofRepository::default();
+
+    proof_repository
+        .expect_get_proof()
+        .once()
+        .withf(move |id, relations| {
+            id == &proof_id
+                && relations
+                    == &ProofRelations {
+                        state: Some(ProofStateRelations::default()),
+                        interaction: Some(InteractionRelations::default()),
+                        ..Default::default()
+                    }
+        })
+        .returning({
+            let proof = proof.clone();
+            move |_, _| Ok(Some(proof.clone()))
+        });
+
+    proof_repository
+        .expect_update_proof()
+        .once()
+        .withf(|update_proof| {
+            update_proof.interaction == Some(None)
+                && update_proof.state.as_ref().unwrap().state == ProofStateEnum::Created
+        })
+        .returning(move |_| Ok(()));
+
+    let mut interaction_repository = MockInteractionRepository::new();
+
+    interaction_repository
+        .expect_delete_interaction()
+        .once()
+        .with(eq(interaction_id))
+        .returning(|_| Ok(()));
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        interaction_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.retract_proof(proof_id).await.unwrap();
+
+    assert_eq!(proof_id, result);
+}
+
+#[rstest]
+#[tokio::test]
+async fn test_retract_proof_fails_for_invalid_state(
+    #[values(
+        ProofStateEnum::Created,
+        ProofStateEnum::Accepted,
+        ProofStateEnum::Rejected,
+        ProofStateEnum::Error
+    )]
+    state: ProofStateEnum,
+) {
+    let proof_id = ProofId::from(Uuid::new_v4());
+    let interaction_id = InteractionId::from(Uuid::new_v4());
+
+    let mut proof = construct_proof_with_state(&proof_id, state.clone());
+    proof.exchange = "OPENID4VC".to_string();
+    proof.transport = "HTTP".to_string();
+    proof.interaction = Some(Interaction {
+        id: interaction_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        host: None,
+        data: None,
+    });
+
+    let mut proof_repository = MockProofRepository::default();
+
+    proof_repository
+        .expect_get_proof()
+        .once()
+        .withf(move |id, relations| {
+            id == &proof_id
+                && relations
+                    == &ProofRelations {
+                        state: Some(ProofStateRelations::default()),
+                        interaction: Some(InteractionRelations::default()),
+                        ..Default::default()
+                    }
+        })
+        .returning({
+            let proof = proof.clone();
+            move |_, _| Ok(Some(proof.clone()))
+        });
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let error = service.retract_proof(proof_id).await.unwrap_err();
+
+    assert!(matches!(
+        error,
+        ServiceError::BusinessLogic(BusinessLogicError::InvalidProofState { state: got_state }) if got_state == state
+    ))
 }

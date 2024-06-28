@@ -87,7 +87,7 @@ pub(super) fn credential_schema_from_proof_input_schema(
             .clone()
             .map(Into::into),
         schema_id: input_schema.credential_schema.schema_id.clone(),
-        schema_type: input_schema.credential_schema.schema_type.clone(),
+        schema_type: input_schema.credential_schema.schema_type.clone().into(),
         claim_schemas: Some(claims),
         organisation: Some(organisation),
     }
