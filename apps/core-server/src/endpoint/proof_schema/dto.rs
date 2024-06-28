@@ -1,5 +1,4 @@
 use dto_mapper::{convert_inner, From, Into};
-use one_core::model::credential_schema::CredentialSchemaType;
 use one_core::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO,
     GetProofSchemaResponseDTO, ImportProofSchemaClaimSchemaDTO,
@@ -17,7 +16,7 @@ use validator::Validate;
 use crate::dto::common::GetListQueryParams;
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaLayoutType,
-    CredentialSchemaListItemResponseRestDTO, WalletStorageTypeRestEnum,
+    CredentialSchemaListItemResponseRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
 };
 use crate::serialize::{front_time, front_time_option};
 
@@ -68,8 +67,10 @@ pub struct ImportProofSchemaRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct ImportProofSchemaRestDTO {
     pub id: ProofSchemaId,
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub created_date: OffsetDateTime,
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub last_modified: OffsetDateTime,
     pub name: String,

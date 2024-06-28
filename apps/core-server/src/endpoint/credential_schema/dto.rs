@@ -48,7 +48,7 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, From, Into)]
 #[from(one_core::service::credential::dto::CredentialSchemaType)]
 #[into(one_core::service::credential::dto::CredentialSchemaType)]
 pub enum CredentialSchemaType {
@@ -58,6 +58,28 @@ pub enum CredentialSchemaType {
     Mdoc,
     #[serde(untagged)]
     Other(String),
+}
+
+impl<'a> utoipa::ToSchema<'a> for CredentialSchemaType {
+    fn schema() -> (
+        &'a str,
+        utoipa::openapi::RefOr<utoipa::openapi::schema::Schema>,
+    ) {
+        let known = utoipa::openapi::ObjectBuilder::new()
+            .schema_type(utoipa::openapi::SchemaType::String)
+            .enum_values(Some([
+                "ProcivisOneSchema2024",
+                "FallbackSchema2024",
+                "mdoc",
+            ]));
+
+        let schema = utoipa::openapi::schema::OneOfBuilder::new()
+            .item(known)
+            .item(utoipa::schema!(String))
+            .into();
+
+        ("CredentialSchemaType", schema)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

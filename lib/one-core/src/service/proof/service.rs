@@ -24,6 +24,7 @@ use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
     Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
+    UpdateProofRequest,
 };
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -300,6 +301,74 @@ impl ProofService {
             .await;
 
         Ok(EntityShareResponseDTO { url })
+    }
+
+    pub async fn retract_proof(&self, proof_id: ProofId) -> Result<ProofId, ServiceError> {
+        let Some(proof) = self
+            .proof_repository
+            .get_proof(
+                &proof_id,
+                &ProofRelations {
+                    state: Some(Default::default()),
+                    interaction: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+        else {
+            return Err(EntityNotFoundError::Proof(proof_id).into());
+        };
+
+        let last_state = proof
+            .state
+            .as_ref()
+            // states come ordered from the DB, newest first
+            .and_then(|states| states.first())
+            .map(|last_state| &last_state.state)
+            .ok_or_else(|| {
+                ServiceError::MappingError(format!("Missing state for proof: {proof_id}"))
+            })?;
+
+        if !matches!(
+            last_state,
+            ProofStateEnum::Pending | ProofStateEnum::Requested,
+        ) {
+            return Err(BusinessLogicError::InvalidProofState {
+                state: last_state.clone(),
+            }
+            .into());
+        }
+
+        if proof.exchange == "OPENID4VC"
+            && self.config.transport.ble_enabled_for(&proof.transport)?
+        {
+            // TODO(when https://procivis.atlassian.net/browse/ONE-2651 is merged):
+            //  1. check if BLE advertisement is on-going. If yes, call the appropriate method to stop advertisement, otherwise continue.
+            //  2. If we are connected to a Wallet, we also need to write to their disconnect characteristic.
+        }
+
+        self.proof_repository
+            .update_proof(UpdateProofRequest {
+                id: proof_id,
+                holder_did_id: None,
+                verifier_did_id: None,
+                state: Some(ProofState {
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    state: ProofStateEnum::Created,
+                }),
+                interaction: Some(None),
+                redirect_uri: None,
+            })
+            .await?;
+
+        if let Some(interaction) = proof.interaction {
+            self.interaction_repository
+                .delete_interaction(&interaction.id)
+                .await?;
+        }
+
+        Ok(proof_id)
     }
 
     // ============ Private methods

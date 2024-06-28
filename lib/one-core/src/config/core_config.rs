@@ -419,6 +419,14 @@ where
     }
 }
 
+impl ConfigBlock<TransportType> {
+    pub fn ble_enabled_for(&self, key: &str) -> Result<bool, ConfigValidationError> {
+        let fields = self.get_fields(key)?;
+
+        Ok(fields.r#type() == &TransportType::Ble && !fields.disabled())
+    }
+}
+
 impl<T> Default for ConfigBlock<T> {
     fn default() -> Self {
         Self(Dict::default())

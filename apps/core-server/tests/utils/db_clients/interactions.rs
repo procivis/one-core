@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_core::model::interaction::Interaction;
+use one_core::model::interaction::{Interaction, InteractionId};
 use one_core::repository::interaction_repository::InteractionRepository;
 use time::OffsetDateTime;
 use url::Url;
@@ -30,5 +30,12 @@ impl InteractionsDB {
             .unwrap();
 
         interaction
+    }
+
+    pub async fn get(&self, id: impl Into<InteractionId>) -> Option<Interaction> {
+        self.repository
+            .get_interaction(&id.into(), &Default::default())
+            .await
+            .unwrap()
     }
 }

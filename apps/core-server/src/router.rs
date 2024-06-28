@@ -163,6 +163,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(proof::controller::get_proof_presentation_definition),
         )
         .route(
+            "/api/proof-request/v1/:id/retract",
+            post(proof::controller::retract_proof),
+        )
+        .route(
             "/api/organisation/v1",
             get(organisation::controller::get_organisations)
                 .post(organisation::controller::post_organisation),
@@ -410,6 +414,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             proof::controller::post_proof,
             proof::controller::share_proof,
             proof::controller::get_proof_presentation_definition,
+            proof::controller::retract_proof,
 
             ssi::controller::ssi_verifier_connect,
             ssi::controller::ssi_verifier_submit_proof,
@@ -543,6 +548,10 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 proof_schema::dto::ProofInputSchemaResponseRestDTO,
                 proof_schema::dto::ProofSchemaShareResponseRestDTO,
                 proof_schema::dto::ImportProofSchemaRequestRestDTO,
+                proof_schema::dto::ImportProofSchemaRestDTO,
+                proof_schema::dto::ImportProofSchemaInputSchemaRestDTO,
+                proof_schema::dto::ImportProofSchemaClaimSchemaRestDTO,
+                proof_schema::dto::ImportProofSchemaCredentialSchemaRestDTO,
 
                 ssi::dto::ConnectIssuerResponseRestDTO,
                 ssi::dto::ConnectVerifierResponseRestDTO,

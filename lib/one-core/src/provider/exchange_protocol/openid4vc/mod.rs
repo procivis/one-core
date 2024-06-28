@@ -845,7 +845,7 @@ async fn update_proof_interaction(
 ) -> Result<(), ExchangeProtocolError> {
     let update = UpdateProofRequest {
         id: proof_id.to_owned(),
-        interaction: Some(interaction_id.to_owned()),
+        interaction: Some(Some(interaction_id.to_owned())),
         holder_did_id: None,
         verifier_did_id: None,
         state: None,

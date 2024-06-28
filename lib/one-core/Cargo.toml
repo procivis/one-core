@@ -86,6 +86,7 @@ indoc              = { version = "2.0" }
 rusty-fork         = { version = "0.3" }
 hex-literal        = { version = "0.4" }
 maplit             = { version = "1.0" }
+rstest             = { version = "0.21" }
 
 [build-dependencies]
 shadow-rs.workspace = true

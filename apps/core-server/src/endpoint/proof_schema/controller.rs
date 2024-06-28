@@ -132,7 +132,7 @@ pub(crate) async fn share_proof_schema(
 #[utoipa::path(
     post,
     path = "/api/proof-schema/v1/import",
-    request_body = ProofSchemaImportRequestRestDTO,
+    request_body = ImportProofSchemaRequestRestDTO,
     responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "proof_schema_management",
     security(
