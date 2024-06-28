@@ -14,7 +14,7 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
     pub entity_id: String,
     pub name: String,
-    pub logo: Option<String>,
+    pub logo: Option<Vec<u8>>,
     pub website: Option<String>,
     pub terms_url: Option<String>,
     pub privacy_url: Option<String>,
