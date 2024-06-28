@@ -33,7 +33,7 @@ impl TrustEntityRepository for TrustEntityProvider {
             last_modified: Set(entity.last_modified),
             entity_id: Set(entity.entity_id),
             name: Set(entity.name),
-            logo: Set(entity.logo),
+            logo: Set(entity.logo.map(|logo| logo.as_bytes().to_owned())),
             website: Set(entity.website),
             terms_url: Set(entity.terms_url),
             privacy_url: Set(entity.privacy_url),
