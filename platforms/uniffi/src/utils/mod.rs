@@ -3,6 +3,8 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+pub(crate) mod native_ble_central;
+pub(crate) mod native_ble_peripheral;
 pub(crate) mod native_key_storage;
 
 /// Date-time formatting

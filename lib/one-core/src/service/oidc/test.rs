@@ -108,6 +108,8 @@ fn setup_service(mocks: Mocks) -> OIDCService {
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.revocation_method_provider),
         Arc::new(mocks.crypto_provider),
+        None,
+        None,
     )
 }
 

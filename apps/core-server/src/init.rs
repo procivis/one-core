@@ -15,6 +15,8 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
         Some(app_config.app.core_base_url.to_owned()),
         None,
         app_config.app.json_ld_context.to_owned(),
+        None,
+        None,
     )
     .expect("Failed to initialize core")
 }

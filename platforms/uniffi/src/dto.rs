@@ -11,6 +11,11 @@ use one_core::model::history::{HistoryAction, HistoryEntityType, HistorySearchEn
 use one_core::model::proof::{ProofStateEnum, SortableProofColumn};
 use one_core::model::proof_schema::SortableProofSchemaColumn;
 use one_core::model::trust_anchor::TrustAnchorRole;
+use one_core::provider::bluetooth_low_energy::{
+    CharacteristicPermissions, CharacteristicProperties, CharacteristicUUID,
+    CharacteristicWriteType, ConnectionEvent, CreateCharacteristicOptions, DeviceAddress,
+    DeviceInfo, MacAddress, PeripheralDiscoveryData, ServiceDescription, ServiceUUID,
+};
 use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -54,7 +59,7 @@ use one_core::service::trust_anchor::dto::{
     TrustAnchorsListItemResponseDTO,
 };
 
-use crate::error::{BindingError, NativeKeyStorageError};
+use crate::error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
 use crate::mapper::{optional_did_string, optional_time, serialize_config_entity};
 use crate::utils::{format_timestamp_opt, into_id, into_id_opt, into_timestamp, TimestampFormat};
 
@@ -780,6 +785,161 @@ pub trait NativeKeyStorage: Send + Sync {
         key_reference: Vec<u8>,
         message: Vec<u8>,
     ) -> Result<Vec<u8>, NativeKeyStorageError>;
+}
+
+#[derive(From)]
+#[from(ServiceDescription)]
+pub struct ServiceDescriptionBindingDTO {
+    pub uuid: String,
+    pub advertise: bool,
+    pub advertised_service_data: Option<Vec<u8>>,
+    #[from(with_fn = convert_inner)]
+    pub characteristics: Vec<CharacteristicBindingDTO>,
+}
+
+#[derive(From)]
+#[from(CreateCharacteristicOptions)]
+pub struct CharacteristicBindingDTO {
+    pub uuid: String,
+    #[from(with_fn = convert_inner)]
+    pub permissions: Vec<CharacteristicPermissionBindingEnum>,
+    #[from(with_fn = convert_inner)]
+    pub properties: Vec<CharacteristicPropertyBindingEnum>,
+}
+
+#[derive(From)]
+#[from(CharacteristicPermissions)]
+pub enum CharacteristicPermissionBindingEnum {
+    Read,
+    Write,
+}
+
+#[derive(From)]
+#[from(CharacteristicProperties)]
+pub enum CharacteristicPropertyBindingEnum {
+    Read,
+    Write,
+    Notify,
+    WriteWithoutResponse,
+    Indicate,
+}
+
+#[derive(Into)]
+#[into(ConnectionEvent)]
+pub enum ConnectionEventBindingEnum {
+    Connected { device_info: DeviceInfoBindingDTO },
+    Disconnected { device_address: DeviceAddress },
+}
+
+#[derive(Into)]
+#[into(DeviceInfo)]
+pub struct DeviceInfoBindingDTO {
+    pub address: String,
+    pub mtu: u16,
+}
+
+#[async_trait::async_trait]
+pub trait BlePeripheral: Send + Sync {
+    async fn is_adapter_enabled(&self) -> Result<bool, BleErrorWrapper>;
+    async fn start_advertisement(
+        &self,
+        device_name: Option<String>,
+        services: Vec<ServiceDescriptionBindingDTO>,
+    ) -> Result<Option<MacAddress>, BleErrorWrapper>;
+    async fn stop_advertisement(&self) -> Result<(), BleErrorWrapper>;
+    async fn is_advertising(&self) -> Result<bool, BleErrorWrapper>;
+    async fn set_characteristic_data(
+        &self,
+        service: ServiceUUID,
+        characteristic: CharacteristicUUID,
+        data: Vec<u8>,
+    ) -> Result<(), BleErrorWrapper>;
+    async fn notify_characteristic_data(
+        &self,
+        device_address: DeviceAddress,
+        service: ServiceUUID,
+        characteristic: CharacteristicUUID,
+        data: Vec<u8>,
+    ) -> Result<(), BleErrorWrapper>;
+    async fn get_connection_change_events(
+        &self,
+    ) -> Result<Vec<ConnectionEventBindingEnum>, BleErrorWrapper>;
+    async fn get_characteristic_writes(
+        &self,
+        device: DeviceAddress,
+        service: ServiceUUID,
+        characteristic: CharacteristicUUID,
+    ) -> Result<Vec<Vec<u8>>, BleErrorWrapper>;
+    async fn wait_for_characteristic_read(
+        &self,
+        device: DeviceAddress,
+        service: ServiceUUID,
+        characteristic: CharacteristicUUID,
+    ) -> Result<(), BleErrorWrapper>;
+}
+
+#[derive(From)]
+#[from(CharacteristicWriteType)]
+pub enum CharacteristicWriteTypeBindingEnum {
+    WithResponse,
+    WithoutResponse,
+}
+
+#[derive(Into)]
+#[into(PeripheralDiscoveryData)]
+pub struct PeripheralDiscoveryDataBindingDTO {
+    pub device_address: DeviceAddress,
+    pub local_device_name: Option<String>,
+    pub advertised_services: Vec<ServiceUUID>,
+    pub advertised_service_data: Option<HashMap<ServiceUUID, Vec<u8>>>,
+}
+
+#[async_trait::async_trait]
+pub trait BleCentral: Send + Sync {
+    async fn is_adapter_enabled(&self) -> Result<bool, BleErrorWrapper>;
+    async fn start_scan(
+        &self,
+        filter_services: Option<Vec<ServiceUUID>>,
+    ) -> Result<(), BleErrorWrapper>;
+    async fn stop_scan(&self) -> Result<(), BleErrorWrapper>;
+    async fn is_scanning(&self) -> Result<bool, BleErrorWrapper>;
+    async fn write_data(
+        &self,
+        peripheral: DeviceAddress,
+        service: ServiceUUID,
+        characteristic: CharacteristicUUID,
+        data: Vec<u8>,
+        write_type: CharacteristicWriteTypeBindingEnum,
+    ) -> Result<(), BleErrorWrapper>;
+    async fn read_data(
+        &self,
+        peripheral: DeviceAddress,
+        service: ServiceUUID,
+        characteristic: CharacteristicUUID,
+    ) -> Result<Vec<u8>, BleErrorWrapper>;
+    async fn connect(&self, peripheral: DeviceAddress) -> Result<u16, BleErrorWrapper>;
+    async fn disconnect(&self, peripheral: DeviceAddress) -> Result<(), BleErrorWrapper>;
+    async fn get_discovered_devices(
+        &self,
+    ) -> Result<Vec<PeripheralDiscoveryDataBindingDTO>, BleErrorWrapper>;
+    async fn subscribe_to_characteristic_notifications(
+        &self,
+        peripheral: DeviceAddress,
+        service: ServiceUUID,
+        characteristic: CharacteristicUUID,
+    ) -> Result<(), BleErrorWrapper>;
+    async fn unsubscribe_from_characteristic_notifications(
+        &self,
+        peripheral: DeviceAddress,
+        service: ServiceUUID,
+        characteristic: CharacteristicUUID,
+    ) -> Result<(), BleErrorWrapper>;
+    async fn get_notifications(
+        &self,
+        peripheral: DeviceAddress,
+        service: ServiceUUID,
+        characteristic: CharacteristicUUID,
+    ) -> Result<Vec<Vec<u8>>, BleErrorWrapper>;
 }
 
 #[derive(From, Into)]

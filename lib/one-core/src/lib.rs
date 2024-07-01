@@ -10,6 +10,8 @@ use crypto::signer::crydi3::CRYDI3Signer;
 use crypto::signer::eddsa::EDDSASigner;
 use crypto::signer::Signer;
 use crypto::{CryptoProvider, CryptoProviderImpl};
+use provider::bluetooth_low_energy::ble_central::BleCentral;
+use provider::bluetooth_low_energy::ble_peripheral::BlePeripheral;
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderImpl;
 use provider::exchange_protocol::ExchangeProtocol;
@@ -102,6 +104,8 @@ impl OneCore {
         core_base_url: Option<String>,
         secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
         json_ld_context_config: Option<JsonLdContextConfig>,
+        ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+        ble_central: Option<Arc<dyn BleCentral>>,
     ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
@@ -312,6 +316,8 @@ impl OneCore {
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
                 crypto.clone(),
+                ble_peripheral,
+                ble_central,
             ),
             credential_schema_service: CredentialSchemaService::new(
                 core_base_url.clone(),

@@ -2,6 +2,8 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::crypto::CryptoProvider;
+use crate::provider::bluetooth_low_energy::ble_central::BleCentral;
+use crate::provider::bluetooth_low_energy::ble_peripheral::BlePeripheral;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
@@ -40,6 +42,10 @@ pub struct OIDCService {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     crypto: Arc<dyn CryptoProvider>,
+    #[allow(dead_code)] // TODO Remove in ONE-2649 / 2660 / 2650
+    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+    #[allow(dead_code)] // TODO Remove in ONE-2649 / 2660 / 2650
+    ble_central: Option<Arc<dyn BleCentral>>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -61,6 +67,8 @@ impl OIDCService {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         crypto: Arc<dyn CryptoProvider>,
+        ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+        ble_central: Option<Arc<dyn BleCentral>>,
     ) -> Self {
         Self {
             core_base_url,
@@ -79,6 +87,8 @@ impl OIDCService {
             key_algorithm_provider,
             revocation_method_provider,
             crypto,
+            ble_peripheral,
+            ble_central,
         }
     }
 }
