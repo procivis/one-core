@@ -4,9 +4,12 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use error::{BindingError, NativeKeyStorageError};
+use error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
 use one_core::config::core_config::{self, AppConfig, JsonLdContextConfig};
+use one_core::provider::bluetooth_low_energy::BleError;
 use sql_data_provider::DataLayer;
+use utils::native_ble_central::BleCentralWrapper;
+use utils::native_ble_peripheral::BlePeripheralWrapper;
 use utils::native_key_storage::NativeKeyStorageWrapper;
 
 mod binding;
@@ -25,9 +28,15 @@ fn initialize_core(
     data_dir_path: String,
     config_mobile: &'static str,
     native_key_storage: Option<Box<dyn NativeKeyStorage>>,
+    ble_central: Option<Arc<dyn BleCentral>>,
+    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
     let native_key_storage =
         native_key_storage.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
+
+    let ble_central = ble_central.map(|central| Arc::new(BleCentralWrapper(central)) as _);
+    let ble_peripheral =
+        ble_peripheral.map(|peripheral| Arc::new(BlePeripheralWrapper(peripheral)) as _);
 
     let config = include_str!("../../../config/config.yml");
     let config_base = include_str!("../../../config/config-procivis-base.yml");
@@ -46,7 +55,10 @@ fn initialize_core(
 
     let core_builder = move |db_path: String| {
         let core_config = placeholder_config.core.clone();
+
         let native_key_storage = native_key_storage.clone();
+        let ble_peripheral = ble_peripheral.clone();
+        let ble_central = ble_central.clone();
 
         let json_ld_context_config = placeholder_config.app.json_ld_context.to_owned();
         Box::pin(async move {
@@ -61,6 +73,8 @@ fn initialize_core(
                 None,
                 native_key_storage,
                 json_ld_context_config,
+                ble_peripheral,
+                ble_central,
             )?)
         }) as _
     };
@@ -80,22 +94,30 @@ fn initialize_core(
 fn initialize_verifier_core(
     data_dir_path: String,
     native_key_storage: Option<Box<dyn NativeKeyStorage>>,
+    ble_central: Option<Arc<dyn BleCentral>>,
+    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
     initialize_core(
         data_dir_path,
         include_str!("../../../config/config-procivis-mobile-verifier.yml"),
         native_key_storage,
+        ble_central,
+        ble_peripheral,
     )
 }
 
 fn initialize_holder_core(
     data_dir_path: String,
     native_key_storage: Option<Box<dyn NativeKeyStorage>>,
+    ble_central: Option<Arc<dyn BleCentral>>,
+    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
     initialize_core(
         data_dir_path,
         include_str!("../../../config/config-procivis-mobile-holder.yml"),
         native_key_storage,
+        ble_central,
+        ble_peripheral,
     )
 }
 

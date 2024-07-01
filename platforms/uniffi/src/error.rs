@@ -1,4 +1,5 @@
 use one_core::config::{ConfigError, ConfigParsingError};
+use one_core::provider::bluetooth_low_energy::BleError;
 use one_core::provider::exchange_protocol::ExchangeProtocolError;
 use one_core::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use thiserror::Error;
@@ -77,7 +78,6 @@ impl From<std::io::Error> for BindingError {
         Self::IOError(error.to_string())
     }
 }
-
 #[derive(Debug, Error)]
 pub enum NativeKeyStorageError {
     #[error("Failed to generate key: {reason:?}")]
@@ -106,5 +106,44 @@ impl From<NativeKeyStorageError> for ServiceError {
             }
             _ => Self::Other(error.to_string()),
         }
+    }
+}
+
+// BleError is defined in core, we need to implement UnexpectedUniFFICallbackError for it
+// therefore the wrapper
+
+#[derive(Debug, Error)]
+#[error(transparent)]
+pub enum BleErrorWrapper {
+    Ble { error: BleError },
+}
+
+impl From<BleError> for BleErrorWrapper {
+    fn from(error: BleError) -> Self {
+        Self::Ble { error }
+    }
+}
+
+impl From<BleErrorWrapper> for BleError {
+    fn from(error: BleErrorWrapper) -> Self {
+        match error {
+            BleErrorWrapper::Ble { error } => error,
+        }
+    }
+}
+
+impl From<uniffi::UnexpectedUniFFICallbackError> for BleErrorWrapper {
+    fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        Self::Ble {
+            error: BleError::Unknown {
+                reason: e.to_string(),
+            },
+        }
+    }
+}
+
+impl From<BleErrorWrapper> for BindingError {
+    fn from(error: BleErrorWrapper) -> Self {
+        Self::Unknown(error.to_string())
     }
 }

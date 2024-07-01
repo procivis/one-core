@@ -3077,6 +3077,7 @@ dependencies = [
 name = "one-core-uniffi"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "dto_mapper",
  "one-core",
  "serde",

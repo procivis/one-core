@@ -1,11 +1,11 @@
 namespace one_core {
   [Throws=BindingError]
-  OneCoreBinding initialize_verifier_core(string data_dir_path, NativeKeyStorage? key_storage);
+  OneCoreBinding initialize_verifier_core(string data_dir_path, NativeKeyStorage? key_storage, BleCentral? ble_central, BlePeripheral? ble_peripheral);
 };
 
 namespace one_core {
   [Throws=BindingError]
-  OneCoreBinding initialize_holder_core(string data_dir_path, NativeKeyStorage? key_storage);
+  OneCoreBinding initialize_holder_core(string data_dir_path, NativeKeyStorage? key_storage, BleCentral? ble_central, BlePeripheral? ble_peripheral);
 };
 
 [Error]
@@ -29,6 +29,31 @@ interface NativeKeyStorageError {
   Unknown(string reason);
 };
 
+[Error]
+interface BleError {
+    AdapterNotEnabled();
+    ScanAlreadyStarted();
+    ScanNotStarted();
+    BroadcastAlreadyStarted();
+    BroadcastNotStarted();
+    AnotherOperationInProgress();
+    WriteDataTooLong();
+    DeviceAddressNotFound(string address);
+    ServiceNotFound(string service);
+    CharacteristicNotFound(string characteristic);
+    InvalidUUID(string uuid);
+    DeviceNotConnected(string address);
+    InvalidCharacteristicOperation(string service, string characteristic, string operation);
+    NotSupported();
+    NotAuthorized();
+    Unknown(string reason);
+};
+
+[Error]
+interface BleErrorWrapper {
+    Ble(BleError error);
+};
+
 dictionary GeneratedKeyBindingDTO {
   bytes key_reference;
   bytes public_key;
@@ -40,6 +65,137 @@ callback interface NativeKeyStorage {
 
   [Throws=NativeKeyStorageError]
   bytes sign(bytes key_reference, bytes message);
+};
+
+enum CharacteristicPermissionBindingEnum {
+  "Read", "Write"
+};
+
+enum CharacteristicPropertyBindingEnum {
+  "Read", "Write", "Notify", "WriteWithoutResponse", "Indicate"
+};
+
+[Enum]
+interface ConnectionEventBindingEnum {
+  Connected(DeviceInfoBindingDTO device_info);
+  Disconnected(string device_address);
+};
+
+
+dictionary DeviceInfoBindingDTO {
+  string address;
+  u16 mtu;
+};
+
+dictionary CharacteristicBindingDTO {
+  string uuid;
+  sequence<CharacteristicPermissionBindingEnum> permissions;
+  sequence<CharacteristicPropertyBindingEnum> properties;
+};
+
+dictionary ServiceDescriptionBindingDTO {
+  string uuid;
+  boolean advertise;
+  bytes? advertised_service_data;
+  sequence<CharacteristicBindingDTO> characteristics;
+};
+
+[Trait, WithForeign]
+interface BlePeripheral {
+  [Async, Throws=BleErrorWrapper]
+  boolean is_adapter_enabled();
+  
+  [Async, Throws=BleErrorWrapper]
+  string? start_advertisement(string? device_name, sequence<ServiceDescriptionBindingDTO> services);
+  
+  [Async, Throws=BleErrorWrapper]
+  void stop_advertisement();
+  
+  [Async, Throws=BleErrorWrapper]
+  boolean is_advertising();
+  
+  [Async, Throws=BleErrorWrapper]
+  void set_characteristic_data(string service_uuid, string characteristic_uuid, bytes data);
+    
+  [Async, Throws=BleErrorWrapper]
+  void notify_characteristic_data(string device_address, string service_uuid, string characteristic_uuid, bytes data);
+  
+  [Async, Throws=BleErrorWrapper]
+  sequence<ConnectionEventBindingEnum> get_connection_change_events();
+  
+  [Async, Throws=BleErrorWrapper]
+  sequence<bytes> get_characteristic_writes(string device, string service, string characteristic);
+  
+  [Async, Throws=BleErrorWrapper]
+  void wait_for_characteristic_read(string device, string service, string characteristic);
+};
+
+enum CharacteristicWriteTypeBindingEnum {
+  "WithResponse", "WithoutResponse"
+};
+
+dictionary PeripheralDiscoveryDataBindingDTO {
+  string device_address;
+  string? local_device_name;
+  sequence<string> advertised_services;
+  record<string, bytes>? advertised_service_data;
+};
+
+[Trait, WithForeign]
+interface BleCentral {
+  [Async, Throws=BleErrorWrapper]
+  boolean is_adapter_enabled();
+
+  [Async, Throws=BleErrorWrapper]
+  void start_scan(sequence<string>? filter_services);
+
+  [Async, Throws=BleErrorWrapper]
+  void stop_scan();
+  
+  [Async, Throws=BleErrorWrapper]
+  boolean is_scanning();
+  
+  [Async, Throws=BleErrorWrapper]
+  void write_data(
+    string device_address,
+    string service_uuid,
+    string characteristic_uuid,
+    bytes data,
+    CharacteristicWriteTypeBindingEnum write_type
+  );
+  
+  [Async, Throws=BleErrorWrapper]
+  bytes read_data(
+    string device_address,
+    string service_uuid,
+    string characteristic_uuid
+  );
+
+  [Async, Throws=BleErrorWrapper]
+  u16 connect(string device_address);
+
+  [Async, Throws=BleErrorWrapper]
+  void disconnect(string device_address);
+
+  [Async, Throws=BleErrorWrapper]
+  sequence<PeripheralDiscoveryDataBindingDTO> get_discovered_devices();
+
+  [Async, Throws=BleErrorWrapper]
+  void subscribe_to_characteristic_notifications(
+    string peripheral,
+    string service,
+    string characteristic
+  );
+  
+  [Async, Throws=BleErrorWrapper]
+  void unsubscribe_from_characteristic_notifications(
+    string peripheral,
+    string service,
+    string characteristic
+  );
+
+  [Async, Throws=BleErrorWrapper]
+  sequence<bytes> get_notifications(string peripheral, string service, string characteristic);
 };
 
 dictionary VersionBindingDTO {
