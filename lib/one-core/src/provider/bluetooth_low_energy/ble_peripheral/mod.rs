@@ -39,4 +39,5 @@ pub trait BlePeripheral: Send + Sync {
         service: ServiceUUID,
         characteristic: CharacteristicUUID,
     ) -> Result<(), BleError>;
+    async fn stop_server(&self) -> Result<(), BleError>;
 }
