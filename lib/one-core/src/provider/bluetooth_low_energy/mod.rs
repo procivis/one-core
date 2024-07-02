@@ -46,6 +46,8 @@ pub enum BleError {
     NotSupported,
     #[error("Application not authorized to use BLE")]
     NotAuthorized,
+    #[error("GATT server not running")]
+    ServerNotRunning,
     #[error("Unknown BLE error: {reason}")]
     Unknown { reason: String },
 }

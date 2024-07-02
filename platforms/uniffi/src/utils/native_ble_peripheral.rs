@@ -94,4 +94,7 @@ impl one_core::provider::bluetooth_low_energy::ble_peripheral::BlePeripheral
             .await
             .map_err(BleError::from)
     }
+    async fn stop_server(&self) -> Result<(), BleError> {
+        self.0.stop_server().await.map_err(BleError::from)
+    }
 }

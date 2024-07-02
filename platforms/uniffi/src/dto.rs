@@ -876,6 +876,7 @@ pub trait BlePeripheral: Send + Sync {
         service: ServiceUUID,
         characteristic: CharacteristicUUID,
     ) -> Result<(), BleErrorWrapper>;
+    async fn stop_server(&self) -> Result<(), BleErrorWrapper>;
 }
 
 #[derive(From)]
