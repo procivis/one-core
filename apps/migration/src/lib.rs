@@ -41,6 +41,7 @@ mod m20240528_120000_add_shared_imported_history_action;
 mod m20240611_110000_introduce_path_and_array;
 mod m20240625_090000_proof_exchange_to_transport;
 mod m20240628_121021_fix_trust_logo;
+mod m20240702_071021_fix_entity_id;
 
 pub struct Migrator;
 
@@ -87,6 +88,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240611_110000_introduce_path_and_array::Migration),
             Box::new(m20240625_090000_proof_exchange_to_transport::Migration),
             Box::new(m20240628_121021_fix_trust_logo::Migration),
+            Box::new(m20240702_071021_fix_entity_id::Migration)
         ]
     }
 }
