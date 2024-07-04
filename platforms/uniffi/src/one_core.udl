@@ -450,6 +450,19 @@ dictionary PresentationSubmitCredentialRequestBindingDTO {
   sequence<string> submit_claims;
 };
 
+dictionary CheckInvitationResponseBindingDTO {
+  CheckInvitationProtocolBindingDTO protocol;
+  CheckInvitationTypeBindingDTO type;
+};
+
+enum CheckInvitationProtocolBindingDTO {
+  "Mdl", "OpenId4Vc", "ProcivisTemporary"
+};
+
+enum CheckInvitationTypeBindingDTO {
+  "CredentialIssuance", "ProofRequest"
+};
+
 [Enum]
 interface HandleInvitationResponseBindingEnum {
   CredentialIssuance(string interaction_id, sequence<string> credential_ids);
@@ -1011,6 +1024,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   DidListBindingDTO get_dids(DidListQueryBindingDTO query);
+
+  [Throws=BindingError]
+  CheckInvitationResponseBindingDTO check_invitation(string url);
 
   [Throws=BindingError]
   HandleInvitationResponseBindingEnum handle_invitation(string url, string organisation_id);

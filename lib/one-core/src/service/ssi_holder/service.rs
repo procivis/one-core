@@ -2,7 +2,7 @@ use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use url::Url;
 
-use super::dto::{InvitationResponseDTO, PresentationSubmitRequestDTO};
+use super::dto::{CheckInvitationResponseDTO, InvitationResponseDTO, PresentationSubmitRequestDTO};
 use super::mapper::{
     credential_accepted_history_event, credential_offered_history_event,
     credential_pending_history_event, credential_rejected_history_event,
@@ -42,6 +42,28 @@ use crate::service::ssi_validator::validate_config_entity_presence;
 use crate::util::oidc::detect_correct_format;
 
 impl SSIHolderService {
+    pub async fn check_invitation(
+        &self,
+        url: Url,
+    ) -> Result<CheckInvitationResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
+        let DetectedProtocol {
+            name,
+            invitation_type,
+            ..
+        } = self.protocol_provider.detect_protocol(&url).ok_or(
+            ServiceError::MissingExchangeProtocol("Cannot detect exchange protocol".to_string()),
+        )?;
+
+        let protocol_type = self.config.exchange.get_fields(&name)?.r#type;
+
+        Ok(CheckInvitationResponseDTO {
+            r#type: invitation_type.into(),
+            protocol: protocol_type.into(),
+        })
+    }
+
     pub async fn handle_invitation(
         &self,
         url: Url,

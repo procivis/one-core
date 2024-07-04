@@ -9,7 +9,7 @@ use dto_mapper::From;
 use serde::Serialize;
 use utoipa::ToSchema;
 
-#[derive(Serialize, From, ToSchema)]
+#[derive(Debug, Serialize, From, ToSchema)]
 #[schema(example = "BR_XXXX")]
 #[from("one_core::service::error::ErrorCode")]
 #[allow(non_camel_case_types)]
@@ -131,7 +131,7 @@ pub enum ErrorCode {
     BR_0142,
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ErrorResponseRestDTO {
     pub code: ErrorCode,
     pub message: String,
@@ -149,7 +149,7 @@ impl ErrorResponseRestDTO {
     }
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct Cause {
     pub message: String,
 }

@@ -24,7 +24,7 @@ use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::{mdoc_formatter, CredentialData};
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
+use crate::provider::exchange_protocol::dto::{InvitationType, SubmitIssuerResponse};
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -39,6 +39,8 @@ use crate::service::oidc::dto::OpenID4VCIError;
 
 #[derive(Clone)]
 pub struct DetectedProtocol {
+    pub invitation_type: InvitationType,
+    pub name: String,
     pub protocol: Arc<dyn ExchangeProtocol>,
 }
 
@@ -153,9 +155,11 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
     }
 
     fn detect_protocol(&self, url: &Url) -> Option<DetectedProtocol> {
-        for protocol in self.protocols.values() {
-            if protocol.detect_invitation_type(url).is_some() {
+        for (name, protocol) in &self.protocols {
+            if let Some(invitation_type) = protocol.detect_invitation_type(url) {
                 return Some(DetectedProtocol {
+                    invitation_type,
+                    name: name.to_owned(),
                     protocol: protocol.to_owned(),
                 });
             }

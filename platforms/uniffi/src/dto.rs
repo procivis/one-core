@@ -53,7 +53,10 @@ use one_core::service::proof_schema::dto::{
     ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO,
     ProofInputSchemaResponseDTO,
 };
-use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
+use one_core::service::ssi_holder::dto::{
+    CheckInvitationProtocolDTO, CheckInvitationResponseDTO, CheckInvitationTypeDTO,
+    PresentationSubmitCredentialRequestDTO,
+};
 use one_core::service::trust_anchor::dto::{
     GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO, SortableTrustAnchorColumn,
     TrustAnchorsListItemResponseDTO,
@@ -563,6 +566,28 @@ pub struct ClaimBindingDTO {
 pub enum ClaimValueBindingDTO {
     Value { value: String },
     Nested { value: Vec<ClaimBindingDTO> },
+}
+
+#[derive(From)]
+#[from(CheckInvitationResponseDTO)]
+pub struct CheckInvitationResponseBindingDTO {
+    pub protocol: CheckInvitationProtocolBindingDTO,
+    pub r#type: CheckInvitationTypeBindingDTO,
+}
+
+#[derive(From)]
+#[from(CheckInvitationProtocolDTO)]
+pub enum CheckInvitationProtocolBindingDTO {
+    OpenId4Vc,
+    ProcivisTemporary,
+    Mdl,
+}
+
+#[derive(From)]
+#[from(CheckInvitationTypeDTO)]
+pub enum CheckInvitationTypeBindingDTO {
+    CredentialIssuance,
+    ProofRequest,
 }
 
 pub enum HandleInvitationResponseBindingEnum {

@@ -13,6 +13,16 @@ impl InteractionsApi {
         Self { client }
     }
 
+    pub async fn check_invitation(&self, url: &str) -> Response {
+        let body = json!({
+          "url": url,
+        });
+
+        self.client
+            .post("/api/interaction/v1/check-invitation", body)
+            .await
+    }
+
     pub async fn handle_invitation(
         &self,
         organisation_id: impl Into<OrganisationId>,

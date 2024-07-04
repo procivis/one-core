@@ -184,6 +184,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(did_resolver::controller::resolve_did),
         )
         .route(
+            "/api/interaction/v1/check-invitation",
+            post(interaction::controller::check_invitation),
+        )
+        .route(
             "/api/interaction/v1/handle-invitation",
             post(interaction::controller::handle_invitation),
         )
@@ -439,6 +443,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             ssi::controller::ssi_get_proof_schema,
             ssi::controller::ssi_get_trust_list,
 
+            interaction::controller::check_invitation,
             interaction::controller::handle_invitation,
             interaction::controller::issuance_accept,
             interaction::controller::issuance_reject,
@@ -615,6 +620,10 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 ssi::dto::GetTrustAnchorResponseRestDTO,
                 ssi::dto::GetTrustEntityResponseRestDTO,
 
+                interaction::dto::CheckInvitationRequestRestDTO,
+                interaction::dto::CheckInvitationResponseRestDTO,
+                interaction::dto::CheckInvitationTypeRestDTO,
+                interaction::dto::CheckInvitationProtocolRestDTO,
                 interaction::dto::HandleInvitationRequestRestDTO,
                 interaction::dto::HandleInvitationResponseRestDTO,
                 interaction::dto::IssuanceAcceptRequestRestDTO,
