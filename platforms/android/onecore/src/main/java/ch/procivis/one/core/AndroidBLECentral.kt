@@ -218,9 +218,9 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                     val descriptor = ch.getDescriptor(CLIENT_CONFIG_DESCRIPTOR)
                     if (descriptor != null) {
                         val value = if (enable) {
-                            BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
-                        } else {
                             BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                        } else {
+                            BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
                         }
 
                         mSubscribingInProgress[address] = Pair(continuation, enable)
