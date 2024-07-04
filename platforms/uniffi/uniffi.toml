@@ -1,0 +1,4 @@
+[bindings.kotlin]
+package_name = "ch.procivis.one.core"
+cdylib_name  = "procivis_one_core"
+android      = true

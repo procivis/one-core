@@ -7,9 +7,6 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
-import uniffi.one_core.GeneratedKeyBindingDto
-import uniffi.one_core.NativeKeyStorage
-import uniffi.one_core.NativeKeyStorageException
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore

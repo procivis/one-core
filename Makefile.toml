@@ -124,8 +124,8 @@ args    = ["install", "cross", "--git", "https://github.com/cross-rs/cross", "--
 [tasks.generateuniffi_android]
 script = '''
 cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate -l kotlin -o target/android_tmp platforms/uniffi/src/one_core.udl
-mkdir -p target/uniffi/android/java/uniffi/one_core/
-mv target/android_tmp/uniffi/one_core/* target/uniffi/android/java/uniffi/one_core
+mkdir -p target/uniffi/android/java/ch/procivis/one/core
+mv target/android_tmp/ch/procivis/one/core/* target/uniffi/android/java/ch/procivis/one/core
 rm -rf target/android_tmp
 '''
 
@@ -141,11 +141,11 @@ done
 [tasks.collect_android_libs]
 script = '''
 mkdir -p target/uniffi/android/jniLibs/x86/
-cp target/i686-linux-android/release/libone_core_uniffi.so target/uniffi/android/jniLibs/x86/libuniffi_one_core.so
+cp target/i686-linux-android/release/libone_core_uniffi.so target/uniffi/android/jniLibs/x86/libprocivis_one_core.so
 mkdir -p target/uniffi/android/jniLibs/armeabi-v7a/
-cp target/armv7-linux-androideabi/release/libone_core_uniffi.so target/uniffi/android/jniLibs/armeabi-v7a/libuniffi_one_core.so
+cp target/armv7-linux-androideabi/release/libone_core_uniffi.so target/uniffi/android/jniLibs/armeabi-v7a/libprocivis_one_core.so
 mkdir -p target/uniffi/android/jniLibs/arm64-v8a/
-cp target/aarch64-linux-android/release/libone_core_uniffi.so target/uniffi/android/jniLibs/arm64-v8a/libuniffi_one_core.so
+cp target/aarch64-linux-android/release/libone_core_uniffi.so target/uniffi/android/jniLibs/arm64-v8a/libprocivis_one_core.so
 '''
 
 [tasks.build_android_uniffi]
