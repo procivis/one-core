@@ -9,19 +9,12 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.os.Build
-import android.os.ParcelUuid
 import android.util.Log
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 import kotlin.math.min
 
 class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, "BLE_CENTRAL") {
@@ -29,13 +22,15 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         return getAdapterEnabled()
     }
 
-    // cache of scanned devices
-    private val mScannedDevices: MutableMap<String, BluetoothDevice> = ConcurrentHashMap()
-
     private class DeviceScanning {
+        var callback: ScanCallback? = null // ongoing scan
+
+        // next batch for getDiscoveredDevices
         val devices: MutableList<PeripheralDiscoveryDataBindingDto> = mutableListOf()
-        var continuation: Continuation<List<PeripheralDiscoveryDataBindingDto>>? = null
-        var callback: ScanCallback? = null
+        var promise: Promise<List<PeripheralDiscoveryDataBindingDto>>? = null
+
+        // cache of scanned devices
+        val scannedDevices: MutableMap<String, BluetoothDevice> = HashMap()
     }
 
     private val mScanning = DeviceScanning()
@@ -46,17 +41,23 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
             val adapter = getBluetoothAdapter()
             val scanner = adapter.bluetoothLeScanner
 
-            val filters = filterServices?.map { it ->
-                ScanFilter.Builder().setServiceUuid(ParcelUuid(UUID.fromString(it))).build()
-            }
+            val filters = filterServices?.map { UUID.fromString(it) } ?: listOf()
 
             val scanCallback = object : ScanCallback() {
                 override fun onScanResult(callbackType: Int, result: ScanResult) {
                     Log.d(TAG, "onScanResult: $result")
 
-                    val device = result.device
-                    mScannedDevices[device.address] = device
+                    val advertisedServices =
+                        result.scanRecord?.serviceUuids?.map { it.uuid } ?: listOf()
 
+                    // skip non-matching
+                    if (filters.isNotEmpty()) {
+                        if (filters.find { advertisedServices.contains(it) } == null) {
+                            return
+                        }
+                    }
+
+                    val device = result.device
                     val serviceData = result.scanRecord?.serviceData
                     val advertisedData = if (serviceData != null) {
                         val data: MutableMap<String, ByteArray> = mutableMapOf()
@@ -64,19 +65,27 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                         data
                     } else null
 
-                    val data = PeripheralDiscoveryDataBindingDto(device.address,
+                    val data = PeripheralDiscoveryDataBindingDto(
+                        device.address,
                         device.name,
-                        result.scanRecord?.serviceUuids?.map { it.uuid.toString() } ?: listOf(),
-                        advertisedData)
+                        advertisedServices.map { it.toString() },
+                        advertisedData
+                    )
 
-                    synchronized(mScanning) {
+                    synchronized(lock) {
+                        if (mScanning.callback == null) {
+                            return // scanning already stopped
+                        }
+
+                        mScanning.scannedDevices[device.address] = device
+
                         // replace outdated results
                         mScanning.devices.removeAll { it.deviceAddress == data.deviceAddress }
                         mScanning.devices.add(data)
-                        val c = mScanning.continuation
-                        if (c != null) {
-                            c.resume(mScanning.devices.toList())
-                            mScanning.continuation = null
+                        val promise = mScanning.promise
+                        if (promise != null) {
+                            promise.succeed(mScanning.devices.toList())
+                            mScanning.promise = null
                             mScanning.devices.clear()
                         }
                     }
@@ -84,48 +93,48 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
 
                 override fun onScanFailed(errorCode: Int) {
                     Log.w(TAG, "Scan failed: $errorCode")
-                    synchronized(mScanning) {
+                    synchronized(lock) {
                         mScanning.callback = null
-                        mScanning.continuation?.resumeWithException(BleException.Unknown("Scan failed: $errorCode"))
-                        mScanning.continuation = null
+                        mScanning.promise?.fail(BleException.Unknown("Scan failed: $errorCode"))
+                        mScanning.promise = null
                     }
                 }
             }
 
-            synchronized(mScanning) {
+            val scanSettings =
+                ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
+
+            synchronized(lock) {
                 if (mScanning.callback != null) {
                     throw BleException.ScanAlreadyStarted()
                 }
+
+                mScanning.scannedDevices.clear()
                 mScanning.callback = scanCallback
                 scanner.startScan(
-                    filters,
-                    ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(),
-                    scanCallback
+                    null, // service UUID filter not working on some devices
+                    scanSettings, scanCallback
                 )
             }
         }
     }
 
     override suspend fun getDiscoveredDevices(): List<PeripheralDiscoveryDataBindingDto> {
-        return exceptionWrapper {
-            return@exceptionWrapper suspendCoroutine<List<PeripheralDiscoveryDataBindingDto>> { continuation ->
-                synchronized(mScanning) {
-                    if (mScanning.callback == null) {
-                        continuation.resumeWithException(BleException.BroadcastNotStarted())
-                        return@suspendCoroutine
-                    }
+        return asyncCallback { promise ->
+            synchronized(lock) {
+                if (mScanning.callback == null) {
+                    throw BleException.BroadcastNotStarted()
+                }
 
-                    if (mScanning.continuation != null) {
-                        continuation.resumeWithException(BleException.AnotherOperationInProgress())
-                        return@suspendCoroutine
-                    }
+                if (mScanning.promise != null) {
+                    throw BleException.AnotherOperationInProgress()
+                }
 
-                    if (mScanning.devices.isEmpty()) {
-                        mScanning.continuation = continuation
-                    } else {
-                        continuation.resume(mScanning.devices.toList())
-                        mScanning.devices.clear()
-                    }
+                if (mScanning.devices.isEmpty()) {
+                    mScanning.promise = promise
+                } else {
+                    promise.succeed(mScanning.devices.toList())
+                    mScanning.devices.clear()
                 }
             }
         }
@@ -137,7 +146,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
             val adapter = getBluetoothAdapter()
             val scanner = adapter.bluetoothLeScanner
 
-            synchronized(mScanning) {
+            synchronized(lock) {
                 if (mScanning.callback == null) {
                     throw BleException.ScanNotStarted()
                 }
@@ -145,11 +154,9 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                 scanner.stopScan(mScanning.callback)
                 mScanning.callback = null
                 mScanning.devices.clear()
-                val c = mScanning.continuation
-                if (c != null) {
-                    c.resumeWithException(BleException.Unknown("Scanning stopped"))
-                    mScanning.continuation = null
-                }
+
+                mScanning.promise?.fail(BleException.Unknown("Scanning stopped"))
+                mScanning.promise = null
             }
         }
     }
@@ -159,98 +166,80 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
     }
 
     override suspend fun subscribeToCharacteristicNotifications(
-        peripheral: String,
-        service: String,
-        characteristic: String
+        peripheral: String, service: String, characteristic: String
     ) {
         return setCharacteristicSubscription(peripheral, service, characteristic, true)
     }
 
     override suspend fun unsubscribeFromCharacteristicNotifications(
-        peripheral: String,
-        service: String,
-        characteristic: String
+        peripheral: String, service: String, characteristic: String
     ) {
         return setCharacteristicSubscription(peripheral, service, characteristic, false)
     }
 
     private class SubscriptionData {
         val messages: MutableList<ByteArray> = mutableListOf()
-        var continuation: Continuation<List<ByteArray>>? = null
+        var promise: Promise<List<ByteArray>>? = null
     }
 
     private val mSubscriptions: MutableMap<DeviceCharacteristicAddress, SubscriptionData> =
         HashMap()
-    private val mSubscribingInProgress: MutableMap<DeviceCharacteristicAddress, Pair<Continuation<Unit>, Boolean>> =
-        ConcurrentHashMap()
+    private val mSubscribingInProgress: MutableMap<DeviceCharacteristicAddress, Pair<Promise<Unit>, Boolean>> =
+        HashMap()
 
     @SuppressLint("MissingPermission")
     private suspend fun setCharacteristicSubscription(
-        peripheral: String,
-        service: String,
-        characteristic: String,
-        enable: Boolean
+        peripheral: String, service: String, characteristic: String, enable: Boolean
     ) {
-        return exceptionWrapper {
-            val (ch, gatt, address) = getCharacteristic(peripheral, service, characteristic)
+        return asyncCallback { promise ->
+            synchronized(lock) {
+                val (ch, gatt, address) = getCharacteristic(peripheral, service, characteristic)
 
-            if (mSubscribingInProgress.containsKey(address)) {
-                throw BleException.AnotherOperationInProgress()
-            }
+                if (mSubscribingInProgress.containsKey(address)) {
+                    throw BleException.AnotherOperationInProgress()
+                }
 
-            return@exceptionWrapper suspendCoroutine { continuation ->
-                synchronized(mSubscriptions) {
-                    if (enable) {
-                        if (mSubscriptions.containsKey(address)) {
-                            continuation.resumeWithException(BleException.BroadcastAlreadyStarted())
-                            return@suspendCoroutine
-                        }
-                    } else if (!mSubscriptions.containsKey(address)) {
-                        continuation.resumeWithException(BleException.BroadcastNotStarted())
-                        return@suspendCoroutine
+                if (enable) {
+                    if (mSubscriptions.containsKey(address)) {
+                        throw BleException.BroadcastAlreadyStarted()
+                    }
+                } else if (!mSubscriptions.containsKey(address)) {
+                    throw BleException.BroadcastNotStarted()
+                }
+
+                if (!gatt.setCharacteristicNotification(ch, enable)) {
+                    throw BleException.Unknown("Characteristic notifications subscription failed")
+                }
+
+                val descriptor = ch.getDescriptor(CLIENT_CONFIG_DESCRIPTOR)
+                if (descriptor != null) {
+                    val value = if (enable) {
+                        BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                    } else {
+                        BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
                     }
 
-                    if (!gatt.setCharacteristicNotification(ch, enable)) {
-                        continuation.resumeWithException(BleException.Unknown("Characteristic notifications subscription failed"))
-                        return@suspendCoroutine
-                    }
-
-                    val descriptor = ch.getDescriptor(CLIENT_CONFIG_DESCRIPTOR)
-                    if (descriptor != null) {
-                        val value = if (enable) {
-                            BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                        } else {
-                            BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
-                        }
-
-                        mSubscribingInProgress[address] = Pair(continuation, enable)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            val statusCode = gatt.writeDescriptor(descriptor, value)
-                            if (statusCode != BluetoothStatusCodes.SUCCESS) {
-                                mSubscribingInProgress.remove(address)
-                                continuation.resumeWithException(
-                                    statusCodeException(
-                                        statusCode,
-                                        address.service,
-                                        address.characteristic
-                                    )
-                                )
-                            }
-                        } else {
-                            if (!descriptor.setValue(value) || !gatt.writeDescriptor(descriptor)) {
-                                mSubscribingInProgress.remove(address)
-                                continuation.resumeWithException(BleException.Unknown("Failed to write Characteristic descriptor"))
-                            }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val statusCode = gatt.writeDescriptor(descriptor, value)
+                        if (statusCode != BluetoothStatusCodes.SUCCESS) {
+                            throw statusCodeException(
+                                statusCode, address.service, address.characteristic
+                            )
                         }
                     } else {
-                        if (enable) {
-                            mSubscriptions[address] = SubscriptionData()
-                        } else {
-                            val ongoing = mSubscriptions.remove(address)
-                            if (ongoing != null) {
-                                ongoing.continuation?.resumeWithException(BleException.BroadcastNotStarted())
-                            }
+                        if (!descriptor.setValue(value) || !gatt.writeDescriptor(descriptor)) {
+                            throw BleException.Unknown("Failed to write Characteristic descriptor")
                         }
+                    }
+
+                    mSubscribingInProgress[address] = Pair(promise, enable)
+
+                } else {
+                    if (enable) {
+                        mSubscriptions[address] = SubscriptionData()
+                    } else {
+                        val ongoing = mSubscriptions.remove(address)
+                        ongoing?.promise?.fail(BleException.BroadcastNotStarted())
                     }
                 }
             }
@@ -258,57 +247,46 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
     }
 
     override suspend fun getNotifications(
-        peripheral: String,
-        service: String,
-        characteristic: String
+        peripheral: String, service: String, characteristic: String
     ): List<ByteArray> {
-        return exceptionWrapper {
+        return asyncCallback { promise ->
             val subscription = DeviceCharacteristicAddress(
-                peripheral,
-                UUID.fromString(service),
-                UUID.fromString(characteristic)
+                peripheral, UUID.fromString(service), UUID.fromString(characteristic)
             )
 
-            return@exceptionWrapper suspendCoroutine<List<ByteArray>> { continuation ->
-                synchronized(mSubscriptions) {
-                    val data = mSubscriptions[subscription]
-                    if (data == null) {
-                        continuation.resumeWithException(BleException.BroadcastNotStarted())
-                        return@suspendCoroutine
-                    }
-                    if (data.continuation != null) {
-                        continuation.resumeWithException(BleException.Unknown("Already awaiting this notification"))
-                        return@suspendCoroutine
-                    }
+            synchronized(lock) {
+                val data = mSubscriptions[subscription] ?: throw BleException.BroadcastNotStarted()
 
-                    if (data.messages.isEmpty()) {
-                        data.continuation = continuation
-                    } else {
-                        continuation.resume(data.messages.toList())
-                        data.messages.clear()
-                    }
+                if (data.promise != null) {
+                    throw BleException.Unknown("Already awaiting this notification")
+                }
+
+                if (data.messages.isEmpty()) {
+                    data.promise = promise
+                } else {
+                    promise.succeed(data.messages.toList())
+                    data.messages.clear()
                 }
             }
         }
     }
 
     // currently connected peripherals
-    private val mConnections: MutableMap<String, BluetoothGatt> = ConcurrentHashMap()
+    private val mConnections: MutableMap<String, BluetoothGatt> = HashMap()
 
     @SuppressLint("MissingPermission")
     override suspend fun connect(deviceAddress: String): UShort {
-        return exceptionWrapper {
-            val device = mScannedDevices[deviceAddress]
-            if (device == null) {
-                Log.w(TAG, "Device not found: $deviceAddress");
-                throw BleException.DeviceAddressNotFound(deviceAddress)
-            }
+        return asyncCallback { promise ->
+            synchronized(lock) {
+                val device = mScanning.scannedDevices[deviceAddress]
+                if (device == null) {
+                    Log.w(TAG, "Device not found: $deviceAddress");
+                    throw BleException.DeviceAddressNotFound(deviceAddress)
+                }
 
-            return@exceptionWrapper suspendCoroutine<UShort> { continuation ->
                 var mMTU: UShort? = null
                 var connected = false
                 var servicesDiscovered = false
-                var connectedResponded = false
 
                 val callback = object : BluetoothGattCallback() {
                     override fun onConnectionStateChange(
@@ -319,44 +297,27 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
 
                         if (status != BluetoothGatt.GATT_SUCCESS) {
                             gatt.close()
-                            if (!connectedResponded) {
-                                connectedResponded = true
-                                continuation.resumeWithException(
-                                    BleException.Unknown(
-                                        "Connection failure, status: $status, state: $newState"
-                                    )
-                                )
-                            }
+                            promise.fail(BleException.Unknown("Connection failure, status: $status, state: $newState"))
                             return
                         }
 
                         when (newState) {
                             BluetoothProfile.STATE_CONNECTED -> {
                                 Log.d(TAG, "Device connected")
-                                if (mMTU != null && !connectedResponded) {
-                                    connectedResponded = true
-                                    continuation.resume(mMTU!!)
-                                } else {
-                                    connected = true
-                                    if (!gatt.discoverServices()) {
-                                        connectedResponded = true
-                                        continuation.resumeWithException(
-                                            BleException.Unknown("Couldn't discover services")
-                                        )
-                                    }
+                                connected = true
+                                if (mMTU != null) {
+                                    promise.succeed(mMTU!!)
+                                } else if (!gatt.discoverServices()) {
+                                    promise.fail(BleException.Unknown("Couldn't discover services"))
                                 }
                             }
 
                             BluetoothProfile.STATE_DISCONNECTED -> {
                                 Log.d(TAG, "Device disconnected")
-                                if (!connectedResponded) {
-                                    connectedResponded = true
-                                    continuation.resumeWithException(
-                                        BleException.DeviceNotConnected(deviceAddress)
-                                    )
+                                promise.fail(BleException.DeviceNotConnected(deviceAddress))
+                                synchronized(lock) {
+                                    onDeviceDisconnected(deviceAddress)
                                 }
-
-                                onDeviceDisconnected(deviceAddress)
                                 gatt.close()
                             }
                         }
@@ -368,30 +329,16 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
 
                         if (status != BluetoothGatt.GATT_SUCCESS) {
                             gatt.close()
-                            if (!connectedResponded) {
-                                connectedResponded = true
-                                continuation.resumeWithException(
-                                    BleException.Unknown(
-                                        "Service discovery failure, status: $status"
-                                    )
-                                )
-                            }
+                            promise.fail(BleException.Unknown("Service discovery failure, status: $status"))
                             return
                         }
 
                         servicesDiscovered = true
-                        if (connectedResponded) return
 
                         if (mMTU != null) {
-                            connectedResponded = true
-                            continuation.resume(mMTU!!)
-                        } else {
-                            if (!gatt.requestMtu(MAX_MTU)) {
-                                connectedResponded = true
-                                continuation.resumeWithException(
-                                    BleException.Unknown("Couldn't request MTU")
-                                )
-                            }
+                            promise.succeed(mMTU!!)
+                        } else if (!gatt.requestMtu(MAX_MTU)) {
+                            promise.fail(BleException.Unknown("Couldn't request MTU"))
                         }
                     }
 
@@ -401,21 +348,13 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
 
                         if (status != BluetoothGatt.GATT_SUCCESS) {
                             gatt.close()
-                            if (!connectedResponded) {
-                                connectedResponded = true
-                                continuation.resumeWithException(
-                                    BleException.Unknown(
-                                        "MTU request failure, status: $status"
-                                    )
-                                )
-                            }
+                            promise.fail(BleException.Unknown("MTU request failure, status: $status"))
                             return
                         }
 
                         val m = min(mtu, MAX_MTU).toUShort()
-                        if (connected && servicesDiscovered && !connectedResponded) {
-                            connectedResponded = true
-                            continuation.resume(m)
+                        if (connected && servicesDiscovered) {
+                            promise.succeed(m)
                         } else {
                             mMTU = m
                         }
@@ -423,15 +362,12 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
 
                     @Deprecated("Deprecated in Java")
                     override fun onCharacteristicChanged(
-                        gatt: BluetoothGatt,
-                        characteristic: BluetoothGattCharacteristic
+                        gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic
                     ) {
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                             super.onCharacteristicChanged(gatt, characteristic)
                             onCharacteristicChanged(
-                                gatt,
-                                characteristic,
-                                characteristic.value
+                                gatt, characteristic, characteristic.value
                             )
                         }
                     }
@@ -447,18 +383,16 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                         }
 
                         val address = DeviceCharacteristicAddress(
-                            gatt.device.address,
-                            characteristic.service.uuid,
-                            characteristic.uuid
+                            gatt.device.address, characteristic.service.uuid, characteristic.uuid
                         )
-                        synchronized(mSubscriptions) {
+                        synchronized(lock) {
                             val data = mSubscriptions[address]
                             if (data != null) {
                                 data.messages.add(value)
-                                val c = data.continuation
-                                if (c != null) {
-                                    c.resume(data.messages.toList())
-                                    data.continuation = null
+                                val p = data.promise
+                                if (p != null) {
+                                    p.succeed(data.messages.toList())
+                                    data.promise = null
                                     data.messages.clear()
                                 }
                             }
@@ -474,10 +408,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                             super.onCharacteristicRead(gatt, characteristic, status)
                             onCharacteristicRead(
-                                gatt!!,
-                                characteristic,
-                                characteristic.value,
-                                status
+                                gatt!!, characteristic, characteristic.value, status
                             )
                         }
                     }
@@ -494,21 +425,19 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
 
                         Log.d(TAG, "onCharacteristicRead: ${characteristic.uuid}, status: $status")
                         val address = DeviceCharacteristicAddress(
-                            gatt.device.address,
-                            characteristic.service.uuid,
-                            characteristic.uuid
+                            gatt.device.address, characteristic.service.uuid, characteristic.uuid
                         )
 
-                        synchronized(mReadInProgress) {
+                        synchronized(lock) {
                             val readInProgress = mReadInProgress.remove(address)
                             if (readInProgress != null) {
                                 when (status) {
                                     BluetoothGatt.GATT_SUCCESS -> {
-                                        readInProgress.resume(data)
+                                        readInProgress.succeed(data)
                                     }
 
                                     else -> {
-                                        readInProgress.resumeWithException(BleException.Unknown("Characteristic Read failure, status: $status"))
+                                        readInProgress.fail(BleException.Unknown("Characteristic Read failure, status: $status"))
                                     }
                                 }
                             }
@@ -524,21 +453,19 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                         Log.d(TAG, "onCharacteristicWrite: ${characteristic.uuid}, status: $status")
 
                         val address = DeviceCharacteristicAddress(
-                            gatt.device.address,
-                            characteristic.service.uuid,
-                            characteristic.uuid
+                            gatt.device.address, characteristic.service.uuid, characteristic.uuid
                         )
 
-                        synchronized(mWriteInProgress) {
+                        synchronized(lock) {
                             val writeInProgress = mWriteInProgress.remove(address)
                             if (writeInProgress != null) {
                                 when (status) {
                                     BluetoothGatt.GATT_SUCCESS -> {
-                                        writeInProgress.resume(Unit)
+                                        writeInProgress.succeed(Unit)
                                     }
 
                                     else -> {
-                                        writeInProgress.resumeWithException(BleException.Unknown("Characteristic write failure, status: $status"))
+                                        writeInProgress.fail(BleException.Unknown("Characteristic write failure, status: $status"))
                                     }
                                 }
                             }
@@ -546,9 +473,7 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                     }
 
                     override fun onDescriptorWrite(
-                        gatt: BluetoothGatt,
-                        descriptor: BluetoothGattDescriptor,
-                        status: Int
+                        gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int
                     ) {
                         super.onDescriptorWrite(gatt, descriptor, status);
                         Log.d(TAG, "onDescriptorWrite: ${descriptor.uuid}, status: $status")
@@ -558,32 +483,29 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                             descriptor.characteristic.service.uuid,
                             descriptor.characteristic.uuid
                         )
-                        val subscribingInProgress = mSubscribingInProgress.remove(subscription)
-                        if (subscribingInProgress != null) {
-                            when (status) {
-                                BluetoothGatt.GATT_SUCCESS -> {
-                                    synchronized(mSubscriptions) {
+
+                        synchronized(lock) {
+                            val subscribingInProgress = mSubscribingInProgress.remove(subscription)
+                            if (subscribingInProgress != null) {
+                                when (status) {
+                                    BluetoothGatt.GATT_SUCCESS -> {
                                         if (subscribingInProgress.second) {
                                             mSubscriptions[subscription] = SubscriptionData()
                                         } else {
                                             val ongoing = mSubscriptions.remove(subscription)
                                             if (ongoing != null) {
-                                                ongoing.continuation?.resumeWithException(
-                                                    BleException.BroadcastNotStarted()
-                                                )
+                                                ongoing.promise?.fail(BleException.BroadcastNotStarted())
                                             }
                                         }
+
+                                        subscribingInProgress.first.succeed(Unit)
                                     }
 
-                                    subscribingInProgress.first.resume(Unit)
-                                }
-
-                                else -> {
-                                    subscribingInProgress.first.resumeWithException(
-                                        BleException.Unknown(
-                                            "Descriptor write failure, status: $status"
+                                    else -> {
+                                        subscribingInProgress.first.fail(
+                                            BleException.Unknown("Descriptor write failure, status: $status")
                                         )
-                                    )
+                                    }
                                 }
                             }
                         }
@@ -597,39 +519,37 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         }
     }
 
-    private val mReadInProgress: MutableMap<DeviceCharacteristicAddress, Continuation<ByteArray>> =
+    private val mReadInProgress: MutableMap<DeviceCharacteristicAddress, Promise<ByteArray>> =
         HashMap()
 
     @SuppressLint("MissingPermission")
     override suspend fun readData(
         deviceAddress: String, serviceUuid: String, characteristicUuid: String
     ): ByteArray {
-        return exceptionWrapper {
-            val (characteristic, gatt, address) = getCharacteristic(
-                deviceAddress,
-                serviceUuid,
-                characteristicUuid
-            )
-            return@exceptionWrapper suspendCoroutine<ByteArray> { continuation ->
-                synchronized(mReadInProgress) {
-                    if (mReadInProgress.containsKey(address)) {
-                        continuation.resumeWithException(BleException.AnotherOperationInProgress())
-                        return@suspendCoroutine
-                    }
+        return asyncCallback { promise ->
+            synchronized(lock) {
+                val (characteristic, gatt, address) = getCharacteristic(
+                    deviceAddress,
+                    serviceUuid,
+                    characteristicUuid
+                )
 
-                    if (!gatt.readCharacteristic(characteristic)) {
-                        Log.w(TAG, "Read Characteristic failed: $characteristicUuid");
-                        continuation.resumeWithException(BleException.Unknown("Read Characteristic failed: $characteristicUuid"))
-                        return@suspendCoroutine
-                    }
-
-                    mReadInProgress[address] = continuation
+                if (mReadInProgress.containsKey(address)) {
+                    throw BleException.AnotherOperationInProgress()
                 }
+
+                if (!gatt.readCharacteristic(characteristic)) {
+                    Log.w(TAG, "Read Characteristic failed: $characteristicUuid");
+                    throw BleException.Unknown("Read Characteristic failed: $characteristicUuid")
+                }
+
+                mReadInProgress[address] = promise
             }
         }
+
     }
 
-    private val mWriteInProgress: MutableMap<DeviceCharacteristicAddress, Continuation<Unit>> =
+    private val mWriteInProgress: MutableMap<DeviceCharacteristicAddress, Promise<Unit>> =
         HashMap()
 
     @SuppressLint("MissingPermission")
@@ -640,47 +560,37 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
         data: ByteArray,
         writeType: CharacteristicWriteTypeBindingEnum
     ) {
-        return exceptionWrapper {
-            val (characteristic, gatt, address) = getCharacteristic(
-                deviceAddress,
-                serviceUuid,
-                characteristicUuid
-            )
-            return@exceptionWrapper suspendCoroutine { continuation ->
-                synchronized(mWriteInProgress) {
-                    if (mWriteInProgress.containsKey(address)) {
-                        continuation.resumeWithException(BleException.AnotherOperationInProgress())
-                        return@suspendCoroutine
+        return asyncCallback { promise ->
+            synchronized(lock) {
+                val (characteristic, gatt, address) = getCharacteristic(
+                    deviceAddress, serviceUuid, characteristicUuid
+                )
+
+                if (mWriteInProgress.containsKey(address)) {
+                    throw BleException.AnotherOperationInProgress()
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val statusCode =
+                        gatt.writeCharacteristic(characteristic, data, getWriteType(writeType))
+                    if (statusCode != BluetoothStatusCodes.SUCCESS) {
+                        throw statusCodeException(
+                            statusCode,
+                            address.service,
+                            address.characteristic
+                        )
                     }
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        val statusCode =
-                            gatt.writeCharacteristic(characteristic, data, getWriteType(writeType))
-                        if (statusCode != BluetoothStatusCodes.SUCCESS) {
-                            continuation.resumeWithException(
-                                statusCodeException(
-                                    statusCode,
-                                    address.service,
-                                    address.characteristic
-                                )
-                            )
-                            return@suspendCoroutine
-                        }
-
-                    } else if (!characteristic.setValue(data) || !gatt.writeCharacteristic(
+                } else {
+                    characteristic.writeType = getWriteType(writeType)
+                    if (!characteristic.setValue(data) || !gatt.writeCharacteristic(
                             characteristic
                         )
                     ) {
-                        continuation.resumeWithException(BleException.Unknown("Write Characteristic failed"))
-                        return@suspendCoroutine
-                    }
-
-                    if (writeType == CharacteristicWriteTypeBindingEnum.WITHOUT_RESPONSE) {
-                        continuation.resume(Unit)
-                    } else {
-                        mWriteInProgress[address] = continuation
+                        throw BleException.Unknown("Write Characteristic failed")
                     }
                 }
+
+                mWriteInProgress[address] = promise
             }
         }
     }
@@ -688,67 +598,54 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
     @SuppressLint("MissingPermission")
     override suspend fun disconnect(deviceAddress: String) {
         return exceptionWrapper {
-            val device = mConnections.remove(deviceAddress)
-            if (device == null) {
-                Log.w(TAG, "Device not found: $deviceAddress");
-                throw BleException.DeviceAddressNotFound(deviceAddress)
+            synchronized(lock) {
+                val device = mConnections.remove(deviceAddress)
+                if (device == null) {
+                    Log.w(TAG, "Device not found: $deviceAddress");
+                    throw BleException.DeviceAddressNotFound(deviceAddress)
+                }
+
+                device.disconnect()
+                device.close()
+
+                onDeviceDisconnected(deviceAddress)
             }
-
-            device.disconnect()
-            device.close()
-
-            onDeviceDisconnected(deviceAddress)
         }
     }
 
     private fun onDeviceDisconnected(deviceAddress: String) {
         mConnections.remove(deviceAddress)
 
-        synchronized(mSubscriptions) {
-            mSubscriptions.filter { it.key.deviceAddress == deviceAddress }
-                .forEach {
-                    it.value.continuation?.resumeWithException(
-                        BleException.DeviceNotConnected(
-                            deviceAddress
-                        )
-                    )
-                    mSubscriptions.remove(it.key)
-                }
+        mSubscribingInProgress.filter { it.key.deviceAddress == deviceAddress }.forEach {
+            it.value.first.fail(BleException.DeviceNotConnected(deviceAddress))
+            mSubscribingInProgress.remove(it.key)
         }
 
-        synchronized(mReadInProgress) {
-            mReadInProgress.filter { it.key.deviceAddress == deviceAddress }.forEach {
-                it.value.resumeWithException(
-                    BleException.DeviceNotConnected(deviceAddress)
-                )
-                mReadInProgress.remove(it.key)
-            }
+        mSubscriptions.filter { it.key.deviceAddress == deviceAddress }.forEach {
+            it.value.promise?.fail(BleException.DeviceNotConnected(deviceAddress))
+            mSubscriptions.remove(it.key)
         }
 
-        synchronized(mWriteInProgress) {
-            mWriteInProgress.filter { it.key.deviceAddress == deviceAddress }.forEach {
-                it.value.resumeWithException(
-                    BleException.DeviceNotConnected(deviceAddress)
-                )
-                mWriteInProgress.remove(it.key)
-            }
+        mReadInProgress.filter { it.key.deviceAddress == deviceAddress }.forEach {
+            it.value.fail(BleException.DeviceNotConnected(deviceAddress))
+            mReadInProgress.remove(it.key)
+        }
+
+        mWriteInProgress.filter { it.key.deviceAddress == deviceAddress }.forEach {
+            it.value.fail(BleException.DeviceNotConnected(deviceAddress))
+            mWriteInProgress.remove(it.key)
         }
     }
 
     private fun getCharacteristic(
-        deviceAddress: String,
-        serviceUuid: String,
-        characteristicUuid: String
+        deviceAddress: String, serviceUuid: String, characteristicUuid: String
     ): Triple<BluetoothGattCharacteristic, BluetoothGatt, DeviceCharacteristicAddress> {
         val gatt =
             mConnections[deviceAddress] ?: throw BleException.DeviceAddressNotFound(deviceAddress)
 
-        val address =
-            DeviceCharacteristicAddress(
-                deviceAddress,
-                UUID.fromString(serviceUuid),
-                UUID.fromString(characteristicUuid)
-            )
+        val address = DeviceCharacteristicAddress(
+            deviceAddress, UUID.fromString(serviceUuid), UUID.fromString(characteristicUuid)
+        )
 
         val service =
             gatt.getService(address.service) ?: throw BleException.ServiceNotFound(serviceUuid)
