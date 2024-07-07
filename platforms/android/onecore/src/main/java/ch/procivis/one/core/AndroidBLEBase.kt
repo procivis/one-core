@@ -7,13 +7,17 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import java.util.UUID
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
-open class AndroidBLEBase(val context: Context, val TAG: String) {
+abstract class AndroidBLEBase(val context: Context, val TAG: String) {
     val MAX_MTU = 512
     val CLIENT_CONFIG_DESCRIPTOR = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
     private var bluetoothManager: BluetoothManager? = null
-    fun getBluetoothManager(): BluetoothManager {
+    protected fun getBluetoothManager(): BluetoothManager {
         var manager = bluetoothManager
         if (manager == null) {
             manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -22,11 +26,11 @@ open class AndroidBLEBase(val context: Context, val TAG: String) {
         return manager
     }
 
-    fun getBluetoothAdapter(): BluetoothAdapter {
+    protected fun getBluetoothAdapter(): BluetoothAdapter {
         return getBluetoothManager().adapter
     }
 
-    fun getAdapterEnabled(): Boolean {
+    protected fun getAdapterEnabled(): Boolean {
         return exceptionWrapper {
             if (!context.packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
                 throw BleException.NotSupported()
@@ -40,18 +44,18 @@ open class AndroidBLEBase(val context: Context, val TAG: String) {
         }
     }
 
-    data class CharacteristicAddress constructor(
+    protected data class CharacteristicAddress constructor(
         val service: UUID,
         val characteristic: UUID
     ) {}
 
-    data class DeviceCharacteristicAddress constructor(
+    protected data class DeviceCharacteristicAddress constructor(
         val deviceAddress: String,
         val service: UUID,
         val characteristic: UUID
     ) {}
 
-    inline fun <R> exceptionWrapper(function: () -> R): R {
+    protected inline fun <R> exceptionWrapper(function: () -> R): R {
         try {
             return function()
         } catch (error: BleErrorWrapper) {
@@ -72,7 +76,7 @@ open class AndroidBLEBase(val context: Context, val TAG: String) {
         }
     }
 
-    fun statusCodeException(
+    protected fun statusCodeException(
         statusCode: Int,
         service: UUID,
         characteristic: UUID
@@ -87,6 +91,50 @@ open class AndroidBLEBase(val context: Context, val TAG: String) {
             )
 
             else -> BleException.Unknown("BLE error status: $statusCode")
+        }
+    }
+
+
+    /**
+     * shared synchronization object
+     * @sample
+     *   synchronized(lock) {
+     *     // prevent data-races here
+     *   }
+     */
+    protected val lock = Any()
+
+    protected class Promise<in T>(private val continuation: Continuation<T>) {
+        @Volatile
+        private var finished = false
+
+        @Synchronized
+        fun succeed(result: T) {
+            if (!finished) {
+                finished = true
+                continuation.resume(result)
+            }
+        }
+
+        @Synchronized
+        fun fail(error: Throwable) {
+            if (!finished) {
+                finished = true
+                continuation.resumeWithException(error)
+            }
+        }
+    }
+
+    protected suspend inline fun <T> asyncCallback(crossinline block: (Promise<T>) -> Unit): T {
+        return exceptionWrapper {
+            return@exceptionWrapper suspendCoroutine { continuation ->
+                val promise = Promise(continuation)
+                try {
+                    block(promise)
+                } catch (error: Throwable) {
+                    promise.fail(error)
+                }
+            }
         }
     }
 }
