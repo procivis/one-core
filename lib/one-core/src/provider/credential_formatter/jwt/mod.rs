@@ -126,7 +126,7 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
         Ok(token)
     }
 
-    fn decompose_token(token: &str) -> Result<DecomposedToken<Payload>, FormatterError> {
+    pub(crate) fn decompose_token(token: &str) -> Result<DecomposedToken<Payload>, FormatterError> {
         let token = token.trim_matches(|c: char| c == '.' || c.is_whitespace());
         let mut jwt_parts = token.splitn(3, '.');
 

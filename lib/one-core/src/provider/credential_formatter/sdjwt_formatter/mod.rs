@@ -4,14 +4,16 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use itertools::Itertools;
 use serde::Deserialize;
 use shared_types::DidValue;
 use time::Duration;
 
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::crypto::CryptoProvider;
-use crate::provider::credential_formatter::common::nest_claims;
+use crate::provider::credential_formatter::sdjwt_formatter::disclosures::{
+    extract_claims_from_disclosures, extract_disclosures, gather_disclosures,
+    get_disclosures_by_claim_name, sort_published_claims_by_indices, to_hashmap,
+};
 use crate::provider::credential_formatter::sdjwt_formatter::model::{
     DecomposedToken, Disclosure, Sdvc,
 };
@@ -25,7 +27,9 @@ use self::mapper::*;
 mod model;
 use self::model::*;
 
+mod disclosures;
 mod verifier;
+
 use self::verifier::*;
 
 use super::jwt::model::JWTPayload;
@@ -34,7 +38,7 @@ use super::model::{CredentialPresentation, CredentialSubject};
 use super::{
     AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential,
     ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, FormatterError,
-    Presentation, PublishedClaim, SelectiveDisclosureOption, VerificationFn,
+    Presentation, SelectiveDisclosureOption, VerificationFn,
 };
 
 pub struct SDJWTFormatter {
@@ -150,7 +154,7 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        prepare_sd_presentation(credential)
+        prepare_sd_presentation(credential, &self.crypto)
     }
 
     fn get_leeway(&self) -> u64 {
@@ -241,6 +245,8 @@ impl SDJWTFormatter {
             &hasher,
         )?;
 
+        let claims = extract_claims_from_disclosures(&deserialized_disclosures, &hasher)?;
+
         Ok(DetailCredential {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
@@ -256,17 +262,7 @@ impl SDJWTFormatter {
                 Err(err) => match err {},
             }),
             claims: CredentialSubject {
-                values: nest_claims(
-                    deserialized_disclosures
-                        .into_iter()
-                        .map(|(dis, _, _)| PublishedClaim {
-                            key: dis.key,
-                            value: dis.value,
-                            datatype: None,
-                            array_item: false,
-                        })
-                        .collect::<Vec<_>>(),
-                )?,
+                values: to_hashmap(unpack_arrays(&claims)?)?,
             },
             status: jwt.payload.custom.vc.credential_status,
             credential_schema: jwt.payload.custom.vc.credential_schema,
@@ -280,68 +276,56 @@ impl SDJWTFormatter {
         additional_context: Vec<String>,
         additional_types: Vec<String>,
     ) -> Result<(Sdvc, Vec<String>), FormatterError> {
-        let claims: Vec<String> = claims_to_formatted_disclosure(&credential.claims, &self.crypto);
-        let hasher = self.crypto.get_hasher(algorithm)?;
+        let nested = nest_claims_to_json(&sort_published_claims_by_indices(&credential.claims))?;
+        let (disclosures, sd_section) = gather_disclosures(&nested, algorithm, &self.crypto)?;
 
         let vc = vc_from_credential(
             credential,
-            &hasher,
-            &claims,
+            &sd_section,
             additional_context,
             additional_types,
             algorithm,
         );
 
-        Ok((vc, claims))
+        Ok((vc, disclosures))
     }
 }
 
-fn prepare_sd_presentation(presentation: CredentialPresentation) -> Result<String, FormatterError> {
+fn prepare_sd_presentation(
+    presentation: CredentialPresentation,
+    crypto: &Arc<dyn CryptoProvider>,
+) -> Result<String, FormatterError> {
     let DecomposedToken {
         jwt,
         deserialized_disclosures,
     } = extract_disclosures(&presentation.token)?;
 
+    let decomposed_jwt: super::jwt::model::DecomposedToken<Sdvc> = Jwt::decompose_token(jwt)?;
+    let algorithm = decomposed_jwt
+        .payload
+        .custom
+        .hash_alg
+        .unwrap_or("sha-256".to_string());
+    let hasher = crypto
+        .get_hasher(&algorithm)
+        .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
+
+    let disclosures = presentation
+        .disclosed_keys
+        .iter()
+        .map(|key| get_disclosures_by_claim_name(key, &deserialized_disclosures, &hasher))
+        .collect::<Result<Vec<Vec<Disclosure>>, FormatterError>>()?
+        .into_iter()
+        .flatten()
+        .map(|disclosure| disclosure.base64_encoded_disclosure)
+        .unique()
+        .collect::<Vec<String>>();
+
     let mut token = jwt.to_owned();
-    for (disclosure, _, disclosure_encoded) in deserialized_disclosures {
-        if presentation.disclosed_keys.contains(&disclosure.key)
-            || presentation.disclosed_keys.iter().any(|key| {
-                disclosure
-                    .key
-                    .starts_with(&format!("{}{NESTED_CLAIM_MARKER}", key))
-            })
-        {
-            token.push('~');
-            token.push_str(&disclosure_encoded);
-        }
+    for disclosure in disclosures {
+        token.push('~');
+        token.push_str(&disclosure);
     }
 
     Ok(token)
-}
-
-fn extract_disclosures(token: &str) -> Result<DecomposedToken, FormatterError> {
-    let mut token_parts = token.split('~');
-    let jwt = token_parts.next().ok_or(FormatterError::MissingPart)?;
-
-    let disclosures_decoded_encoded: Vec<(String, String)> = token_parts
-        .filter_map(|encoded| {
-            let bytes = Base64UrlSafeNoPadding::decode_to_vec(encoded, None).ok()?;
-            let decoded = String::from_utf8(bytes).ok()?;
-            Some((decoded, encoded.to_owned()))
-        })
-        .collect();
-
-    let deserialized_claims: Vec<(Disclosure, String, String)> = disclosures_decoded_encoded
-        .into_iter()
-        .filter_map(|(decoded, encoded)| {
-            serde_json::from_str(&decoded)
-                .ok()
-                .map(|disclosure| (disclosure, decoded, encoded))
-        })
-        .collect();
-
-    Ok(DecomposedToken {
-        jwt,
-        deserialized_disclosures: deserialized_claims,
-    })
 }
