@@ -48,11 +48,13 @@ pub struct Sdvp {
     pub vp: VPContent,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub(super) struct Disclosure {
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub(crate) struct Disclosure {
     pub salt: String,
     pub key: String,
     pub value: String,
+    pub original_disclosure: String,
+    pub base64_encoded_disclosure: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,5 +66,5 @@ pub struct SDCredentialSubject {
 
 pub(super) struct DecomposedToken<'a> {
     pub jwt: &'a str,
-    pub deserialized_disclosures: Vec<(Disclosure, String, String)>,
+    pub deserialized_disclosures: Vec<Disclosure>,
 }
