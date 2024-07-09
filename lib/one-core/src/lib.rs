@@ -1,15 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use config::core_config::CoreConfig;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+
+use config::core_config::{CoreConfig, KeyAlgorithmConfig};
 use config::ConfigError;
-use crypto::hasher::sha256::SHA256;
-use crypto::hasher::Hasher;
-use crypto::signer::bbs::BBSSigner;
-use crypto::signer::crydi3::CRYDI3Signer;
-use crypto::signer::eddsa::EDDSASigner;
-use crypto::signer::Signer;
-use crypto::{CryptoProvider, CryptoProviderImpl};
+use one_providers::crypto::CryptoProvider;
 use provider::bluetooth_low_energy::ble_central::BleCentral;
 use provider::bluetooth_low_energy::ble_peripheral::BlePeripheral;
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
@@ -36,13 +32,11 @@ use service::trust_entity::TrustEntityService;
 use time::Duration;
 
 use crate::config::core_config::JsonLdContextConfig;
+use crate::provider::key_storage::key_providers_from_config;
 use crate::provider::key_storage::provider::KeyProviderImpl;
-use crate::provider::key_storage::{key_providers_from_config, KeyStorage};
 
 pub mod config;
 pub mod provider;
-
-pub mod crypto;
 
 pub mod model;
 pub mod repository;
@@ -52,13 +46,10 @@ pub mod common_mapper;
 mod common_validator;
 pub mod util;
 
-use crate::crypto::signer::es256::ES256Signer;
 use crate::provider::credential_formatter::provider::credential_formatters_from_config;
 use crate::provider::did_method::provider::DidMethodProviderImpl;
 use crate::provider::did_method::{did_method_providers_from_config, DidMethod};
 use crate::provider::exchange_protocol::exchange_protocol_providers_from_config;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
-use crate::provider::key_algorithm::{key_algorithms_from_config, KeyAlgorithm};
 use crate::provider::revocation::provider::RevocationMethodProviderImpl;
 use crate::provider::revocation::RevocationMethod;
 use crate::service::credential_schema::CredentialSchemaService;
@@ -67,12 +58,13 @@ use crate::service::key::KeyService;
 use crate::service::oidc::OIDCService;
 use crate::service::revocation_list::RevocationListService;
 
-// Clone just for now. Later it should be removed.
-#[derive(Clone)]
+pub type KeyAlgorithmCreator =
+    Box<dyn FnOnce(&KeyAlgorithmConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyAlgorithmProvider>>;
+
+pub type DataProviderCreator = Box<dyn FnOnce(Vec<String>) -> Arc<dyn DataRepository>>;
+
 pub struct OneCore {
     pub did_methods: HashMap<String, Arc<dyn DidMethod>>,
-    pub key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>>,
-    pub key_providers: HashMap<String, Arc<dyn KeyStorage>>,
     pub exchange_protocols: HashMap<String, Arc<dyn ExchangeProtocol>>,
     pub revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>,
     pub organisation_service: OrganisationService,
@@ -94,42 +86,125 @@ pub struct OneCore {
     pub ssi_holder_service: SSIHolderService,
     pub task_service: TaskService,
     pub config: Arc<CoreConfig>,
-    pub crypto: Arc<dyn CryptoProvider>,
+}
+
+#[derive(Default)]
+pub struct OneCoreBuilderProviders {
+    pub core_base_url: Option<String>,
+    pub crypto: Option<Arc<dyn CryptoProvider>>,
+    pub key_algorithm_provider: Option<Arc<dyn KeyAlgorithmProvider>>,
+    //repository and providers that we initialize as we build
+}
+
+#[derive(Default)]
+pub struct OneCoreBuilder {
+    core_config: CoreConfig,
+    providers: OneCoreBuilderProviders,
+    json_ld_context_config: Option<JsonLdContextConfig>,
+    secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
+    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+    ble_central: Option<Arc<dyn BleCentral>>,
+    data_provider_creator: Option<DataProviderCreator>,
+}
+
+impl OneCoreBuilder {
+    pub fn new(core_config: CoreConfig) -> Self {
+        OneCoreBuilder {
+            core_config,
+            ..Default::default()
+        }
+    }
+
+    pub fn with_crypto(mut self, crypto: Arc<dyn CryptoProvider>) -> Self {
+        self.providers.crypto = Some(crypto);
+        self
+    }
+
+    pub fn with_base_url(mut self, core_base_url: impl Into<String>) -> Self {
+        self.providers.core_base_url = Some(core_base_url.into());
+        self
+    }
+
+    pub fn with_key_algorithm_provider(mut self, key_alg_provider: KeyAlgorithmCreator) -> Self {
+        let key_algorithm_provider =
+            key_alg_provider(&self.core_config.key_algorithm, &self.providers);
+        self.providers.key_algorithm_provider = Some(key_algorithm_provider);
+        self
+    }
+
+    // Temporary
+    pub fn with_data_provider_creator(mut self, data_provider: DataProviderCreator) -> Self {
+        self.data_provider_creator = Some(data_provider);
+        self
+    }
+
+    // Temprary - move to particular implementation or config
+    pub fn with_json_ld_context(
+        mut self,
+        json_ld_context_config: Option<JsonLdContextConfig>,
+    ) -> Self {
+        self.json_ld_context_config = json_ld_context_config;
+        self
+    }
+
+    // Temporary - move logic to key storage creator
+    pub fn with_secure_element_storage(
+        mut self,
+        secure_element: Option<Arc<dyn NativeKeyStorage>>,
+    ) -> Self {
+        self.secure_element_key_storage = secure_element;
+        self
+    }
+
+    pub fn with_ble(
+        mut self,
+        peripheral: Option<Arc<dyn BlePeripheral>>,
+        central: Option<Arc<dyn BleCentral>>,
+    ) -> Self {
+        self.ble_peripheral = peripheral;
+        self.ble_central = central;
+        self
+    }
+
+    pub fn build(self) -> Result<OneCore, ConfigError> {
+        OneCore::new(
+            self.data_provider_creator
+                .expect("Data provider is required"),
+            self.core_config,
+            self.secure_element_key_storage,
+            self.json_ld_context_config,
+            self.ble_peripheral,
+            self.ble_central,
+            self.providers,
+        )
+    }
 }
 
 impl OneCore {
     pub fn new(
-        data_provider_creator: impl FnOnce(Vec<String>) -> Arc<dyn DataRepository>,
+        data_provider_creator: DataProviderCreator,
         mut core_config: CoreConfig,
-        core_base_url: Option<String>,
         secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
         json_ld_context_config: Option<JsonLdContextConfig>,
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         ble_central: Option<Arc<dyn BleCentral>>,
+        providers: OneCoreBuilderProviders,
     ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
 
-        let hashers: Vec<(String, Arc<dyn Hasher>)> =
-            vec![("sha-256".to_string(), Arc::new(SHA256 {}))];
+        let key_algorithm_provider = providers
+            .key_algorithm_provider
+            .as_ref()
+            .expect("Key algorithm provider is required")
+            .clone();
 
-        let signers: Vec<(String, Arc<dyn Signer>)> = vec![
-            ("Ed25519".to_string(), Arc::new(EDDSASigner {})),
-            ("ES256".to_string(), Arc::new(ES256Signer {})),
-            ("CRYDI3".to_string(), Arc::new(CRYDI3Signer {})),
-            ("BBS".to_string(), Arc::new(BBSSigner {})),
-        ];
+        let crypto = providers
+            .crypto
+            .as_ref()
+            .expect("Crypto provider is required")
+            .clone();
 
-        let crypto = Arc::new(CryptoProviderImpl::new(
-            HashMap::from_iter(hashers),
-            HashMap::from_iter(signers),
-        ));
-
-        let key_algorithms = key_algorithms_from_config(&core_config.key_algorithm)?;
-        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-            key_algorithms.to_owned(),
-            crypto.clone(),
-        ));
         let key_providers = key_providers_from_config(
             &mut core_config.key_storage,
             crypto.clone(),
@@ -140,7 +215,7 @@ impl OneCore {
         let (did_methods, did_mdl_validator) = did_method_providers_from_config(
             &mut core_config.did,
             key_algorithm_provider.clone(),
-            core_base_url.clone(),
+            providers.core_base_url.clone(),
         )?;
         let did_method_provider = Arc::new(DidMethodProviderImpl::new(
             did_methods.to_owned(),
@@ -170,7 +245,7 @@ impl OneCore {
             &mut core_config,
             json_ld_context_config,
             crypto.clone(),
-            core_base_url.clone(),
+            providers.core_base_url.clone(),
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
             data_provider.get_json_ld_context_repository(),
@@ -181,7 +256,7 @@ impl OneCore {
 
         let revocation_methods = crate::provider::revocation::provider::from_config(
             &mut core_config.revocation,
-            core_base_url.clone(),
+            providers.core_base_url.clone(),
             data_provider.get_credential_repository(),
             data_provider.get_revocation_list_repository(),
             data_provider.get_validity_credential_repository(),
@@ -213,8 +288,7 @@ impl OneCore {
 
         let exchange_protocols = exchange_protocol_providers_from_config(
             config.clone(),
-            core_base_url.clone(),
-            crypto.clone(),
+            providers.core_base_url.clone(),
             data_provider.clone(),
             formatter_provider.clone(),
             key_provider.clone(),
@@ -232,13 +306,11 @@ impl OneCore {
             did_method_provider.clone(),
             data_provider.get_validity_credential_repository(),
             config.clone(),
-            core_base_url.clone(),
+            providers.core_base_url.clone(),
         ));
 
         Ok(OneCore {
             did_methods,
-            key_algorithms,
-            key_providers,
             exchange_protocols,
             revocation_methods,
             trust_anchor_service: TrustAnchorService::new(
@@ -287,7 +359,7 @@ impl OneCore {
                 config.clone(),
             ),
             revocation_list_service: RevocationListService::new(
-                core_base_url.clone(),
+                providers.core_base_url.clone(),
                 data_provider.get_credential_repository(),
                 data_provider.get_validity_credential_repository(),
                 data_provider.get_revocation_list_repository(),
@@ -300,7 +372,7 @@ impl OneCore {
                 config.clone(),
             ),
             oidc_service: OIDCService::new(
-                core_base_url.clone(),
+                providers.core_base_url.clone(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_credential_repository(),
                 data_provider.get_history_repository(),
@@ -315,12 +387,11 @@ impl OneCore {
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
-                crypto.clone(),
                 ble_peripheral,
                 ble_central,
             ),
             credential_schema_service: CredentialSchemaService::new(
-                core_base_url.clone(),
+                providers.core_base_url.clone(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
@@ -342,7 +413,7 @@ impl OneCore {
                 data_provider.get_history_repository(),
                 formatter_provider.clone(),
                 config.clone(),
-                core_base_url.clone(),
+                providers.core_base_url.clone(),
             ),
             proof_service: ProofService::new(
                 data_provider.get_proof_repository(),
@@ -361,7 +432,7 @@ impl OneCore {
                 formatter_provider.clone(),
                 did_method_provider.clone(),
                 revocation_method_provider,
-                key_algorithm_provider,
+                key_algorithm_provider.clone(),
                 data_provider.get_history_repository(),
                 config.clone(),
             ),
@@ -371,7 +442,7 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 protocol_provider.clone(),
                 config.clone(),
-                core_base_url,
+                providers.core_base_url.clone(),
                 data_provider.get_history_repository(),
             ),
             ssi_holder_service: SSIHolderService::new(
@@ -388,7 +459,6 @@ impl OneCore {
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),
-            crypto,
             config,
         })
     }

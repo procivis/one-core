@@ -1,10 +1,12 @@
 use super::InternalKeyProvider;
-use crate::crypto::signer::MockSigner;
 use crate::model::key::Key;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::{GeneratedKey, MockKeyAlgorithm};
 use crate::provider::key_storage::internal::Params;
 use crate::provider::key_storage::KeyStorage;
+use one_providers::crypto::MockSigner;
+use one_providers::key_algorithm::model::GeneratedKey;
+
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::key_algorithm::MockKeyAlgorithm;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;

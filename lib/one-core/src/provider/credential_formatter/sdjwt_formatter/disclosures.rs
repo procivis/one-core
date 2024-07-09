@@ -1,11 +1,10 @@
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
-use crate::crypto::hasher::Hasher;
-use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::mapper::string_to_b64url_string;
 use crate::provider::credential_formatter::sdjwt_formatter::model::{DecomposedToken, Disclosure};
 use crate::provider::credential_formatter::PublishedClaim;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use one_providers::crypto::{CryptoProvider, Hasher};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -228,7 +227,7 @@ pub(super) fn gather_disclosures(
     value_as_object.iter().try_for_each(|(k, v)| {
         match match_json_value(v)? {
             JsonValueVariant::Array(array) => {
-                let salt = crypto.generate_salt_base64();
+                let salt = one_providers::crypto::imp::utilities::generate_salt_base64_16();
 
                 let value = serde_json::to_string(array)
                     .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
@@ -249,7 +248,7 @@ pub(super) fn gather_disclosures(
                 let (subdisclosures, sd_hashes) = gather_disclosures(v, algorithm, crypto)?;
                 disclosures.extend(subdisclosures);
 
-                let salt = crypto.generate_salt_base64();
+                let salt = one_providers::crypto::imp::utilities::generate_salt_base64_16();
 
                 let sd_hashes_json = serde_json::json!({
                     SELECTIVE_DISCLOSURE_MARKER: sd_hashes
@@ -270,7 +269,7 @@ pub(super) fn gather_disclosures(
                 hashed_disclosures.push(hashed_subdisclosure);
             }
             JsonValueVariant::String(value) => {
-                let salt = crypto.generate_salt_base64();
+                let salt = one_providers::crypto::imp::utilities::generate_salt_base64_16();
 
                 let result = serde_json::to_string(&[&salt, k, value])
                     .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;

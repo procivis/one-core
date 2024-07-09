@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use one_providers::crypto::imp::signer::bbs::{BBSSigner, BbsProofInput};
 
 use super::super::json_ld::model::LdCredential;
 use super::JsonLdBbsplus;
-use crate::crypto::signer::bbs::{BBSSigner, BbsProofInput};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::{
     BbsDerivedProofComponents, CBOR_PREFIX_DERIVED,
@@ -143,7 +143,7 @@ impl JsonLdBbsplus {
         };
 
         let public_key = algo_provider
-            .jwk_to_bytes(&verification_method.public_key_jwk)
+            .jwk_to_bytes(&verification_method.public_key_jwk.clone().into())
             .map_err(|e| {
                 FormatterError::CouldNotVerify(format!("Could not get public key from JWK: {e}"))
             })?;

@@ -5,6 +5,7 @@ use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::provider::key_storage::StorageGeneratedKey;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::key::dto::{
     KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
@@ -14,7 +15,7 @@ use crate::{
         key::{GetKeyList, Key},
         organisation::Organisation,
     },
-    provider::key_storage::{provider::KeyProviderImpl, GeneratedKey, KeyStorage, MockKeyStorage},
+    provider::key_storage::{provider::KeyProviderImpl, KeyStorage, MockKeyStorage},
     repository::{
         history_repository::MockHistoryRepository, key_repository::MockKeyRepository,
         organisation_repository::MockOrganisationRepository,
@@ -84,7 +85,7 @@ async fn test_create_key_success() {
             .returning(move |_, _| Ok(Some(organisation.clone())));
 
         key_storage.expect_generate().once().returning(|_, _| {
-            Ok(GeneratedKey {
+            Ok(StorageGeneratedKey {
                 public_key: vec![],
                 key_reference: vec![],
             })

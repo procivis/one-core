@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::vec;
 
 use mockall::predicate::eq;
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use serde_json::json;
 use shared_types::{DidId, DidValue, ProofId};
 use time::{Duration, OffsetDateTime};
@@ -25,7 +26,6 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
 use crate::provider::did_method::{DidMethod, MockDidMethod};
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
 use crate::repository::credential_repository::MockCredentialRepository;

@@ -4,6 +4,9 @@ use std::sync::Arc;
 
 use maplit::hashmap;
 use mockall::{predicate, Sequence};
+use one_providers::key_algorithm::model::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::key_algorithm::MockKeyAlgorithm;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -12,7 +15,6 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::{build_claims_keys_for_mdoc, OpenID4VC, OpenID4VCParams};
-use crate::crypto::MockCryptoProvider;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
@@ -27,7 +29,6 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
     OpenID4VCICredentialValueDetails, OpenID4VPClientMetadata, OpenID4VPFormat,
@@ -35,8 +36,6 @@ use crate::provider::exchange_protocol::openid4vc::dto::{
 };
 use crate::provider::exchange_protocol::openid4vc::mapper::prepare_claims;
 use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -58,7 +57,6 @@ struct TestInputs {
     pub revocation_provider: MockRevocationMethodProvider,
     pub key_provider: MockKeyProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
-    pub crypto: MockCryptoProvider,
     pub params: Option<OpenID4VCParams>,
 }
 
@@ -74,7 +72,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VC {
         Arc::new(inputs.revocation_provider),
         Arc::new(inputs.key_provider),
         Arc::new(inputs.key_algorithm_provider),
-        Arc::new(inputs.crypto),
         inputs.params.unwrap_or(OpenID4VCParams {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
@@ -353,16 +350,9 @@ async fn test_generate_share_credentials() {
         .with(predicate::eq(credential.interaction.as_ref().unwrap().id))
         .returning(move |_| Ok(()));
 
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_generate_alphanumeric()
-        .once()
-        .returning(|_| String::from("ABC123"));
-
     let protocol = setup_protocol(TestInputs {
         credential_repository,
         interaction_repository,
-        crypto,
         ..Default::default()
     });
 
@@ -406,16 +396,16 @@ async fn test_generate_share_credentials_offer_by_value() {
         .with(predicate::eq(credential.interaction.as_ref().unwrap().id))
         .returning(move |_| Ok(()));
 
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_generate_alphanumeric()
-        .once()
-        .returning(|_| String::from("ABC123"));
+    // let mut crypto = MockCryptoProvider::default();
+    // crypto
+    //     .expect_generate_alphanumeric()
+    //     .once()
+    //     .returning(|_| String::from("ABC123"));
 
     let protocol = setup_protocol(TestInputs {
         credential_repository,
         interaction_repository,
-        crypto,
+        //crypto,
         params: Some(OpenID4VCParams {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
@@ -457,7 +447,7 @@ async fn test_generate_share_proof_open_id_flow_success() {
         .returning(move |_, _| Ok(Some(proof_moved.clone())));
 
     key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
             r#use: None,
             crv: "123".to_string(),
             x: "456".to_string(),
@@ -483,17 +473,17 @@ async fn test_generate_share_proof_open_id_flow_success() {
             Ok(())
         });
 
-    let mut crypto = MockCryptoProvider::default();
-    crypto
-        .expect_generate_alphanumeric()
-        .once()
-        .returning(|_| String::from("ABC123"));
+    // let mut crypto = MockCryptoProvider::default();
+    // crypto
+    //     .expect_generate_alphanumeric()
+    //     .once()
+    //     .returning(|_| String::from("ABC123"));
 
     let protocol = setup_protocol(TestInputs {
         proof_repository,
         interaction_repository,
         key_algorithm_provider,
-        crypto,
+        //crypto,
         ..Default::default()
     });
 

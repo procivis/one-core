@@ -3,14 +3,14 @@ use std::collections::BTreeMap;
 use coset::{KeyType, Label, RegisteredLabelWithPrivate};
 use hex_literal::hex;
 use maplit::hashmap;
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::key_algorithm::MockKeyAlgorithm;
 use serde_json::json;
 use uuid::Uuid;
 
 use crate::provider::credential_formatter::{CredentialSchemaData, MockSignatureProvider};
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::service::test_utilities::generic_config;
 
 use super::mdoc::*;

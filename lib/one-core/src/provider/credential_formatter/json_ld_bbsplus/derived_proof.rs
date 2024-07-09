@@ -4,12 +4,13 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use itertools::Itertools;
 use urlencoding::encode;
 
+use one_providers::crypto::imp::signer::bbs::{BBSSigner, BbsDeriveInput};
+
 use super::super::json_ld::model::LdCredential;
 use super::super::model::CredentialPresentation;
 use super::model::{GroupEntry, TransformedEntry};
 use super::JsonLdBbsplus;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::crypto::signer::bbs::{BBSSigner, BbsDeriveInput};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::{

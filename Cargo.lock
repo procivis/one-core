@@ -976,10 +976,11 @@ dependencies = [
  "indoc",
  "maplit",
  "one-core",
+ "one-open-core",
+ "one-providers",
  "p256",
  "prometheus",
  "rand",
- "rand_chacha",
  "reqwest 0.12.5",
  "sentry",
  "serde",
@@ -2999,9 +3000,7 @@ dependencies = [
  "assert2",
  "async-trait",
  "bit-vec",
- "blstrs 0.7.1",
  "bs58",
- "chacha20poly1305",
  "ciborium",
  "cocoon",
  "contextual",
@@ -3029,13 +3028,14 @@ dependencies = [
  "maplit",
  "mime",
  "mockall",
+ "one-open-core",
+ "one-providers",
  "ouroboros 0.18.4",
  "p256",
  "pairing_crypto",
  "pbkdf2 0.12.2",
  "pqc_dilithium",
  "rand",
- "rand_chacha",
  "rcgen",
  "rdf-types",
  "regex",
@@ -3080,6 +3080,8 @@ dependencies = [
  "async-trait",
  "dto_mapper",
  "one-core",
+ "one-open-core",
+ "one-providers",
  "serde",
  "serde_json",
  "shared-types",
@@ -3090,6 +3092,49 @@ dependencies = [
  "uniffi",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "one-open-core"
+version = "0.1.0"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?branch=main#e85dc04ce0d215b9d34425957e8c66dcf4c09fae"
+dependencies = [
+ "async-trait",
+ "josekit",
+ "one-providers",
+ "strum 0.26.3",
+ "strum_macros",
+ "thiserror",
+ "zeroize",
+]
+
+[[package]]
+name = "one-providers"
+version = "0.1.0"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?branch=main#e85dc04ce0d215b9d34425957e8c66dcf4c09fae"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "blstrs 0.7.1",
+ "bs58",
+ "chacha20poly1305",
+ "ct-codecs",
+ "ed25519-compact",
+ "hmac 0.12.1",
+ "josekit",
+ "mockall",
+ "p256",
+ "pairing_crypto",
+ "pbkdf2 0.12.2",
+ "pqc_dilithium",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "thiserror",
+ "uuid",
+ "zeroize",
 ]
 
 [[package]]
@@ -4757,6 +4802,8 @@ dependencies = [
 name = "shared-types"
 version = "0.1.0"
 dependencies = [
+ "one-open-core",
+ "one-providers",
  "sea-orm",
  "serde",
  "utoipa",

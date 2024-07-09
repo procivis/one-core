@@ -1,6 +1,6 @@
 use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
 use crate::model::key::Key;
-use crate::provider::key_storage::{GeneratedKey, KeyStorage};
+use crate::provider::key_storage::{KeyStorage, StorageGeneratedKey};
 use crate::service::error::{ServiceError, ValidationError};
 use mockall::predicate::eq;
 use std::sync::Arc;
@@ -23,7 +23,7 @@ async fn test_generate_success() {
         .once()
         .with(eq(format!("prefix.{key_id}")))
         .return_once(|_| {
-            Ok(GeneratedKey {
+            Ok(StorageGeneratedKey {
                 public_key: b"public_key".into(),
                 key_reference: b"key_reference".into(),
             })

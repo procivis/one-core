@@ -2,12 +2,12 @@ use std::fmt::Debug;
 
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use one_providers::crypto::SignerError;
 use serde::{de::DeserializeOwned, Serialize};
 use shared_types::DidValue;
 
-use crate::{
-    crypto::signer::error::SignerError,
-    provider::credential_formatter::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string},
+use crate::provider::credential_formatter::jwt::mapper::{
+    bin_to_b64url_string, string_to_b64url_string,
 };
 
 use self::{

@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
 use dto_mapper::{convert_inner, try_convert_inner};
+use one_providers::key_algorithm::error::KeyAlgorithmError;
 use serde::{Deserialize, Deserializer};
 use shared_types::{CredentialId, DidId, DidValue, KeyId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
+
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
 use crate::config::core_config::CoreConfig;
 use crate::model::claim::{Claim, ClaimId};
@@ -17,9 +20,8 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::did_method::dto::PublicKeyJwkDTO;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VCParams;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::did_repository::DidRepository;
-use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
+use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub const NESTED_CLAIM_MARKER: char = '/';
 
@@ -279,12 +281,14 @@ pub fn get_encryption_key_jwk_from_proof(
 
     let key_algorithm = key_algorithm_provider
         .get_key_algorithm(&encryption_key.key_type)
-        .ok_or(MissingProviderError::KeyAlgorithm(
+        .ok_or(KeyAlgorithmError::NotSupported(
             encryption_key.key_type.to_owned(),
         ))?;
 
     Ok(PublicKeyWithJwk {
         key_id: encryption_key.id,
-        jwk: key_algorithm.bytes_to_jwk(&encryption_key.public_key, Some("enc".to_string()))?,
+        jwk: key_algorithm
+            .bytes_to_jwk(&encryption_key.public_key, Some("enc".to_string()))?
+            .into(),
     })
 }

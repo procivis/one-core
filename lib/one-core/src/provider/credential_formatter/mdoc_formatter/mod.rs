@@ -15,6 +15,8 @@ use coset::{
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use mdoc::DataElementValue;
+use one_providers::crypto::SignerError;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use rand::RngCore;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -25,14 +27,12 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
-use crate::crypto::signer::error::SignerError;
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 use self::cose::CoseSign1Builder;
 use self::mdoc::{
@@ -481,7 +481,7 @@ fn try_extract_holder_did_mdl_public_key(
         )));
     };
     let public_key = key_algorithm
-        .jwk_to_bytes(&holder_public_key)
+        .jwk_to_bytes(&holder_public_key.into())
         .map_err(|err| FormatterError::Failed(format!("Cannot convert jwk: {err}")))?;
     let encoded_public_key = key_algorithm
         .get_multibase(&public_key)

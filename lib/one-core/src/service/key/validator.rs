@@ -1,4 +1,4 @@
-use crate::config::core_config::{KeyAlgorithmConfig, KeyAlgorithmType};
+use crate::config::core_config::KeyAlgorithmConfig;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::key::dto::KeyGenerateCSRRequestDTO;
 use crate::{
@@ -27,8 +27,9 @@ pub(super) fn validate_generate_csr_request(
     key_type: &str,
     config: &KeyAlgorithmConfig,
 ) -> Result<(), ServiceError> {
-    let config_key_type = config.get_fields(key_type)?.r#type;
-    if config_key_type != KeyAlgorithmType::Es256 && config_key_type != KeyAlgorithmType::Eddsa {
+    let config_key_type = &config.get_fields(key_type)?.r#type;
+    //TODO Capabilities CSR?
+    if config_key_type != "ES256" && config_key_type != "EDDSA" {
         return Err(BusinessLogicError::UnsupportedKeyTypeForCSR.into());
     }
 

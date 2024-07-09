@@ -24,6 +24,8 @@ pub(crate) mod test_utilities;
 
 use std::collections::HashMap;
 
+use one_providers::crypto::SignerError;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
@@ -37,7 +39,6 @@ use self::model::{
 };
 use super::exchange_protocol::openid4vc::dto::OpenID4VPInteractionData;
 use crate::config::core_config::{CoreConfig, DatatypeType};
-use crate::crypto::signer::error::SignerError;
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,

@@ -5,6 +5,9 @@ use std::str::FromStr;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
+use one_providers::crypto::imp::utilities;
+use one_providers::key_algorithm::error::KeyAlgorithmError;
+use one_providers::key_algorithm::imp::eddsa::JwkEddsaExt;
 use shared_types::{CredentialId, CredentialSchemaId, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -48,7 +51,6 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_credential_offer, create_open_id_for_vp_client_metadata,
 };
 use crate::provider::exchange_protocol::openid4vc::model::JwePayload;
-use crate::provider::key_algorithm::eddsa::JwkEddsaExt;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
@@ -393,7 +395,7 @@ impl OIDCService {
             format!(
                 "{}.{}",
                 interaction_id,
-                self.crypto.generate_alphanumeric(32)
+                utilities::generate_alphanumeric(32)
             )
         };
 
@@ -1111,7 +1113,7 @@ fn build_jwe_decrypter(
 
     if let Some("Ed25519") = jwk.curve() {
         jwk = jwk.into_x25519().map_err(|err| {
-            ServiceError::KeyAlgorithmError(format!("Cannot convert Ed25519 into X25519: {err}"))
+            KeyAlgorithmError::Failed(format!("Cannot convert Ed25519 into X25519: {err}"))
         })?;
     };
 

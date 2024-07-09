@@ -2,15 +2,14 @@ use std::{collections::HashMap, sync::Arc};
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use mockall::predicate::eq;
-use mockall::Sequence;
+use one_providers::crypto::imp::hasher::sha256::SHA256;
+use one_providers::crypto::{CryptoProvider, Hasher, MockCryptoProvider, MockHasher};
 use serde_json::json;
 use time::Duration;
 
+use super::disclosures::DisclosureArray;
 use super::{prepare_sd_presentation, SDJWTFormatter};
 
-use crate::crypto::hasher::sha256::SHA256;
-use crate::crypto::hasher::Hasher;
-use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::sdjwt_formatter::disclosures::{
     extract_claims_from_disclosures, gather_disclosures, get_disclosures_by_claim_name,
     get_subdisclosures, parse_disclosure, sort_published_claims_by_indices,
@@ -20,7 +19,6 @@ use crate::provider::credential_formatter::sdjwt_formatter::verifier::verify_cla
 use crate::provider::credential_formatter::PublishedClaim;
 use crate::{
     config::core_config,
-    crypto::{hasher::MockHasher, MockCryptoProvider},
     provider::credential_formatter::{
         jwt::model::JWTPayload,
         model::{CredentialPresentation, CredentialStatus},
@@ -31,6 +29,19 @@ use crate::{
         CredentialData, CredentialFormatter, ExtractPresentationCtx, MockAuth, MockTokenVerifier,
     },
 };
+
+impl From<&str> for DisclosureArray {
+    fn from(value: &str) -> Self {
+        serde_json::from_str(value).unwrap()
+    }
+}
+
+impl DisclosureArray {
+    fn from_b64(value: &str) -> Self {
+        let part_decoded = Base64UrlSafeNoPadding::decode_to_vec(value, None).unwrap();
+        serde_json::from_slice(&part_decoded).unwrap()
+    }
+}
 
 #[tokio::test]
 async fn test_format_credential_a() {
@@ -46,10 +57,6 @@ async fn test_format_credential_a() {
         .expect_get_hasher()
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
-
-    crypto
-        .expect_generate_salt_base64()
-        .returning(|| String::from("MTIzYWJj"));
 
     let leeway = 45u64;
 
@@ -95,14 +102,13 @@ async fn test_format_credential_a() {
 
     assert_eq!(parts.len(), 3);
 
-    assert_eq!(
-        parts[1],
-        &Base64UrlSafeNoPadding::encode_to_string(r#"["MTIzYWJj","name","John"]"#).unwrap()
-    );
-    assert_eq!(
-        parts[2],
-        &Base64UrlSafeNoPadding::encode_to_string(r#"["MTIzYWJj","age","42"]"#).unwrap()
-    );
+    let part1 = DisclosureArray::from_b64(parts[1]);
+    assert_eq!(part1.key, "name");
+    assert_eq!(part1.value, "John");
+
+    let part2 = DisclosureArray::from_b64(parts[2]);
+    assert_eq!(part2.key, "age");
+    assert_eq!(part2.value, "42");
 
     let jwt_parts: Vec<&str> = parts[0].splitn(3, '.').collect();
 
@@ -163,10 +169,10 @@ async fn test_format_credential_a() {
 
 #[tokio::test]
 async fn test_format_credential_with_array() {
-    let claim1 = "[\"MTIzYWJj\",\"array\",\"[\\\"array_item\\\"]\"]";
-    let claim2 = "[\"MTIzYWJj\",\"nested\",\"nested_item\"]";
-    let claim3 = "[\"MTIzYWJj\",\"root\",{\"_sd\":[\"MPQIfncdJvNwYLbpw4L0lU9MEK_bYA9JDVGO7qb0abs\",\"r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw\"]}]";
-    let claim4 = "[\"MTIzYWJj\",\"root_item\",\"root_item\"]";
+    let claim1 = ("array", "[\"array_item\"]");
+    let claim2 = ("nested", "nested_item");
+    let claim3 = ("root", "{\"_sd\":[\"MPQIfncdJvNwYLbpw4L0lU9MEK_bYA9JDVGO7qb0abs\",\"r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw\"]}");
+    let claim4 = ("root_item", "root_item");
 
     let hash1 = "MPQIfncdJvNwYLbpw4L0lU9MEK_bYA9JDVGO7qb0abs";
     let hash2 = "r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw";
@@ -174,24 +180,22 @@ async fn test_format_credential_with_array() {
     let hash4 = "GBcm8QZO2Pr4n_jmJlP4By1iwcoU0eQDVhin2AidMq4";
 
     let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64()
-        .with(eq(claim1.as_bytes()))
-        .returning(|_| Ok(hash1.to_string()));
-    hasher
-        .expect_hash_base64()
-        .with(eq(claim2.as_bytes()))
-        .returning(|_| Ok(hash2.to_string()));
-    hasher
-        .expect_hash_base64()
-        .with(eq(claim3.as_bytes()))
-        .returning(|_| Ok(hash3.to_string()));
-    hasher
-        .expect_hash_base64()
-        .with(eq(claim4.as_bytes()))
-        .returning(|_| Ok(hash4.to_string()));
+    hasher.expect_hash_base64().returning(move |input| {
+        let input = DisclosureArray::from(std::str::from_utf8(input).unwrap());
+        if input.key.eq(claim1.0) {
+            Ok(hash1.to_string())
+        } else if input.key.eq(claim2.0) {
+            Ok(hash2.to_string())
+        } else if input.key.eq(claim3.0) {
+            Ok(hash3.to_string())
+        } else if input.key.eq(claim4.0) {
+            Ok(hash4.to_string())
+        } else {
+            panic!("Unexpected input")
+        }
+    });
 
-    let hasher = Arc::new(hasher);
+    let hasher: Arc<MockHasher> = Arc::new(hasher);
 
     let mut crypto = MockCryptoProvider::default();
 
@@ -200,11 +204,6 @@ async fn test_format_credential_with_array() {
         .times(2)
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
-
-    crypto
-        .expect_generate_salt_base64()
-        .times(4) // Number of claims
-        .returning(|| String::from("MTIzYWJj"));
 
     let leeway = 45u64;
 
@@ -249,24 +248,21 @@ async fn test_format_credential_with_array() {
     let parts: Vec<&str> = token.split('~').collect();
     assert_eq!(parts.len(), 5);
 
-    // WARNING! It's not in line with the standard but we will adjust the implementation
-    // to the standard in a separate ticket.
-    assert_eq!(
-        parts[1],
-        &Base64UrlSafeNoPadding::encode_to_string(claim1).unwrap()
-    );
-    assert_eq!(
-        parts[2],
-        &Base64UrlSafeNoPadding::encode_to_string(claim2).unwrap()
-    );
-    assert_eq!(
-        parts[3],
-        &Base64UrlSafeNoPadding::encode_to_string(claim3).unwrap()
-    );
-    assert_eq!(
-        parts[4],
-        &Base64UrlSafeNoPadding::encode_to_string(claim4).unwrap()
-    );
+    let part = DisclosureArray::from_b64(parts[1]);
+    assert_eq!(part.key, claim1.0);
+    assert_eq!(part.value, claim1.1);
+
+    let part = DisclosureArray::from_b64(parts[2]);
+    assert_eq!(part.key, claim2.0);
+    assert_eq!(part.value, claim2.1);
+
+    let part = DisclosureArray::from_b64(parts[3]);
+    assert_eq!(part.key, claim3.0);
+    assert_eq!(part.value.to_string(), claim3.1);
+
+    let part = DisclosureArray::from_b64(parts[4]);
+    assert_eq!(part.key, claim4.0);
+    assert_eq!(part.value, claim4.1);
 
     let jwt_parts: Vec<&str> = parts[0].splitn(3, '.').collect();
 
@@ -640,74 +636,41 @@ fn test_get_capabilities() {
 fn test_gather_disclosures_and_objects_without_nesting() {
     let algorithm = "sha-256";
 
-    let b64_street_address_salt = "2GLC42sKQveCfGfryNRN9w";
-    let b64_street_address_disclosure =
-        "WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3Iiwic3RyZWV0X2FkZHJlc3MiLCJTY2h1bHN0ci4gMTIiXQ";
-    let street_address_disclosure = r#"["2GLC42sKQveCfGfryNRN9w","street_address","Schulstr. 12"]"#;
+    let street_address_disclosure = ("street_address", "Schulstr. 12");
     let hashed_b64_street_address_disclosure = "9gjVuXtdFROCgRrtNcGUXmF65rdezi_6Er_j76kmYyM";
 
-    let b64_locality_salt = "eluV5Og3gSNII8EYnsxA_A";
-    let b64_locality_disclosure =
-        "WyJlbHVWNU9nM2dTTklJOEVZbnN4QV9BIiwibG9jYWxpdHkiLCJTY2h1bHBmb3J0YSJd";
-    let locality_disclosure = r#"["eluV5Og3gSNII8EYnsxA_A","locality","Schulpforta"]"#;
+    let locality_disclosure = ("locality", "Schulpforta");
     let hashed_b64_locality_disclosure = "6vh9bq-zS4GKM_7GpggVbYzzu6oOGXrmNVGPHP75Ud0";
 
-    let b64_region_salt = "6Ij7tM-a5iVPGboS5tmvVA";
-    let b64_region_disclosure =
-        "WyI2SWo3dE0tYTVpVlBHYm9TNXRtdlZBIiwicmVnaW9uIiwiU2FjaHNlbi1BbmhhbHQiXQ";
-    let region_disclosure = r#"["6Ij7tM-a5iVPGboS5tmvVA","region","Sachsen-Anhalt"]"#;
+    let region_disclosure = ("region", "Sachsen-Anhalt");
     let hashed_b64_region_disclosure = "KURDPh4ZC19-3tiz-Df39V8eidy1oV3a3H1Da2N0g88";
 
-    let b64_country_salt = "eI8ZWm9QnKPpNPeNenHdhQ";
-    let b64_country_disclosure = "WyJlSThaV205UW5LUHBOUGVOZW5IZGhRIiwiY291bnRyeSIsIkRFIl0";
-    let country_disclosure = r#"["eI8ZWm9QnKPpNPeNenHdhQ","country","DE"]"#;
+    let country_disclosure = ("country", "DE");
     let hashed_b64_country_disclosure = "WN9r9dCBJ8HTCsS2jKASxTjEyW5m5x65_Z_2ro2jfXM";
 
     let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64()
-        .with(eq(street_address_disclosure.as_bytes()))
-        .returning(move |_| Ok(String::from(hashed_b64_street_address_disclosure)));
-    hasher
-        .expect_hash_base64()
-        .with(eq(locality_disclosure.as_bytes()))
-        .returning(move |_| Ok(String::from(hashed_b64_locality_disclosure)));
-    hasher
-        .expect_hash_base64()
-        .with(eq(region_disclosure.as_bytes()))
-        .returning(move |_| Ok(String::from(hashed_b64_region_disclosure)));
-    hasher
-        .expect_hash_base64()
-        .with(eq(country_disclosure.as_bytes()))
-        .returning(move |_| Ok(String::from(hashed_b64_country_disclosure)));
+    hasher.expect_hash_base64().returning(move |input| {
+        let input = DisclosureArray::from(std::str::from_utf8(input).unwrap());
+        if input.key.eq(street_address_disclosure.0) {
+            Ok(hashed_b64_street_address_disclosure.to_string())
+        } else if input.key.eq(locality_disclosure.0) {
+            Ok(hashed_b64_locality_disclosure.to_string())
+        } else if input.key.eq(region_disclosure.0) {
+            Ok(hashed_b64_region_disclosure.to_string())
+        } else if input.key.eq(country_disclosure.0) {
+            Ok(hashed_b64_country_disclosure.to_string())
+        } else {
+            panic!("Unexpected input")
+        }
+    });
     let hasher = Arc::new(hasher);
 
-    let mut seq = Sequence::new();
     let mut crypto = MockCryptoProvider::default();
     crypto
         .expect_get_hasher()
         .with(eq(algorithm))
         .returning(move |_| Ok(hasher.clone()));
-    crypto
-        .expect_generate_salt_base64()
-        .once()
-        .returning(|| b64_street_address_salt.to_string())
-        .in_sequence(&mut seq);
-    crypto
-        .expect_generate_salt_base64()
-        .once()
-        .returning(|| b64_locality_salt.to_string())
-        .in_sequence(&mut seq);
-    crypto
-        .expect_generate_salt_base64()
-        .once()
-        .returning(|| b64_region_salt.to_string())
-        .in_sequence(&mut seq);
-    crypto
-        .expect_generate_salt_base64()
-        .once()
-        .returning(|| b64_country_salt.to_string())
-        .in_sequence(&mut seq);
+
     let crypto: Arc<dyn CryptoProvider> = Arc::new(crypto);
 
     let test_json = json!({
@@ -718,11 +681,15 @@ fn test_gather_disclosures_and_objects_without_nesting() {
     });
 
     let (disclosures, result) = gather_disclosures(&test_json, algorithm, &crypto).unwrap();
-    let expected_disclosures = vec![
-        b64_street_address_disclosure,
-        b64_locality_disclosure,
-        b64_region_disclosure,
-        b64_country_disclosure,
+    let disclosures: Vec<_> = disclosures
+        .iter()
+        .map(|val| DisclosureArray::from_b64(val))
+        .collect();
+    let expected_disclosures = &[
+        street_address_disclosure,
+        locality_disclosure,
+        region_disclosure,
+        country_disclosure,
     ];
     let expected_result = vec![
         hashed_b64_street_address_disclosure,
@@ -730,7 +697,12 @@ fn test_gather_disclosures_and_objects_without_nesting() {
         hashed_b64_region_disclosure,
         hashed_b64_country_disclosure,
     ];
-    assert_eq!(expected_disclosures, disclosures);
+
+    assert!(expected_disclosures.iter().all(|expected| {
+        disclosures
+            .iter()
+            .any(|disc| disc.key == expected.0 && disc.value.to_string().contains(expected.1))
+    }));
     assert_eq!(expected_result, result);
 }
 
@@ -738,88 +710,47 @@ fn test_gather_disclosures_and_objects_without_nesting() {
 fn test_gather_disclosures_and_objects_with_nesting() {
     let algorithm = "sha-256";
 
-    let b64_street_address_salt = "2GLC42sKQveCfGfryNRN9w";
-    let b64_street_address_disclosure =
-        "WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3Iiwic3RyZWV0X2FkZHJlc3MiLCJTY2h1bHN0ci4gMTIiXQ";
-    let street_address_disclosure = r#"["2GLC42sKQveCfGfryNRN9w","street_address","Schulstr. 12"]"#;
+    let street_address_disclosure = ("street_address", "Schulstr. 12");
     let hashed_b64_street_address_disclosure = "9gjVuXtdFROCgRrtNcGUXmF65rdezi_6Er_j76kmYyM";
 
-    let b64_locality_salt = "eluV5Og3gSNII8EYnsxA_A";
-    let b64_locality_disclosure =
-        "WyJlbHVWNU9nM2dTTklJOEVZbnN4QV9BIiwibG9jYWxpdHkiLCJTY2h1bHBmb3J0YSJd";
-    let locality_disclosure = r#"["eluV5Og3gSNII8EYnsxA_A","locality","Schulpforta"]"#;
+    let locality_disclosure = ("locality", "Schulpforta");
     let hashed_b64_locality_disclosure = "6vh9bq-zS4GKM_7GpggVbYzzu6oOGXrmNVGPHP75Ud0";
 
-    let b64_region_salt = "6Ij7tM-a5iVPGboS5tmvVA";
-    let b64_region_disclosure =
-        "WyI2SWo3dE0tYTVpVlBHYm9TNXRtdlZBIiwicmVnaW9uIiwiU2FjaHNlbi1BbmhhbHQiXQ";
-    let region_disclosure = r#"["6Ij7tM-a5iVPGboS5tmvVA","region","Sachsen-Anhalt"]"#;
+    let region_disclosure = ("region", "Sachsen-Anhalt");
     let hashed_b64_region_disclosure = "KURDPh4ZC19-3tiz-Df39V8eidy1oV3a3H1Da2N0g88";
 
-    let b64_country_salt = "eI8ZWm9QnKPpNPeNenHdhQ";
-    let b64_country_disclosure = "WyJlSThaV205UW5LUHBOUGVOZW5IZGhRIiwiY291bnRyeSIsIkRFIl0";
-    let country_disclosure = r#"["eI8ZWm9QnKPpNPeNenHdhQ","country","DE"]"#;
+    let country_disclosure = ("country", "DE");
     let hashed_b64_country_disclosure = "WN9r9dCBJ8HTCsS2jKASxTjEyW5m5x65_Z_2ro2jfXM";
 
-    let b64_address_salt = "Qg_O64zqAxe412a108iroA";
-    let b64_address_disclosure = "WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwiYWRkcmVzcyIseyJfc2QiOlsiOWdqVnVYdGRGUk9DZ1JydE5jR1VYbUY2NXJkZXppXzZFcl9qNzZrbVl5TSIsIjZ2aDlicS16UzRHS01fN0dwZ2dWYll6enU2b09HWHJtTlZHUEhQNzVVZDAiLCJLVVJEUGg0WkMxOS0zdGl6LURmMzlWOGVpZHkxb1YzYTNIMURhMk4wZzg4IiwiV045cjlkQ0JKOEhUQ3NTMmpLQVN4VGpFeVc1bTV4NjVfWl8ycm8yamZYTSJdfV0";
-    let address_disclosure = r#"["Qg_O64zqAxe412a108iroA","address",{"_sd":["9gjVuXtdFROCgRrtNcGUXmF65rdezi_6Er_j76kmYyM","6vh9bq-zS4GKM_7GpggVbYzzu6oOGXrmNVGPHP75Ud0","KURDPh4ZC19-3tiz-Df39V8eidy1oV3a3H1Da2N0g88","WN9r9dCBJ8HTCsS2jKASxTjEyW5m5x65_Z_2ro2jfXM"]}]"#;
+    let address_disclosure = ("address", "{\"_sd\":[\"9gjVuXtdFROCgRrtNcGUXmF65rdezi_6Er_j76kmYyM\",\"6vh9bq-zS4GKM_7GpggVbYzzu6oOGXrmNVGPHP75Ud0\",\"KURDPh4ZC19-3tiz-Df39V8eidy1oV3a3H1Da2N0g88\",\"WN9r9dCBJ8HTCsS2jKASxTjEyW5m5x65_Z_2ro2jfXM\"]}");
     let hashed_b64_address_disclosure = "HvrKX6fPV0v9K_yCVFBiLFHsMaxcD_114Em6VT8x1lg";
 
     let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64()
-        .with(eq(street_address_disclosure.as_bytes()))
-        .returning(move |_| Ok(String::from(hashed_b64_street_address_disclosure)));
-    hasher
-        .expect_hash_base64()
-        .with(eq(locality_disclosure.as_bytes()))
-        .returning(move |_| Ok(String::from(hashed_b64_locality_disclosure)));
-    hasher
-        .expect_hash_base64()
-        .with(eq(region_disclosure.as_bytes()))
-        .returning(move |_| Ok(String::from(hashed_b64_region_disclosure)));
-    hasher
-        .expect_hash_base64()
-        .with(eq(country_disclosure.as_bytes()))
-        .returning(move |_| Ok(String::from(hashed_b64_country_disclosure)));
-    hasher
-        .expect_hash_base64()
-        .with(eq(address_disclosure.as_bytes()))
-        .returning(move |_| Ok(String::from(hashed_b64_address_disclosure)));
+    hasher.expect_hash_base64().returning(move |input| {
+        let input = DisclosureArray::from(std::str::from_utf8(input).unwrap());
+        if input.key.eq(street_address_disclosure.0) {
+            Ok(hashed_b64_street_address_disclosure.to_string())
+        } else if input.key.eq(locality_disclosure.0) {
+            Ok(hashed_b64_locality_disclosure.to_string())
+        } else if input.key.eq(region_disclosure.0) {
+            Ok(hashed_b64_region_disclosure.to_string())
+        } else if input.key.eq(country_disclosure.0) {
+            Ok(hashed_b64_country_disclosure.to_string())
+        } else if input.key.eq(address_disclosure.0) {
+            Ok(hashed_b64_address_disclosure.to_string())
+        } else {
+            panic!("Unexpected input")
+        }
+    });
     let hasher = Arc::new(hasher);
 
-    let mut seq = Sequence::new();
+    // let mut seq = Sequence::new();
     let mut crypto = MockCryptoProvider::default();
     crypto
         .expect_get_hasher()
         .with(eq(algorithm))
         .returning(move |_| Ok(hasher.clone()));
-    crypto
-        .expect_generate_salt_base64()
-        .once()
-        .returning(|| b64_street_address_salt.to_string())
-        .in_sequence(&mut seq);
-    crypto
-        .expect_generate_salt_base64()
-        .once()
-        .returning(|| b64_locality_salt.to_string())
-        .in_sequence(&mut seq);
-    crypto
-        .expect_generate_salt_base64()
-        .once()
-        .returning(|| b64_region_salt.to_string())
-        .in_sequence(&mut seq);
-    crypto
-        .expect_generate_salt_base64()
-        .once()
-        .returning(|| b64_country_salt.to_string())
-        .in_sequence(&mut seq);
-    crypto
-        .expect_generate_salt_base64()
-        .once()
-        .returning(|| b64_address_salt.to_string())
-        .in_sequence(&mut seq);
+
     let crypto: Arc<dyn CryptoProvider> = Arc::new(crypto);
 
     let test_json = json!({
@@ -832,15 +763,25 @@ fn test_gather_disclosures_and_objects_with_nesting() {
     });
 
     let (disclosures, result) = gather_disclosures(&test_json, algorithm, &crypto).unwrap();
-    let expected_disclosures = vec![
-        b64_street_address_disclosure,
-        b64_locality_disclosure,
-        b64_region_disclosure,
-        b64_country_disclosure,
-        b64_address_disclosure,
+    let disclosures: Vec<_> = disclosures
+        .iter()
+        .map(|val| DisclosureArray::from_b64(val))
+        .collect();
+    let expected_disclosures = &[
+        street_address_disclosure,
+        locality_disclosure,
+        region_disclosure,
+        country_disclosure,
+        address_disclosure,
     ];
+
+    assert!(expected_disclosures.iter().all(|expected| {
+        disclosures
+            .iter()
+            .any(|disc| disc.key == expected.0 && disc.value.to_string().contains(expected.1))
+    }));
+
     let expected_result = vec![hashed_b64_address_disclosure];
-    assert_eq!(expected_disclosures, disclosures);
     assert_eq!(expected_result, result);
 }
 
@@ -903,7 +844,7 @@ fn generic_disclosures() -> Vec<Disclosure> {
 #[test]
 fn test_verify_claims_nested_success() {
     let hasher = SHA256 {};
-    let hasher_arc: Arc<dyn Hasher> = Arc::new(hasher);
+    let hasher_arc: Arc<dyn Hasher> = Arc::new(hasher) as _;
 
     let hashed_claims = vec!["bvvBS7QQFb8-9K8PVvZ4W3iJNfafA51YUF6wNOW807I".to_string()];
     let disclosures = generic_disclosures();

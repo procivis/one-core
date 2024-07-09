@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+
 use shared_types::{CredentialId, DidId, DidValue};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -17,7 +19,6 @@ use crate::provider::credential_formatter::status_list_jwt_formatter::common::St
 use crate::provider::credential_formatter::status_list_jwt_formatter::BitstringStatusListJwtFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::{
     CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,

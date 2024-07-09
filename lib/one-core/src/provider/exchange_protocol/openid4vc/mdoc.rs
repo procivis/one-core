@@ -2,8 +2,7 @@ use anyhow::{anyhow, bail, Context};
 use josekit::jwe::alg::ecdh_es::{EcdhEsJweAlgorithm, EcdhEsJweEncrypter};
 use josekit::jwe::JweHeader;
 use josekit::jwk::Jwk;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha20Rng;
+use one_providers::key_algorithm::imp::eddsa::JwkEddsaExt;
 
 use super::dto::{
     AuthorizationEncryptedResponseAlgorithm,
@@ -12,7 +11,6 @@ use super::dto::{
 };
 use super::model::JwePayload;
 use crate::provider::did_method::dto::PublicKeyJwkDTO;
-use crate::provider::key_algorithm::eddsa::JwkEddsaExt;
 
 pub(crate) fn build_jwe(
     payload: JwePayload,
@@ -27,12 +25,6 @@ pub(crate) fn build_jwe(
 
     josekit::jwe::serialize_compact(payload.as_bytes(), &header, &encrypter)
         .context("JWE serialization failed")
-}
-
-pub(crate) fn generate_nonce() -> String {
-    let mut rng = ChaCha20Rng::from_entropy();
-
-    rng.gen::<[u8; 32]>().map(char::from).into_iter().collect()
 }
 
 fn build_ecdh_es_encrypter(

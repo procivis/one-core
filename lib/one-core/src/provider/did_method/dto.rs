@@ -1,3 +1,4 @@
+use dto_mapper::{From, Into};
 use serde::{de::Error, Deserialize, Serialize};
 use shared_types::DidValue;
 
@@ -32,9 +33,11 @@ pub struct DidVerificationMethodDTO {
     pub public_key_jwk: PublicKeyJwkDTO,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, From, Into)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "kty")]
+#[from(one_providers::key_algorithm::model::PublicKeyJwk)]
+#[into(one_providers::key_algorithm::model::PublicKeyJwk)]
 pub enum PublicKeyJwkDTO {
     #[serde(rename = "EC")]
     Ec(PublicKeyJwkEllipticDataDTO),
@@ -63,7 +66,9 @@ impl PublicKeyJwkDTO {
 pub const ENC: &str = "enc";
 pub const SIG: &str = "sig";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, From, Into)]
+#[from(one_providers::key_algorithm::model::PublicKeyJwkRsaData)]
+#[into(one_providers::key_algorithm::model::PublicKeyJwkRsaData)]
 pub struct PublicKeyJwkRsaDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,
@@ -71,14 +76,18 @@ pub struct PublicKeyJwkRsaDataDTO {
     pub n: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, From, Into)]
+#[from(one_providers::key_algorithm::model::PublicKeyJwkOctData)]
+#[into(one_providers::key_algorithm::model::PublicKeyJwkOctData)]
 pub struct PublicKeyJwkOctDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,
     pub k: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, From, Into)]
+#[from(one_providers::key_algorithm::model::PublicKeyJwkMlweData)]
+#[into(one_providers::key_algorithm::model::PublicKeyJwkMlweData)]
 pub struct PublicKeyJwkMlweDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,
@@ -86,7 +95,9 @@ pub struct PublicKeyJwkMlweDataDTO {
     pub x: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, From, Into)]
+#[from(one_providers::key_algorithm::model::PublicKeyJwkEllipticData)]
+#[into(one_providers::key_algorithm::model::PublicKeyJwkEllipticData)]
 pub struct PublicKeyJwkEllipticDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,

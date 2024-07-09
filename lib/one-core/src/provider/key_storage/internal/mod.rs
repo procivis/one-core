@@ -1,18 +1,19 @@
 use std::sync::Arc;
 
 use cocoon::MiniCocoon;
-use rand::{RngCore, SeedableRng};
-use rand_chacha::ChaCha20Rng;
+use one_providers::crypto::imp::utilities;
+use one_providers::crypto::SignerError;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use shared_types::KeyId;
 use zeroize::Zeroizing;
 
-use super::KeySecurity;
-use crate::crypto::signer::error::SignerError;
+use super::{KeySecurity, StorageGeneratedKey};
 use crate::model::key::Key;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::{GeneratedKey, KeyStorage, KeyStorageCapabilities};
+
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+
+use crate::provider::key_storage::{KeyStorage, KeyStorageCapabilities};
 use crate::service::error::{KeyStorageError, ServiceError, ValidationError};
 
 #[cfg(test)]
@@ -58,14 +59,14 @@ impl KeyStorage for InternalKeyProvider {
         &self,
         _key_id: &KeyId,
         key_type: &str,
-    ) -> Result<GeneratedKey, ServiceError> {
+    ) -> Result<StorageGeneratedKey, ServiceError> {
         let key_pair = self
             .key_algorithm_provider
             .get_key_algorithm(key_type)
             .ok_or(ValidationError::InvalidKeyAlgorithm(key_type.to_owned()))?
             .generate_key_pair();
 
-        Ok(GeneratedKey {
+        Ok(StorageGeneratedKey {
             public_key: key_pair.public,
             key_reference: encrypt_if_password_is_provided(
                 &key_pair.private,
@@ -129,19 +130,13 @@ fn encrypt_if_password_is_provided(
     match encryption_key {
         None => Ok(buffer.to_vec()),
         Some(encryption_key) => {
-            let mut cocoon = MiniCocoon::from_key(encryption_key, &generate_random_seed());
+            let mut cocoon =
+                MiniCocoon::from_key(encryption_key, &utilities::generate_random_seed_32());
             cocoon
                 .wrap(buffer)
                 .map_err(|_| ServiceError::Other("Encryption failure".to_string()))
         }
     }
-}
-
-fn generate_random_seed() -> [u8; 32] {
-    let mut rng = ChaCha20Rng::from_entropy();
-    let mut seed = [0u8; 32];
-    rng.fill_bytes(&mut seed);
-    seed
 }
 
 /// Simplified KDF

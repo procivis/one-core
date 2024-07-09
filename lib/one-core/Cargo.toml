@@ -25,7 +25,6 @@ shadow-rs.workspace        = true
 strum.workspace            = true
 mockall                    = { workspace = true, optional = true }
 rand.workspace             = true
-rand_chacha.workspace      = true
 sha2                       = { version = "0.10" }
 ed25519-compact            = { version = "2.1", features = ["pem"] }
 bit-vec                    = { version = "0.6" }
@@ -54,11 +53,9 @@ sophia_jsonld              = { version = "0.8", features = ["http_client"] }
 sophia_api                 = { version = "0.8" }
 sophia_c14n                = { version = "0.8" }
 pairing_crypto             = { version = "0.4", git = "https://github.com/Iskander508/pairing_crypto", rev = "517a424a989b57b987aacb3642bd7cd2c60b94d1" }
-blstrs                     = { version = "0.7" }
 hmac                       = { version = "0.12" }
 ciborium                   = { version = "0.2" }
 coset                      = { version = "0.3" }
-chacha20poly1305           = { version = "0.10" }
 tempfile.workspace         = true
 zip                        = { version = "2.1" }
 pbkdf2                     = { version = "0.12", features = ["simple"] }
@@ -75,6 +72,8 @@ x509-parser                = { version = "0.16", features = ["verify"] }
 ouroboros                  = { version = "0.18" }
 itertools                  = { version = "0.13" }
 urlencoding                = { version = "2.1" }
+one-open-core              = { workspace = true }
+one-providers              = { workspace = true }
 
 [dev-dependencies]
 bs58               = { version = "0.5" }
@@ -87,6 +86,8 @@ rusty-fork         = { version = "0.3" }
 hex-literal        = { version = "0.4" }
 maplit             = { version = "1.0" }
 rstest             = { version = "0.21" }
+one-open-core      = { workspace = true }
+one-providers      = { workspace = true, features = ["mock"] }
 
 [build-dependencies]
 shadow-rs.workspace = true

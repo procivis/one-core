@@ -1,3 +1,5 @@
+use one_providers::crypto::{CryptoProviderError, SignerError};
+use one_providers::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
     OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
@@ -9,8 +11,6 @@ use uuid::Uuid;
 use super::did::DidDeactivationError;
 use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
-use crate::crypto::error::CryptoProviderError;
-use crate::crypto::signer::error::SignerError;
 use crate::model::credential::CredentialStateEnum;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofStateEnum;
@@ -58,8 +58,11 @@ pub enum ServiceError {
     #[error(transparent)]
     MissingProvider(#[from] MissingProviderError),
 
-    #[error("Key algorithm error `{0}`")]
-    KeyAlgorithmError(String),
+    #[error(transparent)]
+    KeyAlgorithmError(#[from] KeyAlgorithmError),
+
+    #[error(transparent)]
+    KeyAlgorithmProviderError(#[from] KeyAlgorithmProviderError),
 
     #[error("Key storage error `{0}`")]
     KeyStorageError(anyhow::Error),
@@ -388,8 +391,11 @@ pub enum MissingProviderError {
     #[error("Cannot find `{0}` in did method provider")]
     DidMethod(String),
 
-    #[error("Cannot find `{0}` in key algorithm provider")]
-    KeyAlgorithm(String),
+    #[error(transparent)]
+    KeyAlgorithm(#[from] KeyAlgorithmError),
+
+    #[error(transparent)]
+    KeyAlgorithmProvider(#[from] KeyAlgorithmProviderError),
 
     #[error("Cannot find `{0}` in revocation method provider")]
     RevocationMethod(String),
@@ -425,6 +431,7 @@ impl MissingProviderError {
             MissingProviderError::KeyStorage(_) => ErrorCode::BR_0040,
             MissingProviderError::DidMethod(_) => ErrorCode::BR_0031,
             MissingProviderError::KeyAlgorithm(_) => ErrorCode::BR_0042,
+            MissingProviderError::KeyAlgorithmProvider(_) => ErrorCode::BR_0042,
             MissingProviderError::RevocationMethod(_) => ErrorCode::BR_0044,
             MissingProviderError::RevocationMethodByCredentialStatusType(_) => ErrorCode::BR_0045,
             MissingProviderError::ExchangeProtocol(_) => ErrorCode::BR_0046,
@@ -818,6 +825,7 @@ impl ServiceError {
             ServiceError::MissingAlgorithm(_) => ErrorCode::BR_0061,
             ServiceError::MissingExchangeProtocol(_) => ErrorCode::BR_0046,
             ServiceError::KeyAlgorithmError(_) => ErrorCode::BR_0063,
+            ServiceError::KeyAlgorithmProviderError(_) => ErrorCode::BR_0063,
             ServiceError::DidMethodError(_) => ErrorCode::BR_0064,
             ServiceError::ValidationError(_) | ServiceError::Other(_) => ErrorCode::BR_0000,
             ServiceError::Revocation(_) => ErrorCode::BR_0101,

@@ -3,6 +3,8 @@ use super::{dto::AzureHsmGetTokenResponse, AzureVaultKeyProvider, Params};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use one_providers::crypto::imp::CryptoProviderImpl;
+use one_providers::crypto::{CryptoProvider, Hasher, MockHasher};
 use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -12,14 +14,7 @@ use wiremock::matchers::{
 };
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::{
-    crypto::{
-        hasher::{Hasher, MockHasher},
-        CryptoProvider, CryptoProviderImpl,
-    },
-    model::key::Key,
-    provider::key_storage::KeyStorage,
-};
+use crate::{model::key::Key, provider::key_storage::KeyStorage};
 
 fn get_params(mock_base_url: String) -> Params {
     Params {

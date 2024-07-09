@@ -2,13 +2,13 @@ use std::sync::Arc;
 use std::vec;
 
 use async_trait::async_trait;
+use one_providers::crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
 use crate::config::core_config::JsonLdContextConfig;
-use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::repository::json_ld_context_repository::JsonLdContextRepository;

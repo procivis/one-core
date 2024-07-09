@@ -2,7 +2,10 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use mockall::predicate::{self, always, eq};
+use mockall::predicate::{always, eq};
+use one_providers::key_algorithm::model::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::key_algorithm::MockKeyAlgorithm;
 use serde_json::json;
 use shared_types::{DidId, DidValue, ProofId};
 use time::{Duration, OffsetDateTime};
@@ -10,7 +13,7 @@ use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
 use crate::config::ConfigValidationError;
-use crate::crypto::MockCryptoProvider;
+
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
@@ -39,8 +42,6 @@ use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
 };
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
@@ -86,7 +87,6 @@ struct Mocks {
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
-    pub crypto_provider: MockCryptoProvider,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -107,7 +107,6 @@ fn setup_service(mocks: Mocks) -> OIDCService {
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.revocation_method_provider),
-        Arc::new(mocks.crypto_provider),
         None,
         None,
     )
@@ -1972,7 +1971,7 @@ async fn test_get_client_metadata_success() {
             .return_once(move |_, _| Ok(Some(proof)));
 
         key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
-            Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+            Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 r#use: Some("enc".to_string()),
                 crv: "123".to_string(),
                 x: "456".to_string(),
@@ -2060,7 +2059,6 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let mut crypto_provider = MockCryptoProvider::new();
 
     let mut schema = generic_credential_schema();
     schema.format = "MDOC".to_string();
@@ -2098,17 +2096,10 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
         .once()
         .return_once(|_| Ok(()));
 
-    crypto_provider
-        .expect_generate_alphanumeric()
-        .once()
-        .with(predicate::eq(32))
-        .return_once(|_| "abcdefghijklmnopqrstuvwxyzABCDEF".to_string());
-
     let service = setup_service(Mocks {
         credential_schema_repository,
         credential_repository,
         interaction_repository,
-        crypto_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2129,10 +2120,11 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
         result.access_token
     );
 
-    assert_eq!(
-        Some("c62f4237-3c74-42f2-a5ff-c72489e025f7.abcdefghijklmnopqrstuvwxyzABCDEF"),
-        result.refresh_token.as_deref()
-    );
+    assert!(result
+        .refresh_token
+        .unwrap()
+        .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7."));
+
     assert!(result.refresh_token_expires_in.is_some());
 }
 
@@ -2141,7 +2133,6 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let mut crypto_provider = MockCryptoProvider::new();
 
     let schema = generic_credential_schema();
 
@@ -2181,22 +2172,10 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
         .once()
         .return_once(|_| Ok(()));
 
-    crypto_provider
-        .expect_generate_alphanumeric()
-        .once()
-        .with(predicate::eq(32))
-        .return_once(|_| "1ABC".to_string());
-    crypto_provider
-        .expect_generate_alphanumeric()
-        .once()
-        .with(predicate::eq(32))
-        .return_once(|_| "2ABC".to_string());
-
     let service = setup_service(Mocks {
         credential_schema_repository,
         credential_repository,
         interaction_repository,
-        crypto_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2212,15 +2191,15 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
         .unwrap();
 
     assert_eq!("bearer", result.token_type);
-    assert_eq!(
-        "c62f4237-3c74-42f2-a5ff-c72489e025f7.1ABC",
-        result.access_token
-    );
+    assert!(result
+        .access_token
+        .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7."));
 
-    assert_eq!(
-        Some("c62f4237-3c74-42f2-a5ff-c72489e025f7.2ABC"),
-        result.refresh_token.as_deref()
-    );
+    assert!(result
+        .refresh_token
+        .unwrap()
+        .starts_with("c62f4237-3c74-42f2-a5ff-c72489e025f7."));
+
     assert!(result.refresh_token_expires_in.is_some());
 }
 

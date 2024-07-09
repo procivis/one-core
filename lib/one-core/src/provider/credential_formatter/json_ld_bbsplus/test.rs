@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
-use hmac::{Hmac, Mac};
-use sha2::Sha256;
+use one_providers::crypto::MockCryptoProvider;
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use time::{Duration, OffsetDateTime};
 
 use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdCredentialSubject};
@@ -9,13 +9,9 @@ use crate::provider::credential_formatter::json_ld_bbsplus::remove_undisclosed_k
 use crate::provider::credential_formatter::test_utilities::{
     prepare_json_ld_context_config, prepare_json_ld_context_repository,
 };
-use crate::{
-    crypto::MockCryptoProvider,
-    provider::{
-        credential_formatter::json_ld_bbsplus::{JsonLdBbsplus, Params},
-        did_method::provider::MockDidMethodProvider,
-        key_algorithm::provider::MockKeyAlgorithmProvider,
-    },
+use crate::provider::{
+    credential_formatter::json_ld_bbsplus::{JsonLdBbsplus, Params},
+    did_method::provider::MockDidMethodProvider,
 };
 
 use super::{
@@ -25,15 +21,8 @@ use super::{
 
 #[tokio::test]
 async fn test_canonize_any() {
-    let mut crypto = MockCryptoProvider::default();
+    let crypto = MockCryptoProvider::default();
     let key_algorithm_provider = MockKeyAlgorithmProvider::default();
-
-    crypto.expect_create_hmac().returning(|key, message| {
-        let mut mac = Hmac::<Sha256>::new_from_slice(key).ok()?;
-        mac.update(message);
-        let result = mac.finalize();
-        Some(result.into_bytes().to_vec())
-    });
 
     let did_method_provider = MockDidMethodProvider::default();
 
@@ -69,15 +58,8 @@ async fn test_canonize_any() {
 
 #[tokio::test]
 async fn test_transform_canonized() {
-    let mut crypto = MockCryptoProvider::default();
+    let crypto = MockCryptoProvider::default();
     let key_algorithm_provider = MockKeyAlgorithmProvider::default();
-
-    crypto.expect_create_hmac().returning(|key, message| {
-        let mut mac = Hmac::<Sha256>::new_from_slice(key).ok()?;
-        mac.update(message);
-        let result = mac.finalize();
-        Some(result.into_bytes().to_vec())
-    });
 
     let did_method_provider = MockDidMethodProvider::default();
 
@@ -119,15 +101,8 @@ async fn test_transform_canonized() {
 
 #[tokio::test]
 async fn test_transform_grouped() {
-    let mut crypto = MockCryptoProvider::default();
+    let crypto = MockCryptoProvider::default();
     let key_algorithm_provider = MockKeyAlgorithmProvider::default();
-
-    crypto.expect_create_hmac().returning(|key, message| {
-        let mut mac = Hmac::<Sha256>::new_from_slice(key).ok()?;
-        mac.update(message);
-        let result = mac.finalize();
-        Some(result.into_bytes().to_vec())
-    });
 
     let did_method_provider = MockDidMethodProvider::default();
 

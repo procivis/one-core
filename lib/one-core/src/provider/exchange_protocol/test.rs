@@ -9,7 +9,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::FormatType;
-use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
+use crate::config::core_config::{CoreConfig, Fields, Params};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
@@ -148,7 +148,7 @@ async fn test_issuer_submit_succeeds() {
     config.key_algorithm.insert(
         "EDDSA".to_string(),
         Fields {
-            r#type: KeyAlgorithmType::Eddsa,
+            r#type: "EDDSA".to_string(),
             display: Value::String("display".to_string()),
             order: None,
             disabled: None,

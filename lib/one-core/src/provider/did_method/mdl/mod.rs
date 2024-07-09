@@ -11,12 +11,13 @@ use x509_parser::certificate::X509Certificate;
 use x509_parser::oid_registry::{OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG_ED25519};
 use x509_parser::pem::Pem;
 
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+
 use super::common::jwk_context;
 use super::dto::{AmountOfKeys, DidDocumentDTO, DidVerificationMethodDTO, Keys};
 use super::{DidCapabilities, DidMethod, DidMethodError, Operation};
 use crate::config::core_config::{self, DidType, Fields};
 use crate::model::key::Key;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[cfg(test)]
 mod test;
@@ -154,7 +155,7 @@ impl DidMethod for DidMdl {
                 id: id.clone(),
                 r#type: "JsonWebKey2020".into(),
                 controller: did.to_string(),
-                public_key_jwk,
+                public_key_jwk: public_key_jwk.into(),
             };
 
             Ok(DidDocumentDTO {
@@ -196,7 +197,7 @@ impl DidMethod for DidMdl {
                 .bytes_to_jwk(&decoded_did_key.decoded_multibase, None)
                 .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?;
 
-            super::key::generate_document(decoded_did_key, &did_key, public_key_jwk)
+            super::key::generate_document(decoded_did_key, &did_key, public_key_jwk.into())
         } else {
             Err(DidMethodError::ResolutionError(format!(
                 "`{}` cannot be resolved as did:mdl",

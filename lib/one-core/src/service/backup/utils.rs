@@ -7,8 +7,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 use zip::write::SimpleFileOptions;
 
+use one_providers::crypto::imp::hasher::sha256::SHA256;
+
 use super::dto::MetadataDTO;
-use crate::crypto::hasher::sha256::SHA256;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistoryMetadata};
 use crate::model::organisation::Organisation;
 use crate::service::error::ServiceError;

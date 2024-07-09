@@ -21,7 +21,7 @@ use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
-use one_core::provider::key_storage::GeneratedKey;
+use one_core::provider::key_storage::StorageGeneratedKey;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
@@ -769,7 +769,7 @@ pub struct CredentialRevocationCheckResponseBindingDTO {
 }
 
 #[derive(Into)]
-#[into(GeneratedKey)]
+#[into(StorageGeneratedKey)]
 pub struct GeneratedKeyBindingDTO {
     pub key_reference: Vec<u8>,
     pub public_key: Vec<u8>,

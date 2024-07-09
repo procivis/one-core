@@ -1,7 +1,6 @@
 use jsonptr::MalformedPointerError;
+use one_providers::crypto::CryptoProviderError;
 use thiserror::Error;
-
-use crate::crypto::error::CryptoProviderError;
 
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum FormatterError {

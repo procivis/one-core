@@ -1,6 +1,7 @@
+use one_providers::key_algorithm::error::KeyAlgorithmError;
 use x509_parser::{certificate::X509Certificate, error::X509Error};
 
-use crate::{model::key::Key, service::error::ServiceError};
+use crate::model::key::Key;
 
 use super::DidMdl;
 
@@ -19,7 +20,7 @@ pub enum DidMdlValidationError {
     KeyTypeNotSupported(String),
 
     #[error("Cannot parse certificate subject public key: {0}")]
-    SubjectPublicKeyInvalidDer(ServiceError),
+    SubjectPublicKeyInvalidDer(KeyAlgorithmError),
 }
 
 #[cfg_attr(test, mockall::automock)]

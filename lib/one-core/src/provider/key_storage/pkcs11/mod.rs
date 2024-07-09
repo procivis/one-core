@@ -1,13 +1,12 @@
 use shared_types::KeyId;
 use zeroize::Zeroizing;
 
+use one_providers::crypto::SignerError;
+
 use crate::provider::key_storage::KeyStorageCapabilities;
-use crate::{
-    crypto::signer::error::SignerError,
-    model::key::Key,
-    provider::key_storage::{GeneratedKey, KeyStorage},
-    service::error::ServiceError,
-};
+use crate::{model::key::Key, provider::key_storage::KeyStorage, service::error::ServiceError};
+
+use super::StorageGeneratedKey;
 
 #[derive(Default)]
 pub struct PKCS11KeyProvider {}
@@ -22,7 +21,7 @@ impl KeyStorage for PKCS11KeyProvider {
         &self,
         _key_id: &KeyId,
         _key_type: &str,
-    ) -> Result<GeneratedKey, ServiceError> {
+    ) -> Result<StorageGeneratedKey, ServiceError> {
         todo!()
     }
 

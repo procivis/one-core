@@ -1,8 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
+use one_providers::crypto::SignerError;
+
 use super::KeyStorage;
 use crate::{
-    crypto::signer::error::SignerError,
     model::key::Key,
     provider::credential_formatter::{AuthenticationFn, SignatureProvider},
     service::error::{ServiceError, ValidationError},

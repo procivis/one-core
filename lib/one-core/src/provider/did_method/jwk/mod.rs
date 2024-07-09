@@ -7,7 +7,10 @@ use crate::{
     config::core_config::{DidType, Fields, Params},
     provider::did_method::dto::Keys,
 };
-use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
+
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+
+use crate::model::key::Key;
 use async_trait::async_trait;
 use serde_json::json;
 use shared_types::{DidId, DidValue};
@@ -49,7 +52,7 @@ impl super::DidMethod for JWKDidMethod {
             .bytes_to_jwk(&key.public_key, None)
             .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
 
-        encode_to_did(&jwk)
+        encode_to_did(&jwk.into())
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {

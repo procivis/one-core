@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use convert_case::{Case, Casing};
+use one_providers::crypto::CryptoProvider;
 use serde::Serialize;
 use shared_types::DidValue;
 use sophia_api::{quad::Spog, source::QuadSource, term::SimpleTerm};
@@ -11,7 +12,6 @@ use sophia_jsonld::loader_factory::DefaultLoaderFactory;
 use sophia_jsonld::{JsonLdOptions, JsonLdParser};
 use time::OffsetDateTime;
 
-use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::common::nest_claims;
 use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 

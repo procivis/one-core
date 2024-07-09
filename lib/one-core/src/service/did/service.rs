@@ -3,6 +3,7 @@ use std::{
     ops::Deref,
 };
 
+use one_providers::key_algorithm::error::KeyAlgorithmError;
 use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -81,15 +82,13 @@ impl DidService {
                     let key_algorithm = self
                         .key_algorithm_provider
                         .get_key_algorithm(&value.key_type)
-                        .ok_or(MissingProviderError::KeyAlgorithm(
-                            value.key_type.to_owned(),
-                        ))?;
+                        .ok_or(KeyAlgorithmError::NotSupported(value.key_type.to_owned()))?;
                     Ok((
                         key.to_owned(),
                         map_key_to_verification_method(
                             &did.did,
                             key,
-                            key_algorithm.bytes_to_jwk(&value.public_key, None)?,
+                            key_algorithm.bytes_to_jwk(&value.public_key, None)?.into(),
                         )?,
                     ))
                 })

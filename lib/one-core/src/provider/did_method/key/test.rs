@@ -1,5 +1,4 @@
-use crate::config::core_config::{Fields, KeyAlgorithmConfig, KeyAlgorithmType};
-use crate::crypto::MockCryptoProvider;
+use crate::config::core_config::{Fields, KeyAlgorithmConfig};
 use crate::model::key::Key;
 use crate::provider::did_method::dto::{
     AmountOfKeys, DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO,
@@ -7,9 +6,11 @@ use crate::provider::did_method::dto::{
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::{provider::DidMethodProviderImpl, DidMethod};
-use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
-use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use mockall::predicate;
+use one_providers::crypto::MockCryptoProvider;
+use one_providers::key_algorithm::imp::provider::KeyAlgorithmProviderImpl;
+use one_providers::key_algorithm::model::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use serde_json::{json, Value};
 use shared_types::{DidId, DidValue};
 use std::str::FromStr;
@@ -22,7 +23,7 @@ use super::KeyDidMethod;
 fn setup_provider(
     key_algorithm: MockKeyAlgorithm,
     algorithm_id: &str,
-    algorithm_type: KeyAlgorithmType,
+    algorithm_type: &str,
 ) -> Arc<dyn DidMethodProvider> {
     let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
     key_algorithms.insert(algorithm_id.to_string(), Arc::new(key_algorithm));
@@ -34,7 +35,7 @@ fn setup_provider(
     key_algorithm_config.insert(
         algorithm_id.to_string(),
         Fields {
-            r#type: algorithm_type,
+            r#type: algorithm_type.to_owned(),
             display: Value::String(algorithm_id.to_string()),
             order: None,
             disabled: None,
@@ -66,7 +67,7 @@ async fn test_did_key_resolve_details_eddsa() {
         )
         .once()
         .returning(|_, _| {
-            Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+            Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "Ed25519".to_owned(),
                 x: "4zvwRjXUKGfvwnParsHAS3HuSVzV5cA4McphgmoCtajS".to_owned(),
@@ -74,7 +75,7 @@ async fn test_did_key_resolve_details_eddsa() {
             }))
         });
 
-    let provider = setup_provider(key_algorithm, "EDDSA", KeyAlgorithmType::Eddsa);
+    let provider = setup_provider(key_algorithm, "EDDSA", "EDDSA");
 
     let result = provider
         .resolve(
@@ -151,7 +152,7 @@ async fn test_did_key_resolve_details_es256() {
         )
         .once()
         .returning(|_, _| {
-            Ok(PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+            Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "P-256".to_string(),
                 x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
@@ -159,7 +160,7 @@ async fn test_did_key_resolve_details_es256() {
             }))
         });
 
-    let provider = setup_provider(key_algorithm, "ES256", KeyAlgorithmType::Es256);
+    let provider = setup_provider(key_algorithm, "ES256", "ES256");
 
     let result = provider
         .resolve(
@@ -236,7 +237,7 @@ async fn test_did_key_resolve_details_bbs() {
         ]), predicate::eq(None))
         .once()
         .returning(|_, _| {
-            Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+            Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "Bls12381G2".to_string(),
                 x: "Ajs8lstTgoTgXMF6QXdyh3m8k2ixxURGYLMaYylVK_x0F8HhE8zk0YWiGV3CHwpQEa2sH4PBZLaYCn8se-1clmCORDsKxbbw3Js_Alu4OmkV9gmbJsy1YF2rt7Vxzs6S".to_owned(),
@@ -244,7 +245,7 @@ async fn test_did_key_resolve_details_bbs() {
             }))
         });
 
-    let provider = setup_provider(key_algorithm, "BBS_PLUS", KeyAlgorithmType::BbsPlus);
+    let provider = setup_provider(key_algorithm, "BBS_PLUS", "BBS_PLUS");
 
     let result = provider
         .resolve(
@@ -328,7 +329,7 @@ async fn test_create_did_success() {
         .times(1)
         .returning(|_| Ok("MULTIBASE".to_string()));
 
-    let provider = setup_provider(key_algorithm, "EDDSA", KeyAlgorithmType::Eddsa);
+    let provider = setup_provider(key_algorithm, "EDDSA", "EDDSA");
     let did_method = provider.get_did_method("KEY").unwrap();
     let result = did_method
         .create(&DidId::from(Uuid::new_v4()), &None, &vec![key])
@@ -338,13 +339,9 @@ async fn test_create_did_success() {
 
 #[test]
 fn test_validate_keys() {
-    let did_method = setup_provider(
-        MockKeyAlgorithm::default(),
-        "EDDSA",
-        KeyAlgorithmType::Eddsa,
-    )
-    .get_did_method("KEY")
-    .unwrap();
+    let did_method = setup_provider(MockKeyAlgorithm::default(), "EDDSA", "EDDSA")
+        .get_did_method("KEY")
+        .unwrap();
 
     let keys = AmountOfKeys {
         global: 1,
@@ -359,13 +356,9 @@ fn test_validate_keys() {
 
 #[test]
 fn test_validate_keys_no_keys() {
-    let did_method = setup_provider(
-        MockKeyAlgorithm::default(),
-        "EDDSA",
-        KeyAlgorithmType::Eddsa,
-    )
-    .get_did_method("KEY")
-    .unwrap();
+    let did_method = setup_provider(MockKeyAlgorithm::default(), "EDDSA", "EDDSA")
+        .get_did_method("KEY")
+        .unwrap();
 
     let keys = AmountOfKeys {
         global: 0,
@@ -380,13 +373,9 @@ fn test_validate_keys_no_keys() {
 
 #[test]
 fn test_validate_keys_too_much_keys() {
-    let did_method = setup_provider(
-        MockKeyAlgorithm::default(),
-        "EDDSA",
-        KeyAlgorithmType::Eddsa,
-    )
-    .get_did_method("KEY")
-    .unwrap();
+    let did_method = setup_provider(MockKeyAlgorithm::default(), "EDDSA", "EDDSA")
+        .get_did_method("KEY")
+        .unwrap();
 
     let keys = AmountOfKeys {
         global: 2,
@@ -401,13 +390,9 @@ fn test_validate_keys_too_much_keys() {
 
 #[test]
 fn test_validate_keys_missing_key() {
-    let did_method = setup_provider(
-        MockKeyAlgorithm::default(),
-        "EDDSA",
-        KeyAlgorithmType::Eddsa,
-    )
-    .get_did_method("KEY")
-    .unwrap();
+    let did_method = setup_provider(MockKeyAlgorithm::default(), "EDDSA", "EDDSA")
+        .get_did_method("KEY")
+        .unwrap();
 
     let keys = AmountOfKeys {
         global: 1,

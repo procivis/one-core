@@ -7,6 +7,8 @@ use mapper::{
     create_generate_key_request, create_get_token_request, create_sign_request,
     public_key_from_components,
 };
+use one_providers::crypto::imp::signer::es256::ES256Signer;
+use one_providers::crypto::{CryptoProvider, SignerError};
 use serde::Deserialize;
 use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
@@ -15,14 +17,11 @@ use url::Url;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
-use super::KeySecurity;
-use crate::crypto::signer::error::SignerError;
-use crate::crypto::signer::es256::ES256Signer;
-use crate::crypto::CryptoProvider;
+use super::{KeySecurity, StorageGeneratedKey};
 use crate::model::key::Key;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::provider::key_storage::azure_vault::dto::AzureHsmGetTokenResponse;
-use crate::provider::key_storage::{GeneratedKey, KeyStorage, KeyStorageCapabilities};
+use crate::provider::key_storage::{KeyStorage, KeyStorageCapabilities};
 use crate::service::error::{ServiceError, ValidationError};
 
 mod dto;
@@ -52,7 +51,11 @@ pub struct AzureVaultKeyProvider {
 
 #[async_trait::async_trait]
 impl KeyStorage for AzureVaultKeyProvider {
-    async fn generate(&self, key_id: &KeyId, key_type: &str) -> Result<GeneratedKey, ServiceError> {
+    async fn generate(
+        &self,
+        key_id: &KeyId,
+        key_type: &str,
+    ) -> Result<StorageGeneratedKey, ServiceError> {
         if key_type != "ES256" {
             return Err(ValidationError::UnsupportedKeyType {
                 key_type: key_type.to_owned(),
@@ -85,7 +88,7 @@ impl KeyStorage for AzureVaultKeyProvider {
         let public_key = ES256Signer::to_bytes(&public_key_bytes)
             .map_err(|err| ServiceError::Other(format!("failed to build public key: {err}")))?;
 
-        Ok(GeneratedKey {
+        Ok(StorageGeneratedKey {
             public_key,
             key_reference: response.key.key_id.as_bytes().to_vec(),
         })

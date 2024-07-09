@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-
-use crate::crypto::{signer::error::SignerError, CryptoProvider};
+use one_providers::crypto::{CryptoProvider, SignerError};
 
 use super::dto::{
     AzureHsmGenerateKeyRequest, AzureHsmGenerateKeyResponseKey, AzureHsmGetTokenRequest,

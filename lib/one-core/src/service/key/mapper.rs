@@ -11,7 +11,7 @@ use crate::{
         key::{GetKeyList, Key},
         organisation::Organisation,
     },
-    provider::key_storage::GeneratedKey,
+    provider::key_storage::StorageGeneratedKey,
     service::{
         error::ServiceError,
         key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO, KeyResponseDTO},
@@ -24,7 +24,7 @@ pub(super) fn from_create_request(
     key_id: KeyId,
     request: KeyRequestDTO,
     organisation: Organisation,
-    generated_key: GeneratedKey,
+    generated_key: StorageGeneratedKey,
 ) -> Key {
     let now = OffsetDateTime::now_utc();
 
