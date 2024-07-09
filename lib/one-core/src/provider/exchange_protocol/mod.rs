@@ -22,6 +22,7 @@ use crate::model::proof::Proof;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::procivis_temp::ProcivisTemp;
+use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::DataRepository;
@@ -32,6 +33,7 @@ mod mapper;
 pub mod openid4vc;
 pub mod procivis_temp;
 pub(crate) mod provider;
+pub mod scan_to_verify;
 #[cfg(test)]
 mod test;
 
@@ -167,6 +169,11 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     key_provider.clone(),
                     config.clone(),
                 ));
+
+                providers.insert(name.to_string(), protocol);
+            }
+            ExchangeType::ScanToVerify => {
+                let protocol = Arc::new(ScanToVerify::new());
 
                 providers.insert(name.to_string(), protocol);
             }

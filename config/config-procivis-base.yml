@@ -1,4 +1,8 @@
 format:
+  PHYSICAL_CARD:
+    type: "PHYSICAL_CARD"
+    display: "format.physicalCard"
+    order: 5
   JWT:
     type: "JWT"
     display: "format.jwt"

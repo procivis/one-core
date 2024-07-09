@@ -11,3 +11,8 @@ transport:
         verifierName: "OneVerifier"
   HTTP:
     disabled: true
+exchange:
+  SCAN_TO_VERIFY:
+    type: "SCAN_TO_VERIFY"
+    display: "exchange.scanToVerify"
+    order: 2

@@ -342,5 +342,6 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
             "LVVC".to_string(),
         ],
         verification_key_algorithms: vec!["EDDSA".to_string()],
+        datatypes: vec![],
     }
 }
