@@ -13,6 +13,7 @@ pub mod json_ld;
 pub mod json_ld_bbsplus;
 pub mod json_ld_classic;
 pub mod mdoc_formatter;
+pub mod physical_card;
 pub mod status_list_jwt_formatter;
 
 pub(crate) mod provider;
@@ -103,6 +104,7 @@ pub struct FormatterCapabilities {
     pub revocation_methods: Vec<String>,
     pub signing_key_algorithms: Vec<String>,
     pub verification_key_algorithms: Vec<String>,
+    pub datatypes: Vec<String>,
 }
 
 #[derive(Clone, Serialize)]

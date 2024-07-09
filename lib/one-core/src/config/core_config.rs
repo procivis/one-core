@@ -163,6 +163,9 @@ pub enum FormatType {
     #[serde(rename = "JWT")]
     #[strum(serialize = "JWT")]
     Jwt,
+    #[serde(rename = "PHYSICAL_CARD")]
+    #[strum(serialize = "PHYSICAL_CARD")]
+    PhysicalCard,
     #[serde(rename = "SDJWT")]
     #[strum(serialize = "SDJWT")]
     Sdjwt,
@@ -203,6 +206,9 @@ pub enum ExchangeType {
     #[serde(rename = "OPENID4VC")]
     #[strum(serialize = "OPENID4VC")]
     OpenId4Vc,
+    #[serde(rename = "SCAN_TO_VERIFY")]
+    #[strum(serialize = "SCAN_TO_VERIFY")]
+    ScanToVerify,
     #[serde(rename = "MDL")]
     #[strum(serialize = "MDL")]
     Mdl,

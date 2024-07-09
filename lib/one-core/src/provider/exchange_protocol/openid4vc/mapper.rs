@@ -338,6 +338,9 @@ fn create_format_map(
                 },
             )]))
         }
+        FormatType::PhysicalCard => {
+            unimplemented!()
+        }
         FormatType::JsonLdClassic | FormatType::JsonLdBbsplus => Ok(HashMap::from([(
             "ldp_vc".to_string(),
             OpenID4VPPresentationDefinitionInputDescriptorFormat {

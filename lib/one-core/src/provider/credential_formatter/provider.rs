@@ -10,6 +10,7 @@ use crate::config::ConfigError;
 
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
+use crate::provider::credential_formatter::physical_card::PhysicalCardFormatter;
 use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::repository::json_ld_context_repository::JsonLdContextRepository;
@@ -56,6 +57,7 @@ pub(crate) fn credential_formatters_from_config(
                 let params = config.format.get(name)?;
                 Arc::new(JWTFormatter::new(params)) as _
             }
+            FormatType::PhysicalCard => Arc::new(PhysicalCardFormatter::new()) as _,
             FormatType::Sdjwt => {
                 let params = config.format.get(name)?;
                 Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _
