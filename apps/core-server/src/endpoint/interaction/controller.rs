@@ -1,7 +1,7 @@
 use super::dto::{
-    HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceAcceptRequestRestDTO,
-    IssuanceRejectRequestRestDTO, PresentationRejectRequestRestDTO,
-    PresentationSubmitRequestRestDTO,
+    CheckInvitationRequestRestDTO, CheckInvitationResponseRestDTO, HandleInvitationRequestRestDTO,
+    HandleInvitationResponseRestDTO, IssuanceAcceptRequestRestDTO, IssuanceRejectRequestRestDTO,
+    PresentationRejectRequestRestDTO, PresentationSubmitRequestRestDTO,
 };
 use crate::{
     dto::{
@@ -13,6 +13,31 @@ use crate::{
 
 use axum::{extract::State, Json};
 use axum_extra::extract::WithRejection;
+
+#[utoipa::path(
+    post,
+    path = "/api/interaction/v1/check-invitation",
+    request_body = CheckInvitationRequestRestDTO,
+    responses(OkOrErrorResponse<CheckInvitationResponseRestDTO>),
+    tag = "interaction",
+    security(
+    ("bearer" = [])
+    ),
+)]
+pub(crate) async fn check_invitation(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CheckInvitationRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<CheckInvitationResponseRestDTO> {
+    let result = state
+        .core
+        .ssi_holder_service
+        .check_invitation(request.url)
+        .await;
+    OkOrErrorResponse::from_result(result, state, "checking invitation")
+}
 
 #[utoipa::path(
     post,

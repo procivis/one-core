@@ -45,7 +45,8 @@ impl ErrorResponse {
             ServiceError::Validation(_)
             | ServiceError::BusinessLogic(_)
             | ServiceError::FormatterError(FormatterError::BBSOnly)
-            | ServiceError::ConfigValidationError(_) => Self::BadRequest(response),
+            | ServiceError::ConfigValidationError(_)
+            | ServiceError::MissingExchangeProtocol(_) => Self::BadRequest(response),
             _ => Self::ServerError(response),
         }
     }

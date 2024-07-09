@@ -1,3 +1,4 @@
+mod check_invitation_tests;
 mod handle_invitation_tests;
 mod issuance_accept_tests;
 mod issuance_reject_tests;

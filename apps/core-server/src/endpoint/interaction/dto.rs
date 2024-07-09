@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use dto_mapper::{convert_inner, Into};
+use dto_mapper::{convert_inner, From, Into};
 use one_core::service::ssi_holder::dto::{
+    CheckInvitationProtocolDTO, CheckInvitationResponseDTO, CheckInvitationTypeDTO,
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
 use serde::{Deserialize, Serialize};
@@ -9,6 +10,38 @@ use shared_types::{CredentialId, DidId, KeyId, OrganisationId, ProofId};
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckInvitationRequestRestDTO {
+    pub url: Url,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(CheckInvitationResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckInvitationResponseRestDTO {
+    pub r#type: CheckInvitationTypeRestDTO,
+    pub protocol: CheckInvitationProtocolRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(CheckInvitationTypeDTO)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum CheckInvitationTypeRestDTO {
+    CredentialIssuance,
+    ProofRequest,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(CheckInvitationProtocolDTO)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum CheckInvitationProtocolRestDTO {
+    #[serde(rename = "OPENID4VC")]
+    OpenId4Vc,
+    ProcivisTemporary,
+    Mdl,
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
