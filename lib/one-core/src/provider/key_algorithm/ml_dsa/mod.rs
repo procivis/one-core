@@ -1,11 +1,11 @@
+use one_providers::key_algorithm::error::KeyAlgorithmError;
+use one_providers::key_algorithm::model::GeneratedKey;
+use one_providers::key_algorithm::model::PublicKeyJwk;
+use one_providers::key_algorithm::model::PublicKeyJwkMlweData;
+use one_providers::key_algorithm::KeyAlgorithm;
 use pqc_dilithium::Keypair;
 use serde::Deserialize;
 
-use super::KeyAlgorithm;
-use crate::crypto::signer::error::SignerError;
-use crate::provider::did_method::dto::PublicKeyJwkMlweDataDTO;
-use crate::provider::{did_method::dto::PublicKeyJwkDTO, key_algorithm::GeneratedKey};
-use crate::service::error::ServiceError;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 
 pub struct MlDsa;
@@ -37,7 +37,7 @@ impl KeyAlgorithm for MlDsa {
         "CRYDI3".to_string()
     }
 
-    fn get_multibase(&self, _public_key: &[u8]) -> Result<String, SignerError> {
+    fn get_multibase(&self, _public_key: &[u8]) -> Result<String, KeyAlgorithmError> {
         // TODO ONE-1452
         unimplemented!()
     }
@@ -54,33 +54,33 @@ impl KeyAlgorithm for MlDsa {
         &self,
         bytes: &[u8],
         r#use: Option<String>,
-    ) -> Result<PublicKeyJwkDTO, ServiceError> {
-        Ok(PublicKeyJwkDTO::Mlwe(PublicKeyJwkMlweDataDTO {
+    ) -> Result<PublicKeyJwk, KeyAlgorithmError> {
+        Ok(PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
             r#use,
             alg: self.get_signer_algorithm_id(),
             x: Base64UrlSafeNoPadding::encode_to_string(bytes)
-                .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?,
+                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?,
         }))
     }
 
-    fn jwk_to_bytes(&self, jwk: &PublicKeyJwkDTO) -> Result<Vec<u8>, ServiceError> {
-        if let PublicKeyJwkDTO::Mlwe(data) = jwk {
+    fn jwk_to_bytes(&self, jwk: &PublicKeyJwk) -> Result<Vec<u8>, KeyAlgorithmError> {
+        if let PublicKeyJwk::Mlwe(data) = jwk {
             if data.alg != self.get_signer_algorithm_id() {
-                return Err(ServiceError::KeyAlgorithmError(format!(
+                return Err(KeyAlgorithmError::Failed(format!(
                     "unsupported key algorithm variant: {}",
                     data.alg
                 )));
             }
             let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
-                .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?;
+                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
 
             Ok(x)
         } else {
-            Err(ServiceError::KeyAlgorithmError("invalid kty".to_string()))
+            Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
         }
     }
 
-    fn public_key_from_der(&self, _public_key_der: &[u8]) -> Result<Vec<u8>, ServiceError> {
+    fn public_key_from_der(&self, _public_key_der: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
         unimplemented!()
     }
 }

@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use one_providers::key_algorithm::imp::{eddsa::Eddsa, es256::Es256};
+use one_providers::key_algorithm::{provider::MockKeyAlgorithmProvider, KeyAlgorithm};
 use rcgen::{
     CertificateParams, CertifiedKey, SignatureAlgorithm, PKCS_ECDSA_P256_SHA256, PKCS_ED25519,
 };
@@ -11,12 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     model::key::Key,
-    provider::{
-        did_method::{dto::Keys, DidMethod},
-        key_algorithm::{
-            eddsa::Eddsa, es256::Es256, provider::MockKeyAlgorithmProvider, KeyAlgorithm,
-        },
-    },
+    provider::did_method::{dto::Keys, DidMethod},
 };
 
 use super::{DidMdl, Params};

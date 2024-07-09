@@ -5,6 +5,8 @@ use shared_types::{CredentialId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+
 use super::dto::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm,
@@ -41,7 +43,6 @@ use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VPPresentationDefinitionInputDescriptorFormat,
 };
 use crate::provider::exchange_protocol::ExchangeProtocolError;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
 };

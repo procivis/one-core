@@ -2,6 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use one_providers::crypto::imp::utilities;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use shared_types::{CredentialId, ProofId};
@@ -33,7 +35,6 @@ use super::{
     ExchangeProtocolError,
 };
 use crate::config::core_config;
-use crate::crypto::CryptoProvider;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -60,7 +61,6 @@ use crate::provider::exchange_protocol::dto::{
 use crate::provider::exchange_protocol::mapper::{
     get_relevant_credentials_to_credential_schemas, proof_from_handle_invitation,
 };
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
@@ -112,7 +112,6 @@ pub(crate) struct OpenID4VC {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
     base_url: Option<String>,
-    crypto: Arc<dyn CryptoProvider>,
     params: OpenID4VCParams,
     config: Arc<core_config::CoreConfig>,
 }
@@ -142,7 +141,6 @@ impl OpenID4VC {
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        crypto: Arc<dyn CryptoProvider>,
         params: OpenID4VCParams,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
@@ -158,7 +156,6 @@ impl OpenID4VC {
             key_provider,
             key_algorithm_provider,
             client: reqwest::Client::new(),
-            crypto,
             params,
             config,
         }
@@ -278,7 +275,7 @@ impl ExchangeProtocol for OpenID4VC {
         let mut params: HashMap<&str, String> = HashMap::new();
 
         if format == "MDOC" {
-            let mdoc_generated_nonce = mdoc::generate_nonce();
+            let mdoc_generated_nonce = utilities::generate_nonce();
 
             let ctx = FormatPresentationCtx::from(interaction_data.clone())
                 .with_mdoc_generated_nonce(mdoc_generated_nonce.clone());
@@ -580,11 +577,7 @@ impl ExchangeProtocol for OpenID4VC {
         let interaction_id = Uuid::new_v4();
         let interaction_content: OpenID4VCIInteractionContent = OpenID4VCIInteractionContent {
             pre_authorized_code_used: false,
-            access_token: format!(
-                "{}.{}",
-                interaction_id,
-                self.crypto.generate_alphanumeric(32)
-            ),
+            access_token: format!("{}.{}", interaction_id, utilities::generate_nonce(),),
             access_token_expires_at: None,
             refresh_token: None,
             refresh_token_expires_at: None,
@@ -673,7 +666,7 @@ impl ExchangeProtocol for OpenID4VC {
         let presentation_definition =
             create_open_id_for_vp_presentation_definition(interaction_id, &proof, &self.config)?;
         let interaction_content = OpenID4VPInteractionContent {
-            nonce: self.crypto.generate_alphanumeric(32),
+            nonce: utilities::generate_nonce(),
             presentation_definition,
         };
 

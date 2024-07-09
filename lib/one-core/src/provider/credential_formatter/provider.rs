@@ -1,16 +1,17 @@
 use std::{collections::HashMap, sync::Arc};
 
+use one_providers::crypto::CryptoProvider;
 use serde_json::json;
+
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
 use crate::config::core_config::{CoreConfig, FormatType, JsonLdContextConfig};
 use crate::config::ConfigError;
-use crate::crypto::CryptoProvider;
 
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::json_ld_context_repository::JsonLdContextRepository;
 
 use super::json_ld_bbsplus::JsonLdBbsplus;

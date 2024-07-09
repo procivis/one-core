@@ -3,15 +3,16 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use one_providers::key_algorithm::{
+    model::{PublicKeyJwk, PublicKeyJwkEllipticData},
+    provider::MockKeyAlgorithmProvider,
+    MockKeyAlgorithm,
+};
+
 use crate::{
     model::key::Key,
-    provider::{
-        did_method::{
-            dto::{AmountOfKeys, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO},
-            jwk::JWKDidMethod,
-            DidMethod, DidMethodError, Operation,
-        },
-        key_algorithm::{provider::MockKeyAlgorithmProvider, MockKeyAlgorithm},
+    provider::did_method::{
+        dto::AmountOfKeys, jwk::JWKDidMethod, DidMethod, DidMethodError, Operation,
     },
 };
 
@@ -191,7 +192,7 @@ async fn test_create_did_jwk_success() {
         .expect_bytes_to_jwk()
         .once()
         .returning(|_, _| {
-            Ok(PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+            Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "crv".to_string(),
                 x: "x".to_string(),

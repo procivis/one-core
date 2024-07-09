@@ -1,6 +1,5 @@
 use super::DidService;
 use crate::provider::did_method::DidCapabilities;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::repository::error::DataLayerError;
 use crate::service::error::EntityNotFoundError;
 use crate::service::error::{BusinessLogicError, ValidationError};
@@ -29,6 +28,8 @@ use shared_types::{DidId, DidValue};
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 
 fn setup_service(
     did_repository: MockDidRepository,

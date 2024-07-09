@@ -280,26 +280,28 @@ pub enum DatatypeType {
     Boolean,
 }
 
-pub type KeyAlgorithmConfig = ConfigBlock<KeyAlgorithmType>;
+pub type KeyAlgorithmConfig = ConfigBlock<String>;
 
-#[derive(
-    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
-pub enum KeyAlgorithmType {
-    #[serde(rename = "EDDSA")]
-    #[strum(serialize = "EDDSA")]
-    Eddsa,
-    #[serde(rename = "BBS_PLUS")]
-    #[strum(serialize = "BBS_PLUS")]
-    BbsPlus,
-    #[serde(rename = "ES256")]
-    #[strum(serialize = "ES256")]
-    Es256,
-    // Fixme change to ML_DSA when possible
-    #[serde(rename = "DILITHIUM")]
-    #[strum(serialize = "DILITHIUM")]
-    MlDsa,
-}
+// #[derive(
+//     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+// )]
+// pub enum KeyAlgorithmType {
+//     #[serde(rename = "EDDSA")]
+//     #[strum(serialize = "EDDSA")]
+//     Eddsa,
+//     #[serde(rename = "BBS_PLUS")]
+//     #[strum(serialize = "BBS_PLUS")]
+//     BbsPlus,
+//     #[serde(rename = "ES256")]
+//     #[strum(serialize = "ES256")]
+//     Es256,
+//     // Fixme change to ML_DSA when possible
+//     #[serde(rename = "DILITHIUM")]
+//     #[strum(serialize = "DILITHIUM")]
+//     MlDsa,
+//     // #[serde(untagged)]
+//     // Other(String)
+// }
 
 pub type KeyStorageConfig = ConfigBlock<KeyStorageType>;
 
@@ -436,14 +438,14 @@ impl<T> Default for ConfigBlock<T> {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Fields<T> {
-    pub(crate) r#type: T,
-    pub(crate) display: Value,
-    pub(crate) order: Option<u64>,
-    pub(crate) disabled: Option<bool>,
+    pub r#type: T,
+    pub display: Value,
+    pub order: Option<u64>,
+    pub disabled: Option<bool>,
     #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
-    pub(crate) capabilities: Option<Value>,
+    pub capabilities: Option<Value>,
     #[serde(default, deserialize_with = "deserialize_params")]
-    pub(crate) params: Option<Params>,
+    pub params: Option<Params>,
 }
 
 impl<T> Fields<T>

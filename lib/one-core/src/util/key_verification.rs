@@ -1,12 +1,9 @@
 use crate::{
-    crypto::signer::error::SignerError,
     model::did::KeyRole,
-    provider::{
-        credential_formatter::TokenVerifier, did_method::provider::DidMethodProvider,
-        key_algorithm::provider::KeyAlgorithmProvider,
-    },
+    provider::{credential_formatter::TokenVerifier, did_method::provider::DidMethodProvider},
 };
 use async_trait::async_trait;
+use one_providers::{crypto::SignerError, key_algorithm::provider::KeyAlgorithmProvider};
 use shared_types::DidValue;
 use std::sync::Arc;
 use tracing::info;
@@ -70,7 +67,7 @@ impl TokenVerifier for KeyVerification {
             )))?;
 
         let public_key = alg
-            .jwk_to_bytes(&method.public_key_jwk)
+            .jwk_to_bytes(&method.public_key_jwk.clone().into())
             .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
 
         let signer = self
@@ -90,16 +87,13 @@ mod test {
     use crate::provider::did_method::dto::{
         DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
     };
-    use crate::provider::key_algorithm::MockKeyAlgorithm;
     use crate::{
-        crypto::signer::MockSigner,
-        provider::{
-            did_method::provider::MockDidMethodProvider,
-            key_algorithm::provider::MockKeyAlgorithmProvider,
-        },
-        service::error::ServiceError,
+        provider::did_method::provider::MockDidMethodProvider, service::error::ServiceError,
     };
     use mockall::predicate::*;
+    use one_providers::crypto::MockSigner;
+    use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+    use one_providers::key_algorithm::MockKeyAlgorithm;
     use serde_json::json;
 
     fn get_dummy_did_document() -> DidDocumentDTO {

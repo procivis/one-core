@@ -1,14 +1,12 @@
 use async_trait::async_trait;
+use one_providers::crypto::SignerError;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use time::{macros::datetime, OffsetDateTime};
 
-use crate::{
-    crypto::signer::error::SignerError,
-    provider::credential_formatter::{
-        jwt::{model::JWTPayload, Jwt},
-        MockAuth,
-    },
+use crate::provider::credential_formatter::{
+    jwt::{model::JWTPayload, Jwt},
+    MockAuth,
 };
 
 use super::TokenVerifier;

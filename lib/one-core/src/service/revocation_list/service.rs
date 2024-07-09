@@ -54,9 +54,13 @@ impl RevocationListService {
             .as_ref()
             .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
         let resolved_did = self.did_method_provider.resolve(&holder_did.did).await?;
-        let parsed_jwk = self
-            .key_algorithm_provider
-            .parse_jwk(&resolved_did.verification_method[0].public_key_jwk)?;
+
+        let parsed_jwk = self.key_algorithm_provider.parse_jwk(
+            &resolved_did.verification_method[0]
+                .public_key_jwk
+                .clone()
+                .into(),
+        )?;
 
         // Check if bearer token is signed with key of the credential holder if not throw error.
         let mut jwt_parts = bearer_token.splitn(3, '.');

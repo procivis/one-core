@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Context};
+use one_providers::key_algorithm::imp::es256::Es256;
 use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
 use shared_types::KeyId;
 use uuid::Uuid;
 
 use crate::model::key::Key;
-use crate::provider::key_algorithm::es256::Es256;
 use crate::provider::key_storage::KeyStorage;
 use crate::service::error::MissingProviderError;
 use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO};

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+
 use crate::repository::history_repository::HistoryRepository;
 use crate::{
     config::core_config,

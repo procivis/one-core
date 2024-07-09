@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use serde::Serialize;
 use serde_json::json;
 use zeroize::Zeroizing;
 
+use one_providers::crypto::{CryptoProvider, SignerError};
+
 use self::secure_element::{NativeKeyStorage, SecureElementKeyProvider};
-use super::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::config::core_config::{KeyStorageConfig, KeyStorageType};
 use crate::config::{ConfigError, ConfigValidationError};
-use crate::crypto::{signer::error::SignerError, CryptoProvider};
 use crate::model::key::Key;
 use crate::provider::key_storage::azure_vault::AzureVaultKeyProvider;
 use crate::provider::key_storage::pkcs11::PKCS11KeyProvider;
@@ -36,7 +37,7 @@ pub struct KeyStorageCapabilities {
     pub security: Vec<KeySecurity>,
 }
 
-pub struct GeneratedKey {
+pub struct StorageGeneratedKey {
     pub public_key: Vec<u8>,
     pub key_reference: Vec<u8>,
 }
@@ -44,7 +45,11 @@ pub struct GeneratedKey {
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub trait KeyStorage: Send + Sync {
-    async fn generate(&self, key_id: &KeyId, key_type: &str) -> Result<GeneratedKey, ServiceError>;
+    async fn generate(
+        &self,
+        key_id: &KeyId,
+        key_type: &str,
+    ) -> Result<StorageGeneratedKey, ServiceError>;
 
     async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError>;
 

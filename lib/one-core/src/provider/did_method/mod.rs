@@ -14,7 +14,7 @@ use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::web::WebDidMethod;
 use crate::provider::did_method::x509::X509Method;
 
-use super::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
 use self::dto::{AmountOfKeys, DidDocumentDTO};
 use self::mdl::{DidMdl, DidMdlValidator};

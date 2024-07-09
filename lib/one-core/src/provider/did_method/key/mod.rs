@@ -3,10 +3,12 @@ use super::{
     dto::{DidDocumentDTO, Keys},
     AmountOfKeys, DidCapabilities, DidMethodError, Operation,
 };
+
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+
 use crate::{
     config::core_config::{DidType, Fields, Params},
     model::key::Key,
-    provider::key_algorithm::provider::KeyAlgorithmProvider,
 };
 use async_trait::async_trait;
 use serde_json::json;
@@ -71,7 +73,7 @@ impl super::DidMethod for KeyDidMethod {
                 DidMethodError::ResolutionError("Could not create jwk representation".to_string())
             })?;
 
-        generate_document(decoded, did_value, jwk)
+        generate_document(decoded, did_value, jwk.into())
     }
 
     fn update(&self) -> Result<(), DidMethodError> {

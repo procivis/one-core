@@ -3,18 +3,19 @@ use shared_types::KeyId;
 use std::sync::Arc;
 use zeroize::Zeroizing;
 
+use one_providers::crypto::SignerError;
+
 use crate::{
-    crypto::signer::error::SignerError,
     model::key::Key,
-    provider::key_storage::{GeneratedKey, KeyStorage, KeyStorageCapabilities},
+    provider::key_storage::{KeyStorage, KeyStorageCapabilities},
     service::error::{ServiceError, ValidationError},
 };
 
-use super::KeySecurity;
+use super::{KeySecurity, StorageGeneratedKey};
 
 #[cfg_attr(test, mockall::automock)]
 pub trait NativeKeyStorage: Send + Sync {
-    fn generate_key(&self, key_alias: String) -> Result<GeneratedKey, ServiceError>;
+    fn generate_key(&self, key_alias: String) -> Result<StorageGeneratedKey, ServiceError>;
     fn sign(&self, key_reference: &[u8], message: &[u8]) -> Result<Vec<u8>, SignerError>;
 }
 
@@ -31,7 +32,11 @@ pub struct Params {
 
 #[async_trait::async_trait]
 impl KeyStorage for SecureElementKeyProvider {
-    async fn generate(&self, key_id: &KeyId, key_type: &str) -> Result<GeneratedKey, ServiceError> {
+    async fn generate(
+        &self,
+        key_id: &KeyId,
+        key_type: &str,
+    ) -> Result<StorageGeneratedKey, ServiceError> {
         if key_type != "ES256" {
             return Err(ValidationError::UnsupportedKeyType {
                 key_type: key_type.to_owned(),

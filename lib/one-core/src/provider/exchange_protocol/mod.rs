@@ -6,12 +6,13 @@ use serde::{de, Serialize};
 use thiserror::Error;
 use url::Url;
 
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+
 use self::dto::{
     InvitationType, PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
 };
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::config::ConfigValidationError;
-use crate::crypto::CryptoProvider;
 use crate::model::credential::Credential;
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
@@ -21,7 +22,6 @@ use crate::model::proof::Proof;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::procivis_temp::ProcivisTemp;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::DataRepository;
@@ -146,7 +146,6 @@ pub fn deserialize_interaction_data<DataDTO: for<'a> de::Deserialize<'a>>(
 pub(crate) fn exchange_protocol_providers_from_config(
     config: Arc<CoreConfig>,
     core_base_url: Option<String>,
-    crypto: Arc<dyn CryptoProvider>,
     data_provider: Arc<dyn DataRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
@@ -185,7 +184,6 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     revocation_method_provider.clone(),
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
-                    crypto.clone(),
                     params,
                     config.clone(),
                 ));

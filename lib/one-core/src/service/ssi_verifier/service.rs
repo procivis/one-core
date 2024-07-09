@@ -471,12 +471,12 @@ impl SSIVerifierService {
 mod tests {
     use std::sync::Arc;
 
+    use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
     use uuid::Uuid;
 
     use super::*;
     use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
     use crate::provider::did_method::provider::MockDidMethodProvider;
-    use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
     use crate::provider::revocation::provider::MockRevocationMethodProvider;
     use crate::repository::credential_repository::MockCredentialRepository;
     use crate::repository::did_repository::MockDidRepository;

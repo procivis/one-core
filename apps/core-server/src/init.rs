@@ -1,7 +1,21 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
-use one_core::config::core_config::AppConfig;
-use one_core::OneCore;
+use one_core::provider::key_algorithm::ml_dsa::MlDsa;
+use one_core::{config::core_config::AppConfig, OneCoreBuilder};
+use one_core::{DataProviderCreator, KeyAlgorithmCreator, OneCore};
+
+use one_providers::crypto::imp::hasher::sha256::SHA256;
+use one_providers::crypto::imp::signer::bbs::BBSSigner;
+use one_providers::crypto::imp::signer::crydi3::CRYDI3Signer;
+use one_providers::crypto::imp::signer::eddsa::EDDSASigner;
+use one_providers::crypto::imp::signer::es256::ES256Signer;
+use one_providers::crypto::imp::CryptoProviderImpl;
+use one_providers::crypto::{Hasher, Signer};
+use one_providers::key_algorithm::imp::bbs::BBS;
+use one_providers::key_algorithm::imp::eddsa::Eddsa;
+use one_providers::key_algorithm::imp::es256::Es256;
+use one_providers::key_algorithm::imp::provider::KeyAlgorithmProviderImpl;
+use one_providers::key_algorithm::KeyAlgorithm;
 use sentry::integrations::tracing::EventFilter;
 use sql_data_provider::{DataLayer, DbConn};
 use tracing_subscriber::prelude::*;
@@ -9,16 +23,66 @@ use tracing_subscriber::prelude::*;
 use crate::{build_info, ServerConfig};
 
 pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) -> OneCore {
-    OneCore::new(
-        |exportable_storages| Arc::new(DataLayer::build(db_conn, exportable_storages)),
-        app_config.core.to_owned(),
-        Some(app_config.app.core_base_url.to_owned()),
-        None,
-        app_config.app.json_ld_context.to_owned(),
-        None,
-        None,
-    )
-    .expect("Failed to initialize core")
+    let hashers: Vec<(String, Arc<dyn Hasher>)> =
+        vec![("sha-256".to_string(), Arc::new(SHA256 {}))];
+
+    let signers: Vec<(String, Arc<dyn Signer>)> = vec![
+        ("Ed25519".to_string(), Arc::new(EDDSASigner {})),
+        ("ES256".to_string(), Arc::new(ES256Signer {})),
+        ("CRYDI3".to_string(), Arc::new(CRYDI3Signer {})),
+        ("BBS".to_string(), Arc::new(BBSSigner {})),
+    ];
+
+    // TODO figure out a better way to initialize crypto
+    let crypto = Arc::new(CryptoProviderImpl::new(
+        HashMap::from_iter(hashers),
+        HashMap::from_iter(signers),
+    ));
+
+    let storage_creator: DataProviderCreator =
+        Box::new(|exportable_storages| Arc::new(DataLayer::build(db_conn, exportable_storages)));
+
+    let key_algo_creator: KeyAlgorithmCreator = Box::new(|config, providers| {
+        let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
+
+        for (name, field) in config.iter() {
+            let key_algorithm: Arc<dyn KeyAlgorithm> = match field.r#type.as_str() {
+                "EDDSA" => {
+                    let params = config.get(name).expect("EDDSA config is required");
+                    Arc::new(Eddsa::new(params))
+                }
+                "ES256" => {
+                    let params = config.get(name).expect("ES256 config is required");
+                    Arc::new(Es256::new(params))
+                }
+                "BBS_PLUS" => Arc::new(BBS),
+                "DILITHIUM" => {
+                    let params = config.get(name).expect("DILITHIUM config is required");
+                    Arc::new(MlDsa::new(params))
+                }
+                other => panic!("Unexpected key algorithm: {other}"),
+            };
+            key_algorithms.insert(name.to_owned(), key_algorithm);
+        }
+
+        Arc::new(KeyAlgorithmProviderImpl::new(
+            key_algorithms,
+            providers
+                .crypto
+                .as_ref()
+                .expect("Crypto is required")
+                .clone(),
+        ))
+    });
+
+    OneCoreBuilder::new(app_config.core.clone())
+        .with_base_url(app_config.app.core_base_url.to_owned())
+        .with_crypto(crypto)
+        .with_data_provider_creator(storage_creator)
+        .with_json_ld_context(app_config.app.json_ld_context.to_owned())
+        .with_key_algorithm_provider(key_algo_creator)
+        .build()
+        .expect("Failed to initialize core")
 }
 
 pub fn initialize_sentry(config: &ServerConfig) -> Option<sentry::ClientInitGuard> {

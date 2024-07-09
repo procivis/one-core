@@ -1,11 +1,14 @@
 use std::sync::Arc;
 
-use crate::provider::credential_formatter::sdjwt_formatter::disclosures::{
-    gather_hashes_from_disclosures, gather_hashes_from_hashed_claims,
-};
-use crate::{crypto::hasher::Hasher, provider::credential_formatter::FormatterError};
+use one_providers::crypto::Hasher;
 
 use super::model::Disclosure;
+use crate::provider::credential_formatter::{
+    error::FormatterError,
+    sdjwt_formatter::disclosures::{
+        gather_hashes_from_disclosures, gather_hashes_from_hashed_claims,
+    },
+};
 
 pub(super) fn verify_claims(
     hashed_claims: &[String],

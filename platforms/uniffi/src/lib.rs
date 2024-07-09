@@ -1,12 +1,33 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
+use one_providers::{
+    crypto::{
+        imp::{
+            hasher::sha256::SHA256,
+            signer::{
+                bbs::BBSSigner, crydi3::CRYDI3Signer, eddsa::EDDSASigner, es256::ES256Signer,
+            },
+            CryptoProviderImpl,
+        },
+        Hasher, Signer,
+    },
+    key_algorithm::{
+        imp::{bbs::BBS, eddsa::Eddsa, es256::Es256, provider::KeyAlgorithmProviderImpl},
+        KeyAlgorithm,
+    },
+};
 use serde::{Deserialize, Serialize};
 
 use error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
-use one_core::config::core_config::{self, AppConfig, JsonLdContextConfig};
-use one_core::provider::bluetooth_low_energy::BleError;
+use one_core::{
+    config::core_config::{self, AppConfig, JsonLdContextConfig},
+    provider::key_algorithm::ml_dsa::MlDsa,
+    repository::DataRepository,
+    OneCoreBuilder,
+};
+use one_core::{provider::bluetooth_low_energy::BleError, KeyAlgorithmCreator};
 use sql_data_provider::DataLayer;
 use utils::native_ble_central::BleCentralWrapper;
 use utils::native_ble_peripheral::BlePeripheralWrapper;
@@ -67,15 +88,68 @@ fn initialize_core(
                 .await
                 .map_err(|e| BindingError::DbErr(e.to_string()))?;
 
-            Ok(one_core::OneCore::new(
-                |exportable_storages| Arc::new(DataLayer::build(db_conn, exportable_storages)),
-                core_config,
-                None,
-                native_key_storage,
-                json_ld_context_config,
-                ble_peripheral,
-                ble_central,
-            )?)
+            let hashers: Vec<(String, Arc<dyn Hasher>)> =
+                vec![("sha-256".to_string(), Arc::new(SHA256 {}))];
+
+            let signers: Vec<(String, Arc<dyn Signer>)> = vec![
+                ("Ed25519".to_string(), Arc::new(EDDSASigner {})),
+                ("ES256".to_string(), Arc::new(ES256Signer {})),
+                ("CRYDI3".to_string(), Arc::new(CRYDI3Signer {})),
+                ("BBS".to_string(), Arc::new(BBSSigner {})),
+            ];
+
+            let crypto = Arc::new(CryptoProviderImpl::new(
+                HashMap::from_iter(hashers),
+                HashMap::from_iter(signers),
+            ));
+
+            let storage_creator: Box<dyn FnOnce(Vec<String>) -> Arc<dyn DataRepository>> =
+                Box::new(|exportable_storages| {
+                    Arc::new(DataLayer::build(db_conn, exportable_storages))
+                });
+
+            let key_algo_creator: KeyAlgorithmCreator = Box::new(|config, providers| {
+                let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
+
+                for (name, field) in config.iter() {
+                    let key_algorithm: Arc<dyn KeyAlgorithm> = match field.r#type.as_str() {
+                        "EDDSA" => {
+                            let params = config.get(name).expect("EDDSA config is required");
+                            Arc::new(Eddsa::new(params))
+                        }
+                        "ES256" => {
+                            let params = config.get(name).expect("ES256 config is required");
+                            Arc::new(Es256::new(params))
+                        }
+                        "BBS_PLUS" => Arc::new(BBS),
+                        "DILITHIUM" => {
+                            let params = config.get(name).expect("DILITHIUM config is required");
+                            Arc::new(MlDsa::new(params))
+                        }
+                        other => panic!("Unexpected key algorithm: {other}"),
+                    };
+                    key_algorithms.insert(name.to_owned(), key_algorithm);
+                }
+
+                Arc::new(KeyAlgorithmProviderImpl::new(
+                    key_algorithms,
+                    providers
+                        .crypto
+                        .as_ref()
+                        .expect("Crypto is required to start")
+                        .clone(),
+                ))
+            });
+
+            OneCoreBuilder::new(core_config.clone())
+                .with_crypto(crypto)
+                .with_data_provider_creator(storage_creator)
+                .with_json_ld_context(json_ld_context_config)
+                .with_key_algorithm_provider(key_algo_creator)
+                .with_secure_element_storage(native_key_storage)
+                .with_ble(ble_peripheral, ble_central)
+                .build()
+                .map_err(|e| BindingError::DbErr(e.to_string()))
         }) as _
     };
 

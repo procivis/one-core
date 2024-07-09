@@ -3,15 +3,15 @@ use std::collections::HashMap;
 use std::vec;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use one_providers::crypto::imp::signer::bbs::BbsInput;
+use one_providers::crypto::imp::utilities;
 use shared_types::DidValue;
 
-use crate::crypto::signer::bbs::BbsInput;
+use super::model::{GroupedFormatDataDocument, HashData, CBOR_PREFIX_BASE};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::BbsProofComponents;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::{json_ld, CredentialData};
-
-use super::model::{GroupedFormatDataDocument, HashData, CBOR_PREFIX_BASE};
 
 use super::{mapper, AuthenticationFn, JsonLdBbsplus};
 
@@ -46,7 +46,7 @@ impl JsonLdBbsplus {
             custom_subject_name,
         )?;
 
-        let hmac_key = self.crypto.generate_bytes(32);
+        let hmac_key = utilities::generate_random_seed_32();
 
         // We are getting a string from normalization so we operate on it.
         let canonical =
@@ -121,10 +121,8 @@ impl JsonLdBbsplus {
                 match bnode_map.entry(first.to_owned()) {
                     Entry::Occupied(_) => {}
                     Entry::Vacant(entry) => {
-                        let hmac_value =
-                            self.crypto
-                                .create_hmac(hmac_key, identifier.as_bytes())
-                                .ok_or(FormatterError::CouldNotFormat("HMAC failed".to_owned()))?;
+                        let hmac_value = utilities::create_hmac(hmac_key, identifier.as_bytes())
+                            .ok_or(FormatterError::CouldNotFormat("HMAC failed".to_owned()))?;
                         let base64url_value = Base64UrlSafeNoPadding::encode_to_string(hmac_value)
                             .map_err(|_| {
                                 FormatterError::CouldNotFormat(
