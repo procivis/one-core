@@ -42,6 +42,7 @@ mod m20240611_110000_introduce_path_and_array;
 mod m20240625_090000_proof_exchange_to_transport;
 mod m20240628_121021_fix_trust_logo;
 mod m20240702_071021_fix_entity_id;
+mod m20240710_091021_fix_unique_constraint_schema_id;
 
 pub struct Migrator;
 
@@ -88,7 +89,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20240611_110000_introduce_path_and_array::Migration),
             Box::new(m20240625_090000_proof_exchange_to_transport::Migration),
             Box::new(m20240628_121021_fix_trust_logo::Migration),
-            Box::new(m20240702_071021_fix_entity_id::Migration)
+            Box::new(m20240702_071021_fix_entity_id::Migration),
+            Box::new(m20240710_091021_fix_unique_constraint_schema_id::Migration)
         ]
     }
 }
