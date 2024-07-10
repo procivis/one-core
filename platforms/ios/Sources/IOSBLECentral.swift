@@ -3,7 +3,10 @@ import UIKit
 
 class IOSBLECentral: NSObject {
     
-    private var centralManager: CBCentralManager!
+    private lazy var centralManager: CBCentralManager = {
+        return CBCentralManager(delegate: self,
+                                queue: nil)
+    }()
     
     private var peripheralConnectResultCallback: BLEThrowingResultCallback<UInt16>?
     private var peripheralDisconnectResultCallback: BLEThrowingResultCallback<Void>?
@@ -25,12 +28,6 @@ class IOSBLECentral: NSObject {
     private var discoveredPeripheralsQueue: [PeripheralDiscoveryDataBindingDto] = []
     private var disconnectedPeripheralsQueue: [String] = []
     private var notificationsQueues: [CharacteristicKey: [Data]] = [:]
-    
-    override init() {
-        super.init()
-        centralManager = CBCentralManager(delegate: self,
-                                          queue: nil)
-    }
 }
 
 // MARK: - BLECentral interface implementation
