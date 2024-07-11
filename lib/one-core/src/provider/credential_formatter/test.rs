@@ -6,7 +6,7 @@ use shared_types::DidValue;
 
 use crate::config::core_config::{self, CoreConfig, DatatypeConfig, DatatypeType};
 use crate::model::did::DidType;
-use crate::provider::credential_formatter::{CredentialData, PublishedClaim};
+use crate::provider::credential_formatter::{CredentialData, PublishedClaim, PublishedClaimValue};
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialRole, CredentialSchemaType, CredentialStateEnum,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -133,19 +133,19 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
     let expected: Vec<PublishedClaim> = vec![
         PublishedClaim {
             key: "location/x".to_string(),
-            value: "123".to_string(),
+            value: PublishedClaimValue::String("123".to_string()),
             datatype: Some("STRING".to_string()),
             array_item: false,
         },
         PublishedClaim {
             key: "location/y".to_string(),
-            value: "456".to_string(),
+            value: PublishedClaimValue::String("456".to_string()),
             datatype: Some("STRING".to_string()),
             array_item: false,
         },
         PublishedClaim {
             key: "street".to_string(),
-            value: "some street".to_string(),
+            value: PublishedClaimValue::String("some street".to_string()),
             datatype: Some("STRING".to_string()),
             array_item: false,
         },
@@ -242,19 +242,19 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
     let expected: Vec<PublishedClaim> = vec![
         PublishedClaim {
             key: "location/0".to_string(),
-            value: "123".to_string(),
+            value: PublishedClaimValue::String("123".to_string()),
             datatype: Some("STRING".to_string()),
             array_item: true,
         },
         PublishedClaim {
             key: "location/1".to_string(),
-            value: "456".to_string(),
+            value: PublishedClaimValue::String("456".to_string()),
             datatype: Some("STRING".to_string()),
             array_item: true,
         },
         PublishedClaim {
             key: "street".to_string(),
-            value: "some street".to_string(),
+            value: PublishedClaimValue::String("some street".to_string()),
             datatype: Some("STRING".to_string()),
             array_item: false,
         },

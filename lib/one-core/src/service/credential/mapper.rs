@@ -119,12 +119,12 @@ pub(super) fn renest_claims(
             claim.schema.key = remove_first_nesting_layer(&claim.schema.key);
 
             match &mut matching_entry.value {
-                DetailCredentialClaimValueResponseDTO::String(_value) => {
-                    matching_entry.value =
-                        DetailCredentialClaimValueResponseDTO::Nested(vec![claim]);
-                }
                 DetailCredentialClaimValueResponseDTO::Nested(nested) => {
                     nested.push(claim);
+                }
+                _ => {
+                    matching_entry.value =
+                        DetailCredentialClaimValueResponseDTO::Nested(vec![claim]);
                 }
             }
         }
@@ -134,14 +134,12 @@ pub(super) fn renest_claims(
     let mut nested = result
         .into_iter()
         .map(|mut claim_schema| {
-            match &claim_schema.value {
-                DetailCredentialClaimValueResponseDTO::String(_value) => {}
-                DetailCredentialClaimValueResponseDTO::Nested(nested) => {
-                    claim_schema.value = DetailCredentialClaimValueResponseDTO::Nested(
-                        renest_claims(nested.to_owned())?,
-                    );
-                }
+            if let DetailCredentialClaimValueResponseDTO::Nested(nested) = &claim_schema.value {
+                claim_schema.value = DetailCredentialClaimValueResponseDTO::Nested(renest_claims(
+                    nested.to_owned(),
+                )?);
             }
+
             Ok(claim_schema)
         })
         .collect::<Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError>>()?;
@@ -171,7 +169,7 @@ pub(crate) fn from_vec_claim(
             ))?;
     let result = claim_schemas
         .iter()
-        .flat_map(|claim_schema| {
+        .map(|claim_schema| {
             let claims = claims
                 .iter()
                 .filter(|claim| {
@@ -187,30 +185,65 @@ pub(crate) fn from_vec_claim(
                 .collect::<Vec<&Claim>>();
 
             if claims.is_empty() {
-                vec![DetailCredentialClaimResponseDTO {
+                Ok(vec![DetailCredentialClaimResponseDTO {
                     path: claim_schema.schema.key.to_owned(),
                     schema: claim_schema.to_owned().into(),
                     value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
-                }]
+                }])
             } else {
                 claims
                     .into_iter()
-                    .map(|claim| DetailCredentialClaimResponseDTO {
-                        path: claim.path.to_owned(),
-                        schema: claim_schema.to_owned().into(),
-                        value: DetailCredentialClaimValueResponseDTO::String(
-                            claim.value.to_owned(),
-                        ),
-                    })
-                    .collect()
+                    .map(|claim| claim_to_dto(claim, claim_schema, config))
+                    .collect::<Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError>>()
             }
         })
-        .collect::<Vec<DetailCredentialClaimResponseDTO>>();
+        .collect::<Result<Vec<Vec<DetailCredentialClaimResponseDTO>>, ServiceError>>()?
+        .into_iter()
+        .flatten()
+        .collect();
 
     let nested = renest_claims(result)?;
     let arrays_nested = renest_arrays(nested, "", claim_schemas, config)?;
     let sorted = sort_arrays(arrays_nested);
     Ok(sorted)
+}
+
+pub fn claim_to_dto(
+    claim: &Claim,
+    claim_schema: &CredentialSchemaClaim,
+    config: &CoreConfig,
+) -> Result<DetailCredentialClaimResponseDTO, ServiceError> {
+    let value = match config
+        .datatype
+        .get_fields(&claim_schema.schema.data_type)?
+        .r#type
+    {
+        DatatypeType::Number => {
+            if let Ok(number) = claim.value.parse::<i64>() {
+                DetailCredentialClaimValueResponseDTO::Integer(number)
+            } else {
+                DetailCredentialClaimValueResponseDTO::Float(
+                    claim
+                        .value
+                        .parse::<f64>()
+                        .map_err(|e| ServiceError::MappingError(e.to_string()))?,
+                )
+            }
+        }
+        DatatypeType::Boolean => DetailCredentialClaimValueResponseDTO::Boolean(
+            claim
+                .value
+                .parse::<bool>()
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?,
+        ),
+        _ => DetailCredentialClaimValueResponseDTO::String(claim.value.to_owned()),
+    };
+
+    Ok(DetailCredentialClaimResponseDTO {
+        path: claim.path.to_owned(),
+        schema: claim_schema.to_owned().into(),
+        value,
+    })
 }
 
 pub fn sort_arrays(
@@ -220,24 +253,19 @@ pub fn sort_arrays(
         .into_iter()
         .map(|mut claim| {
             if claim.schema.array {
-                match &mut claim.value {
-                    DetailCredentialClaimValueResponseDTO::String(_) => {}
-                    DetailCredentialClaimValueResponseDTO::Nested(values) => {
-                        let prefix = format!("{}{NESTED_CLAIM_MARKER}", claim.path);
-                        values.sort_by(|v1, v2| {
-                            let v1_index =
-                                extract_index_from_path(&v1.path, &prefix).parse::<u64>();
-                            let v2_index =
-                                extract_index_from_path(&v2.path, &prefix).parse::<u64>();
+                if let DetailCredentialClaimValueResponseDTO::Nested(values) = &mut claim.value {
+                    let prefix = format!("{}{NESTED_CLAIM_MARKER}", claim.path);
+                    values.sort_by(|v1, v2| {
+                        let v1_index = extract_index_from_path(&v1.path, &prefix).parse::<u64>();
+                        let v2_index = extract_index_from_path(&v2.path, &prefix).parse::<u64>();
 
-                            match (v1_index, v2_index) {
-                                (Ok(i1), Ok(i2)) => i1.cmp(&i2),
-                                _ => v1.path.cmp(&v2.path),
-                            }
-                        });
+                        match (v1_index, v2_index) {
+                            (Ok(i1), Ok(i2)) => i1.cmp(&i2),
+                            _ => v1.path.cmp(&v2.path),
+                        }
+                    });
 
-                        *values = sort_arrays(values.to_owned());
-                    }
+                    *values = sort_arrays(values.to_owned());
                 }
             }
             claim
@@ -309,10 +337,10 @@ pub(super) fn renest_arrays(
                 None => {
                     if schema.array
                         && values.first().is_some_and(|f| match &f.value {
-                            DetailCredentialClaimValueResponseDTO::String(_) => f.schema.array,
                             DetailCredentialClaimValueResponseDTO::Nested(value) => {
                                 f.schema.array && value.first().is_none()
                             }
+                            _ => f.schema.array,
                         })
                     {
                         result.push(DetailCredentialClaimResponseDTO {
@@ -356,7 +384,6 @@ pub(super) fn renest_arrays(
         .map(|mut claim| {
             if object_datatypes.contains(&claim.schema.datatype.as_str()) {
                 match &mut claim.value {
-                    DetailCredentialClaimValueResponseDTO::String(_) => Ok(claim),
                     DetailCredentialClaimValueResponseDTO::Nested(value) => {
                         let prefix = format!("{}{NESTED_CLAIM_MARKER}", claim.path);
 
@@ -365,6 +392,7 @@ pub(super) fn renest_arrays(
 
                         Ok(claim)
                     }
+                    _ => Ok(claim),
                 }
             } else {
                 Ok(claim)

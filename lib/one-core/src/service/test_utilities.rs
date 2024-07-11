@@ -167,7 +167,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             schema: Some(ClaimSchema {
                 id: claim_schema_id,
                 key: "key".to_string(),
-                data_type: "data type".to_string(),
+                data_type: "STRING".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
@@ -188,7 +188,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                 schema: ClaimSchema {
                     id: claim_schema_id,
                     key: "key".to_string(),
-                    data_type: "data type".to_string(),
+                    data_type: "STRING".to_string(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     array: false,

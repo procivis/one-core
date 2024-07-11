@@ -996,7 +996,8 @@ impl FormatterError {
             | FormatterError::MissingBaseUrl { .. }
             | FormatterError::JsonMapping(_)
             | FormatterError::JsonPtrMalformed(_)
-            | FormatterError::JsonPtrError(_) => ErrorCode::BR_0057,
+            | FormatterError::JsonPtrError(_)
+            | FormatterError::FloatValueIsNaN => ErrorCode::BR_0057,
         }
     }
 }

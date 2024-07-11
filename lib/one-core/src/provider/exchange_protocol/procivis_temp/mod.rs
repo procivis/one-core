@@ -625,45 +625,52 @@ fn unnest_incoming_claim(
     now: OffsetDateTime,
     prefix: &str,
 ) -> Result<Vec<Claim>, ExchangeProtocolError> {
-    match &incoming_claim.value {
-        DetailCredentialClaimValueResponseDTO::String(value) => {
-            let expected_key = format!("{prefix}{}", incoming_claim.schema.key);
+    let value =
+        match &incoming_claim.value {
+            DetailCredentialClaimValueResponseDTO::Boolean(value) => serde_json::to_string(value)
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string())),
+            DetailCredentialClaimValueResponseDTO::Float(value) => serde_json::to_string(value)
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string())),
+            DetailCredentialClaimValueResponseDTO::Integer(value) => serde_json::to_string(value)
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string())),
+            DetailCredentialClaimValueResponseDTO::String(value) => Ok(value.to_owned()),
+            DetailCredentialClaimValueResponseDTO::Nested(value) => {
+                let result = value
+                    .iter()
+                    .map(|value| {
+                        unnest_incoming_claim(
+                            credential_id,
+                            value,
+                            claim_schemas,
+                            now,
+                            &format!("{prefix}{}{NESTED_CLAIM_MARKER}", incoming_claim.schema.key),
+                        )
+                    })
+                    .collect::<Result<Vec<Vec<_>>, ExchangeProtocolError>>()?
+                    .into_iter()
+                    .flatten()
+                    .collect();
+                return Ok(result);
+            }
+        }?;
 
-            let current_claim_schema = claim_schemas
-                .iter()
-                .find(|claim_schema| claim_schema.schema.key == expected_key)
-                .ok_or(ExchangeProtocolError::Failed(format!(
-                    "missing claim schema with key {expected_key}",
-                )))?;
-            Ok(vec![Claim {
-                id: ClaimId::new_v4(),
-                credential_id,
-                path: current_claim_schema.schema.key.to_owned(),
-                schema: Some(current_claim_schema.schema.to_owned()),
-                value: value.to_owned(),
-                created_date: now,
-                last_modified: now,
-            }])
-        }
-        DetailCredentialClaimValueResponseDTO::Nested(value) => {
-            let result = value
-                .iter()
-                .map(|value| {
-                    unnest_incoming_claim(
-                        credential_id,
-                        value,
-                        claim_schemas,
-                        now,
-                        &format!("{prefix}{}{NESTED_CLAIM_MARKER}", incoming_claim.schema.key),
-                    )
-                })
-                .collect::<Result<Vec<Vec<_>>, ExchangeProtocolError>>()?
-                .into_iter()
-                .flatten()
-                .collect();
-            Ok(result)
-        }
-    }
+    let expected_key = format!("{prefix}{}", incoming_claim.schema.key);
+
+    let current_claim_schema = claim_schemas
+        .iter()
+        .find(|claim_schema| claim_schema.schema.key == expected_key)
+        .ok_or(ExchangeProtocolError::Failed(format!(
+            "missing claim schema with key {expected_key}",
+        )))?;
+    Ok(vec![Claim {
+        id: ClaimId::new_v4(),
+        credential_id,
+        path: current_claim_schema.schema.key.to_owned(),
+        schema: Some(current_claim_schema.schema.to_owned()),
+        value,
+        created_date: now,
+        last_modified: now,
+    }])
 }
 
 async fn handle_proof_invitation(

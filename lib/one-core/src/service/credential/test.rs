@@ -3335,7 +3335,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "required": true,
                       "array": false
                     },
-                    "value": "123"
+                    "value": 123
                   },
                   {
                     "path": "root/0/indexlist/1",
@@ -3348,7 +3348,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "required": true,
                       "array": false
                     },
-                    "value": "123"
+                    "value": 123
                   }
                 ]
               }
@@ -3455,7 +3455,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "required": true,
                       "array": false
                     },
-                    "value": "456"
+                    "value": 456
                   },
                   {
                     "path": "root/1/indexlist/1",
@@ -3468,7 +3468,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "required": true,
                       "array": false
                     },
-                    "value": "456"
+                    "value": 456
                   }
                 ]
               }
@@ -4155,7 +4155,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                       "required": true,
                       "array": false
                     },
-                    "value": "123"
+                    "value": 123
                   },
                   {
                     "path": "root/0/indexlist/1",
@@ -4168,7 +4168,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                       "required": true,
                       "array": false
                     },
-                    "value": "123"
+                    "value": 123
                   }
                 ]
               }
@@ -4351,7 +4351,7 @@ async fn test_get_credential_success_array_single_element() {
                       "required": true,
                       "array": false
                     },
-                    "value": "123"
+                    "value": 123
                   }
                 ]
               }

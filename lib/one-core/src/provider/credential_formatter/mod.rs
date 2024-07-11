@@ -23,9 +23,9 @@ mod test;
 #[cfg(test)]
 pub(crate) mod test_utilities;
 
-use std::collections::HashMap;
-
 use one_providers::crypto::SignerError;
+use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -54,9 +54,61 @@ pub type VerificationFn = Box<dyn TokenVerifier>;
 #[derive(Clone, Debug, PartialEq)]
 pub struct PublishedClaim {
     pub key: String,
-    pub value: String,
+    pub value: PublishedClaimValue,
     pub datatype: Option<String>,
     pub array_item: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum PublishedClaimValue {
+    Bool(bool),
+    Float(f64),
+    Integer(i64),
+    String(String),
+}
+
+impl TryFrom<PublishedClaimValue> for serde_json::Value {
+    type Error = FormatterError;
+
+    fn try_from(value: PublishedClaimValue) -> Result<Self, Self::Error> {
+        Ok(match value {
+            PublishedClaimValue::Bool(value) => serde_json::Value::Bool(value),
+            PublishedClaimValue::Float(value) => serde_json::Value::Number(
+                serde_json::Number::from_f64(value).ok_or(FormatterError::FloatValueIsNaN)?,
+            ),
+            PublishedClaimValue::Integer(value) => {
+                serde_json::Value::Number(serde_json::Number::from(value))
+            }
+            PublishedClaimValue::String(value) => serde_json::Value::String(value),
+        })
+    }
+}
+
+impl Display for PublishedClaimValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PublishedClaimValue::Bool(value) => write!(f, "{}", value),
+            PublishedClaimValue::Float(value) => write!(f, "{}", value),
+            PublishedClaimValue::Integer(value) => write!(f, "{}", value),
+            PublishedClaimValue::String(value) => write!(f, "{}", value),
+        }
+    }
+}
+
+impl From<&str> for PublishedClaimValue {
+    fn from(value: &str) -> Self {
+        PublishedClaimValue::String(value.to_string())
+    }
+}
+
+impl PartialEq<str> for PublishedClaimValue {
+    fn eq(&self, other: &str) -> bool {
+        if let PublishedClaimValue::String(value) = self {
+            value == other
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -362,46 +414,63 @@ fn map_claims(
 ) -> Vec<PublishedClaim> {
     let mut result = vec![];
 
-    claims.iter().for_each(|claim| match &claim.value {
-        DetailCredentialClaimValueResponseDTO::String(value) => {
-            let key = if array_item && !object_item {
-                claim.path.clone()
-            } else {
-                format!("{prefix}{}", claim.schema.key.clone())
-            };
+    for claim in claims {
+        let published_claim_value = match &claim.value {
+            DetailCredentialClaimValueResponseDTO::Nested(value) => {
+                let key = if array_item {
+                    let array_index = array_order.entry(prefix.to_string()).or_default();
+                    let current_index = array_index.to_owned();
+                    *array_index += 1;
+                    current_index.to_string()
+                } else {
+                    claim.schema.key.clone()
+                };
 
+                let is_object = config
+                    .get_datatypes_of_type(DatatypeType::Object)
+                    .contains(&claim.schema.datatype.as_str());
+
+                let nested_claims = map_claims(
+                    config,
+                    value,
+                    array_order,
+                    &format!("{prefix}{key}/"),
+                    claim.schema.array,
+                    is_object,
+                );
+                result.extend(nested_claims);
+
+                None
+            }
+            DetailCredentialClaimValueResponseDTO::String(value) => {
+                Some(PublishedClaimValue::String(value.to_owned()))
+            }
+            DetailCredentialClaimValueResponseDTO::Boolean(value) => {
+                Some(PublishedClaimValue::Bool(value.to_owned()))
+            }
+            DetailCredentialClaimValueResponseDTO::Float(value) => {
+                Some(PublishedClaimValue::Float(value.to_owned()))
+            }
+            DetailCredentialClaimValueResponseDTO::Integer(value) => {
+                Some(PublishedClaimValue::Integer(value.to_owned()))
+            }
+        };
+
+        let key = if array_item && !object_item {
+            claim.path.clone()
+        } else {
+            format!("{prefix}{}", claim.schema.key.clone())
+        };
+
+        if let Some(value) = published_claim_value {
             result.push(PublishedClaim {
                 key,
-                value: value.to_owned(),
+                value,
                 datatype: Some(claim.clone().schema.datatype),
                 array_item,
             });
         }
-        DetailCredentialClaimValueResponseDTO::Nested(value) => {
-            let key = if array_item {
-                let array_index = array_order.entry(prefix.to_string()).or_default();
-                let current_index = array_index.to_owned();
-                *array_index += 1;
-                current_index.to_string()
-            } else {
-                claim.schema.key.clone()
-            };
-
-            let is_object = config
-                .get_datatypes_of_type(DatatypeType::Object)
-                .contains(&claim.schema.datatype.as_str());
-
-            let nested_claims = map_claims(
-                config,
-                value,
-                array_order,
-                &format!("{prefix}{key}/"),
-                claim.schema.array,
-                is_object,
-            );
-            result.extend(nested_claims);
-        }
-    });
+    }
 
     result
 }

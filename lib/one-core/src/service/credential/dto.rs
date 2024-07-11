@@ -102,6 +102,9 @@ pub struct DetailCredentialClaimResponseDTO {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum DetailCredentialClaimValueResponseDTO {
+    Boolean(bool),
+    Float(f64),
+    Integer(i64),
     String(String),
     Nested(Vec<DetailCredentialClaimResponseDTO>),
 }

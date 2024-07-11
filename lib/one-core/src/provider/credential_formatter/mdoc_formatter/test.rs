@@ -8,7 +8,9 @@ use one_providers::key_algorithm::MockKeyAlgorithm;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::provider::credential_formatter::{CredentialSchemaData, MockSignatureProvider};
+use crate::provider::credential_formatter::{
+    CredentialSchemaData, MockSignatureProvider, PublishedClaimValue,
+};
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::service::test_utilities::generic_config;
@@ -177,7 +179,7 @@ async fn test_credential_formatting_ok_for_es256() {
         valid_for: time::Duration::seconds(10),
         claims: vec![PublishedClaim {
             key: "a/b/c".to_string(),
-            value: "15".to_string(),
+            value: PublishedClaimValue::String("15".to_string()),
             datatype: Some("STRING".to_string()),
             array_item: false,
         }],
@@ -357,7 +359,7 @@ async fn test_unverified_credential_extraction() {
         valid_for,
         claims: vec![PublishedClaim {
             key: "a/b/c".to_string(),
-            value: "15".to_string(),
+            value: PublishedClaimValue::String("15".to_string()),
             datatype: Some("STRING".to_string()),
             array_item: false,
         }],
