@@ -142,8 +142,17 @@ impl From<DetailCredentialClaimResponseDTO> for ClaimBindingDTO {
 impl From<DetailCredentialClaimValueResponseDTO> for ClaimValueBindingDTO {
     fn from(value: DetailCredentialClaimValueResponseDTO) -> Self {
         match value {
+            DetailCredentialClaimValueResponseDTO::Boolean(value) => {
+                ClaimValueBindingDTO::Boolean { value }
+            }
+            DetailCredentialClaimValueResponseDTO::Float(value) => {
+                ClaimValueBindingDTO::Float { value }
+            }
+            DetailCredentialClaimValueResponseDTO::Integer(value) => {
+                ClaimValueBindingDTO::Integer { value }
+            }
             DetailCredentialClaimValueResponseDTO::String(value) => {
-                ClaimValueBindingDTO::Value { value }
+                ClaimValueBindingDTO::String { value }
             }
             DetailCredentialClaimValueResponseDTO::Nested(value) => ClaimValueBindingDTO::Nested {
                 value: value.into_iter().map(|v| v.into()).collect(),

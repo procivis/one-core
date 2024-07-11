@@ -561,7 +561,10 @@ pub struct ClaimBindingDTO {
 
 #[derive(Debug, Clone)]
 pub enum ClaimValueBindingDTO {
-    Value { value: String },
+    Boolean { value: bool },
+    Float { value: f64 },
+    Integer { value: i64 },
+    String { value: String },
     Nested { value: Vec<ClaimBindingDTO> },
 }
 

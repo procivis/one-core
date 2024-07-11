@@ -52,7 +52,7 @@ pub struct Sdvp {
 pub(crate) struct Disclosure {
     pub salt: String,
     pub key: String,
-    pub value: String,
+    pub value: serde_json::Value,
     pub original_disclosure: String,
     pub base64_encoded_disclosure: String,
 }

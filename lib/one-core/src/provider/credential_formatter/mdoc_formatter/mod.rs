@@ -930,21 +930,20 @@ fn map_to_ciborium_value(
         .get_fields(data_type)
         .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
+    let value_as_string = claim.value.to_string();
     Ok(match fields.r#type {
-        DatatypeType::String => ciborium::Value::from(claim.value.clone()),
+        DatatypeType::String => ciborium::Value::from(value_as_string),
         DatatypeType::Number => {
-            let value = claim
-                .value
+            let value = value_as_string
                 .parse::<u32>()
                 .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
             ciborium::Value::from(value)
         }
-        DatatypeType::Date => ciborium::Value::Tag(
-            FULL_DATE_TAG,
-            ciborium::Value::from(claim.value.to_owned()).into(),
-        ),
+        DatatypeType::Date => {
+            ciborium::Value::Tag(FULL_DATE_TAG, ciborium::Value::from(value_as_string).into())
+        }
         DatatypeType::Boolean => {
-            let value: bool = match claim.value.as_str() {
+            let value: bool = match value_as_string.as_str() {
                 "true" => true,
                 "false" => false,
                 _ => {
@@ -957,7 +956,7 @@ fn map_to_ciborium_value(
             ciborium::Value::from(value)
         }
         DatatypeType::File => {
-            let mut file_parts = claim.value.splitn(2, ',');
+            let mut file_parts = value_as_string.splitn(2, ',');
 
             let mime_type = file_parts.next().ok_or(FormatterError::Failed(
                 "Missing data type of base64".to_string(),

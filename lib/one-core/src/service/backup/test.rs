@@ -65,7 +65,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 schema: Some(ClaimSchema {
                     id: claim_schema_id,
                     key: "key".into(),
-                    data_type: "data_type".into(),
+                    data_type: "STRING".into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     array: false,
@@ -86,7 +86,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                     schema: ClaimSchema {
                         id: claim_schema_id,
                         key: "key".into(),
-                        data_type: "data_type".into(),
+                        data_type: "STRING".into(),
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
                         array: false,

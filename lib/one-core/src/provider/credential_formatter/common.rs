@@ -14,7 +14,8 @@ pub(super) fn nest_claims(
 
     for claim in claims {
         let pointer = jsonptr::Pointer::try_from(format!("/{}", claim.key))?;
-        pointer.assign(&mut data, claim.value)?;
+        let value: serde_json::Value = claim.value.try_into()?;
+        pointer.assign(&mut data, value)?;
     }
 
     Ok(data

@@ -40,6 +40,8 @@ pub enum FormatterError {
     JsonPtrMalformed(#[from] MalformedPointerError),
     #[error("Jsonptr library error: `{0}`")]
     JsonPtrError(#[from] jsonptr::Error),
+    #[error("Float value is NaN")]
+    FloatValueIsNaN,
 }
 
 #[derive(Debug, PartialEq, Eq, Error)]

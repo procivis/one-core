@@ -1,8 +1,7 @@
+use super::model::{SDCredentialSubject, Sdvc, VCContent};
 use crate::provider::credential_formatter::{
     Context, CredentialData, FormatterError, PublishedClaim,
 };
-
-use super::model::{SDCredentialSubject, Sdvc, VCContent};
 
 pub(super) fn vc_from_credential(
     credential: CredentialData,
@@ -57,7 +56,8 @@ pub(super) fn nest_claims_to_json(
 
     for claim in claims {
         let pointer = jsonptr::Pointer::try_from(format!("/{}", claim.key))?;
-        pointer.assign(&mut data, claim.value.to_owned())?;
+        let value: serde_json::Value = claim.value.to_owned().try_into()?;
+        pointer.assign(&mut data, value)?;
     }
 
     Ok(data)
@@ -79,12 +79,9 @@ pub(super) fn unpack_arrays(
         ))?
         .into_iter()
         .try_for_each(|(k, v)| {
-            match v.as_str() {
-                None => {
-                    result_obj.insert(k.to_owned(), unpack_arrays(v)?);
-                }
-                Some(v_str) => {
-                    match serde_json::from_str::<serde_json::Value>(v_str) {
+            match v {
+                serde_json::Value::String(subvalue) => {
+                    match serde_json::from_str::<serde_json::Value>(subvalue) {
                         Ok(parsed) => match parsed.as_array() {
                             None => {
                                 if parsed.is_object() {
@@ -110,6 +107,24 @@ pub(super) fn unpack_arrays(
                             result_obj.insert(k.to_owned(), v.to_owned());
                         }
                     };
+                }
+                serde_json::Value::Array(subvalue) => {
+                    let mut array = vec![];
+
+                    subvalue.iter().try_for_each(|item| {
+                        if item.is_object() {
+                            array.push(unpack_arrays(item)?);
+                        } else {
+                            array.push(item.to_owned());
+                        }
+
+                        Ok::<(), FormatterError>(())
+                    })?;
+
+                    result_obj.insert(k.to_owned(), serde_json::Value::Array(array));
+                }
+                _ => {
+                    result_obj.insert(k.to_owned(), unpack_arrays(v)?);
                 }
             }
 

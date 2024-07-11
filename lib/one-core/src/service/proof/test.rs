@@ -249,6 +249,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
 
     let service = setup_service(Repositories {
         proof_repository,
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -583,6 +584,7 @@ async fn test_get_proof_with_array_holder() {
 
     let service = setup_service(Repositories {
         proof_repository,
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -794,6 +796,7 @@ async fn test_get_proof_with_array_in_object_holder() {
 
     let service = setup_service(Repositories {
         proof_repository,
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -1010,6 +1013,7 @@ async fn test_get_proof_with_object_array_holder() {
 
     let service = setup_service(Repositories {
         proof_repository,
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -1725,6 +1729,7 @@ async fn test_get_proof_missing() {
 
     let service = setup_service(Repositories {
         proof_repository,
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -1795,6 +1800,7 @@ async fn test_get_proof_list_success() {
 
     let service = setup_service(Repositories {
         proof_repository,
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -2419,6 +2425,7 @@ async fn test_share_proof_invalid_state() {
 
     let service = setup_service(Repositories {
         proof_repository,
+        config: generic_config().core,
         ..Default::default()
     });
 

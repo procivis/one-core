@@ -44,13 +44,13 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::OpenID4VCIError;
+use crate::service::test_utilities::generic_config;
 
 #[tokio::test]
 async fn test_issuer_submit_succeeds() {
     let credential_id: CredentialId = Uuid::new_v4().into();
     let key_storage_type = "storage type";
     let key_type = "EDDSA";
-    let algorithm = "algorithm";
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -144,23 +144,6 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .returning(|_, _| Ok(Box::<MockSignatureProvider>::default()));
 
-    let mut config = dummy_config();
-    config.key_algorithm.insert(
-        "EDDSA".to_string(),
-        Fields {
-            r#type: "EDDSA".to_string(),
-            display: Value::String("display".to_string()),
-            order: None,
-            disabled: None,
-            capabilities: None,
-            params: Some(Params {
-                public: Some(json!({
-                    "algorithm": algorithm
-                })),
-                private: None,
-            }),
-        },
-    );
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
@@ -204,7 +187,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(history_repository),
         Arc::new(did_method_provider),
         Arc::new(MockValidityCredentialRepository::new()),
-        Arc::new(dummy_config()),
+        Arc::new(generic_config().core),
         Some("base_url".to_string()),
     );
 

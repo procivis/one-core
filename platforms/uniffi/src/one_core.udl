@@ -339,7 +339,10 @@ dictionary ClaimBindingDTO {
 
 [Enum]
 interface ClaimValueBindingDTO {
-  Value(string value);
+  Boolean(boolean value);
+  Float(f64 value);
+  Integer(i64 value);
+  String(string value);
   Nested(sequence<ClaimBindingDTO> value);
 };
 

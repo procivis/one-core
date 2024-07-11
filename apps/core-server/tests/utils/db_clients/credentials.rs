@@ -91,8 +91,10 @@ impl CredentialsDB {
                     last_modified: get_dummy_date(),
                     value: if params.random_claims {
                         format!("test:{}", Uuid::new_v4())
-                    } else {
+                    } else if claim_schema.schema.data_type != "BOOLEAN" {
                         "test".to_string()
+                    } else {
+                        "true".to_string()
                     },
                     path: claim_schema.schema.key.clone(),
                     schema: Some(claim_schema.schema.to_owned()),

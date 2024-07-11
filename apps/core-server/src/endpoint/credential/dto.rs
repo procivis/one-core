@@ -136,6 +136,9 @@ pub struct CredentialDetailClaimResponseRestDTO {
 #[from(DetailCredentialClaimValueResponseDTO)]
 #[serde(untagged)]
 pub enum CredentialDetailClaimValueResponseRestDTO {
+    Boolean(bool),
+    Float(f64),
+    Integer(i64),
     String(String),
     Nested(#[from(with_fn = convert_inner)] Vec<CredentialDetailClaimResponseRestDTO>),
 }

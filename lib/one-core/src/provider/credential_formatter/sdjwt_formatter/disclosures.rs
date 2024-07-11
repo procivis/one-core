@@ -32,9 +32,7 @@ pub(super) fn gather_hash(
     disclosure: &Disclosure,
     hasher: &Arc<dyn Hasher>,
 ) -> Result<Vec<String>, FormatterError> {
-    let value = disclosure.value.as_str();
-
-    match serde_json::from_str::<SelectiveDisclosureArray>(value) {
+    match serde_json::from_value::<SelectiveDisclosureArray>(disclosure.value.to_owned()) {
         Ok(mut value) => {
             value.sd.push(disclosure.hash(hasher)?);
             Ok(value.sd)
@@ -155,14 +153,16 @@ impl Disclosure {
                 "current disclosure has no subdisclosures".to_string(),
             ))
         } else {
-            let obj = serde_json::from_str::<SelectiveDisclosureArray>(&self.value)
+            let obj = serde_json::from_value::<SelectiveDisclosureArray>(self.value.to_owned())
                 .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
             Ok(obj.sd)
         }
     }
 
     pub fn has_subdisclosures(&self) -> bool {
-        self.value.starts_with("{\"_sd\"")
+        self.value
+            .as_object()
+            .is_some_and(|obj| obj.contains_key("_sd"))
     }
 
     pub fn hash(&self, hasher: &Arc<dyn Hasher>) -> Result<String, FormatterError> {
@@ -343,10 +343,7 @@ pub(super) fn extract_claims_from_disclosures(
             .zip(hashes_used_by_disclosures)
             .for_each(|(disclosure, hash)| {
                 if !resolved_hashes.contains(&hash) {
-                    object.insert(
-                        disclosure.key.to_owned(),
-                        serde_json::Value::String(disclosure.value.to_owned()),
-                    );
+                    object.insert(disclosure.key.to_owned(), disclosure.value.to_owned());
                 }
             });
     }
@@ -389,10 +386,7 @@ pub(super) fn get_subdisclosures(
             resolved_subdisclosures.extend(resolved);
             resolved_subdisclosures.push(hash.to_owned());
         } else {
-            object.insert(
-                disclosure.key.to_owned(),
-                serde_json::Value::String(disclosure.value.to_owned()),
-            );
+            object.insert(disclosure.key.to_owned(), disclosure.value.to_owned());
             resolved_subdisclosures.push(hash.to_owned());
         }
     }
@@ -438,16 +432,10 @@ pub(super) fn parse_disclosure(
     let parsed: DisclosureArray =
         serde_json::from_str(disclosure).map_err(|e| FormatterError::Failed(e.to_string()))?;
 
-    let value = match parsed.value.as_str() {
-        None => serde_json::to_string(&parsed.value)
-            .map_err(|e| FormatterError::JsonMapping(e.to_string())),
-        Some(value) => Ok(value.to_string()),
-    }?;
-
     Ok(Disclosure {
         salt: parsed.salt,
         key: parsed.key,
-        value,
+        value: parsed.value,
         original_disclosure: disclosure.to_string(),
         base64_encoded_disclosure: base64_encoded_disclosure.to_string(),
     })

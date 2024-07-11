@@ -16,7 +16,7 @@ use crate::provider::credential_formatter::sdjwt_formatter::disclosures::{
 };
 use crate::provider::credential_formatter::sdjwt_formatter::model::Disclosure;
 use crate::provider::credential_formatter::sdjwt_formatter::verifier::verify_claims;
-use crate::provider::credential_formatter::PublishedClaim;
+use crate::provider::credential_formatter::{PublishedClaim, PublishedClaimValue};
 use crate::{
     config::core_config,
     provider::credential_formatter::{
@@ -790,7 +790,7 @@ fn test_parse_disclosure() {
     let mut easy_disclosure = Disclosure {
         salt: "123".to_string(),
         key: "456".to_string(),
-        value: "789".to_string(),
+        value: serde_json::Value::String("789".to_string()),
         original_disclosure: r#"["123","456","789"]"#.to_string(),
         base64_encoded_disclosure: "not passed".to_string(),
     };
@@ -820,21 +820,26 @@ fn generic_disclosures() -> Vec<Disclosure> {
         Disclosure {
             salt: "cTgNF-AtESuivLBdhN0t8A".to_string(),
             key: "str".to_string(),
-            value: "stronk".to_string(),
+            value: serde_json::Value::String("stronk".to_string()),
             original_disclosure: "[\"cTgNF-AtESuivLBdhN0t8A\",\"str\",\"stronk\"]".to_string(),
             base64_encoded_disclosure: "WyJjVGdORi1BdEVTdWl2TEJkaE4wdDhBIiwic3RyIiwic3Ryb25rIl0".to_string()
         },
         Disclosure {
             salt: "nEP135SkAyOTnMA67CNTAA".to_string(),
             key: "another".to_string(),
-            value: "week".to_string(),
+            value: serde_json::Value::String("week".to_string()),
             original_disclosure: "[\"nEP135SkAyOTnMA67CNTAA\",\"another\",\"week\"]".to_string(),
             base64_encoded_disclosure: "WyJuRVAxMzVTa0F5T1RuTUE2N0NOVEFBIiwiYW5vdGhlciIsIndlZWsiXQ".to_string()
         },
         Disclosure {
             salt: "xtyBeqglpTfvXrqQzsXMFw".to_string(),
             key: "obj".to_string(),
-            value: "{\"_sd\":[\"hNm6iOV--i33lAvTeuH_rYQBwx8g_mtDQ9T7QLNdH8s\",\"gXsBjCI5V6KfQrjmDlKXttwD5v-HoRwHH_BW_uWsu6U\"]}".to_string(),
+            value: json!({
+              "_sd": [
+                "hNm6iOV--i33lAvTeuH_rYQBwx8g_mtDQ9T7QLNdH8s",
+                "gXsBjCI5V6KfQrjmDlKXttwD5v-HoRwHH_BW_uWsu6U"
+              ]
+            }),
             original_disclosure: "[\"xtyBeqglpTfvXrqQzsXMFw\",\"obj\",{\"_sd\":[\"hNm6iOV--i33lAvTeuH_rYQBwx8g_mtDQ9T7QLNdH8s\",\"gXsBjCI5V6KfQrjmDlKXttwD5v-HoRwHH_BW_uWsu6U\"]}]".to_string(),
             base64_encoded_disclosure:"WyJ4dHlCZXFnbHBUZnZYcnFRenNYTUZ3Iiwib2JqIix7Il9zZCI6WyJoTm02aU9WLS1pMzNsQXZUZXVIX3JZUUJ3eDhnX210RFE5VDdRTE5kSDhzIiwiZ1hzQmpDSTVWNktmUXJqbURsS1h0dHdENXYtSG9Sd0hIX0JXX3VXc3U2VSJdfV0".to_string(),
         }
@@ -980,7 +985,11 @@ fn test_get_disclosures_by_claim_name() {
         Disclosure {
           salt: "xtyBeqglpTfvXrqQzsXMFw".to_string(),
           key: "root".to_string(),
-          value: "{\"_sd\":[\"bvvBS7QQFb8-9K8PVvZ4W3iJNfafA51YUF6wNOW807I\"]}".to_string(),
+          value: json!({
+              "_sd": [
+                "bvvBS7QQFb8-9K8PVvZ4W3iJNfafA51YUF6wNOW807I"
+              ]
+          }),
           original_disclosure: "[\"xtyBeqglpTfvXrqQzsXMFw\",\"obj\",{\"_sd\":[\"bvvBS7QQFb8-9K8PVvZ4W3iJNfafA51YUF6wNOW807I\"]}]".to_string(),
           base64_encoded_disclosure: "WyJ4dHlCZXFnbHBUZnZYcnFRenNYTUZ3Iiwib2JqIix7Il9zZCI6WyJidnZCUzdRUUZiOC05SzhQVnZaNFczaUpOZmFmQTUxWVVGNndOT1c4MDdJIl19XQ".to_string(),
       }];
@@ -1002,7 +1011,7 @@ fn test_get_disclosures_by_claim_name() {
 fn generate_published_claim(key: &str) -> PublishedClaim {
     PublishedClaim {
         key: key.to_string(),
-        value: "irrelevant for tests".to_string(),
+        value: PublishedClaimValue::String("irrelevant for tests".to_string()),
         datatype: Some("STRING".to_string()),
         array_item: false,
     }
