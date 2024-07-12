@@ -169,6 +169,7 @@ impl CredentialFormatter for SDJWTFormatter {
                 "ES256".to_owned(),
                 "DILITHIUM".to_owned(),
             ],
+            allowed_schema_ids: vec![],
             datatypes: vec![
                 "STRING".to_string(),
                 "BOOLEAN".to_string(),

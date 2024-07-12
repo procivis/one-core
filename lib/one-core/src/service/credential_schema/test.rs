@@ -1,10 +1,12 @@
 use mockall::predicate::*;
+use serde_json::json;
 use shared_types::CredentialSchemaId;
 use std::sync::Arc;
 use std::vec;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::config::core_config::{Fields, FormatType};
 use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -461,12 +463,26 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
+    let mut config = generic_config().core;
+    config.format.insert(
+        "MDOC".to_string(),
+        Fields {
+            r#type: FormatType::Mdoc,
+            display: Default::default(),
+            order: None,
+            disabled: None,
+            capabilities: Some(json!({
+                "features": ["REQUIRES_SCHEMA_ID"]
+            })),
+            params: None,
+        },
+    );
     let service = setup_service(
         repository,
         history_repository,
         organisation_repository,
         formatter_provider,
-        generic_config().core,
+        config,
     );
 
     let result = service
@@ -1239,13 +1255,26 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
         .expect_get_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
-
+    let mut config = generic_config().core;
+    config.format.insert(
+        "MDOC".to_string(),
+        Fields {
+            r#type: FormatType::Mdoc,
+            display: Default::default(),
+            order: None,
+            disabled: None,
+            capabilities: Some(json!({
+                "features": ["REQUIRES_SCHEMA_ID"]
+            })),
+            params: None,
+        },
+    );
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
         formatter_provider,
-        generic_config().core,
+        config,
     );
 
     let result = service
@@ -1277,6 +1306,68 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
     assert!(matches!(
         result,
         ServiceError::BusinessLogic(BusinessLogicError::MissingMdocDoctype)
+    ));
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() {
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(generic_formatter_capabilities);
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+    let mut config = generic_config().core;
+    config.format.insert(
+        "PHYSICAL_CARD".to_string(),
+        Fields {
+            r#type: FormatType::PhysicalCard,
+            display: Default::default(),
+            order: None,
+            disabled: None,
+            capabilities: Some(json!({
+                "features": ["REQUIRES_SCHEMA_ID"],
+                "allowedSchemaIds": ["UtopiaEmploymentDocument"],
+            })),
+            params: None,
+        },
+    );
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockHistoryRepository::default(),
+        MockOrganisationRepository::default(),
+        formatter_provider,
+        config,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "PHYSICAL_CARD".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "nested".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+                array: Some(false),
+                claims: vec![],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: Some("test".to_string()),
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::Validation(ValidationError::SchemaIdNotAllowedForFormat)
     ));
 }
 
