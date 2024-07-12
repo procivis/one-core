@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
 use crate::repository::did_repository::DidRepository;
@@ -22,6 +23,7 @@ pub struct ProofService {
     interaction_repository: Arc<dyn InteractionRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     protocol_provider: Arc<dyn ExchangeProtocolProvider>,
+    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -35,6 +37,7 @@ impl ProofService {
         interaction_repository: Arc<dyn InteractionRepository>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         protocol_provider: Arc<dyn ExchangeProtocolProvider>,
+        ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
@@ -45,6 +48,7 @@ impl ProofService {
             interaction_repository,
             credential_formatter_provider,
             protocol_provider,
+            ble_peripheral,
             config,
         }
     }

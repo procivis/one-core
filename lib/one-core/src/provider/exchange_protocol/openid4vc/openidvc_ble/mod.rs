@@ -115,7 +115,7 @@ impl BLEParse<MessageSize, anyhow::Error> for BLEStream {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub(super) struct BLEPeer {
+pub struct BLEPeer {
     pub device_info: DeviceInfo,
     sender_aes_key: [u8; 32],
     receiver_aes_key: [u8; 32],

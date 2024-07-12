@@ -98,7 +98,7 @@ mod test;
 pub mod dto;
 pub(crate) mod mapper;
 pub mod model;
-mod openidvc_ble;
+pub(crate) mod openidvc_ble;
 mod validator;
 
 const CREDENTIAL_OFFER_URL_SCHEME: &str = "openid-credential-offer";
@@ -215,7 +215,6 @@ impl OpenID4VC {
             .config
             .transport
             .ble_enabled_for(&TransportType::Ble.to_string())
-            .unwrap_or(false)
         {
             return Err(ExchangeProtocolError::Disabled(
                 "BLE transport is disabled".to_string(),
@@ -787,12 +786,7 @@ impl ExchangeProtocol for OpenID4VC {
             create_open_id_for_vp_presentation_definition(interaction_id, &proof, &self.config)?;
 
         if proof.transport == TransportType::Ble.to_string() {
-            if !self
-                .config
-                .transport
-                .ble_enabled_for(&proof.transport)
-                .unwrap_or(false)
-            {
+            if !self.config.transport.ble_enabled_for(&proof.transport) {
                 return Err(ExchangeProtocolError::Disabled(
                     "BLE transport is disabled".to_string(),
                 ));

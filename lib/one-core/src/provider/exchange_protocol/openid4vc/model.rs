@@ -42,7 +42,7 @@ pub struct HolderInteractionData {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub(super) struct BLEOpenID4VPInteractionData {
+pub struct BLEOpenID4VPInteractionData {
     pub peer: BLEPeer,
     pub presentation_definition: OpenID4VPPresentationDefinition,
 }
