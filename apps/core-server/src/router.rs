@@ -21,8 +21,8 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
-    config, credential, credential_schema, did, did_resolver, history, interaction, key, misc,
-    organisation, proof, proof_schema, ssi, task, trust_anchor, trust_entity,
+    config, credential, credential_schema, did, did_resolver, history, interaction, jsonld, key,
+    misc, organisation, proof, proof_schema, ssi, task, trust_anchor, trust_entity,
 };
 use crate::middleware::get_http_request_context;
 use crate::{build_info, dto, ServerConfig};
@@ -229,6 +229,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             "/api/trust-entity/v1/:id",
             delete(trust_entity::controller::delete_trust_entity)
                 .get(trust_entity::controller::get_trust_entity_details),
+        )
+        .route(
+            "/api/jsonld-context/v1",
+            get(jsonld::controller::resolve_jsonld_context),
         )
         .layer(middleware::from_fn(crate::middleware::bearer_check));
 
@@ -457,6 +461,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             trust_entity::controller::get_trust_entity_details,
             trust_entity::controller::get_trust_entities,
 
+            jsonld::controller::resolve_jsonld_context,
+
             misc::get_build_info,
             misc::health_check,
             misc::get_metrics,
@@ -637,6 +643,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 trust_entity::dto::GetTrustEntityResponseRestDTO,
                 trust_entity::dto::ListTrustEntitiesResponseItemRestDTO,
 
+                jsonld::dto::ResolveJsonLDContextResponseRestDTO,
+
                 dto::common::GetDidsResponseRestDTO,
                 dto::common::GetProofSchemaListResponseRestDTO,
 
@@ -685,6 +693,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             (name = "task", description = "Background tasks"),
             (name = "trust_anchor", description = "Trust anchors"),
             (name = "trust_entity", description = "Trust entities"),
+            (name = "jsonld", description = "JSON-LD"),
         ),
         modifiers(&SecurityAddon)
     )]

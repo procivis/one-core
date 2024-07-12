@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use anyhow::Context;
 use async_trait::async_trait;
 use ciborium::Value;
@@ -27,13 +26,6 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
-use crate::model::credential_schema::CredentialSchemaType;
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
-use crate::provider::did_method::mdl::DidMdlValidator;
-use crate::provider::did_method::provider::DidMethodProvider;
-
 use self::cose::CoseSign1Builder;
 use self::mdoc::{
     Bstr, Bytes, CoseSign1, DateTime, DeviceAuth, DeviceAuthentication, DeviceKey, DeviceKeyInfo,
@@ -41,7 +33,6 @@ use self::mdoc::{
     IssuerSigned, IssuerSignedItem, MobileSecurityObject, MobileSecurityObjectVersion, Namespace,
     Namespaces, OID4VPHandover, SessionTranscript, ValidityInfo, ValueDigests,
 };
-
 use super::common::nest_claims;
 use super::model::{CredentialPresentation, CredentialSchema, CredentialSubject, Presentation};
 use super::{
@@ -49,6 +40,13 @@ use super::{
     FormatPresentationCtx, FormatterCapabilities, PublishedClaim, SelectiveDisclosureOption,
     SignatureProvider, TokenVerifier, VerificationFn,
 };
+use crate::config::core_config::{DatatypeConfig, DatatypeType};
+use crate::model::credential_schema::CredentialSchemaType;
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
+use crate::provider::did_method::mdl::DidMdlValidator;
+use crate::provider::did_method::provider::DidMethodProvider;
 
 mod cose;
 mod mdoc;
@@ -76,7 +74,6 @@ pub struct Params {
 }
 
 impl MdocFormatter {
-    #[allow(clippy::new_without_default)]
     pub fn new(
         params: Params,
         did_method_provider: Arc<dyn DidMethodProvider>,

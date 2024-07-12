@@ -50,3 +50,6 @@ mod trust_anchor;
 
 #[path = "api/trust_entity/mod.rs"]
 mod trust_entity;
+
+#[path = "api/jsonld/mod.rs"]
+mod jsonld;

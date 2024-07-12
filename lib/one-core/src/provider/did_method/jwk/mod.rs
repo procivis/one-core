@@ -1,20 +1,16 @@
-use self::helpers::{encode_to_did, extract_jwk, generate_document};
-use super::{
-    dto::{AmountOfKeys, DidDocumentDTO},
-    DidCapabilities, DidMethodError, Operation,
-};
-use crate::{
-    config::core_config::{DidType, Fields, Params},
-    provider::did_method::dto::Keys,
-};
+use std::sync::Arc;
 
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-
-use crate::model::key::Key;
 use async_trait::async_trait;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use serde_json::json;
 use shared_types::{DidId, DidValue};
-use std::sync::Arc;
+
+use self::helpers::{encode_to_did, extract_jwk, generate_document};
+use super::dto::{AmountOfKeys, DidDocumentDTO};
+use super::{DidCapabilities, DidMethodError, Operation};
+use crate::config::core_config::{DidType, Fields, Params};
+use crate::model::key::Key;
+use crate::provider::did_method::dto::Keys;
 
 mod helpers;
 
@@ -23,7 +19,6 @@ pub struct JWKDidMethod {
 }
 
 impl JWKDidMethod {
-    #[allow(clippy::new_without_default)]
     pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>) -> Self {
         Self {
             key_algorithm_provider,

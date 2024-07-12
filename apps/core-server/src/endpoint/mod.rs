@@ -5,6 +5,7 @@ pub mod did;
 pub mod did_resolver;
 pub mod history;
 pub mod interaction;
+pub mod jsonld;
 pub mod key;
 pub mod misc;
 pub mod organisation;

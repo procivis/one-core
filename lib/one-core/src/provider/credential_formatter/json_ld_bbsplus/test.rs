@@ -1,23 +1,17 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use one_providers::crypto::MockCryptoProvider;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use time::{Duration, OffsetDateTime};
 
+use super::derived_proof::find_selective_indices;
+use super::model::{GroupEntry, TransformedEntry};
 use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdCredentialSubject};
 use crate::provider::credential_formatter::json_ld_bbsplus::remove_undisclosed_keys::remove_undisclosed_keys;
-use crate::provider::credential_formatter::test_utilities::{
-    prepare_json_ld_context_config, prepare_json_ld_context_repository,
-};
-use crate::provider::{
-    credential_formatter::json_ld_bbsplus::{JsonLdBbsplus, Params},
-    did_method::provider::MockDidMethodProvider,
-};
-
-use super::{
-    derived_proof::find_selective_indices,
-    model::{GroupEntry, TransformedEntry},
-};
+use crate::provider::credential_formatter::json_ld_bbsplus::{JsonLdBbsplus, Params};
+use crate::provider::credential_formatter::test_utilities::prepare_caching_loader;
+use crate::provider::did_method::provider::MockDidMethodProvider;
 
 #[tokio::test]
 async fn test_canonize_any() {
@@ -32,10 +26,9 @@ async fn test_canonize_any() {
         },
         Arc::new(crypto),
         Some("base".to_owned()),
-        prepare_json_ld_context_config(),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
-        Arc::new(prepare_json_ld_context_repository()),
+        prepare_caching_loader(),
     );
 
     let hmac_key = [
@@ -69,10 +62,9 @@ async fn test_transform_canonized() {
         },
         Arc::new(crypto),
         Some("base".to_owned()),
-        prepare_json_ld_context_config(),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
-        Arc::new(prepare_json_ld_context_repository()),
+        prepare_caching_loader(),
     );
 
     let bnode_ident_map = HashMap::from([
@@ -112,10 +104,9 @@ async fn test_transform_grouped() {
         },
         Arc::new(crypto),
         Some("base".to_owned()),
-        prepare_json_ld_context_config(),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
-        Arc::new(prepare_json_ld_context_repository()),
+        prepare_caching_loader(),
     );
 
     let transformed_lines = &TRANSFORMED_OWN

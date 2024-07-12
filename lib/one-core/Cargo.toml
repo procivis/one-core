@@ -44,7 +44,7 @@ fmap.workspace             = true
 pqc_dilithium              = { version = "0.2.0", git = "https://github.com/ihor-rud/dilithium", rev = "e02a683" }
 convert_case               = { version = "0.6" }
 contextual                 = { version = "0.1" }
-json-syntax                = { version = "0.9" }
+json-syntax                = { version = "0.9", features = ["serde_json"] }
 locspan                    = { version = "0.7" }
 json-ld                    = { version = "0.15" }
 mime                       = { version = "0.3" }

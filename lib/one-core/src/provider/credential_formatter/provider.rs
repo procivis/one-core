@@ -1,23 +1,21 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use one_providers::crypto::CryptoProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use serde_json::json;
 
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-
-use crate::config::core_config::{CoreConfig, FormatType, JsonLdContextConfig};
+use super::json_ld::caching_loader::CachingLoader;
+use super::json_ld_bbsplus::JsonLdBbsplus;
+use super::json_ld_classic::JsonLdClassic;
+use super::CredentialFormatter;
+use crate::config::core_config::{CoreConfig, FormatType};
 use crate::config::ConfigError;
-
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use crate::provider::credential_formatter::physical_card::PhysicalCardFormatter;
 use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::repository::json_ld_context_repository::JsonLdContextRepository;
-
-use super::json_ld_bbsplus::JsonLdBbsplus;
-use super::json_ld_classic::JsonLdClassic;
-use super::CredentialFormatter;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait CredentialFormatterProvider: Send + Sync {
@@ -42,12 +40,11 @@ impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
 
 pub(crate) fn credential_formatters_from_config(
     config: &mut CoreConfig,
-    json_ld_context_config: JsonLdContextConfig,
     crypto: Arc<dyn CryptoProvider>,
     core_base_url: Option<String>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    json_ld_context_repository: Arc<dyn JsonLdContextRepository>,
+    caching_loader: CachingLoader,
 ) -> Result<HashMap<String, Arc<dyn CredentialFormatter>>, ConfigError> {
     let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
 
@@ -68,9 +65,8 @@ pub(crate) fn credential_formatters_from_config(
                     params,
                     crypto.clone(),
                     core_base_url.clone(),
-                    json_ld_context_config.to_owned(),
                     did_method_provider.clone(),
-                    json_ld_context_repository.clone(),
+                    caching_loader.clone(),
                 )) as _
             }
             FormatType::JsonLdBbsplus => {
@@ -79,10 +75,9 @@ pub(crate) fn credential_formatters_from_config(
                     params,
                     crypto.clone(),
                     core_base_url.clone(),
-                    json_ld_context_config.to_owned(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
-                    json_ld_context_repository.clone(),
+                    caching_loader.clone(),
                 )) as _
             }
             FormatType::Mdoc => {
@@ -92,7 +87,7 @@ pub(crate) fn credential_formatters_from_config(
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     core_base_url.clone(),
-                    config.clone().datatype,
+                    config.datatype.clone(),
                 )) as _
             }
         };

@@ -1416,3 +1416,7 @@ pub struct CreateProofRequestBindingDTO {
 pub struct ShareProofResponseBindingDTO {
     pub url: String,
 }
+
+pub struct ResolveJsonLDContextResponseBindingDTO {
+    pub context: String,
+}
