@@ -378,6 +378,9 @@ pub enum ValidationError {
 
     #[error("Validity constraint must be specified for LVVC revocation method")]
     ValidityConstraintMissingForLvvc,
+
+    #[error("Schema id not allowed for format")]
+    SchemaIdNotAllowedForFormat,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -788,6 +791,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "No default transport specified")]
     BR_0142,
+
+    #[strum(to_string = "Schema id not allowed for credential schema")]
+    BR_0146,
 }
 
 impl From<FormatError> for ServiceError {
@@ -931,6 +937,7 @@ impl ValidationError {
         match self {
             ValidationError::InvalidExchangeType { .. } => ErrorCode::BR_0052,
             ValidationError::MissingDefaultTransport => ErrorCode::BR_0142,
+            ValidationError::SchemaIdNotAllowedForFormat => ErrorCode::BR_0146,
             ValidationError::UnsupportedKeyType { .. } => ErrorCode::BR_0053,
             ValidationError::DidInvalidKeyNumber => ErrorCode::BR_0030,
             ValidationError::CredentialSchemaMissingClaims => ErrorCode::BR_0008,

@@ -138,6 +138,7 @@ impl CredentialFormatter for JsonLdBbsplus {
                 "JWK".to_string(),
                 "X509".to_string(),
             ],
+            allowed_schema_ids: vec![],
             datatypes: vec![
                 "STRING".to_string(),
                 "BOOLEAN".to_string(),

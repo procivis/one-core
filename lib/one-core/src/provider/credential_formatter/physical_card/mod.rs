@@ -80,7 +80,12 @@ impl CredentialFormatter for PhysicalCardFormatter {
                 "ES256".to_owned(),
                 "DILITHIUM".to_owned(),
             ],
-            features: vec![],
+            allowed_schema_ids: vec![
+                "UtopiaEmploymentDocument".to_string(),
+                "UtopiaDrivingLicense".to_string(),
+                "IdentityCard".to_string(),
+            ],
+            features: vec!["REQUIRES_SCHEMA_ID".to_string()],
             selective_disclosure: vec![],
             issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],

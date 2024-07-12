@@ -418,7 +418,11 @@ impl CredentialFormatter for MdocFormatter {
 
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
-            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
+            features: vec![
+                "SELECTIVE_DISCLOSURE".to_string(),
+                "REQUIRES_SCHEMA_ID".to_string(),
+            ],
+            allowed_schema_ids: vec![],
             selective_disclosure: vec![SelectiveDisclosureOption::SecondLevel],
             issuance_did_methods: vec!["MDL".to_string()],
             issuance_exchange_protocols: vec!["OPENID4VC".to_string()],

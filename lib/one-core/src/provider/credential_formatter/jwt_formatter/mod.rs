@@ -191,6 +191,7 @@ impl CredentialFormatter for JWTFormatter {
                 "ES256".to_string(),
                 "DILITHIUM".to_string(),
             ],
+            allowed_schema_ids: vec![],
             datatypes: vec![
                 "STRING".to_string(),
                 "BOOLEAN".to_string(),

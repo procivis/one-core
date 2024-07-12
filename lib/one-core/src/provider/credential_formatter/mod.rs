@@ -157,6 +157,7 @@ pub struct FormatterCapabilities {
     pub signing_key_algorithms: Vec<String>,
     pub verification_key_algorithms: Vec<String>,
     pub datatypes: Vec<String>,
+    pub allowed_schema_ids: Vec<String>,
 }
 
 #[derive(Clone, Serialize)]

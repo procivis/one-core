@@ -1,3 +1,4 @@
+use serde_json::Value;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -323,15 +324,29 @@ fn validate_schema_id(
     config: &CoreConfig,
     during_import: bool,
 ) -> Result<(), ServiceError> {
-    let format_type = config.format.get_fields(&request.format)?.r#type;
-    if format_type == FormatType::Mdoc {
-        if request.schema_id.is_none()
-            || request
-                .schema_id
-                .as_ref()
-                .is_some_and(|schema_id| schema_id.is_empty())
-        {
+    let capabilities = &config.format.get_fields(&request.format)?.capabilities;
+    let mut is_schema_id_required = false;
+    if let Some(Value::Object(c)) = capabilities {
+        is_schema_id_required = if let Some(Value::Array(arr)) = c.get("features") {
+            arr.iter().any(|v| v.as_str() == Some("REQUIRES_SCHEMA_ID"))
+        } else {
+            false
+        };
+    }
+    if is_schema_id_required {
+        let schema_id = request.schema_id.as_deref().filter(|s| !s.is_empty());
+        if schema_id.is_none() {
             return Err(BusinessLogicError::MissingMdocDoctype.into());
+        }
+
+        if let Some(Value::Object(c)) = capabilities {
+            if let Some(Value::Array(allowed_schema_ids)) = c.get("allowedSchemaIds") {
+                if !allowed_schema_ids.is_empty()
+                    && !allowed_schema_ids.iter().any(|v| v.as_str() == schema_id)
+                {
+                    return Err(ValidationError::SchemaIdNotAllowedForFormat.into());
+                }
+            }
         }
     } else if !during_import && request.schema_id.is_some() {
         return Err(BusinessLogicError::SchemaIdNotAllowed.into());
