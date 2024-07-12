@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-
 use config::core_config::{CoreConfig, KeyAlgorithmConfig};
 use config::ConfigError;
 use one_providers::crypto::CryptoProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
+use provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderImpl;
 use provider::exchange_protocol::ExchangeProtocol;
@@ -20,6 +20,7 @@ use service::backup::BackupService;
 use service::config::ConfigService;
 use service::credential::CredentialService;
 use service::did::DidService;
+use service::jsonld::JsonLdService;
 use service::organisation::OrganisationService;
 use service::proof::ProofService;
 use service::proof_schema::ProofSchemaService;
@@ -85,6 +86,7 @@ pub struct OneCore {
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub task_service: TaskService,
+    pub jsonld_service: JsonLdService,
     pub config: Arc<CoreConfig>,
 }
 
@@ -241,14 +243,21 @@ impl OneCore {
             cache_refresh_timeout: Duration::seconds(86400),
             cache_size: 100,
         });
+
+        let caching_loader = CachingLoader {
+            cache_size: json_ld_context_config.cache_size,
+            cache_refresh_timeout: json_ld_context_config.cache_refresh_timeout,
+            client: Default::default(),
+            json_ld_context_repository: data_provider.get_json_ld_context_repository(),
+        };
+
         let credential_formatters = credential_formatters_from_config(
             &mut core_config,
-            json_ld_context_config,
             crypto.clone(),
             providers.core_base_url.clone(),
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
-            data_provider.get_json_ld_context_repository(),
+            caching_loader.clone(),
         )?;
 
         let formatter_provider =
@@ -462,6 +471,7 @@ impl OneCore {
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),
+            jsonld_service: JsonLdService::new(caching_loader),
             config,
         })
     }

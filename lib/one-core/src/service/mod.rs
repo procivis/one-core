@@ -6,6 +6,7 @@ pub mod credential_schema;
 pub mod did;
 pub mod error;
 pub mod history;
+pub mod jsonld;
 pub mod key;
 pub mod oidc;
 pub mod organisation;

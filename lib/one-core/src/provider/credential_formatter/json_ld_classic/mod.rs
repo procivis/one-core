@@ -8,18 +8,15 @@ use serde_with::{serde_as, DurationSeconds};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
-use crate::config::core_config::JsonLdContextConfig;
-use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
-use crate::provider::did_method::provider::DidMethodProvider;
-use crate::repository::json_ld_context_repository::JsonLdContextRepository;
-
 use super::error::FormatterError;
-use super::json_ld::{self, model::*};
+use super::json_ld::model::*;
 use super::model::{CredentialPresentation, CredentialSubject, DetailCredential, Presentation};
 use super::{
-    AuthenticationFn, Context, CredentialData, CredentialFormatter, ExtractPresentationCtx,
-    FormatPresentationCtx, FormatterCapabilities, VerificationFn,
+    json_ld, AuthenticationFn, Context, CredentialData, CredentialFormatter,
+    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, VerificationFn,
 };
+use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
+use crate::provider::did_method::provider::DidMethodProvider;
 
 #[allow(dead_code)]
 pub struct JsonLdClassic {
@@ -264,26 +261,19 @@ impl CredentialFormatter for JsonLdClassic {
 }
 
 impl JsonLdClassic {
-    #[allow(clippy::new_without_default)]
     pub fn new(
         params: Params,
         crypto: Arc<dyn CryptoProvider>,
         base_url: Option<String>,
-        json_ld_context_config: JsonLdContextConfig,
         did_method_provider: Arc<dyn DidMethodProvider>,
-        json_ld_context_repository: Arc<dyn JsonLdContextRepository>,
+        caching_loader: CachingLoader,
     ) -> Self {
         Self {
             params,
             crypto,
             base_url,
             did_method_provider,
-            caching_loader: CachingLoader {
-                cache_size: json_ld_context_config.cache_size,
-                cache_refresh_timeout: json_ld_context_config.cache_refresh_timeout,
-                client: Default::default(),
-                json_ld_context_repository,
-            },
+            caching_loader,
         }
     }
 

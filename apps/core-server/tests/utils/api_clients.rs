@@ -1,5 +1,6 @@
 use std::sync::OnceLock;
 
+use jsonld::JsonLdApi;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
@@ -18,7 +19,6 @@ use self::ssi::SSIApi;
 use self::tasks::TasksApi;
 use self::trust_anchors::TrustAnchorsApi;
 use self::trust_entity::TrustEntitiesApi;
-
 use super::field_match::FieldHelpers;
 
 pub mod config;
@@ -28,6 +28,7 @@ pub mod did_resolvers;
 pub mod dids;
 pub mod histories;
 pub mod interactions;
+pub mod jsonld;
 pub mod keys;
 pub mod organisations;
 pub mod proof_schemas;
@@ -157,6 +158,7 @@ pub struct Client {
     pub config: ConfigApi,
     pub trust_anchors: TrustAnchorsApi,
     pub trust_entities: TrustEntitiesApi,
+    pub jsonld: JsonLdApi,
 }
 
 impl Client {
@@ -178,7 +180,8 @@ impl Client {
             tasks: TasksApi::new(client.clone()),
             config: ConfigApi::new(client.clone()),
             trust_anchors: TrustAnchorsApi::new(client.clone()),
-            trust_entities: TrustEntitiesApi::new(client),
+            trust_entities: TrustEntitiesApi::new(client.clone()),
+            jsonld: JsonLdApi::new(client),
         }
     }
 }

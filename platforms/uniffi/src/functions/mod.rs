@@ -33,6 +33,7 @@ mod holder_submit_proof;
 mod import_credential_schema;
 mod import_proof_schema;
 mod list_trust_anchors;
+mod resolve_json_ld_context;
 mod retract_proof;
 mod rollback_import;
 mod share_proof;

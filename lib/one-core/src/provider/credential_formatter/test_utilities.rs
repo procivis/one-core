@@ -1,27 +1,25 @@
-use mockall::predicate;
 use std::str::FromStr as _;
 use std::sync::Arc;
 
+use mockall::predicate;
 use shared_types::DidValue;
-use time::{macros::datetime, Duration, OffsetDateTime};
+use time::macros::datetime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::JsonLdContextConfig;
+use crate::model::credential_schema::LayoutType;
+use crate::model::did::DidType;
 use crate::model::json_ld_context::JsonLdContext;
 use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 use crate::repository::json_ld_context_repository::MockJsonLdContextRepository;
-use crate::service::credential::dto::DetailCredentialClaimValueResponseDTO;
-use crate::{
-    model::{credential_schema::LayoutType, did::DidType},
-    service::{
-        credential::dto::{
-            CredentialDetailResponseDTO, CredentialRole, CredentialSchemaType, CredentialStateEnum,
-            DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
-        },
-        credential_schema::dto::CredentialClaimSchemaDTO,
-        did::dto::DidListItemResponseDTO,
-    },
+use crate::service::credential::dto::{
+    CredentialDetailResponseDTO, CredentialRole, CredentialSchemaType, CredentialStateEnum,
+    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
+    DetailCredentialSchemaResponseDTO,
 };
+use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
+use crate::service::did::dto::DidListItemResponseDTO;
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
