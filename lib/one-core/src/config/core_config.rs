@@ -428,10 +428,10 @@ where
 }
 
 impl ConfigBlock<TransportType> {
-    pub fn ble_enabled_for(&self, key: &str) -> Result<bool, ConfigValidationError> {
-        let fields = self.get_fields(key)?;
-
-        Ok(fields.r#type() == &TransportType::Ble && !fields.disabled())
+    pub fn ble_enabled_for(&self, key: &str) -> bool {
+        self.get_fields(key)
+            .ok()
+            .is_some_and(|fields| fields.r#type() == &TransportType::Ble && !fields.disabled())
     }
 }
 

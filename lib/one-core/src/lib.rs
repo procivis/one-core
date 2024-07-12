@@ -389,7 +389,7 @@ impl OneCore {
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
-                ble_peripheral,
+                ble_peripheral.clone(),
                 ble_central,
             ),
             credential_schema_service: CredentialSchemaService::new(
@@ -425,6 +425,7 @@ impl OneCore {
                 data_provider.get_interaction_repository(),
                 formatter_provider.clone(),
                 protocol_provider.clone(),
+                ble_peripheral,
                 config.clone(),
             ),
             ssi_verifier_service: SSIVerifierService::new(

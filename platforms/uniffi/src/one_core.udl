@@ -1062,6 +1062,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   ProofListBindingDTO get_proofs(ProofListQueryBindingDTO query);
+  
+  [Throws=BindingError]
+  string retract_proof(string proof_id);
 
   [Throws=BindingError]
   sequence<CredentialRevocationCheckResponseBindingDTO> check_revocation(sequence<string> credential_ids);

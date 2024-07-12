@@ -9,6 +9,8 @@ use uuid::Uuid;
 
 use super::ProofService;
 use crate::config::core_config::CoreConfig;
+use crate::config::core_config::Fields;
+use crate::config::core_config::TransportType;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{
@@ -34,9 +36,14 @@ use crate::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
+use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::credential_formatter::{FormatterCapabilities, MockCredentialFormatter};
+use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPPresentationDefinition;
+use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEPeer;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::repository::did_repository::MockDidRepository;
@@ -61,6 +68,7 @@ struct Repositories {
     pub interaction_repository: MockInteractionRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockExchangeProtocolProvider,
+    pub ble_peripheral: Option<MockBlePeripheral>,
     pub config: CoreConfig,
 }
 
@@ -73,6 +81,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.interaction_repository),
         Arc::new(repositories.credential_formatter_provider),
         Arc::new(repositories.protocol_provider),
+        repositories.ble_peripheral.map(|r| Arc::new(r) as _),
         Arc::new(repositories.config),
     )
 }
@@ -2454,7 +2463,7 @@ async fn test_retract_proof_ok_for_allowed_state(
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         host: None,
-        data: None,
+        data: Some(vec![]),
     });
 
     let mut proof_repository = MockProofRepository::default();
@@ -2561,4 +2570,129 @@ async fn test_retract_proof_fails_for_invalid_state(
         error,
         ServiceError::BusinessLogic(BusinessLogicError::InvalidProofState { state: got_state }) if got_state == state
     ))
+}
+
+#[tokio::test]
+async fn test_retract_proof_with_bluetooth_ok() {
+    let proof_id = ProofId::from(Uuid::new_v4());
+    let interaction_id = InteractionId::from(Uuid::new_v4());
+
+    let device_address = "00000001-5026-444A-9E0E-F6F2450F3A77";
+
+    let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
+    proof.exchange = "OPENID4VC".to_string();
+    proof.transport = "BLE".to_string();
+    proof.interaction = Some(Interaction {
+        id: interaction_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        host: None,
+        data: Some({
+            let data = BLEOpenID4VPInteractionData {
+                peer: BLEPeer::new(
+                    DeviceInfo {
+                        address: device_address.to_owned(),
+                        mtu: 123,
+                    },
+                    [0; 32],
+                    [1; 32],
+                    [2; 12],
+                ),
+                presentation_definition: OpenID4VPPresentationDefinition {
+                    id: interaction_id,
+                    input_descriptors: vec![],
+                },
+            };
+
+            serde_json::to_vec(&data).unwrap()
+        }),
+    });
+
+    let mut proof_repository = MockProofRepository::default();
+
+    proof_repository
+        .expect_get_proof()
+        .once()
+        .withf(move |id, relations| {
+            id == &proof_id
+                && relations
+                    == &ProofRelations {
+                        state: Some(ProofStateRelations::default()),
+                        interaction: Some(InteractionRelations::default()),
+                        ..Default::default()
+                    }
+        })
+        .returning({
+            let proof = proof.clone();
+            move |_, _| Ok(Some(proof.clone()))
+        });
+
+    proof_repository
+        .expect_update_proof()
+        .once()
+        .withf(|update_proof| {
+            update_proof.interaction == Some(None)
+                && update_proof.state.as_ref().unwrap().state == ProofStateEnum::Created
+        })
+        .returning(move |_| Ok(()));
+
+    let mut ble_peripheral = MockBlePeripheral::new();
+
+    ble_peripheral
+        .expect_is_advertising()
+        .once()
+        .returning(|| Ok(true));
+
+    ble_peripheral
+        .expect_stop_advertisement()
+        .once()
+        .returning(|| Ok(()));
+
+    ble_peripheral
+        .expect_notify_characteristic_data()
+        .once()
+        .withf(|device_address, service, characteristic, data| {
+            device_address == &device_address.to_owned()
+                && service == "00000001-5026-444A-9E0E-D6F2450F3A77"
+                && characteristic == "0000000B-5026-444A-9E0E-D6F2450F3A77"
+                && data == [1]
+        })
+        .returning(|_, _, _, _| Ok(()));
+
+    ble_peripheral
+        .expect_stop_server()
+        .once()
+        .returning(|| Ok(()));
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_delete_interaction()
+        .once()
+        .with(eq(interaction_id))
+        .returning(|_| Ok(()));
+
+    let mut config = generic_config().core;
+    config.transport.insert(
+        "BLE".to_string(),
+        Fields {
+            r#type: TransportType::Ble,
+            display: serde_json::json!(""),
+            order: None,
+            disabled: None,
+            capabilities: None,
+            params: None,
+        },
+    );
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        interaction_repository,
+        ble_peripheral: Some(ble_peripheral),
+        config,
+        ..Default::default()
+    });
+
+    let result = service.retract_proof(proof_id).await.unwrap();
+
+    assert_eq!(proof_id, result);
 }

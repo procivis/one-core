@@ -30,6 +30,7 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::provider::exchange_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -304,7 +305,7 @@ impl ProofService {
     }
 
     pub async fn retract_proof(&self, proof_id: ProofId) -> Result<ProofId, ServiceError> {
-        let Some(proof) = self
+        let proof = self
             .proof_repository
             .get_proof(
                 &proof_id,
@@ -315,9 +316,7 @@ impl ProofService {
                 },
             )
             .await?
-        else {
-            return Err(EntityNotFoundError::Proof(proof_id).into());
-        };
+            .ok_or(EntityNotFoundError::Proof(proof_id))?;
 
         let last_state = proof
             .state
@@ -339,12 +338,60 @@ impl ProofService {
             .into());
         }
 
-        if proof.exchange == "OPENID4VC"
-            && self.config.transport.ble_enabled_for(&proof.transport)?
+        let (interaction_id, interaction_data) = proof
+            .interaction
+            .and_then(|i| Some((i.id, i.data?)))
+            .ok_or_else(|| {
+                ServiceError::MappingError(format!("Missing interaction data in proof {proof_id}"))
+            })?;
+
+        if proof.exchange == "OPENID4VC" && self.config.transport.ble_enabled_for(&proof.transport)
         {
-            // TODO(when https://procivis.atlassian.net/browse/ONE-2651 is merged):
-            //  1. check if BLE advertisement is on-going. If yes, call the appropriate method to stop advertisement, otherwise continue.
-            //  2. If we are connected to a Wallet, we also need to write to their disconnect characteristic.
+            let ble_peripheral = self.ble_peripheral.as_ref().ok_or_else(|| {
+                ServiceError::Other(
+                    "BLE peripheral is enabled in config but missing in services".to_string(),
+                )
+            })?;
+
+            let is_advertising = ble_peripheral.is_advertising().await.map_err(|err| {
+                ServiceError::Other(format!("BLE peripheral is advertising check error: {err}"))
+            })?;
+
+            if is_advertising {
+                ble_peripheral.stop_advertisement().await.map_err(|err| {
+                    ServiceError::Other(format!("BLE peripheral stop advertisement error: {err}"))
+                })?;
+            }
+
+            let ble_interaction_data: BLEOpenID4VPInteractionData =
+                serde_json::from_slice(&interaction_data).map_err(|err| {
+                    ServiceError::Other(format!(
+                        "Failed deserializing BLEOpenID4VPInteractionData: {err}"
+                    ))
+                })?;
+
+            let service = "00000001-5026-444A-9E0E-D6F2450F3A77".to_owned();
+            // todo: add an enum for different characteristic values
+            let characteristic = "0000000B-5026-444A-9E0E-D6F2450F3A77".to_owned();
+            let data = &[1];
+
+            ble_peripheral
+                .notify_characteristic_data(
+                    ble_interaction_data.peer.device_info.address,
+                    service,
+                    characteristic,
+                    data,
+                )
+                .await
+                .map_err(|err| {
+                    ServiceError::Other(format!(
+                        "BLE peripheral error notifying characteristic data: {err}"
+                    ))
+                })?;
+
+            ble_peripheral.stop_server().await.map_err(|err| {
+                ServiceError::Other(format!("BLE peripheral error stopping server: {err}"))
+            })?;
         }
 
         self.proof_repository
@@ -362,11 +409,9 @@ impl ProofService {
             })
             .await?;
 
-        if let Some(interaction) = proof.interaction {
-            self.interaction_repository
-                .delete_interaction(&interaction.id)
-                .await?;
-        }
+        self.interaction_repository
+            .delete_interaction(&interaction_id)
+            .await?;
 
         Ok(proof_id)
     }
