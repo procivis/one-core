@@ -10,12 +10,6 @@ use crate::model::credential_schema::{
 };
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 
-#[derive(Clone, Debug)]
-pub enum InvitationType {
-    CredentialIssuance,
-    ProofRequest,
-}
-
 #[derive(Clone, Deserialize)]
 pub struct SubmitIssuerResponse {
     pub credential: String,

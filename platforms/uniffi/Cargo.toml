@@ -19,7 +19,7 @@ uniffi.workspace     = true
 serde.workspace      = true
 serde_json.workspace = true
 time.workspace       = true
-tokio.workspace      = true
+tokio                = { workspace = true, features = ['rt-multi-thread'] }
 uuid.workspace       = true
 url.workspace        = true
 thiserror.workspace  = true

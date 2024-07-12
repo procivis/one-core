@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use url::Url;
 
-use super::dto::OpenID4VPPresentationDefinition;
+use super::{dto::OpenID4VPPresentationDefinition, openidvc_ble::BLEPeer};
 use crate::service::oidc::dto::PresentationSubmissionMappingDTO;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -41,6 +41,12 @@ pub struct HolderInteractionData {
     pub refresh_token_expires_at: Option<OffsetDateTime>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub(super) struct BLEOpenID4VPInteractionData {
+    pub peer: BLEPeer,
+    pub presentation_definition: OpenID4VPPresentationDefinition,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwePayload {
     pub aud: Url,
@@ -70,7 +76,6 @@ impl JwePayload {
         Ok(payload)
     }
 }
-
 mod unix_timestamp {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use time::OffsetDateTime;

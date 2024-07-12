@@ -3,6 +3,7 @@ mod mapper;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use anyhow::Context;
 use async_trait::async_trait;
 use dto_mapper::convert_inner;
 use shared_types::CredentialId;
@@ -121,19 +122,8 @@ fn categorize_url(url: &Url) -> Result<InvitationType, ExchangeProtocolError> {
 
 #[async_trait]
 impl ExchangeProtocol for ProcivisTemp {
-    fn detect_invitation_type(
-        &self,
-        url: &Url,
-    ) -> Option<crate::provider::exchange_protocol::dto::InvitationType> {
-        let r#type = categorize_url(url).ok()?;
-        Some(match r#type {
-            InvitationType::CredentialIssuance { .. } => {
-                crate::provider::exchange_protocol::dto::InvitationType::CredentialIssuance
-            }
-            InvitationType::ProofRequest { .. } => {
-                crate::provider::exchange_protocol::dto::InvitationType::ProofRequest
-            }
-        })
+    fn can_handle(&self, url: &Url) -> bool {
+        categorize_url(url).is_ok()
     }
 
     async fn handle_invitation(
@@ -156,18 +146,21 @@ impl ExchangeProtocol for ProcivisTemp {
             .post(url)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         let response = response
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         Ok(match invitation_type {
             InvitationType::CredentialIssuance { .. } => {
                 let issuer_response = response
                     .json()
                     .await
-                    .map_err(ExchangeProtocolError::HttpResponse)?;
+                    .context("parsing error")
+                    .map_err(ExchangeProtocolError::Transport)?;
 
                 handle_credential_invitation(self, base_url, organisation, issuer_response).await?
             }
@@ -175,7 +168,8 @@ impl ExchangeProtocol for ProcivisTemp {
                 let proof_request = response
                     .json()
                     .await
-                    .map_err(ExchangeProtocolError::HttpResponse)?;
+                    .context("parsing error")
+                    .map_err(ExchangeProtocolError::Transport)?;
 
                 handle_proof_invitation(
                     self,
@@ -201,10 +195,12 @@ impl ExchangeProtocol for ProcivisTemp {
             .post(url)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?;
         response
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         Ok(())
     }
@@ -256,10 +252,12 @@ impl ExchangeProtocol for ProcivisTemp {
             .body(presentation)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?;
         response
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         Ok(())
     }
@@ -283,14 +281,17 @@ impl ExchangeProtocol for ProcivisTemp {
             .post(url)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?;
         let response = response
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?;
         let response_value = response
             .text()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("parsing error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         serde_json::from_str(&response_value).map_err(ExchangeProtocolError::JsonError)
     }
@@ -308,10 +309,12 @@ impl ExchangeProtocol for ProcivisTemp {
             .post(url)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?;
         response
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         Ok(())
     }
@@ -751,6 +754,7 @@ async fn handle_proof_invitation(
         interaction,
         now,
         verifier_key,
+        "HTTP",
     );
 
     Ok(InvitationResponseDTO::ProofRequest {

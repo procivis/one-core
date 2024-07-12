@@ -10,7 +10,6 @@ impl OneCoreBinding {
         self.block_on(async {
             let core = self.use_core().await?;
             let response = core.proof_service.share_proof(&request).await?;
-
             Ok(ShareProofResponseBindingDTO::from(response))
         })
     }

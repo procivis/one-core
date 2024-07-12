@@ -8,9 +8,7 @@ use url::Url;
 
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
-use self::dto::{
-    InvitationType, PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
-};
+use self::dto::{PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse};
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::config::ConfigValidationError;
 use crate::model::credential::Credential;
@@ -28,6 +26,9 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::DataRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 
+use super::bluetooth_low_energy::low_level::ble_central::BleCentral;
+use super::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
+
 pub mod dto;
 mod mapper;
 pub mod openid4vc;
@@ -41,10 +42,10 @@ mod test;
 pub enum ExchangeProtocolError {
     #[error("Exchange protocol failure: `{0}`")]
     Failed(String),
-    #[error("HTTP request error: `{0}`")]
-    HttpRequestError(reqwest::Error),
-    #[error("HTTP response error: `{0}`")]
-    HttpResponse(reqwest::Error),
+    #[error("Exchange protocol disabled: `{0}`")]
+    Disabled(String),
+    #[error("Transport error: `{0}`")]
+    Transport(anyhow::Error),
     #[error("JSON error: `{0}`")]
     JsonError(serde_json::Error),
     #[error("Operation not supported")]
@@ -61,7 +62,7 @@ pub enum ExchangeProtocolError {
 #[async_trait]
 pub trait ExchangeProtocol: Send + Sync {
     // holder methods
-    fn detect_invitation_type(&self, url: &Url) -> Option<InvitationType>;
+    fn can_handle(&self, url: &Url) -> bool;
 
     async fn handle_invitation(
         &self,
@@ -153,6 +154,8 @@ pub(crate) fn exchange_protocol_providers_from_config(
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+    ble_central: Option<Arc<dyn BleCentral>>,
 ) -> Result<HashMap<String, Arc<dyn ExchangeProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn ExchangeProtocol>> = HashMap::new();
 
@@ -193,6 +196,8 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     key_algorithm_provider.clone(),
                     params,
                     config.clone(),
+                    ble_peripheral.clone(),
+                    ble_central.clone(),
                 ));
 
                 providers.insert(name.to_string(), protocol);

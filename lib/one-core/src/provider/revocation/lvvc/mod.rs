@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ops::Sub;
 use std::sync::Arc;
 
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
 use shared_types::{CredentialId, DidValue};
@@ -159,12 +160,15 @@ impl LvvcProvider {
             .bearer_auth(bearer_token)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?
             .json()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("parsing error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         let formatter = self
             .credential_formatter

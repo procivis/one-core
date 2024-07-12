@@ -1,8 +1,9 @@
-use super::{
-    BleError, CharacteristicUUID, ConnectionEvent, DeviceAddress, MacAddress, ServiceDescription,
-    ServiceUUID,
+use super::dto::{
+    CharacteristicUUID, ConnectionEvent, DeviceAddress, MacAddress, ServiceDescription, ServiceUUID,
 };
+use crate::provider::bluetooth_low_energy::BleError;
 
+#[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub trait BlePeripheral: Send + Sync {
     async fn is_adapter_enabled(&self) -> Result<bool, BleError>;

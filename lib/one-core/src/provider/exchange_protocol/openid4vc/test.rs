@@ -82,10 +82,12 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VC {
             refresh_expires_in: 1000,
         }),
         Arc::new(generic_config().core),
+        None,
+        None,
     )
 }
 
-fn construct_proof_with_state() -> Proof {
+fn construct_proof_with_state(transport: &str) -> Proof {
     let now = OffsetDateTime::now_utc();
 
     Proof {
@@ -93,7 +95,7 @@ fn construct_proof_with_state() -> Proof {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "HTTP".to_string(),
+        transport: transport.to_string(),
         exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
@@ -422,7 +424,7 @@ async fn test_generate_share_credentials_offer_by_value() {
 
 #[tokio::test]
 async fn test_generate_share_proof_open_id_flow_success() {
-    let proof = construct_proof_with_state();
+    let proof = construct_proof_with_state("HTTP");
     let interaction_id: Uuid = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
 
     let mut proof_repository = MockProofRepository::default();

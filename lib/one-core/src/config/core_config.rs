@@ -186,11 +186,11 @@ pub type TransportConfig = ConfigBlock<TransportType>;
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
 )]
 pub enum TransportType {
-    #[serde(rename = "HTTP")]
-    #[strum(serialize = "HTTP")]
-    Ble,
     #[serde(rename = "BLE")]
     #[strum(serialize = "BLE")]
+    Ble,
+    #[serde(rename = "HTTP")]
+    #[strum(serialize = "HTTP")]
     Http,
 }
 

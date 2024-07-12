@@ -1,9 +1,13 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use anyhow::Context;
 use async_trait::async_trait;
+use dto::OpenID4VPBleData;
 use one_providers::crypto::imp::utilities;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use openidvc_ble::oidc_ble_holder::OpenID4VCBLEHolder;
+use openidvc_ble::oidc_ble_verifier::OpenID4VCBLEVerifier;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use shared_types::{CredentialId, ProofId};
@@ -28,13 +32,13 @@ use self::model::{
     HolderInteractionData, JwePayload, OpenID4VCIInteractionContent, OpenID4VPInteractionContent,
 };
 use self::validator::validate_interaction_data;
-use super::dto::{InvitationType, PresentedCredential, SubmitIssuerResponse};
+use super::dto::{PresentedCredential, SubmitIssuerResponse};
 use super::mapper::interaction_from_handle_invitation;
 use super::{
     deserialize_interaction_data, serialize_interaction_data, ExchangeProtocol,
     ExchangeProtocolError,
 };
-use crate::config::core_config;
+use crate::config::core_config::{self, TransportType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -53,6 +57,8 @@ use crate::model::proof::{Proof, ProofClaimRelations, ProofRelations, UpdateProo
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
+use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::FormatPresentationCtx;
 use crate::provider::exchange_protocol::dto::{
@@ -92,6 +98,7 @@ mod test;
 pub mod dto;
 pub(crate) mod mapper;
 pub mod model;
+mod openidvc_ble;
 mod validator;
 
 const CREDENTIAL_OFFER_URL_SCHEME: &str = "openid-credential-offer";
@@ -99,6 +106,8 @@ const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
 const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
 const PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY: &str = "presentation_definition";
 const PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY: &str = "presentation_definition_uri";
+const PRESENTATION_DEFINITION_BLE_NAME: &str = "name";
+const PRESENTATION_DEFINITION_BLE_KEY: &str = "key";
 
 pub(crate) struct OpenID4VC {
     client: reqwest::Client,
@@ -114,6 +123,14 @@ pub(crate) struct OpenID4VC {
     base_url: Option<String>,
     params: OpenID4VCParams,
     config: Arc<core_config::CoreConfig>,
+    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+    ble_central: Option<Arc<dyn BleCentral>>,
+}
+
+enum InvitationType {
+    CredentialIssuance,
+    ProofRequestHttp,
+    ProofRequestBle,
 }
 
 #[derive(Deserialize)]
@@ -143,6 +160,8 @@ impl OpenID4VC {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         params: OpenID4VCParams,
         config: Arc<core_config::CoreConfig>,
+        ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+        ble_central: Option<Arc<dyn BleCentral>>,
     ) -> Self {
         Self {
             base_url,
@@ -158,12 +177,11 @@ impl OpenID4VC {
             client: reqwest::Client::new(),
             params,
             config,
+            ble_peripheral,
+            ble_central,
         }
     }
-}
 
-#[async_trait]
-impl ExchangeProtocol for OpenID4VC {
     fn detect_invitation_type(&self, url: &Url) -> Option<InvitationType> {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
@@ -176,10 +194,101 @@ impl ExchangeProtocol for OpenID4VC {
         if query_has_key(PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY)
             || query_has_key(PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY)
         {
-            return Some(InvitationType::ProofRequest);
+            return Some(InvitationType::ProofRequestHttp);
+        }
+
+        if url.scheme() == "openid4vp"
+            && query_has_key(PRESENTATION_DEFINITION_BLE_NAME)
+            && query_has_key(PRESENTATION_DEFINITION_BLE_KEY)
+        {
+            return Some(InvitationType::ProofRequestBle);
         }
 
         None
+    }
+
+    async fn handle_proof_invitation_ble(
+        &self,
+        url: Url,
+    ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
+        if !self
+            .config
+            .transport
+            .ble_enabled_for(&TransportType::Ble.to_string())
+            .unwrap_or(false)
+        {
+            return Err(ExchangeProtocolError::Disabled(
+                "BLE transport is disabled".to_string(),
+            ));
+        }
+
+        let Some(ble_central) = self.ble_central.clone() else {
+            return Err(ExchangeProtocolError::Failed(
+                "BLE central not available".to_string(),
+            ));
+        };
+
+        let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
+            "Query cannot be empty".to_string(),
+        ))?;
+
+        let OpenID4VPBleData { name, key } = serde_qs::from_str(query)
+            .map_err(|e| ExchangeProtocolError::InvalidRequest(e.to_string()))?;
+
+        let mut ble_holder = OpenID4VCBLEHolder::new(
+            self.proof_repository.clone(),
+            self.interaction_repository.clone(),
+            ble_central,
+            None,
+        );
+
+        if !ble_holder.enabled().await? {
+            return Err(ExchangeProtocolError::Disabled(
+                "BLE adapter is disabled".into(),
+            ));
+        }
+
+        let now = OffsetDateTime::now_utc();
+        let interaction = Interaction {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            host: None,
+            data: None,
+        };
+        let interaction_id = self
+            .interaction_repository
+            .create_interaction(interaction.clone())
+            .await
+            .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
+
+        let proof_id = Uuid::new_v4().into();
+        let proof = proof_from_handle_invitation(
+            &proof_id,
+            "OPENID4VC",
+            None,
+            None,
+            interaction,
+            now,
+            None,
+            "BLE",
+        );
+
+        ble_holder
+            .handle_invitation(name, key, proof.id, interaction_id)
+            .await?;
+
+        Ok(InvitationResponseDTO::ProofRequest {
+            interaction_id,
+            proof: Box::new(proof),
+        })
+    }
+}
+
+#[async_trait]
+impl ExchangeProtocol for OpenID4VC {
+    fn can_handle(&self, url: &Url) -> bool {
+        self.detect_invitation_type(url).is_some()
     }
 
     async fn handle_invitation(
@@ -197,7 +306,7 @@ impl ExchangeProtocol for OpenID4VC {
             InvitationType::CredentialIssuance => {
                 handle_credential_invitation(self, url, organisation).await
             }
-            InvitationType::ProofRequest => {
+            InvitationType::ProofRequestHttp => {
                 handle_proof_invitation(
                     url,
                     self,
@@ -207,6 +316,7 @@ impl ExchangeProtocol for OpenID4VC {
                 )
                 .await
             }
+            InvitationType::ProofRequestBle => self.handle_proof_invitation_ble(url).await,
         }
     }
 
@@ -329,6 +439,7 @@ impl ExchangeProtocol for OpenID4VC {
                 serde_json::to_string(&presentation_submission)
                     .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
             );
+
             if let Some(state) = interaction_data.state {
                 params.insert("state", state);
             }
@@ -340,9 +451,11 @@ impl ExchangeProtocol for OpenID4VC {
             .form(&params)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         let response: Result<OpenID4VPDirectPostResponseDTO, _> = response.json().await;
 
@@ -422,14 +535,17 @@ impl ExchangeProtocol for OpenID4VC {
             .json(&body)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?;
         let response = response
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?;
         let response_value: OpenID4VCICredentialResponseDTO = response
             .json()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("parsing error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         let real_format = detect_correct_format(schema, &response_value.credential)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
@@ -669,6 +785,41 @@ impl ExchangeProtocol for OpenID4VC {
         // Pass the expected presentation content to interaction for verification
         let presentation_definition =
             create_open_id_for_vp_presentation_definition(interaction_id, &proof, &self.config)?;
+
+        if proof.transport == TransportType::Ble.to_string() {
+            if !self
+                .config
+                .transport
+                .ble_enabled_for(&proof.transport)
+                .unwrap_or(false)
+            {
+                return Err(ExchangeProtocolError::Disabled(
+                    "BLE transport is disabled".to_string(),
+                ));
+            }
+
+            if let Some(ble_peripheral) = self.ble_peripheral.clone() {
+                let ble_verifier = OpenID4VCBLEVerifier::new(
+                    ble_peripheral.clone(),
+                    self.proof_repository.clone(),
+                )?;
+
+                if !ble_verifier.enabled().await? {
+                    return Err(ExchangeProtocolError::Disabled(
+                        "BLE adapter is disabled".into(),
+                    ));
+                }
+
+                return ble_verifier
+                    .share_proof(presentation_definition, proof.id)
+                    .await;
+            } else {
+                return Err(ExchangeProtocolError::Failed(
+                    "BLE central not available".to_string(),
+                ));
+            }
+        }
+
         let interaction_content = OpenID4VPInteractionContent {
             nonce: utilities::generate_alphanumeric(32),
             presentation_definition,
@@ -923,9 +1074,11 @@ async fn resolve_credential_offer(
             .get(credential_offer_url)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?
             .json()
             .await
             .map_err(|error| {
@@ -967,12 +1120,15 @@ async fn handle_credential_invitation(
         })
         .send()
         .await
-        .map_err(ExchangeProtocolError::HttpResponse)?
+        .context("send error")
+        .map_err(ExchangeProtocolError::Transport)?
         .error_for_status()
-        .map_err(ExchangeProtocolError::HttpResponse)?
+        .context("status error")
+        .map_err(ExchangeProtocolError::Transport)?
         .json()
         .await
-        .map_err(ExchangeProtocolError::HttpResponse)?;
+        .context("parsing error")
+        .map_err(ExchangeProtocolError::Transport)?;
 
     // OID4VC credential offer query param should always contain one credential for the moment
     let credential: &OpenID4VCICredentialOfferCredentialDTO =
@@ -1413,14 +1569,17 @@ async fn get_discovery_and_issuer_metadata(
             .get(endpoint)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         response
             .json()
             .await
-            .map_err(ExchangeProtocolError::HttpResponse)
+            .context("parsing error")
+            .map_err(ExchangeProtocolError::Transport)
     }
 
     let oicd_discovery = fetch(
@@ -1469,14 +1628,15 @@ async fn interaction_data_from_query(
             .get(client_metadata_uri.to_owned())
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?
             .json()
             .await
-            .map_err(|error| {
-                ExchangeProtocolError::Failed(format!("Failed decoding client metadata: {error}"))
-            })?;
+            .context("parsing error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         interaction_data.client_metadata = Some(client_metadata);
     }
@@ -1492,16 +1652,15 @@ async fn interaction_data_from_query(
             .get(presentation_definition_uri.to_owned())
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?
             .json()
             .await
-            .map_err(|error| {
-                ExchangeProtocolError::Failed(format!(
-                    "Failed decoding presentation definition: {error}"
-                ))
-            })?;
+            .context("parsing error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         interaction_data.presentation_definition = Some(presentation_definition);
     }
@@ -1542,6 +1701,7 @@ async fn handle_proof_invitation(
         interaction,
         now,
         None,
+        "HTTP",
     );
 
     Ok(InvitationResponseDTO::ProofRequest {

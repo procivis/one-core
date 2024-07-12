@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
+use anyhow::Context;
 use shared_types::DidValue;
 
 use crate::model::credential::Credential;
@@ -80,14 +81,17 @@ impl RevocationMethod for StatusList2021 {
             .get(list_url)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?;
         let response = response
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?;
         let response_value = response
             .text()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("parsing error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         let key_verification = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),

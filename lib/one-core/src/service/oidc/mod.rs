@@ -3,8 +3,8 @@ use std::sync::Arc;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
 use crate::config::core_config;
-use crate::provider::bluetooth_low_energy::ble_central::BleCentral;
-use crate::provider::bluetooth_low_energy::ble_peripheral::BlePeripheral;
+use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
+use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;

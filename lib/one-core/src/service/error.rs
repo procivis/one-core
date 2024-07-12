@@ -973,12 +973,12 @@ impl ExchangeProtocolError {
         match self {
             ExchangeProtocolError::Failed(_) => ErrorCode::BR_0062,
             ExchangeProtocolError::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
-            ExchangeProtocolError::HttpRequestError(_) => ErrorCode::BR_0086,
-            ExchangeProtocolError::HttpResponse(_) => ErrorCode::BR_0086,
+            ExchangeProtocolError::Transport(_) => ErrorCode::BR_0086,
             ExchangeProtocolError::JsonError(_) => ErrorCode::BR_0062,
             ExchangeProtocolError::OperationNotSupported => ErrorCode::BR_0062,
             ExchangeProtocolError::MissingBaseUrl => ErrorCode::BR_0062,
             ExchangeProtocolError::InvalidRequest(_) => ErrorCode::BR_0085,
+            ExchangeProtocolError::Disabled(_) => ErrorCode::BR_0085,
         }
     }
 }

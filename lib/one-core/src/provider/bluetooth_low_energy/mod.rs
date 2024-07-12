@@ -1,16 +1,9 @@
-use std::collections::HashMap;
-
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-pub mod ble_central;
-pub mod ble_peripheral;
+pub mod low_level;
 
-pub type MacAddress = String;
-pub type ServiceUUID = String;
-pub type CharacteristicUUID = String;
-pub type DeviceAddress = String;
-
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Serialize, Deserialize, Clone)]
 pub enum BleError {
     #[error("BLE adapter not enabled")]
     AdapterNotEnabled,
@@ -50,53 +43,4 @@ pub enum BleError {
     ServerNotRunning,
     #[error("Unknown BLE error: {reason}")]
     Unknown { reason: String },
-}
-
-pub enum ConnectionEvent {
-    Connected { device_info: DeviceInfo },
-    Disconnected { device_address: DeviceAddress },
-}
-
-pub enum CharacteristicPermissions {
-    Read,
-    Write,
-}
-
-pub enum CharacteristicProperties {
-    Read,
-    Write,
-    Notify,
-    WriteWithoutResponse,
-    Indicate,
-}
-
-pub enum CharacteristicWriteType {
-    WithResponse,
-    WithoutResponse,
-}
-
-pub struct DeviceInfo {
-    pub address: DeviceAddress,
-    pub mtu: u16,
-}
-
-pub struct ServiceDescription {
-    pub uuid: ServiceUUID,
-    pub advertise: bool,
-    pub advertised_service_data: Option<Vec<u8>>,
-    pub characteristics: Vec<CreateCharacteristicOptions>,
-}
-
-pub struct CreateCharacteristicOptions {
-    pub uuid: CharacteristicUUID,
-    pub permissions: Vec<CharacteristicPermissions>,
-    pub properties: Vec<CharacteristicProperties>,
-    pub initial_value: Option<Vec<u8>>,
-}
-
-pub struct PeripheralDiscoveryData {
-    pub device_address: DeviceAddress,
-    pub local_device_name: Option<String>,
-    pub advertised_services: Vec<ServiceUUID>,
-    pub advertised_service_data: Option<HashMap<ServiceUUID, Vec<u8>>>,
 }

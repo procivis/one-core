@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 anyhow.workspace           = true
 async-trait                = { version = "0.1" }
+crc                        = { version = "3.2.1" }
 ct-codecs.workspace        = true
 dto_mapper.workspace       = true
 reqwest.workspace          = true
@@ -74,6 +75,9 @@ itertools                  = { version = "0.13" }
 urlencoding                = { version = "2.1" }
 one-open-core              = { workspace = true }
 one-providers              = { workspace = true }
+x25519-dalek               = { version = "2.0.1" }
+hkdf                       = { version = "0.12.4" }
+aes-gcm                    = { version = "0.10.3" }
 
 [dev-dependencies]
 bs58               = { version = "0.5" }

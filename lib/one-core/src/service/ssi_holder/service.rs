@@ -1,3 +1,4 @@
+use anyhow::Context;
 use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use url::Url;
@@ -375,12 +376,15 @@ impl SSIHolderService {
                     .bearer_auth(bearer_token)
                     .send()
                     .await
-                    .map_err(ExchangeProtocolError::HttpRequestError)?
+                    .context("send error")
+                    .map_err(ExchangeProtocolError::Transport)?
                     .error_for_status()
-                    .map_err(ExchangeProtocolError::HttpRequestError)?
+                    .context("status error")
+                    .map_err(ExchangeProtocolError::Transport)?
                     .json()
                     .await
-                    .map_err(ExchangeProtocolError::HttpRequestError)?;
+                    .context("parsing error")
+                    .map_err(ExchangeProtocolError::Transport)?;
 
                 let lvvc_content = response.credential;
                 let lvvc_presentation = CredentialPresentation {
