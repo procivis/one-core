@@ -577,7 +577,11 @@ impl ExchangeProtocol for OpenID4VC {
         let interaction_id = Uuid::new_v4();
         let interaction_content: OpenID4VCIInteractionContent = OpenID4VCIInteractionContent {
             pre_authorized_code_used: false,
-            access_token: format!("{}.{}", interaction_id, utilities::generate_nonce(),),
+            access_token: format!(
+                "{}.{}",
+                interaction_id,
+                utilities::generate_alphanumeric(32),
+            ),
             access_token_expires_at: None,
             refresh_token: None,
             refresh_token_expires_at: None,
@@ -666,7 +670,7 @@ impl ExchangeProtocol for OpenID4VC {
         let presentation_definition =
             create_open_id_for_vp_presentation_definition(interaction_id, &proof, &self.config)?;
         let interaction_content = OpenID4VPInteractionContent {
-            nonce: utilities::generate_nonce(),
+            nonce: utilities::generate_alphanumeric(32),
             presentation_definition,
         };
 

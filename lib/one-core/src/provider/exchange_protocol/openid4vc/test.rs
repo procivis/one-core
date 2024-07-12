@@ -396,16 +396,9 @@ async fn test_generate_share_credentials_offer_by_value() {
         .with(predicate::eq(credential.interaction.as_ref().unwrap().id))
         .returning(move |_| Ok(()));
 
-    // let mut crypto = MockCryptoProvider::default();
-    // crypto
-    //     .expect_generate_alphanumeric()
-    //     .once()
-    //     .returning(|_| String::from("ABC123"));
-
     let protocol = setup_protocol(TestInputs {
         credential_repository,
         interaction_repository,
-        //crypto,
         params: Some(OpenID4VCParams {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
@@ -473,17 +466,10 @@ async fn test_generate_share_proof_open_id_flow_success() {
             Ok(())
         });
 
-    // let mut crypto = MockCryptoProvider::default();
-    // crypto
-    //     .expect_generate_alphanumeric()
-    //     .once()
-    //     .returning(|_| String::from("ABC123"));
-
     let protocol = setup_protocol(TestInputs {
         proof_repository,
         interaction_repository,
         key_algorithm_provider,
-        //crypto,
         ..Default::default()
     });
 
