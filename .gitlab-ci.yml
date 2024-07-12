@@ -303,7 +303,7 @@ generate_binding_files:
     - makers generateuniffi_ios
   artifacts:
     paths:
-      - target/uniffi/android/java/uniffi/one_core/one_core.kt
+      - target/uniffi/android/java/ch/procivis/one/core/one_core.kt
       - target/uniffi/ios/one_core.swift
     expire_in: 10 days
   extends:
