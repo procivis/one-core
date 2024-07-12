@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -887,14 +888,17 @@ async fn obtain_and_update_new_mso(
         .json(&body)
         .send()
         .await
-        .map_err(ExchangeProtocolError::HttpRequestError)?;
+        .context("send error")
+        .map_err(ExchangeProtocolError::Transport)?;
     let response = response
         .error_for_status()
-        .map_err(ExchangeProtocolError::HttpRequestError)?;
+        .context("status error")
+        .map_err(ExchangeProtocolError::Transport)?;
     let response_value = response
         .text()
         .await
-        .map_err(ExchangeProtocolError::HttpRequestError)?;
+        .context("parsing error")
+        .map_err(ExchangeProtocolError::Transport)?;
 
     let result: OpenID4VCICredentialResponseDTO =
         serde_json::from_str(&response_value).map_err(ExchangeProtocolError::JsonError)?;
@@ -947,12 +951,15 @@ async fn update_mso_interaction_access_token(
             ])
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpResponse)?
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpResponse)?
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?
             .json()
             .await
-            .map_err(ExchangeProtocolError::HttpResponse)?;
+            .context("parsing error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         interaction_data.access_token = token_response.access_token;
         interaction_data.access_token_expires_at =

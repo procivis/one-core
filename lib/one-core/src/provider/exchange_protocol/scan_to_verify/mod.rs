@@ -22,10 +22,7 @@ impl ScanToVerify {
 
 #[async_trait]
 impl ExchangeProtocol for ScanToVerify {
-    fn detect_invitation_type(
-        &self,
-        _url: &Url,
-    ) -> Option<crate::provider::exchange_protocol::dto::InvitationType> {
+    fn can_handle(&self, _url: &Url) -> bool {
         todo!()
     }
 

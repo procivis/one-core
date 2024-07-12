@@ -11,7 +11,7 @@ use one_core::model::history::{HistoryAction, HistoryEntityType, HistorySearchEn
 use one_core::model::proof::{ProofStateEnum, SortableProofColumn};
 use one_core::model::proof_schema::SortableProofSchemaColumn;
 use one_core::model::trust_anchor::TrustAnchorRole;
-use one_core::provider::bluetooth_low_energy::{
+use one_core::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, CharacteristicUUID,
     CharacteristicWriteType, ConnectionEvent, CreateCharacteristicOptions, DeviceAddress,
     DeviceInfo, MacAddress, PeripheralDiscoveryData, ServiceDescription, ServiceUUID,

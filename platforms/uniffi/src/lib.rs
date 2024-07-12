@@ -65,7 +65,7 @@ fn initialize_core(
     let placeholder_config: AppConfig<MobileConfig> =
         core_config::AppConfig::from_yaml_str_configs(vec![config, config_base, config_mobile])?;
 
-    let runtime = tokio::runtime::Builder::new_current_thread()
+    let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .map_err(|e| BindingError::Unknown(e.to_string()))?;

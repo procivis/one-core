@@ -1,15 +1,18 @@
 use std::sync::Arc;
 
 use dto_mapper::convert_inner_of_inner;
-use one_core::provider::bluetooth_low_energy::{
-    BleError, CharacteristicUUID, CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
+use one_core::provider::bluetooth_low_energy::low_level::dto::{
+    CharacteristicUUID, CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
     ServiceUUID,
 };
+use one_core::provider::bluetooth_low_energy::BleError;
 
 pub struct BleCentralWrapper(pub Arc<dyn crate::BleCentral>);
 
 #[async_trait::async_trait]
-impl one_core::provider::bluetooth_low_energy::ble_central::BleCentral for BleCentralWrapper {
+impl one_core::provider::bluetooth_low_energy::low_level::ble_central::BleCentral
+    for BleCentralWrapper
+{
     async fn is_adapter_enabled(&self) -> Result<bool, BleError> {
         self.0.is_adapter_enabled().await.map_err(BleError::from)
     }

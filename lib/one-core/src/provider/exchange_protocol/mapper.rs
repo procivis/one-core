@@ -72,6 +72,7 @@ pub fn proof_from_handle_invitation(
     interaction: Interaction,
     now: OffsetDateTime,
     verifier_key: Option<Key>,
+    transport: &str,
 ) -> Proof {
     Proof {
         id: proof_id.to_owned(),
@@ -80,7 +81,7 @@ pub fn proof_from_handle_invitation(
         issuance_date: now,
         exchange: protocol.to_owned(),
         redirect_uri,
-        transport: "HTTP".to_owned(),
+        transport: transport.to_owned(),
         state: Some(vec![proof::ProofState {
             created_date: now,
             last_modified: now,

@@ -153,14 +153,12 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
     }
 
     fn detect_protocol(&self, url: &Url) -> Option<DetectedProtocol> {
-        for protocol in self.protocols.values() {
-            if protocol.detect_invitation_type(url).is_some() {
-                return Some(DetectedProtocol {
-                    protocol: protocol.to_owned(),
-                });
-            }
-        }
-        None
+        self.protocols
+            .values()
+            .find(|protocol| protocol.can_handle(url))
+            .map(|protocol| DetectedProtocol {
+                protocol: protocol.to_owned(),
+            })
     }
 
     async fn issue_credential(

@@ -6,8 +6,8 @@ use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use config::core_config::{CoreConfig, KeyAlgorithmConfig};
 use config::ConfigError;
 use one_providers::crypto::CryptoProvider;
-use provider::bluetooth_low_energy::ble_central::BleCentral;
-use provider::bluetooth_low_energy::ble_peripheral::BlePeripheral;
+use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
+use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderImpl;
 use provider::exchange_protocol::ExchangeProtocol;
@@ -294,6 +294,8 @@ impl OneCore {
             key_provider.clone(),
             key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
+            ble_peripheral.clone(),
+            ble_central.clone(),
         )?;
 
         let protocol_provider = Arc::new(ExchangeProtocolProviderImpl::new(

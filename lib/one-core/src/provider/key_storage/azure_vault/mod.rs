@@ -1,6 +1,7 @@
 use std::ops::Add;
 use std::sync::Arc;
 
+use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dto::{AzureHsmGenerateKeyResponse, AzureHsmSignResponse};
 use mapper::{
@@ -76,12 +77,15 @@ impl KeyStorage for AzureVaultKeyProvider {
             .bearer_auth(access_token)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?
             .json()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?;
+            .context("parsing error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         let public_key_bytes = public_key_from_components(&response.key)?;
 
@@ -164,12 +168,15 @@ impl AzureVaultKeyProvider {
             .form(&request)
             .send()
             .await
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?
             .error_for_status()
-            .map_err(ExchangeProtocolError::HttpRequestError)?
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?
             .json()
             .await
-            .map_err(ExchangeProtocolError::HttpResponse)?;
+            .context("parsing error")
+            .map_err(ExchangeProtocolError::Transport)?;
 
         if response.token_type != "Bearer" {
             return Err(ServiceError::Other(format!(
