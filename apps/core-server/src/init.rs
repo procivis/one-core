@@ -234,7 +234,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
         .with_base_url(app_config.app.core_base_url.to_owned())
         .with_crypto(crypto)
         .with_data_provider_creator(storage_creator)
-        .with_json_ld_context(app_config.app.json_ld_context.to_owned())
+        .with_cache_entities_config(app_config.app.cache_entities.to_owned())
         .with_key_algorithm_provider(key_algo_creator)
         .with_key_storage_provider(key_storage_creator)
         .with_did_method_provider(did_method_creator)

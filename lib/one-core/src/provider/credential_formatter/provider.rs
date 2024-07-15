@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use serde_json::json;
+
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
 use one_providers::crypto::CryptoProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use serde_json::json;
-
-use super::json_ld::caching_loader::CachingLoader;
 
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::config::ConfigError;

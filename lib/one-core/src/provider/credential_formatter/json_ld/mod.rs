@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use convert_case::{Case, Casing};
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
 use one_providers::crypto::CryptoProvider;
 use one_providers::key_storage::provider::AuthenticationFn;
 use serde::Serialize;
@@ -16,13 +17,11 @@ use sophia_jsonld::{JsonLdOptions, JsonLdParser};
 use time::OffsetDateTime;
 
 use self::model::{LdCredential, LdCredentialSubject, LdPresentation, LdProof};
-use super::error::FormatterError;
-use super::{Context, CredentialData, PublishedClaim, VerificationFn};
+use super::{error::FormatterError, Context, CredentialData, PublishedClaim, VerificationFn};
 use crate::provider::credential_formatter::common::nest_claims;
-use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 
-pub mod caching_loader;
 pub mod model;
+pub mod storage;
 
 #[cfg(test)]
 mod test;

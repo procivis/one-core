@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::vec;
 
 use async_trait::async_trait;
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
 use one_providers::crypto::CryptoProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_storage::provider::AuthenticationFn;
@@ -18,7 +19,6 @@ use super::{
     json_ld, Context, CredentialData, CredentialFormatter, ExtractPresentationCtx,
     FormatPresentationCtx, FormatterCapabilities, VerificationFn,
 };
-use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 
 #[allow(dead_code)]
 pub struct JsonLdClassic {

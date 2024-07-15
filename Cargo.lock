@@ -3109,7 +3109,7 @@ dependencies = [
 [[package]]
 name = "one-providers"
 version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=953e987a#953e987a9ebe725d1053f32d21d45dd960862a4e"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=3ea767ff#3ea767ff1b3bb693755197c0592df5d5107078bb"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3119,8 +3119,13 @@ dependencies = [
  "cocoon",
  "ct-codecs",
  "ed25519-compact",
+ "futures",
  "hmac 0.12.1",
  "josekit",
+ "json-ld",
+ "json-syntax",
+ "locspan",
+ "mime",
  "mockall",
  "p256",
  "pairing_crypto",
@@ -3128,10 +3133,13 @@ dependencies = [
  "pqc_dilithium",
  "rand",
  "rand_chacha",
+ "rdf-types",
  "reqwest 0.12.5",
  "serde",
  "serde_json",
  "sha2 0.10.8",
+ "sophia_api",
+ "sophia_jsonld",
  "thiserror",
  "time",
  "tokio",

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Debug;
 
 #[cfg(feature = "config_env")]
@@ -61,6 +61,21 @@ impl CoreConfig {
     }
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CacheEntitiesConfig {
+    #[serde(flatten)]
+    pub entities: HashMap<String, JsonLdContextConfig>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum JsonLdContextCacheType {
+    Db,
+    #[default]
+    InMemory,
+}
+
 #[serde_as]
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -68,6 +83,7 @@ pub struct JsonLdContextConfig {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub cache_refresh_timeout: time::Duration,
     pub cache_size: u32,
+    pub cache_type: JsonLdContextCacheType,
 }
 
 #[derive(Debug)]

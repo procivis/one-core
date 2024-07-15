@@ -1,5 +1,6 @@
-jsonLdContext:
-  cacheSize: 100
+cacheEntites:
+  JSON_LD_CONTEXT:
+    cacheSize: 100
 transport:
   BLE:
     type: "BLE"

@@ -1,4 +1,4 @@
-use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
 
 pub mod service;
 
