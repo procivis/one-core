@@ -20,6 +20,7 @@ impl CredentialSchemasApi {
         name: &str,
         organisation_id: impl Into<Uuid>,
         format: &str,
+        claim_name: &str,
         schema_id: Option<&str>,
     ) -> Response {
         let body = json!({
@@ -31,7 +32,7 @@ impl CredentialSchemasApi {
               "claims": [
                 {
                   "datatype": "STRING",
-                  "key": "firstName",
+                  "key": claim_name,
                   "required": true
                 }
               ],
@@ -47,7 +48,7 @@ impl CredentialSchemasApi {
             "backgroundImage": "bg-image",
             "labelColor": "label-color",
             "labelImage": "label-image",
-            "primaryAttribute": "firstObject/firstName",
+            "primaryAttribute": format!("firstObject/{claim_name}"),
           },
           "schemaId": schema_id,
         });

@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-
 use shared_types::DidValue;
 
 use super::model::CredentialPresentation;
@@ -106,6 +105,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
                 "BIRTH_DATE".to_string(),
                 "NUMBER".to_string(),
             ],
+            forbidden_claim_names: vec![],
         }
     }
 

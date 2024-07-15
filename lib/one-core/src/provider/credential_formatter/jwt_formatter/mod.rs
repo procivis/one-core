@@ -11,17 +11,16 @@ mod test;
 mod mapper;
 mod model;
 
-use crate::provider::credential_formatter::{jwt::Jwt, jwt_formatter::mapper::format_vc};
-
 use self::model::{VPContent, VC, VP};
-
+use super::error::FormatterError;
+use super::jwt::model::JWTPayload;
+use super::model::{CredentialPresentation, DetailCredential, Presentation};
 use super::{
-    error::FormatterError,
-    jwt::model::JWTPayload,
-    model::{CredentialPresentation, DetailCredential, Presentation},
     Context, CredentialData, CredentialFormatter, ExtractPresentationCtx, FormatPresentationCtx,
     FormatterCapabilities, VerificationFn,
 };
+use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::credential_formatter::jwt_formatter::mapper::format_vc;
 
 pub struct JWTFormatter {
     params: Params,
@@ -206,6 +205,7 @@ impl CredentialFormatter for JWTFormatter {
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
             ],
+            forbidden_claim_names: vec![],
         }
     }
 
