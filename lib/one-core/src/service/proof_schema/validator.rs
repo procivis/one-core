@@ -52,6 +52,19 @@ pub fn throw_if_validity_constraint_missing_for_lvvc(
     Ok(())
 }
 
+pub fn throw_if_proof_schema_contains_physical_card_schema_with_other_schemas(
+    schemas: &[CredentialSchema],
+) -> Result<(), ValidationError> {
+    if schemas
+        .iter()
+        .any(|schema| schema.format == "PHYSICAL_CARD")
+        && schemas.len() > 1
+    {
+        return Err(ValidationError::OnlyOnePhysicalCardSchemaAllowedPerProof);
+    }
+    Ok(())
+}
+
 pub fn validate_create_request(
     request: &CreateProofSchemaRequestDTO,
 ) -> Result<(), ValidationError> {
