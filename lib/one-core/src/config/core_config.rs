@@ -288,46 +288,7 @@ pub enum DatatypeType {
 
 pub type KeyAlgorithmConfig = ConfigBlock<String>;
 
-// #[derive(
-//     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-// )]
-// pub enum KeyAlgorithmType {
-//     #[serde(rename = "EDDSA")]
-//     #[strum(serialize = "EDDSA")]
-//     Eddsa,
-//     #[serde(rename = "BBS_PLUS")]
-//     #[strum(serialize = "BBS_PLUS")]
-//     BbsPlus,
-//     #[serde(rename = "ES256")]
-//     #[strum(serialize = "ES256")]
-//     Es256,
-//     // Fixme change to ML_DSA when possible
-//     #[serde(rename = "DILITHIUM")]
-//     #[strum(serialize = "DILITHIUM")]
-//     MlDsa,
-//     // #[serde(untagged)]
-//     // Other(String)
-// }
-
-pub type KeyStorageConfig = ConfigBlock<KeyStorageType>;
-
-#[derive(
-    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
-pub enum KeyStorageType {
-    #[serde(rename = "INTERNAL")]
-    #[strum(serialize = "INTERNAL")]
-    Internal,
-    #[serde(rename = "PKCS11")]
-    #[strum(serialize = "PKCS11")]
-    Pkcs11,
-    #[serde(rename = "AZURE_VAULT")]
-    #[strum(serialize = "AZURE_VAULT")]
-    AzureVault,
-    #[serde(rename = "SECURE_ELEMENT")]
-    #[strum(serialize = "SECURE_ELEMENT")]
-    SecureElement,
-}
+pub type KeyStorageConfig = ConfigBlock<String>;
 
 pub type TaskConfig = ConfigBlock<TaskType>;
 

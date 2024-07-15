@@ -1,8 +1,9 @@
 use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
-use crate::model::key::Key;
-use crate::provider::key_storage::{KeyStorage, StorageGeneratedKey};
-use crate::service::error::{ServiceError, ValidationError};
 use mockall::predicate::eq;
+use one_providers::{
+    common_models::key::Key,
+    key_storage::{error::KeyStorageError, model::StorageGeneratedKey, KeyStorage},
+};
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -44,9 +45,7 @@ async fn test_generate_invalid_key_type() {
     let result = provider.generate(&Uuid::new_v4().into(), "invalid").await;
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(
-            ValidationError::UnsupportedKeyType { .. }
-        ))
+        Err(KeyStorageError::UnsupportedKeyType { .. })
     ));
 }
 

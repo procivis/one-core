@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use one_providers::crypto::SignerError;
+use one_providers::{crypto::SignerError, key_storage::provider::AuthenticationFn};
 use serde::{de::DeserializeOwned, Serialize};
 use shared_types::DidValue;
 
@@ -15,7 +15,7 @@ use self::{
     model::{DecomposedToken, JWTHeader, JWTPayload},
 };
 
-use super::{error::FormatterError, AuthenticationFn, TokenVerifier};
+use super::{error::FormatterError, TokenVerifier};
 
 #[cfg(test)]
 mod test;

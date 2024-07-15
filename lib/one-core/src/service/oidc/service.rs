@@ -8,6 +8,7 @@ use josekit::jwe::{JweDecrypter, JweHeader};
 use one_providers::crypto::imp::utilities;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
 use one_providers::key_algorithm::imp::eddsa::JwkEddsaExt;
+use one_providers::key_storage::provider::KeyProvider;
 use shared_types::{CredentialId, CredentialSchemaId, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -51,7 +52,6 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_credential_offer, create_open_id_for_vp_client_metadata,
 };
 use crate::provider::exchange_protocol::openid4vc::model::JwePayload;
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -1107,7 +1107,7 @@ fn build_jwe_decrypter(
         .get_key_storage(&key.storage_type)
         .ok_or_else(|| MissingProviderError::KeyStorage(key.storage_type.clone()))?;
 
-    let jwk = key_storage.secret_key_as_jwk(key)?;
+    let jwk = key_storage.secret_key_as_jwk(&key.to_owned().into())?;
     let mut jwk = josekit::jwk::Jwk::from_bytes(jwk.as_bytes())
         .map_err(|err| ServiceError::MappingError(format!("Failed constructing JWK {err}")))?;
 

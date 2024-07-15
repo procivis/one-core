@@ -6,6 +6,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use dto_mapper::convert_inner;
+use one_providers::key_storage::provider::KeyProvider;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use url::Url;
@@ -38,7 +39,6 @@ use crate::provider::exchange_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
 use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -220,7 +220,7 @@ impl ExchangeProtocol for ProcivisTemp {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, jwk_key_id)
+            .get_signature_provider(&key.to_owned().into(), jwk_key_id)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let tokens: Vec<String> = credential_presentations

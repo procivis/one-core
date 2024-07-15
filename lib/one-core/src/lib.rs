@@ -1,17 +1,18 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use config::core_config::{CoreConfig, KeyAlgorithmConfig};
 use config::ConfigError;
 use one_providers::crypto::CryptoProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use provider::credential_formatter::json_ld::caching_loader::CachingLoader;
+
+use config::core_config::{CoreConfig, KeyAlgorithmConfig, KeyStorageConfig};
+use one_providers::key_storage::provider::KeyProvider;
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderImpl;
 use provider::exchange_protocol::ExchangeProtocol;
-use provider::key_storage::secure_element::NativeKeyStorage;
 use provider::task::provider::TaskProviderImpl;
 use provider::task::tasks_from_config;
 use provider::trust_management::provider::TrustManagementProviderImpl;
@@ -33,8 +34,6 @@ use service::trust_entity::TrustEntityService;
 use time::Duration;
 
 use crate::config::core_config::JsonLdContextConfig;
-use crate::provider::key_storage::key_providers_from_config;
-use crate::provider::key_storage::provider::KeyProviderImpl;
 
 pub mod config;
 pub mod provider;
@@ -62,7 +61,10 @@ use crate::service::revocation_list::RevocationListService;
 pub type KeyAlgorithmCreator =
     Box<dyn FnOnce(&KeyAlgorithmConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyAlgorithmProvider>>;
 
-pub type DataProviderCreator = Box<dyn FnOnce(Vec<String>) -> Arc<dyn DataRepository>>;
+pub type KeyStorageCreator =
+    Box<dyn FnOnce(&KeyStorageConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyProvider>>;
+
+pub type DataProviderCreator = Box<dyn FnOnce() -> Arc<dyn DataRepository>>;
 
 pub struct OneCore {
     pub did_methods: HashMap<String, Arc<dyn DidMethod>>,
@@ -95,6 +97,7 @@ pub struct OneCoreBuilderProviders {
     pub core_base_url: Option<String>,
     pub crypto: Option<Arc<dyn CryptoProvider>>,
     pub key_algorithm_provider: Option<Arc<dyn KeyAlgorithmProvider>>,
+    pub key_storage_provider: Option<Arc<dyn KeyProvider>>,
     //repository and providers that we initialize as we build
 }
 
@@ -103,7 +106,6 @@ pub struct OneCoreBuilder {
     core_config: CoreConfig,
     providers: OneCoreBuilderProviders,
     json_ld_context_config: Option<JsonLdContextConfig>,
-    secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     ble_central: Option<Arc<dyn BleCentral>>,
     data_provider_creator: Option<DataProviderCreator>,
@@ -127,10 +129,20 @@ impl OneCoreBuilder {
         self
     }
 
-    pub fn with_key_algorithm_provider(mut self, key_alg_provider: KeyAlgorithmCreator) -> Self {
+    pub fn with_key_algorithm_provider(
+        mut self,
+        key_algorithm_creator: KeyAlgorithmCreator,
+    ) -> Self {
         let key_algorithm_provider =
-            key_alg_provider(&self.core_config.key_algorithm, &self.providers);
+            key_algorithm_creator(&self.core_config.key_algorithm, &self.providers);
         self.providers.key_algorithm_provider = Some(key_algorithm_provider);
+        self
+    }
+
+    pub fn with_key_storage_provider(mut self, key_storage_creator: KeyStorageCreator) -> Self {
+        let key_storage_provider =
+            key_storage_creator(&self.core_config.key_storage, &self.providers);
+        self.providers.key_storage_provider = Some(key_storage_provider);
         self
     }
 
@@ -149,15 +161,6 @@ impl OneCoreBuilder {
         self
     }
 
-    // Temporary - move logic to key storage creator
-    pub fn with_secure_element_storage(
-        mut self,
-        secure_element: Option<Arc<dyn NativeKeyStorage>>,
-    ) -> Self {
-        self.secure_element_key_storage = secure_element;
-        self
-    }
-
     pub fn with_ble(
         mut self,
         peripheral: Option<Arc<dyn BlePeripheral>>,
@@ -173,7 +176,6 @@ impl OneCoreBuilder {
             self.data_provider_creator
                 .expect("Data provider is required"),
             self.core_config,
-            self.secure_element_key_storage,
             self.json_ld_context_config,
             self.ble_peripheral,
             self.ble_central,
@@ -186,7 +188,6 @@ impl OneCore {
     pub fn new(
         data_provider_creator: DataProviderCreator,
         mut core_config: CoreConfig,
-        secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
         json_ld_context_config: Option<JsonLdContextConfig>,
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         ble_central: Option<Arc<dyn BleCentral>>,
@@ -207,13 +208,12 @@ impl OneCore {
             .expect("Crypto provider is required")
             .clone();
 
-        let key_providers = key_providers_from_config(
-            &mut core_config.key_storage,
-            crypto.clone(),
-            key_algorithm_provider.clone(),
-            secure_element_key_storage,
-        )?;
-        let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
+        let key_provider = providers
+            .key_storage_provider
+            .as_ref()
+            .expect("Key provider is required")
+            .clone();
+
         let (did_methods, did_mdl_validator) = did_method_providers_from_config(
             &mut core_config.did,
             key_algorithm_provider.clone(),
@@ -226,18 +226,7 @@ impl OneCore {
 
         let client = reqwest::Client::new();
 
-        let exportable_storages = key_providers
-            .iter()
-            .filter(|(_, value)| {
-                value
-                    .get_capabilities()
-                    .features
-                    .contains(&"EXPORTABLE".to_string())
-            })
-            .map(|(key, _)| key.clone())
-            .collect();
-
-        let data_provider = data_provider_creator(exportable_storages);
+        let data_provider = data_provider_creator();
 
         let json_ld_context_config = json_ld_context_config.unwrap_or(JsonLdContextConfig {
             cache_refresh_timeout: Duration::seconds(86400),

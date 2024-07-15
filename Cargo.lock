@@ -878,15 +878,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "codegen"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff61280aed771c3070e7dcc9e050c66f1eb1e3b96431ba66f9f74641d02fc41d"
-dependencies = [
- "indexmap 1.9.3",
-]
-
-[[package]]
 name = "colorchoice"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -968,15 +959,11 @@ dependencies = [
  "axum",
  "axum-extra",
  "clap",
- "codegen",
  "ct-codecs",
  "dto_mapper",
  "headers",
- "hex-literal",
  "indoc",
- "maplit",
  "one-core",
- "one-open-core",
  "one-providers",
  "p256",
  "prometheus",
@@ -986,7 +973,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_qs",
- "serde_urlencoded",
  "serde_with",
  "shadow-rs",
  "shared-types",
@@ -3037,23 +3023,18 @@ dependencies = [
  "bit-vec",
  "bs58",
  "ciborium",
- "cocoon",
  "contextual",
  "convert_case",
  "coset",
  "crc",
  "ct-codecs",
  "dto_mapper",
- "ed25519-compact",
- "elliptic-curve",
  "figment",
  "flate2",
- "fmap",
  "futures",
  "hex",
  "hex-literal",
  "hkdf",
- "hmac 0.12.1",
  "indexmap 2.2.6",
  "indoc",
  "itertools 0.13.0",
@@ -3065,12 +3046,8 @@ dependencies = [
  "maplit",
  "mime",
  "mockall",
- "one-open-core",
  "one-providers",
  "ouroboros 0.18.4",
- "p256",
- "pairing_crypto",
- "pbkdf2 0.12.2",
  "pqc_dilithium",
  "rand",
  "rcgen",
@@ -3090,7 +3067,6 @@ dependencies = [
  "shared-types",
  "sophia_api",
  "sophia_c14n",
- "sophia_iri",
  "sophia_jsonld",
  "strum 0.26.3",
  "strum_macros",
@@ -3098,7 +3074,6 @@ dependencies = [
  "thiserror",
  "time",
  "tokio",
- "tokio-util",
  "tracing",
  "url",
  "urlencoding",
@@ -3118,7 +3093,6 @@ dependencies = [
  "async-trait",
  "dto_mapper",
  "one-core",
- "one-open-core",
  "one-providers",
  "serde",
  "serde_json",
@@ -3133,26 +3107,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "one-open-core"
-version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?branch=main#6b0d5619ab47f4818c378a3d5af26ed879a3ce11"
-dependencies = [
- "one-providers",
- "strum 0.26.3",
- "strum_macros",
- "thiserror",
- "zeroize",
-]
-
-[[package]]
 name = "one-providers"
 version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?branch=main#6b0d5619ab47f4818c378a3d5af26ed879a3ce11"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git#b65e0fb1d7c073247f52dc1e4f611c1d41f59b75"
 dependencies = [
  "anyhow",
+ "async-trait",
  "blstrs 0.7.1",
  "bs58",
  "chacha20poly1305",
+ "cocoon",
  "ct-codecs",
  "ed25519-compact",
  "hmac 0.12.1",
@@ -3164,10 +3128,15 @@ dependencies = [
  "pqc_dilithium",
  "rand",
  "rand_chacha",
+ "reqwest 0.12.5",
  "serde",
  "serde_json",
  "sha2 0.10.8",
  "thiserror",
+ "time",
+ "tokio",
+ "url",
+ "uuid",
  "zeroize",
 ]
 
@@ -4836,7 +4805,6 @@ dependencies = [
 name = "shared-types"
 version = "0.1.0"
 dependencies = [
- "one-open-core",
  "one-providers",
  "sea-orm",
  "serde",
@@ -5022,7 +4990,6 @@ dependencies = [
  "sea-orm",
  "serde",
  "serde_json",
- "serde_yaml",
  "shared-types",
  "tempfile",
  "time",
@@ -5573,7 +5540,6 @@ checksum = "9cf6b47b3771c49ac75ad09a6162f53ad4b8088b76ac60e8ec1455b31a189fe1"
 dependencies = [
  "bytes",
  "futures-core",
- "futures-io",
  "futures-sink",
  "pin-project-lite",
  "tokio",

@@ -24,6 +24,7 @@ mod test;
 pub(crate) mod test_utilities;
 
 use one_providers::crypto::SignerError;
+use one_providers::key_storage::provider::AuthenticationFn;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
@@ -48,7 +49,6 @@ use crate::service::credential::dto::{
 use crate::service::error::ServiceError;
 use crate::service::oidc::model::OpenID4VPInteractionContent;
 
-pub type AuthenticationFn = Box<dyn SignatureProvider>;
 pub type VerificationFn = Box<dyn TokenVerifier>;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -195,14 +195,6 @@ pub trait TokenVerifier: Send + Sync {
     ) -> Result<(), SignerError>;
 }
 
-#[cfg_attr(test, mockall::automock)]
-#[async_trait]
-pub trait SignatureProvider: Send + Sync {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError>;
-    fn get_key_id(&self) -> Option<String>;
-    fn get_public_key(&self) -> Vec<u8>;
-}
-
 #[derive(Debug, Default, Clone)]
 pub struct ExtractPresentationCtx {
     nonce: Option<String>,
@@ -345,6 +337,10 @@ pub trait CredentialFormatter: Send + Sync {
 #[cfg(test)]
 #[derive(Clone)]
 pub(crate) struct MockAuth<F: Fn(&[u8]) -> Vec<u8> + Send + Sync>(pub F);
+
+#[cfg(test)]
+use one_providers::key_storage::provider::SignatureProvider;
+
 #[cfg(test)]
 #[async_trait::async_trait]
 impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {

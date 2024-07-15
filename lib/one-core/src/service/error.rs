@@ -1,5 +1,6 @@
-use one_providers::crypto::{CryptoProviderError, SignerError};
+use one_providers::crypto::CryptoProviderError;
 use one_providers::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
+use one_providers::key_storage::error::{KeyStorageError, KeyStorageProviderError};
 use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
     OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
@@ -64,9 +65,8 @@ pub enum ServiceError {
     #[error(transparent)]
     KeyAlgorithmProviderError(#[from] KeyAlgorithmProviderError),
 
-    #[error("Key storage error `{0}`")]
-    KeyStorageError(anyhow::Error),
-
+    // #[error("Key storage error `{0}`")]
+    // KeyStorageError(KeyStorageError),
     #[error("Did method error `{0}`")]
     DidMethodError(#[from] DidMethodError),
 
@@ -89,7 +89,10 @@ pub enum ServiceError {
     Repository(#[from] DataLayerError),
 
     #[error(transparent)]
-    KeyStorage(#[from] KeyStorageError),
+    KeyStorageError(#[from] KeyStorageError),
+
+    #[error(transparent)]
+    KeyStorageProvider(#[from] KeyStorageProviderError),
 
     #[error("Response mapping error: {0}")]
     ResponseMapping(String),
@@ -419,16 +422,16 @@ pub enum MissingProviderError {
     TrustManager(String),
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum KeyStorageError {
-    #[error("Password decryption failure")]
-    PasswordDecryptionFailure,
+// #[derive(Debug, thiserror::Error)]
+// pub enum KeyStorageError {
+//     #[error("Password decryption failure")]
+//     PasswordDecryptionFailure,
 
-    #[error("Signer error: `{0}`")]
-    SignerError(#[from] SignerError),
-    #[error("Rcgen error: `{0}`")]
-    RcgenError(#[from] rcgen::Error),
-}
+//     #[error("Signer error: `{0}`")]
+//     SignerError(#[from] SignerError),
+//     #[error("Rcgen error: `{0}`")]
+//     RcgenError(#[from] rcgen::Error),
+// }
 
 impl MissingProviderError {
     pub fn error_code(&self) -> ErrorCode {
@@ -828,7 +831,9 @@ impl ServiceError {
             ServiceError::ExchangeProtocolError(error) => error.error_code(),
             ServiceError::CryptoError(_) => ErrorCode::BR_0050,
             ServiceError::FormatterError(error) => error.error_code(),
-            ServiceError::KeyStorageError(_) | ServiceError::KeyStorage(_) => ErrorCode::BR_0039,
+            ServiceError::KeyStorageError(_) | ServiceError::KeyStorageProvider(_) => {
+                ErrorCode::BR_0039
+            }
             ServiceError::MappingError(_) => ErrorCode::BR_0047,
             ServiceError::OpenID4VCError(_) => ErrorCode::BR_0048,
             ServiceError::ConfigValidationError(error) => error.error_code(),
@@ -986,6 +991,7 @@ impl ExchangeProtocolError {
             ExchangeProtocolError::MissingBaseUrl => ErrorCode::BR_0062,
             ExchangeProtocolError::InvalidRequest(_) => ErrorCode::BR_0085,
             ExchangeProtocolError::Disabled(_) => ErrorCode::BR_0085,
+            ExchangeProtocolError::Other(_) => ErrorCode::BR_0062,
         }
     }
 }

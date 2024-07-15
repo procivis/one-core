@@ -7,6 +7,7 @@ use mockall::{predicate, Sequence};
 use one_providers::key_algorithm::model::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
+use one_providers::key_storage::provider::MockKeyProvider;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -36,7 +37,6 @@ use crate::provider::exchange_protocol::openid4vc::dto::{
 };
 use crate::provider::exchange_protocol::openid4vc::mapper::prepare_claims;
 use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
-use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;

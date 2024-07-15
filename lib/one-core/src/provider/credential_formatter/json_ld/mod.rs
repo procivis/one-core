@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use convert_case::{Case, Casing};
 use one_providers::crypto::CryptoProvider;
+use one_providers::key_storage::provider::AuthenticationFn;
 use serde::Serialize;
 use shared_types::DidValue;
 use sophia_api::{quad::Spog, source::QuadSource, term::SimpleTerm};
@@ -16,7 +17,7 @@ use crate::provider::credential_formatter::common::nest_claims;
 use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 
 use super::PublishedClaim;
-use super::{error::FormatterError, AuthenticationFn, Context, CredentialData, VerificationFn};
+use super::{error::FormatterError, Context, CredentialData, VerificationFn};
 
 use self::model::{LdCredential, LdCredentialSubject, LdPresentation, LdProof};
 

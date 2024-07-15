@@ -1,4 +1,3 @@
-use crate::provider::credential_formatter::AuthenticationFn;
 use crate::service::error::ServiceError;
 use crate::{
     model::did::Did,
@@ -7,6 +6,7 @@ use crate::{
         jwt::{model::JWTPayload, Jwt},
     },
 };
+use one_providers::key_storage::provider::AuthenticationFn;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 

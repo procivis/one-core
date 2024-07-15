@@ -6,6 +6,7 @@ use async_trait::async_trait;
 
 use itertools::Itertools;
 use one_providers::crypto::CryptoProvider;
+use one_providers::key_storage::provider::AuthenticationFn;
 use serde::Deserialize;
 use shared_types::DidValue;
 use time::Duration;
@@ -37,9 +38,9 @@ use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
 use super::model::{CredentialPresentation, CredentialSubject};
 use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential,
-    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, FormatterError,
-    Presentation, SelectiveDisclosureOption, VerificationFn,
+    CredentialData, CredentialFormatter, DetailCredential, ExtractPresentationCtx,
+    FormatPresentationCtx, FormatterCapabilities, FormatterError, Presentation,
+    SelectiveDisclosureOption, VerificationFn,
 };
 
 pub struct SDJWTFormatter {

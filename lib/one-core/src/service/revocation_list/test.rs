@@ -1,5 +1,6 @@
 use mockall::predicate::eq;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::key_storage::provider::MockKeyProvider;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -11,7 +12,7 @@ use crate::{
     model::revocation_list::{RevocationList, RevocationListRelations},
     provider::{
         credential_formatter::provider::MockCredentialFormatterProvider,
-        did_method::provider::MockDidMethodProvider, key_storage::provider::MockKeyProvider,
+        did_method::provider::MockDidMethodProvider,
         revocation::provider::MockRevocationMethodProvider,
     },
     repository::{

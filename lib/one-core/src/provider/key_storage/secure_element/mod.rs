@@ -1,21 +1,20 @@
 use serde::Deserialize;
-use shared_types::KeyId;
 use std::sync::Arc;
 use zeroize::Zeroizing;
 
-use one_providers::crypto::SignerError;
-
-use crate::{
-    model::key::Key,
-    provider::key_storage::{KeyStorage, KeyStorageCapabilities},
-    service::error::{ServiceError, ValidationError},
+use one_providers::{
+    common_models::key::{Key, KeyId},
+    crypto::SignerError,
+    key_storage::{
+        error::KeyStorageError,
+        model::{KeySecurity, KeyStorageCapabilities, StorageGeneratedKey},
+        KeyStorage,
+    },
 };
-
-use super::{KeySecurity, StorageGeneratedKey};
 
 #[cfg_attr(test, mockall::automock)]
 pub trait NativeKeyStorage: Send + Sync {
-    fn generate_key(&self, key_alias: String) -> Result<StorageGeneratedKey, ServiceError>;
+    fn generate_key(&self, key_alias: String) -> Result<StorageGeneratedKey, KeyStorageError>;
     fn sign(&self, key_reference: &[u8], message: &[u8]) -> Result<Vec<u8>, SignerError>;
 }
 
@@ -36,12 +35,11 @@ impl KeyStorage for SecureElementKeyProvider {
         &self,
         key_id: &KeyId,
         key_type: &str,
-    ) -> Result<StorageGeneratedKey, ServiceError> {
+    ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if key_type != "ES256" {
-            return Err(ValidationError::UnsupportedKeyType {
+            return Err(KeyStorageError::UnsupportedKeyType {
                 key_type: key_type.to_owned(),
-            }
-            .into());
+            });
         }
 
         let key_alias = format!("{}.{}", self.params.alias_prefix, key_id);
@@ -52,7 +50,7 @@ impl KeyStorage for SecureElementKeyProvider {
         self.native_storage.sign(&key.key_reference, message)
     }
 
-    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, ServiceError> {
+    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, KeyStorageError> {
         unimplemented!()
     }
 

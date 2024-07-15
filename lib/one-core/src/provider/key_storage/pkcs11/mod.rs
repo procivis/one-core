@@ -1,12 +1,14 @@
-use shared_types::KeyId;
+use one_providers::{
+    common_models::key::{Key, KeyId},
+    key_storage::{
+        error::KeyStorageError,
+        model::{KeyStorageCapabilities, StorageGeneratedKey},
+        KeyStorage,
+    },
+};
 use zeroize::Zeroizing;
 
 use one_providers::crypto::SignerError;
-
-use crate::provider::key_storage::KeyStorageCapabilities;
-use crate::{model::key::Key, provider::key_storage::KeyStorage, service::error::ServiceError};
-
-use super::StorageGeneratedKey;
 
 #[derive(Default)]
 pub struct PKCS11KeyProvider {}
@@ -21,11 +23,11 @@ impl KeyStorage for PKCS11KeyProvider {
         &self,
         _key_id: &KeyId,
         _key_type: &str,
-    ) -> Result<StorageGeneratedKey, ServiceError> {
+    ) -> Result<StorageGeneratedKey, KeyStorageError> {
         todo!()
     }
 
-    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, ServiceError> {
+    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, KeyStorageError> {
         unimplemented!()
     }
 

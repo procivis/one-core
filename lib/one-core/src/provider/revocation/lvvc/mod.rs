@@ -3,6 +3,7 @@ use std::ops::Sub;
 use std::sync::Arc;
 
 use anyhow::Context;
+use one_providers::key_storage::provider::KeyProvider;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
 use shared_types::{CredentialId, DidValue};
@@ -28,7 +29,6 @@ use crate::provider::credential_formatter::{
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -415,7 +415,8 @@ pub(crate) async fn create_lvvc_with_status(
     let key = credential
         .key
         .as_ref()
-        .ok_or_else(|| ServiceError::MappingError("LVVC issuance is missing key".to_string()))?;
+        .ok_or_else(|| ServiceError::MappingError("LVVC issuance is missing key".to_string()))?
+        .to_owned();
 
     let did_document = did_method_provider.resolve(&issuer_did.did).await?;
     let assertion_methods = did_document
@@ -438,7 +439,8 @@ pub(crate) async fn create_lvvc_with_status(
             .to_owned(),
     };
 
-    let auth_fn = key_provider.get_signature_provider(key, Some(issuer_jwk_key_id))?;
+    let auth_fn =
+        key_provider.get_signature_provider(&key.to_owned().into(), Some(issuer_jwk_key_id))?;
 
     let lvvc_credential_id = Uuid::new_v4();
     let mut claims = vec![create_id_claim(base_url, credential.id)];
@@ -512,7 +514,8 @@ pub(crate) async fn prepare_bearer_token(
         ..Default::default()
     };
 
-    let signer = key_provider.get_signature_provider(&authentication_key.key, None)?;
+    let signer =
+        key_provider.get_signature_provider(&authentication_key.key.to_owned().into(), None)?;
     let bearer_token = Jwt::new("JWT".to_string(), "HS256".to_string(), None, payload)
         .tokenize(signer)
         .await?;

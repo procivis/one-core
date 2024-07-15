@@ -17,15 +17,17 @@ use one_providers::{
         imp::{bbs::BBS, eddsa::Eddsa, es256::Es256, provider::KeyAlgorithmProviderImpl},
         KeyAlgorithm,
     },
+    key_storage::{imp::provider::KeyProviderImpl, KeyStorage},
 };
 use serde::{Deserialize, Serialize};
 
 use error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
 use one_core::{
     config::core_config::{self, AppConfig, JsonLdContextConfig},
-    provider::key_algorithm::ml_dsa::MlDsa,
-    repository::DataRepository,
-    OneCoreBuilder,
+    provider::{
+        key_algorithm::ml_dsa::MlDsa, key_storage::secure_element::SecureElementKeyProvider,
+    },
+    DataProviderCreator, KeyStorageCreator, OneCoreBuilder,
 };
 use one_core::{provider::bluetooth_low_energy::BleError, KeyAlgorithmCreator};
 use sql_data_provider::DataLayer;
@@ -48,12 +50,13 @@ uniffi::include_scaffolding!("one_core");
 fn initialize_core(
     data_dir_path: String,
     config_mobile: &'static str,
-    native_key_storage: Option<Box<dyn NativeKeyStorage>>,
+    native_key_storage: Option<Box<dyn dto::NativeKeyStorage>>,
     ble_central: Option<Arc<dyn BleCentral>>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
-    let native_key_storage =
-        native_key_storage.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
+    let native_key_storage: Option<
+        Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>,
+    > = native_key_storage.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
 
     let ble_central = ble_central.map(|central| Arc::new(BleCentralWrapper(central)) as _);
     let ble_peripheral =
@@ -103,11 +106,6 @@ fn initialize_core(
                 HashMap::from_iter(signers),
             ));
 
-            let storage_creator: Box<dyn FnOnce(Vec<String>) -> Arc<dyn DataRepository>> =
-                Box::new(|exportable_storages| {
-                    Arc::new(DataLayer::build(db_conn, exportable_storages))
-                });
-
             let key_algo_creator: KeyAlgorithmCreator = Box::new(|config, providers| {
                 let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
 
@@ -141,12 +139,38 @@ fn initialize_core(
                 ))
             });
 
+            let key_storage_creator: KeyStorageCreator = Box::new(move |config, _providers| {
+                let mut key_providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
+
+                for (name, field) in config.iter() {
+                    let provider = match field.r#type.as_str() {
+                        "SECURE_ELEMENT" => {
+                            let local_native_key_storage: Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage> =
+                                native_key_storage.clone().expect("Missing native key provider");
+                            let params =
+                                config.get(name).expect("Secure element config is required");
+                            Arc::new(SecureElementKeyProvider::new(
+                                local_native_key_storage.clone(),
+                                params,
+                            )) as _
+                        }
+                        other => panic!("Unexpected key storage: {other}"),
+                    };
+                    key_providers.insert(name.to_owned(), provider);
+                }
+
+                Arc::new(KeyProviderImpl::new(key_providers.to_owned()))
+            });
+
+            let storage_creator: DataProviderCreator =
+                Box::new(|| Arc::new(DataLayer::build(db_conn, vec![])));
+
             OneCoreBuilder::new(core_config.clone())
                 .with_crypto(crypto)
                 .with_data_provider_creator(storage_creator)
                 .with_json_ld_context(json_ld_context_config)
                 .with_key_algorithm_provider(key_algo_creator)
-                .with_secure_element_storage(native_key_storage)
+                .with_key_storage_provider(key_storage_creator)
                 .with_ble(ble_peripheral, ble_central)
                 .build()
                 .map_err(|e| BindingError::DbErr(e.to_string()))

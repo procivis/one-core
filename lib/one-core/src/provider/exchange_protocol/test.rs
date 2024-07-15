@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
+use one_providers::key_storage::provider::{MockKeyProvider, MockSignatureProvider};
 use serde_json::{json, Value};
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
@@ -25,7 +26,7 @@ use crate::model::validity_credential::{ValidityCredential, ValidityCredentialTy
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
-use crate::provider::credential_formatter::{MockCredentialFormatter, MockSignatureProvider};
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::dto::{
     DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
 };
@@ -35,7 +36,6 @@ use crate::provider::exchange_protocol::mapper::get_relevant_credentials_to_cred
 use crate::provider::exchange_protocol::provider::{
     ExchangeProtocolProvider, ExchangeProtocolProviderImpl,
 };
-use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationInfo, JsonLdContext, MockRevocationMethod};
