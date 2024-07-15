@@ -10,6 +10,7 @@ use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
 use super::error::FormatterError;
+use super::json_ld::jsonld_forbidden_claim_names;
 use super::json_ld::model::*;
 use super::model::{CredentialPresentation, CredentialSubject, DetailCredential, Presentation};
 use super::{
@@ -249,6 +250,7 @@ impl CredentialFormatter for JsonLdClassic {
                 "ARRAY".to_string(),
             ],
             verification_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
+            forbidden_claim_names: jsonld_forbidden_claim_names(),
         }
     }
 

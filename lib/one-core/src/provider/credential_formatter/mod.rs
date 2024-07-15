@@ -23,12 +23,12 @@ mod test;
 #[cfg(test)]
 pub(crate) mod test_utilities;
 
-use one_providers::crypto::SignerError;
-use one_providers::key_storage::provider::AuthenticationFn;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use async_trait::async_trait;
+use one_providers::crypto::SignerError;
+use one_providers::key_storage::provider::AuthenticationFn;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use strum::Display;
@@ -158,6 +158,7 @@ pub struct FormatterCapabilities {
     pub verification_key_algorithms: Vec<String>,
     pub datatypes: Vec<String>,
     pub allowed_schema_ids: Vec<String>,
+    pub forbidden_claim_names: Vec<String>,
 }
 
 #[derive(Clone, Serialize)]

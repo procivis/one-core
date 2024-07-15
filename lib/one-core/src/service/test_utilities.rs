@@ -344,5 +344,6 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
         ],
         verification_key_algorithms: vec!["EDDSA".to_string()],
         datatypes: vec![],
+        forbidden_claim_names: vec![],
     }
 }

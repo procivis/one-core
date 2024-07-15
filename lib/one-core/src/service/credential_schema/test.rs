@@ -1,57 +1,45 @@
+use std::sync::Arc;
+use std::vec;
+
 use mockall::predicate::*;
 use serde_json::json;
 use shared_types::CredentialSchemaId;
-use std::sync::Arc;
-use std::vec;
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use crate::config::core_config::{Fields, FormatType};
-use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
-use crate::model::list_filter::ListFilterValue;
-use crate::model::list_query::ListPagination;
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::credential_formatter::{FormatterCapabilities, MockCredentialFormatter};
-use crate::service::credential_schema::dto::{
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
-    CredentialSchemaCodeTypeEnum, CredentialSchemaFilterValue,
-    CredentialSchemaLogoPropertiesRequestDTO, ImportCredentialSchemaClaimSchemaDTO,
-    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
-};
-use crate::service::test_utilities::generic_formatter_capabilities;
-use crate::{
-    config::{core_config::CoreConfig, ConfigValidationError},
-    model::{
-        claim_schema::{ClaimSchema, ClaimSchemaRelations},
-        credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-            GetCredentialSchemaList,
-        },
-        organisation::{Organisation, OrganisationRelations},
-    },
-    repository::{
-        credential_schema_repository::MockCredentialSchemaRepository,
-        history_repository::MockHistoryRepository,
-        organisation_repository::MockOrganisationRepository,
-    },
-    service::{
-        credential_schema::{
-            dto::{
-                CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO,
-                CredentialClaimSchemaRequestDTO, GetCredentialSchemaQueryDTO,
-            },
-            mapper::{renest_claim_schemas, unnest_claim_schemas},
-            CredentialSchemaService,
-        },
-        error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
-        test_utilities::generic_config,
-    },
-};
 
 use super::dto::CredentialSchemaLayoutPropertiesRequestDTO;
 use super::validator::{
     check_background_properties, check_claims_presence_in_layout_properties, check_logo_properties,
 };
+use crate::config::core_config::{CoreConfig, Fields, FormatType};
+use crate::config::ConfigValidationError;
+use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
+    GetCredentialSchemaList, LayoutType, WalletStorageTypeEnum,
+};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListPagination;
+use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::{FormatterCapabilities, MockCredentialFormatter};
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
+use crate::service::credential_schema::dto::{
+    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
+    CredentialSchemaCodeTypeEnum, CredentialSchemaFilterValue,
+    CredentialSchemaLogoPropertiesRequestDTO, GetCredentialSchemaQueryDTO,
+    ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
+    ImportCredentialSchemaRequestSchemaDTO,
+};
+use crate::service::credential_schema::mapper::{renest_claim_schemas, unnest_claim_schemas};
+use crate::service::credential_schema::CredentialSchemaService;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
+};
+use crate::service::test_utilities::{generic_config, generic_formatter_capabilities};
 
 fn setup_service(
     credential_schema_repository: MockCredentialSchemaRepository,
@@ -353,8 +341,7 @@ async fn test_create_credential_schema_success() {
 
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(|| FormatterCapabilities {
+        .returning(|| FormatterCapabilities {
             revocation_methods: vec!["NONE".to_string()],
             ..Default::default()
         });
@@ -453,8 +440,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
 
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(|| FormatterCapabilities {
+        .returning(|| FormatterCapabilities {
             revocation_methods: vec!["NONE".to_string()],
             ..Default::default()
         });
@@ -568,8 +554,7 @@ async fn test_create_credential_schema_success_nested_claims() {
 
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(|| FormatterCapabilities {
+        .returning(|| FormatterCapabilities {
             revocation_methods: vec!["NONE".to_string()],
             ..Default::default()
         });
@@ -826,8 +811,7 @@ async fn test_create_credential_schema_unique_name_error() {
 
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(|| FormatterCapabilities {
+        .returning(|| FormatterCapabilities {
             revocation_methods: vec!["NONE".to_string()],
             ..Default::default()
         });
@@ -1083,8 +1067,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
 
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(|| FormatterCapabilities {
+        .returning(|| FormatterCapabilities {
             revocation_methods: vec!["NONE".to_string()],
             ..Default::default()
         });
@@ -1134,8 +1117,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
 
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(FormatterCapabilities::default);
+        .returning(FormatterCapabilities::default);
     formatter_provider
         .expect_get_formatter()
         .once()
@@ -1184,8 +1166,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
 
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(generic_formatter_capabilities);
+        .returning(generic_formatter_capabilities);
     formatter_provider
         .expect_get_formatter()
         .once()
@@ -1249,8 +1230,7 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
 
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(generic_formatter_capabilities);
+        .returning(generic_formatter_capabilities);
     formatter_provider
         .expect_get_formatter()
         .once()
@@ -1316,8 +1296,7 @@ async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() 
 
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(generic_formatter_capabilities);
+        .returning(generic_formatter_capabilities);
     formatter_provider
         .expect_get_formatter()
         .once()
@@ -1378,8 +1357,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
 
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(generic_formatter_capabilities);
+        .returning(generic_formatter_capabilities);
     formatter_provider
         .expect_get_formatter()
         .once()
@@ -2438,8 +2416,7 @@ async fn test_import_credential_schema_success() {
 
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(|| FormatterCapabilities {
+        .returning(|| FormatterCapabilities {
             revocation_methods: vec!["NONE".to_string()],
             ..Default::default()
         });

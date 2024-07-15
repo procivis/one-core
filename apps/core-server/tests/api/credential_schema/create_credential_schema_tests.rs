@@ -12,7 +12,13 @@ async fn test_create_credential_schema_success() {
     let resp = context
         .api
         .credential_schemas
-        .create("some credential schema", organisation.id, "JWT", None)
+        .create(
+            "some credential schema",
+            organisation.id,
+            "JWT",
+            "firstName",
+            None,
+        )
         .await;
 
     // THEN
@@ -47,13 +53,25 @@ async fn test_create_credential_schema_with_the_same_name_in_different_organisat
     let resp = context
         .api
         .credential_schemas
-        .create("some credential schema", organisation.id, "JWT", None)
+        .create(
+            "some credential schema",
+            organisation.id,
+            "JWT",
+            "firstName",
+            None,
+        )
         .await;
 
     let resp1 = context
         .api
         .credential_schemas
-        .create("some credential schema", organisation1.id, "JWT", None)
+        .create(
+            "some credential schema",
+            organisation1.id,
+            "JWT",
+            "firstName",
+            None,
+        )
         .await;
 
     // THEN
@@ -70,14 +88,26 @@ async fn test_fail_to_create_credential_schema_with_the_same_name_in_organisatio
     let resp = context
         .api
         .credential_schemas
-        .create("some credential schema", organisation.id, "JWT", None)
+        .create(
+            "some credential schema",
+            organisation.id,
+            "JWT",
+            "firstName",
+            None,
+        )
         .await;
     assert_eq!(resp.status(), 201);
 
     let resp = context
         .api
         .credential_schemas
-        .create("some credential schema", organisation.id, "JWT", None)
+        .create(
+            "some credential schema",
+            organisation.id,
+            "JWT",
+            "firstName",
+            None,
+        )
         .await;
 
     // THEN
@@ -107,7 +137,7 @@ async fn test_create_credential_schema_with_the_same_name_and_organisation_as_de
     let resp = context
         .api
         .credential_schemas
-        .create(schema_name, organisation.id, "JWT", None)
+        .create(schema_name, organisation.id, "JWT", "firstName", None)
         .await;
 
     // THEN
@@ -127,6 +157,7 @@ async fn test_fail_create_credential_schema_with_same_schema_id() {
             "some credential schema1",
             organisation.id,
             "MDOC",
+            "firstName",
             Some("foo"),
         )
         .await;
@@ -138,6 +169,7 @@ async fn test_fail_create_credential_schema_with_same_schema_id() {
             "some credential schema2",
             organisation.id,
             "MDOC",
+            "firstName",
             Some("foo"),
         )
         .await;
@@ -145,4 +177,28 @@ async fn test_fail_create_credential_schema_with_same_schema_id() {
     // THEN
     assert_eq!(resp.status(), 201);
     assert_eq!(resp1.status(), 400);
+}
+
+#[tokio::test]
+async fn test_fail_create_credential_schema_with_firbidden_claim_name() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create(
+            "some credential schema1",
+            organisation.id,
+            "JSON_LD_CLASSIC",
+            "id",
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let err = resp.error_code().await;
+    assert_eq!(err, "BR_0145");
 }

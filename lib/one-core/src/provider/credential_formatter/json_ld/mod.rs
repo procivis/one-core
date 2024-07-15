@@ -6,20 +6,20 @@ use one_providers::crypto::CryptoProvider;
 use one_providers::key_storage::provider::AuthenticationFn;
 use serde::Serialize;
 use shared_types::DidValue;
-use sophia_api::{quad::Spog, source::QuadSource, term::SimpleTerm};
+use sophia_api::quad::Spog;
+use sophia_api::source::QuadSource;
+use sophia_api::term::SimpleTerm;
 use sophia_c14n::rdfc10;
 use sophia_jsonld::loader::NoLoader;
 use sophia_jsonld::loader_factory::DefaultLoaderFactory;
 use sophia_jsonld::{JsonLdOptions, JsonLdParser};
 use time::OffsetDateTime;
 
+use self::model::{LdCredential, LdCredentialSubject, LdPresentation, LdProof};
+use super::error::FormatterError;
+use super::{Context, CredentialData, PublishedClaim, VerificationFn};
 use crate::provider::credential_formatter::common::nest_claims;
 use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
-
-use super::PublishedClaim;
-use super::{error::FormatterError, Context, CredentialData, VerificationFn};
-
-use self::model::{LdCredential, LdCredentialSubject, LdPresentation, LdProof};
 
 pub mod caching_loader;
 pub mod model;
@@ -328,4 +328,28 @@ pub(super) async fn verify_presentation_signature(
     .await?;
 
     Ok(())
+}
+
+pub(crate) fn jsonld_forbidden_claim_names() -> Vec<String> {
+    vec![
+        "id".to_string(),
+        "type".to_string(),
+        "cred".to_string(),
+        "sec".to_string(),
+        "xsd".to_string(),
+        "credentialSchema".to_string(),
+        "credentialStatus".to_string(),
+        "credentialSubject".to_string(),
+        "evidence".to_string(),
+        "expirationDate".to_string(),
+        "holder".to_string(),
+        "issued".to_string(),
+        "issuer".to_string(),
+        "issuanceDate".to_string(),
+        "proof".to_string(),
+        "refreshService".to_string(),
+        "termsOfUse".to_string(),
+        "validFrom".to_string(),
+        "validUntil".to_string(),
+    ]
 }

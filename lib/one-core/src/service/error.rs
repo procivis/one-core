@@ -387,6 +387,9 @@ pub enum ValidationError {
 
     #[error("Proof schema must contain only one physical card credential schema")]
     OnlyOnePhysicalCardSchemaAllowedPerProof,
+
+    #[error("Forbidden claim name")]
+    ForbiddenClaimName,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -801,6 +804,9 @@ pub enum ErrorCode {
     #[strum(to_string = "No default transport specified")]
     BR_0142,
 
+    #[strum(to_string = "Forbidden claim name")]
+    BR_0145,
+
     #[strum(to_string = "Schema id not allowed for credential schema")]
     BR_0146,
 }
@@ -976,6 +982,7 @@ impl ValidationError {
             ValidationError::CertificateRequestedForMoreThan457Days => ErrorCode::BR_0084,
             ValidationError::NestedClaimInArrayRequested => ErrorCode::BR_0125,
             ValidationError::OnlyOnePhysicalCardSchemaAllowedPerProof => ErrorCode::BR_0137,
+            ValidationError::ForbiddenClaimName => ErrorCode::BR_0145,
         }
     }
 }

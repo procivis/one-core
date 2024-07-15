@@ -1,9 +1,7 @@
-use axum::{
-    extract::rejection::{FormRejection, JsonRejection, PathRejection, QueryRejection},
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use axum::extract::rejection::{FormRejection, JsonRejection, PathRejection, QueryRejection};
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::Json;
 use axum_extra::typed_header::TypedHeaderRejection;
 use dto_mapper::From;
 use serde::Serialize;
@@ -130,6 +128,7 @@ pub enum ErrorCode {
     BR_0139,
     BR_0140,
     BR_0142,
+    BR_0145,
     BR_0146,
 }
 

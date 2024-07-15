@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-
 use itertools::Itertools;
 use one_providers::crypto::CryptoProvider;
 use one_providers::key_storage::provider::AuthenticationFn;
@@ -15,7 +14,6 @@ use crate::provider::credential_formatter::sdjwt_formatter::disclosures::{
     extract_claims_from_disclosures, extract_disclosures, gather_disclosures,
     get_disclosures_by_claim_name, sort_published_claims_by_indices, to_hashmap,
 };
-
 use crate::provider::credential_formatter::sdjwt_formatter::model::{
     DecomposedToken, Disclosure, Sdvc,
 };
@@ -33,7 +31,6 @@ mod disclosures;
 mod verifier;
 
 use self::verifier::*;
-
 use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
 use super::model::{CredentialPresentation, CredentialSubject};
@@ -210,6 +207,7 @@ impl CredentialFormatter for SDJWTFormatter {
                 "ES256".to_string(),
                 "DILITHIUM".to_string(),
             ],
+            forbidden_claim_names: vec![],
         }
     }
 

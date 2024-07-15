@@ -11,6 +11,7 @@ use serde_with::{serde_as, DurationSeconds};
 use shared_types::DidValue;
 use time::Duration;
 
+use super::json_ld::jsonld_forbidden_claim_names;
 use super::json_ld::model::LdCredential;
 use super::model::{CredentialPresentation, Presentation};
 use super::{
@@ -168,6 +169,7 @@ impl CredentialFormatter for JsonLdBbsplus {
                 "ES256".to_string(),
                 "DILITHIUM".to_string(),
             ],
+            forbidden_claim_names: jsonld_forbidden_claim_names(),
         }
     }
 

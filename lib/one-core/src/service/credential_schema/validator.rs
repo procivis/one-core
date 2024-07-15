@@ -1,7 +1,7 @@
-use serde_json::Value;
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use serde_json::Value;
 use shared_types::OrganisationId;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
@@ -10,6 +10,7 @@ use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO,
@@ -52,7 +53,13 @@ pub(crate) fn validate_create_request(
     validate_format(&request.format, &config.format)?;
     validate_revocation(&request.revocation_method, &config.revocation)?;
     validate_nested_claim_schemas(&request.claims, config)?;
-    validate_revocation_method_is_compatible_with_format(request, config, formatter_provider)?;
+
+    let formatter = formatter_provider
+        .get_formatter(&request.format)
+        .ok_or(MissingProviderError::Formatter(request.format.to_owned()))?;
+
+    validate_cliam_names(request, &*formatter)?;
+    validate_revocation_method_is_compatible_with_format(request, config, &*formatter)?;
     validate_mdoc_claim_types(request, config)?;
     validate_schema_id(request, config, during_import)?;
 
@@ -181,6 +188,33 @@ fn handle_attribute_claim_validation(
     Ok(())
 }
 
+fn validate_cliam_names(
+    request: &CreateCredentialSchemaRequestDTO,
+    formatter: &dyn CredentialFormatter,
+) -> Result<(), ServiceError> {
+    let forbidden_names = formatter.get_capabilities().forbidden_claim_names;
+
+    if forbidden_names.into_iter().any(|forbidden_name| {
+        validate_claims_names_are_not_forbidden(&forbidden_name, &request.claims)
+    }) {
+        return Err(ServiceError::Validation(
+            ValidationError::ForbiddenClaimName,
+        ));
+    }
+
+    Ok(())
+}
+
+fn validate_claims_names_are_not_forbidden(
+    forbidden_name: &str,
+    claims: &[CredentialClaimSchemaRequestDTO],
+) -> bool {
+    claims.iter().any(|claim| {
+        claim.key == forbidden_name
+            || validate_claims_names_are_not_forbidden(forbidden_name, &claim.claims)
+    })
+}
+
 fn validate_nested_claim_schemas(
     claims: &[CredentialClaimSchemaRequestDTO],
     config: &CoreConfig,
@@ -281,12 +315,8 @@ fn gather_claim_schemas<'a>(
 fn validate_revocation_method_is_compatible_with_format(
     request: &CreateCredentialSchemaRequestDTO,
     config: &CoreConfig,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    formatter: &dyn CredentialFormatter,
 ) -> Result<(), ServiceError> {
-    let formatter = formatter_provider
-        .get_formatter(&request.format)
-        .ok_or(MissingProviderError::Formatter(request.format.to_owned()))?;
-
     let revocation_method = config.revocation.get_fields(&request.revocation_method)?;
 
     if !formatter
