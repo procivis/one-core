@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use anyhow::{bail, Context};
 use one_providers::key_algorithm::imp::es256::Es256;
+use one_providers::key_storage::KeyStorage;
 use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
 use shared_types::KeyId;
 use uuid::Uuid;
 
 use crate::model::key::Key;
-use crate::provider::key_storage::KeyStorage;
 use crate::service::error::MissingProviderError;
 use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO};
 use crate::service::key::validator::validate_generate_csr_request;
@@ -81,7 +81,7 @@ impl KeyService {
         let key_id = Uuid::new_v4().into();
         let key = provider.generate(&key_id, &request.key_type).await?;
 
-        let key_entity = from_create_request(key_id, request, organisation, key);
+        let key_entity = from_create_request(key_id.into(), request, organisation, key);
 
         let uuid = self
             .key_repository
@@ -215,7 +215,7 @@ impl rcgen::RemoteKeyPair for RemoteKeyAdapter {
 
         futures::executor::block_on(async {
             self.key_storage
-                .sign(&self.key, msg)
+                .sign(&self.key.to_owned().into(), msg)
                 .await
                 .map_err(|error| {
                     tracing::error!(%error,  "Failed to sign CSR");

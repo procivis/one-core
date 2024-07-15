@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
+use one_providers::key_storage::provider::KeyProvider;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -28,7 +29,6 @@ use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::exchange_protocol::openid4vc::dto::{OpenID4VCICredential, OpenID4VCIProof};
 use crate::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::{
     CredentialDataByRole, CredentialRevocationState, RevocationMethodCapabilities,
 };
@@ -854,7 +854,7 @@ async fn obtain_and_update_new_mso(
         .clone();
 
     let auth_fn = key_provider
-        .get_signature_provider(&key, None)
+        .get_signature_provider(&key.to_owned().into(), None)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(

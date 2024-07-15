@@ -1,4 +1,5 @@
 use anyhow::Context;
+use one_providers::key_storage::model::KeySecurity;
 use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use url::Url;
@@ -33,7 +34,6 @@ use crate::provider::exchange_protocol::dto::{
 };
 use crate::provider::exchange_protocol::provider::DetectedProtocol;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
-use crate::provider::key_storage::KeySecurity;
 use crate::provider::revocation::lvvc::prepare_bearer_token;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,

@@ -1,6 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::{
+    key_algorithm::provider::KeyAlgorithmProvider, key_storage::provider::KeyProvider,
+};
 use serde_json::json;
 
 use crate::{
@@ -10,7 +12,7 @@ use crate::{
     },
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
-        did_method::provider::DidMethodProvider, key_storage::provider::KeyProvider,
+        did_method::provider::DidMethodProvider,
     },
     repository::{
         credential_repository::CredentialRepository,

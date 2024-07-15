@@ -5,12 +5,11 @@ use hex_literal::hex;
 use maplit::hashmap;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
+use one_providers::key_storage::provider::MockSignatureProvider;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::provider::credential_formatter::{
-    CredentialSchemaData, MockSignatureProvider, PublishedClaimValue,
-};
+use crate::provider::credential_formatter::{CredentialSchemaData, PublishedClaimValue};
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::service::test_utilities::generic_config;

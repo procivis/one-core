@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::key_storage::provider::KeyProvider;
 
 use crate::config::core_config;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
@@ -8,7 +9,6 @@ use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeriphe
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;

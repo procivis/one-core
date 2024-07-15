@@ -1,4 +1,5 @@
 use dto_mapper::convert_inner;
+use one_providers::key_storage::model::StorageGeneratedKey;
 use rcgen::{CertificateParams, CustomExtension, DistinguishedName, DnType};
 use shared_types::KeyId;
 use time::OffsetDateTime;
@@ -11,7 +12,6 @@ use crate::{
         key::{GetKeyList, Key},
         organisation::Organisation,
     },
-    provider::key_storage::StorageGeneratedKey,
     service::{
         error::ServiceError,
         key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO, KeyResponseDTO},

@@ -4,6 +4,9 @@ use std::vec;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
+use one_providers::key_storage::model::{KeySecurity, KeyStorageCapabilities};
+use one_providers::key_storage::provider::MockKeyProvider;
+use one_providers::key_storage::MockKeyStorage;
 use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -30,8 +33,6 @@ use crate::provider::exchange_protocol::dto::{
 };
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
-use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::provider::key_storage::{KeySecurity, KeyStorageCapabilities, MockKeyStorage};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;

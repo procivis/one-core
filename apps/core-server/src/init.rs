@@ -1,8 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
 use one_core::provider::key_algorithm::ml_dsa::MlDsa;
+use one_core::provider::key_storage::pkcs11::PKCS11KeyProvider;
 use one_core::{config::core_config::AppConfig, OneCoreBuilder};
-use one_core::{DataProviderCreator, KeyAlgorithmCreator, OneCore};
+use one_core::{DataProviderCreator, KeyAlgorithmCreator, KeyStorageCreator, OneCore};
 
 use one_providers::crypto::imp::hasher::sha256::SHA256;
 use one_providers::crypto::imp::signer::bbs::BBSSigner;
@@ -16,6 +17,10 @@ use one_providers::key_algorithm::imp::eddsa::Eddsa;
 use one_providers::key_algorithm::imp::es256::Es256;
 use one_providers::key_algorithm::imp::provider::KeyAlgorithmProviderImpl;
 use one_providers::key_algorithm::KeyAlgorithm;
+use one_providers::key_storage::imp::azure_vault::AzureVaultKeyProvider;
+use one_providers::key_storage::imp::internal::InternalKeyProvider;
+use one_providers::key_storage::imp::provider::KeyProviderImpl;
+use one_providers::key_storage::KeyStorage;
 use sentry::integrations::tracing::EventFilter;
 use sql_data_provider::{DataLayer, DbConn};
 use tracing_subscriber::prelude::*;
@@ -38,9 +43,6 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
         HashMap::from_iter(hashers),
         HashMap::from_iter(signers),
     ));
-
-    let storage_creator: DataProviderCreator =
-        Box::new(|exportable_storages| Arc::new(DataLayer::build(db_conn, exportable_storages)));
 
     let key_algo_creator: KeyAlgorithmCreator = Box::new(|config, providers| {
         let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
@@ -75,12 +77,58 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
         ))
     });
 
+    let key_storage_creator: KeyStorageCreator = Box::new(|config, providers| {
+        let mut key_providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
+
+        for (name, field) in config.iter() {
+            let provider = match field.r#type.as_str() {
+                "INTERNAL" => {
+                    let params = config
+                        .get(name)
+                        .expect("Internal key provider config is required");
+                    Arc::new(InternalKeyProvider::new(
+                        providers
+                            .key_algorithm_provider
+                            .as_ref()
+                            .expect("Missing key algorithm provider")
+                            .clone(),
+                        params,
+                    )) as _
+                }
+                "PKCS11" => Arc::new(PKCS11KeyProvider::new()) as _,
+                "AZURE_VAULT" => {
+                    let params = config.get(name).expect("AzureVault config is required");
+                    Arc::new(AzureVaultKeyProvider::new(
+                        params,
+                        providers
+                            .crypto
+                            .as_ref()
+                            .expect("Crypto provider is required")
+                            .clone(),
+                    )) as _
+                }
+                other => panic!("Unexpected key storage: {other}"),
+            };
+            key_providers.insert(name.to_owned(), provider);
+        }
+
+        Arc::new(KeyProviderImpl::new(key_providers.to_owned()))
+    });
+
+    let storage_creator: DataProviderCreator = Box::new(|| {
+        Arc::new(DataLayer::build(
+            db_conn,
+            vec!["INTERNAL".to_string(), "AZURE_VAULT".to_owned()],
+        ))
+    });
+
     OneCoreBuilder::new(app_config.core.clone())
         .with_base_url(app_config.app.core_base_url.to_owned())
         .with_crypto(crypto)
         .with_data_provider_creator(storage_creator)
         .with_json_ld_context(app_config.app.json_ld_context.to_owned())
         .with_key_algorithm_provider(key_algo_creator)
+        .with_key_storage_provider(key_storage_creator)
         .build()
         .expect("Failed to initialize core")
 }

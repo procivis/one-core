@@ -1,11 +1,13 @@
 use super::KeyService;
 
+use one_providers::key_storage::imp::provider::KeyProviderImpl;
+use one_providers::key_storage::model::StorageGeneratedKey;
+use one_providers::key_storage::{KeyStorage, MockKeyStorage};
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::provider::key_storage::StorageGeneratedKey;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::key::dto::{
     KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
@@ -15,7 +17,6 @@ use crate::{
         key::{GetKeyList, Key},
         organisation::Organisation,
     },
-    provider::key_storage::{provider::KeyProviderImpl, KeyStorage, MockKeyStorage},
     repository::{
         history_repository::MockHistoryRepository, key_repository::MockKeyRepository,
         organisation_repository::MockOrganisationRepository,

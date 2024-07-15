@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use one_providers::key_storage::provider::KeyProvider;
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -26,7 +27,6 @@ use crate::provider::credential_formatter::{mdoc_formatter, CredentialData};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
@@ -253,7 +253,7 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, Some(issuer_jwk_key_id))?;
+            .get_signature_provider(&key.to_owned().into(), Some(issuer_jwk_key_id))?;
 
         let redirect_uri = credential.redirect_uri.to_owned();
 

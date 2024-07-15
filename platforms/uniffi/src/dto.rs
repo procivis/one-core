@@ -21,7 +21,6 @@ use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
-use one_core::provider::key_storage::StorageGeneratedKey;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
@@ -58,6 +57,7 @@ use one_core::service::trust_anchor::dto::{
     GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO, SortableTrustAnchorColumn,
     TrustAnchorsListItemResponseDTO,
 };
+use one_providers::key_storage::model::StorageGeneratedKey;
 
 use crate::error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
 use crate::mapper::{optional_did_string, optional_time, serialize_config_entity};

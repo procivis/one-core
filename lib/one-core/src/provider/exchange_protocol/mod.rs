@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use one_providers::key_storage::provider::KeyProvider;
 use serde::{de, Serialize};
 use thiserror::Error;
 use url::Url;
@@ -21,7 +22,6 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::procivis_temp::ProcivisTemp;
 use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::DataRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
@@ -56,6 +56,8 @@ pub enum ExchangeProtocolError {
     InvalidRequest(String),
     #[error("Incorrect credential schema type")]
     IncorrectCredentialSchemaType,
+    #[error("Incorrect credential schema type")]
+    Other(anyhow::Error),
 }
 
 #[cfg_attr(test, mockall::automock)]

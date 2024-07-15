@@ -3,6 +3,7 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use mockall::predicate::*;
+use one_providers::key_storage::provider::MockKeyProvider;
 use serde_json::json;
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
@@ -33,7 +34,6 @@ use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
-use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{
     CredentialRevocationState, MockRevocationMethod, RevocationMethodCapabilities,

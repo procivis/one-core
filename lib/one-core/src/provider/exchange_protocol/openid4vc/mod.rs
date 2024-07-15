@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use dto::OpenID4VPBleData;
 use one_providers::crypto::imp::utilities;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::key_storage::provider::KeyProvider;
 use openidvc_ble::oidc_ble_holder::OpenID4VCBLEHolder;
 use openidvc_ble::oidc_ble_verifier::OpenID4VCBLEVerifier;
 use serde::de::DeserializeOwned;
@@ -67,7 +68,6 @@ use crate::provider::exchange_protocol::dto::{
 use crate::provider::exchange_protocol::mapper::{
     get_relevant_credentials_to_credential_schemas, proof_from_handle_invitation,
 };
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -371,7 +371,7 @@ impl ExchangeProtocol for OpenID4VC {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, jwk_key_id)
+            .get_signature_provider(&key.to_owned().into(), jwk_key_id)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let presentation_submission = create_presentation_submission(
@@ -495,7 +495,7 @@ impl ExchangeProtocol for OpenID4VC {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, jwk_key_id)
+            .get_signature_provider(&key.to_owned().into(), jwk_key_id)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(

@@ -139,14 +139,39 @@ macro_rules! impl_from {
 }
 pub(crate) use impl_from;
 
+/// Implements [`std::convert::From`]
+macro_rules! impl_from_unnamed {
+    ($newtype: ty; $inner: ty) => {
+        impl std::convert::From<$inner> for $newtype {
+            fn from(value: $inner) -> Self {
+                Self(value.into())
+            }
+        }
+    };
+}
+pub(crate) use impl_from_unnamed;
+
 /// Implements [`std::convert::Into`]
 macro_rules! impl_into {
     ($newtype: ty; $inner: ty) => {
         impl std::convert::From<$newtype> for $inner {
             fn from(value: $newtype) -> Self {
-                value.0
+                value.0.into()
             }
         }
     };
 }
 pub(crate) use impl_into;
+
+/// Implements [`std::convert::Into`]
+macro_rules! impl_into_unnamed {
+    ($newtype: ty; $inner: ty) => {
+        #[allow(clippy::from_over_into)]
+        impl std::convert::Into<$inner> for $newtype {
+            fn into(self) -> $inner {
+                <$inner>::from(self.0)
+            }
+        }
+    };
+}
+pub(crate) use impl_into_unnamed;

@@ -16,6 +16,7 @@ use indexmap::{IndexMap, IndexSet};
 use mdoc::DataElementValue;
 use one_providers::crypto::SignerError;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::key_storage::provider::{AuthenticationFn, SignatureProvider};
 use rand::RngCore;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -36,9 +37,9 @@ use self::mdoc::{
 use super::common::nest_claims;
 use super::model::{CredentialPresentation, CredentialSchema, CredentialSubject, Presentation};
 use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, ExtractPresentationCtx,
-    FormatPresentationCtx, FormatterCapabilities, PublishedClaim, SelectiveDisclosureOption,
-    SignatureProvider, TokenVerifier, VerificationFn,
+    CredentialData, CredentialFormatter, ExtractPresentationCtx, FormatPresentationCtx,
+    FormatterCapabilities, PublishedClaim, SelectiveDisclosureOption, TokenVerifier,
+    VerificationFn,
 };
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaType;

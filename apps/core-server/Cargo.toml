@@ -24,7 +24,6 @@ reqwest.workspace            = true
 serde.workspace              = true
 serde_json.workspace         = true
 serde_qs.workspace           = true
-serde_urlencoded.workspace   = true
 shadow-rs.workspace          = true
 thiserror.workspace          = true
 time.workspace               = true
@@ -43,14 +42,12 @@ serde_with.workspace         = true
 sentry                       = { version = "0.34", default-features = false, features = ["backtrace", "panic", "reqwest", "tracing"] }
 prometheus                   = { version = "0.13", features = ["process"] }
 clap                         = { version = "4.5", features = ["derive"] }
-one-open-core                = { workspace = true }
 one-providers                = { workspace = true }
 
 [build-dependencies]
 shadow-rs.workspace  = true
 serde                = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-codegen              = { version = "0.2" }
 
 [dev-dependencies]
 reqwest               = { version = "0.12", features = ["json"] }
@@ -58,8 +55,6 @@ wiremock.workspace    = true
 sql-data-provider     = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["test_utils"] }
 rand.workspace        = true
 indoc                 = { version = "2.0" }
-maplit                = { version = "1.0" }
-hex-literal           = { version = "0.4" }
 p256.workspace        = true
 
 [lints]

@@ -25,7 +25,6 @@ url.workspace        = true
 thiserror.workspace  = true
 async-trait          = { version = "0.1" }
 shared-types         = { version = "0.1.0", path = "../../lib/shared-types" }
-one-open-core        = { workspace = true }
 one-providers        = { workspace = true }
 
 [build-dependencies]

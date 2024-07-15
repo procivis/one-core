@@ -6,6 +6,7 @@ use mockall::predicate::{always, eq};
 use one_providers::key_algorithm::model::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
+use one_providers::key_storage::provider::MockKeyProvider;
 use serde_json::json;
 use shared_types::{DidId, DidValue, ProofId};
 use time::{Duration, OffsetDateTime};
@@ -42,7 +43,6 @@ use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
 };
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
-use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
 use crate::repository::credential_repository::MockCredentialRepository;

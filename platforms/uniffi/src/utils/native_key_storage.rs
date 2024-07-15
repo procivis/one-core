@@ -1,15 +1,17 @@
-use one_core::{provider::key_storage::StorageGeneratedKey, service::error::ServiceError};
-use one_providers::crypto::SignerError;
+use one_providers::{
+    crypto::SignerError,
+    key_storage::{error::KeyStorageError, model::StorageGeneratedKey},
+};
 
 /// Adapter between `NativeKeyStorage` interfaces (one_core lib and uniffi bindings)
 pub struct NativeKeyStorageWrapper(pub Box<dyn crate::dto::NativeKeyStorage>);
 
 impl one_core::provider::key_storage::secure_element::NativeKeyStorage for NativeKeyStorageWrapper {
-    fn generate_key(&self, key_alias: String) -> Result<StorageGeneratedKey, ServiceError> {
+    fn generate_key(&self, key_alias: String) -> Result<StorageGeneratedKey, KeyStorageError> {
         Ok(self
             .0
             .generate_key(key_alias)
-            .map_err(ServiceError::from)?
+            .map_err(|e| KeyStorageError::Failed(e.to_string()))?
             .into())
     }
 

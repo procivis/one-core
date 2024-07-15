@@ -1,9 +1,11 @@
 use std::sync::Arc;
 use std::vec;
 
-use async_trait::async_trait;
 use one_providers::crypto::CryptoProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+
+use async_trait::async_trait;
+use one_providers::key_storage::provider::AuthenticationFn;
 use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
 use shared_types::DidValue;
@@ -12,8 +14,8 @@ use time::Duration;
 use super::json_ld::model::LdCredential;
 use super::model::{CredentialPresentation, Presentation};
 use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, ExtractPresentationCtx,
-    FormatPresentationCtx, FormatterCapabilities, SelectiveDisclosureOption, VerificationFn,
+    CredentialData, CredentialFormatter, ExtractPresentationCtx, FormatPresentationCtx,
+    FormatterCapabilities, SelectiveDisclosureOption, VerificationFn,
 };
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;

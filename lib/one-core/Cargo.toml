@@ -27,7 +27,6 @@ strum.workspace            = true
 mockall                    = { workspace = true, optional = true }
 rand.workspace             = true
 sha2                       = { version = "0.10" }
-ed25519-compact            = { version = "2.1", features = ["pem"] }
 bit-vec                    = { version = "0.6" }
 flate2                     = { version = "1.0" }
 regex                      = { version = "1.10" }
@@ -35,12 +34,7 @@ url.workspace              = true
 figment                    = { version = "0.10", default-features = false }
 bs58                       = { version = "0.5" }
 strum_macros               = { version = "0.26" }
-cocoon                     = { version = "0.4" }
-tokio-util                 = { version = "0.7", features = ["compat"] }
 shared-types               = { version = "0.1.0", path = "../shared-types" }
-elliptic-curve.workspace   = true
-p256.workspace             = true
-fmap.workspace             = true
 pqc_dilithium              = { version = "0.2.0", git = "https://github.com/ihor-rud/dilithium", rev = "e02a683" }
 convert_case               = { version = "0.6" }
 contextual                 = { version = "0.1" }
@@ -49,17 +43,13 @@ locspan                    = { version = "0.7" }
 json-ld                    = { version = "0.15" }
 mime                       = { version = "0.3" }
 rdf-types                  = { version = "0.15" }
-sophia_iri                 = { version = "0.8" }
 sophia_jsonld              = { version = "0.8", features = ["http_client"] }
 sophia_api                 = { version = "0.8" }
 sophia_c14n                = { version = "0.8" }
-pairing_crypto             = { version = "0.4", git = "https://github.com/Iskander508/pairing_crypto", rev = "517a424a989b57b987aacb3642bd7cd2c60b94d1" }
-hmac                       = { version = "0.12" }
 ciborium                   = { version = "0.2" }
 coset                      = { version = "0.3" }
 tempfile.workspace         = true
 zip                        = { version = "2.1" }
-pbkdf2                     = { version = "0.12", features = ["simple"] }
 futures.workspace          = true
 tracing.workspace          = true
 hex.workspace              = true
@@ -73,7 +63,6 @@ x509-parser                = { version = "0.16", features = ["verify"] }
 ouroboros                  = { version = "0.18" }
 itertools                  = { version = "0.13" }
 urlencoding                = { version = "2.1" }
-one-open-core              = { workspace = true }
 one-providers              = { workspace = true }
 x25519-dalek               = { version = "2.0.1" }
 hkdf                       = { version = "0.12.4" }
@@ -90,7 +79,6 @@ rusty-fork         = { version = "0.3" }
 hex-literal        = { version = "0.4" }
 maplit             = { version = "1.0" }
 rstest             = { version = "0.21" }
-one-open-core      = { workspace = true }
 one-providers      = { workspace = true, features = ["mock"] }
 
 [build-dependencies]

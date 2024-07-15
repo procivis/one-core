@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use one_providers::key_storage::provider::AuthenticationFn;
 use serde::Deserialize;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
@@ -18,8 +19,8 @@ use super::{
     error::FormatterError,
     jwt::model::JWTPayload,
     model::{CredentialPresentation, DetailCredential, Presentation},
-    AuthenticationFn, Context, CredentialData, CredentialFormatter, ExtractPresentationCtx,
-    FormatPresentationCtx, FormatterCapabilities, VerificationFn,
+    Context, CredentialData, CredentialFormatter, ExtractPresentationCtx, FormatPresentationCtx,
+    FormatterCapabilities, VerificationFn,
 };
 
 pub struct JWTFormatter {
