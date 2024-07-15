@@ -381,6 +381,9 @@ pub enum ValidationError {
 
     #[error("Schema id not allowed for format")]
     SchemaIdNotAllowedForFormat,
+
+    #[error("Proof schema must contain only one physical card credential schema")]
+    OnlyOnePhysicalCardSchemaAllowedPerProof,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -780,6 +783,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Imported proof schema error")]
     BR_0135,
 
+    #[strum(to_string = "Proof schema must contain only one physical card credential schema")]
+    BR_0137,
+
     #[strum(to_string = "Missing MDOC doctype")]
     BR_0138,
 
@@ -964,6 +970,7 @@ impl ValidationError {
             ValidationError::ValidityConstraintMissingForLvvc => ErrorCode::BR_0140,
             ValidationError::CertificateRequestedForMoreThan457Days => ErrorCode::BR_0084,
             ValidationError::NestedClaimInArrayRequested => ErrorCode::BR_0125,
+            ValidationError::OnlyOnePhysicalCardSchemaAllowedPerProof => ErrorCode::BR_0137,
         }
     }
 }

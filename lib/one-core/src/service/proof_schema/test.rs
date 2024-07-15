@@ -461,6 +461,150 @@ async fn test_create_proof_schema_success() {
 }
 
 #[tokio::test]
+async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
+    let claim_schema_id = Uuid::new_v4().into();
+    let claim_schema = ClaimSchema {
+        id: claim_schema_id,
+        key: "key".to_string(),
+        data_type: "STRING".to_string(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        array: false,
+    };
+
+    let claim_schema_id_2 = Uuid::new_v4().into();
+    let claim_schem_2 = ClaimSchema {
+        id: claim_schema_id_2,
+        key: "key1".to_string(),
+        data_type: "STRING".to_string(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        array: false,
+    };
+
+    let formatter_provider = MockCredentialFormatterProvider::default();
+
+    let organisation_id = Uuid::new_v4().into();
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .times(1)
+        .with(eq(organisation_id), eq(OrganisationRelations::default()))
+        .returning(|id, _| {
+            Ok(Some(Organisation {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }))
+        });
+
+    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    let credential_schema_id_2: CredentialSchemaId = Uuid::new_v4().into();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .times(1)
+        .returning(move |_, _| {
+            let schema = CredentialSchema {
+                id: credential_schema_id,
+                deleted_at: None,
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "credential-schema".to_string(),
+                format: "PHYSICAL_CARD".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: None,
+                claim_schemas: Some(vec![CredentialSchemaClaim {
+                    schema: claim_schema.clone(),
+                    required: false,
+                }]),
+                organisation: None,
+                layout_type: LayoutType::Card,
+                layout_properties: None,
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                schema_id: "CredentialSchemaId".to_owned(),
+            };
+
+            let schema_2 = CredentialSchema {
+                id: credential_schema_id_2,
+                deleted_at: None,
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "credential-schema-2".to_string(),
+                format: "PHYSICAL_CARD".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: None,
+                claim_schemas: Some(vec![CredentialSchemaClaim {
+                    schema: claim_schem_2.clone(),
+                    required: false,
+                }]),
+                organisation: None,
+                layout_type: LayoutType::Card,
+                layout_properties: None,
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                schema_id: "CredentialSchemaId".to_owned(),
+            };
+
+            Ok(GetListResponse {
+                values: vec![schema, schema_2],
+                total_pages: 1,
+                total_items: 1,
+            })
+        });
+
+    let create_request = CreateProofSchemaRequestDTO {
+        name: "name".to_string(),
+        expire_duration: 0,
+        organisation_id,
+        proof_input_schemas: vec![
+            ProofInputSchemaRequestDTO {
+                claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
+                    id: claim_schema_id,
+                    required: true,
+                }],
+                credential_schema_id,
+                validity_constraint: None,
+            },
+            ProofInputSchemaRequestDTO {
+                claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
+                    id: claim_schema_id_2,
+                    required: true,
+                }],
+                credential_schema_id: credential_schema_id_2,
+                validity_constraint: None,
+            },
+        ],
+    };
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+
+    let proof_schema = generic_proof_schema();
+
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .times(1)
+        .returning(move |_| {
+            Ok(GetProofSchemaList {
+                values: vec![proof_schema.clone()],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+
+    let service = setup_service(
+        proof_schema_repository,
+        credential_schema_repository,
+        organisation_repository,
+        formatter_provider,
+    );
+
+    let result = service.create_proof_schema(create_request).await;
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::Validation(ValidationError::OnlyOnePhysicalCardSchemaAllowedPerProof)
+    )));
+}
+
+#[tokio::test]
 async fn test_create_proof_schema_array_object_fail() {
     let claim_schema_root = ClaimSchema {
         id: Uuid::new_v4().into(),
