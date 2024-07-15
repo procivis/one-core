@@ -6,8 +6,9 @@ keyStorage:
     params:
       private:
         aliasPrefix: "ch.procivis.one.wallet.keys"
-jsonLdContext:
-  cacheSize: 100
+cacheEntites:
+  JSON_LD_CONTEXT:
+    cacheSize: 100
 transport:
   BLE:
     type: "BLE"

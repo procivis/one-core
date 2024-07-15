@@ -6,6 +6,7 @@ use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
 use async_trait::async_trait;
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
 use one_providers::key_storage::provider::AuthenticationFn;
 use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
@@ -20,7 +21,6 @@ use super::{
     FormatterCapabilities, SelectiveDisclosureOption, VerificationFn,
 };
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 use crate::provider::credential_formatter::model::DetailCredential;
 
 mod base_proof;

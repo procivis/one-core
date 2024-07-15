@@ -2,12 +2,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use config::ConfigError;
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
+use one_providers::credential_formatter::imp::json_ld::context::storage::in_memory_storage::InMemoryStorage;
+use one_providers::credential_formatter::imp::json_ld::context::storage::JsonLdContextStorage;
 use one_providers::crypto::CryptoProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
-use provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 
 use config::core_config::{CoreConfig, KeyAlgorithmConfig, KeyStorageConfig};
 
@@ -35,7 +37,10 @@ use service::trust_anchor::TrustAnchorService;
 use service::trust_entity::TrustEntityService;
 use time::Duration;
 
-use crate::config::core_config::{DidConfig, JsonLdContextConfig};
+use crate::config::core_config::{
+    CacheEntitiesConfig, DidConfig, JsonLdContextCacheType, JsonLdContextConfig,
+};
+use crate::provider::credential_formatter::json_ld::storage::db_storage::DbStorage;
 
 pub mod config;
 pub mod provider;
@@ -113,7 +118,7 @@ pub struct OneCoreBuilderProviders {
 pub struct OneCoreBuilder {
     core_config: CoreConfig,
     providers: OneCoreBuilderProviders,
-    json_ld_context_config: Option<JsonLdContextConfig>,
+    cache_entities_config: Option<CacheEntitiesConfig>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     ble_central: Option<Arc<dyn BleCentral>>,
     data_provider_creator: Option<DataProviderCreator>,
@@ -183,11 +188,11 @@ impl OneCoreBuilder {
     // }
 
     // Temprary - move to particular implementation or config
-    pub fn with_json_ld_context(
+    pub fn with_cache_entities_config(
         mut self,
-        json_ld_context_config: Option<JsonLdContextConfig>,
+        cache_entities_config: Option<CacheEntitiesConfig>,
     ) -> Self {
-        self.json_ld_context_config = json_ld_context_config;
+        self.cache_entities_config = cache_entities_config;
         self
     }
 
@@ -206,7 +211,7 @@ impl OneCoreBuilder {
             self.data_provider_creator
                 .expect("Data provider is required"),
             self.core_config,
-            self.json_ld_context_config,
+            self.cache_entities_config,
             self.ble_peripheral,
             self.ble_central,
             self.providers,
@@ -220,7 +225,7 @@ impl OneCore {
     pub fn new(
         data_provider_creator: DataProviderCreator,
         mut core_config: CoreConfig,
-        json_ld_context_config: Option<JsonLdContextConfig>,
+        cache_entities_config: Option<CacheEntitiesConfig>,
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         ble_central: Option<Arc<dyn BleCentral>>,
         providers: OneCoreBuilderProviders,
@@ -257,16 +262,35 @@ impl OneCore {
 
         let data_provider = data_provider_creator();
 
-        let json_ld_context_config = json_ld_context_config.unwrap_or(JsonLdContextConfig {
-            cache_refresh_timeout: Duration::seconds(86400),
-            cache_size: 100,
+        let cache_entities_config = cache_entities_config.unwrap_or(CacheEntitiesConfig {
+            entities: HashMap::from([(
+                "JSON_LD_CONTEXT".to_string(),
+                JsonLdContextConfig {
+                    cache_refresh_timeout: Duration::seconds(86400),
+                    cache_size: 100,
+                    cache_type: JsonLdContextCacheType::Db,
+                },
+            )]),
         });
 
+        let json_ld_context_config = cache_entities_config
+            .entities
+            .get("JSON_LD_CONTEXT")
+            .map(|v| v.to_owned())
+            .unwrap_or_default();
+        let json_ld_context_storage: Arc<dyn JsonLdContextStorage> = match json_ld_context_config
+            .cache_type
+        {
+            JsonLdContextCacheType::Db => Arc::new(DbStorage::new(
+                data_provider.get_json_ld_context_repository(),
+            )),
+            JsonLdContextCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
+        };
         let caching_loader = CachingLoader {
-            cache_size: json_ld_context_config.cache_size,
+            cache_size: json_ld_context_config.cache_size as usize,
             cache_refresh_timeout: json_ld_context_config.cache_refresh_timeout,
-            client: Default::default(),
-            json_ld_context_repository: data_provider.get_json_ld_context_repository(),
+            client: reqwest::Client::new(),
+            json_ld_context_storage,
         };
 
         let credential_formatters = credential_formatters_from_config(

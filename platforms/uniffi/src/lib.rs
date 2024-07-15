@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 
 use error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
 use one_core::{
-    config::core_config::{self, AppConfig, JsonLdContextConfig},
+    config::core_config::{self, AppConfig},
     provider::{
         key_algorithm::ml_dsa::MlDsa, key_storage::secure_element::SecureElementKeyProvider,
     },
@@ -44,6 +44,7 @@ mod utils;
 
 use binding::OneCoreBinding;
 use dto::*;
+use one_core::config::core_config::CacheEntitiesConfig;
 
 uniffi::include_scaffolding!("one_core");
 
@@ -84,7 +85,7 @@ fn initialize_core(
         let ble_peripheral = ble_peripheral.clone();
         let ble_central = ble_central.clone();
 
-        let json_ld_context_config = placeholder_config.app.json_ld_context.to_owned();
+        let cache_entities_config = placeholder_config.app.cache_entities.to_owned();
         Box::pin(async move {
             let db_url = format!("sqlite:{db_path}?mode=rwc");
             let db_conn = sql_data_provider::db_conn(db_url, true)
@@ -168,7 +169,7 @@ fn initialize_core(
             OneCoreBuilder::new(core_config.clone())
                 .with_crypto(crypto)
                 .with_data_provider_creator(storage_creator)
-                .with_json_ld_context(json_ld_context_config)
+                .with_cache_entities_config(cache_entities_config)
                 .with_key_algorithm_provider(key_algo_creator)
                 .with_key_storage_provider(key_storage_creator)
                 .with_ble(ble_peripheral, ble_central)
@@ -223,5 +224,5 @@ fn initialize_holder_core(
 #[serde(rename_all = "camelCase")]
 pub struct MobileConfig {
     #[serde(default)]
-    pub json_ld_context: Option<JsonLdContextConfig>,
+    pub cache_entities: Option<CacheEntitiesConfig>,
 }

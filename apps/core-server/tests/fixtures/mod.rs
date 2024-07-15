@@ -1,5 +1,7 @@
 use core_server::ServerConfig;
-use one_core::config::core_config::{self, AppConfig, JsonLdContextConfig};
+use one_core::config::core_config::{
+    self, AppConfig, CacheEntitiesConfig, JsonLdContextCacheType, JsonLdContextConfig,
+};
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
@@ -32,6 +34,7 @@ use rand::Rng;
 use shared_types::{CredentialId, DidId, DidValue, KeyId, ProofId};
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
+use std::collections::HashMap;
 use std::str::FromStr;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -103,9 +106,15 @@ pub fn create_config(
         sentry_environment: None,
         trace_level: Some("debug,hyper=error,sea_orm=info,sqlx::query=error".into()),
         hide_error_response_cause: true,
-        json_ld_context: Some(JsonLdContextConfig {
-            cache_refresh_timeout: Duration::seconds(86400),
-            cache_size: 1000,
+        cache_entities: Some(CacheEntitiesConfig {
+            entities: HashMap::from([(
+                "JSON_LD_CONTEXT".to_string(),
+                JsonLdContextConfig {
+                    cache_refresh_timeout: Duration::seconds(86400),
+                    cache_size: 1000,
+                    cache_type: JsonLdContextCacheType::Db,
+                },
+            )]),
         }),
     };
 

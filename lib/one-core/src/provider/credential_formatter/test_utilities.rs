@@ -1,25 +1,27 @@
+use mockall::predicate;
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
+use shared_types::DidValue;
 use std::str::FromStr as _;
 use std::sync::Arc;
-
-use mockall::predicate;
-use shared_types::DidValue;
-use time::macros::datetime;
-use time::{Duration, OffsetDateTime};
+use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::JsonLdContextConfig;
-use crate::model::credential_schema::LayoutType;
-use crate::model::did::DidType;
 use crate::model::json_ld_context::JsonLdContext;
-use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
+use crate::provider::credential_formatter::json_ld::storage::db_storage::DbStorage;
 use crate::repository::json_ld_context_repository::MockJsonLdContextRepository;
-use crate::service::credential::dto::{
-    CredentialDetailResponseDTO, CredentialRole, CredentialSchemaType, CredentialStateEnum,
-    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
-    DetailCredentialSchemaResponseDTO,
+use crate::service::credential::dto::DetailCredentialClaimValueResponseDTO;
+use crate::{
+    model::{credential_schema::LayoutType, did::DidType},
+    service::{
+        credential::dto::{
+            CredentialDetailResponseDTO, CredentialRole, CredentialSchemaType, CredentialStateEnum,
+            DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
+        },
+        credential_schema::dto::CredentialClaimSchemaDTO,
+        did::dto::DidListItemResponseDTO,
+    },
 };
-use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
-use crate::service::did::dto::DidListItemResponseDTO;
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
@@ -221,10 +223,12 @@ pub fn prepare_caching_loader() -> CachingLoader {
     let config = prepare_json_ld_context_config();
 
     CachingLoader {
-        cache_size: config.cache_size,
+        cache_size: config.cache_size as usize,
         cache_refresh_timeout: config.cache_refresh_timeout,
         client: Default::default(),
-        json_ld_context_repository: Arc::new(prepare_json_ld_context_repository()),
+        json_ld_context_storage: Arc::new(DbStorage::new(Arc::new(
+            prepare_json_ld_context_repository(),
+        ))),
     }
 }
 
@@ -232,6 +236,7 @@ pub fn prepare_json_ld_context_config() -> JsonLdContextConfig {
     JsonLdContextConfig {
         cache_refresh_timeout: Duration::seconds(999999),
         cache_size: 10000,
+        cache_type: Default::default(),
     }
 }
 
@@ -240,7 +245,7 @@ pub fn prepare_json_ld_context_repository() -> MockJsonLdContextRepository {
     repository
         .expect_get_json_ld_context_by_url()
         .with(predicate::eq("https://www.w3.org/ns/credentials/v2"))
-        .return_once(|url| {
+        .returning(|url| {
             let now = OffsetDateTime::now_utc();
             Ok(Some(JsonLdContext {
                 id: Uuid::new_v4().into(),
@@ -257,7 +262,7 @@ pub fn prepare_json_ld_context_repository() -> MockJsonLdContextRepository {
         .with(predicate::eq(
             "https://www.w3.org/ns/credentials/examples/v2",
         ))
-        .return_once(|url| {
+        .returning(|url| {
             let now = OffsetDateTime::now_utc();
             Ok(Some(JsonLdContext {
                 id: Uuid::new_v4().into(),
@@ -271,11 +276,9 @@ pub fn prepare_json_ld_context_repository() -> MockJsonLdContextRepository {
 
     repository
         .expect_update_json_ld_context()
-        .times(..)
         .returning(|_| Ok(()));
     repository
         .expect_get_repository_size()
-        .times(..)
         .returning(|| Ok(2u32));
 
     repository
