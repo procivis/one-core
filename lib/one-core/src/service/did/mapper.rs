@@ -1,20 +1,21 @@
 use dto_mapper::convert_inner;
-use shared_types::{DidId, DidValue, KeyId};
+use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 
 use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO};
 use crate::service::error::EntityNotFoundError;
 use crate::{
     model::{
         did::{Did, GetDidList, KeyRole, RelatedKey},
-        key::Key,
         organisation::Organisation,
     },
     service::{error::ServiceError, key::dto::KeyListItemResponseDTO},
 };
+use one_providers::common_models::key::{Key, KeyId};
+use one_providers::common_models::PublicKeyJwk;
+use one_providers::did::model::{DidDocument, DidVerificationMethod};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -82,7 +83,7 @@ pub(super) fn did_from_did_request(
                 key: found_keys
                     .iter()
                     .find(|key| key.id == key_id)
-                    .ok_or(EntityNotFoundError::Key(key_id))?
+                    .ok_or(EntityNotFoundError::Key(key_id.into()))?
                     .clone(),
             });
         }
@@ -118,14 +119,14 @@ pub(super) fn did_from_did_request(
 pub(super) fn map_did_model_to_did_web_response(
     did: &Did,
     keys: &[RelatedKey],
-    grouped_key: &HashMap<KeyId, DidVerificationMethodDTO>,
-) -> Result<DidDocumentDTO, ServiceError> {
-    Ok(DidDocumentDTO {
+    grouped_key: &HashMap<KeyId, DidVerificationMethod>,
+) -> Result<DidDocument, ServiceError> {
+    Ok(DidDocument {
         context: serde_json::json!([
             "https://www.w3.org/ns/did/v1",
             "https://w3id.org/security/suites/jws-2020/v1",
         ]),
-        id: did.did.clone(),
+        id: did.did.clone().into(),
         verification_method: grouped_key.values().cloned().collect(),
         authentication: get_key_id_by_role(KeyRole::Authentication, keys, grouped_key)?.into(),
         assertion_method: get_key_id_by_role(KeyRole::AssertionMethod, keys, grouped_key)?.into(),
@@ -149,7 +150,7 @@ pub(super) fn map_did_model_to_did_web_response(
 pub(super) fn get_key_id_by_role(
     role: KeyRole,
     keys: &[RelatedKey],
-    group: &HashMap<KeyId, DidVerificationMethodDTO>,
+    group: &HashMap<KeyId, DidVerificationMethod>,
 ) -> Result<Vec<String>, ServiceError> {
     keys.iter()
         .filter(|key| key.role == role)
@@ -166,9 +167,9 @@ pub(super) fn get_key_id_by_role(
 pub(super) fn map_key_to_verification_method(
     did_value: &DidValue,
     public_key_id: &KeyId,
-    public_key_jwk: PublicKeyJwkDTO,
-) -> Result<DidVerificationMethodDTO, ServiceError> {
-    Ok(DidVerificationMethodDTO {
+    public_key_jwk: PublicKeyJwk,
+) -> Result<DidVerificationMethod, ServiceError> {
+    Ok(DidVerificationMethod {
         id: format!("{}#key-{}", did_value, public_key_id),
         r#type: "JsonWebKey2020".to_string(),
         controller: did_value.to_string(),

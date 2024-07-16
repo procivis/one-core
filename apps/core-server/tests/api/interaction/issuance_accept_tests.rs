@@ -151,7 +151,7 @@ async fn test_issuance_accept_procivis_temp_with_key_id() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
         .await;
 
     // THEN
@@ -334,7 +334,7 @@ async fn test_fail_issuance_accept_procivis_temp_wrong_key_role() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
         .await;
 
     // THEN
@@ -472,7 +472,7 @@ async fn test_fail_issuance_accept_procivis_temp_wallet_storage_type_not_met() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
         .await;
 
     // THEN
@@ -644,7 +644,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
         .await;
 
     assert_eq!(resp.status(), 204);
@@ -874,7 +874,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
         .await;
 
     // THEN
@@ -1044,7 +1044,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
         .await;
 
     // THEN

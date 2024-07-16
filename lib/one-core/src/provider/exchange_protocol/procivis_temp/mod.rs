@@ -26,7 +26,6 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
 };
 use crate::model::did::{Did, DidRelations, KeyRole};
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -50,6 +49,7 @@ use crate::service::credential::dto::{
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 use crate::service::ssi_issuer::dto::ConnectIssuerResponseDTO;
+use one_providers::common_models::key::Key;
 
 const REDIRECT_URI_QUERY_PARAM_KEY: &str = "redirect_uri";
 
@@ -220,7 +220,7 @@ impl ExchangeProtocol for ProcivisTemp {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(&key.to_owned().into(), jwk_key_id)
+            .get_signature_provider(&key.to_owned(), jwk_key_id)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let tokens: Vec<String> = credential_presentations

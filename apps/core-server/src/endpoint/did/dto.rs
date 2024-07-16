@@ -2,7 +2,7 @@ use crate::{
     dto::common::ListQueryParamsRest, endpoint::key::dto::KeyListItemResponseRestDTO,
     mapper::MapperError, serialize::front_time,
 };
-use dto_mapper::try_convert_inner;
+use dto_mapper::{convert_inner, try_convert_inner};
 use dto_mapper::{From, Into, TryFrom};
 use one_core::service::did::dto::{
     CreateDidRequestKeysDTO, DidListItemResponseDTO, DidPatchRequestDTO, DidResponseDTO,
@@ -107,10 +107,15 @@ pub struct CreateDidRequestRestDTO {
 #[into(CreateDidRequestKeysDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateDidRequestKeysRestDTO {
+    #[into(with_fn = convert_inner)]
     pub authentication: Vec<KeyId>,
+    #[into(with_fn = convert_inner)]
     pub assertion_method: Vec<KeyId>,
+    #[into(with_fn = convert_inner)]
     pub key_agreement: Vec<KeyId>,
+    #[into(with_fn = convert_inner)]
     pub capability_invocation: Vec<KeyId>,
+    #[into(with_fn = convert_inner)]
     pub capability_delegation: Vec<KeyId>,
 }
 

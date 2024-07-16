@@ -2,10 +2,17 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use one_providers::common_models::did::{DidId, DidValue};
+use one_providers::common_models::key::Key;
+use one_providers::did::error::DidMethodError;
+use one_providers::did::imp::common::jwk_context;
+use one_providers::did::imp::key_helpers::{decode_did, generate_document, DidKeyType};
+use one_providers::did::keys::Keys;
+use one_providers::did::model::{
+    AmountOfKeys, DidCapabilities, DidDocument, DidVerificationMethod, Operation,
+};
+use one_providers::did::DidMethod;
 use ouroboros::self_referencing;
-use serde::{Deserialize, Deserializer};
-use serde_json::json;
-use shared_types::{DidId, DidValue};
 pub use validator::{DidMdlValidationError, DidMdlValidator};
 use x509_parser::certificate::X509Certificate;
 use x509_parser::oid_registry::{OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG_ED25519};
@@ -13,28 +20,19 @@ use x509_parser::pem::Pem;
 
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
-use super::common::jwk_context;
-use super::dto::{AmountOfKeys, DidDocumentDTO, DidVerificationMethodDTO, Keys};
-use super::{DidCapabilities, DidMethod, DidMethodError, Operation};
-use crate::config::core_config::{self, DidType, Fields};
-use crate::model::key::Key;
-
 #[cfg(test)]
 mod test;
-mod validator;
+pub(crate) mod validator;
 
 pub struct DidMdl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     params: InnerParams,
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Default)]
 pub struct Params {
-    #[serde(default)]
-    keys: Keys,
-    #[serde(deserialize_with = "deserialize_base64")]
-    iaca_certificate: Vec<u8>,
+    pub keys: Keys,
+    pub iaca_certificate: Vec<u8>,
 }
 
 #[self_referencing]
@@ -103,7 +101,7 @@ impl DidMethod for DidMdl {
         Ok(DidValue::from(did_mdl))
     }
 
-    async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
+    async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodError> {
         if let Some(certificate) = did.as_str().strip_prefix("did:mdl:certificate:") {
             let certificate = Base64UrlSafeNoPadding::decode_to_vec(certificate, None)
                 .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?;
@@ -151,14 +149,14 @@ impl DidMethod for DidMdl {
                 .and_then(|key| key_algorithm.bytes_to_jwk(&key, None))
                 .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?;
 
-            let verification_method = DidVerificationMethodDTO {
+            let verification_method = DidVerificationMethod {
                 id: id.clone(),
                 r#type: "JsonWebKey2020".into(),
                 controller: did.to_string(),
-                public_key_jwk: public_key_jwk.into(),
+                public_key_jwk,
             };
 
-            Ok(DidDocumentDTO {
+            Ok(DidDocument {
                 context: jwk_context(),
                 id: did.to_owned(),
                 verification_method: vec![verification_method],
@@ -170,15 +168,12 @@ impl DidMethod for DidMdl {
                 rest: Default::default(),
             })
         } else if let Some(mdl_public_key) = did.as_str().strip_prefix("did:mdl:public_key:") {
-            let did_key: DidValue = match format!("did:key:{mdl_public_key}").parse() {
-                Ok(did_key) => did_key,
-                Err(err) => match err {},
-            };
+            let did_key = DidValue::from(format!("did:key:{mdl_public_key}"));
 
-            let decoded_did_key = super::key::decode_did(&did_key)?;
-            let algorithm = if decoded_did_key.type_.is_ecdsa() {
+            let decoded_did_key = decode_did(&did_key)?;
+            let algorithm = if decoded_did_key.type_ == DidKeyType::Ecdsa {
                 "ES256"
-            } else if decoded_did_key.type_.is_eddsa() {
+            } else if decoded_did_key.type_ == DidKeyType::Eddsa {
                 "EDDSA"
             } else {
                 return Err(DidMethodError::ResolutionError(format!(
@@ -197,7 +192,7 @@ impl DidMethod for DidMdl {
                 .bytes_to_jwk(&decoded_did_key.decoded_multibase, None)
                 .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?;
 
-            super::key::generate_document(decoded_did_key, &did_key, public_key_jwk.into())
+            generate_document(decoded_did_key, &did_key, public_key_jwk)
         } else {
             Err(DidMethodError::ResolutionError(format!(
                 "`{}` cannot be resolved as did:mdl",
@@ -225,17 +220,8 @@ impl DidMethod for DidMdl {
         self.params.borrow_keys().validate_keys(keys)
     }
 
-    fn visit_config_fields(&self, fields: &Fields<DidType>) -> Fields<DidType> {
-        Fields {
-            capabilities: Some(json!(self.get_capabilities())),
-            params: Some(core_config::Params {
-                public: Some(json!({
-                    "keys": self.params.borrow_keys(),
-                })),
-                private: None,
-            }),
-            ..fields.clone()
-        }
+    fn get_keys(&self) -> Option<Keys> {
+        Some(self.params.borrow_keys().to_owned())
     }
 }
 
@@ -291,13 +277,4 @@ fn select_key(keys: &[Key]) -> Result<&Key, DidMethodError> {
     };
 
     Ok(key)
-}
-
-fn deserialize_base64<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-
-    Base64UrlSafeNoPadding::decode_to_vec(s, None).map_err(serde::de::Error::custom)
 }

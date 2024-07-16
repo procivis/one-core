@@ -461,8 +461,8 @@ where
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    pub(crate) public: Option<Value>,
-    pub(crate) private: Option<Value>,
+    pub public: Option<Value>,
+    pub private: Option<Value>,
 }
 
 impl Params {

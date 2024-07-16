@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::ClaimSchemaRelations;
 use one_core::model::credential_schema::CredentialSchemaRelations;
 use one_core::model::did::{Did, DidRelations};
 use one_core::model::interaction::Interaction;
-use one_core::model::key::{Key, KeyRelations};
+use one_core::model::key::KeyRelations;
 use one_core::model::organisation::OrganisationRelations;
 use one_core::model::proof::{
     Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
@@ -14,8 +12,10 @@ use one_core::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use one_core::repository::proof_repository::ProofRepository;
+use one_providers::common_models::key::Key;
 use shared_types::ProofId;
 use sql_data_provider::test_utilities::get_dummy_date;
+use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct ProofsDB {

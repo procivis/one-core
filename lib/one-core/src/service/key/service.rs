@@ -1,18 +1,19 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Context};
+use one_providers::common_models::key::Key;
 use one_providers::key_algorithm::imp::es256::Es256;
 use one_providers::key_storage::KeyStorage;
 use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
 use shared_types::KeyId;
 use uuid::Uuid;
 
-use crate::model::key::Key;
+use crate::model::key::KeyRelations;
 use crate::service::error::MissingProviderError;
 use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO};
 use crate::service::key::validator::validate_generate_csr_request;
 use crate::{
-    model::{key::KeyRelations, organisation::OrganisationRelations},
+    model::organisation::OrganisationRelations,
     repository::error::DataLayerError,
     service::{
         error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
@@ -40,7 +41,7 @@ impl KeyService {
         let key = self
             .key_repository
             .get_key(
-                key_id,
+                &key_id.to_owned().into(),
                 &KeyRelations {
                     organisation: Some(OrganisationRelations::default()),
                 },
@@ -81,7 +82,7 @@ impl KeyService {
         let key_id = Uuid::new_v4().into();
         let key = provider.generate(&key_id, &request.key_type).await?;
 
-        let key_entity = from_create_request(key_id.into(), request, organisation, key);
+        let key_entity = from_create_request(key_id, request, organisation.into(), key);
 
         let uuid = self
             .key_repository
@@ -99,7 +100,7 @@ impl KeyService {
             .create_history(key_create_history_event(key_entity))
             .await;
 
-        Ok(uuid)
+        Ok(uuid.into())
     }
 
     /// Returns list of keys according to query
@@ -129,7 +130,7 @@ impl KeyService {
         let key = self
             .key_repository
             .get_key(
-                key_id,
+                &key_id.to_owned().into(),
                 &KeyRelations {
                     organisation: Some(OrganisationRelations::default()),
                 },
@@ -215,7 +216,7 @@ impl rcgen::RemoteKeyPair for RemoteKeyAdapter {
 
         futures::executor::block_on(async {
             self.key_storage
-                .sign(&self.key.to_owned().into(), msg)
+                .sign(&self.key.to_owned(), msg)
                 .await
                 .map_err(|error| {
                     tracing::error!(%error,  "Failed to sign CSR");

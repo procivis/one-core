@@ -1,19 +1,15 @@
-use std::{collections::HashMap, sync::Arc};
-
-use one_providers::{
-    key_algorithm::provider::KeyAlgorithmProvider, key_storage::provider::KeyProvider,
-};
+use one_providers::did::provider::DidMethodProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::key_storage::provider::KeyProvider;
 use serde_json::json;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     config::{
         core_config::{RevocationConfig, RevocationType},
         ConfigError,
     },
-    provider::{
-        credential_formatter::provider::CredentialFormatterProvider,
-        did_method::provider::DidMethodProvider,
-    },
+    provider::credential_formatter::provider::CredentialFormatterProvider,
     repository::{
         credential_repository::CredentialRepository,
         revocation_list_repository::RevocationListRepository,

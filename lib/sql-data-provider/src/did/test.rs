@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
 use one_core::model::did::{DidFilterValue, DidListQuery};
 use one_core::model::did::{KeyRole, RelatedKey};
-use one_core::model::key::{Key, KeyRelations};
+use one_core::model::key::KeyRelations;
 use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
@@ -13,9 +11,11 @@ use one_core::model::{
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
+use one_providers::common_models::key::Key;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use shared_types::{DidId, DidValue};
+use std::sync::Arc;
 use time::macros::datetime;
 use uuid::Uuid;
 
@@ -62,7 +62,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
             last_modified: get_dummy_date(),
         },
         key: Key {
-            id: key_id,
+            id: key_id.into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             public_key: vec![],
@@ -107,7 +107,7 @@ async fn setup_with_did(repositories: Repositories) -> TestSetupWithDid {
     .await
     .unwrap();
 
-    insert_key_did(&db, *did_id, key.id, KeyRole::Authentication.into())
+    insert_key_did(&db, *did_id, key.id.into(), KeyRole::Authentication.into())
         .await
         .unwrap();
 

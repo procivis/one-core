@@ -13,11 +13,11 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::FormatterCapabilities;
+use one_providers::common_models::key::Key;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

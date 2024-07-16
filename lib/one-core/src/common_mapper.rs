@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use dto_mapper::{convert_inner, try_convert_inner};
+use one_providers::common_models::PublicKeyJwk;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
 use serde::{Deserialize, Deserializer};
 use shared_types::{CredentialId, DidId, DidValue, KeyId};
@@ -18,7 +19,6 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::did_method::dto::PublicKeyJwkDTO;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -248,7 +248,7 @@ pub fn extracted_credential_to_model(
 
 pub struct PublicKeyWithJwk {
     pub key_id: KeyId,
-    pub jwk: PublicKeyJwkDTO,
+    pub jwk: PublicKeyJwk,
 }
 
 pub fn get_encryption_key_jwk_from_proof(
@@ -268,7 +268,9 @@ pub fn get_encryption_key_jwk_from_proof(
         .ok_or(ServiceError::MappingError(
             "verifier_key is None".to_string(),
         ))
-        .and_then(|value| verifier_did.find_key(&value.id, KeyRole::KeyAgreement));
+        .and_then(|value| {
+            verifier_did.find_key(&value.id.to_owned().into(), KeyRole::KeyAgreement)
+        });
 
     let encryption_key = match verifier_key {
         Ok(key) => Ok(key),
@@ -286,9 +288,7 @@ pub fn get_encryption_key_jwk_from_proof(
         ))?;
 
     Ok(PublicKeyWithJwk {
-        key_id: encryption_key.id,
-        jwk: key_algorithm
-            .bytes_to_jwk(&encryption_key.public_key, Some("enc".to_string()))?
-            .into(),
+        key_id: encryption_key.id.into(),
+        jwk: key_algorithm.bytes_to_jwk(&encryption_key.public_key, Some("enc".to_string()))?,
     })
 }

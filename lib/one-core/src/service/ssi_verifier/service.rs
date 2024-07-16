@@ -469,14 +469,13 @@ impl SSIVerifierService {
 // Private interface tests
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
+    use one_providers::did::provider::MockDidMethodProvider;
     use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+    use std::sync::Arc;
     use uuid::Uuid;
 
     use super::*;
     use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-    use crate::provider::did_method::provider::MockDidMethodProvider;
     use crate::provider::revocation::provider::MockRevocationMethodProvider;
     use crate::repository::credential_repository::MockCredentialRepository;
     use crate::repository::did_repository::MockDidRepository;

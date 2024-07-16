@@ -3,6 +3,9 @@ use std::sync::Arc;
 use serde_json::Value;
 use time::OffsetDateTime;
 
+use self::dto::SuspendCheckResultDTO;
+use super::Task;
+use crate::model::key::KeyRelations;
 use crate::{
     model::{
         credential::{
@@ -11,7 +14,6 @@ use crate::{
         },
         credential_schema::CredentialSchemaRelations,
         did::DidRelations,
-        key::KeyRelations,
         list_filter::{ComparisonType, ListFilterValue, ValueComparison},
         organisation::OrganisationRelations,
     },
@@ -24,9 +26,6 @@ use crate::{
         error::{EntityNotFoundError, MissingProviderError, ServiceError},
     },
 };
-
-use self::dto::SuspendCheckResultDTO;
-use super::Task;
 
 pub mod dto;
 

@@ -2,10 +2,11 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
+use crate::model::key::KeyRelations;
 use crate::{
     model::{
         credential::CredentialRelations, credential_schema::CredentialSchemaRelations,
-        did::DidRelations, key::KeyRelations, revocation_list::RevocationListRelations,
+        did::DidRelations, revocation_list::RevocationListRelations,
         validity_credential::ValidityCredentialType,
     },
     provider::{
@@ -53,14 +54,14 @@ impl RevocationListService {
             .holder_did
             .as_ref()
             .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
-        let resolved_did = self.did_method_provider.resolve(&holder_did.did).await?;
+        let resolved_did = self
+            .did_method_provider
+            .resolve(&holder_did.did.to_owned().into())
+            .await?;
 
-        let parsed_jwk = self.key_algorithm_provider.parse_jwk(
-            &resolved_did.verification_method[0]
-                .public_key_jwk
-                .clone()
-                .into(),
-        )?;
+        let parsed_jwk = self
+            .key_algorithm_provider
+            .parse_jwk(&resolved_did.verification_method[0].public_key_jwk)?;
 
         // Check if bearer token is signed with key of the credential holder if not throw error.
         let mut jwt_parts = bearer_token.splitn(3, '.');

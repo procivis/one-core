@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use one_providers::common_models::key::Key;
 use one_providers::key_storage::provider::KeyProvider;
 use serde::{de, Serialize};
 use thiserror::Error;
@@ -15,7 +16,6 @@ use crate::config::ConfigValidationError;
 use crate::model::credential::Credential;
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;

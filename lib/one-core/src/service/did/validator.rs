@@ -2,10 +2,10 @@ use std::collections::HashSet;
 
 use super::DidDeactivationError;
 use crate::model::did::Did;
-use crate::provider::did_method::dto::AmountOfKeys;
-use crate::provider::did_method::DidMethod;
 use crate::service::error::{BusinessLogicError, ValidationError};
 use crate::service::{did::dto::CreateDidRequestKeysDTO, error::ServiceError};
+use one_providers::did::model::AmountOfKeys;
+use one_providers::did::DidMethod;
 use std::hash::Hash;
 
 fn count_uniq<T: Eq + Hash>(vec: impl IntoIterator<Item = T>) -> usize {

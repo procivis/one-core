@@ -1,8 +1,6 @@
-use crate::{
-    model::did::KeyRole,
-    provider::{credential_formatter::TokenVerifier, did_method::provider::DidMethodProvider},
-};
+use crate::{model::did::KeyRole, provider::credential_formatter::TokenVerifier};
 use async_trait::async_trait;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::{crypto::SignerError, key_algorithm::provider::KeyAlgorithmProvider};
 use shared_types::DidValue;
 use std::sync::Arc;
@@ -29,7 +27,8 @@ impl TokenVerifier for KeyVerification {
             .did_method_provider
             .resolve(
                 &issuer_did_value
-                    .ok_or(SignerError::CouldNotVerify("Missing issuer".to_string()))?,
+                    .ok_or(SignerError::CouldNotVerify("Missing issuer".to_string()))?
+                    .into(),
             )
             .await
             .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
@@ -67,7 +66,7 @@ impl TokenVerifier for KeyVerification {
             )))?;
 
         let public_key = alg
-            .jwk_to_bytes(&method.public_key_jwk.clone().into())
+            .jwk_to_bytes(&method.public_key_jwk)
             .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
 
         let signer = self
@@ -81,32 +80,28 @@ impl TokenVerifier for KeyVerification {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
-
     use super::*;
-    use crate::provider::did_method::dto::{
-        DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
-    };
-    use crate::{
-        provider::did_method::provider::MockDidMethodProvider, service::error::ServiceError,
-    };
     use mockall::predicate::*;
+    use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
     use one_providers::crypto::MockSigner;
+    use one_providers::did::error::DidMethodProviderError;
+    use one_providers::did::model::{DidDocument, DidVerificationMethod};
+    use one_providers::did::provider::MockDidMethodProvider;
     use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
     use one_providers::key_algorithm::MockKeyAlgorithm;
     use serde_json::json;
 
-    fn get_dummy_did_document() -> DidDocumentDTO {
-        DidDocumentDTO {
+    fn get_dummy_did_document() -> DidDocument {
+        DidDocument {
             context: json!(["https://www.w3.org/ns/did/v1"]),
-            id: DidValue::from_str("did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb").unwrap(),
+            id: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_string().into(),
             verification_method: vec![
-                DidVerificationMethodDTO {
+                DidVerificationMethod {
                     id: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
                     r#type: "JsonWebKey2020".to_owned(),
                     controller: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
-                    public_key_jwk: PublicKeyJwkDTO::Ec(
-                        PublicKeyJwkEllipticDataDTO {
+                    public_key_jwk: PublicKeyJwk::Ec(
+                        PublicKeyJwkEllipticData {
                             r#use: None,
                             crv: "P-256".to_owned(),
                             x: "AjDk2GBBiI_M6HvEmgfzXiVhJCWiVFqvoItknJgc-oEE".to_owned(),
@@ -196,7 +191,7 @@ mod test {
         did_method_provider
             .expect_resolve()
             .once()
-            .returning(|_| Err(ServiceError::Other("test-error".to_string())));
+            .returning(|_| Err(DidMethodProviderError::Other("test-error".to_string())));
 
         let key_algorithm_provider = MockKeyAlgorithmProvider::default();
 

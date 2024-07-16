@@ -1,6 +1,5 @@
 use std::any::type_name;
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -14,7 +13,10 @@ use coset::{
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use mdoc::DataElementValue;
+use one_providers::common_models::did::DidValue;
+use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::crypto::SignerError;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::{AuthenticationFn, SignatureProvider};
 use rand::RngCore;
@@ -22,7 +24,6 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds};
 use sha2::{Digest, Sha256, Sha384, Sha512};
-use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -45,9 +46,7 @@ use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::provider::did_method::mdl::DidMdlValidator;
-use crate::provider::did_method::provider::DidMethodProvider;
 
 mod cose;
 mod mdoc;
@@ -56,6 +55,7 @@ mod mdoc;
 mod test;
 
 pub struct MdocFormatter {
+    did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
     params: Params,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -77,12 +77,14 @@ pub struct Params {
 impl MdocFormatter {
     pub fn new(
         params: Params,
+        did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         base_url: Option<String>,
         datatype_config: DatatypeConfig,
     ) -> Self {
         Self {
+            did_mdl_validator,
             params,
             did_method_provider,
             key_algorithm_provider,
@@ -92,13 +94,13 @@ impl MdocFormatter {
     }
 
     fn did_mdl_validator(&self) -> Result<Arc<dyn DidMdlValidator>, FormatterError> {
-        let Some(validator) = self.did_method_provider.get_did_mdl_validator().clone() else {
-            return Err(FormatterError::CouldNotExtractPresentation(
+        Ok(self
+            .did_mdl_validator
+            .as_ref()
+            .ok_or(FormatterError::CouldNotExtractPresentation(
                 "Missing did mdl validator".to_owned(),
-            ));
-        };
-
-        Ok(validator)
+            ))?
+            .clone())
     }
 }
 
@@ -107,7 +109,7 @@ impl CredentialFormatter for MdocFormatter {
     async fn format_credentials(
         &self,
         credential: CredentialData,
-        holder_did: &DidValue,
+        holder_did: &shared_types::DidValue,
         algorithm: &str,
         _additional_context: Vec<String>,
         _additional_types: Vec<String>,
@@ -122,7 +124,8 @@ impl CredentialFormatter for MdocFormatter {
         })?;
 
         let namespaces = try_build_namespaces(credential.claims, &self.datatype_config)?;
-        let cose_key = try_build_cose_key(&*self.did_method_provider, holder_did).await?;
+        let cose_key =
+            try_build_cose_key(&*self.did_method_provider, &holder_did.to_owned().into()).await?;
 
         let device_key_info = DeviceKeyInfo {
             device_key: DeviceKey(cose_key),
@@ -158,7 +161,7 @@ impl CredentialFormatter for MdocFormatter {
 
         let algorithm_header = try_build_algorithm_header(algorithm)?;
 
-        let x5chain_header = build_x5chain_header(credential.issuer_did)?;
+        let x5chain_header = build_x5chain_header(credential.issuer_did.to_string().into())?;
 
         let cose_sign1 = CoseSign1Builder::new()
             .protected(algorithm_header)
@@ -195,7 +198,7 @@ impl CredentialFormatter for MdocFormatter {
     async fn format_presentation(
         &self,
         tokens: &[String],
-        _holder_did: &DidValue,
+        _holder_did: &shared_types::DidValue,
         algorithm: &str,
         auth_fn: AuthenticationFn,
         context: FormatPresentationCtx,
@@ -346,7 +349,7 @@ impl CredentialFormatter for MdocFormatter {
             id: Some(Uuid::new_v4().to_string()),
             issued_at: context.issuance_date,
             expires_at: context.expiration_date,
-            issuer_did: current_issuer_did,
+            issuer_did: current_issuer_did.map(|value| value.to_string().into()),
             nonce: Some(nonce.clone()),
             credentials: tokens,
         })
@@ -483,9 +486,9 @@ fn try_extract_holder_did_mdl_public_key(
 ) -> Result<DidValue, FormatterError> {
     let holder_public_key = try_extract_holder_public_key(issuer_auth)?;
     let algorithm = match &holder_public_key {
-        PublicKeyJwkDTO::Ec(_) => "ES256",
-        PublicKeyJwkDTO::Okp(_) => "EDDSA",
-        key @ (PublicKeyJwkDTO::Rsa(_) | PublicKeyJwkDTO::Oct(_) | PublicKeyJwkDTO::Mlwe(_)) => {
+        PublicKeyJwk::Ec(_) => "ES256",
+        PublicKeyJwk::Okp(_) => "EDDSA",
+        key @ (PublicKeyJwk::Rsa(_) | PublicKeyJwk::Oct(_) | PublicKeyJwk::Mlwe(_)) => {
             return Err(FormatterError::Failed(format!(
                 "Key `{key:?}` should not be available for mdoc",
             )));
@@ -498,21 +501,20 @@ fn try_extract_holder_did_mdl_public_key(
         )));
     };
     let public_key = key_algorithm
-        .jwk_to_bytes(&holder_public_key.into())
+        .jwk_to_bytes(&holder_public_key)
         .map_err(|err| FormatterError::Failed(format!("Cannot convert jwk: {err}")))?;
     let encoded_public_key = key_algorithm
         .get_multibase(&public_key)
         .map_err(|err| FormatterError::Failed(format!("Cannot convert to multibase: {err}")))?;
 
-    match format!("did:mdl:public_key:{encoded_public_key}").parse() {
-        Ok(did) => Ok(did),
-        Err(err) => match err {},
-    }
+    Ok(DidValue::from(format!(
+        "did:mdl:public_key:{encoded_public_key}"
+    )))
 }
 
 fn try_extract_holder_public_key(
     CoseSign1(issuer_auth): &CoseSign1,
-) -> Result<PublicKeyJwkDTO, FormatterError> {
+) -> Result<PublicKeyJwk, FormatterError> {
     let mso = issuer_auth
         .payload
         .as_ref()
@@ -547,7 +549,7 @@ fn try_extract_holder_public_key(
                 .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
                 .context("Missing P-256  Y value in params")?;
 
-            let key = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+            let key = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "P-256".to_owned(),
                 x,
@@ -571,7 +573,7 @@ fn try_extract_holder_public_key(
                 .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
                 .context("Missing Ed25519 X value in params")?;
 
-            let key = PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+            let key = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "Ed25519".to_owned(),
                 x,
@@ -612,7 +614,7 @@ async fn try_verify_issuer_auth(
 
     verifier
         .verify(
-            Some(issuer_did.clone()),
+            Some(issuer_did.to_string().into()),
             None,
             &algorithm,
             &token,
@@ -695,8 +697,8 @@ fn extract_credentials_internal(
             .expected_update
             .map(|update| update.into()),
         invalid_before: None,
-        issuer_did: Some(issuer_did),
-        subject: Some(holder_did),
+        issuer_did: Some(issuer_did.to_string().into()),
+        subject: Some(holder_did.to_string().into()),
         claims: CredentialSubject { values: claims },
         status: vec![],
         credential_schema: Some(CredentialSchema {
@@ -759,7 +761,7 @@ async fn try_verify_device_signed(
     client_id: &Url,
     response_uri: &Url,
     signature: &coset::CoseSign1,
-    holder_did: &shared_types::DidValue,
+    holder_did: &DidValue,
     verify_fn: &VerificationFn,
 ) -> Result<(), FormatterError> {
     let session_transcript = SessionTranscript {
@@ -812,7 +814,7 @@ pub async fn try_verify_detached_signature_with_provider(
 
     verifier
         .verify(
-            Some(issuer_did_value.to_owned()),
+            Some(issuer_did_value.to_string().into()),
             None, /* take the first one */
             &algorithm,
             &sig_data,
@@ -1058,10 +1060,7 @@ fn extract_did_from_x5chain_header(
                 .map(|cert| format!("did:mdl:certificate:{cert}"))
                 .map_err(|err| anyhow::anyhow!("Base64 encoding failed: {err}"))?;
 
-            match DidValue::from_str(&did) {
-                Ok(did) => Ok(did),
-                Err(err) => match err {},
-            }
+            Ok(DidValue::from(did))
         })
         .map_err(|err| FormatterError::Failed(format!("Failed extracting x5chain header {err}")))
 }
@@ -1149,7 +1148,7 @@ async fn try_build_cose_key(
         .swap_remove(0)
         .public_key_jwk
     {
-        PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+        PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
             crv, x, y: Some(y), ..
         }) if &crv == "P-256" => {
             let x = base64decode(x)?;
@@ -1158,7 +1157,7 @@ async fn try_build_cose_key(
             CoseKeyBuilder::new_ec2_pub_key(iana::EllipticCurve::P_256, x, y).build()
         }
 
-        PublicKeyJwkDTO::Okp(key) if key.crv == "Ed25519" => {
+        PublicKeyJwk::Okp(key) if key.crv == "Ed25519" => {
             let x = base64decode(key.x)?;
 
             CoseKeyBuilder::new_okp_key()

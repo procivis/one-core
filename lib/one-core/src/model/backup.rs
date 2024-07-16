@@ -1,6 +1,6 @@
 use super::credential::Credential;
 use super::did::Did;
-use super::key::Key;
+use one_providers::common_models::key::Key;
 
 #[derive(Debug, Clone)]
 pub struct UnexportableEntities {

@@ -20,17 +20,12 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::did_method::dto::{
-    DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
-};
-use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::dto::{CredentialGroup, CredentialGroupItem};
 use crate::provider::exchange_protocol::mapper::get_relevant_credentials_to_credential_schemas;
 use crate::provider::exchange_protocol::provider::{
@@ -45,6 +40,10 @@ use crate::repository::validity_credential_repository::MockValidityCredentialRep
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::OpenID4VCIError;
 use crate::service::test_utilities::generic_config;
+use one_providers::common_models::key::Key;
+use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::did::model::{DidDocument, DidVerificationMethod};
+use one_providers::did::provider::MockDidMethodProvider;
 
 #[tokio::test]
 async fn test_issuer_submit_succeeds() {
@@ -70,11 +69,14 @@ async fn test_issuer_submit_succeeds() {
                 key_reference: b"private_key".to_vec(),
                 storage_type: key_storage_type.to_string(),
                 key_type: key_type.to_string(),
-                organisation: Some(Organisation {
-                    id: Uuid::new_v4().into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                }),
+                organisation: Some(
+                    Organisation {
+                        id: Uuid::new_v4().into(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    }
+                    .into(),
+                ),
             };
 
             Ok(Some(Credential {
@@ -155,14 +157,14 @@ async fn test_issuer_submit_succeeds() {
         .expect_resolve()
         .once()
         .returning(move |_| {
-            Ok(DidDocumentDTO {
+            Ok(DidDocument {
                 context: json!({}),
-                id: dummy_did().did,
-                verification_method: vec![DidVerificationMethodDTO {
+                id: dummy_did().did.into(),
+                verification_method: vec![DidVerificationMethod {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -174,7 +176,7 @@ async fn test_issuer_submit_succeeds() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: json!({}),
+                rest: Default::default(),
             })
         });
 
@@ -878,15 +880,15 @@ fn dummy_did() -> Did {
     }
 }
 
-fn dummy_did_document() -> DidDocumentDTO {
-    DidDocumentDTO {
+fn dummy_did_document() -> DidDocument {
+    DidDocument {
         context: json!({}),
-        id: dummy_did().did,
-        verification_method: vec![DidVerificationMethodDTO {
+        id: dummy_did().did.into(),
+        verification_method: vec![DidVerificationMethod {
             id: "did-vm-id".to_string(),
             r#type: "did-vm-type".to_string(),
             controller: "did-vm-controller".to_string(),
-            public_key_jwk: PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+            public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "P-256".to_string(),
                 x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -898,7 +900,7 @@ fn dummy_did_document() -> DidDocumentDTO {
         key_agreement: None,
         capability_invocation: None,
         capability_delegation: None,
-        rest: json!({}),
+        rest: Default::default(),
     }
 }
 
@@ -912,10 +914,13 @@ fn dummy_key() -> Key {
         key_reference: b"private_key".to_vec(),
         storage_type: "SOFTWARE".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
+        organisation: Some(
+            Organisation {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }
+            .into(),
+        ),
     }
 }

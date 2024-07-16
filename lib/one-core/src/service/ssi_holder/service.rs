@@ -202,7 +202,10 @@ impl SSIHolderService {
             None => holder_did.find_first_key_by_role(KeyRole::Authentication)?,
         };
 
-        let did_document = self.did_method_provider.resolve(&holder_did.did).await?;
+        let did_document = self
+            .did_method_provider
+            .resolve(&holder_did.did.to_owned().into())
+            .await?;
         let authentication_methods =
             did_document
                 .authentication
@@ -555,7 +558,7 @@ impl SSIHolderService {
                     holder_did_id: Some(did_id),
                     issuer_did_id: None,
                     interaction: None,
-                    key: Some(selected_key.id),
+                    key: Some(selected_key.id.into()),
                     redirect_uri: None,
                 })
                 .await?;

@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::vec;
 
 use one_providers::crypto::CryptoProvider;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
 use async_trait::async_trait;
@@ -21,7 +22,6 @@ use super::{
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::did_method::provider::DidMethodProvider;
 
 mod base_proof;
 mod derived_proof;

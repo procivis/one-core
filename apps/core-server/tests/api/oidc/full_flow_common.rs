@@ -1,13 +1,12 @@
 use core::panic;
-use std::str::FromStr;
-
 use one_core::model::{
     did::{Did, DidType, KeyRole, RelatedKey},
-    key::Key,
     organisation::Organisation,
 };
+use one_providers::common_models::key::Key;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue};
+use std::str::FromStr;
 
 use crate::{
     fixtures::{TestingDidParams, TestingKeyParams},

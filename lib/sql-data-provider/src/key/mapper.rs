@@ -1,9 +1,9 @@
 use dto_mapper::convert_inner;
 use migration::SimpleExpr;
+use one_providers::common_models::key::Key;
 use sea_orm::IntoSimpleExpr;
 
 use crate::entity;
-use one_core::model::key::Key;
 use one_core::model::key::{GetKeyList, SortableKeyColumn};
 use one_core::model::organisation::Organisation;
 
@@ -14,7 +14,7 @@ pub(super) fn from_model_and_relations(
     organisation: Option<Organisation>,
 ) -> Key {
     Key {
-        id: value.id,
+        id: value.id.into(),
         created_date: value.created_date,
         last_modified: value.last_modified,
         public_key: value.public_key,
@@ -22,7 +22,7 @@ pub(super) fn from_model_and_relations(
         key_reference: value.key_reference,
         storage_type: value.storage_type,
         key_type: value.key_type,
-        organisation,
+        organisation: convert_inner(organisation),
     }
 }
 
@@ -53,7 +53,7 @@ pub(crate) fn create_list_response(
 impl From<entity::key::Model> for Key {
     fn from(value: entity::key::Model) -> Self {
         Self {
-            id: value.id,
+            id: value.id.into(),
             created_date: value.created_date,
             last_modified: value.last_modified,
             public_key: value.public_key,

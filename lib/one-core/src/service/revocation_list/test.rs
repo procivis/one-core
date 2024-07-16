@@ -5,14 +5,11 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use one_providers::crypto::MockCryptoProvider;
-
 use crate::model::revocation_list::RevocationListPurpose;
 use crate::{
     model::revocation_list::{RevocationList, RevocationListRelations},
     provider::{
         credential_formatter::provider::MockCredentialFormatterProvider,
-        did_method::provider::MockDidMethodProvider,
         revocation::provider::MockRevocationMethodProvider,
     },
     repository::{
@@ -22,6 +19,8 @@ use crate::{
     },
     service::{revocation_list::RevocationListService, test_utilities::generic_config},
 };
+use one_providers::crypto::MockCryptoProvider;
+use one_providers::did::provider::MockDidMethodProvider;
 
 #[derive(Default)]
 struct Repositories {

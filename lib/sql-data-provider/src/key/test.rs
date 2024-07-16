@@ -1,16 +1,16 @@
 use super::KeyProvider;
+use one_providers::common_models::key::Key;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, Set};
 use shared_types::KeyId;
 use std::sync::Arc;
-
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::entity::key;
 use one_core::model::key::{GetKeyQuery, KeyRelations};
 use one_core::{
-    model::{key::Key, organisation::Organisation},
+    model::organisation::Organisation,
     repository::{
         key_repository::KeyRepository, organisation_repository::MockOrganisationRepository,
     },
@@ -127,7 +127,7 @@ async fn test_create_key_success() {
             key_reference: vec![],
             storage_type: "INTERNAL".to_string(),
             key_type: "RSA_4096".to_string(),
-            organisation: Some(organisation),
+            organisation: Some(organisation.into()),
         })
         .await;
 
@@ -147,12 +147,16 @@ async fn test_get_key_success() {
     };
 
     let result = provider
-        .get_key(&key_id, &KeyRelations { organisation: None })
+        .get_key(
+            &key_id.to_owned().into(),
+            &KeyRelations { organisation: None },
+        )
         .await
         .unwrap()
         .unwrap();
 
-    assert_eq!(key_id, result.id);
+    let result_key_id = shared_types::KeyId::from(result.id);
+    assert_eq!(key_id, result_key_id);
 }
 
 #[tokio::test]
@@ -189,5 +193,8 @@ async fn test_get_key_list_success() {
     assert_eq!(data.total_items, 2);
     assert_eq!(data.values.len(), 2);
 
-    assert!(data.values.iter().all(|key| ids.contains(&key.id)));
+    assert!(data
+        .values
+        .iter()
+        .all(|key| ids.contains(&key.id.to_owned().into())));
 }

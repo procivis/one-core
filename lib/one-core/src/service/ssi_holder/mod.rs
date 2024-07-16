@@ -4,13 +4,13 @@ use one_providers::key_storage::provider::KeyProvider;
 
 use crate::config::core_config;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
+use one_providers::did::provider::DidMethodProvider;
 
 pub mod dto;
 pub mod service;

@@ -23,8 +23,8 @@ use one_core::service::ssi_holder::dto::InvitationResponseDTO;
 use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, ListTrustAnchorsQueryDTO, TrustAnchorFilterValue,
 };
+use one_providers::common_models::key::KeyId;
 use serde_json::json;
-use shared_types::KeyId;
 use time::OffsetDateTime;
 
 use super::dto::{ClaimBindingDTO, ClaimValueBindingDTO, CredentialSchemaBindingDTO};

@@ -52,7 +52,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
-use crate::model::key::{Key, KeyRelations};
+use crate::model::key::KeyRelations;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{Proof, ProofClaimRelations, ProofRelations, UpdateProofRequest};
 use crate::model::proof_schema::{
@@ -90,6 +90,7 @@ use crate::util::oidc::{
     detect_correct_format, map_core_to_oidc_format, map_from_oidc_format_to_core,
 };
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
+use one_providers::common_models::key::Key;
 
 mod mdoc;
 #[cfg(test)]
@@ -371,7 +372,7 @@ impl ExchangeProtocol for OpenID4VC {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(&key.to_owned().into(), jwk_key_id)
+            .get_signature_provider(&key.to_owned(), jwk_key_id)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let presentation_submission = create_presentation_submission(
@@ -495,7 +496,7 @@ impl ExchangeProtocol for OpenID4VC {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(&key.to_owned().into(), jwk_key_id)
+            .get_signature_provider(&key.to_owned(), jwk_key_id)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(

@@ -203,6 +203,7 @@ pub enum SortableCredentialColumnRestEnum {
 pub struct CreateCredentialRequestRestDTO {
     pub credential_schema_id: CredentialSchemaId,
     pub issuer_did: Uuid,
+    #[into(with_fn = convert_inner)]
     pub issuer_key: Option<KeyId>,
     pub exchange: String,
     #[into(with_fn = convert_inner)]

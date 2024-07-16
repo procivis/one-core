@@ -1,12 +1,10 @@
-use super::{dto::DidDocumentDTO, AmountOfKeys, DidCapabilities, DidMethodError, Operation};
-use crate::{
-    config::core_config::{DidType, Fields},
-    model::key::Key,
-};
-
 use async_trait::async_trait;
-use serde_json::json;
-use shared_types::{DidId, DidValue};
+use one_providers::common_models::did::{DidId, DidValue};
+use one_providers::common_models::key::Key;
+use one_providers::did::error::DidMethodError;
+use one_providers::did::keys::Keys;
+use one_providers::did::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
+use one_providers::did::DidMethod;
 
 pub struct X509Method {}
 
@@ -18,7 +16,7 @@ impl X509Method {
 }
 
 #[async_trait]
-impl super::DidMethod for X509Method {
+impl DidMethod for X509Method {
     async fn create(
         &self,
         _id: &DidId,
@@ -28,7 +26,7 @@ impl super::DidMethod for X509Method {
         todo!()
     }
 
-    async fn resolve(&self, _did: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
+    async fn resolve(&self, _did: &DidValue) -> Result<DidDocument, DidMethodError> {
         todo!()
     }
 
@@ -51,10 +49,7 @@ impl super::DidMethod for X509Method {
         todo!()
     }
 
-    fn visit_config_fields(&self, fields: &Fields<DidType>) -> Fields<DidType> {
-        Fields {
-            capabilities: Some(json!(self.get_capabilities())),
-            ..fields.clone()
-        }
+    fn get_keys(&self) -> Option<Keys> {
+        None
     }
 }

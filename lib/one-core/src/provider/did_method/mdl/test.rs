@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use one_providers::common_models::key::Key;
+use one_providers::did::keys::Keys;
+use one_providers::did::DidMethod;
 use one_providers::key_algorithm::imp::{eddsa::Eddsa, es256::Es256};
 use one_providers::key_algorithm::{provider::MockKeyAlgorithmProvider, KeyAlgorithm};
 use rcgen::{
@@ -10,11 +13,6 @@ use serde_json::json;
 use shared_types::DidId;
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use crate::{
-    model::key::Key,
-    provider::did_method::{dto::Keys, DidMethod},
-};
 
 use super::{DidMdl, Params};
 
@@ -106,7 +104,10 @@ async fn test_create_mdl_did_for(
         Base64UrlSafeNoPadding::encode_to_string(certificate.der()).unwrap();
 
     // act
-    let did = service.create(&did_id, &Some(params), &keys).await.unwrap();
+    let did = service
+        .create(&did_id.to_owned().into(), &Some(params), &keys)
+        .await
+        .unwrap();
 
     // assert
     assert_eq!(

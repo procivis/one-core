@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
-use one_core::provider::did_method::dto::{
-    DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
-    PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO, PublicKeyJwkRsaDataDTO,
+use one_core::provider::dto::{
+    PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO,
+    PublicKeyJwkRsaDataDTO,
 };
 use one_core::provider::exchange_protocol::openid4vc::dto::{
     AuthorizationEncryptedResponseAlgorithm,
@@ -40,6 +40,7 @@ use one_core::service::ssi_issuer::dto::{
 use one_core::service::ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO};
 use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
 use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
+use one_providers::did::model::{DidDocument, DidVerificationMethod};
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
 use shared_types::{CredentialId, DidValue, KeyId, ProofId, TrustAnchorId, TrustEntityId};
@@ -221,7 +222,7 @@ pub struct OpenID4VCIProofRequestRestDTO {
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[from(DidDocumentDTO)]
+#[from(DidDocument)]
 pub struct DidDocumentRestDTO {
     #[serde(rename = "@context")]
     pub context: serde_json::Value,
@@ -233,14 +234,13 @@ pub struct DidDocumentRestDTO {
     pub key_agreement: Option<Vec<String>>,
     pub capability_invocation: Option<Vec<String>>,
     pub capability_delegation: Option<Vec<String>>,
-
     #[serde(flatten)]
     pub rest: serde_json::Value,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[from(DidVerificationMethodDTO)]
+#[from(DidVerificationMethod)]
 pub struct DidVerificationMethodRestDTO {
     pub id: String,
     pub r#type: String,

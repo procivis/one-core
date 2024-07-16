@@ -1,8 +1,8 @@
 use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::interaction::Interaction;
-use one_core::model::key::Key;
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::proof_schema::ProofSchema;
+use one_providers::common_models::key::Key;
 use serde_json::json;
 use uuid::Uuid;
 

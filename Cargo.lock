@@ -3109,7 +3109,7 @@ dependencies = [
 [[package]]
 name = "one-providers"
 version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git#b65e0fb1d7c073247f52dc1e4f611c1d41f59b75"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=953e987a#953e987a9ebe725d1053f32d21d45dd960862a4e"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4987,6 +4987,7 @@ dependencies = [
  "migration",
  "mockall",
  "one-core",
+ "one-providers",
  "sea-orm",
  "serde",
  "serde_json",

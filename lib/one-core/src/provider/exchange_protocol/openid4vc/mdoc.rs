@@ -1,16 +1,15 @@
-use anyhow::{anyhow, bail, Context};
-use josekit::jwe::alg::ecdh_es::{EcdhEsJweAlgorithm, EcdhEsJweEncrypter};
-use josekit::jwe::JweHeader;
-use josekit::jwk::Jwk;
-use one_providers::key_algorithm::imp::eddsa::JwkEddsaExt;
-
 use super::dto::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadata,
     OpenID4VPClientMetadataJwkDTO,
 };
 use super::model::JwePayload;
-use crate::provider::did_method::dto::PublicKeyJwkDTO;
+use crate::provider::dto::PublicKeyJwkDTO;
+use anyhow::{anyhow, bail, Context};
+use josekit::jwe::alg::ecdh_es::{EcdhEsJweAlgorithm, EcdhEsJweEncrypter};
+use josekit::jwe::JweHeader;
+use josekit::jwk::Jwk;
+use one_providers::key_algorithm::imp::eddsa::JwkEddsaExt;
 
 pub(crate) fn build_jwe(
     payload: JwePayload,

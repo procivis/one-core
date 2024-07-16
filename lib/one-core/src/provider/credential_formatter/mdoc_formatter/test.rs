@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 use coset::{KeyType, Label, RegisteredLabelWithPrivate};
 use hex_literal::hex;
 use maplit::hashmap;
+use one_providers::did::model::{DidDocument, DidVerificationMethod};
+use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
 use one_providers::key_storage::provider::MockSignatureProvider;
@@ -10,8 +12,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::provider::credential_formatter::{CredentialSchemaData, PublishedClaimValue};
-use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
-use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
 use crate::service::test_utilities::generic_config;
 
 use super::mdoc::*;
@@ -170,7 +171,7 @@ fn test_device_response_serialize_deserialize() {
 
 #[tokio::test]
 async fn test_credential_formatting_ok_for_es256() {
-    let issuer_did: DidValue = "did:mdl:certificate:MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg".parse().unwrap();
+    let issuer_did = DidValue::from("did:mdl:certificate:MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg".to_string());
 
     let credential_data = CredentialData {
         id: Uuid::new_v4().to_string(),
@@ -182,7 +183,7 @@ async fn test_credential_formatting_ok_for_es256() {
             datatype: Some("STRING".to_string()),
             array_item: false,
         }],
-        issuer_did: issuer_did.clone(),
+        issuer_did: issuer_did.clone().into(),
         status: vec![],
         schema: CredentialSchemaData {
             id: Some("credential-schema-id".to_string()),
@@ -192,7 +193,7 @@ async fn test_credential_formatting_ok_for_es256() {
         },
     };
 
-    let holder_did: DidValue = "holder-did".parse().unwrap();
+    let holder_did = DidValue::from("holder-did".to_string());
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -204,14 +205,14 @@ async fn test_credential_formatting_ok_for_es256() {
             move |did| did == &holder_did
         })
         .returning(|holder_did| {
-            Ok(DidDocumentDTO {
+            Ok(DidDocument {
                 context: json!({}),
                 id: holder_did.to_owned(),
-                verification_method: vec![DidVerificationMethodDTO {
+                verification_method: vec![DidVerificationMethod {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -223,7 +224,7 @@ async fn test_credential_formatting_ok_for_es256() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: json!({}),
+                rest: Default::default(),
             })
         });
 
@@ -248,6 +249,7 @@ async fn test_credential_formatting_ok_for_es256() {
 
     let formatter = MdocFormatter::new(
         params,
+        Some(Arc::new(MockDidMdlValidator::new())),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         None,
@@ -260,7 +262,7 @@ async fn test_credential_formatting_ok_for_es256() {
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
-            &holder_did,
+            &holder_did.to_owned().into(),
             algorithm,
             vec![],
             vec![],
@@ -347,7 +349,7 @@ async fn test_credential_formatting_ok_for_es256() {
 #[tokio::test]
 async fn test_unverified_credential_extraction() {
     // arrange
-    let issuer_did: DidValue = "did:mdl:certificate:MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg".parse().unwrap();
+    let issuer_did = DidValue::from("did:mdl:certificate:MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg".to_string());
 
     let issuance_date = OffsetDateTime::now_utc();
     let valid_for = time::Duration::seconds(10);
@@ -362,7 +364,7 @@ async fn test_unverified_credential_extraction() {
             datatype: Some("STRING".to_string()),
             array_item: false,
         }],
-        issuer_did: issuer_did.clone(),
+        issuer_did: issuer_did.to_owned().into(),
         status: vec![],
         schema: CredentialSchemaData {
             id: Some("doctype".to_string()),
@@ -372,7 +374,7 @@ async fn test_unverified_credential_extraction() {
         },
     };
 
-    let holder_did: DidValue = "holder-did".parse().unwrap();
+    let holder_did = DidValue::from("holder-did".to_string());
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -384,14 +386,14 @@ async fn test_unverified_credential_extraction() {
             move |did| did == &holder_did
         })
         .returning(|holder_did| {
-            Ok(DidDocumentDTO {
+            Ok(DidDocument {
                 context: json!({}),
                 id: holder_did.to_owned(),
-                verification_method: vec![DidVerificationMethodDTO {
+                verification_method: vec![DidVerificationMethod {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -403,7 +405,7 @@ async fn test_unverified_credential_extraction() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: json!({}),
+                rest: Default::default(),
             })
         });
 
@@ -438,6 +440,7 @@ async fn test_unverified_credential_extraction() {
 
     let formatter = MdocFormatter::new(
         params,
+        Some(Arc::new(MockDidMdlValidator::new())),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         None,
@@ -450,7 +453,7 @@ async fn test_unverified_credential_extraction() {
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
-            &holder_did,
+            &holder_did.to_owned().into(),
             algorithm,
             vec![],
             vec![],
@@ -468,7 +471,7 @@ async fn test_unverified_credential_extraction() {
         .unwrap();
 
     // assert
-    assert_eq!(issuer_did, credential.issuer_did.unwrap());
+    assert_eq!(issuer_did.as_str(), credential.issuer_did.unwrap().as_str());
 
     assert_eq!(
         CredentialSchema {

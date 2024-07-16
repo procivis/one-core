@@ -3,6 +3,7 @@ use std::vec;
 
 use async_trait::async_trait;
 use one_providers::crypto::CryptoProvider;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_storage::provider::AuthenticationFn;
 use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
@@ -18,7 +19,6 @@ use super::{
     FormatPresentationCtx, FormatterCapabilities, VerificationFn,
 };
 use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
-use crate::provider::did_method::provider::DidMethodProvider;
 
 #[allow(dead_code)]
 pub struct JsonLdClassic {

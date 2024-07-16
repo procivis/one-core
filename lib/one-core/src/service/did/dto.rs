@@ -1,6 +1,7 @@
 use dto_mapper::From;
+use one_providers::common_models::key::KeyId;
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, DidValue, KeyId, OrganisationId};
+use shared_types::{DidId, DidValue, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::{

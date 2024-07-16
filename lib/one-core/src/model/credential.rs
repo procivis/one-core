@@ -1,16 +1,16 @@
-use shared_types::{CredentialId, DidId, KeyId};
-use strum_macros::Display;
-use time::OffsetDateTime;
-
 use super::claim::{Claim, ClaimRelations};
 use super::common::GetListResponse;
 use super::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use super::did::{Did, DidRelations};
 use super::interaction::{Interaction, InteractionId, InteractionRelations};
-use super::key::{Key, KeyRelations};
 use super::list_query::ListQuery;
 use super::revocation_list::{RevocationList, RevocationListRelations};
+use crate::model::key::KeyRelations;
 use crate::service::credential::dto::{CredentialFilterValue, CredentialListIncludeEntityTypeEnum};
+use one_providers::common_models::key::Key;
+use shared_types::{CredentialId, DidId, KeyId};
+use strum_macros::Display;
+use time::OffsetDateTime;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Credential {

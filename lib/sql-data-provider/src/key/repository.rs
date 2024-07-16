@@ -4,15 +4,15 @@ use crate::key::KeyProvider;
 use crate::list_query::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
 use autometrics::autometrics;
-use one_core::model::key::{GetKeyList, GetKeyQuery, Key, KeyRelations};
+use one_core::model::key::{GetKeyList, GetKeyQuery, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
+use one_providers::common_models::key::{Key, KeyId};
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
 };
-use shared_types::KeyId;
 
 use super::mapper::create_list_response;
 
@@ -44,7 +44,7 @@ impl KeyRepository for KeyProvider {
         let organisation_id = request.organisation.ok_or(DataLayerError::MappingError)?.id;
 
         key::ActiveModel {
-            id: Set(request.id),
+            id: Set(request.id.into()),
             created_date: Set(request.created_date),
             last_modified: Set(request.last_modified),
             name: Set(request.name),
@@ -52,7 +52,7 @@ impl KeyRepository for KeyProvider {
             key_reference: Set(request.key_reference),
             storage_type: Set(request.storage_type),
             key_type: Set(request.key_type),
-            organisation_id: Set(organisation_id),
+            organisation_id: Set(organisation_id.into()),
             deleted_at: NotSet,
         }
         .insert(&self.db)
@@ -67,7 +67,7 @@ impl KeyRepository for KeyProvider {
         id: &KeyId,
         relations: &KeyRelations,
     ) -> Result<Option<Key>, DataLayerError> {
-        let key = key::Entity::find_by_id(id)
+        let key = key::Entity::find_by_id(*id)
             .filter(key::Column::DeletedAt.is_null())
             .one(&self.db)
             .await

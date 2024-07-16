@@ -1,5 +1,4 @@
 use super::DidService;
-use crate::provider::did_method::DidCapabilities;
 use crate::repository::error::DataLayerError;
 use crate::service::error::EntityNotFoundError;
 use crate::service::error::{BusinessLogicError, ValidationError};
@@ -7,11 +6,9 @@ use crate::{
     config::core_config::{self, CoreConfig, DidConfig, Fields},
     model::{
         did::{Did, DidListQuery, DidRelations, DidType, GetDidList, KeyRole, RelatedKey},
-        key::{Key, KeyRelations},
         list_query::ListPagination,
         organisation::{Organisation, OrganisationRelations},
     },
-    provider::did_method::{provider::DidMethodProviderImpl, DidMethod, MockDidMethod},
     repository::key_repository::MockKeyRepository,
     repository::{
         did_repository::MockDidRepository, history_repository::MockHistoryRepository,
@@ -23,12 +20,18 @@ use crate::{
     },
 };
 use mockall::predicate::*;
+use one_providers::common_models::did::DidValue;
+use one_providers::common_models::key::Key;
+use one_providers::did::imp::provider::DidMethodProviderImpl;
+use one_providers::did::model::DidCapabilities;
+use one_providers::did::{DidMethod, MockDidMethod};
 use serde_json::Value;
-use shared_types::{DidId, DidValue};
+use shared_types::DidId;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::key::KeyRelations;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 
 fn setup_service(
@@ -44,7 +47,7 @@ fn setup_service(
     did_methods.insert("KEY".to_string(), Arc::new(did_method));
 
     let did_repository = Arc::new(did_repository);
-    let did_method_provider = DidMethodProviderImpl::new(did_methods, None);
+    let did_method_provider = DidMethodProviderImpl::new(did_methods);
 
     DidService::new(
         did_repository,
@@ -271,7 +274,7 @@ async fn test_create_did_success() {
     did_method
         .expect_create()
         .once()
-        .returning(|_, _request, _key| Ok(DidValue::from_str("value").unwrap()));
+        .returning(|_, _request, _key| Ok(DidValue::from("value".to_string())));
 
     did_method
         .expect_get_capabilities()
@@ -359,7 +362,7 @@ async fn test_create_did_value_already_exists() {
     did_method
         .expect_create()
         .once()
-        .returning(|_, _, _| Ok(DidValue::from_str("value").unwrap()));
+        .returning(|_, _, _| Ok(DidValue::from("value".to_string())));
 
     did_method
         .expect_get_capabilities()

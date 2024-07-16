@@ -64,7 +64,7 @@ async fn test_get_client_metadata() {
             "jwks": [
                 {
                     "crv": "P-256",
-                    "kid": key.id,
+                    "kid": key.id.to_string(),
                     "kty": "EC",
                     "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
                     "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA",

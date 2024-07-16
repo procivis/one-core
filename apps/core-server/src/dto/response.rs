@@ -1,5 +1,6 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use dto_mapper::convert_inner;
+use one_providers::did::error::DidMethodProviderError;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use utoipa::ToSchema;
@@ -39,6 +40,7 @@ impl ErrorResponse {
         match error {
             ServiceError::EntityNotFound(_) => Self::NotFound(response),
             ServiceError::MissingProvider(MissingProviderError::DidMethod(_))
+            | ServiceError::DidMethodProviderError(DidMethodProviderError::MissingProvider(_))
             | ServiceError::Validation(error::ValidationError::MissingLayoutAttribute(_)) => {
                 Self::NotFound(response)
             }

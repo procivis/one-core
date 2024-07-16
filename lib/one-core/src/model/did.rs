@@ -1,12 +1,12 @@
+use crate::model::key::KeyRelations;
+use crate::service::error::{ServiceError, ValidationError};
+use one_providers::common_models::key::Key;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
 
-use crate::service::error::{ServiceError, ValidationError};
-
 use super::{
     common::GetListResponse,
-    key::{Key, KeyRelations},
     list_filter::{ListFilterValue, StringMatch},
     list_query::ListQuery,
     organisation::{Organisation, OrganisationRelations},
@@ -62,12 +62,14 @@ impl Did {
     }
 
     pub fn find_key(&self, key_id: &KeyId, role: KeyRole) -> Result<&Key, ServiceError> {
+        let key_id: one_providers::common_models::key::KeyId = key_id.to_owned().into();
+
         let mut same_id_keys = self
             .keys
             .as_ref()
             .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
             .iter()
-            .filter(|entry| &entry.key.id == key_id)
+            .filter(|entry| entry.key.id == key_id)
             .peekable();
 
         if same_id_keys.peek().is_none() {
