@@ -23,7 +23,7 @@ args = [
   "--config",
   "config/config-procivis-base.yml",
   "--config",
-  "config/all.yml",
+  "config/config-local.yml",
 ]
 
 [tasks.runwallet]
@@ -77,12 +77,12 @@ command = "cargo"
 args    = ["install", "sea-orm-cli", "--force", "--version", "0.12.1"]
 
 [tasks.dbup1]
-env     = { "DATABASE_URL" = "sqlite:test.sqlite?mode=rwc" }
+env     = { "DATABASE_URL" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core" }
 command = "cargo"
 args    = ["run", "-p", "migration", "--", "up", "-n1"]
 
 [tasks.dbdown1]
-env     = { "DATABASE_URL" = "sqlite:test.sqlite?mode=rwc" }
+env     = { "DATABASE_URL" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core" }
 command = "cargo"
 args    = ["run", "-p", "migration", "--", "down", "-n1"]
 
@@ -98,7 +98,7 @@ args = [
   "--date-time-crate",
   "time",
   "--database-url",
-  "sqlite:test.sqlite",
+  "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core",
   "-o",
   "lib/sql-data-provider/src/entity_new/",
 ]
