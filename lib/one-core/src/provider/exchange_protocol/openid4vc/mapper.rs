@@ -355,7 +355,7 @@ pub fn create_open_id_for_vp_client_metadata(key: PublicKeyWithJwk) -> OpenID4VP
     OpenID4VPClientMetadata {
         jwks: vec![OpenID4VPClientMetadataJwkDTO {
             key_id: key.key_id,
-            jwk: key.jwk,
+            jwk: key.jwk.into(),
         }],
         vp_formats: create_open_id_for_vp_formats(),
         client_id_scheme: "redirect_uri".to_string(),

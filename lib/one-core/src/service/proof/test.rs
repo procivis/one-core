@@ -24,7 +24,6 @@ use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::interaction::InteractionId;
 use crate::model::interaction::InteractionRelations;
-use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -58,6 +57,7 @@ use crate::service::proof::dto::{
     CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
 };
 use crate::service::test_utilities::generic_config;
+use one_providers::common_models::key::Key;
 
 #[derive(Default)]
 struct Repositories {
@@ -1985,7 +1985,7 @@ async fn test_create_proof_with_related_key() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: Key {
-                        id: verifier_key_id,
+                        id: verifier_key_id.into(),
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                         public_key: vec![],

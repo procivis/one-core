@@ -15,7 +15,6 @@ use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::key::Key;
 use crate::model::proof::{self, Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
@@ -23,6 +22,7 @@ use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::error::ServiceError;
 use crate::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
+use one_providers::common_models::key::Key;
 
 fn build_claim_from_credential_claims(
     claims: &[CredentialSchemaClaim],

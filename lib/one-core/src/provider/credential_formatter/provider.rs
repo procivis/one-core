@@ -2,20 +2,23 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use one_providers::crypto::CryptoProvider;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use serde_json::json;
 
 use super::json_ld::caching_loader::CachingLoader;
-use super::json_ld_bbsplus::JsonLdBbsplus;
-use super::json_ld_classic::JsonLdClassic;
-use super::CredentialFormatter;
+
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::config::ConfigError;
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use crate::provider::credential_formatter::physical_card::PhysicalCardFormatter;
 use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
-use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::did_method::mdl::DidMdlValidator;
+
+use super::json_ld_bbsplus::JsonLdBbsplus;
+use super::json_ld_classic::JsonLdClassic;
+use super::CredentialFormatter;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait CredentialFormatterProvider: Send + Sync {
@@ -38,10 +41,12 @@ impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn credential_formatters_from_config(
     config: &mut CoreConfig,
     crypto: Arc<dyn CryptoProvider>,
     core_base_url: Option<String>,
+    did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     caching_loader: CachingLoader,
@@ -84,6 +89,7 @@ pub(crate) fn credential_formatters_from_config(
                 let params = config.format.get(name)?;
                 Arc::new(MdocFormatter::new(
                     params,
+                    did_mdl_validator.clone(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     core_base_url.clone(),

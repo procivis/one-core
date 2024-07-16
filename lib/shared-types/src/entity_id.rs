@@ -37,3 +37,6 @@ impl_from_other_type!(TrustAnchorId);
 impl_from_other_type!(TrustEntityId);
 impl_from_other_type!(ProofSchemaId);
 impl_from_other_type!(ProofId);
+
+impl_from_other_type!(one_providers::common_models::key::KeyId);
+impl_from_other_type!(one_providers::common_models::organisation::OrganisationId);

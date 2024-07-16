@@ -10,7 +10,6 @@ use crate::{
         credential_formatter::{
             model::DetailCredential, provider::CredentialFormatterProvider, ExtractPresentationCtx,
         },
-        did_method::provider::DidMethodProvider,
         revocation::{
             provider::RevocationMethodProvider, CredentialDataByRole, CredentialRevocationState,
             VerifierCredentialData,
@@ -20,6 +19,7 @@ use crate::{
     util::{key_verification::KeyVerification, oidc::map_from_oidc_format_to_core_real},
 };
 
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use shared_types::CredentialSchemaId;
 use std::{

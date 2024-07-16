@@ -144,7 +144,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
             verifier_did_id: Set(value.verifier_did.map(|did| did.id)),
             holder_did_id: Set(value.holder_did.map(|did| did.id)),
             proof_schema_id: Set(value.schema.map(|schema| schema.id)),
-            verifier_key_id: Set(value.verifier_key.map(|key| key.id)),
+            verifier_key_id: Set(value.verifier_key.map(|key| key.id.into())),
             interaction_id: Set(value
                 .interaction
                 .map(|interaction| interaction.id.to_string())),

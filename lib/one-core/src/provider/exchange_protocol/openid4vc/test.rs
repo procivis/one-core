@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use maplit::hashmap;
 use mockall::{predicate, Sequence};
-use one_providers::key_algorithm::model::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
 use one_providers::key_storage::provider::MockKeyProvider;
@@ -25,7 +24,6 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
@@ -45,6 +43,8 @@ use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 use crate::service::test_utilities::generic_config;
+use one_providers::common_models::key::Key;
+use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 
 #[derive(Default)]
 struct TestInputs {

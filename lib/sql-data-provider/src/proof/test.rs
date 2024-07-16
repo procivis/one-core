@@ -7,7 +7,7 @@ use one_core::model::credential::{
 };
 use one_core::model::did::{Did, DidRelations, DidType};
 use one_core::model::interaction::{Interaction, InteractionId, InteractionRelations};
-use one_core::model::key::{Key, KeyRelations};
+use one_core::model::key::KeyRelations;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
 use one_core::model::proof::{
@@ -27,6 +27,7 @@ use one_core::repository::proof_schema_repository::{
     MockProofSchemaRepository, ProofSchemaRepository,
 };
 use one_core::service::proof::dto::ProofFilterValue;
+use one_providers::common_models::key::Key;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
 use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
@@ -305,7 +306,7 @@ async fn test_create_proof_success() {
         }),
         holder_did: None,
         verifier_key: Some(Key {
-            id: key_id,
+            id: key_id.into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             public_key: vec![],
@@ -633,7 +634,7 @@ async fn test_get_proof_with_relations() {
     assert_eq!(proof.verifier_did.unwrap().id, did_id);
     assert!(proof.holder_did.is_none());
     assert_eq!(proof.interaction.unwrap().id, interaction_id);
-    assert_eq!(proof.verifier_key.unwrap().id, key_id);
+    assert_eq!(proof.verifier_key.unwrap().id, key_id.into());
 
     let claims = proof.claims.unwrap();
     assert_eq!(claims.len(), 1);

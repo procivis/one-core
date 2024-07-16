@@ -10,7 +10,7 @@ use url::Url;
 use crate::common_mapper::deserialize_with_serde_json;
 use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::interaction::InteractionId;
-use crate::provider::did_method::dto::PublicKeyJwkDTO;
+use crate::provider::dto::PublicKeyJwkDTO;
 
 use super::openidvc_ble::MessageSize;
 

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use autometrics::autometrics;
-use one_core::model::{
-    did::{Did, DidListQuery, DidRelations, GetDidList, RelatedKey, UpdateDidRequest},
-    key::Key,
+use one_core::model::did::{
+    Did, DidListQuery, DidRelations, GetDidList, RelatedKey, UpdateDidRequest,
 };
 use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
+use one_providers::common_models::key::Key;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, Set, Unchanged,
@@ -55,7 +55,7 @@ impl DidProvider {
                 } else {
                     let key = self
                         .key_repository
-                        .get_key(key_id, key_relations)
+                        .get_key(&key_id.to_owned().into(), key_relations)
                         .await?
                         .ok_or(DataLayerError::MissingRequiredRelation {
                             relation: "did-key",
@@ -156,7 +156,7 @@ impl DidRepository for DidProvider {
                 keys.into_iter()
                     .map(|key| key_did::ActiveModel {
                         did_id: Set(did.id),
-                        key_id: Set(key.key.id),
+                        key_id: Set(key.key.id.into()),
                         role: Set(key.role.into()),
                     })
                     .collect::<Vec<_>>(),

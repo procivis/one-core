@@ -2,16 +2,19 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use one_providers::crypto::MockCryptoProvider;
+use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use time::{Duration, OffsetDateTime};
 
-use super::derived_proof::find_selective_indices;
-use super::model::{GroupEntry, TransformedEntry};
 use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdCredentialSubject};
 use crate::provider::credential_formatter::json_ld_bbsplus::remove_undisclosed_keys::remove_undisclosed_keys;
 use crate::provider::credential_formatter::json_ld_bbsplus::{JsonLdBbsplus, Params};
 use crate::provider::credential_formatter::test_utilities::prepare_caching_loader;
-use crate::provider::did_method::provider::MockDidMethodProvider;
+
+use super::{
+    derived_proof::find_selective_indices,
+    model::{GroupEntry, TransformedEntry},
+};
 
 #[tokio::test]
 async fn test_canonize_any() {

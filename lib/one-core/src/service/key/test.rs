@@ -1,5 +1,6 @@
 use super::KeyService;
 
+use one_providers::common_models::key::Key;
 use one_providers::key_storage::imp::provider::KeyProviderImpl;
 use one_providers::key_storage::model::StorageGeneratedKey;
 use one_providers::key_storage::{KeyStorage, MockKeyStorage};
@@ -8,15 +9,13 @@ use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::model::key::GetKeyList;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::key::dto::{
     KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
 };
 use crate::{
-    model::{
-        key::{GetKeyList, Key},
-        organisation::Organisation,
-    },
+    model::organisation::Organisation,
     repository::{
         history_repository::MockHistoryRepository, key_repository::MockKeyRepository,
         organisation_repository::MockOrganisationRepository,
@@ -59,11 +58,14 @@ fn generic_key(name: &str, organisation_id: Uuid) -> Key {
         key_reference: vec![],
         storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: Some(Organisation {
-            id: organisation_id.into(),
-            created_date: now,
-            last_modified: now,
-        }),
+        organisation: Some(
+            Organisation {
+                id: organisation_id.into(),
+                created_date: now,
+                last_modified: now,
+            }
+            .into(),
+        ),
     }
 }
 
@@ -83,7 +85,7 @@ async fn test_create_key_success() {
         organisation_repository
             .expect_get_organisation()
             .once()
-            .returning(move |_, _| Ok(Some(organisation.clone())));
+            .returning(move |_, _| Ok(Some(organisation.clone().into())));
 
         key_storage.expect_generate().once().returning(|_, _| {
             Ok(StorageGeneratedKey {
@@ -114,7 +116,7 @@ async fn test_create_key_success() {
 
     let result = service
         .generate_key(KeyRequestDTO {
-            organisation_id: organisation.id,
+            organisation_id: organisation.id.into(),
             key_type: "EDDSA".to_string(),
             key_params: Default::default(),
             name: "NAME".to_string(),
@@ -124,7 +126,7 @@ async fn test_create_key_success() {
         .await;
 
     assert!(result.is_ok());
-    assert_eq!(key.id, result.unwrap());
+    assert_eq!(key.id, result.unwrap().into());
 }
 
 #[tokio::test]
@@ -151,10 +153,10 @@ async fn test_get_key_success() {
         generic_config().core,
     );
 
-    let result = service.get_key(&key.id).await;
+    let result = service.get_key(&key.id.to_owned().into()).await;
 
     assert!(result.is_ok());
-    assert_eq!(key.id, result.unwrap().id);
+    assert_eq!(key.id, result.unwrap().id.into());
 }
 
 #[tokio::test]
@@ -248,7 +250,9 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
         generic_config().core,
     );
 
-    let result = service.generate_csr(&key.id, generic_csr_request()).await;
+    let result = service
+        .generate_csr(&key.id.to_owned().into(), generic_csr_request())
+        .await;
     assert!(matches!(
         result,
         Err(ServiceError::BusinessLogic(
@@ -284,7 +288,9 @@ async fn test_generate_csr_failed_requested_for_more_than_457_days() {
     let mut request = generic_csr_request();
     request.expires_at = request.not_before + Duration::days(458);
 
-    let result = service.generate_csr(&key.id, request).await;
+    let result = service
+        .generate_csr(&key.id.to_owned().into(), request)
+        .await;
     assert!(matches!(
         result,
         Err(ServiceError::Validation(

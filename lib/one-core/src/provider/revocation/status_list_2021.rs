@@ -1,6 +1,6 @@
-use std::sync::Arc;
-
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use std::sync::Arc;
 
 use anyhow::Context;
 use shared_types::DidValue;
@@ -9,7 +9,6 @@ use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList2021JWTFormatter;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::provider::revocation::{
     CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,

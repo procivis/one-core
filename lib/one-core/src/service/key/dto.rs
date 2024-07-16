@@ -1,3 +1,4 @@
+use one_providers::common_models::key::Key;
 use serde::{Deserialize, Serialize};
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
@@ -5,10 +6,8 @@ use uuid::Uuid;
 
 use dto_mapper::From;
 
-use crate::model::{
-    common::{GetListQueryParams, GetListResponse},
-    key::{Key, SortableKeyColumn},
-};
+use crate::model::common::{GetListQueryParams, GetListResponse};
+use crate::model::key::SortableKeyColumn;
 
 pub struct KeyRequestDTO {
     pub organisation_id: OrganisationId,

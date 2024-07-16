@@ -1,6 +1,7 @@
 use dto_mapper::{From, Into};
+use one_providers::common_models::key::KeyId;
 use serde::{Deserialize, Serialize};
-use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId};
+use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, OrganisationId};
 use strum_macros::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 

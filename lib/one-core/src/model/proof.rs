@@ -1,16 +1,16 @@
-use shared_types::{DidId, ProofId};
-use strum_macros::Display;
-use time::OffsetDateTime;
-
 use super::claim::{Claim, ClaimRelations};
 use super::common::GetListResponse;
 use super::credential::{Credential, CredentialRelations};
 use super::did::{Did, DidRelations};
 use super::interaction::{Interaction, InteractionId, InteractionRelations};
-use super::key::{Key, KeyRelations};
 use super::list_query::ListQuery;
 use super::proof_schema::{ProofSchema, ProofSchemaRelations};
+use crate::model::key::KeyRelations;
 use crate::service::proof::dto::ProofFilterValue;
+use one_providers::common_models::key::Key;
+use shared_types::{DidId, ProofId};
+use strum_macros::Display;
+use time::OffsetDateTime;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Proof {

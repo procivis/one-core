@@ -1,10 +1,10 @@
+use one_providers::did::model::DidDocument;
+use one_providers::key_algorithm::error::KeyAlgorithmError;
+use shared_types::{DidId, DidValue};
 use std::{
     collections::{HashMap, HashSet},
     ops::Deref,
 };
-
-use one_providers::key_algorithm::error::KeyAlgorithmError;
-use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -14,23 +14,24 @@ use super::{
     validator::validate_deactivation_request,
     DidService,
 };
-use crate::provider::did_method::dto::DidDocumentDTO;
+use crate::model::key::KeyRelations;
 use crate::service::did::mapper::did_create_history_event;
+use crate::service::error::EntityNotFoundError;
 use crate::service::{did::mapper::map_key_to_verification_method, error::MissingProviderError};
 use crate::{
     config::validator::did::validate_did_method,
     model::{
         did::{DidListQuery, DidRelations, UpdateDidRequest},
-        key::KeyRelations,
         organisation::OrganisationRelations,
     },
     service::{did::validator::validate_request_amount_of_keys, error::ServiceError},
 };
-use crate::{model::key::Key, service::error::EntityNotFoundError};
 use crate::{
     repository::error::DataLayerError,
     service::{did::mapper::map_did_model_to_did_web_response, error::BusinessLogicError},
 };
+use one_providers::common_models::key::{Key, KeyId};
+use one_providers::did::error::DidMethodProviderError;
 
 impl DidService {
     /// Returns did document for did:web
@@ -38,7 +39,7 @@ impl DidService {
     /// # Arguments
     ///
     /// * `id` - Did uuid
-    pub async fn get_did_web_document(&self, id: &DidId) -> Result<DidDocumentDTO, ServiceError> {
+    pub async fn get_did_web_document(&self, id: &DidId) -> Result<DidDocument, ServiceError> {
         let did = self
             .did_repository
             .get_did(
@@ -88,7 +89,7 @@ impl DidService {
                         map_key_to_verification_method(
                             &did.did,
                             key,
-                            key_algorithm.bytes_to_jwk(&value.public_key, None)?.into(),
+                            key_algorithm.bytes_to_jwk(&value.public_key, None)?,
                         )?,
                     ))
                 })
@@ -181,7 +182,7 @@ impl DidService {
         }
 
         let did_value = did_method
-            .create(&new_did_id, &request.params, &keys)
+            .create(&new_did_id.into(), &request.params, &keys)
             .await?;
 
         let now = OffsetDateTime::now_utc();
@@ -193,7 +194,14 @@ impl DidService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
-        let did = did_from_did_request(new_did_id, request, organisation, did_value, keys, now)?;
+        let did = did_from_did_request(
+            new_did_id,
+            request,
+            organisation,
+            did_value.to_string().into(),
+            keys,
+            now,
+        )?;
         let did_value = did.did.clone();
 
         let did_id = self
@@ -259,7 +267,9 @@ impl DidService {
         Ok(())
     }
 
-    pub async fn resolve_did(&self, did: &DidValue) -> Result<DidDocumentDTO, ServiceError> {
-        self.did_method_provider.resolve(did).await
+    pub async fn resolve_did(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {
+        self.did_method_provider
+            .resolve(&did.to_owned().into())
+            .await
     }
 }

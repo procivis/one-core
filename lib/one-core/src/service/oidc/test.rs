@@ -3,7 +3,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
-use one_providers::key_algorithm::model::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
 use one_providers::key_storage::provider::MockKeyProvider;
@@ -24,7 +23,6 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::HistoryAction;
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
@@ -34,8 +32,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
-use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
 use crate::provider::exchange_protocol::openid4vc::dto::{
     AuthorizationEncryptedResponseAlgorithm,
@@ -70,6 +67,9 @@ use crate::service::oidc::model::{
 use crate::service::oidc::validator::validate_claims;
 use crate::service::oidc::OIDCService;
 use crate::service::test_utilities::*;
+use one_providers::common_models::key::Key;
+use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::did::provider::MockDidMethodProvider;
 
 #[derive(Default)]
 struct Mocks {

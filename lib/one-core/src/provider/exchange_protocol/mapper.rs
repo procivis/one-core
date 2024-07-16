@@ -1,7 +1,7 @@
+use one_providers::common_models::key::Key;
+use shared_types::{CredentialId, DidId, ProofId};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-
-use shared_types::{CredentialId, DidId, ProofId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -17,7 +17,6 @@ use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{Did, DidRelations};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{self, Proof, ProofStateEnum};
 use crate::provider::exchange_protocol::dto::{

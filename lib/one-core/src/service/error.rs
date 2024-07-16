@@ -1,4 +1,5 @@
 use one_providers::crypto::CryptoProviderError;
+use one_providers::did::error::{DidMethodError, DidMethodProviderError};
 use one_providers::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use one_providers::key_storage::error::{KeyStorageError, KeyStorageProviderError};
 use shared_types::{
@@ -17,7 +18,6 @@ use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofStateEnum;
 use crate::model::revocation_list::RevocationListId;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::did_method::DidMethodError;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::repository::error::DataLayerError;
 use crate::service::oidc::dto::OpenID4VCIError;
@@ -69,6 +69,9 @@ pub enum ServiceError {
     // KeyStorageError(KeyStorageError),
     #[error("Did method error `{0}`")]
     DidMethodError(#[from] DidMethodError),
+
+    #[error("Did method provider error `{0}`")]
+    DidMethodProviderError(#[from] DidMethodProviderError),
 
     #[error("Crypto provider error: `{0}`")]
     CryptoError(#[from] CryptoProviderError),
@@ -850,6 +853,7 @@ impl ServiceError {
             ServiceError::KeyAlgorithmError(_) => ErrorCode::BR_0063,
             ServiceError::KeyAlgorithmProviderError(_) => ErrorCode::BR_0063,
             ServiceError::DidMethodError(_) => ErrorCode::BR_0064,
+            ServiceError::DidMethodProviderError(error) => did_method_provider_error_code(error),
             ServiceError::ValidationError(_) | ServiceError::Other(_) => ErrorCode::BR_0000,
             ServiceError::Revocation(_) => ErrorCode::BR_0101,
         }
@@ -1026,5 +1030,14 @@ impl FormatterError {
             | FormatterError::JsonPtrError(_)
             | FormatterError::FloatValueIsNaN => ErrorCode::BR_0057,
         }
+    }
+}
+
+pub fn did_method_provider_error_code(error: &DidMethodProviderError) -> ErrorCode {
+    match error {
+        DidMethodProviderError::DidMethod(_)
+        | DidMethodProviderError::MissingDidMethodNameInDidValue
+        | DidMethodProviderError::Other(_) => ErrorCode::BR_0064,
+        DidMethodProviderError::MissingProvider(_) => ErrorCode::BR_0031,
     }
 }

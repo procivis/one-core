@@ -30,7 +30,7 @@ async fn test_get_key_ok() {
     // THEN
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let inserted_key = fixtures::get_key(&db_conn, &key.id).await;
+    let inserted_key = fixtures::get_key(&db_conn, &key.id.to_owned().into()).await;
 
     assert_eq!(key.id, inserted_key.id);
     assert_eq!(key.public_key, inserted_key.public_key);

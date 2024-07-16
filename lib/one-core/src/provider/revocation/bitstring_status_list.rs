@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-
 use anyhow::Context;
+use one_providers::did::provider::DidMethodProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use shared_types::{CredentialId, DidId, DidValue};
+use std::collections::HashMap;
+use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -19,7 +18,6 @@ use crate::model::revocation_list::{
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::status_list_jwt_formatter::common::StatusPurpose;
 use crate::provider::credential_formatter::status_list_jwt_formatter::BitstringStatusListJwtFormatter;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::provider::revocation::{
     CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
@@ -312,7 +310,7 @@ impl BitstringStatusList {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(&key.key.to_owned().into(), None)?;
+            .get_signature_provider(&key.key.to_owned(), None)?;
 
         let status_list = BitstringStatusListJwtFormatter::format_status_list(
             revocation_list_url,

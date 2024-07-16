@@ -1,21 +1,21 @@
 use std::sync::Arc;
 
-use one_providers::{
-    crypto::CryptoProvider, key_algorithm::provider::KeyAlgorithmProvider,
-    key_storage::provider::KeyProvider,
-};
-
 use crate::{
     config::core_config,
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
-        did_method::provider::DidMethodProvider, revocation::provider::RevocationMethodProvider,
+        revocation::provider::RevocationMethodProvider,
     },
     repository::{
         credential_repository::CredentialRepository,
         revocation_list_repository::RevocationListRepository,
         validity_credential_repository::ValidityCredentialRepository,
     },
+};
+use one_providers::did::provider::DidMethodProvider;
+use one_providers::{
+    crypto::CryptoProvider, key_algorithm::provider::KeyAlgorithmProvider,
+    key_storage::provider::KeyProvider,
 };
 
 pub mod dto;

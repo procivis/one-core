@@ -23,7 +23,7 @@ async fn test_create_did_key_es256_success() {
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "KEY",
             "test",
             None,
@@ -63,7 +63,7 @@ async fn test_create_did_key_dilithium_failure_incapable() {
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "KEY",
             "test",
             None,
@@ -90,7 +90,7 @@ async fn test_create_did_key_eddsa_success() {
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "KEY",
             "test",
             None,
@@ -132,7 +132,7 @@ async fn test_fail_to_create_did_key_to_much_keys() {
         .dids
         .create(
             organisation.id,
-            DidKeys::all(vec![key1.id, key2.id]),
+            DidKeys::all(vec![key1.id.into(), key2.id.into()]),
             "KEY",
             "test",
             None,
@@ -160,7 +160,7 @@ async fn test_create_did_web_success() {
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "WEB",
             "test",
             None,
@@ -204,11 +204,11 @@ async fn test_create_did_web_mixed_keys() {
         .create(
             organisation.id,
             DidKeys {
-                assertion_method: vec![key1.id, key2.id],
-                authentication: vec![key1.id, key2.id],
-                capability_delegation: vec![key1.id],
-                capability_invocation: vec![key1.id],
-                key_agreement: vec![key1.id],
+                assertion_method: vec![key1.id.into(), key2.id.into()],
+                authentication: vec![key1.id.into(), key2.id.into()],
+                capability_delegation: vec![key1.id.into()],
+                capability_invocation: vec![key1.id.into()],
+                key_agreement: vec![key1.id.into()],
             },
             "WEB",
             "test",
@@ -243,7 +243,7 @@ async fn test_create_did_jwk_success() {
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "JWK",
             "test",
             None,
@@ -282,7 +282,7 @@ async fn test_create_did_with_same_name_in_different_organisations() {
         .dids
         .create(
             organisation1.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "JWK",
             &did.name,
             None,
@@ -314,7 +314,7 @@ async fn test_fail_to_create_did_with_same_name_in_same_organisation() {
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key1.id),
+            DidKeys::single(key1.id.into()),
             "JWK",
             "test",
             None,
@@ -328,7 +328,7 @@ async fn test_fail_to_create_did_with_same_name_in_same_organisation() {
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key2.id),
+            DidKeys::single(key2.id.into()),
             "JWK",
             "test",
             None,
@@ -355,7 +355,7 @@ async fn test_fail_to_create_did_with_same_value_in_same_organisation() {
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "JWK",
             "test 1",
             None,
@@ -369,7 +369,7 @@ async fn test_fail_to_create_did_with_same_value_in_same_organisation() {
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "JWK",
             "test 2",
             None,
@@ -398,7 +398,7 @@ async fn test_create_did_with_same_value_in_different_organisations() {
         .dids
         .create(
             organisation1.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "JWK",
             "test 1",
             None,
@@ -410,7 +410,7 @@ async fn test_create_did_with_same_value_in_different_organisations() {
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "JWK",
             "test 2",
             None,
@@ -462,7 +462,7 @@ ZIh4dvg=
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "MDL",
             "test-mdl",
             Some(json!({
@@ -529,7 +529,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .dids
         .create(
             organisation.id,
-            DidKeys::single(key.id),
+            DidKeys::single(key.id.into()),
             "MDL",
             "test-mdl",
             Some(json!({

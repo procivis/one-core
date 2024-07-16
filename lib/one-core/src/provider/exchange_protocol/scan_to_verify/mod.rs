@@ -1,6 +1,5 @@
 use crate::model::credential::Credential;
 use crate::model::did::Did;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::exchange_protocol::dto::{
@@ -9,6 +8,7 @@ use crate::provider::exchange_protocol::dto::{
 use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 use async_trait::async_trait;
+use one_providers::common_models::key::Key;
 use url::Url;
 
 pub(crate) struct ScanToVerify {}

@@ -1,24 +1,21 @@
 use dto_mapper::convert_inner;
+use one_providers::common_models::key::{Key, KeyId};
+use one_providers::common_models::organisation::Organisation;
 use one_providers::key_storage::model::StorageGeneratedKey;
 use rcgen::{CertificateParams, CustomExtension, DistinguishedName, DnType};
-use shared_types::KeyId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 use yasna::models::ObjectIdentifier;
 
+use super::dto::{GetKeyListResponseDTO, KeyGenerateCSRRequestProfile};
+use crate::model::key::GetKeyList;
 use crate::{
-    model::{
-        history::{History, HistoryAction, HistoryEntityType},
-        key::{GetKeyList, Key},
-        organisation::Organisation,
-    },
+    model::history::{History, HistoryAction, HistoryEntityType},
     service::{
         error::ServiceError,
         key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO, KeyResponseDTO},
     },
 };
-
-use super::dto::{GetKeyListResponseDTO, KeyGenerateCSRRequestProfile};
 
 pub(super) fn from_create_request(
     key_id: KeyId,
@@ -56,7 +53,7 @@ impl TryFrom<Key> for KeyResponseDTO {
             id: value.id.into(),
             created_date: value.created_date,
             last_modified: value.last_modified,
-            organisation_id,
+            organisation_id: organisation_id.into(),
             name: value.name,
             public_key: value.public_key,
             key_type: value.key_type,
@@ -83,7 +80,7 @@ pub(super) fn key_create_history_event(key: Key) -> History {
         entity_id: Some(key.id.into()),
         entity_type: HistoryEntityType::Key,
         metadata: None,
-        organisation: key.organisation,
+        organisation: convert_inner(key.organisation),
     }
 }
 

@@ -3,6 +3,9 @@ use std::sync::Arc;
 use std::vec;
 
 use mockall::predicate::eq;
+use one_providers::did::imp::provider::DidMethodProviderImpl;
+use one_providers::did::provider::MockDidMethodProvider;
+use one_providers::did::{DidMethod, MockDidMethod};
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use serde_json::json;
 use shared_types::{DidId, DidValue, ProofId};
@@ -24,8 +27,6 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
-use crate::provider::did_method::{DidMethod, MockDidMethod};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -972,7 +973,7 @@ fn mock_ssi_verifier_service() -> SSIVerifierService {
     let did_method = MockDidMethod::new();
     let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
     did_methods.insert("INTERNAL".to_string(), Arc::new(did_method));
-    let did_method_provider = DidMethodProviderImpl::new(did_methods, None);
+    let did_method_provider = DidMethodProviderImpl::new(did_methods);
 
     SSIVerifierService {
         did_repository: Arc::new(MockDidRepository::new()),

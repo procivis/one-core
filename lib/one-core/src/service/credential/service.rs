@@ -854,7 +854,7 @@ async fn obtain_and_update_new_mso(
         .clone();
 
     let auth_fn = key_provider
-        .get_signature_provider(&key.to_owned().into(), None)
+        .get_signature_provider(&key.to_owned(), None)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(

@@ -36,7 +36,7 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelation
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::interaction::InteractionRelations;
-use crate::model::key::{Key, KeyRelations};
+use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
 use crate::model::proof_schema::{
@@ -77,6 +77,7 @@ use crate::service::ssi_validator::validate_exchange_type;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_real;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
+use one_providers::common_models::key::Key;
 
 impl OIDCService {
     pub async fn oidc_get_issuer_metadata(
@@ -1047,7 +1048,7 @@ impl OIDCService {
 
                 let key = self
                     .key_repository
-                    .get_key(&key_id, &KeyRelations::default())
+                    .get_key(&key_id.to_owned().into(), &KeyRelations::default())
                     .await?
                     .ok_or_else(|| {
                         ServiceError::ValidationError("Invalid JWE key_id".to_string())
@@ -1107,7 +1108,7 @@ fn build_jwe_decrypter(
         .get_key_storage(&key.storage_type)
         .ok_or_else(|| MissingProviderError::KeyStorage(key.storage_type.clone()))?;
 
-    let jwk = key_storage.secret_key_as_jwk(&key.to_owned().into())?;
+    let jwk = key_storage.secret_key_as_jwk(&key.to_owned())?;
     let mut jwk = josekit::jwk::Jwk::from_bytes(jwk.as_bytes())
         .map_err(|err| ServiceError::MappingError(format!("Failed constructing JWK {err}")))?;
 

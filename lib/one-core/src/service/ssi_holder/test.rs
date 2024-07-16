@@ -4,6 +4,9 @@ use std::vec;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
+use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::did::model::{DidDocument, DidVerificationMethod};
+use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use one_providers::key_storage::provider::MockKeyProvider;
 use one_providers::key_storage::MockKeyStorage;
@@ -22,10 +25,6 @@ use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::did_method::dto::{
-    DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
-};
-use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -344,14 +343,14 @@ async fn test_submit_proof_succeeds() {
         .expect_resolve()
         .once()
         .returning(move |_| {
-            Ok(DidDocumentDTO {
+            Ok(DidDocument {
                 context: json!({}),
-                id: dummy_did().did,
-                verification_method: vec![DidVerificationMethodDTO {
+                id: dummy_did().did.into(),
+                verification_method: vec![DidVerificationMethod {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -363,7 +362,7 @@ async fn test_submit_proof_succeeds() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: json!({}),
+                rest: Default::default(),
             })
         });
 
@@ -586,14 +585,14 @@ async fn test_submit_proof_repeating_claims() {
         .expect_resolve()
         .once()
         .returning(move |_| {
-            Ok(DidDocumentDTO {
+            Ok(DidDocument {
                 context: json!({}),
-                id: dummy_did().did,
-                verification_method: vec![DidVerificationMethodDTO {
+                id: dummy_did().did.into(),
+                verification_method: vec![DidVerificationMethod {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -605,7 +604,7 @@ async fn test_submit_proof_repeating_claims() {
                 key_agreement: None,
                 capability_invocation: None,
                 capability_delegation: None,
-                rest: json!({}),
+                rest: Default::default(),
             })
         });
 

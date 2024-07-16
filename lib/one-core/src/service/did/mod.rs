@@ -1,11 +1,10 @@
-use std::sync::Arc;
-
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use std::sync::Arc;
 
 use crate::repository::history_repository::HistoryRepository;
 use crate::{
     config::core_config,
-    provider::did_method::provider::DidMethodProvider,
     repository::{
         did_repository::DidRepository, key_repository::KeyRepository,
         organisation_repository::OrganisationRepository,

@@ -29,6 +29,7 @@ autometrics.workspace = true
 hex.workspace         = true
 futures               = { version = "0.3" }
 itertools             = { version = "0.13" }
+one-providers.workspace = true
 
 [dev-dependencies]
 mockall.workspace  = true

@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use core_server::ServerConfig;
 use one_core::config::core_config::{self, AppConfig, JsonLdContextConfig};
 use one_core::model::claim::{Claim, ClaimRelations};
@@ -14,7 +12,7 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
-use one_core::model::key::{Key, KeyRelations};
+use one_core::model::key::KeyRelations;
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{
     Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
@@ -28,11 +26,13 @@ use one_core::model::revocation_list::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::DataRepository;
+use one_providers::common_models::key::Key;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use shared_types::{CredentialId, DidId, DidValue, KeyId, ProofId};
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
+use std::str::FromStr;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -157,7 +157,7 @@ pub async fn create_key(
     let params = params.unwrap_or_default();
 
     let key = Key {
-        id: params.id.unwrap_or(Uuid::new_v4().into()),
+        id: params.id.unwrap_or(Uuid::new_v4().into()).into(),
         created_date: params.created_date.unwrap_or(now),
         last_modified: params.last_modified.unwrap_or(now),
         public_key: params.public_key.unwrap_or_default(),
@@ -165,7 +165,7 @@ pub async fn create_key(
         key_reference: params.key_reference.unwrap_or_default(),
         storage_type: params.storage_type.unwrap_or_default(),
         key_type: params.key_type.unwrap_or_default(),
-        organisation: Some(organisation.to_owned()),
+        organisation: Some(organisation.to_owned().into()),
     };
 
     data_layer
@@ -234,7 +234,7 @@ pub async fn get_key(db_conn: &DbConn, id: &KeyId) -> Key {
     data_layer
         .get_key_repository()
         .get_key(
-            id,
+            &id.to_owned().into(),
             &KeyRelations {
                 organisation: Some(OrganisationRelations::default()),
             },

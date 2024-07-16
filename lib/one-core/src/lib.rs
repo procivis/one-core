@@ -3,12 +3,14 @@ use std::sync::Arc;
 
 use config::ConfigError;
 use one_providers::crypto::CryptoProvider;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 
 use config::core_config::{CoreConfig, KeyAlgorithmConfig, KeyStorageConfig};
+
 use one_providers::key_storage::provider::KeyProvider;
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderImpl;
@@ -33,7 +35,7 @@ use service::trust_anchor::TrustAnchorService;
 use service::trust_entity::TrustEntityService;
 use time::Duration;
 
-use crate::config::core_config::JsonLdContextConfig;
+use crate::config::core_config::{DidConfig, JsonLdContextConfig};
 
 pub mod config;
 pub mod provider;
@@ -47,8 +49,7 @@ mod common_validator;
 pub mod util;
 
 use crate::provider::credential_formatter::provider::credential_formatters_from_config;
-use crate::provider::did_method::provider::DidMethodProviderImpl;
-use crate::provider::did_method::{did_method_providers_from_config, DidMethod};
+use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::exchange_protocol::exchange_protocol_providers_from_config;
 use crate::provider::revocation::provider::RevocationMethodProviderImpl;
 use crate::provider::revocation::RevocationMethod;
@@ -57,6 +58,13 @@ use crate::service::history::HistoryService;
 use crate::service::key::KeyService;
 use crate::service::oidc::OIDCService;
 use crate::service::revocation_list::RevocationListService;
+
+pub type DidMethodCreator = Box<
+    dyn FnOnce(
+        &mut DidConfig,
+        &OneCoreBuilderProviders,
+    ) -> (Arc<dyn DidMethodProvider>, Option<Arc<dyn DidMdlValidator>>),
+>;
 
 pub type KeyAlgorithmCreator =
     Box<dyn FnOnce(&KeyAlgorithmConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyAlgorithmProvider>>;
@@ -67,7 +75,6 @@ pub type KeyStorageCreator =
 pub type DataProviderCreator = Box<dyn FnOnce() -> Arc<dyn DataRepository>>;
 
 pub struct OneCore {
-    pub did_methods: HashMap<String, Arc<dyn DidMethod>>,
     pub exchange_protocols: HashMap<String, Arc<dyn ExchangeProtocol>>,
     pub revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>,
     pub organisation_service: OrganisationService,
@@ -96,6 +103,7 @@ pub struct OneCore {
 pub struct OneCoreBuilderProviders {
     pub core_base_url: Option<String>,
     pub crypto: Option<Arc<dyn CryptoProvider>>,
+    pub did_method_provider: Option<Arc<dyn DidMethodProvider>>,
     pub key_algorithm_provider: Option<Arc<dyn KeyAlgorithmProvider>>,
     pub key_storage_provider: Option<Arc<dyn KeyProvider>>,
     //repository and providers that we initialize as we build
@@ -109,6 +117,7 @@ pub struct OneCoreBuilder {
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     ble_central: Option<Arc<dyn BleCentral>>,
     data_provider_creator: Option<DataProviderCreator>,
+    did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
 }
 
 impl OneCoreBuilder {
@@ -146,11 +155,32 @@ impl OneCoreBuilder {
         self
     }
 
+    pub fn with_did_method_provider(mut self, did_met_provider: DidMethodCreator) -> Self {
+        let (did_method_provider, did_mdl_validator) =
+            did_met_provider(&mut self.core_config.did, &self.providers);
+        self.providers.did_method_provider = Some(did_method_provider);
+
+        // todo: fix this?
+        self.with_did_mdl_validator(did_mdl_validator)
+    }
+
     // Temporary
     pub fn with_data_provider_creator(mut self, data_provider: DataProviderCreator) -> Self {
         self.data_provider_creator = Some(data_provider);
         self
     }
+
+    pub fn with_did_mdl_validator(
+        mut self,
+        did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
+    ) -> Self {
+        self.did_mdl_validator = did_mdl_validator;
+        self
+    }
+
+    // pub fn get_key_algorithm_provider(&self) -> Option<Arc<dyn KeyAlgorithmProvider>> {
+    //     self.providers.key_algorithm_provider.clone()
+    // }
 
     // Temprary - move to particular implementation or config
     pub fn with_json_ld_context(
@@ -180,11 +210,13 @@ impl OneCoreBuilder {
             self.ble_peripheral,
             self.ble_central,
             self.providers,
+            self.did_mdl_validator,
         )
     }
 }
 
 impl OneCore {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         data_provider_creator: DataProviderCreator,
         mut core_config: CoreConfig,
@@ -192,9 +224,16 @@ impl OneCore {
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         ble_central: Option<Arc<dyn BleCentral>>,
         providers: OneCoreBuilderProviders,
+        did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
     ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
+
+        let did_method_provider = providers
+            .did_method_provider
+            .as_ref()
+            .expect("Did method provider is required")
+            .clone();
 
         let key_algorithm_provider = providers
             .key_algorithm_provider
@@ -213,16 +252,6 @@ impl OneCore {
             .as_ref()
             .expect("Key provider is required")
             .clone();
-
-        let (did_methods, did_mdl_validator) = did_method_providers_from_config(
-            &mut core_config.did,
-            key_algorithm_provider.clone(),
-            providers.core_base_url.clone(),
-        )?;
-        let did_method_provider = Arc::new(DidMethodProviderImpl::new(
-            did_methods.to_owned(),
-            did_mdl_validator,
-        ));
 
         let client = reqwest::Client::new();
 
@@ -244,6 +273,7 @@ impl OneCore {
             &mut core_config,
             crypto.clone(),
             providers.core_base_url.clone(),
+            did_mdl_validator.clone(),
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
             caching_loader.clone(),
@@ -310,7 +340,6 @@ impl OneCore {
         ));
 
         Ok(OneCore {
-            did_methods,
             exchange_protocols,
             revocation_methods,
             trust_anchor_service: TrustAnchorService::new(

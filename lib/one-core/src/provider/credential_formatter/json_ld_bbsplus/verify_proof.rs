@@ -119,7 +119,7 @@ impl JsonLdBbsplus {
     ) -> Result<Vec<u8>, FormatterError> {
         let did_document = self
             .did_method_provider
-            .resolve(&ld_credential.issuer)
+            .resolve(&ld_credential.issuer.to_string().into())
             .await
             .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
         let algo_provider = self
@@ -143,7 +143,7 @@ impl JsonLdBbsplus {
         };
 
         let public_key = algo_provider
-            .jwk_to_bytes(&verification_method.public_key_jwk.clone().into())
+            .jwk_to_bytes(&verification_method.public_key_jwk)
             .map_err(|e| {
                 FormatterError::CouldNotVerify(format!("Could not get public key from JWK: {e}"))
             })?;

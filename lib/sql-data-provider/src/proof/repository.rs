@@ -463,7 +463,7 @@ impl ProofProvider {
         {
             let verifier_key = self
                 .key_repository
-                .get_key(&verifier_key_id, verifier_key_relations)
+                .get_key(&verifier_key_id.to_owned().into(), verifier_key_relations)
                 .await?
                 .ok_or(DataLayerError::MissingRequiredRelation {
                     relation: "proof-verifierkey",

@@ -1,7 +1,6 @@
+use one_providers::common_models::key::Key;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
 use x509_parser::{certificate::X509Certificate, error::X509Error};
-
-use crate::model::key::Key;
 
 use super::DidMdl;
 

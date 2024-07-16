@@ -1,12 +1,12 @@
-use std::sync::Arc;
-
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use std::sync::Arc;
 
 use crate::{
     config::core_config,
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
-        did_method::provider::DidMethodProvider, revocation::provider::RevocationMethodProvider,
+        revocation::provider::RevocationMethodProvider,
     },
     repository::{
         credential_repository::CredentialRepository, did_repository::DidRepository,

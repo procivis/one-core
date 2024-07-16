@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use shared_types::CredentialId;
+use std::collections::HashMap;
+use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -24,7 +24,6 @@ use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::{mdoc_formatter, CredentialData};
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -230,7 +229,10 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
             .ok_or(ServiceError::Other("Missing issuer did".to_string()))?
             .did;
 
-        let did_document = self.did_method_provider.resolve(issuer_did_value).await?;
+        let did_document = self
+            .did_method_provider
+            .resolve(&issuer_did_value.to_owned().into())
+            .await?;
         let assertion_methods = did_document
             .assertion_method
             .ok_or(ServiceError::MappingError(
@@ -253,7 +255,7 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(&key.to_owned().into(), Some(issuer_jwk_key_id))?;
+            .get_signature_provider(&key.to_owned(), Some(issuer_jwk_key_id))?;
 
         let redirect_uri = credential.redirect_uri.to_owned();
 
