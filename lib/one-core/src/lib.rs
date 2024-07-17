@@ -440,6 +440,7 @@ impl OneCore {
                 protocol_provider.clone(),
                 ble_peripheral,
                 config.clone(),
+                providers.core_base_url.clone(),
             ),
             ssi_verifier_service: SSIVerifierService::new(
                 data_provider.get_credential_repository(),

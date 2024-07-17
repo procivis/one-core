@@ -121,7 +121,7 @@ async fn test_share_proof_success_no_redirect_uri() {
     let proof = generate_proof(None);
 
     let result = protocol.share_proof(&proof).await.unwrap();
-    assert_eq!(format!("http://base_url/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof={}", proof.id), result);
+    assert_eq!(format!("http://base_url/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof={}", proof.id), result.url);
 }
 
 #[tokio::test]
@@ -130,5 +130,5 @@ async fn test_share_proof_success_with_redirect_uri_is_percent_encoded() {
     let proof = generate_proof(Some("http://base_url/redirect?queryParam=1".to_string()));
 
     let result = protocol.share_proof(&proof).await.unwrap();
-    assert_eq!(format!("http://base_url/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof={}&redirect_uri=http%3A%2F%2Fbase_url%2Fredirect%3FqueryParam%3D1", proof.id), result);
+    assert_eq!(format!("http://base_url/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof={}&redirect_uri=http%3A%2F%2Fbase_url%2Fredirect%3FqueryParam%3D1", proof.id), result.url);
 }

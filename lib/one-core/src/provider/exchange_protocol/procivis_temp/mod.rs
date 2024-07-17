@@ -124,7 +124,8 @@ fn categorize_url(url: &Url) -> Result<InvitationType, ExchangeProtocolError> {
 
 #[async_trait]
 impl ExchangeProtocolImpl for ProcivisTemp {
-    type InteractionContext = ();
+    type VCInteractionContext = ();
+    type VPInteractionContext = ();
 
     fn can_handle(&self, url: &Url) -> bool {
         categorize_url(url).is_ok()
@@ -326,7 +327,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
     async fn share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<ShareResponse<Self::InteractionContext>, ExchangeProtocolError> {
+    ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         let base_url = self
             .base_url
             .as_ref()
@@ -350,7 +351,10 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         })
     }
 
-    async fn share_proof(&self, proof: &Proof) -> Result<String, ExchangeProtocolError> {
+    async fn share_proof(
+        &self,
+        proof: &Proof,
+    ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         let base_url = self
             .base_url
             .as_ref()
@@ -367,9 +371,11 @@ impl ExchangeProtocolImpl for ProcivisTemp {
             pairs.append_pair("redirect_uri", redirect_uri);
         }
 
-        let url = pairs.finish();
-
-        Ok(url.to_string())
+        Ok(ShareResponse {
+            url: pairs.finish().to_string(),
+            id: Uuid::new_v4(),
+            context: (),
+        })
     }
 
     async fn get_presentation_definition(

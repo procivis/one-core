@@ -20,7 +20,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, DidType, KeyRole, RelatedKey};
-use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
+use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
@@ -48,6 +48,9 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::oidc::dto::{OpenID4VCICredentialResponseDTO, OpenID4VCITokenResponseDTO};
+use crate::util::interactions::{
+    add_new_interaction, clear_previous_interaction, update_credentials_interaction,
+};
 use crate::util::oidc::detect_correct_format;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 
@@ -441,12 +444,8 @@ impl CredentialService {
             serde_json::to_vec(&context).ok(),
         )
         .await?;
-        update_credentials_interaction(
-            &credential.id,
-            &interaction_id,
-            &*self.credential_repository,
-        )
-        .await?;
+        update_credentials_interaction(credential.id, interaction_id, &*self.credential_repository)
+            .await?;
         clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
 
         let _ = self
@@ -1030,70 +1029,4 @@ fn mso_requires_update(detail_credential: &DetailCredential) -> bool {
     }
 
     false
-}
-
-async fn add_new_interaction(
-    interaction_id: InteractionId,
-    base_url: &Option<String>,
-    interaction_repository: &dyn InteractionRepository,
-    data: Option<Vec<u8>>,
-) -> Result<(), ExchangeProtocolError> {
-    let now = OffsetDateTime::now_utc();
-    let host = base_url
-        .as_ref()
-        .map(|url| {
-            url.parse()
-                .map_err(|_| ExchangeProtocolError::Failed(format!("Invalid base url {url}")))
-        })
-        .transpose()?;
-
-    let new_interaction = Interaction {
-        id: interaction_id,
-        created_date: now,
-        last_modified: now,
-        host,
-        data,
-    };
-    interaction_repository
-        .create_interaction(new_interaction)
-        .await
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-    Ok(())
-}
-
-async fn update_credentials_interaction(
-    credential_id: &CredentialId,
-    interaction_id: &InteractionId,
-    credential_repository: &dyn CredentialRepository,
-) -> Result<(), ExchangeProtocolError> {
-    let update = UpdateCredentialRequest {
-        id: credential_id.to_owned(),
-        interaction: Some(interaction_id.to_owned()),
-        credential: None,
-        holder_did_id: None,
-        issuer_did_id: None,
-        state: None,
-        key: None,
-        redirect_uri: None,
-    };
-
-    credential_repository
-        .update_credential(update)
-        .await
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-    Ok(())
-}
-
-async fn clear_previous_interaction(
-    interaction_repository: &dyn InteractionRepository,
-    interaction: &Option<Interaction>,
-) -> Result<(), ExchangeProtocolError> {
-    if let Some(interaction) = interaction.as_ref() {
-        interaction_repository
-            .delete_interaction(&interaction.id)
-            .await
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-    }
-    Ok(())
 }

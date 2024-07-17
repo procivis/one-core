@@ -1,28 +1,12 @@
-use crate::{
-    model::proof::{self, ProofState},
-    provider::{
-        bluetooth_low_energy::low_level::{
-            ble_peripheral::BlePeripheral,
-            dto::{
-                CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
-                CreateCharacteristicOptions, DeviceInfo, ServiceDescription,
-            },
-        },
-        exchange_protocol::{
-            openid4vc::{
-                dto::{ChunkExt, Chunks, OpenID4VPPresentationDefinition},
-                openidvc_ble::BLEParse,
-            },
-            ExchangeProtocolError,
-        },
-    },
-    repository::proof_repository::ProofRepository,
-};
+use std::sync::Arc;
+use std::time::Duration;
+
 use anyhow::anyhow;
-use futures::{future::BoxFuture, stream::FuturesUnordered, FutureExt, StreamExt, TryFutureExt};
+use futures::future::BoxFuture;
+use futures::stream::FuturesUnordered;
+use futures::{FutureExt, StreamExt, TryFutureExt};
 use one_providers::crypto::imp::utilities;
 use shared_types::ProofId;
-use std::{sync::Arc, time::Duration};
 use time::OffsetDateTime;
 
 use super::{
@@ -30,6 +14,18 @@ use super::{
     DISCONNECT_UUID, IDENTITY_UUID, PRESENTATION_REQUEST_UUID, REQUEST_SIZE_UUID, SERVICE_UUID,
     SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
+use crate::model::proof::{self, ProofState};
+use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
+use crate::provider::bluetooth_low_energy::low_level::dto::{
+    CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
+    CreateCharacteristicOptions, DeviceInfo, ServiceDescription,
+};
+use crate::provider::exchange_protocol::openid4vc::dto::{
+    ChunkExt, Chunks, OpenID4VPPresentationDefinition,
+};
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEParse;
+use crate::provider::exchange_protocol::ExchangeProtocolError;
+use crate::repository::proof_repository::ProofRepository;
 
 pub struct OpenID4VCBLEVerifier {
     pub(crate) ble_peripheral: Arc<dyn BlePeripheral>,
@@ -173,7 +169,7 @@ impl OpenID4VCBLEVerifier {
 
         let holder_wallet = loop {
             tokio::select! {
-               Some(wallet_info) = identify_futures.next() => {
+                Some(wallet_info) = identify_futures.next() => {
                     break wallet_info;
                 },
                 connection_events = self.ble_peripheral.get_connection_change_events() => {

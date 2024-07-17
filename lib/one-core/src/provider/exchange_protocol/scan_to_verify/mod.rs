@@ -24,7 +24,8 @@ impl ScanToVerify {
 
 #[async_trait]
 impl ExchangeProtocolImpl for ScanToVerify {
-    type InteractionContext = ();
+    type VCInteractionContext = ();
+    type VPInteractionContext = ();
 
     fn can_handle(&self, _url: &Url) -> bool {
         todo!()
@@ -73,11 +74,14 @@ impl ExchangeProtocolImpl for ScanToVerify {
     async fn share_credential(
         &self,
         _credential: &Credential,
-    ) -> Result<ShareResponse<Self::InteractionContext>, ExchangeProtocolError> {
+    ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         todo!()
     }
 
-    async fn share_proof(&self, _proof: &Proof) -> Result<String, ExchangeProtocolError> {
+    async fn share_proof(
+        &self,
+        _proof: &Proof,
+    ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         todo!()
     }
 

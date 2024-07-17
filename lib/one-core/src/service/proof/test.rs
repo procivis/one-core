@@ -38,6 +38,7 @@ use crate::model::proof_schema::{
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
+use crate::provider::exchange_protocol::dto::ShareResponse;
 use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPPresentationDefinition;
 use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEPeer;
@@ -80,6 +81,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.protocol_provider),
         repositories.ble_peripheral.map(|r| Arc::new(r) as _),
         Arc::new(repositories.config),
+        None,
     )
 }
 
@@ -240,7 +242,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof()
-            .times(1)
+            .once()
             .with(
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
@@ -1730,7 +1732,7 @@ async fn test_get_proof_missing() {
     let mut proof_repository = MockProofRepository::default();
     proof_repository
         .expect_get_proof()
-        .times(1)
+        .once()
         .returning(|_, _| Ok(None));
 
     let service = setup_service(Repositories {
@@ -1794,7 +1796,7 @@ async fn test_get_proof_list_success() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof_list()
-            .times(1)
+            .once()
             .returning(move |_| {
                 Ok(GetProofList {
                     values: vec![res_clone.to_owned()],
@@ -1846,7 +1848,7 @@ async fn test_create_proof_without_related_key() {
     let mut proof_schema_repository = MockProofSchemaRepository::default();
     proof_schema_repository
         .expect_get_proof_schema()
-        .times(1)
+        .once()
         .withf(move |id, _| &request.proof_schema_id == id)
         .returning(|id, _| {
             Ok(Some(ProofSchema {
@@ -1867,7 +1869,7 @@ async fn test_create_proof_without_related_key() {
     let mut did_repository = MockDidRepository::default();
     did_repository
         .expect_get_did()
-        .times(1)
+        .once()
         .withf(move |id, _| &request_clone.verifier_did_id == id)
         .returning(move |id, _| {
             Ok(Some(Did {
@@ -1916,7 +1918,7 @@ async fn test_create_proof_without_related_key() {
     let mut proof_repository = MockProofRepository::default();
     proof_repository
         .expect_create_proof()
-        .times(1)
+        .once()
         .withf(move |proof| proof.exchange == exchange)
         .returning(move |_| Ok(proof_id));
 
@@ -1948,7 +1950,7 @@ async fn test_create_proof_with_related_key() {
     let mut proof_schema_repository = MockProofSchemaRepository::default();
     proof_schema_repository
         .expect_get_proof_schema()
-        .times(1)
+        .once()
         .withf(move |id, _| &request.proof_schema_id == id)
         .returning(|id, _| {
             Ok(Some(ProofSchema {
@@ -1967,7 +1969,7 @@ async fn test_create_proof_with_related_key() {
     let mut did_repository = MockDidRepository::default();
     did_repository
         .expect_get_did()
-        .times(1)
+        .once()
         .withf(move |id, _| &request_clone.verifier_did_id == id)
         .returning(move |id, _| {
             Ok(Some(Did {
@@ -2016,7 +2018,7 @@ async fn test_create_proof_with_related_key() {
     let mut proof_repository = MockProofRepository::default();
     proof_repository
         .expect_create_proof()
-        .times(1)
+        .once()
         .withf(move |proof| proof.exchange == exchange)
         .returning(move |_| Ok(proof_id));
 
@@ -2047,7 +2049,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
     let mut proof_schema_repository = MockProofSchemaRepository::default();
     proof_schema_repository
         .expect_get_proof_schema()
-        .times(1)
+        .once()
         .withf(move |id, _| &request.proof_schema_id == id)
         .returning(|id, _| {
             Ok(Some(ProofSchema {
@@ -2066,7 +2068,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
     let mut did_repository = MockDidRepository::default();
     did_repository
         .expect_get_did()
-        .times(1)
+        .once()
         .withf(move |id, _| &request_clone.verifier_did_id == id)
         .returning(move |id, _| {
             Ok(Some(Did {
@@ -2126,7 +2128,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
     let mut proof_schema_repository = MockProofSchemaRepository::default();
     proof_schema_repository
         .expect_get_proof_schema()
-        .times(1)
+        .once()
         .withf(move |id, _| &request.proof_schema_id == id)
         .returning(|id, _| {
             Ok(Some(ProofSchema {
@@ -2253,7 +2255,7 @@ async fn test_create_proof_schema_deleted() {
     let mut proof_schema_repository = MockProofSchemaRepository::default();
     proof_schema_repository
         .expect_get_proof_schema()
-        .times(1)
+        .once()
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
@@ -2295,17 +2297,24 @@ async fn test_share_proof_created_success() {
     let mut protocol_provider = MockExchangeProtocolProvider::default();
 
     let expected_url = "test_url";
+    let interaction_id = Uuid::new_v4();
     protocol
         .inner
         .expect_share_proof()
-        .times(1)
-        .returning(|_| Ok(expected_url.to_owned()));
+        .once()
+        .returning(move |_| {
+            Ok(ShareResponse {
+                url: expected_url.to_owned(),
+                id: interaction_id,
+                context: (),
+            })
+        });
 
     let protocol = Arc::new(protocol);
 
     protocol_provider
         .expect_get_protocol()
-        .times(1)
+        .once()
         .returning(move |_| Some(protocol.clone()));
 
     let mut seq = Sequence::new();
@@ -2314,39 +2323,47 @@ async fn test_share_proof_created_success() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof()
-            .times(1)
+            .once()
             .in_sequence(&mut seq)
-            .withf(move |id, relations| {
-                id == &proof_id
-                    && relations
-                        == &ProofRelations {
-                            state: Some(ProofStateRelations::default()),
-                            schema: Some(ProofSchemaRelations {
-                                organisation: Some(Default::default()),
-                                ..Default::default()
-                            }),
-                            ..Default::default()
-                        }
-            })
+            .withf(move |id, _| id == &proof_id)
             .returning(move |_, _| Ok(Some(res_clone.to_owned())));
     }
 
     proof_repository
         .expect_set_proof_state()
-        .times(1)
+        .once()
         .in_sequence(&mut seq)
         .withf(move |id, state| id == &proof_id && state.state == ProofStateEnum::Pending)
         .returning(|_, _| Ok(()));
 
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .in_sequence(&mut seq)
+        .returning(move |_| Ok(interaction_id));
+
+    proof_repository
+        .expect_update_proof()
+        .once()
+        .in_sequence(&mut seq)
+        .withf(move |update| {
+            update.id == proof_id && update.interaction == Some(Some(interaction_id))
+        })
+        .returning(|_| Ok(()));
+
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
+        .once()
+        .in_sequence(&mut seq)
         .returning(|_| Ok(Uuid::new_v4().into()));
 
     let service = setup_service(Repositories {
         proof_repository,
         protocol_provider,
         history_repository,
+        interaction_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2366,17 +2383,24 @@ async fn test_share_proof_pending_success() {
     let mut protocol_provider = MockExchangeProtocolProvider::default();
 
     let expected_url = "test_url";
+    let interaction_id = Uuid::new_v4();
     protocol
         .inner
         .expect_share_proof()
-        .times(1)
-        .returning(|_| Ok(expected_url.to_owned()));
+        .once()
+        .returning(move |_| {
+            Ok(ShareResponse {
+                url: expected_url.to_owned(),
+                id: interaction_id,
+                context: (),
+            })
+        });
 
     let protocol = Arc::new(protocol);
 
     protocol_provider
         .expect_get_protocol()
-        .times(1)
+        .once()
         .returning(move |_| Some(protocol.clone()));
 
     let mut proof_repository = MockProofRepository::default();
@@ -2384,21 +2408,24 @@ async fn test_share_proof_pending_success() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof()
-            .times(1)
-            .withf(move |id, relations| {
-                id == &proof_id
-                    && relations
-                        == &ProofRelations {
-                            state: Some(ProofStateRelations::default()),
-                            schema: Some(ProofSchemaRelations {
-                                organisation: Some(Default::default()),
-                                ..Default::default()
-                            }),
-                            ..Default::default()
-                        }
-            })
+            .once()
+            .withf(move |id, _| id == &proof_id)
             .returning(move |_, _| Ok(Some(res_clone.to_owned())));
     }
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .returning(move |_| Ok(interaction_id));
+
+    proof_repository
+        .expect_update_proof()
+        .once()
+        .withf(move |update| {
+            update.id == proof_id && update.interaction == Some(Some(interaction_id))
+        })
+        .returning(|_| Ok(()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -2409,6 +2436,7 @@ async fn test_share_proof_pending_success() {
         proof_repository,
         protocol_provider,
         history_repository,
+        interaction_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2423,7 +2451,7 @@ async fn test_share_proof_invalid_state() {
     let mut proof_repository = MockProofRepository::default();
     proof_repository
         .expect_get_proof()
-        .times(1)
+        .once()
         .returning(move |_, _| {
             Ok(Some(construct_proof_with_state(
                 &proof_id,

@@ -14,7 +14,7 @@ use openidvc_ble::oidc_ble_holder::OpenID4VCBLEHolder;
 use openidvc_ble::oidc_ble_verifier::OpenID4VCBLEVerifier;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
-use shared_types::{CredentialId, ProofId};
+use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -33,7 +33,7 @@ use self::mapper::{
     presentation_definition_from_interaction_data,
 };
 use self::model::{
-    HolderInteractionData, JwePayload, OpenID4VCIInteractionContent, OpenID4VPInteractionContent,
+    HolderInteractionData, JwePayload, OpenID4VCInteractionContent, OpenID4VPInteractionContent,
 };
 use self::validator::validate_interaction_data;
 use super::dto::{PresentedCredential, ShareResponse, SubmitIssuerResponse};
@@ -43,7 +43,7 @@ use super::{
     ExchangeProtocolImpl,
 };
 use crate::config::core_config::{self, TransportType};
-use crate::model::claim::{Claim, ClaimRelations};
+use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
     Credential, CredentialRole, CredentialState, CredentialStateEnum, UpdateCredentialRequest,
@@ -53,13 +53,9 @@ use crate::model::credential_schema::{
     UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{Did, DidRelations, DidType};
-use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
-use crate::model::key::KeyRelations;
+use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofClaimRelations, ProofRelations, UpdateProofRequest};
-use crate::model::proof_schema::{
-    ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
-};
+use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::credential_formatter::mapper::format_presentation_ctx_from_interaction_data;
@@ -287,7 +283,8 @@ impl OpenID4VC {
 
 #[async_trait]
 impl ExchangeProtocolImpl for OpenID4VC {
-    type InteractionContext = OpenID4VCIInteractionContent;
+    type VCInteractionContext = OpenID4VCInteractionContent;
+    type VPInteractionContext = Option<OpenID4VPInteractionContent>;
 
     fn can_handle(&self, url: &Url) -> bool {
         self.detect_invitation_type(url).is_some()
@@ -676,9 +673,9 @@ impl ExchangeProtocolImpl for OpenID4VC {
     async fn share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<ShareResponse<Self::InteractionContext>, ExchangeProtocolError> {
+    ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         let interaction_id = Uuid::new_v4();
-        let interaction_content = OpenID4VCIInteractionContent {
+        let interaction_content = OpenID4VCInteractionContent {
             pre_authorized_code_used: false,
             access_token: format!(
                 "{}.{}",
@@ -722,46 +719,15 @@ impl ExchangeProtocolImpl for OpenID4VC {
         })
     }
 
-    async fn share_proof(&self, proof: &Proof) -> Result<String, ExchangeProtocolError> {
-        let proof = self
-            .proof_repository
-            .get_proof(
-                &proof.id,
-                &ProofRelations {
-                    interaction: Some(InteractionRelations::default()),
-                    claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations {
-                            schema: Some(ClaimSchemaRelations::default()),
-                        },
-                        ..Default::default()
-                    }),
-                    schema: Some(ProofSchemaRelations {
-                        proof_inputs: Some(ProofInputSchemaRelations {
-                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations::default()),
-                        }),
-                        ..Default::default()
-                    }),
-                    verifier_key: Some(KeyRelations::default()),
-                    verifier_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-            )
-            .await
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
-            .ok_or(ExchangeProtocolError::Failed(format!(
-                "Share proof missing proof {}",
-                proof.id
-            )))?;
-
+    async fn share_proof(
+        &self,
+        proof: &Proof,
+    ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         let interaction_id = Uuid::new_v4();
 
         // Pass the expected presentation content to interaction for verification
         let presentation_definition =
-            create_open_id_for_vp_presentation_definition(interaction_id, &proof, &self.config)?;
+            create_open_id_for_vp_presentation_definition(interaction_id, proof, &self.config)?;
 
         if proof.transport == TransportType::Ble.to_string() {
             if !self.config.transport.ble_enabled_for(&proof.transport) {
@@ -784,7 +750,12 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
                 return ble_verifier
                     .share_proof(presentation_definition, proof.id)
-                    .await;
+                    .await
+                    .map(|url| ShareResponse {
+                        url,
+                        id: interaction_id,
+                        context: None,
+                    });
             } else {
                 return Err(ExchangeProtocolError::Failed(
                     "BLE central not available".to_string(),
@@ -797,21 +768,10 @@ impl ExchangeProtocolImpl for OpenID4VC {
             presentation_definition,
         };
 
-        add_new_interaction(
-            interaction_id,
-            &self.base_url,
-            &*self.interaction_repository,
-            serde_json::to_vec(&interaction_content).ok(),
-        )
-        .await?;
-        update_proof_interaction(&proof.id, &interaction_id, &*self.proof_repository).await?;
-
-        clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
-
         let encoded_offer = create_open_id_for_vp_sharing_url_encoded(
             self.base_url.clone(),
             interaction_id,
-            interaction_content.nonce,
+            interaction_content.nonce.clone(),
             proof,
             self.params
                 .client_metadata_by_value
@@ -823,7 +783,11 @@ impl ExchangeProtocolImpl for OpenID4VC {
             &self.config,
         )?;
 
-        Ok(format!("openid4vp://?{encoded_offer}"))
+        Ok(ShareResponse {
+            url: format!("openid4vp://?{encoded_offer}"),
+            id: interaction_id,
+            context: Some(interaction_content),
+        })
     }
 
     async fn get_presentation_definition(
@@ -922,72 +886,8 @@ impl ExchangeProtocolImpl for OpenID4VC {
     }
 }
 
-async fn clear_previous_interaction(
-    interaction_repository: &dyn InteractionRepository,
-    interaction: &Option<Interaction>,
-) -> Result<(), ExchangeProtocolError> {
-    if let Some(interaction) = interaction.as_ref() {
-        interaction_repository
-            .delete_interaction(&interaction.id)
-            .await
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-    }
-    Ok(())
-}
-
-async fn update_proof_interaction(
-    proof_id: &ProofId,
-    interaction_id: &InteractionId,
-    proof_repository: &dyn ProofRepository,
-) -> Result<(), ExchangeProtocolError> {
-    let update = UpdateProofRequest {
-        id: proof_id.to_owned(),
-        interaction: Some(Some(interaction_id.to_owned())),
-        holder_did_id: None,
-        verifier_did_id: None,
-        state: None,
-        redirect_uri: None,
-    };
-
-    proof_repository
-        .update_proof(update)
-        .await
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-    Ok(())
-}
-
-async fn add_new_interaction(
-    interaction_id: InteractionId,
-    base_url: &Option<String>,
-    interaction_repository: &dyn InteractionRepository,
-    data: Option<Vec<u8>>,
-) -> Result<(), ExchangeProtocolError> {
-    let now = OffsetDateTime::now_utc();
-    let host = base_url
-        .as_ref()
-        .map(|url| {
-            url.parse()
-                .map_err(|_| ExchangeProtocolError::Failed(format!("Invalid base url {url}")))
-        })
-        .transpose()?;
-
-    let new_interaction = Interaction {
-        id: interaction_id,
-        created_date: now,
-        last_modified: now,
-        host,
-        data,
-    };
-    interaction_repository
-        .create_interaction(new_interaction)
-        .await
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-    Ok(())
-}
-
 async fn resolve_credential_offer(
-    deps: &OpenID4VC,
+    client: &reqwest::Client,
     invitation_url: Url,
 ) -> Result<OpenID4VCICredentialOfferDTO, ExchangeProtocolError> {
     let query_pairs: HashMap<_, _> = invitation_url.query_pairs().collect();
@@ -1018,8 +918,7 @@ async fn resolve_credential_offer(
         //     )));
         // }
 
-        Ok(deps
-            .client
+        Ok(client
             .get(credential_offer_url)
             .send()
             .await
@@ -1047,7 +946,7 @@ async fn handle_credential_invitation(
     invitation_url: Url,
     organisation: Organisation,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
-    let credential_offer = resolve_credential_offer(deps, invitation_url).await?;
+    let credential_offer = resolve_credential_offer(&deps.client, invitation_url).await?;
 
     let credential_issuer_endpoint: Url =
         credential_offer.credential_issuer.parse().map_err(|_| {
@@ -1080,10 +979,9 @@ async fn handle_credential_invitation(
         .map_err(ExchangeProtocolError::Transport)?;
 
     // OID4VC credential offer query param should always contain one credential for the moment
-    let credential: &OpenID4VCICredentialOfferCredentialDTO =
-        credential_offer.credentials.first().ok_or_else(|| {
-            ExchangeProtocolError::Failed("Credential offer is missing credentials".to_string())
-        })?;
+    let credential = credential_offer.credentials.first().ok_or_else(|| {
+        ExchangeProtocolError::Failed("Credential offer is missing credentials".to_string())
+    })?;
 
     let credential_schema_name = get_credential_schema_name(&issuer_metadata, credential)?;
     let (schema_id, schema_type) = find_schema_data(&issuer_metadata, credential);
@@ -1107,7 +1005,7 @@ async fn handle_credential_invitation(
         data,
     )
     .await
-    .map_err(|error: DataLayerError| ExchangeProtocolError::Failed(error.to_string()))?;
+    .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
     let interaction_id = interaction.id;
 
     let claim_keys = build_claim_keys(credential)?;
@@ -1115,7 +1013,14 @@ async fn handle_credential_invitation(
     let credential_id = Uuid::new_v4().into();
     let (claims, credential_schema) = match deps
         .credential_schema_repository
-        .get_by_schema_id_and_organisation(&schema_id, organisation.id, &Default::default())
+        .get_by_schema_id_and_organisation(
+            &schema_id,
+            organisation.id,
+            &CredentialSchemaRelations {
+                claim_schemas: Some(ClaimSchemaRelations::default()),
+                organisation: Some(Default::default()),
+            },
+        )
         .await
         .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
     {
@@ -1123,21 +1028,6 @@ async fn handle_credential_invitation(
             if credential_schema.schema_type != schema_type {
                 return Err(ExchangeProtocolError::IncorrectCredentialSchemaType);
             }
-
-            let credential_schema = deps
-                .credential_schema_repository
-                .get_credential_schema(
-                    &credential_schema.id,
-                    &CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
-                        organisation: Some(Default::default()),
-                    },
-                )
-                .await
-                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
-                .ok_or(ExchangeProtocolError::Failed(
-                    "Credential schema error".to_string(),
-                ))?;
 
             let claims = map_offered_claims_to_credential_schema(
                 &credential_schema,
