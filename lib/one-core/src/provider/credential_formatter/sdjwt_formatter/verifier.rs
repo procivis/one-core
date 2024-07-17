@@ -1,6 +1,5 @@
-use std::sync::Arc;
-
-use one_providers::{credential_formatter::error::FormatterError, crypto::Hasher};
+use one_providers::credential_formatter::error::FormatterError;
+use one_providers::crypto::Hasher;
 
 use super::model::Disclosure;
 use crate::provider::credential_formatter::sdjwt_formatter::disclosures::{
@@ -10,7 +9,7 @@ use crate::provider::credential_formatter::sdjwt_formatter::disclosures::{
 pub(super) fn verify_claims(
     hashed_claims: &[String],
     disclosures: &[Disclosure],
-    hasher: &Arc<dyn Hasher>,
+    hasher: &dyn Hasher,
 ) -> Result<(), FormatterError> {
     let mut hashes_used_by_disclosures = gather_hashes_from_disclosures(disclosures, hasher)?;
 

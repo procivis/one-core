@@ -4,6 +4,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use dto::OpenID4VPBleData;
+use one_providers::common_models::key::Key;
 use one_providers::credential_formatter::model::FormatPresentationCtx;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::crypto::imp::utilities;
@@ -35,18 +36,17 @@ use self::model::{
     HolderInteractionData, JwePayload, OpenID4VCIInteractionContent, OpenID4VPInteractionContent,
 };
 use self::validator::validate_interaction_data;
-use super::dto::{PresentedCredential, SubmitIssuerResponse};
+use super::dto::{PresentedCredential, ShareResponse, SubmitIssuerResponse};
 use super::mapper::interaction_from_handle_invitation;
 use super::{
-    deserialize_interaction_data, serialize_interaction_data, ExchangeProtocol,
-    ExchangeProtocolError,
+    deserialize_interaction_data, serialize_interaction_data, ExchangeProtocolError,
+    ExchangeProtocolImpl,
 };
 use crate::config::core_config::{self, TransportType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
-    CredentialStateRelations, UpdateCredentialRequest,
+    Credential, CredentialRole, CredentialState, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, LayoutType,
@@ -55,7 +55,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofClaimRelations, ProofRelations, UpdateProofRequest};
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -91,7 +91,6 @@ use crate::util::oidc::{
     detect_correct_format, map_core_to_oidc_format, map_from_oidc_format_to_core,
 };
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
-use one_providers::common_models::key::Key;
 
 mod mdoc;
 #[cfg(test)]
@@ -287,7 +286,9 @@ impl OpenID4VC {
 }
 
 #[async_trait]
-impl ExchangeProtocol for OpenID4VC {
+impl ExchangeProtocolImpl for OpenID4VC {
+    type InteractionContext = OpenID4VCIInteractionContent;
+
     fn can_handle(&self, url: &Url) -> bool {
         self.detect_invitation_type(url).is_some()
     }
@@ -346,24 +347,22 @@ impl ExchangeProtocol for OpenID4VC {
             .map(|presented_credential| presented_credential.credential_schema.format.as_str())
             .collect();
 
-        let (format, oidc_format) = match () {
-            _ if formats.contains("MDOC") => {
-                if formats.len() > 1 {
-                    return Err(ExchangeProtocolError::Failed(
-                        "Currently for a proof MDOC cannot be used with other formats".to_string(),
-                    ));
-                };
+        let (format, oidc_format) = if formats.contains("MDOC") {
+            if formats.len() > 1 {
+                return Err(ExchangeProtocolError::Failed(
+                    "Currently for a proof MDOC cannot be used with other formats".to_string(),
+                ));
+            };
 
-                ("MDOC", "mso_mdoc")
-            }
-            _ if formats.contains("JSON_LD_CLASSIC")
+            ("MDOC", "mso_mdoc")
+        } else if formats.contains("JSON_LD_CLASSIC")
                 || formats.contains("JSON_LD_BBSPLUS")
                 // Workaround for missing cryptosuite information in openid4vc
-                || formats.contains("JSON_LD") =>
-            {
-                ("JSON_LD_CLASSIC", "ldp_vp")
-            }
-            _ => ("JWT", "jwt_vp_json"),
+                || formats.contains("JSON_LD")
+        {
+            ("JSON_LD_CLASSIC", "ldp_vp")
+        } else {
+            ("JWT", "jwt_vp_json")
         };
 
         let presentation_formatter = self
@@ -677,37 +676,9 @@ impl ExchangeProtocol for OpenID4VC {
     async fn share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<String, ExchangeProtocolError> {
-        let credential = self
-            .credential_repository
-            .get_credential(
-                &credential.id,
-                &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
-                    claims: Some(ClaimRelations {
-                        schema: Some(ClaimSchemaRelations::default()),
-                    }),
-                    schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
-                    issuer_did: Some(DidRelations::default()),
-                    holder_did: Some(DidRelations::default()),
-                    interaction: Some(InteractionRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        let Some(credential) = credential else {
-            return Err(ExchangeProtocolError::Failed(
-                "Missing credential".to_string(),
-            ));
-        };
-
+    ) -> Result<ShareResponse<Self::InteractionContext>, ExchangeProtocolError> {
         let interaction_id = Uuid::new_v4();
-        let interaction_content: OpenID4VCIInteractionContent = OpenID4VCIInteractionContent {
+        let interaction_content = OpenID4VCIInteractionContent {
             pre_authorized_code_used: false,
             access_token: format!(
                 "{}.{}",
@@ -718,20 +689,6 @@ impl ExchangeProtocol for OpenID4VC {
             refresh_token: None,
             refresh_token_expires_at: None,
         };
-        add_new_interaction(
-            interaction_id,
-            &self.base_url,
-            &self.interaction_repository,
-            serde_json::to_vec(&interaction_content).ok(),
-        )
-        .await?;
-        update_credentials_interaction(
-            &credential.id,
-            &interaction_id,
-            &self.credential_repository,
-        )
-        .await?;
-        clear_previous_interaction(&self.interaction_repository, &credential.interaction).await?;
 
         let mut url = Url::parse(&format!("{CREDENTIAL_OFFER_URL_SCHEME}://"))
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
@@ -745,7 +702,7 @@ impl ExchangeProtocol for OpenID4VC {
             let offer = create_credential_offer(
                 self.base_url.to_owned(),
                 &interaction_id,
-                &credential,
+                credential,
                 &self.config,
             )?;
 
@@ -754,11 +711,15 @@ impl ExchangeProtocol for OpenID4VC {
 
             query.append_pair(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY, &offer_string);
         } else {
-            let offer_url = get_credential_offer_url(self.base_url.to_owned(), &credential)?;
+            let offer_url = get_credential_offer_url(self.base_url.to_owned(), credential)?;
             query.append_pair(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY, &offer_url);
         }
 
-        Ok(query.finish().to_string())
+        Ok(ShareResponse {
+            url: query.finish().to_string(),
+            id: interaction_id,
+            context: interaction_content,
+        })
     }
 
     async fn share_proof(&self, proof: &Proof) -> Result<String, ExchangeProtocolError> {
@@ -839,13 +800,13 @@ impl ExchangeProtocol for OpenID4VC {
         add_new_interaction(
             interaction_id,
             &self.base_url,
-            &self.interaction_repository,
+            &*self.interaction_repository,
             serde_json::to_vec(&interaction_content).ok(),
         )
         .await?;
-        update_proof_interaction(&proof.id, &interaction_id, &self.proof_repository).await?;
+        update_proof_interaction(&proof.id, &interaction_id, &*self.proof_repository).await?;
 
-        clear_previous_interaction(&self.interaction_repository, &proof.interaction).await?;
+        clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
 
         let encoded_offer = create_open_id_for_vp_sharing_url_encoded(
             self.base_url.clone(),
@@ -858,7 +819,7 @@ impl ExchangeProtocol for OpenID4VC {
             self.params
                 .presentation_definition_by_value
                 .is_some_and(|value| value),
-            &self.key_algorithm_provider,
+            &*self.key_algorithm_provider,
             &self.config,
         )?;
 
@@ -946,7 +907,7 @@ impl ExchangeProtocol for OpenID4VC {
             .map_err(|e: ServiceError| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
-            &self.credential_repository,
+            &*self.credential_repository,
             credential_groups,
             group_id_to_schema_id,
             &allowed_schema_formats,
@@ -962,7 +923,7 @@ impl ExchangeProtocol for OpenID4VC {
 }
 
 async fn clear_previous_interaction(
-    interaction_repository: &Arc<dyn InteractionRepository>,
+    interaction_repository: &dyn InteractionRepository,
     interaction: &Option<Interaction>,
 ) -> Result<(), ExchangeProtocolError> {
     if let Some(interaction) = interaction.as_ref() {
@@ -974,33 +935,10 @@ async fn clear_previous_interaction(
     Ok(())
 }
 
-async fn update_credentials_interaction(
-    credential_id: &CredentialId,
-    interaction_id: &InteractionId,
-    credential_repository: &Arc<dyn CredentialRepository>,
-) -> Result<(), ExchangeProtocolError> {
-    let update = UpdateCredentialRequest {
-        id: credential_id.to_owned(),
-        interaction: Some(interaction_id.to_owned()),
-        credential: None,
-        holder_did_id: None,
-        issuer_did_id: None,
-        state: None,
-        key: None,
-        redirect_uri: None,
-    };
-
-    credential_repository
-        .update_credential(update)
-        .await
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-    Ok(())
-}
-
 async fn update_proof_interaction(
     proof_id: &ProofId,
     interaction_id: &InteractionId,
-    proof_repository: &Arc<dyn ProofRepository>,
+    proof_repository: &dyn ProofRepository,
 ) -> Result<(), ExchangeProtocolError> {
     let update = UpdateProofRequest {
         id: proof_id.to_owned(),
@@ -1021,7 +959,7 @@ async fn update_proof_interaction(
 async fn add_new_interaction(
     interaction_id: InteractionId,
     base_url: &Option<String>,
-    interaction_repository: &Arc<dyn InteractionRepository>,
+    interaction_repository: &dyn InteractionRepository,
     data: Option<Vec<u8>>,
 ) -> Result<(), ExchangeProtocolError> {
     let now = OffsetDateTime::now_utc();
@@ -1164,7 +1102,7 @@ async fn handle_credential_invitation(
     let data = serialize_interaction_data(&holder_data)?;
 
     let interaction = create_and_store_interaction(
-        &deps.interaction_repository,
+        &*deps.interaction_repository,
         credential_issuer_endpoint,
         data,
     )
@@ -1515,7 +1453,7 @@ fn get_credential_schema_name(
 }
 
 async fn create_and_store_interaction(
-    repository: &Arc<dyn InteractionRepository>,
+    repository: &dyn InteractionRepository,
     base_url: Url,
     data: Vec<u8>,
 ) -> Result<Interaction, DataLayerError> {
@@ -1695,7 +1633,7 @@ async fn handle_proof_invitation(
 
     let now = OffsetDateTime::now_utc();
     let interaction = create_and_store_interaction(
-        &deps.interaction_repository,
+        &*deps.interaction_repository,
         interaction_data.response_uri,
         data,
     )

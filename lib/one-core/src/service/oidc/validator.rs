@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::model::{
@@ -140,7 +139,7 @@ pub(crate) fn throw_if_interaction_data_invalid(
 pub(super) async fn peek_presentation(
     presentation_string: &str,
     oidc_format: &str,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<Presentation, ServiceError> {
     let format = map_from_oidc_vp_format_to_core(oidc_format)?;
     let formatter = formatter_provider
@@ -165,7 +164,7 @@ pub(super) async fn validate_presentation(
     presentation_string: &str,
     nonce: &str,
     oidc_format: &str,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    formatter_provider: &dyn CredentialFormatterProvider,
     key_verification: Box<dyn TokenVerifier>,
     context: ExtractPresentationCtx,
 ) -> Result<Presentation, ServiceError> {
@@ -207,9 +206,9 @@ pub(super) async fn validate_credential(
     path_nested: &NestedPresentationSubmissionDescriptorDTO,
     extracted_lvvcs: &[DetailCredential],
     proof_schema_input: &ProofInputSchema,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    formatter_provider: &dyn CredentialFormatterProvider,
     key_verification: Box<KeyVerification>,
-    revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
+    revocation_method_provider: &dyn RevocationMethodProvider,
 ) -> Result<DetailCredential, ServiceError> {
     let holder_did = presentation
         .issuer_did

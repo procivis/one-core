@@ -3,9 +3,13 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
+use one_providers::common_models::key::Key;
+use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
+use one_providers::did::model::{DidDocument, DidVerificationMethod};
+use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::key_storage::provider::MockKeyProvider;
 use serde_json::{json, Value};
 use shared_types::CredentialId;
@@ -33,16 +37,12 @@ use crate::provider::exchange_protocol::provider::{
 use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationInfo, JsonLdContext, MockRevocationMethod};
-use crate::repository::credential_repository::{CredentialRepository, MockCredentialRepository};
+use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::OpenID4VCIError;
 use crate::service::test_utilities::generic_config;
-use one_providers::common_models::key::Key;
-use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
-use one_providers::did::model::{DidDocument, DidVerificationMethod};
-use one_providers::did::provider::MockDidMethodProvider;
 
 #[tokio::test]
 async fn test_issuer_submit_succeeds() {
@@ -215,9 +215,8 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
         .expect_get_credentials_by_credential_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
-    let repository: Arc<dyn CredentialRepository> = Arc::new(credential_repository);
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
-        &repository,
+        &credential_repository,
         vec![CredentialGroup {
             id: "input_0".to_string(),
             name: None,
@@ -250,9 +249,8 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
         .expect_get_credentials_by_credential_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
-    let repository: Arc<dyn CredentialRepository> = Arc::new(credential_repository);
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
-        &repository,
+        &credential_repository,
         vec![CredentialGroup {
             id: "input_0".to_string(),
             name: None,
@@ -291,9 +289,8 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
         .expect_get_credentials_by_credential_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
-    let repository: Arc<dyn CredentialRepository> = Arc::new(credential_repository);
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
-        &repository,
+        &credential_repository,
         vec![CredentialGroup {
             id: "input_0".to_string(),
             name: None,
@@ -379,9 +376,8 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
         .expect_get_credentials_by_credential_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
-    let repository: Arc<dyn CredentialRepository> = Arc::new(credential_repository);
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
-        &repository,
+        &credential_repository,
         vec![CredentialGroup {
             id: "input_0".to_string(),
             name: None,
@@ -413,9 +409,8 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_se
         .expect_get_credentials_by_credential_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
-    let repository: Arc<dyn CredentialRepository> = Arc::new(credential_repository);
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
-        &repository,
+        &credential_repository,
         vec![CredentialGroup {
             id: "input_0".to_string(),
             name: None,

@@ -1,14 +1,11 @@
-use std::sync::Arc;
-
 use dto_mapper::{convert_inner, try_convert_inner};
 use one_providers::common_models::PublicKeyJwk;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use serde::{Deserialize, Deserializer};
 use shared_types::{CredentialId, DidId, DidValue, KeyId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
-
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
 use crate::config::core_config::CoreConfig;
 use crate::model::claim::{Claim, ClaimId};
@@ -253,7 +250,7 @@ pub struct PublicKeyWithJwk {
 
 pub fn get_encryption_key_jwk_from_proof(
     proof: &Proof,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<PublicKeyWithJwk, ServiceError> {
     let verifier_did = proof
         .verifier_did

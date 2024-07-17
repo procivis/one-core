@@ -1,3 +1,8 @@
+use async_trait::async_trait;
+use one_providers::common_models::key::Key;
+use url::Url;
+
+use super::dto::ShareResponse;
 use crate::model::credential::Credential;
 use crate::model::did::Did;
 use crate::model::organisation::Organisation;
@@ -5,11 +10,8 @@ use crate::model::proof::Proof;
 use crate::provider::exchange_protocol::dto::{
     PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
 };
-use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
+use crate::provider::exchange_protocol::{ExchangeProtocolError, ExchangeProtocolImpl};
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
-use async_trait::async_trait;
-use one_providers::common_models::key::Key;
-use url::Url;
 
 pub(crate) struct ScanToVerify {}
 
@@ -21,7 +23,9 @@ impl ScanToVerify {
 }
 
 #[async_trait]
-impl ExchangeProtocol for ScanToVerify {
+impl ExchangeProtocolImpl for ScanToVerify {
+    type InteractionContext = ();
+
     fn can_handle(&self, _url: &Url) -> bool {
         todo!()
     }
@@ -69,7 +73,7 @@ impl ExchangeProtocol for ScanToVerify {
     async fn share_credential(
         &self,
         _credential: &Credential,
-    ) -> Result<String, ExchangeProtocolError> {
+    ) -> Result<ShareResponse<Self::InteractionContext>, ExchangeProtocolError> {
         todo!()
     }
 

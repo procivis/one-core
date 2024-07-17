@@ -195,7 +195,7 @@ impl ProofService {
             &request.exchange,
             &self.config,
             &proof_schema,
-            &self.credential_formatter_provider,
+            &*self.credential_formatter_provider,
         )?;
 
         let Some(verifier_did) = self

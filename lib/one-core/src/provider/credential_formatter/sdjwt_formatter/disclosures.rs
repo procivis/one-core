@@ -1,20 +1,21 @@
-use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
-use crate::provider::credential_formatter::sdjwt_formatter::model::{DecomposedToken, Disclosure};
+use std::cmp::Ordering;
+use std::collections::HashMap;
+
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::imp::jwt::mapper::string_to_b64url_string;
 use one_providers::credential_formatter::model::PublishedClaim;
 use one_providers::crypto::{CryptoProvider, Hasher};
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
-use std::collections::HashMap;
-use std::sync::Arc;
+
+use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
+use crate::provider::credential_formatter::sdjwt_formatter::model::{DecomposedToken, Disclosure};
 
 const SELECTIVE_DISCLOSURE_MARKER: &str = "_sd";
 
 pub(super) fn gather_hashes_from_disclosures(
     disclosures: &[Disclosure],
-    hasher: &Arc<dyn Hasher>,
+    hasher: &dyn Hasher,
 ) -> Result<Vec<String>, FormatterError> {
     disclosures
         .iter()
@@ -30,7 +31,7 @@ pub(super) struct SelectiveDisclosureArray {
 
 pub(super) fn gather_hash(
     disclosure: &Disclosure,
-    hasher: &Arc<dyn Hasher>,
+    hasher: &dyn Hasher,
 ) -> Result<Vec<String>, FormatterError> {
     match serde_json::from_value::<SelectiveDisclosureArray>(disclosure.value.to_owned()) {
         Ok(mut value) => {
@@ -44,7 +45,7 @@ pub(super) fn gather_hash(
 pub(super) fn gather_hashes_from_hashed_claims(
     hashed_claims: &[String],
     disclosures: &[Disclosure],
-    hasher: &Arc<dyn Hasher>,
+    hasher: &dyn Hasher,
 ) -> Result<Vec<String>, FormatterError> {
     let mut used_hashes = vec![];
 
@@ -68,7 +69,7 @@ pub(super) fn gather_hashes_from_hashed_claims(
 pub(super) fn get_disclosures_by_claim_name(
     claim_name: &str,
     disclosures: &[Disclosure],
-    hasher: &Arc<dyn Hasher>,
+    hasher: &dyn Hasher,
 ) -> Result<Vec<Disclosure>, FormatterError> {
     let mut result = vec![];
     let hashes = gather_hashes_from_disclosures(disclosures, hasher)?;
@@ -165,7 +166,7 @@ impl Disclosure {
             .is_some_and(|obj| obj.contains_key("_sd"))
     }
 
-    pub fn hash(&self, hasher: &Arc<dyn Hasher>) -> Result<String, FormatterError> {
+    pub fn hash(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
         hasher
             .hash_base64(self.original_disclosure.as_bytes())
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))
@@ -214,7 +215,7 @@ fn match_json_value(value: &serde_json::Value) -> Result<JsonValueVariant, Forma
 pub(super) fn gather_disclosures(
     value: &serde_json::Value,
     algorithm: &str,
-    crypto: &Arc<dyn CryptoProvider>,
+    crypto: &dyn CryptoProvider,
 ) -> Result<(Vec<String>, Vec<String>), FormatterError> {
     let hasher = crypto.get_hasher(algorithm)?;
 
@@ -293,7 +294,7 @@ pub(super) fn gather_disclosures(
 
 pub(super) fn extract_claims_from_disclosures(
     disclosures: &[Disclosure],
-    hasher: &Arc<dyn Hasher>,
+    hasher: &dyn Hasher,
 ) -> Result<serde_json::Value, FormatterError> {
     let hashes_used_by_disclosures = gather_hashes_from_disclosures(disclosures, hasher)?;
 
@@ -354,7 +355,7 @@ pub(super) fn extract_claims_from_disclosures(
 pub(super) fn get_subdisclosures(
     disclosures: &[Disclosure],
     subdisclosures: &[String],
-    hasher: &Arc<dyn Hasher>,
+    hasher: &dyn Hasher,
 ) -> Result<(serde_json::Value, Vec<String>), FormatterError> {
     let mut result = serde_json::Value::Object(Default::default());
     let mut resolved_subdisclosures = vec![];

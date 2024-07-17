@@ -5,6 +5,7 @@ use std::str::FromStr;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
+use one_providers::common_models::key::Key;
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
 use one_providers::crypto::imp::utilities;
@@ -77,7 +78,6 @@ use crate::service::ssi_validator::validate_exchange_type;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_real;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
-use one_providers::common_models::key::Key;
 
 impl OIDCService {
     pub async fn oidc_get_issuer_metadata(
@@ -120,7 +120,7 @@ impl OIDCService {
         validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &proof.exchange)?;
 
         Ok(create_open_id_for_vp_client_metadata(
-            get_encryption_key_jwk_from_proof(&proof, &self.key_algorithm_provider)?,
+            get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider)?,
         ))
     }
 
@@ -648,7 +648,7 @@ impl OIDCService {
             let presentation = peek_presentation(
                 presentation_string,
                 &presentation_submitted.format,
-                &self.formatter_provider,
+                &*self.formatter_provider,
             )
             .await?;
 
@@ -779,7 +779,7 @@ impl OIDCService {
                 presentation_string,
                 &interaction_data.nonce,
                 &presentation_submitted.format,
-                &self.formatter_provider,
+                &*self.formatter_provider,
                 self.build_key_verification(KeyRole::Authentication),
                 context,
             )
@@ -825,9 +825,9 @@ impl OIDCService {
                 path_nested,
                 &extracted_lvvcs,
                 proof_schema_input,
-                &self.formatter_provider,
+                &*self.formatter_provider,
                 self.build_key_verification(KeyRole::AssertionMethod),
-                &self.revocation_method_provider,
+                &*self.revocation_method_provider,
             )
             .await?;
 

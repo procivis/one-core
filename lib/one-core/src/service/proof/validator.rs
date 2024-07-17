@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 
 use crate::config::core_config::CoreConfig;
@@ -10,7 +8,7 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
     exchange: &str,
     config: &CoreConfig,
     proof_schema: &ProofSchema,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<(), ServiceError> {
     let input_schemas = proof_schema
         .input_schemas

@@ -92,8 +92,9 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .once()
         .return_once(move |_, _| Ok(()));
 
-    let mut exchange_protocol_mock = MockExchangeProtocol::new();
+    let mut exchange_protocol_mock = MockExchangeProtocol::default();
     exchange_protocol_mock
+        .inner
         .expect_reject_proof()
         .withf(move |_proof_id| {
             assert_eq!(_proof_id.id, proof_id);
@@ -282,8 +283,9 @@ async fn test_submit_proof_succeeds() {
         .times(1)
         .returning(move |_| Some(formatter.clone()));
 
-    let mut exchange_protocol = MockExchangeProtocol::new();
+    let mut exchange_protocol = MockExchangeProtocol::default();
     exchange_protocol
+        .inner
         .expect_get_presentation_definition()
         .withf(move |proof| {
             assert_eq!(proof.id, proof_id);
@@ -318,6 +320,7 @@ async fn test_submit_proof_succeeds() {
         });
 
     exchange_protocol
+        .inner
         .expect_submit_proof()
         .withf(move |proof, _, _, _, _| {
             assert_eq!(proof.id, proof_id);
@@ -477,8 +480,9 @@ async fn test_submit_proof_repeating_claims() {
         .expect_get_formatter()
         .returning(move |_| Some(formatter.clone()));
 
-    let mut exchange_protocol = MockExchangeProtocol::new();
+    let mut exchange_protocol = MockExchangeProtocol::default();
     exchange_protocol
+        .inner
         .expect_get_presentation_definition()
         .withf(move |proof| {
             assert_eq!(proof.id, proof_id);
@@ -539,6 +543,7 @@ async fn test_submit_proof_repeating_claims() {
         });
 
     exchange_protocol
+        .inner
         .expect_submit_proof()
         .withf(move |proof, _, _, _, _| {
             assert_eq!(proof.id, proof_id);
@@ -690,8 +695,9 @@ async fn test_accept_credential() {
         .once()
         .returning(|_| Ok(()));
 
-    let mut exchange_protocol_mock = MockExchangeProtocol::new();
+    let mut exchange_protocol_mock = MockExchangeProtocol::default();
     exchange_protocol_mock
+        .inner
         .expect_accept_credential()
         .once()
         .returning(|_, _, _, _| {
@@ -741,8 +747,9 @@ async fn test_reject_credential() {
         .once()
         .returning(|_| Ok(()));
 
-    let mut exchange_protocol_mock: MockExchangeProtocol = MockExchangeProtocol::new();
+    let mut exchange_protocol_mock = MockExchangeProtocol::default();
     exchange_protocol_mock
+        .inner
         .expect_reject_credential()
         .once()
         .returning(|_| Ok(()));

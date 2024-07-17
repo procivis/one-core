@@ -1,20 +1,18 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-
 use config::core_config::{
     CoreConfig, DatatypeConfig, FormatConfig, KeyAlgorithmConfig, KeyStorageConfig,
 };
 use config::ConfigError;
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::crypto::CryptoProvider;
 use one_providers::did::provider::DidMethodProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::key_storage::provider::KeyProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
-
-use one_providers::key_storage::provider::KeyProvider;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderImpl;
 use provider::exchange_protocol::ExchangeProtocol;
 use provider::task::provider::TaskProviderImpl;
@@ -364,6 +362,7 @@ impl OneCore {
                 key_provider.clone(),
                 config.clone(),
                 data_provider.get_validity_credential_repository(),
+                providers.core_base_url.clone(),
             ),
             did_service: DidService::new(
                 data_provider.get_did_repository(),
