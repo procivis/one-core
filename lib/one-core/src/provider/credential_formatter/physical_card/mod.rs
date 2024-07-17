@@ -102,7 +102,6 @@ impl CredentialFormatter for PhysicalCardFormatter {
             ],
             datatypes: vec![
                 "STRING".to_string(),
-                "BOOLEAN".to_string(),
                 "EMAIL".to_string(),
                 "DATE".to_string(),
                 "STRING".to_string(),
