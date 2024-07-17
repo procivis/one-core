@@ -57,14 +57,15 @@ pub enum ExchangeProtocolError {
     InvalidRequest(String),
     #[error("Incorrect credential schema type")]
     IncorrectCredentialSchemaType,
-    #[error("Incorrect credential schema type")]
+    #[error(transparent)]
     Other(anyhow::Error),
 }
 
-#[cfg_attr(test, mockall::automock(type InteractionContext = ();))]
+#[cfg_attr(test, mockall::automock(type VCInteractionContext = (); type VPInteractionContext = ();))]
 #[async_trait]
 pub trait ExchangeProtocolImpl: Send + Sync {
-    type InteractionContext;
+    type VCInteractionContext;
+    type VPInteractionContext;
 
     // holder methods
     fn can_handle(&self, url: &Url) -> bool;
@@ -107,14 +108,23 @@ pub trait ExchangeProtocolImpl: Send + Sync {
     async fn share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<ShareResponse<Self::InteractionContext>, ExchangeProtocolError>;
+    ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError>;
 
     // verifier methods
     /// Generates QR-code content to start the proof request flow
-    async fn share_proof(&self, proof: &Proof) -> Result<String, ExchangeProtocolError>;
+    async fn share_proof(
+        &self,
+        proof: &Proof,
+    ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError>;
 }
 
-pub trait ExchangeProtocol: ExchangeProtocolImpl<InteractionContext = serde_json::Value> {}
+pub trait ExchangeProtocol:
+    ExchangeProtocolImpl<
+    VCInteractionContext = serde_json::Value,
+    VPInteractionContext = serde_json::Value,
+>
+{
+}
 
 #[cfg(test)]
 pub type MockExchangeProtocol = ExchangeProtocolWrapper<MockExchangeProtocolImpl>;
@@ -134,9 +144,11 @@ impl<T> ExchangeProtocolWrapper<T> {
 impl<T> ExchangeProtocolImpl for ExchangeProtocolWrapper<T>
 where
     T: ExchangeProtocolImpl,
-    T::InteractionContext: Serialize + DeserializeOwned,
+    T::VCInteractionContext: Serialize + DeserializeOwned,
+    T::VPInteractionContext: Serialize + DeserializeOwned,
 {
-    type InteractionContext = serde_json::Value;
+    type VCInteractionContext = serde_json::Value;
+    type VPInteractionContext = serde_json::Value;
 
     fn can_handle(&self, url: &Url) -> bool {
         self.inner.can_handle(url)
@@ -196,7 +208,7 @@ where
     async fn share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<ShareResponse<Self::InteractionContext>, ExchangeProtocolError> {
+    ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         self.inner
             .share_credential(credential)
             .await
@@ -207,15 +219,26 @@ where
             })
     }
 
-    async fn share_proof(&self, proof: &Proof) -> Result<String, ExchangeProtocolError> {
-        self.inner.share_proof(proof).await
+    async fn share_proof(
+        &self,
+        proof: &Proof,
+    ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
+        self.inner
+            .share_proof(proof)
+            .await
+            .map(|resp| ShareResponse {
+                url: resp.url,
+                id: resp.id,
+                context: serde_json::json!(resp.context),
+            })
     }
 }
 
 impl<T> ExchangeProtocol for ExchangeProtocolWrapper<T>
 where
     T: ExchangeProtocolImpl,
-    T::InteractionContext: Serialize + DeserializeOwned,
+    T::VCInteractionContext: Serialize + DeserializeOwned,
+    T::VPInteractionContext: Serialize + DeserializeOwned,
 {
 }
 

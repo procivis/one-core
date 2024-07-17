@@ -26,6 +26,7 @@ pub struct ProofService {
     protocol_provider: Arc<dyn ExchangeProtocolProvider>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     config: Arc<core_config::CoreConfig>,
+    base_url: Option<String>,
 }
 
 impl ProofService {
@@ -40,6 +41,7 @@ impl ProofService {
         protocol_provider: Arc<dyn ExchangeProtocolProvider>,
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         config: Arc<core_config::CoreConfig>,
+        base_url: Option<String>,
     ) -> Self {
         Self {
             proof_repository,
@@ -51,6 +53,7 @@ impl ProofService {
             protocol_provider,
             ble_peripheral,
             config,
+            base_url,
         }
     }
 }

@@ -9,7 +9,7 @@ use super::openidvc_ble::BLEPeer;
 use crate::service::oidc::dto::PresentationSubmissionMappingDTO;
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct OpenID4VCIInteractionContent {
+pub struct OpenID4VCInteractionContent {
     pub pre_authorized_code_used: bool,
     pub access_token: String,
     #[serde(with = "time::serde::rfc3339::option")]

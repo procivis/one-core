@@ -29,12 +29,15 @@ use crate::model::proof::{
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use crate::provider::exchange_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::provider::exchange_protocol::dto::{PresentationDefinitionResponseDTO, ShareResponse};
 use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::proof::validator::validate_format_and_exchange_protocol_compatibility;
+use crate::util::interactions::{
+    add_new_interaction, clear_previous_interaction, update_proof_interaction,
+};
 
 impl ProofService {
     /// Returns details of a proof
@@ -294,7 +297,21 @@ impl ProofService {
                 exchange_instance.clone(),
             ))?;
 
-        let url = exchange.share_proof(&proof).await?;
+        let ShareResponse {
+            url,
+            id: interaction_id,
+            context,
+        } = exchange.share_proof(&proof).await?;
+
+        add_new_interaction(
+            interaction_id,
+            &self.base_url,
+            &*self.interaction_repository,
+            serde_json::to_vec(&context).ok(),
+        )
+        .await?;
+        update_proof_interaction(proof.id, interaction_id, &*self.proof_repository).await?;
+        clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
 
         let _ = self
             .history_repository
@@ -430,7 +447,22 @@ impl ProofService {
                 &ProofRelations {
                     state: Some(ProofStateRelations::default()),
                     schema: Some(ProofSchemaRelations {
+                        proof_inputs: Some(ProofInputSchemaRelations {
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
                         organisation: Some(OrganisationRelations::default()),
+                    }),
+                    interaction: Some(InteractionRelations::default()),
+                    claims: Some(ProofClaimRelations {
+                        claim: ClaimRelations {
+                            schema: Some(ClaimSchemaRelations::default()),
+                        },
+                        ..Default::default()
+                    }),
+                    verifier_key: Some(KeyRelations::default()),
+                    verifier_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
                     ..Default::default()

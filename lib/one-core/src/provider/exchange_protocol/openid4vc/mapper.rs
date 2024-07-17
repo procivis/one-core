@@ -55,19 +55,19 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     base_url: Option<String>,
     interaction_id: InteractionId,
     nonce: String,
-    proof: Proof,
+    proof: &Proof,
     client_metadata_by_value: bool,
     presentation_definition_by_value: bool,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     config: &CoreConfig,
 ) -> Result<String, ExchangeProtocolError> {
-    let encryption_key_jwk = get_encryption_key_jwk_from_proof(&proof, key_algorithm_provider)
+    let encryption_key_jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
     let client_metadata =
         serde_json::to_string(&create_open_id_for_vp_client_metadata(encryption_key_jwk))
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
     let presentation_definition = serde_json::to_string(
-        &create_open_id_for_vp_presentation_definition(interaction_id, &proof, config)?,
+        &create_open_id_for_vp_presentation_definition(interaction_id, proof, config)?,
     )
     .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
     let base_url = get_url(base_url)?;

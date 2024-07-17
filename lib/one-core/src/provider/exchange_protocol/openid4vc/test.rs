@@ -355,21 +355,9 @@ async fn test_generate_share_credentials_offer_by_value() {
 #[tokio::test]
 async fn test_generate_share_proof_open_id_flow_success() {
     let proof = construct_proof_with_state("HTTP");
-    let interaction_id: Uuid = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
 
-    let mut proof_repository = MockProofRepository::default();
-    let mut interaction_repository = MockInteractionRepository::default();
     let mut key_algorithm = MockKeyAlgorithm::default();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-
-    let mut seq = Sequence::new();
-
-    let proof_moved = proof.clone();
-    proof_repository
-        .expect_get_proof()
-        .once()
-        .in_sequence(&mut seq)
-        .returning(move |_, _| Ok(Some(proof_moved.clone())));
 
     key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
         Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
@@ -383,31 +371,16 @@ async fn test_generate_share_proof_open_id_flow_success() {
         .expect_get_key_algorithm()
         .return_once(|_| Some(Arc::new(key_algorithm)));
 
-    interaction_repository
-        .expect_create_interaction()
-        .once()
-        .in_sequence(&mut seq)
-        .returning(move |_| Ok(interaction_id));
-
-    proof_repository
-        .expect_update_proof()
-        .once()
-        .in_sequence(&mut seq)
-        .returning(move |update| {
-            assert_eq!(update.id, proof.id);
-            Ok(())
-        });
-
     let protocol = setup_protocol(TestInputs {
-        proof_repository,
-        interaction_repository,
         key_algorithm_provider,
         ..Default::default()
     });
 
     let result = protocol.share_proof(&proof).await.unwrap();
 
-    assert!(result.starts_with(r#"openid4vp://?response_type=vp_token"#))
+    assert!(result
+        .url
+        .starts_with(r#"openid4vp://?response_type=vp_token"#))
 }
 
 fn generic_organisation() -> Organisation {
