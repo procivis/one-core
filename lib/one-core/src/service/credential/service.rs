@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anyhow::Context;
 use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::key_storage::provider::KeyProvider;
@@ -22,10 +20,11 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, DidType, KeyRole, RelatedKey};
-use crate::model::interaction::InteractionRelations;
+use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
+use crate::provider::exchange_protocol::dto::ShareResponse;
 use crate::provider::exchange_protocol::openid4vc::dto::{OpenID4VCICredential, OpenID4VCIProof};
 use crate::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
@@ -429,7 +428,26 @@ impl CredentialService {
                 exchange_instance.clone(),
             ))?;
 
-        let url = exchange.share_credential(&credential).await?;
+        let ShareResponse {
+            url,
+            id: interaction_id,
+            context,
+        } = exchange.share_credential(&credential).await?;
+
+        add_new_interaction(
+            interaction_id,
+            &self.base_url,
+            &*self.interaction_repository,
+            serde_json::to_vec(&context).ok(),
+        )
+        .await?;
+        update_credentials_interaction(
+            &credential.id,
+            &interaction_id,
+            &*self.credential_repository,
+        )
+        .await?;
+        clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
 
         let _ = self
             .history_repository
@@ -452,18 +470,21 @@ impl CredentialService {
                 id,
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
                     }),
+                    schema: Some(CredentialSchemaRelations {
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                    issuer_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 },
             )
-            .await?;
-
-        let Some(credential) = credential else {
-            return Err(EntityNotFoundError::Credential(*id).into());
-        };
+            .await?
+            .ok_or(EntityNotFoundError::Credential(*id))?;
 
         let credential_states = credential
             .state
@@ -656,7 +677,7 @@ impl CredentialService {
 
             let result = update_mso_interaction_access_token(
                 &mut credential,
-                &self.interaction_repository,
+                &*self.interaction_repository,
                 interaction_data.clone(),
             )
             .await;
@@ -664,8 +685,8 @@ impl CredentialService {
             if result.is_ok() && mso_requires_update(&detail_credential) {
                 let result = obtain_and_update_new_mso(
                     &mut credential,
-                    &self.credential_repository,
-                    &self.key_provider,
+                    &*self.credential_repository,
+                    &*self.key_provider,
                     interaction_data,
                 )
                 .await;
@@ -838,8 +859,8 @@ impl CredentialService {
 
 async fn obtain_and_update_new_mso(
     credential: &mut Credential,
-    credentials: &Arc<dyn CredentialRepository>,
-    key_provider: &Arc<dyn KeyProvider>,
+    credentials: &dyn CredentialRepository,
+    key_provider: &dyn KeyProvider,
     interaction_data: HolderInteractionData,
 ) -> Result<(), ServiceError> {
     let key = credential
@@ -923,7 +944,7 @@ async fn obtain_and_update_new_mso(
 
 async fn update_mso_interaction_access_token(
     credential: &mut Credential,
-    interactions: &Arc<dyn InteractionRepository>,
+    interactions: &dyn InteractionRepository,
     mut interaction_data: HolderInteractionData,
 ) -> Result<(), ServiceError> {
     let now = OffsetDateTime::now_utc();
@@ -1009,4 +1030,70 @@ fn mso_requires_update(detail_credential: &DetailCredential) -> bool {
     }
 
     false
+}
+
+async fn add_new_interaction(
+    interaction_id: InteractionId,
+    base_url: &Option<String>,
+    interaction_repository: &dyn InteractionRepository,
+    data: Option<Vec<u8>>,
+) -> Result<(), ExchangeProtocolError> {
+    let now = OffsetDateTime::now_utc();
+    let host = base_url
+        .as_ref()
+        .map(|url| {
+            url.parse()
+                .map_err(|_| ExchangeProtocolError::Failed(format!("Invalid base url {url}")))
+        })
+        .transpose()?;
+
+    let new_interaction = Interaction {
+        id: interaction_id,
+        created_date: now,
+        last_modified: now,
+        host,
+        data,
+    };
+    interaction_repository
+        .create_interaction(new_interaction)
+        .await
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    Ok(())
+}
+
+async fn update_credentials_interaction(
+    credential_id: &CredentialId,
+    interaction_id: &InteractionId,
+    credential_repository: &dyn CredentialRepository,
+) -> Result<(), ExchangeProtocolError> {
+    let update = UpdateCredentialRequest {
+        id: credential_id.to_owned(),
+        interaction: Some(interaction_id.to_owned()),
+        credential: None,
+        holder_did_id: None,
+        issuer_did_id: None,
+        state: None,
+        key: None,
+        redirect_uri: None,
+    };
+
+    credential_repository
+        .update_credential(update)
+        .await
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+    Ok(())
+}
+
+async fn clear_previous_interaction(
+    interaction_repository: &dyn InteractionRepository,
+    interaction: &Option<Interaction>,
+) -> Result<(), ExchangeProtocolError> {
+    if let Some(interaction) = interaction.as_ref() {
+        interaction_repository
+            .delete_interaction(&interaction.id)
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+    }
+    Ok(())
 }

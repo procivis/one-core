@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::sync::Arc;
 
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::credential_formatter::CredentialFormatter;
@@ -21,7 +20,7 @@ use crate::service::error::{
 };
 
 pub(crate) async fn credential_schema_already_exists(
-    repository: &Arc<dyn CredentialSchemaRepository>,
+    repository: &dyn CredentialSchemaRepository,
     name: &str,
     schema_id: Option<String>,
     organisation_id: OrganisationId,
@@ -41,7 +40,7 @@ pub(crate) async fn credential_schema_already_exists(
 pub(crate) fn validate_create_request(
     request: &CreateCredentialSchemaRequestDTO,
     config: &CoreConfig,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    formatter_provider: &dyn CredentialFormatterProvider,
     during_import: bool,
 ) -> Result<(), ServiceError> {
     // at least one claim must be declared

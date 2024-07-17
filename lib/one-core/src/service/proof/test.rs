@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::Sequence;
+use one_providers::common_models::key::Key;
 use one_providers::credential_formatter::model::FormatterCapabilities;
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
@@ -11,9 +12,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
-use crate::config::core_config::CoreConfig;
-use crate::config::core_config::Fields;
-use crate::config::core_config::TransportType;
+use crate::config::core_config::{CoreConfig, Fields, TransportType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{
@@ -24,9 +23,7 @@ use crate::model::credential_schema::{
     LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
-use crate::model::interaction::Interaction;
-use crate::model::interaction::InteractionId;
-use crate::model::interaction::InteractionRelations;
+use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -58,7 +55,6 @@ use crate::service::proof::dto::{
     CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
 };
 use crate::service::test_utilities::generic_config;
-use one_providers::common_models::key::Key;
 
 #[derive(Default)]
 struct Repositories {
@@ -2300,6 +2296,7 @@ async fn test_share_proof_created_success() {
 
     let expected_url = "test_url";
     protocol
+        .inner
         .expect_share_proof()
         .times(1)
         .returning(|_| Ok(expected_url.to_owned()));
@@ -2370,6 +2367,7 @@ async fn test_share_proof_pending_success() {
 
     let expected_url = "test_url";
     protocol
+        .inner
         .expect_share_proof()
         .times(1)
         .returning(|_| Ok(expected_url.to_owned()));

@@ -1,26 +1,24 @@
 use std::collections::HashSet;
-use std::sync::Arc;
 
 use itertools::Itertools;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::credential_formatter::CredentialFormatter;
 use shared_types::OrganisationId;
 
+use super::dto::{CreateProofSchemaRequestDTO, ImportProofSchemaDTO, ProofInputSchemaRequestDTO};
+use super::ProofSchemaImportError;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
-use crate::service::error::{BusinessLogicError, MissingProviderError, ValidationError};
-use crate::service::proof_schema::mapper::create_unique_name_check_request;
-use crate::{
-    repository::proof_schema_repository::ProofSchemaRepository, service::error::ServiceError,
+use crate::repository::proof_schema_repository::ProofSchemaRepository;
+use crate::service::error::{
+    BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
-
-use super::dto::{CreateProofSchemaRequestDTO, ImportProofSchemaDTO, ProofInputSchemaRequestDTO};
-use super::ProofSchemaImportError;
+use crate::service::proof_schema::mapper::create_unique_name_check_request;
 
 pub async fn proof_schema_name_already_exists(
-    repository: &Arc<dyn ProofSchemaRepository>,
+    repository: &dyn ProofSchemaRepository,
     name: &str,
     organisation_id: OrganisationId,
 ) -> Result<(), ServiceError> {
@@ -99,7 +97,7 @@ pub fn validate_create_request(
 pub fn extract_claims_from_credential_schema(
     proof_input: &[ProofInputSchemaRequestDTO],
     schemas: &[CredentialSchema],
-    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<Vec<ClaimSchema>, ServiceError> {
     proof_input
         .iter()
@@ -132,7 +130,7 @@ pub fn extract_claims_from_credential_schema(
                         })
                     })
                     .and_then(|claim_schema| {
-                        validate_proof_schema_nesting(&claim_schema, &formatter)?;
+                        validate_proof_schema_nesting(&claim_schema, &*formatter)?;
                         validate_proof_schema_claim_not_in_array(&claim_schema.key, &arrays)?;
                         Ok(claim_schema)
                     })
@@ -171,7 +169,7 @@ fn collect_lists(claims: &[CredentialSchemaClaim]) -> HashSet<String> {
 
 pub(super) fn validate_proof_schema_nesting(
     claim_schema: &ClaimSchema,
-    formatter: &Arc<dyn CredentialFormatter>,
+    formatter: &dyn CredentialFormatter,
 ) -> Result<(), ServiceError> {
     let capabilities = formatter.get_capabilities();
 

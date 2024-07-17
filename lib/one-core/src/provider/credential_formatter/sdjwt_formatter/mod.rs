@@ -149,7 +149,7 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        prepare_sd_presentation(credential, &self.crypto)
+        prepare_sd_presentation(credential, &*self.crypto)
     }
 
     fn get_leeway(&self) -> u64 {
@@ -249,10 +249,10 @@ impl SDJWTFormatter {
         verify_claims(
             &jwt.payload.custom.vc.credential_subject.claims,
             &deserialized_disclosures,
-            &hasher,
+            &*hasher,
         )?;
 
-        let claims = extract_claims_from_disclosures(&deserialized_disclosures, &hasher)?;
+        let claims = extract_claims_from_disclosures(&deserialized_disclosures, &*hasher)?;
 
         Ok(DetailCredential {
             id: jwt.payload.jwt_id,
@@ -278,7 +278,7 @@ impl SDJWTFormatter {
         additional_types: Vec<String>,
     ) -> Result<(Sdvc, Vec<String>), FormatterError> {
         let nested = nest_claims_to_json(&sort_published_claims_by_indices(&credential.claims))?;
-        let (disclosures, sd_section) = gather_disclosures(&nested, algorithm, &self.crypto)?;
+        let (disclosures, sd_section) = gather_disclosures(&nested, algorithm, &*self.crypto)?;
 
         let vc = vc_from_credential(
             credential,
@@ -294,7 +294,7 @@ impl SDJWTFormatter {
 
 fn prepare_sd_presentation(
     presentation: CredentialPresentation,
-    crypto: &Arc<dyn CryptoProvider>,
+    crypto: &dyn CryptoProvider,
 ) -> Result<String, FormatterError> {
     let model::DecomposedToken {
         jwt,
@@ -314,7 +314,7 @@ fn prepare_sd_presentation(
     let disclosures = presentation
         .disclosed_keys
         .iter()
-        .map(|key| get_disclosures_by_claim_name(key, &deserialized_disclosures, &hasher))
+        .map(|key| get_disclosures_by_claim_name(key, &deserialized_disclosures, &*hasher))
         .collect::<Result<Vec<Vec<Disclosure>>, FormatterError>>()?
         .into_iter()
         .flatten()

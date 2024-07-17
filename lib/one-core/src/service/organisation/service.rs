@@ -3,17 +3,12 @@ use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::{
-    dto::GetOrganisationDetailsResponseDTO, validator::organisation_already_exists,
-    OrganisationService,
-};
-use crate::{
-    model::organisation::{Organisation, OrganisationRelations},
-    service::{
-        error::{BusinessLogicError, EntityNotFoundError, ServiceError},
-        organisation::mapper::create_organisation_history_event,
-    },
-};
+use super::dto::GetOrganisationDetailsResponseDTO;
+use super::validator::organisation_already_exists;
+use super::OrganisationService;
+use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::service::organisation::mapper::create_organisation_history_event;
 
 impl OrganisationService {
     /// Returns all existing organisations
@@ -60,7 +55,7 @@ impl OrganisationService {
 
         // Check if it already exists
         if let Some(id) = id {
-            if organisation_already_exists(&self.organisation_repository, &id).await? {
+            if organisation_already_exists(&*self.organisation_repository, &id).await? {
                 return Err(BusinessLogicError::OrganisationAlreadyExists.into());
             }
         }

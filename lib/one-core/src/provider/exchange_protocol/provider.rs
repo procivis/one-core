@@ -1,9 +1,10 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use shared_types::CredentialId;
-use std::collections::HashMap;
-use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;

@@ -3,6 +3,7 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use mockall::predicate::*;
+use one_providers::common_models::key::Key;
 use one_providers::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential,
 };
@@ -31,6 +32,7 @@ use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
+use crate::provider::exchange_protocol::dto::ShareResponse;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -56,7 +58,6 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
 use crate::service::test_utilities::{generic_config, generic_formatter_capabilities};
-use one_providers::common_models::key::Key;
 
 #[derive(Default)]
 struct Repositories {
@@ -86,6 +87,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.key_provider),
         Arc::new(repositories.config),
         Arc::new(repositories.lvvc_repository),
+        None,
     )
 }
 
@@ -592,10 +594,18 @@ async fn test_share_credential_success() {
     let mut protocol_provider = MockExchangeProtocolProvider::default();
 
     let expected_url = "test_url";
+    let interaction_id = Uuid::new_v4();
     protocol
+        .inner
         .expect_share_credential()
         .times(1)
-        .returning(|_| Ok(expected_url.to_owned()));
+        .returning(move |_| {
+            Ok(ShareResponse {
+                url: expected_url.to_owned(),
+                id: interaction_id,
+                context: (),
+            })
+        });
 
     let protocol = Arc::new(protocol);
 
@@ -618,6 +628,19 @@ async fn test_share_credential_success() {
             .returning(move |_| Ok(()));
     }
 
+    let mut interaction_repository = MockInteractionRepository::default();
+    interaction_repository
+        .expect_create_interaction()
+        .withf(move |interaction| interaction.id == interaction_id)
+        .once()
+        .returning(|interaction| Ok(interaction.id));
+
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .withf(move |req| req.id == credential.id)
+        .returning(|_| Ok(()));
+
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
@@ -631,11 +654,11 @@ async fn test_share_credential_success() {
         history_repository,
         config: generic_config().core,
         protocol_provider,
+        interaction_repository,
         ..Default::default()
     });
 
-    let result: Result<crate::model::common::EntityShareResponseDTO, ServiceError> =
-        service.share_credential(&credential.id).await;
+    let result = service.share_credential(&credential.id).await;
 
     assert!(result.is_ok());
     let result = result.unwrap();

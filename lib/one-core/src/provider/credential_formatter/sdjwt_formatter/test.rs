@@ -1,12 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use mockall::predicate::eq;
-
 use one_providers::common_models::did::DidValue;
 #[cfg(test)]
 use one_providers::credential_formatter::imp::common::MockAuth;
-
 use one_providers::credential_formatter::imp::jwt::model::JWTPayload;
 use one_providers::credential_formatter::model::{
     CredentialPresentation, CredentialStatus, ExtractPresentationCtx, MockTokenVerifier,
@@ -14,28 +13,23 @@ use one_providers::credential_formatter::model::{
 };
 use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::crypto::imp::hasher::sha256::SHA256;
-use one_providers::crypto::{CryptoProvider, Hasher, MockCryptoProvider, MockHasher};
+use one_providers::crypto::{MockCryptoProvider, MockHasher};
 use serde_json::json;
 use time::Duration;
 
 use super::disclosures::DisclosureArray;
 use super::{prepare_sd_presentation, SDJWTFormatter};
-
+use crate::config::core_config;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::sdjwt_formatter::disclosures::{
     extract_claims_from_disclosures, gather_disclosures, get_disclosures_by_claim_name,
     get_subdisclosures, parse_disclosure, sort_published_claims_by_indices,
 };
-use crate::provider::credential_formatter::sdjwt_formatter::model::Disclosure;
+use crate::provider::credential_formatter::sdjwt_formatter::model::{Disclosure, Sdvc};
 use crate::provider::credential_formatter::sdjwt_formatter::verifier::verify_claims;
-use crate::{
-    config::core_config,
-    provider::credential_formatter::{
-        sdjwt_formatter::{model::Sdvc, Params},
-        test_utilities::{
-            test_credential_detail_response_dto, test_credential_detail_response_dto_with_array,
-        },
-    },
+use crate::provider::credential_formatter::sdjwt_formatter::Params;
+use crate::provider::credential_formatter::test_utilities::{
+    test_credential_detail_response_dto, test_credential_detail_response_dto_with_array,
 };
 
 impl From<&str> for DisclosureArray {
@@ -581,7 +575,6 @@ fn test_prepare_sd_presentation() {
         .expect_get_hasher()
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
-    let crypto: Arc<dyn CryptoProvider> = Arc::new(crypto);
 
     let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJTREpXVCJ9.\
     eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5Mjcw\
@@ -688,8 +681,6 @@ fn test_gather_disclosures_and_objects_without_nesting() {
         .with(eq(algorithm))
         .returning(move |_| Ok(hasher.clone()));
 
-    let crypto: Arc<dyn CryptoProvider> = Arc::new(crypto);
-
     let test_json = json!({
         "street_address": "Schulstr. 12",
         "locality": "Schulpforta",
@@ -767,8 +758,6 @@ fn test_gather_disclosures_and_objects_with_nesting() {
         .expect_get_hasher()
         .with(eq(algorithm))
         .returning(move |_| Ok(hasher.clone()));
-
-    let crypto: Arc<dyn CryptoProvider> = Arc::new(crypto);
 
     let test_json = json!({
         "address": {
@@ -866,12 +855,11 @@ fn generic_disclosures() -> Vec<Disclosure> {
 #[test]
 fn test_verify_claims_nested_success() {
     let hasher = SHA256 {};
-    let hasher_arc: Arc<dyn Hasher> = Arc::new(hasher) as _;
 
     let hashed_claims = vec!["bvvBS7QQFb8-9K8PVvZ4W3iJNfafA51YUF6wNOW807I".to_string()];
     let disclosures = generic_disclosures();
 
-    verify_claims(&hashed_claims, &disclosures, &hasher_arc).unwrap();
+    verify_claims(&hashed_claims, &disclosures, &hasher).unwrap();
 
     let hashed_claims_containing_unknown_hash = vec![
         "bvvBS7QQFb8-9K8PVvZ4W3iJNfafA51YUF6wNOW807I".to_string(),
@@ -880,18 +868,17 @@ fn test_verify_claims_nested_success() {
     verify_claims(
         &hashed_claims_containing_unknown_hash,
         &disclosures,
-        &hasher_arc,
+        &hasher,
     )
     .unwrap();
 
     let missing_disclosure = disclosures[1..3].to_vec();
-    verify_claims(&hashed_claims, &missing_disclosure, &hasher_arc).unwrap_err();
+    verify_claims(&hashed_claims, &missing_disclosure, &hasher).unwrap_err();
 }
 
 #[test]
 fn test_extract_claims_from_disclosures() {
     let hasher = SHA256 {};
-    let hasher_arc: Arc<dyn Hasher> = Arc::new(hasher);
 
     let disclosures = generic_disclosures();
     let first_two_disclosures = disclosures[0..2].to_vec();
@@ -902,7 +889,7 @@ fn test_extract_claims_from_disclosures() {
     });
     assert_eq!(
         expected,
-        extract_claims_from_disclosures(&first_two_disclosures, &hasher_arc).unwrap()
+        extract_claims_from_disclosures(&first_two_disclosures, &hasher).unwrap()
     );
 
     let expected = json!({
@@ -913,21 +900,20 @@ fn test_extract_claims_from_disclosures() {
     });
     assert_eq!(
         expected,
-        extract_claims_from_disclosures(&disclosures, &hasher_arc).unwrap()
+        extract_claims_from_disclosures(&disclosures, &hasher).unwrap()
     );
 }
 
 #[test]
 fn test_get_subdisclosures() {
     let hasher = SHA256 {};
-    let hasher_arc: Arc<dyn Hasher> = Arc::new(hasher);
 
     let disclosures = generic_disclosures();
     let first_two_disclosures = disclosures[0..2].to_vec();
 
     let disclosure_hashes = disclosures
         .iter()
-        .map(|d| d.hash(&hasher_arc).unwrap())
+        .map(|d| d.hash(&hasher).unwrap())
         .collect::<Vec<String>>();
     let first_two_to_resolve = disclosure_hashes[0..2].to_vec();
     let resolve_only_objects = disclosure_hashes[2..3].to_vec();
@@ -937,7 +923,7 @@ fn test_get_subdisclosures() {
         "another": "week"
     });
     let (result, resolved) =
-        get_subdisclosures(&first_two_disclosures, &first_two_to_resolve, &hasher_arc).unwrap();
+        get_subdisclosures(&first_two_disclosures, &first_two_to_resolve, &hasher).unwrap();
     assert_eq!(expected, result);
     assert_eq!(resolved, first_two_to_resolve);
 
@@ -948,7 +934,7 @@ fn test_get_subdisclosures() {
         }
     });
     let (result, resolved) =
-        get_subdisclosures(&disclosures, &resolve_only_objects, &hasher_arc).unwrap();
+        get_subdisclosures(&disclosures, &resolve_only_objects, &hasher).unwrap();
     assert_eq!(expected, result);
     assert_eq!(resolved, disclosure_hashes);
 
@@ -959,7 +945,7 @@ fn test_get_subdisclosures() {
         }
     });
     let (result, resolved) =
-        get_subdisclosures(&disclosures, &resolve_only_objects, &hasher_arc).unwrap();
+        get_subdisclosures(&disclosures, &resolve_only_objects, &hasher).unwrap();
     assert_eq!(expected, result);
     assert_eq!(resolved, disclosure_hashes);
 }
@@ -967,16 +953,15 @@ fn test_get_subdisclosures() {
 #[test]
 fn test_get_disclosures_by_claim_name() {
     let hasher = SHA256 {};
-    let hasher_arc: Arc<dyn Hasher> = Arc::new(hasher);
 
     let disclosures = generic_disclosures();
 
     let expected = vec![disclosures[0].to_owned()];
-    let result = get_disclosures_by_claim_name("str", &disclosures, &hasher_arc).unwrap();
+    let result = get_disclosures_by_claim_name("str", &disclosures, &hasher).unwrap();
     assert_eq!(expected, result);
 
     let expected = vec![disclosures[1].to_owned()];
-    let result = get_disclosures_by_claim_name("another", &disclosures, &hasher_arc).unwrap();
+    let result = get_disclosures_by_claim_name("another", &disclosures, &hasher).unwrap();
     assert_eq!(expected, result);
 
     let expected = vec![
@@ -984,15 +969,15 @@ fn test_get_disclosures_by_claim_name() {
         disclosures[1].to_owned(),
         disclosures[2].to_owned(),
     ];
-    let result = get_disclosures_by_claim_name("obj", &disclosures, &hasher_arc).unwrap();
+    let result = get_disclosures_by_claim_name("obj", &disclosures, &hasher).unwrap();
     assert_eq!(expected, result);
 
     let expected = vec![disclosures[0].to_owned(), disclosures[2].to_owned()];
-    let result = get_disclosures_by_claim_name("obj/str", &disclosures, &hasher_arc).unwrap();
+    let result = get_disclosures_by_claim_name("obj/str", &disclosures, &hasher).unwrap();
     assert_eq!(expected, result);
 
     let expected = vec![disclosures[1].to_owned(), disclosures[2].to_owned()];
-    let result = get_disclosures_by_claim_name("obj/another", &disclosures, &hasher_arc).unwrap();
+    let result = get_disclosures_by_claim_name("obj/another", &disclosures, &hasher).unwrap();
     assert_eq!(expected, result);
 
     let root_contains_obj_disclosures = vec![
@@ -1016,12 +1001,9 @@ fn test_get_disclosures_by_claim_name() {
         root_contains_obj_disclosures[2].to_owned(),
         root_contains_obj_disclosures[3].to_owned(),
     ];
-    let result = get_disclosures_by_claim_name(
-        "root/obj/another",
-        &root_contains_obj_disclosures,
-        &hasher_arc,
-    )
-    .unwrap();
+    let result =
+        get_disclosures_by_claim_name("root/obj/another", &root_contains_obj_disclosures, &hasher)
+            .unwrap();
     assert_eq!(expected, result);
 }
 

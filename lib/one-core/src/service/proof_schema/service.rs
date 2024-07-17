@@ -106,7 +106,7 @@ impl ProofSchemaService {
         validate_create_request(&request)?;
 
         proof_schema_name_already_exists(
-            &self.proof_schema_repository,
+            &*self.proof_schema_repository,
             &request.name,
             request.organisation_id,
         )
@@ -165,7 +165,7 @@ impl ProofSchemaService {
         let claim_schemas = extract_claims_from_credential_schema(
             &request.proof_input_schemas,
             &credential_schemas,
-            &self.formatter_provider,
+            &*self.formatter_provider,
         )?;
 
         let now = OffsetDateTime::now_utc();
@@ -345,7 +345,7 @@ impl ProofSchemaService {
                                     credential_schema
                                 }
                             }
-                             // if not exists create new credential schema deriving the possible claims from the input_schema  
+                             // if not exists create new credential schema deriving the possible claims from the input_schema
                             else {
                                 let credential_schema = credential_schema_from_proof_input_schema(
                                     &response_input_schema,

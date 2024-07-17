@@ -6,6 +6,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use dto_mapper::convert_inner;
+use one_providers::common_models::key::Key;
 use one_providers::credential_formatter::model::FormatPresentationCtx;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::key_storage::provider::KeyProvider;
@@ -18,7 +19,9 @@ use self::mapper::{
     get_base_url, get_proof_claim_schemas_from_proof, presentation_definition_from_proof,
     remote_did_from_value,
 };
+use super::dto::ShareResponse;
 use super::mapper::get_relevant_credentials_to_credential_schemas;
+use super::ExchangeProtocolImpl;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim::{Claim, ClaimId};
@@ -37,7 +40,7 @@ use crate::provider::exchange_protocol::dto::{
 use crate::provider::exchange_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
-use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
+use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -49,7 +52,6 @@ use crate::service::credential::dto::{
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 use crate::service::ssi_issuer::dto::ConnectIssuerResponseDTO;
-use one_providers::common_models::key::Key;
 
 const REDIRECT_URI_QUERY_PARAM_KEY: &str = "redirect_uri";
 
@@ -121,7 +123,9 @@ fn categorize_url(url: &Url) -> Result<InvitationType, ExchangeProtocolError> {
 }
 
 #[async_trait]
-impl ExchangeProtocol for ProcivisTemp {
+impl ExchangeProtocolImpl for ProcivisTemp {
+    type InteractionContext = ();
+
     fn can_handle(&self, url: &Url) -> bool {
         categorize_url(url).is_ok()
     }
@@ -322,7 +326,7 @@ impl ExchangeProtocol for ProcivisTemp {
     async fn share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<String, ExchangeProtocolError> {
+    ) -> Result<ShareResponse<Self::InteractionContext>, ExchangeProtocolError> {
         let base_url = self
             .base_url
             .as_ref()
@@ -339,9 +343,11 @@ impl ExchangeProtocol for ProcivisTemp {
             pairs.append_pair("redirect_uri", redirect_uri);
         }
 
-        let url = pairs.finish();
-
-        Ok(url.to_string())
+        Ok(ShareResponse {
+            url: pairs.finish().to_string(),
+            id: Uuid::new_v4(),
+            context: (),
+        })
     }
 
     async fn share_proof(&self, proof: &Proof) -> Result<String, ExchangeProtocolError> {
@@ -420,7 +426,7 @@ impl ExchangeProtocol for ProcivisTemp {
         }
 
         let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
-            &self.credential_repository,
+            &*self.credential_repository,
             credential_groups,
             group_id_to_schema_id,
             &allowed_formats,

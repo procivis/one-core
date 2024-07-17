@@ -14,8 +14,9 @@ use one_providers::credential_formatter::model::{
     DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities,
     Presentation, VerificationFn,
 };
+use one_providers::credential_formatter::CredentialFormatter;
+use one_providers::crypto::CryptoProvider;
 use one_providers::did::provider::DidMethodProvider;
-use one_providers::{credential_formatter::CredentialFormatter, crypto::CryptoProvider};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds};
 use time::{Duration, OffsetDateTime};
@@ -90,7 +91,7 @@ impl CredentialFormatter for JsonLdClassic {
 
         let proof_hash = prepare_proof_hash(
             &credential,
-            &self.crypto,
+            &*self.crypto,
             &proof,
             self.caching_loader.to_owned(),
         )
@@ -180,7 +181,7 @@ impl CredentialFormatter for JsonLdClassic {
 
         let proof_hash = prepare_proof_hash(
             &presentation,
-            &self.crypto,
+            &*self.crypto,
             &proof,
             self.caching_loader.to_owned(),
         )
@@ -292,7 +293,7 @@ impl JsonLdClassic {
             verify_credential_signature(
                 credential.clone(),
                 verification_fn,
-                &self.crypto,
+                &*self.crypto,
                 self.caching_loader.to_owned(),
             )
             .await?;
@@ -345,7 +346,7 @@ impl JsonLdClassic {
             verify_presentation_signature(
                 presentation.clone(),
                 verification_fn,
-                &self.crypto,
+                &*self.crypto,
                 self.caching_loader.to_owned(),
             )
             .await?;
@@ -375,7 +376,7 @@ impl JsonLdClassic {
 pub(super) async fn verify_credential_signature(
     mut ld_credential: LdCredential,
     verification_fn: VerificationFn,
-    crypto: &Arc<dyn CryptoProvider>,
+    crypto: &dyn CryptoProvider,
     caching_loader: CachingLoader,
 ) -> Result<(), FormatterError> {
     let mut proof = ld_credential
@@ -410,7 +411,7 @@ pub(super) async fn verify_credential_signature(
 pub(super) async fn verify_presentation_signature(
     mut presentation: LdPresentation,
     verification_fn: VerificationFn,
-    crypto: &Arc<dyn CryptoProvider>,
+    crypto: &dyn CryptoProvider,
     caching_loader: CachingLoader,
 ) -> Result<(), FormatterError> {
     let mut proof = presentation
@@ -492,7 +493,7 @@ pub(super) async fn sign_proof_hash(
 
 pub(super) async fn prepare_proof_hash<T>(
     object: &T,
-    crypto: &Arc<dyn CryptoProvider>,
+    crypto: &dyn CryptoProvider,
     proof: &LdProof,
     caching_loader: CachingLoader,
 ) -> Result<Vec<u8>, FormatterError>

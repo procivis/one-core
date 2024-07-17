@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{
@@ -136,4 +137,10 @@ pub struct PresentedCredential {
     pub presentation: String,
     pub credential_schema: CredentialSchema,
     pub request: PresentationDefinitionRequestedCredentialResponseDTO,
+}
+
+pub struct ShareResponse<T> {
+    pub url: String,
+    pub id: Uuid,
+    pub context: T,
 }

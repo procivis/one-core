@@ -3,7 +3,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use maplit::hashmap;
-use mockall::{predicate, Sequence};
+use mockall::Sequence;
+use one_providers::common_models::key::Key;
+use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
@@ -34,7 +36,7 @@ use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VPInteractionData, OpenID4VPPresentationDefinition,
 };
 use crate::provider::exchange_protocol::openid4vc::mapper::prepare_claims;
-use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
+use crate::provider::exchange_protocol::{ExchangeProtocolError, ExchangeProtocolImpl};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -43,8 +45,6 @@ use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 use crate::service::test_utilities::generic_config;
-use one_providers::common_models::key::Key;
-use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 
 #[derive(Default)]
 struct TestInputs {
@@ -320,87 +320,17 @@ async fn test_generate_offer() {
 async fn test_generate_share_credentials() {
     let credential = generic_credential();
 
-    let mut credential_repository = MockCredentialRepository::default();
-    let mut interaction_repository = MockInteractionRepository::default();
-
-    let mut seq = Sequence::new();
-
-    let credential_moved = credential.clone();
-    credential_repository
-        .expect_get_credential()
-        .once()
-        .in_sequence(&mut seq)
-        .returning(move |_, _| Ok(Some(credential_moved.clone())));
-
-    interaction_repository
-        .expect_create_interaction()
-        .once()
-        .in_sequence(&mut seq)
-        .returning(move |req| Ok(req.id));
-
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .in_sequence(&mut seq)
-        .withf(move |req| req.id == credential.id)
-        .returning(|_| Ok(()));
-
-    interaction_repository
-        .expect_delete_interaction()
-        .once()
-        .in_sequence(&mut seq)
-        .with(predicate::eq(credential.interaction.as_ref().unwrap().id))
-        .returning(move |_| Ok(()));
-
-    let protocol = setup_protocol(TestInputs {
-        credential_repository,
-        interaction_repository,
-        ..Default::default()
-    });
+    let protocol = setup_protocol(Default::default());
 
     let result = protocol.share_credential(&credential).await.unwrap();
-    assert_eq!(result, "openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
+    assert_eq!(result.url, "openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
 }
 
 #[tokio::test]
 async fn test_generate_share_credentials_offer_by_value() {
     let credential = generic_credential();
 
-    let mut credential_repository = MockCredentialRepository::default();
-    let mut interaction_repository = MockInteractionRepository::default();
-
-    let mut seq = Sequence::new();
-
-    let credential_moved = credential.clone();
-    credential_repository
-        .expect_get_credential()
-        .once()
-        .in_sequence(&mut seq)
-        .returning(move |_, _| Ok(Some(credential_moved.clone())));
-
-    interaction_repository
-        .expect_create_interaction()
-        .once()
-        .in_sequence(&mut seq)
-        .returning(move |req| Ok(req.id));
-
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .in_sequence(&mut seq)
-        .withf(move |req| req.id == credential.id)
-        .returning(|_| Ok(()));
-
-    interaction_repository
-        .expect_delete_interaction()
-        .once()
-        .in_sequence(&mut seq)
-        .with(predicate::eq(credential.interaction.as_ref().unwrap().id))
-        .returning(move |_| Ok(()));
-
     let protocol = setup_protocol(TestInputs {
-        credential_repository,
-        interaction_repository,
         params: Some(OpenID4VCParams {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
@@ -418,7 +348,7 @@ async fn test_generate_share_credentials_offer_by_value() {
     // Everything except for interaction id is here.
     // Generating token with predictable interaction id is tested somewhere else.
     assert!(
-        result.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credentials%22%3A%5B%7B%22format%22%3A%22jwt_vc_json%22%2C%22credential_definition%22%3A%7B%22type%22%3A%5B%22VerifiableCredential%22%5D%2C%22credentialSubject%22%3A%7B%22NUMBER%22%3A%7B%22value%22%3A%22123%22%2C%22value_type%22%3A%22NUMBER%22%7D%7D%7D%2C%22wallet_storage_type%22%3A%22SOFTWARE%22%7D%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
+        result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credentials%22%3A%5B%7B%22format%22%3A%22jwt_vc_json%22%2C%22credential_definition%22%3A%7B%22type%22%3A%5B%22VerifiableCredential%22%5D%2C%22credentialSubject%22%3A%7B%22NUMBER%22%3A%7B%22value%22%3A%22123%22%2C%22value_type%22%3A%22NUMBER%22%7D%7D%7D%2C%22wallet_storage_type%22%3A%22SOFTWARE%22%7D%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
     )
 }
 

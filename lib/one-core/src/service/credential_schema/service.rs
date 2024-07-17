@@ -1,5 +1,6 @@
 use shared_types::CredentialSchemaId;
 
+use super::mapper::from_create_request_with_id;
 use crate::common_mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
@@ -16,8 +17,6 @@ use crate::service::credential_schema::mapper::{
 };
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-
-use super::mapper::from_create_request_with_id;
 
 impl CredentialSchemaService {
     /// Creates a credential schema according to request
@@ -37,12 +36,12 @@ impl CredentialSchemaService {
         super::validator::validate_create_request(
             &request,
             &self.config,
-            &self.formatter_provider,
+            &*self.formatter_provider,
             false,
         )?;
 
         super::validator::credential_schema_already_exists(
-            &self.credential_schema_repository,
+            &*self.credential_schema_repository,
             &request.name,
             request.schema_id.clone(),
             request.organisation_id,
@@ -192,12 +191,12 @@ impl CredentialSchemaService {
         super::validator::validate_create_request(
             &create_request,
             &self.config,
-            &self.formatter_provider,
+            &*self.formatter_provider,
             true,
         )?;
 
         super::validator::credential_schema_already_exists(
-            &self.credential_schema_repository,
+            &*self.credential_schema_repository,
             &create_request.name,
             create_request.schema_id.clone(),
             create_request.organisation_id,

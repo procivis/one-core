@@ -4,11 +4,12 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use url::Url;
 
-use super::{dto::OpenID4VPPresentationDefinition, openidvc_ble::BLEPeer};
+use super::dto::OpenID4VPPresentationDefinition;
+use super::openidvc_ble::BLEPeer;
 use crate::service::oidc::dto::PresentationSubmissionMappingDTO;
 
 #[derive(Clone, Serialize, Deserialize)]
-pub(super) struct OpenID4VCIInteractionContent {
+pub struct OpenID4VCIInteractionContent {
     pub pre_authorized_code_used: bool,
     pub access_token: String,
     #[serde(with = "time::serde::rfc3339::option")]
@@ -76,6 +77,7 @@ impl JwePayload {
         Ok(payload)
     }
 }
+
 mod unix_timestamp {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use time::OffsetDateTime;

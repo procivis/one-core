@@ -8,7 +8,7 @@ use uuid::Uuid;
 use super::ProcivisTemp;
 use crate::model::credential::{Credential, CredentialRole};
 use crate::model::proof::Proof;
-use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
+use crate::provider::exchange_protocol::{ExchangeProtocolError, ExchangeProtocolImpl};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -94,7 +94,7 @@ async fn test_share_credential_success_no_redirect_uri() {
     let credential = generate_credential(None);
 
     let result = protocol.share_credential(&credential).await.unwrap();
-    assert_eq!("http://base_url/ssi/temporary-issuer/v1/connect?protocol=PROCIVIS_TEMPORARY&credential=00000000-0000-0000-0000-000000000000", result);
+    assert_eq!("http://base_url/ssi/temporary-issuer/v1/connect?protocol=PROCIVIS_TEMPORARY&credential=00000000-0000-0000-0000-000000000000", result.url);
 }
 
 #[tokio::test]
@@ -103,7 +103,7 @@ async fn test_share_credential_success_with_redirect_uri_is_percent_encoded() {
     let credential = generate_credential(Some("http://base_url/redirect?queryParam=1".to_string()));
 
     let result = protocol.share_credential(&credential).await.unwrap();
-    assert_eq!("http://base_url/ssi/temporary-issuer/v1/connect?protocol=PROCIVIS_TEMPORARY&credential=00000000-0000-0000-0000-000000000000&redirect_uri=http%3A%2F%2Fbase_url%2Fredirect%3FqueryParam%3D1", result);
+    assert_eq!("http://base_url/ssi/temporary-issuer/v1/connect?protocol=PROCIVIS_TEMPORARY&credential=00000000-0000-0000-0000-000000000000&redirect_uri=http%3A%2F%2Fbase_url%2Fredirect%3FqueryParam%3D1", result.url);
 }
 
 #[tokio::test]

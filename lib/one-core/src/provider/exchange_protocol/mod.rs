@@ -4,14 +4,18 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use one_providers::common_models::key::Key;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
-use serde::{de, Serialize};
+use serde::de::{Deserialize, DeserializeOwned};
+use serde::Serialize;
 use thiserror::Error;
 use url::Url;
 
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-
-use self::dto::{PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse};
+use self::dto::{
+    PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse, SubmitIssuerResponse,
+};
+use super::bluetooth_low_energy::low_level::ble_central::BleCentral;
+use super::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::config::ConfigValidationError;
 use crate::model::credential::Credential;
@@ -25,9 +29,6 @@ use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::DataRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
-
-use super::bluetooth_low_energy::low_level::ble_central::BleCentral;
-use super::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 
 pub mod dto;
 mod mapper;
@@ -60,9 +61,11 @@ pub enum ExchangeProtocolError {
     Other(anyhow::Error),
 }
 
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(test, mockall::automock(type InteractionContext = ();))]
 #[async_trait]
-pub trait ExchangeProtocol: Send + Sync {
+pub trait ExchangeProtocolImpl: Send + Sync {
+    type InteractionContext;
+
     // holder methods
     fn can_handle(&self, url: &Url) -> bool;
 
@@ -104,11 +107,116 @@ pub trait ExchangeProtocol: Send + Sync {
     async fn share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<String, ExchangeProtocolError>;
+    ) -> Result<ShareResponse<Self::InteractionContext>, ExchangeProtocolError>;
 
     // verifier methods
     /// Generates QR-code content to start the proof request flow
     async fn share_proof(&self, proof: &Proof) -> Result<String, ExchangeProtocolError>;
+}
+
+pub trait ExchangeProtocol: ExchangeProtocolImpl<InteractionContext = serde_json::Value> {}
+
+#[cfg(test)]
+pub type MockExchangeProtocol = ExchangeProtocolWrapper<MockExchangeProtocolImpl>;
+
+#[derive(Default)]
+pub struct ExchangeProtocolWrapper<T> {
+    pub inner: T,
+}
+
+impl<T> ExchangeProtocolWrapper<T> {
+    pub fn new(inner: T) -> Self {
+        Self { inner }
+    }
+}
+
+#[async_trait]
+impl<T> ExchangeProtocolImpl for ExchangeProtocolWrapper<T>
+where
+    T: ExchangeProtocolImpl,
+    T::InteractionContext: Serialize + DeserializeOwned,
+{
+    type InteractionContext = serde_json::Value;
+
+    fn can_handle(&self, url: &Url) -> bool {
+        self.inner.can_handle(url)
+    }
+
+    async fn handle_invitation(
+        &self,
+        url: Url,
+        organisation: Organisation,
+    ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
+        self.inner.handle_invitation(url, organisation).await
+    }
+
+    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
+        self.inner.reject_proof(proof).await
+    }
+
+    async fn submit_proof(
+        &self,
+        proof: &Proof,
+        credential_presentations: Vec<PresentedCredential>,
+        holder_did: &Did,
+        key: &Key,
+        jwk_key_id: Option<String>,
+    ) -> Result<(), ExchangeProtocolError> {
+        self.inner
+            .submit_proof(proof, credential_presentations, holder_did, key, jwk_key_id)
+            .await
+    }
+
+    async fn accept_credential(
+        &self,
+        credential: &Credential,
+        holder_did: &Did,
+        key: &Key,
+        jwk_key_id: Option<String>,
+    ) -> Result<SubmitIssuerResponse, ExchangeProtocolError> {
+        self.inner
+            .accept_credential(credential, holder_did, key, jwk_key_id)
+            .await
+    }
+
+    async fn reject_credential(
+        &self,
+        credential: &Credential,
+    ) -> Result<(), ExchangeProtocolError> {
+        self.inner.reject_credential(credential).await
+    }
+
+    async fn get_presentation_definition(
+        &self,
+        proof: &Proof,
+    ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
+        self.inner.get_presentation_definition(proof).await
+    }
+
+    async fn share_credential(
+        &self,
+        credential: &Credential,
+    ) -> Result<ShareResponse<Self::InteractionContext>, ExchangeProtocolError> {
+        self.inner
+            .share_credential(credential)
+            .await
+            .map(|resp| ShareResponse {
+                url: resp.url,
+                id: resp.id,
+                context: serde_json::json!(resp.context),
+            })
+    }
+
+    async fn share_proof(&self, proof: &Proof) -> Result<String, ExchangeProtocolError> {
+        self.inner.share_proof(proof).await
+    }
+}
+
+impl<T> ExchangeProtocol for ExchangeProtocolWrapper<T>
+where
+    T: ExchangeProtocolImpl,
+    T::InteractionContext: Serialize + DeserializeOwned,
+{
 }
 
 pub(super) fn get_base_url_from_interaction(
@@ -132,7 +240,7 @@ pub(super) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
     serde_json::to_vec(&dto).map_err(ExchangeProtocolError::JsonError)
 }
 
-pub fn deserialize_interaction_data<DataDTO: for<'a> de::Deserialize<'a>>(
+pub fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     interaction: Option<&Interaction>,
 ) -> Result<DataDTO, ExchangeProtocolError> {
     let data = interaction
@@ -164,7 +272,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
     for (name, fields) in config.exchange.iter() {
         match fields.r#type {
             ExchangeType::ProcivisTemporary => {
-                let protocol = Arc::new(ProcivisTemp::new(
+                let protocol = Arc::new(ExchangeProtocolWrapper::new(ProcivisTemp::new(
                     core_base_url.clone(),
                     data_provider.get_credential_repository(),
                     data_provider.get_interaction_repository(),
@@ -173,19 +281,19 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     formatter_provider.clone(),
                     key_provider.clone(),
                     config.clone(),
-                ));
+                )));
 
                 providers.insert(name.to_string(), protocol);
             }
             ExchangeType::ScanToVerify => {
-                let protocol = Arc::new(ScanToVerify::new());
+                let protocol = Arc::new(ExchangeProtocolWrapper::new(ScanToVerify::new()));
 
                 providers.insert(name.to_string(), protocol);
             }
             ExchangeType::OpenId4Vc => {
                 let params = config.exchange.get(name)?;
 
-                let protocol = Arc::new(OpenID4VC::new(
+                let protocol = Arc::new(ExchangeProtocolWrapper::new(OpenID4VC::new(
                     core_base_url.clone(),
                     data_provider.get_credential_repository(),
                     data_provider.get_credential_schema_repository(),
@@ -200,7 +308,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     config.clone(),
                     ble_peripheral.clone(),
                     ble_central.clone(),
-                ));
+                )));
 
                 providers.insert(name.to_string(), protocol);
             }

@@ -1,7 +1,7 @@
+use std::collections::{HashMap, HashSet};
+
 use one_providers::common_models::key::Key;
 use shared_types::{CredentialId, DidId, ProofId};
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -107,7 +107,7 @@ pub fn credential_model_to_credential_dto(
 }
 
 pub async fn get_relevant_credentials_to_credential_schemas(
-    credential_repository: &Arc<dyn CredentialRepository>,
+    credential_repository: &dyn CredentialRepository,
     mut credential_groups: Vec<CredentialGroup>,
     group_id_to_schema_id_mapping: HashMap<String, String>,
     allowed_schema_formats: &HashSet<&str>,

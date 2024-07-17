@@ -1,11 +1,9 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use shared_types::{CredentialId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
 use super::dto::{
     AuthorizationEncryptedResponseAlgorithm,
@@ -60,7 +58,7 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     proof: Proof,
     client_metadata_by_value: bool,
     presentation_definition_by_value: bool,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
     config: &CoreConfig,
 ) -> Result<String, ExchangeProtocolError> {
     let encryption_key_jwk = get_encryption_key_jwk_from_proof(&proof, key_algorithm_provider)

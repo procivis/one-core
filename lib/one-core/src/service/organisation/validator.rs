@@ -1,14 +1,11 @@
-use std::sync::Arc;
-
 use shared_types::OrganisationId;
 
-use crate::{
-    model::organisation::OrganisationRelations,
-    repository::organisation_repository::OrganisationRepository, service::error::ServiceError,
-};
+use crate::model::organisation::OrganisationRelations;
+use crate::repository::organisation_repository::OrganisationRepository;
+use crate::service::error::ServiceError;
 
 pub(crate) async fn organisation_already_exists(
-    repository: &Arc<dyn OrganisationRepository>,
+    repository: &dyn OrganisationRepository,
     id: &OrganisationId,
 ) -> Result<bool, ServiceError> {
     let organisation = repository
