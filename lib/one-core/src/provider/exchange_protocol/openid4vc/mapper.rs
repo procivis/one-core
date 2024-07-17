@@ -15,7 +15,7 @@ use crate::common_mapper::{
     get_encryption_key_jwk_from_proof, remove_first_nesting_layer, PublicKeyWithJwk,
     NESTED_CLAIM_MARKER,
 };
-use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
+use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::Credential;
@@ -269,14 +269,14 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
         intent_to_retain: None,
     };
 
-    let format_type = config
+    let format_type = &config
         .format
         .get_fields(&credential_schema.format)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
         .r#type;
 
-    let intent_to_retain = match format_type {
-        FormatType::Mdoc => Some(true),
+    let intent_to_retain = match format_type.as_str() {
+        "MDOC" => Some(true),
         _ => None,
     };
 
@@ -310,9 +310,9 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
     })
 }
 
-fn format_path(claim_key: &str, format_type: FormatType) -> Result<String, ExchangeProtocolError> {
+fn format_path(claim_key: &str, format_type: &str) -> Result<String, ExchangeProtocolError> {
     match format_type {
-        FormatType::Mdoc => match claim_key.split_once(NESTED_CLAIM_MARKER) {
+        "MDOC" => match claim_key.split_once(NESTED_CLAIM_MARKER) {
             None => Ok(format!("$['{claim_key}']")),
             Some((namespace, key)) => Ok(format!("$['{namespace}']['{key}']")),
         },
@@ -321,14 +321,14 @@ fn format_path(claim_key: &str, format_type: FormatType) -> Result<String, Excha
 }
 
 fn create_format_map(
-    format_type: FormatType,
+    format_type: &str,
 ) -> Result<
     HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
     ExchangeProtocolError,
 > {
     match format_type {
-        FormatType::Jwt | FormatType::Sdjwt | FormatType::Mdoc => {
-            let key = map_core_to_oidc_format(&format_type.to_string())
+        "JWT" | "SDJWT" | "MDOC" => {
+            let key = map_core_to_oidc_format(format_type)
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
             Ok(HashMap::from([(
                 key,
@@ -338,16 +338,17 @@ fn create_format_map(
                 },
             )]))
         }
-        FormatType::PhysicalCard => {
+        "PHYSICAL_CARD" => {
             unimplemented!()
         }
-        FormatType::JsonLdClassic | FormatType::JsonLdBbsplus => Ok(HashMap::from([(
+        "JSON_LD_CLASSIC" | "JSON_LD_BBSPLUS" => Ok(HashMap::from([(
             "ldp_vc".to_string(),
             OpenID4VPPresentationDefinitionInputDescriptorFormat {
                 alg: vec![],
                 proof_type: vec!["DataIntegrityProof".to_string()],
             },
         )])),
+        _ => unimplemented!(),
     }
 }
 
@@ -413,14 +414,14 @@ pub(crate) fn create_credential_offer(
 
     let url = get_url(base_url)?;
 
-    let format_type = config
+    let format_type = &config
         .format
         .get_fields(&credential_schema.format)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
         .r#type;
 
-    let credentials = match format_type {
-        FormatType::Mdoc => credentials_format_mdoc(credential_schema, claims, config),
+    let credentials = match format_type.as_str() {
+        "MDOC" => credentials_format_mdoc(credential_schema, claims, config),
         _ => credentials_format_others(credential_schema, claims),
     }?;
 

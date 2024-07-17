@@ -1,16 +1,16 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::credential_formatter::CredentialFormatter;
 use serde_json::Value;
 use shared_types::OrganisationId;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
+use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::CredentialFormatter;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO,
@@ -334,8 +334,8 @@ fn validate_mdoc_claim_types(
     request: &CreateCredentialSchemaRequestDTO,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    let format_type = config.format.get_fields(&request.format)?.r#type;
-    if format_type != FormatType::Mdoc {
+    let format_type = config.format.get_fields(&request.format)?.r#type.as_str();
+    if format_type != "MDOC" {
         return Ok(());
     }
 

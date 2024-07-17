@@ -6,7 +6,8 @@ use shared_types::DidValue;
 
 use crate::config::core_config::{self, CoreConfig, DatatypeConfig, DatatypeType};
 use crate::model::did::DidType;
-use crate::provider::credential_formatter::{CredentialData, PublishedClaim, PublishedClaimValue};
+use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
+use crate::provider::credential_formatter::{PublishedClaim, PublishedClaimValue};
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialRole, CredentialSchemaType, CredentialStateEnum,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -63,7 +64,7 @@ fn generate_credential_detail_response(
 #[test]
 fn test_from_credential_detail_response_nested_claim_mapping() {
     let now = OffsetDateTime::now_utc();
-    let actual = CredentialData::from_credential_detail_response(
+    let actual = credential_data_from_credential_detail_response(
         &core_config::CoreConfig::default(),
         generate_credential_detail_response(vec![
             DetailCredentialClaimResponseDTO {
@@ -169,7 +170,7 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
             params: None,
         },
     );
-    let actual = CredentialData::from_credential_detail_response(
+    let actual = credential_data_from_credential_detail_response(
         &CoreConfig {
             datatype: datatype_config,
             ..Default::default()

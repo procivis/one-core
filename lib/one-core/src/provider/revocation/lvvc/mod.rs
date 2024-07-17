@@ -3,6 +3,13 @@ use std::ops::Sub;
 use std::sync::Arc;
 
 use anyhow::Context;
+use one_providers::credential_formatter::imp::jwt::model::JWTPayload;
+use one_providers::credential_formatter::imp::jwt::Jwt;
+use one_providers::credential_formatter::model::{
+    CredentialData, CredentialSchemaData, CredentialStatus,
+};
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use serde::{Deserialize, Serialize};
@@ -21,13 +28,6 @@ use crate::model::credential::{
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::model::validity_credential::Lvvc;
-use crate::provider::credential_formatter::jwt::model::JWTPayload;
-use crate::provider::credential_formatter::jwt::Jwt;
-use crate::provider::credential_formatter::model::CredentialStatus;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::{
-    CredentialData, CredentialFormatter, CredentialSchemaData,
-};
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::provider::revocation::RevocationMethod;
 use crate::repository::credential_repository::CredentialRepository;
@@ -261,7 +261,7 @@ impl LvvcProvider {
                 "LVVC issuer DID missing".to_string(),
             ))?;
 
-        if issuer_did != lvvc_issuer_did {
+        if *issuer_did != Into::<DidValue>::into(Into::<String>::into(lvvc_issuer_did.clone())) {
             return Err(ServiceError::ValidationError(
                 "LVVC issuer DID is not equal to issuer DID".to_string(),
             ));
@@ -452,7 +452,7 @@ pub(crate) async fn create_lvvc_with_status(
         issuance_date: OffsetDateTime::now_utc(),
         valid_for: credential_expiry,
         claims,
-        issuer_did: issuer_did.did.to_owned(),
+        issuer_did: issuer_did.did.to_owned().into(),
         status: vec![],
         schema: CredentialSchemaData {
             id: None,
@@ -465,7 +465,7 @@ pub(crate) async fn create_lvvc_with_status(
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
-            &holder_did.did,
+            &holder_did.did.clone().into(),
             &key.key_type,
             vec![],
             vec![json_ld_context.revokable_credential_type],

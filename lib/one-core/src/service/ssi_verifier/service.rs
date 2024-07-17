@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use one_providers::credential_formatter::model::DetailCredential;
 use shared_types::{CredentialSchemaId, DidValue, ProofId};
 use time::OffsetDateTime;
 
@@ -23,7 +24,6 @@ use crate::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchemaRelations, ProofSchemaClaimRelations,
     ProofSchemaRelations,
 };
-use crate::provider::credential_formatter::model::DetailCredential;
 use crate::service::error::{EntityNotFoundError, ServiceError};
 use crate::service::ssi_validator::{validate_config_entity_presence, validate_exchange_type};
 use crate::service::ssi_verifier::mapper::{
@@ -374,7 +374,7 @@ impl SSIVerifierService {
             let issuer_did = get_or_create_did(
                 &*self.did_repository,
                 &proof_schema.organisation,
-                issuer_did,
+                &issuer_did.clone().into(),
             )
             .await?;
 
@@ -469,13 +469,13 @@ impl SSIVerifierService {
 // Private interface tests
 #[cfg(test)]
 mod tests {
+    use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
     use one_providers::did::provider::MockDidMethodProvider;
     use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
     use std::sync::Arc;
     use uuid::Uuid;
 
     use super::*;
-    use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
     use crate::provider::revocation::provider::MockRevocationMethodProvider;
     use crate::repository::credential_repository::MockCredentialRepository;
     use crate::repository::did_repository::MockDidRepository;

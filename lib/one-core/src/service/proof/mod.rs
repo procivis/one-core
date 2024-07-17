@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+
 use crate::config::core_config;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;

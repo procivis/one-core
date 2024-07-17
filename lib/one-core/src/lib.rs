@@ -1,20 +1,20 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use config::ConfigError;
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
-use one_providers::credential_formatter::imp::json_ld::context::storage::in_memory_storage::InMemoryStorage;
-use one_providers::credential_formatter::imp::json_ld::context::storage::JsonLdContextStorage;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+
+use config::core_config::{
+    CoreConfig, DatatypeConfig, FormatConfig, KeyAlgorithmConfig, KeyStorageConfig,
+};
+use config::ConfigError;
 use one_providers::crypto::CryptoProvider;
 use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 
-use config::core_config::{CoreConfig, KeyAlgorithmConfig, KeyStorageConfig};
-
 use one_providers::key_storage::provider::KeyProvider;
-use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderImpl;
 use provider::exchange_protocol::ExchangeProtocol;
 use provider::task::provider::TaskProviderImpl;
@@ -35,12 +35,8 @@ use service::ssi_verifier::SSIVerifierService;
 use service::task::TaskService;
 use service::trust_anchor::TrustAnchorService;
 use service::trust_entity::TrustEntityService;
-use time::Duration;
 
-use crate::config::core_config::{
-    CacheEntitiesConfig, DidConfig, JsonLdContextCacheType, JsonLdContextConfig,
-};
-use crate::provider::credential_formatter::json_ld::storage::db_storage::DbStorage;
+use crate::config::core_config::DidConfig;
 
 pub mod config;
 pub mod provider;
@@ -53,7 +49,6 @@ pub mod common_mapper;
 mod common_validator;
 pub mod util;
 
-use crate::provider::credential_formatter::provider::credential_formatters_from_config;
 use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::exchange_protocol::exchange_protocol_providers_from_config;
 use crate::provider::revocation::provider::RevocationMethodProviderImpl;
@@ -71,11 +66,20 @@ pub type DidMethodCreator = Box<
     ) -> (Arc<dyn DidMethodProvider>, Option<Arc<dyn DidMdlValidator>>),
 >;
 
-pub type KeyAlgorithmCreator =
-    Box<dyn FnOnce(&KeyAlgorithmConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyAlgorithmProvider>>;
+pub type KeyAlgorithmCreator = Box<
+    dyn FnOnce(&mut KeyAlgorithmConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyAlgorithmProvider>,
+>;
 
 pub type KeyStorageCreator =
-    Box<dyn FnOnce(&KeyStorageConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyProvider>>;
+    Box<dyn FnOnce(&mut KeyStorageConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyProvider>>;
+
+pub type FormatterProviderCreator = Box<
+    dyn FnOnce(
+        &mut FormatConfig,
+        &DatatypeConfig,
+        &OneCoreBuilderProviders,
+    ) -> Arc<dyn CredentialFormatterProvider>,
+>;
 
 pub type DataProviderCreator = Box<dyn FnOnce() -> Arc<dyn DataRepository>>;
 
@@ -111,6 +115,8 @@ pub struct OneCoreBuilderProviders {
     pub did_method_provider: Option<Arc<dyn DidMethodProvider>>,
     pub key_algorithm_provider: Option<Arc<dyn KeyAlgorithmProvider>>,
     pub key_storage_provider: Option<Arc<dyn KeyProvider>>,
+    pub did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
+    pub formatter_provider: Option<Arc<dyn CredentialFormatterProvider>>,
     //repository and providers that we initialize as we build
 }
 
@@ -118,11 +124,10 @@ pub struct OneCoreBuilderProviders {
 pub struct OneCoreBuilder {
     core_config: CoreConfig,
     providers: OneCoreBuilderProviders,
-    cache_entities_config: Option<CacheEntitiesConfig>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     ble_central: Option<Arc<dyn BleCentral>>,
     data_provider_creator: Option<DataProviderCreator>,
-    did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
+    caching_loader: Option<CachingLoader>,
 }
 
 impl OneCoreBuilder {
@@ -148,14 +153,14 @@ impl OneCoreBuilder {
         key_algorithm_creator: KeyAlgorithmCreator,
     ) -> Self {
         let key_algorithm_provider =
-            key_algorithm_creator(&self.core_config.key_algorithm, &self.providers);
+            key_algorithm_creator(&mut self.core_config.key_algorithm, &self.providers);
         self.providers.key_algorithm_provider = Some(key_algorithm_provider);
         self
     }
 
     pub fn with_key_storage_provider(mut self, key_storage_creator: KeyStorageCreator) -> Self {
         let key_storage_provider =
-            key_storage_creator(&self.core_config.key_storage, &self.providers);
+            key_storage_creator(&mut self.core_config.key_storage, &self.providers);
         self.providers.key_storage_provider = Some(key_storage_provider);
         self
     }
@@ -164,35 +169,26 @@ impl OneCoreBuilder {
         let (did_method_provider, did_mdl_validator) =
             did_met_provider(&mut self.core_config.did, &self.providers);
         self.providers.did_method_provider = Some(did_method_provider);
+        self.providers.did_mdl_validator = did_mdl_validator;
+        self
+    }
 
-        // todo: fix this?
-        self.with_did_mdl_validator(did_mdl_validator)
+    pub fn with_formatter_provider(
+        mut self,
+        key_storage_creator: FormatterProviderCreator,
+    ) -> Self {
+        let formatter_provider = key_storage_creator(
+            &mut self.core_config.format,
+            &self.core_config.datatype,
+            &self.providers,
+        );
+        self.providers.formatter_provider = Some(formatter_provider);
+        self
     }
 
     // Temporary
     pub fn with_data_provider_creator(mut self, data_provider: DataProviderCreator) -> Self {
         self.data_provider_creator = Some(data_provider);
-        self
-    }
-
-    pub fn with_did_mdl_validator(
-        mut self,
-        did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
-    ) -> Self {
-        self.did_mdl_validator = did_mdl_validator;
-        self
-    }
-
-    // pub fn get_key_algorithm_provider(&self) -> Option<Arc<dyn KeyAlgorithmProvider>> {
-    //     self.providers.key_algorithm_provider.clone()
-    // }
-
-    // Temprary - move to particular implementation or config
-    pub fn with_cache_entities_config(
-        mut self,
-        cache_entities_config: Option<CacheEntitiesConfig>,
-    ) -> Self {
-        self.cache_entities_config = cache_entities_config;
         self
     }
 
@@ -206,16 +202,20 @@ impl OneCoreBuilder {
         self
     }
 
+    pub fn with_caching_loader(mut self, loader: CachingLoader) -> Self {
+        self.caching_loader = Some(loader);
+        self
+    }
+
     pub fn build(self) -> Result<OneCore, ConfigError> {
         OneCore::new(
             self.data_provider_creator
                 .expect("Data provider is required"),
             self.core_config,
-            self.cache_entities_config,
             self.ble_peripheral,
             self.ble_central,
             self.providers,
-            self.did_mdl_validator,
+            self.caching_loader,
         )
     }
 }
@@ -225,11 +225,10 @@ impl OneCore {
     pub fn new(
         data_provider_creator: DataProviderCreator,
         mut core_config: CoreConfig,
-        cache_entities_config: Option<CacheEntitiesConfig>,
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         ble_central: Option<Arc<dyn BleCentral>>,
         providers: OneCoreBuilderProviders,
-        did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
+        caching_loader: Option<CachingLoader>,
     ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
@@ -258,53 +257,17 @@ impl OneCore {
             .expect("Key provider is required")
             .clone();
 
+        let caching_loader: CachingLoader = caching_loader.expect("Caching loader is required");
+
         let client = reqwest::Client::new();
 
         let data_provider = data_provider_creator();
 
-        let cache_entities_config = cache_entities_config.unwrap_or(CacheEntitiesConfig {
-            entities: HashMap::from([(
-                "JSON_LD_CONTEXT".to_string(),
-                JsonLdContextConfig {
-                    cache_refresh_timeout: Duration::seconds(86400),
-                    cache_size: 100,
-                    cache_type: JsonLdContextCacheType::Db,
-                },
-            )]),
-        });
-
-        let json_ld_context_config = cache_entities_config
-            .entities
-            .get("JSON_LD_CONTEXT")
-            .map(|v| v.to_owned())
-            .unwrap_or_default();
-        let json_ld_context_storage: Arc<dyn JsonLdContextStorage> = match json_ld_context_config
-            .cache_type
-        {
-            JsonLdContextCacheType::Db => Arc::new(DbStorage::new(
-                data_provider.get_json_ld_context_repository(),
-            )),
-            JsonLdContextCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
-        };
-        let caching_loader = CachingLoader {
-            cache_size: json_ld_context_config.cache_size as usize,
-            cache_refresh_timeout: json_ld_context_config.cache_refresh_timeout,
-            client: reqwest::Client::new(),
-            json_ld_context_storage,
-        };
-
-        let credential_formatters = credential_formatters_from_config(
-            &mut core_config,
-            crypto.clone(),
-            providers.core_base_url.clone(),
-            did_mdl_validator.clone(),
-            did_method_provider.clone(),
-            key_algorithm_provider.clone(),
-            caching_loader.clone(),
-        )?;
-
-        let formatter_provider =
-            Arc::new(CredentialFormatterProviderImpl::new(credential_formatters));
+        let formatter_provider = providers
+            .formatter_provider
+            .as_ref()
+            .expect("Formatter provider is required")
+            .clone();
 
         let revocation_methods = crate::provider::revocation::provider::from_config(
             &mut core_config.revocation,

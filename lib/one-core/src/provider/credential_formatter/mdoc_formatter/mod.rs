@@ -15,10 +15,16 @@ use indexmap::{IndexMap, IndexSet};
 use mdoc::DataElementValue;
 use one_providers::common_models::did::DidValue;
 use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::credential_formatter::error::FormatterError;
+use one_providers::credential_formatter::model::{
+    AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema, CredentialSubject,
+    DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities,
+    Presentation, PublishedClaim, SignatureProvider, TokenVerifier, VerificationFn,
+};
+use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::crypto::SignerError;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::key_storage::provider::{AuthenticationFn, SignatureProvider};
 use rand::RngCore;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -36,16 +42,8 @@ use self::mdoc::{
     Namespaces, OID4VPHandover, SessionTranscript, ValidityInfo, ValueDigests,
 };
 use super::common::nest_claims;
-use super::model::{CredentialPresentation, CredentialSchema, CredentialSubject, Presentation};
-use super::{
-    CredentialData, CredentialFormatter, ExtractPresentationCtx, FormatPresentationCtx,
-    FormatterCapabilities, PublishedClaim, SelectiveDisclosureOption, TokenVerifier,
-    VerificationFn,
-};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaType;
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::did_method::mdl::DidMdlValidator;
 
 mod cose;
@@ -109,7 +107,7 @@ impl CredentialFormatter for MdocFormatter {
     async fn format_credentials(
         &self,
         credential: CredentialData,
-        holder_did: &shared_types::DidValue,
+        holder_did: &DidValue,
         algorithm: &str,
         _additional_context: Vec<String>,
         _additional_types: Vec<String>,
@@ -125,7 +123,7 @@ impl CredentialFormatter for MdocFormatter {
 
         let namespaces = try_build_namespaces(credential.claims, &self.datatype_config)?;
         let cose_key =
-            try_build_cose_key(&*self.did_method_provider, &holder_did.to_owned().into()).await?;
+            try_build_cose_key(&*self.did_method_provider, &holder_did.to_owned()).await?;
 
         let device_key_info = DeviceKeyInfo {
             device_key: DeviceKey(cose_key),
@@ -198,14 +196,14 @@ impl CredentialFormatter for MdocFormatter {
     async fn format_presentation(
         &self,
         tokens: &[String],
-        _holder_did: &shared_types::DidValue,
+        _holder_did: &DidValue,
         algorithm: &str,
         auth_fn: AuthenticationFn,
         context: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
         let FormatPresentationCtx {
             nonce: Some(nonce),
-            mdoc_generated_nonce: Some(mdoc_generated_nonce),
+            format_nonce: Some(mdoc_generated_nonce),
             client_id: Some(client_id),
             response_uri: Some(response_uri),
         } = context
@@ -322,7 +320,7 @@ impl CredentialFormatter for MdocFormatter {
                     )
                 })?;
 
-            let mdoc_generated_nonce = context.mdoc_generated_nonce.as_ref().ok_or(
+            let mdoc_generated_nonce = context.format_nonce.as_ref().ok_or(
                 FormatterError::CouldNotExtractPresentation(
                     "Missing mdoc_generated_nonce".to_owned(),
                 ),
@@ -330,7 +328,6 @@ impl CredentialFormatter for MdocFormatter {
 
             try_verify_device_signed(
                 nonce,
-                // todo: this needs to be extracted from the JWE params
                 mdoc_generated_nonce,
                 &doc_type,
                 &client_id,
@@ -424,7 +421,7 @@ impl CredentialFormatter for MdocFormatter {
                 "REQUIRES_SCHEMA_ID".to_string(),
             ],
             allowed_schema_ids: vec![],
-            selective_disclosure: vec![SelectiveDisclosureOption::SecondLevel],
+            selective_disclosure: vec!["SECOND_LEVEL".to_string()],
             issuance_did_methods: vec!["MDL".to_string()],
             issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
             proof_exchange_protocols: vec!["OPENID4VC".to_string()],
@@ -703,7 +700,11 @@ fn extract_credentials_internal(
         status: vec![],
         credential_schema: Some(CredentialSchema {
             id: mso.doc_type,
-            r#type: CredentialSchemaType::Mdoc,
+            r#type: serde_json::to_string(&CredentialSchemaType::Mdoc).map_err(|err| {
+                FormatterError::Failed(format!(
+                    "Could not serialize CredentialSchemaType enum. Error: {err}"
+                ))
+            })?,
         }),
     })
 }

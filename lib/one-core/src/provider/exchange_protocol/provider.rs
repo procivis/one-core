@@ -1,3 +1,4 @@
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use shared_types::CredentialId;
@@ -22,8 +23,8 @@ use crate::model::did::{Did, DidRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::{mdoc_formatter, CredentialData};
+use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
+use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -265,7 +266,7 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
 
         let credential_detail =
             credential_detail_response_from_model(credential.clone(), &self.config)?;
-        let credential_data = CredentialData::from_credential_detail_response(
+        let credential_data = credential_data_from_credential_detail_response(
             &self.config,
             credential_detail,
             core_base_url,
@@ -280,7 +281,7 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
             .ok_or(ValidationError::InvalidFormatter(format.to_string()))?
             .format_credentials(
                 credential_data,
-                &holder_did.did,
+                &holder_did.did.clone().into(),
                 &key.key_type,
                 vec![],
                 vec![],

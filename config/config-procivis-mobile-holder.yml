@@ -1,3 +1,7 @@
+app:
+cacheEntites:
+  JSON_LD_CONTEXT:
+    cacheSize: 100
 keyStorage:
   SECURE_ELEMENT:
     display: "keyStorage.secureElement"
@@ -6,9 +10,6 @@ keyStorage:
     params:
       private:
         aliasPrefix: "ch.procivis.one.wallet.keys"
-cacheEntites:
-  JSON_LD_CONTEXT:
-    cacheSize: 100
 transport:
   BLE:
     type: "BLE"

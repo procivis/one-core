@@ -4,19 +4,26 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use itertools::Itertools;
+use one_providers::common_models::did::DidValue;
+use one_providers::credential_formatter::error::FormatterError;
+use one_providers::credential_formatter::imp::jwt::model::DecomposedToken;
+use one_providers::credential_formatter::imp::jwt::model::JWTPayload;
+use one_providers::credential_formatter::imp::jwt::Jwt;
+use one_providers::credential_formatter::model::{
+    AuthenticationFn, CredentialData, CredentialPresentation, CredentialSubject, DetailCredential,
+    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
+    VerificationFn,
+};
+use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::crypto::CryptoProvider;
-use one_providers::key_storage::provider::AuthenticationFn;
 use serde::Deserialize;
-use shared_types::DidValue;
 use time::Duration;
 
 use crate::provider::credential_formatter::sdjwt_formatter::disclosures::{
     extract_claims_from_disclosures, extract_disclosures, gather_disclosures,
     get_disclosures_by_claim_name, sort_published_claims_by_indices, to_hashmap,
 };
-use crate::provider::credential_formatter::sdjwt_formatter::model::{
-    DecomposedToken, Disclosure, Sdvc,
-};
+use crate::provider::credential_formatter::sdjwt_formatter::model::{Disclosure, Sdvc};
 
 #[cfg(test)]
 mod test;
@@ -31,14 +38,6 @@ mod disclosures;
 mod verifier;
 
 use self::verifier::*;
-use super::jwt::model::JWTPayload;
-use super::jwt::Jwt;
-use super::model::{CredentialPresentation, CredentialSubject};
-use super::{
-    CredentialData, CredentialFormatter, DetailCredential, ExtractPresentationCtx,
-    FormatPresentationCtx, FormatterCapabilities, FormatterError, Presentation,
-    SelectiveDisclosureOption, VerificationFn,
-};
 
 pub struct SDJWTFormatter {
     pub crypto: Arc<dyn CryptoProvider>,
@@ -140,10 +139,7 @@ impl CredentialFormatter for SDJWTFormatter {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
-            issuer_did: jwt.payload.issuer.map(|v| match v.parse() {
-                Ok(v) => v,
-                Err(err) => match err {},
-            }),
+            issuer_did: jwt.payload.issuer.map(DidValue::from),
             nonce: jwt.payload.nonce,
             credentials: jwt.payload.custom.vp.verifiable_credential,
         })
@@ -182,7 +178,7 @@ impl CredentialFormatter for SDJWTFormatter {
                 "ARRAY".to_string(),
             ],
             features: vec!["SELECTIVE_DISCLOSURE".to_string()],
-            selective_disclosure: vec![SelectiveDisclosureOption::AnyLevel],
+            selective_disclosure: vec!["ANY_LEVEL".to_string()],
             issuance_did_methods: vec![
                 "KEY".to_string(),
                 "WEB".to_string(),
@@ -222,10 +218,7 @@ impl CredentialFormatter for SDJWTFormatter {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
-            issuer_did: jwt.payload.issuer.map(|v| match v.parse() {
-                Ok(v) => v,
-                Err(err) => match err {},
-            }),
+            issuer_did: jwt.payload.issuer.map(DidValue::from),
             nonce: jwt.payload.nonce,
             credentials: jwt.payload.custom.vp.verifiable_credential,
         })
@@ -242,7 +235,7 @@ impl SDJWTFormatter {
         token: &str,
         verification: Option<VerificationFn>,
     ) -> Result<DetailCredential, FormatterError> {
-        let DecomposedToken {
+        let model::DecomposedToken {
             deserialized_disclosures,
             jwt,
         } = extract_disclosures(token)?;
@@ -267,14 +260,8 @@ impl SDJWTFormatter {
             expires_at: jwt.payload.expires_at,
             update_at: None,
             invalid_before: jwt.payload.invalid_before,
-            issuer_did: jwt.payload.issuer.map(|v| match v.parse() {
-                Ok(v) => v,
-                Err(err) => match err {},
-            }),
-            subject: jwt.payload.subject.map(|v| match v.parse() {
-                Ok(v) => v,
-                Err(err) => match err {},
-            }),
+            issuer_did: jwt.payload.issuer.map(DidValue::from),
+            subject: jwt.payload.subject.map(DidValue::from),
             claims: CredentialSubject {
                 values: to_hashmap(unpack_arrays(&claims)?)?,
             },
@@ -309,12 +296,12 @@ fn prepare_sd_presentation(
     presentation: CredentialPresentation,
     crypto: &Arc<dyn CryptoProvider>,
 ) -> Result<String, FormatterError> {
-    let DecomposedToken {
+    let model::DecomposedToken {
         jwt,
         deserialized_disclosures,
     } = extract_disclosures(&presentation.token)?;
 
-    let decomposed_jwt: super::jwt::model::DecomposedToken<Sdvc> = Jwt::decompose_token(jwt)?;
+    let decomposed_jwt: DecomposedToken<Sdvc> = Jwt::decompose_token(jwt)?;
     let algorithm = decomposed_jwt
         .payload
         .custom

@@ -1,5 +1,5 @@
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
-use crate::config::core_config::{CoreConfig, FormatType};
+use crate::config::core_config::CoreConfig;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::service::error::ServiceError;
@@ -30,8 +30,8 @@ pub(super) fn create_issuer_metadata_response(
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
     let format = config.format.get_fields(&schema.format)?;
 
-    let credentials_supported = match format.r#type {
-        FormatType::Mdoc => credentials_supported_mdoc(schema),
+    let credentials_supported = match format.r#type.as_str() {
+        "MDOC" => credentials_supported_mdoc(schema),
         _ => credentials_supported_others(schema),
     }?;
 

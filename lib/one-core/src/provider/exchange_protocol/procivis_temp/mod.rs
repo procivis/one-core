@@ -6,6 +6,8 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use dto_mapper::convert_inner;
+use one_providers::credential_formatter::model::FormatPresentationCtx;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
@@ -28,8 +30,6 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidRelations, KeyRole};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::FormatPresentationCtx;
 use crate::provider::exchange_protocol::dto::{
     ConnectVerifierResponse, CredentialGroup, CredentialGroupItem,
     PresentationDefinitionResponseDTO, PresentedCredential, ProofClaimSchema, SubmitIssuerResponse,
@@ -231,10 +231,10 @@ impl ExchangeProtocol for ProcivisTemp {
         let presentation = presentation_formatter
             .format_presentation(
                 &tokens,
-                &holder_did.did,
+                &holder_did.did.clone().into(),
                 &key.key_type,
                 auth_fn,
-                FormatPresentationCtx::empty(),
+                FormatPresentationCtx::default(),
             )
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;

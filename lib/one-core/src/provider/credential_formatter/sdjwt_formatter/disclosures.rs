@@ -1,9 +1,9 @@
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::mapper::string_to_b64url_string;
 use crate::provider::credential_formatter::sdjwt_formatter::model::{DecomposedToken, Disclosure};
-use crate::provider::credential_formatter::PublishedClaim;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use one_providers::credential_formatter::error::FormatterError;
+use one_providers::credential_formatter::imp::jwt::mapper::string_to_b64url_string;
+use one_providers::credential_formatter::model::PublishedClaim;
 use one_providers::crypto::{CryptoProvider, Hasher};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;

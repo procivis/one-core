@@ -4,6 +4,8 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use dto::OpenID4VPBleData;
+use one_providers::credential_formatter::model::FormatPresentationCtx;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::crypto::imp::utilities;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
@@ -60,8 +62,7 @@ use crate::model::proof_schema::{
 };
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::FormatPresentationCtx;
+use crate::provider::credential_formatter::mapper::format_presentation_ctx_from_interaction_data;
 use crate::provider::exchange_protocol::dto::{
     CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
 };
@@ -387,8 +388,8 @@ impl ExchangeProtocol for OpenID4VC {
         if format == "MDOC" {
             let mdoc_generated_nonce = utilities::generate_nonce();
 
-            let ctx = FormatPresentationCtx::from(interaction_data.clone())
-                .with_mdoc_generated_nonce(mdoc_generated_nonce.clone());
+            let mut ctx = format_presentation_ctx_from_interaction_data(interaction_data.clone());
+            ctx.format_nonce = Some(mdoc_generated_nonce.clone());
 
             let client_metadata =
                 interaction_data
@@ -402,7 +403,13 @@ impl ExchangeProtocol for OpenID4VC {
             ))?;
 
             let vp_token = presentation_formatter
-                .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
+                .format_presentation(
+                    &tokens,
+                    &holder_did.did.clone().into(),
+                    &key.key_type,
+                    auth_fn,
+                    ctx,
+                )
                 .await
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -426,10 +433,19 @@ impl ExchangeProtocol for OpenID4VC {
 
             params.insert("response", response);
         } else {
-            let ctx = FormatPresentationCtx::empty().with_nonce(interaction_data.nonce);
+            let ctx = FormatPresentationCtx {
+                nonce: Some(interaction_data.nonce),
+                ..Default::default()
+            };
 
             let vp_token = presentation_formatter
-                .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
+                .format_presentation(
+                    &tokens,
+                    &holder_did.did.clone().into(),
+                    &key.key_type,
+                    auth_fn,
+                    ctx,
+                )
                 .await
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -597,7 +613,7 @@ impl ExchangeProtocol for OpenID4VC {
         let now = OffsetDateTime::now_utc();
         let issuer_did_id = match self
             .did_repository
-            .get_did_by_value(&issuer_did_value, &DidRelations::default())
+            .get_did_by_value(&issuer_did_value.clone().into(), &DidRelations::default())
             .await
             .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
         {
@@ -623,7 +639,7 @@ impl ExchangeProtocol for OpenID4VC {
                         created_date: now,
                         last_modified: now,
                         organisation: schema.organisation.to_owned(),
-                        did: issuer_did_value,
+                        did: issuer_did_value.into(),
                         did_type: DidType::Remote,
                         did_method: did_method.to_string(),
                         keys: None,
@@ -1218,7 +1234,7 @@ async fn handle_credential_invitation(
                         },
                         organisation,
                         "",
-                        core_config::FormatType::Jwt,
+                        "JWT",
                         None,
                     )
                     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
@@ -1276,7 +1292,7 @@ async fn handle_credential_invitation(
                         },
                         organisation,
                         "",
-                        core_config::FormatType::Mdoc,
+                        "MDOC",
                         None,
                     )
                     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;

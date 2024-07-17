@@ -1,12 +1,10 @@
+use crate::model::did::Did;
 use crate::service::error::ServiceError;
-use crate::{
-    model::did::Did,
-    provider::credential_formatter::{
-        error::FormatterError,
-        jwt::{model::JWTPayload, Jwt},
-    },
+use one_providers::credential_formatter::{
+    error::FormatterError,
+    imp::jwt::{model::JWTPayload, Jwt},
+    model::AuthenticationFn,
 };
-use one_providers::key_storage::provider::AuthenticationFn;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -20,7 +18,6 @@ pub struct OpenID4VCIProofJWTFormatter {}
 
 impl OpenID4VCIProofJWTFormatter {
     pub async fn verify_proof(content: &str) -> Result<Jwt<ProofContent>, ServiceError> {
-        // TODO: Later it will be necessary to verify with nonce
         Ok(Jwt::build_from_token(content, None).await?)
     }
     pub async fn format_proof(

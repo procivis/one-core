@@ -5,6 +5,8 @@ use std::str::FromStr;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
+use one_providers::credential_formatter::error::FormatterError;
+use one_providers::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
 use one_providers::crypto::imp::utilities;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
 use one_providers::key_algorithm::imp::eddsa::JwkEddsaExt;
@@ -23,7 +25,7 @@ use crate::common_mapper::{
     get_exchange_param_token_expires_in, get_or_create_did,
 };
 use crate::common_validator::{
-    throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
+    is_lvvc, throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
 use crate::config::core_config::ExchangeType;
 use crate::model::claim::{Claim, ClaimRelations};
@@ -42,9 +44,7 @@ use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, Pro
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::credential_formatter::ExtractPresentationCtx;
+use crate::provider::credential_formatter::mapper::extract_presentation_ctx_from_interaction_content;
 use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VCICredentialOfferDTO, OpenID4VPClientMetadata,
 };
@@ -681,7 +681,7 @@ impl OIDCService {
                     }
                 })?;
 
-            if credential.is_lvvc() {
+            if is_lvvc(&credential) {
                 result.push(credential);
             }
         }
@@ -764,14 +764,15 @@ impl OIDCService {
                 .ok_or(OpenID4VCIError::InvalidRequest)?;
 
             let context = if &presentation_submitted.format == "mso_mdoc" {
-                let mut ctx = ExtractPresentationCtx::from(interaction_data.clone());
+                let mut ctx =
+                    extract_presentation_ctx_from_interaction_content(interaction_data.clone());
                 if let Some(mdoc_generated_nonce) = submission.mdoc_generated_nonce.clone() {
-                    ctx = ctx.with_mdoc_generated_nonce(mdoc_generated_nonce);
+                    ctx.format_nonce = Some(mdoc_generated_nonce);
                 }
 
                 ctx
             } else {
-                ExtractPresentationCtx::empty()
+                ExtractPresentationCtx::default()
             };
 
             let presentation = validate_presentation(
@@ -830,7 +831,7 @@ impl OIDCService {
             )
             .await?;
 
-            if credential.is_lvvc() {
+            if is_lvvc(&credential) {
                 continue;
             }
 
@@ -936,7 +937,7 @@ impl OIDCService {
             let issuer_did = get_or_create_did(
                 &*self.did_repository,
                 &proof_schema.organisation,
-                issuer_did,
+                &issuer_did.clone().into(),
             )
             .await?;
 
@@ -950,7 +951,7 @@ impl OIDCService {
             let holder_did = get_or_create_did(
                 &*self.did_repository,
                 &proof_schema.organisation,
-                holder_did,
+                &holder_did.clone().into(),
             )
             .await?;
 

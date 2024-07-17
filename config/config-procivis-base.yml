@@ -271,8 +271,3 @@ task:
     display: "task.suspendCheck"
     order: 0
     params: null
-cacheEntites:
-  JSON_LD_CONTEXT:
-    cacheType: DB
-    cacheRefreshTimeout: 86400
-    cacheSize: 1000

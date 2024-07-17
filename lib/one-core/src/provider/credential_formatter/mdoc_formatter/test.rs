@@ -3,15 +3,16 @@ use std::collections::BTreeMap;
 use coset::{KeyType, Label, RegisteredLabelWithPrivate};
 use hex_literal::hex;
 use maplit::hashmap;
+use one_providers::credential_formatter::model::{
+    CredentialSchemaData, MockSignatureProvider, PublishedClaimValue,
+};
 use one_providers::did::model::{DidDocument, DidVerificationMethod};
 use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
-use one_providers::key_storage::provider::MockSignatureProvider;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::provider::credential_formatter::{CredentialSchemaData, PublishedClaimValue};
 use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
 use crate::service::test_utilities::generic_config;
 
@@ -183,7 +184,7 @@ async fn test_credential_formatting_ok_for_es256() {
             datatype: Some("STRING".to_string()),
             array_item: false,
         }],
-        issuer_did: issuer_did.clone().into(),
+        issuer_did: issuer_did.clone(),
         status: vec![],
         schema: CredentialSchemaData {
             id: Some("credential-schema-id".to_string()),
@@ -262,7 +263,7 @@ async fn test_credential_formatting_ok_for_es256() {
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
-            &holder_did.to_owned().into(),
+            &holder_did.to_owned(),
             algorithm,
             vec![],
             vec![],
@@ -364,7 +365,7 @@ async fn test_unverified_credential_extraction() {
             datatype: Some("STRING".to_string()),
             array_item: false,
         }],
-        issuer_did: issuer_did.to_owned().into(),
+        issuer_did: issuer_did.to_owned(),
         status: vec![],
         schema: CredentialSchemaData {
             id: Some("doctype".to_string()),
@@ -453,7 +454,7 @@ async fn test_unverified_credential_extraction() {
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
-            &holder_did.to_owned().into(),
+            &holder_did.to_owned(),
             algorithm,
             vec![],
             vec![],
@@ -476,7 +477,13 @@ async fn test_unverified_credential_extraction() {
     assert_eq!(
         CredentialSchema {
             id: "doctype".to_owned(),
-            r#type: CredentialSchemaType::Mdoc
+            r#type: serde_json::to_string(&CredentialSchemaType::Mdoc)
+                .map_err(|err| {
+                    FormatterError::Failed(format!(
+                        "Could not serialize CredentialSchemaType enum. Error: {err}"
+                    ))
+                })
+                .unwrap()
         },
         credential.credential_schema.unwrap()
     );

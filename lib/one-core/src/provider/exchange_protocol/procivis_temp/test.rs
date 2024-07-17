@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::key_storage::provider::MockKeyProvider;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -7,7 +8,6 @@ use uuid::Uuid;
 use super::ProcivisTemp;
 use crate::model::credential::{Credential, CredentialRole};
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;

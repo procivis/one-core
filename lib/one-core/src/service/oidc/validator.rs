@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use one_providers::credential_formatter::error::FormatterError;
+use one_providers::credential_formatter::model::{
+    DetailCredential, ExtractPresentationCtx, Presentation, TokenVerifier,
+};
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use time::{Duration, OffsetDateTime};
 
 use super::dto::ValidatedProofClaimDTO;
@@ -11,10 +16,6 @@ use crate::config::ConfigValidationError;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::interaction::Interaction;
 use crate::model::proof_schema::ProofInputSchema;
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{DetailCredential, Presentation};
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::{ExtractPresentationCtx, TokenVerifier};
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::revocation::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
@@ -147,7 +148,7 @@ pub(super) async fn peek_presentation(
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
 
     let presentation = formatter
-        .extract_presentation_unverified(presentation_string, ExtractPresentationCtx::empty())
+        .extract_presentation_unverified(presentation_string, ExtractPresentationCtx::default())
         .await
         .map_err(|e| {
             if matches!(e, FormatterError::CouldNotExtractPresentation(_)) {
@@ -262,7 +263,7 @@ pub(super) async fn validate_credential(
         match revocation_method
             .check_credential_revocation_status(
                 credential_status,
-                &issuer_did,
+                &issuer_did.clone().into(),
                 Some(CredentialDataByRole::Verifier(Box::new(
                     VerifierCredentialData {
                         credential: credential.to_owned(),

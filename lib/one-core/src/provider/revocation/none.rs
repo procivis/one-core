@@ -1,7 +1,7 @@
+use one_providers::credential_formatter::model::CredentialStatus;
 use shared_types::DidValue;
 
 use crate::model::credential::Credential;
-use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::revocation::{
     CredentialDataByRole, CredentialRevocationState, JsonLdContext, RevocationMethod,
 };

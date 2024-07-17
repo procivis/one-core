@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use maplit::hashmap;
 use mockall::{predicate, Sequence};
+use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
 use one_providers::key_storage::provider::MockKeyProvider;
@@ -27,7 +28,6 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
     OpenID4VCICredentialValueDetails, OpenID4VPClientMetadata, OpenID4VPFormat,

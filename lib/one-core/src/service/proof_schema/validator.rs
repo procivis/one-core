@@ -2,14 +2,14 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use itertools::Itertools;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::credential_formatter::CredentialFormatter;
 use shared_types::OrganisationId;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::{CredentialFormatter, SelectiveDisclosureOption};
 use crate::service::error::{BusinessLogicError, MissingProviderError, ValidationError};
 use crate::service::proof_schema::mapper::create_unique_name_check_request;
 use crate::{
@@ -180,15 +180,17 @@ pub(super) fn validate_proof_schema_nesting(
         capabilities
             .features
             .contains(&"SELECTIVE_DISCLOSURE".to_string()),
-        capabilities.selective_disclosure.first(),
+        capabilities
+            .selective_disclosure
+            .first()
+            .map(|c| c.as_str()),
     ) {
         (true, None) => false,     // Incompatible capabilities
         (false, Some(_)) => false, // Incompatible capabilities
-        (true, Some(SelectiveDisclosureOption::AnyLevel)) => true,
-        (true, Some(SelectiveDisclosureOption::SecondLevel)) => {
-            claim_schema.key.chars().filter(|&c| c == '/').count() <= 1
-        }
         (false, None) => !claim_schema.key.contains('/'),
+        (true, Some("ANY_LEVEL")) => true,
+        (true, Some("SECOND_LEVEL")) => claim_schema.key.chars().filter(|&c| c == '/').count() <= 1,
+        (true, Some(_)) => false, // Unsupported capability
     };
 
     if !valid_disclosure_level {

@@ -1,3 +1,4 @@
+use one_providers::credential_formatter::model::DetailCredential;
 use std::ops::{Add, Sub};
 use std::time::Duration;
 use time::OffsetDateTime;
@@ -115,6 +116,10 @@ pub(crate) fn get_latest_state(credential: &Credential) -> Result<&CredentialSta
         .ok_or(ServiceError::MappingError("state is None".to_string()))?
         .first()
         .ok_or(ServiceError::MappingError("state is missing".to_string()))
+}
+
+pub fn is_lvvc(credential: &DetailCredential) -> bool {
+    credential.claims.values.contains_key("id") && credential.claims.values.contains_key("status")
 }
 
 #[cfg(test)]

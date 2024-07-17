@@ -2,6 +2,17 @@ use std::{collections::HashMap, sync::Arc};
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use mockall::predicate::eq;
+
+use one_providers::common_models::did::DidValue;
+#[cfg(test)]
+use one_providers::credential_formatter::imp::common::MockAuth;
+
+use one_providers::credential_formatter::imp::jwt::model::JWTPayload;
+use one_providers::credential_formatter::model::{
+    CredentialPresentation, CredentialStatus, ExtractPresentationCtx, MockTokenVerifier,
+    PublishedClaim, PublishedClaimValue,
+};
+use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::crypto::imp::hasher::sha256::SHA256;
 use one_providers::crypto::{CryptoProvider, Hasher, MockCryptoProvider, MockHasher};
 use serde_json::json;
@@ -10,23 +21,20 @@ use time::Duration;
 use super::disclosures::DisclosureArray;
 use super::{prepare_sd_presentation, SDJWTFormatter};
 
+use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::sdjwt_formatter::disclosures::{
     extract_claims_from_disclosures, gather_disclosures, get_disclosures_by_claim_name,
     get_subdisclosures, parse_disclosure, sort_published_claims_by_indices,
 };
 use crate::provider::credential_formatter::sdjwt_formatter::model::Disclosure;
 use crate::provider::credential_formatter::sdjwt_formatter::verifier::verify_claims;
-use crate::provider::credential_formatter::{PublishedClaim, PublishedClaimValue};
 use crate::{
     config::core_config,
     provider::credential_formatter::{
-        jwt::model::JWTPayload,
-        model::{CredentialPresentation, CredentialStatus},
         sdjwt_formatter::{model::Sdvc, Params},
         test_utilities::{
             test_credential_detail_response_dto, test_credential_detail_response_dto_with_array,
         },
-        CredentialData, CredentialFormatter, ExtractPresentationCtx, MockAuth, MockTokenVerifier,
     },
 };
 
@@ -66,7 +74,7 @@ async fn test_format_credential_a() {
     };
 
     let credential_details = test_credential_detail_response_dto();
-    let credential_data = CredentialData::from_credential_detail_response(
+    let credential_data = credential_data_from_credential_detail_response(
         &core_config::CoreConfig::default(),
         credential_details,
         "http://base_url",
@@ -84,7 +92,7 @@ async fn test_format_credential_a() {
     let result = sd_formatter
         .format_credentials(
             credential_data,
-            &"holder_did".parse().unwrap(),
+            &DidValue::from("holder_did".to_string()),
             "algorithm",
             vec!["Context1".to_string()],
             vec!["Type1".to_string()],
@@ -213,7 +221,7 @@ async fn test_format_credential_with_array() {
     };
 
     let credential_details = test_credential_detail_response_dto_with_array();
-    let credential_data = CredentialData::from_credential_detail_response(
+    let credential_data = credential_data_from_credential_detail_response(
         &core_config::CoreConfig::default(),
         credential_details,
         "http://base_url",
@@ -231,7 +239,7 @@ async fn test_format_credential_with_array() {
     let result = sd_formatter
         .format_credentials(
             credential_data,
-            &"holder_did".parse().unwrap(),
+            &DidValue::from("holder_did".to_string()),
             "algorithm",
             vec!["Context1".to_string()],
             vec!["Type1".to_string()],
@@ -360,8 +368,14 @@ async fn test_extract_credentials() {
 
     let credentials = result.unwrap();
 
-    assert_eq!(credentials.issuer_did, Some("Issuer DID".parse().unwrap()));
-    assert_eq!(credentials.subject, Some("holder_did".parse().unwrap()));
+    assert_eq!(
+        credentials.issuer_did,
+        Some(DidValue::from("Issuer DID".to_string()))
+    );
+    assert_eq!(
+        credentials.subject,
+        Some(DidValue::from("holder_did".to_string()))
+    );
 
     assert_eq!(1, credentials.status.len());
     let first_credential_status = credentials.status.first().unwrap();
@@ -523,7 +537,7 @@ async fn test_extract_presentation() {
         .extract_presentation(
             &presentation_token,
             Box::new(verify_mock),
-            ExtractPresentationCtx::empty(),
+            ExtractPresentationCtx::default(),
         )
         .await;
 
@@ -537,7 +551,10 @@ async fn test_extract_presentation() {
     );
 
     assert_eq!(presentation.credentials.len(), 1);
-    assert_eq!(presentation.issuer_did, Some("holder_did".parse().unwrap()));
+    assert_eq!(
+        presentation.issuer_did,
+        Some(DidValue::from("holder_did".to_string()))
+    );
 }
 
 #[test]

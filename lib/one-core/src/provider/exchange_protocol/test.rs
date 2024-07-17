@@ -3,13 +3,15 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
-use one_providers::key_storage::provider::{MockKeyProvider, MockSignatureProvider};
+use one_providers::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
+use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
+use one_providers::credential_formatter::MockCredentialFormatter;
+use one_providers::key_storage::provider::MockKeyProvider;
 use serde_json::{json, Value};
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::config::core_config::FormatType;
 use crate::config::core_config::{CoreConfig, Fields, Params};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -22,10 +24,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
-use crate::provider::credential_formatter::model::CredentialStatus;
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
-use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::exchange_protocol::dto::{CredentialGroup, CredentialGroupItem};
 use crate::provider::exchange_protocol::mapper::get_relevant_credentials_to_credential_schemas;
 use crate::provider::exchange_protocol::provider::{
@@ -651,7 +650,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     config.format.insert(
         "MDOC".to_string(),
         Fields {
-            r#type: FormatType::Mdoc,
+            r#type: "MDOC".to_string(),
             display: Value::String("display".to_string()),
             order: None,
             disabled: None,
@@ -744,7 +743,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     config.format.insert(
         format.to_string(),
         Fields {
-            r#type: FormatType::Mdoc,
+            r#type: format.to_owned(),
             display: Value::String("display".to_string()),
             order: None,
             disabled: None,
