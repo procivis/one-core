@@ -1,13 +1,33 @@
 use std::{collections::HashMap, sync::Arc};
 
+use one_core::provider::credential_formatter::json_ld::storage::db_storage::DbStorage;
+use one_core::provider::credential_formatter::json_ld_classic::JsonLdClassic;
+use one_core::provider::credential_formatter::mdoc_formatter::MdocFormatter;
+use one_core::provider::credential_formatter::physical_card::PhysicalCardFormatter;
+use one_core::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
+use one_core::provider::credential_formatter::FormatterCapabilities;
 use one_core::provider::key_algorithm::ml_dsa::MlDsa;
 use one_core::provider::key_storage::pkcs11::PKCS11KeyProvider;
+use one_core::provider::key_storage::KeyStorageCapabilities;
+use one_core::repository::DataRepository;
 use one_core::{config::core_config::AppConfig, DidMethodCreator, OneCoreBuilder};
-use one_core::{DataProviderCreator, KeyAlgorithmCreator, KeyStorageCreator, OneCore};
+use one_core::{
+    DataProviderCreator, FormatterProviderCreator, KeyAlgorithmCreator, KeyStorageCreator, OneCore,
+};
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
+use one_providers::credential_formatter::imp::json_ld::context::storage::in_memory_storage::InMemoryStorage;
+use one_providers::credential_formatter::imp::json_ld::context::storage::JsonLdContextStorage;
+use one_providers::credential_formatter::imp::json_ld_bbsplus::JsonLdBbsplus;
+use one_providers::credential_formatter::imp::jwt_formatter::JWTFormatter;
+use one_providers::credential_formatter::imp::provider::CredentialFormatterProviderImpl;
+use one_providers::credential_formatter::CredentialFormatter;
+use time::Duration;
 
 use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
 use crate::{build_info, did_config, ServerConfig};
-use one_core::config::core_config::Fields;
+use one_core::config::core_config::{
+    CacheEntitiesConfig, Fields, JsonLdContextCacheType, JsonLdContextConfig,
+};
 use one_core::config::{core_config, ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::did_method::mdl::{DidMdl, DidMdlValidator};
 use one_core::provider::did_method::x509::X509Method;
@@ -88,50 +108,15 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
         ))
     });
 
-    let key_storage_creator: KeyStorageCreator = Box::new(|config, providers| {
-        let mut key_providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
+    let data_repository = Arc::new(DataLayer::build(
+        db_conn,
+        vec!["INTERNAL".to_string(), "AZURE_VAULT".to_owned()],
+    ));
 
-        for (name, field) in config.iter() {
-            let provider = match field.r#type.as_str() {
-                "INTERNAL" => {
-                    let params = config
-                        .get(name)
-                        .expect("Internal key provider config is required");
-                    Arc::new(InternalKeyProvider::new(
-                        providers
-                            .key_algorithm_provider
-                            .as_ref()
-                            .expect("Missing key algorithm provider")
-                            .clone(),
-                        params,
-                    )) as _
-                }
-                "PKCS11" => Arc::new(PKCS11KeyProvider::new()) as _,
-                "AZURE_VAULT" => {
-                    let params = config.get(name).expect("AzureVault config is required");
-                    Arc::new(AzureVaultKeyProvider::new(
-                        params,
-                        providers
-                            .crypto
-                            .as_ref()
-                            .expect("Crypto provider is required")
-                            .clone(),
-                    )) as _
-                }
-                other => panic!("Unexpected key storage: {other}"),
-            };
-            key_providers.insert(name.to_owned(), provider);
-        }
-
-        Arc::new(KeyProviderImpl::new(key_providers.to_owned()))
-    });
-
-    let storage_creator: DataProviderCreator = Box::new(|| {
-        Arc::new(DataLayer::build(
-            db_conn,
-            vec!["INTERNAL".to_string(), "AZURE_VAULT".to_owned()],
-        ))
-    });
+    let storage_creator: DataProviderCreator = {
+        let data_repository = data_repository.clone();
+        Box::new(move || data_repository)
+    };
 
     let core_base_url = app_config.app.core_base_url.to_owned();
     let did_method_creator: DidMethodCreator = Box::new(move |config, providers| {
@@ -230,14 +215,154 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
         )
     });
 
+    let key_storage_creator: KeyStorageCreator = Box::new(|config, providers| {
+        let mut key_providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
+
+        for (name, field) in config.iter() {
+            let provider = match field.r#type.as_str() {
+                "INTERNAL" => {
+                    let params = config
+                        .get(name)
+                        .expect("Internal key provider config is required");
+                    Arc::new(InternalKeyProvider::new(
+                        providers
+                            .key_algorithm_provider
+                            .as_ref()
+                            .expect("Missing key algorithm provider")
+                            .clone(),
+                        params,
+                    )) as _
+                }
+                "PKCS11" => Arc::new(PKCS11KeyProvider::new()) as _,
+                "AZURE_VAULT" => {
+                    let params = config.get(name).expect("AzureVault config is required");
+                    Arc::new(AzureVaultKeyProvider::new(
+                        params,
+                        providers
+                            .crypto
+                            .as_ref()
+                            .expect("Crypto provider is required")
+                            .clone(),
+                    )) as _
+                }
+                other => panic!("Unexpected key storage: {other}"),
+            };
+            key_providers.insert(name.to_owned(), provider);
+        }
+
+        for (key, value) in config.iter_mut() {
+            if let Some(entity) = key_providers.get(key) {
+                value.capabilities = Some(json!(Into::<KeyStorageCapabilities>::into(
+                    entity.get_capabilities()
+                )));
+            }
+        }
+
+        Arc::new(KeyProviderImpl::new(key_providers.to_owned()))
+    });
+
+    let caching_loader =
+        initialize_cache_loader(app_config.app.cache_entities.to_owned(), data_repository);
+
+    let formatter_provider_creator: FormatterProviderCreator = {
+        let caching_loader = caching_loader.clone();
+        Box::new(move |format_config, datatype_config, providers| {
+            let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
+
+            let did_method_provider = providers
+                .did_method_provider
+                .as_ref()
+                .expect("Did method provider is mandatory");
+
+            let key_algorithm_provider = providers
+                .key_algorithm_provider
+                .as_ref()
+                .expect("Key algorithm provider is mandatory");
+
+            let crypto = providers
+                .crypto
+                .as_ref()
+                .expect("Crypto provider is mandatory");
+
+            for (name, field) in format_config.iter() {
+                let formatter = match field.r#type.as_str() {
+                    "JWT" => {
+                        let params = format_config
+                            .get(name)
+                            .expect("JWT formatter params are mandatory");
+                        Arc::new(JWTFormatter::new(params)) as _
+                    }
+                    "PHYSICAL_CARD" => Arc::new(PhysicalCardFormatter::new()) as _,
+                    "SDJWT" => {
+                        let params = format_config
+                            .get(name)
+                            .expect("SDJWT formatter params are mandatory");
+                        Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _
+                    }
+                    "JSON_LD_CLASSIC" => {
+                        let params = format_config
+                            .get(name)
+                            .expect("JSON_LD_CLASSIC formatter params are mandatory");
+                        Arc::new(JsonLdClassic::new(
+                            params,
+                            crypto.clone(),
+                            providers.core_base_url.clone(),
+                            did_method_provider.clone(),
+                            caching_loader.clone(),
+                        )) as _
+                    }
+                    "JSON_LD_BBSPLUS" => {
+                        let params = format_config
+                            .get(name)
+                            .expect("JSON_LD_BBSPLUS formatter params are mandatory");
+                        Arc::new(JsonLdBbsplus::new(
+                            params,
+                            crypto.clone(),
+                            providers.core_base_url.clone(),
+                            did_method_provider.clone(),
+                            key_algorithm_provider.clone(),
+                            caching_loader.clone(),
+                        )) as _
+                    }
+                    "MDOC" => {
+                        let params = format_config
+                            .get(name)
+                            .expect("MDOC formatter params are mandatory");
+                        Arc::new(MdocFormatter::new(
+                            params,
+                            providers.did_mdl_validator.clone(),
+                            did_method_provider.clone(),
+                            key_algorithm_provider.clone(),
+                            providers.core_base_url.clone(),
+                            datatype_config.clone(),
+                        )) as _
+                    }
+                    _ => unimplemented!(),
+                };
+                formatters.insert(name.to_owned(), formatter);
+            }
+
+            for (key, value) in format_config.iter_mut() {
+                if let Some(entity) = formatters.get(key) {
+                    value.capabilities = Some(json!(Into::<FormatterCapabilities>::into(
+                        entity.get_capabilities()
+                    )));
+                }
+            }
+
+            Arc::new(CredentialFormatterProviderImpl::new(formatters))
+        })
+    };
+
     OneCoreBuilder::new(app_config.core.clone())
         .with_base_url(app_config.app.core_base_url.to_owned())
         .with_crypto(crypto)
+        .with_caching_loader(caching_loader)
         .with_data_provider_creator(storage_creator)
-        .with_cache_entities_config(app_config.app.cache_entities.to_owned())
         .with_key_algorithm_provider(key_algo_creator)
         .with_key_storage_provider(key_storage_creator)
         .with_did_method_provider(did_method_creator)
+        .with_formatter_provider(formatter_provider_creator)
         .build()
         .expect("Failed to initialize core")
 }
@@ -320,4 +445,40 @@ pub fn initialize_tracing(config: &ServerConfig) {
     } else {
         tracing_layer.with(tracing_subscriber::fmt::layer()).init();
     };
+}
+
+pub fn initialize_cache_loader(
+    cache_entities_config: Option<CacheEntitiesConfig>,
+    data_provider: Arc<dyn DataRepository>,
+) -> CachingLoader {
+    let cache_entities_config = cache_entities_config.unwrap_or(CacheEntitiesConfig {
+        entities: HashMap::from([(
+            "JSON_LD_CONTEXT".to_string(),
+            JsonLdContextConfig {
+                cache_refresh_timeout: Duration::seconds(86400),
+                cache_size: 100,
+                cache_type: JsonLdContextCacheType::Db,
+            },
+        )]),
+    });
+
+    let json_ld_context_config = cache_entities_config
+        .entities
+        .get("JSON_LD_CONTEXT")
+        .map(|v| v.to_owned())
+        .unwrap_or_default();
+
+    let json_ld_context_storage: Arc<dyn JsonLdContextStorage> =
+        match json_ld_context_config.cache_type {
+            JsonLdContextCacheType::Db => Arc::new(DbStorage::new(
+                data_provider.get_json_ld_context_repository(),
+            )),
+            JsonLdContextCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
+        };
+    CachingLoader {
+        cache_size: json_ld_context_config.cache_size as usize,
+        cache_refresh_timeout: json_ld_context_config.cache_refresh_timeout,
+        client: reqwest::Client::new(),
+        json_ld_context_storage,
+    }
 }

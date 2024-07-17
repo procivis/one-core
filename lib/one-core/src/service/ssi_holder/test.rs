@@ -5,6 +5,8 @@ use std::vec;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
 use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
+use one_providers::credential_formatter::MockCredentialFormatter;
 use one_providers::did::model::{DidDocument, DidVerificationMethod};
 use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::key_storage::model::{KeySecurity, KeyStorageCapabilities};
@@ -23,8 +25,6 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,

@@ -2,6 +2,9 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::Sequence;
+use one_providers::credential_formatter::model::FormatterCapabilities;
+use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
+use one_providers::credential_formatter::MockCredentialFormatter;
 use rstest::rstest;
 use shared_types::ProofId;
 use time::OffsetDateTime;
@@ -37,9 +40,7 @@ use crate::model::proof_schema::{
 };
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
-use crate::provider::credential_formatter::{FormatterCapabilities, MockCredentialFormatter};
 use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPPresentationDefinition;
 use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEPeer;

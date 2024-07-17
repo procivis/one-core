@@ -105,6 +105,7 @@ impl<'a, const N: usize> Deserialize<'a> for MinMax<N> {
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, From, Into)]
 #[from(one_providers::did::model::Operation)]
 #[into(one_providers::did::model::Operation)]

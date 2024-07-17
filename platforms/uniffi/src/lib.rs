@@ -3,6 +3,18 @@
 use std::{collections::HashMap, sync::Arc};
 
 use one_providers::{
+    credential_formatter::{
+        imp::{
+            json_ld::context::{
+                caching_loader::CachingLoader,
+                storage::{in_memory_storage::InMemoryStorage, JsonLdContextStorage},
+            },
+            json_ld_bbsplus::JsonLdBbsplus,
+            jwt_formatter::JWTFormatter,
+            provider::CredentialFormatterProviderImpl,
+        },
+        CredentialFormatter,
+    },
     crypto::{
         imp::{
             hasher::sha256::SHA256,
@@ -13,6 +25,13 @@ use one_providers::{
         },
         Hasher, Signer,
     },
+    did::{
+        imp::{
+            jwk::JWKDidMethod, key::KeyDidMethod, provider::DidMethodProviderImpl,
+            universal::UniversalDidMethod, web::WebDidMethod,
+        },
+        DidMethod,
+    },
     key_algorithm::{
         imp::{bbs::BBS, eddsa::Eddsa, es256::Es256, provider::KeyAlgorithmProviderImpl},
         KeyAlgorithm,
@@ -20,22 +39,41 @@ use one_providers::{
     key_storage::{imp::provider::KeyProviderImpl, KeyStorage},
 };
 use serde::{Deserialize, Serialize};
+use time::Duration;
 
+use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
 use error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
 use one_core::{
-    config::core_config::{self, AppConfig},
-    provider::{
-        key_algorithm::ml_dsa::MlDsa, key_storage::secure_element::SecureElementKeyProvider,
+    config::{
+        core_config::{self, AppConfig, JsonLdContextCacheType, JsonLdContextConfig},
+        ConfigError, ConfigParsingError, ConfigValidationError,
     },
-    DataProviderCreator, KeyStorageCreator, OneCoreBuilder,
+    provider::{
+        credential_formatter::{
+            json_ld::storage::db_storage::DbStorage, json_ld_classic::JsonLdClassic,
+            mdoc_formatter::MdocFormatter, physical_card::PhysicalCardFormatter,
+            sdjwt_formatter::SDJWTFormatter, FormatterCapabilities,
+        },
+        did_method::{
+            mdl::{DidMdl, DidMdlValidator},
+            x509::X509Method,
+        },
+        key_algorithm::ml_dsa::MlDsa,
+        key_storage::{secure_element::SecureElementKeyProvider, KeyStorageCapabilities},
+    },
+    repository::DataRepository,
+    DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyStorageCreator,
+    OneCoreBuilder,
 };
 use one_core::{provider::bluetooth_low_energy::BleError, KeyAlgorithmCreator};
+use serde_json::json;
 use sql_data_provider::DataLayer;
 use utils::native_ble_central::BleCentralWrapper;
 use utils::native_ble_peripheral::BlePeripheralWrapper;
 use utils::native_key_storage::NativeKeyStorageWrapper;
 
 mod binding;
+mod did_config;
 mod dto;
 mod error;
 mod functions;
@@ -80,12 +118,12 @@ fn initialize_core(
 
     let core_builder = move |db_path: String| {
         let core_config = placeholder_config.core.clone();
+        let mobile_config = placeholder_config.app.clone();
 
         let native_key_storage = native_key_storage.clone();
         let ble_peripheral = ble_peripheral.clone();
         let ble_central = ble_central.clone();
 
-        let cache_entities_config = placeholder_config.app.cache_entities.to_owned();
         Box::pin(async move {
             let db_url = format!("sqlite:{db_path}?mode=rwc");
             let db_conn = sql_data_provider::db_conn(db_url, true)
@@ -160,18 +198,225 @@ fn initialize_core(
                     key_providers.insert(name.to_owned(), provider);
                 }
 
+                for (key, value) in config.iter_mut() {
+                    if let Some(entity) = key_providers.get(key) {
+                        value.capabilities = Some(json!(Into::<KeyStorageCapabilities>::into(
+                            entity.get_capabilities()
+                        )));
+                    }
+                }
+
                 Arc::new(KeyProviderImpl::new(key_providers.to_owned()))
             });
 
-            let storage_creator: DataProviderCreator =
-                Box::new(|| Arc::new(DataLayer::build(db_conn, vec![])));
+            let data_repository = Arc::new(DataLayer::build(db_conn, vec![]));
+
+            let storage_creator: DataProviderCreator = {
+                let data_repository = data_repository.clone();
+                Box::new(move || data_repository)
+            };
+
+            let did_method_creator: DidMethodCreator = Box::new(move |config, providers| {
+                let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
+
+                let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
+
+                for (name, field) in config.iter() {
+                    let did_method: Arc<dyn DidMethod> = match field.r#type.to_string().as_str() {
+                        "KEY" => {
+                            let key_algorithm_provider = providers
+                                .key_algorithm_provider
+                                .to_owned()
+                                .expect("key algorithm provider is required");
+                            Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as _
+                        }
+                        "WEB" => {
+                            let params: DidWebParams = config
+                                .get(name)
+                                .expect("failed to deserialize did web params");
+                            let did_web =
+                                WebDidMethod::new(&providers.core_base_url, params.into())
+                                    .map_err(|_| {
+                                        ConfigError::Validation(ConfigValidationError::KeyNotFound(
+                                            "Base url".to_string(),
+                                        ))
+                                    })
+                                    .expect("failed to create did web method");
+                            Arc::new(did_web) as _
+                        }
+                        "JWK" => {
+                            let key_algorithm_provider = providers
+                                .key_algorithm_provider
+                                .to_owned()
+                                .expect("key algorithm provider is required");
+                            Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as _
+                        }
+                        "X509" => Arc::new(X509Method::new()) as _,
+                        "UNIVERSAL_RESOLVER" => {
+                            let params: DidUniversalParams = config
+                                .get(name)
+                                .expect("failed to deserialize did universal params");
+                            Arc::new(UniversalDidMethod::new(params.into())) as _
+                        }
+                        "MDL" => {
+                            let key_algorithm_provider = providers
+                                .key_algorithm_provider
+                                .to_owned()
+                                .expect("key algorithm provider is required");
+
+                            let params: DidMdlParams = config
+                                .get(name)
+                                .expect("failed to deserialize did mdl params");
+
+                            let did_mdl =
+                                DidMdl::new(params.into(), key_algorithm_provider.clone())
+                                    .map_err(|err| {
+                                        ConfigParsingError::GeneralParsingError(format!(
+                                            "Invalid DID MDL config: {err}"
+                                        ))
+                                    })
+                                    .expect("failed to create did mdl method");
+                            let did_mdl = Arc::new(did_mdl);
+
+                            did_mdl_validator = Some(did_mdl.clone() as Arc<dyn DidMdlValidator>);
+
+                            did_mdl as _
+                        }
+                        other => panic!("Unexpected did method: {other}"),
+                    };
+                    did_methods.insert(name.to_owned(), did_method);
+                }
+
+                for (key, value) in config.iter_mut() {
+                    if let Some(entity) = did_methods.get(key) {
+                        let params = entity.get_keys().map(|keys| {
+                            let serializable_keys = did_config::Keys::from(keys);
+                            core_config::Params {
+                                public: Some(json!({
+                                    "keys": serializable_keys,
+                                })),
+                                private: None,
+                            }
+                        });
+                        let capabilities: did_config::DidCapabilities =
+                            entity.get_capabilities().into();
+
+                        *value = core_config::Fields {
+                            capabilities: Some(json!(capabilities)),
+                            params,
+                            ..value.clone()
+                        }
+                    }
+                }
+
+                (
+                    Arc::new(DidMethodProviderImpl::new(did_methods)),
+                    did_mdl_validator,
+                )
+            });
+
+            let caching_loader =
+                initialize_cache_loader(mobile_config.cache_entities.to_owned(), data_repository);
+
+            let formatter_provider_creator: FormatterProviderCreator = {
+                let caching_loader = caching_loader.clone();
+                Box::new(move |format_config, datatype_config, providers| {
+                    let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> =
+                        HashMap::new();
+
+                    let did_method_provider = providers
+                        .did_method_provider
+                        .as_ref()
+                        .expect("Did method provider is mandatory");
+
+                    let key_algorithm_provider = providers
+                        .key_algorithm_provider
+                        .as_ref()
+                        .expect("Key algorithm provider is mandatory");
+
+                    let crypto = providers
+                        .crypto
+                        .as_ref()
+                        .expect("Crypto provider is mandatory");
+
+                    for (name, field) in format_config.iter() {
+                        let formatter = match field.r#type.as_str() {
+                            "JWT" => {
+                                let params = format_config
+                                    .get(name)
+                                    .expect("JWT formatter params are mandatory");
+                                Arc::new(JWTFormatter::new(params)) as _
+                            }
+                            "PHYSICAL_CARD" => Arc::new(PhysicalCardFormatter::new()) as _,
+                            "SDJWT" => {
+                                let params = format_config
+                                    .get(name)
+                                    .expect("SDJWT formatter params are mandatory");
+                                Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _
+                            }
+                            "JSON_LD_CLASSIC" => {
+                                let params = format_config
+                                    .get(name)
+                                    .expect("JSON_LD_CLASSIC formatter params are mandatory");
+                                Arc::new(JsonLdClassic::new(
+                                    params,
+                                    crypto.clone(),
+                                    providers.core_base_url.clone(),
+                                    did_method_provider.clone(),
+                                    caching_loader.clone(),
+                                )) as _
+                            }
+                            "JSON_LD_BBSPLUS" => {
+                                let params = format_config
+                                    .get(name)
+                                    .expect("JSON_LD_BBSPLUS formatter params are mandatory");
+                                Arc::new(JsonLdBbsplus::new(
+                                    params,
+                                    crypto.clone(),
+                                    providers.core_base_url.clone(),
+                                    did_method_provider.clone(),
+                                    key_algorithm_provider.clone(),
+                                    caching_loader.clone(),
+                                )) as _
+                            }
+                            "MDOC" => {
+                                let params = format_config
+                                    .get(name)
+                                    .expect("MDOC formatter params are mandatory");
+                                Arc::new(MdocFormatter::new(
+                                    params,
+                                    providers.did_mdl_validator.clone(),
+                                    did_method_provider.clone(),
+                                    key_algorithm_provider.clone(),
+                                    providers.core_base_url.clone(),
+                                    datatype_config.clone(),
+                                )) as _
+                            }
+                            _ => unimplemented!(),
+                        };
+                        formatters.insert(name.to_owned(), formatter);
+                    }
+
+                    for (key, value) in format_config.iter_mut() {
+                        if let Some(entity) = formatters.get(key) {
+                            value.capabilities = Some(json!(Into::<FormatterCapabilities>::into(
+                                entity.get_capabilities()
+                            )));
+                        }
+                    }
+
+                    Arc::new(CredentialFormatterProviderImpl::new(formatters))
+                })
+            };
 
             OneCoreBuilder::new(core_config.clone())
                 .with_crypto(crypto)
+                .with_caching_loader(caching_loader)
                 .with_data_provider_creator(storage_creator)
-                .with_cache_entities_config(cache_entities_config)
                 .with_key_algorithm_provider(key_algo_creator)
                 .with_key_storage_provider(key_storage_creator)
+                .with_did_method_provider(did_method_creator)
+                .with_formatter_provider(formatter_provider_creator)
                 .with_ble(ble_peripheral, ble_central)
                 .build()
                 .map_err(|e| BindingError::DbErr(e.to_string()))
@@ -225,4 +470,40 @@ fn initialize_holder_core(
 pub struct MobileConfig {
     #[serde(default)]
     pub cache_entities: Option<CacheEntitiesConfig>,
+}
+
+pub fn initialize_cache_loader(
+    cache_entities_config: Option<CacheEntitiesConfig>,
+    data_provider: Arc<dyn DataRepository>,
+) -> CachingLoader {
+    let cache_entities_config = cache_entities_config.unwrap_or(CacheEntitiesConfig {
+        entities: HashMap::from([(
+            "JSON_LD_CONTEXT".to_string(),
+            JsonLdContextConfig {
+                cache_refresh_timeout: Duration::seconds(86400),
+                cache_size: 100,
+                cache_type: JsonLdContextCacheType::Db,
+            },
+        )]),
+    });
+
+    let json_ld_context_config = cache_entities_config
+        .entities
+        .get("JSON_LD_CONTEXT")
+        .map(|v| v.to_owned())
+        .unwrap_or_default();
+
+    let json_ld_context_storage: Arc<dyn JsonLdContextStorage> =
+        match json_ld_context_config.cache_type {
+            JsonLdContextCacheType::Db => Arc::new(DbStorage::new(
+                data_provider.get_json_ld_context_repository(),
+            )),
+            JsonLdContextCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
+        };
+    CachingLoader {
+        cache_size: json_ld_context_config.cache_size as usize,
+        cache_refresh_timeout: json_ld_context_config.cache_refresh_timeout,
+        client: reqwest::Client::new(),
+        json_ld_context_storage,
+    }
 }

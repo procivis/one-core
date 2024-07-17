@@ -5,7 +5,6 @@ use uuid::Uuid;
 
 use super::dto::{CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO};
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
-use crate::config::core_config::FormatType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
@@ -99,7 +98,7 @@ pub fn from_create_request(
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
     core_base_url: &str,
-    format_type: FormatType,
+    format_type: &str,
     schema_type: Option<CredentialSchemaType>,
 ) -> Result<CredentialSchema, ServiceError> {
     from_create_request_with_id(
@@ -117,7 +116,7 @@ pub(super) fn from_create_request_with_id(
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
     core_base_url: &str,
-    format_type: FormatType,
+    format_type: &str,
     schema_type: Option<CredentialSchemaType>,
 ) -> Result<CredentialSchema, ServiceError> {
     if request.claims.is_empty() {
@@ -134,7 +133,7 @@ pub(super) fn from_create_request_with_id(
         .schema_id
         .unwrap_or(format!("{core_base_url}/ssi/schema/v1/{id}"));
     let schema_type = schema_type.unwrap_or(match format_type {
-        FormatType::Mdoc => CredentialSchemaType::Mdoc,
+        "MDOC" => CredentialSchemaType::Mdoc,
         _ => CredentialSchemaType::ProcivisOneSchema2024,
     });
 

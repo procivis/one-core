@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use dto_mapper::Into;
+use one_providers::credential_formatter::model::DetailCredential;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
@@ -8,7 +9,6 @@ use uuid::Uuid;
 
 use crate::model::credential_schema::{CredentialSchema, WalletStorageTypeEnum};
 use crate::model::proof_schema::ProofInputClaimSchema;
-use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
 use crate::service::credential::dto::CredentialSchemaType;
 

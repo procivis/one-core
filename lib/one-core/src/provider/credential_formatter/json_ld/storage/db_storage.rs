@@ -14,7 +14,7 @@ pub struct DbStorage {
 }
 
 impl DbStorage {
-    pub(crate) fn new(json_ld_context_repository: Arc<dyn JsonLdContextRepository>) -> Self {
+    pub fn new(json_ld_context_repository: Arc<dyn JsonLdContextRepository>) -> Self {
         Self {
             json_ld_context_repository,
         }

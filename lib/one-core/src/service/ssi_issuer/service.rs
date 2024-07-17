@@ -8,7 +8,7 @@ use super::dto::{
 use super::{dto::IssuerResponseDTO, SSIIssuerService};
 use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
-use crate::config::core_config::{ExchangeType, FormatType, Params};
+use crate::config::core_config::{ExchangeType, Params};
 use crate::config::ConfigValidationError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError};
 use crate::service::ssi_issuer::mapper::{
@@ -222,12 +222,12 @@ impl SSIIssuerService {
         if self
             .config
             .format
-            .get_by_type::<Params>(FormatType::JsonLdClassic)
+            .get_by_type::<Params>("JSON_LD_CLASSIC".to_owned())
             .is_err()
             && self
                 .config
                 .format
-                .get_by_type::<Params>(FormatType::JsonLdBbsplus)
+                .get_by_type::<Params>("JSON_LD_BBSPLUS".to_owned())
                 .is_err()
         {
             return Err(ServiceError::from(ConfigValidationError::TypeNotFound(

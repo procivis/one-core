@@ -1,4 +1,5 @@
 use anyhow::Context;
+use one_providers::credential_formatter::model::CredentialPresentation;
 use one_providers::key_storage::model::KeySecurity;
 use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
@@ -28,7 +29,6 @@ use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
-use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::exchange_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO, PresentedCredential,
 };

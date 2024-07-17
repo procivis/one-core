@@ -1,7 +1,9 @@
-use super::model::{SDCredentialSubject, Sdvc, VCContent};
-use crate::provider::credential_formatter::{
-    Context, CredentialData, FormatterError, PublishedClaim,
+use one_providers::credential_formatter::{
+    error::FormatterError,
+    model::{Context, CredentialData, PublishedClaim},
 };
+
+use super::model::{SDCredentialSubject, Sdvc, VCContent};
 
 pub(super) fn vc_from_credential(
     credential: CredentialData,

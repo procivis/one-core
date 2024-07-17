@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
+use one_providers::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
 use shared_types::CredentialId;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
-use crate::provider::credential_formatter::{PublishedClaim, PublishedClaimValue};
 use crate::provider::revocation::lvvc::LvvcStatus;
 use crate::service::error::ServiceError;
 

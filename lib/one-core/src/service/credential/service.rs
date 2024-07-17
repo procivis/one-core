@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
+use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::key_storage::provider::KeyProvider;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
@@ -25,7 +26,6 @@ use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
-use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::exchange_protocol::openid4vc::dto::{OpenID4VCICredential, OpenID4VCIProof};
 use crate::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
@@ -120,7 +120,7 @@ impl CredentialService {
             &request.exchange,
             &request.claim_values,
             &schema,
-            &formatter_capabilities,
+            &formatter_capabilities.clone().into(),
             &self.config,
         )?;
 

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use one_providers::common_models::key::Key;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use serde::{de, Serialize};
 use thiserror::Error;
@@ -18,7 +19,6 @@ use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::procivis_temp::ProcivisTemp;
 use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;

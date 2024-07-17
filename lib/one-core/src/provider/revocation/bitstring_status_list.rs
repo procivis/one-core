@@ -1,4 +1,5 @@
 use anyhow::Context;
+use one_providers::credential_formatter::model::CredentialStatus;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
@@ -15,7 +16,6 @@ use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
 };
-use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::status_list_jwt_formatter::common::StatusPurpose;
 use crate::provider::credential_formatter::status_list_jwt_formatter::BitstringStatusListJwtFormatter;
 use crate::provider::exchange_protocol::ExchangeProtocolError;

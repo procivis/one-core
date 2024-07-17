@@ -1,8 +1,9 @@
-use crate::{model::did::KeyRole, provider::credential_formatter::TokenVerifier};
+use crate::model::did::KeyRole;
 use async_trait::async_trait;
+use one_providers::common_models::did::DidValue;
+use one_providers::credential_formatter::model::TokenVerifier;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::{crypto::SignerError, key_algorithm::provider::KeyAlgorithmProvider};
-use shared_types::DidValue;
 use std::sync::Arc;
 use tracing::info;
 
@@ -27,8 +28,7 @@ impl TokenVerifier for KeyVerification {
             .did_method_provider
             .resolve(
                 &issuer_did_value
-                    .ok_or(SignerError::CouldNotVerify("Missing issuer".to_string()))?
-                    .into(),
+                    .ok_or(SignerError::CouldNotVerify("Missing issuer".to_string()))?,
             )
             .await
             .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
@@ -175,7 +175,7 @@ mod test {
 
         let result = verification
             .verify(
-                Some("issuer_did_value".parse().unwrap()),
+                Some(DidValue::from("issuer_did_value".to_owned())),
                 None,
                 "ES256",
                 "token".as_bytes(),
@@ -203,7 +203,7 @@ mod test {
 
         let result = verification
             .verify(
-                Some("issuer_did_value".parse().unwrap()),
+                Some(DidValue::from("issuer_did_value".to_string())),
                 None,
                 "EDDSA",
                 "token".as_bytes(),
@@ -263,7 +263,7 @@ mod test {
 
         let result = verification
             .verify(
-                Some("issuer_did_value".parse().unwrap()),
+                Some(DidValue::from("issuer_did_value".to_string())),
                 None,
                 "ES256",
                 "token".as_bytes(),

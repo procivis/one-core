@@ -1,3 +1,4 @@
+use one_providers::credential_formatter::model::{CredentialStatus, DetailCredential};
 use serde::Serialize;
 use shared_types::{CredentialId, DidValue};
 use strum_macros::Display;
@@ -5,7 +6,6 @@ use time::OffsetDateTime;
 
 use crate::model::credential::Credential;
 use crate::model::proof_schema::ProofInputSchema;
-use crate::provider::credential_formatter::model::{CredentialStatus, DetailCredential};
 use crate::service::error::ServiceError;
 
 pub mod bitstring_status_list;

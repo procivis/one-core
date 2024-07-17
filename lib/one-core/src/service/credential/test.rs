@@ -3,6 +3,11 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use mockall::predicate::*;
+use one_providers::credential_formatter::model::{
+    CredentialStatus, CredentialSubject, DetailCredential,
+};
+use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
+use one_providers::credential_formatter::MockCredentialFormatter;
 use one_providers::key_storage::provider::MockKeyProvider;
 use serde_json::json;
 use shared_types::CredentialId;
@@ -25,12 +30,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
-use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential,
-};
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
-use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -1190,7 +1190,15 @@ async fn test_check_revocation_invalid_state() {
                     expires_at: None,
                     update_at: None,
                     invalid_before: None,
-                    issuer_did: Some(credential_clone.issuer_did.as_ref().unwrap().did.clone()),
+                    issuer_did: Some(
+                        credential_clone
+                            .issuer_did
+                            .as_ref()
+                            .unwrap()
+                            .did
+                            .clone()
+                            .into(),
+                    ),
                     subject: None,
                     claims: CredentialSubject {
                         values: HashMap::new(),
@@ -1351,7 +1359,15 @@ async fn test_check_revocation_already_revoked() {
                     expires_at: None,
                     update_at: None,
                     invalid_before: None,
-                    issuer_did: Some(credential_clone.issuer_did.as_ref().unwrap().did.clone()),
+                    issuer_did: Some(
+                        credential_clone
+                            .issuer_did
+                            .as_ref()
+                            .unwrap()
+                            .did
+                            .clone()
+                            .into(),
+                    ),
                     subject: None,
                     claims: CredentialSubject {
                         values: HashMap::new(),
@@ -2560,7 +2576,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
             },
         ],
         &schema,
-        &generic_formatter_capabilities(),
+        &generic_formatter_capabilities().into(),
         &generic_config().core,
     )
     .unwrap();
@@ -2642,7 +2658,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
             },
         ],
         &schema,
-        &generic_formatter_capabilities(),
+        &generic_formatter_capabilities().into(),
         &generic_config().core,
     )
     .unwrap();
@@ -2656,7 +2672,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
             path: "address".to_string(),
         }],
         &schema,
-        &generic_formatter_capabilities(),
+        &generic_formatter_capabilities().into(),
         &generic_config().core,
     )
     .unwrap();
@@ -2677,7 +2693,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
             },
         ],
         &schema,
-        &generic_formatter_capabilities(),
+        &generic_formatter_capabilities().into(),
         &generic_config().core,
     );
     assert!(matches!(
@@ -2764,7 +2780,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
             },
         ],
         &schema,
-        &generic_formatter_capabilities(),
+        &generic_formatter_capabilities().into(),
         &generic_config().core,
     )
     .unwrap();
@@ -2778,7 +2794,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
             path: "address".to_string(),
         }],
         &schema,
-        &generic_formatter_capabilities(),
+        &generic_formatter_capabilities().into(),
         &generic_config().core,
     );
     assert!(matches!(
@@ -2804,7 +2820,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
             },
         ],
         &schema,
-        &generic_formatter_capabilities(),
+        &generic_formatter_capabilities().into(),
         &generic_config().core,
     )
     .unwrap();

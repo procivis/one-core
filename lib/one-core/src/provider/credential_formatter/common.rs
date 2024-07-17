@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-use crate::provider::credential_formatter::error::FormatterError;
-
-use super::PublishedClaim;
+use one_providers::credential_formatter::{error::FormatterError, model::PublishedClaim};
 
 pub(super) fn nest_claims(
     claims: impl IntoIterator<Item = PublishedClaim>,

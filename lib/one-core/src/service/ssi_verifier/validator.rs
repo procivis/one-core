@@ -1,26 +1,26 @@
 use super::dto::ValidatedProofClaimDTO;
 use crate::{
-    common_validator::{validate_expiration_time, validate_issuance_time},
+    common_validator::{is_lvvc, validate_expiration_time, validate_issuance_time},
     model::{
         credential_schema::CredentialSchema,
         did::{Did, KeyRole},
         proof_schema::{ProofInputClaimSchema, ProofSchema},
     },
-    provider::{
-        credential_formatter::{
-            model::DetailCredential, provider::CredentialFormatterProvider, ExtractPresentationCtx,
-        },
-        revocation::{
-            provider::RevocationMethodProvider, CredentialDataByRole, CredentialRevocationState,
-            VerifierCredentialData,
-        },
+    provider::revocation::{
+        provider::RevocationMethodProvider, CredentialDataByRole, CredentialRevocationState,
+        VerifierCredentialData,
     },
     service::error::{BusinessLogicError, MissingProviderError, ServiceError},
     util::{key_verification::KeyVerification, oidc::map_from_oidc_format_to_core_real},
 };
 
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::{
+    credential_formatter::model::{DetailCredential, ExtractPresentationCtx},
+    key_algorithm::provider::KeyAlgorithmProvider,
+};
+use one_providers::{
+    credential_formatter::provider::CredentialFormatterProvider, did::provider::DidMethodProvider,
+};
 use shared_types::CredentialSchemaId;
 use std::{
     collections::{HashMap, HashSet},
@@ -59,7 +59,7 @@ pub(super) async fn validate_proof(
         .extract_presentation(
             presentation,
             key_verification_presentation.clone(),
-            ExtractPresentationCtx::empty(),
+            ExtractPresentationCtx::default(),
         )
         .await?;
 
@@ -175,7 +175,7 @@ pub(super) async fn validate_proof(
         )?;
         validate_expiration_time(&credential.expires_at, credential_formatter.get_leeway())?;
 
-        if credential.is_lvvc() {
+        if is_lvvc(&credential) {
             continue;
         }
 
@@ -210,7 +210,7 @@ pub(super) async fn validate_proof(
             match revocation_method
                 .check_credential_revocation_status(
                     credential_status,
-                    issuer_did,
+                    &issuer_did.clone().into(),
                     Some(CredentialDataByRole::Verifier(Box::new(
                         VerifierCredentialData {
                             credential: credential.to_owned(),
@@ -239,7 +239,9 @@ pub(super) async fn validate_proof(
             Some(did) => did,
         };
 
-        if *claim_subject != holder_did.did {
+        if Into::<String>::into(claim_subject.to_string())
+            != Into::<String>::into(holder_did.did.to_string())
+        {
             return Err(ServiceError::ValidationError(
                 "Holder DID doesn't match.".to_owned(),
             ));
@@ -346,7 +348,7 @@ async fn extract_lvvcs(
         let credential = credential_formatter
             .extract_credentials_unverified(credential)
             .await?;
-        if credential.is_lvvc() {
+        if is_lvvc(&credential) {
             result.push(credential);
         }
     }

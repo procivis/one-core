@@ -1,6 +1,3 @@
-cacheEntites:
-  JSON_LD_CONTEXT:
-    cacheSize: 100
 transport:
   BLE:
     type: "BLE"

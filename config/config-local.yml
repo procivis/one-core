@@ -7,6 +7,11 @@ app:
   traceJson: false
   traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error"
   hideErrorResponseCause: false
+  cacheEntites:
+    JSON_LD_CONTEXT:
+      cacheType: DB
+      cacheRefreshTimeout: 86400
+      cacheSize: 1000
 exchange:
   OPENID4VC:
     params:

@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+
 use crate::config::core_config::CoreConfig;
 use crate::model::proof_schema::ProofSchema;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 pub(super) fn validate_format_and_exchange_protocol_compatibility(

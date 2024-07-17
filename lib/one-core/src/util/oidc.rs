@@ -1,5 +1,6 @@
+use one_providers::credential_formatter::imp::json_ld;
+
 use crate::model::credential_schema::CredentialSchema;
-use crate::provider::credential_formatter::json_ld;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::OpenID4VCIError;
 use thiserror::Error;

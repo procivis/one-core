@@ -37,15 +37,7 @@ strum_macros               = { version = "0.26" }
 shared-types               = { version = "0.1.0", path = "../shared-types" }
 pqc_dilithium              = { version = "0.2.0", git = "https://github.com/ihor-rud/dilithium", rev = "e02a683" }
 convert_case               = { version = "0.6" }
-contextual                 = { version = "0.1" }
-json-syntax                = { version = "0.9", features = ["serde_json"] }
-locspan                    = { version = "0.7" }
 json-ld                    = { version = "0.15" }
-mime                       = { version = "0.3" }
-rdf-types                  = { version = "0.15" }
-sophia_jsonld              = { version = "0.8", features = ["http_client"] }
-sophia_api                 = { version = "0.8" }
-sophia_c14n                = { version = "0.8" }
 ciborium                   = { version = "0.2" }
 coset                      = { version = "0.3" }
 tempfile.workspace         = true
@@ -62,7 +54,6 @@ yasna                      = { version = "0.5" }
 x509-parser                = { version = "0.16", features = ["verify"] }
 ouroboros                  = { version = "0.18" }
 itertools                  = { version = "0.13" }
-urlencoding                = { version = "2.1" }
 one-providers              = { workspace = true }
 x25519-dalek               = { version = "2.0.1" }
 hkdf                       = { version = "0.12.4" }

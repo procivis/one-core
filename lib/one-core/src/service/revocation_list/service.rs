@@ -1,4 +1,5 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use one_providers::credential_formatter::error::FormatterError;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
@@ -9,12 +10,9 @@ use crate::{
         did::DidRelations, revocation_list::RevocationListRelations,
         validity_credential::ValidityCredentialType,
     },
-    provider::{
-        credential_formatter::error::FormatterError,
-        revocation::{
-            self,
-            lvvc::{dto::LvvcStatus, mapper::status_from_lvvc_claims},
-        },
+    provider::revocation::{
+        self,
+        lvvc::{dto::LvvcStatus, mapper::status_from_lvvc_claims},
     },
     service::{
         error::{EntityNotFoundError, MissingProviderError, ServiceError},

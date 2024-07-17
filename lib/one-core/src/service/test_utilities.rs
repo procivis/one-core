@@ -1,4 +1,5 @@
 use indoc::indoc;
+use one_providers::credential_formatter::model::FormatterCapabilities;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -16,7 +17,6 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
-use crate::provider::credential_formatter::FormatterCapabilities;
 use one_providers::common_models::key::Key;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]

@@ -62,7 +62,7 @@ impl CredentialSchemaService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
-        let format_type = self.config.format.get_fields(&request.format)?.r#type;
+        let format_type = &self.config.format.get_fields(&request.format)?.r#type;
         let credential_schema =
             from_create_request(request, organisation, core_base_url, format_type, None)?;
 
@@ -208,7 +208,7 @@ impl CredentialSchemaService {
         super::validator::check_background_properties(&create_request)?;
         super::validator::check_logo_properties(&create_request)?;
 
-        let format_type = self
+        let format_type = &self
             .config
             .format
             .get_fields(&request.schema.format)?

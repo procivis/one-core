@@ -1,3 +1,4 @@
+use one_providers::credential_formatter::error::FormatterError;
 use one_providers::crypto::CryptoProviderError;
 use one_providers::did::error::{DidMethodError, DidMethodProviderError};
 use one_providers::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
@@ -17,7 +18,6 @@ use crate::model::credential::CredentialStateEnum;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofStateEnum;
 use crate::model::revocation_list::RevocationListId;
-use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::repository::error::DataLayerError;
 use crate::service::oidc::dto::OpenID4VCIError;
@@ -839,7 +839,7 @@ impl ServiceError {
             ServiceError::ResponseMapping(_) => ErrorCode::BR_0055,
             ServiceError::ExchangeProtocolError(error) => error.error_code(),
             ServiceError::CryptoError(_) => ErrorCode::BR_0050,
-            ServiceError::FormatterError(error) => error.error_code(),
+            ServiceError::FormatterError(error) => error_code_formatter(error),
             ServiceError::KeyStorageError(_) | ServiceError::KeyStorageProvider(_) => {
                 ErrorCode::BR_0039
             }
@@ -1007,29 +1007,27 @@ impl ExchangeProtocolError {
     }
 }
 
-impl FormatterError {
-    pub fn error_code(&self) -> ErrorCode {
-        match self {
-            FormatterError::BBSOnly => ErrorCode::BR_0090,
-            FormatterError::Failed(_)
-            | FormatterError::CouldNotSign(_)
-            | FormatterError::CouldNotVerify(_)
-            | FormatterError::CouldNotFormat(_)
-            | FormatterError::CouldNotExtractCredentials(_)
-            | FormatterError::CouldNotExtractPresentation(_)
-            | FormatterError::CouldNotExtractClaimsFromPresentation(_)
-            | FormatterError::IncorrectSignature
-            | FormatterError::MissingPart
-            | FormatterError::MissingDisclosure
-            | FormatterError::MissingIssuer
-            | FormatterError::MissingClaim
-            | FormatterError::CryptoError(_)
-            | FormatterError::MissingBaseUrl { .. }
-            | FormatterError::JsonMapping(_)
-            | FormatterError::JsonPtrMalformed(_)
-            | FormatterError::JsonPtrError(_)
-            | FormatterError::FloatValueIsNaN => ErrorCode::BR_0057,
-        }
+pub fn error_code_formatter(error: &FormatterError) -> ErrorCode {
+    match error {
+        FormatterError::BBSOnly => ErrorCode::BR_0090,
+        FormatterError::Failed(_)
+        | FormatterError::CouldNotSign(_)
+        | FormatterError::CouldNotVerify(_)
+        | FormatterError::CouldNotFormat(_)
+        | FormatterError::CouldNotExtractCredentials(_)
+        | FormatterError::CouldNotExtractPresentation(_)
+        | FormatterError::CouldNotExtractClaimsFromPresentation(_)
+        | FormatterError::IncorrectSignature
+        | FormatterError::MissingPart
+        | FormatterError::MissingDisclosure
+        | FormatterError::MissingIssuer
+        | FormatterError::MissingClaim
+        | FormatterError::CryptoError(_)
+        | FormatterError::MissingBaseUrl { .. }
+        | FormatterError::JsonMapping(_)
+        | FormatterError::JsonPtrMalformed(_)
+        | FormatterError::JsonPtrError(_)
+        | FormatterError::FloatValueIsNaN => ErrorCode::BR_0057,
     }
 }
 

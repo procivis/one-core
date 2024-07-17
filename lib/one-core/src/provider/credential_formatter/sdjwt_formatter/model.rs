@@ -1,7 +1,6 @@
+use one_providers::credential_formatter::model::{CredentialSchema, CredentialStatus};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
-
-use crate::provider::credential_formatter::{model::CredentialSchema, CredentialStatus};
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,7 +63,7 @@ pub struct SDCredentialSubject {
     pub claims: Vec<String>,
 }
 
-pub(super) struct DecomposedToken<'a> {
+pub struct DecomposedToken<'a> {
     pub jwt: &'a str,
     pub deserialized_disclosures: Vec<Disclosure>,
 }

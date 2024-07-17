@@ -1,11 +1,16 @@
 use async_trait::async_trait;
-use shared_types::DidValue;
 
-use super::model::CredentialPresentation;
-use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential,
-    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, FormatterError,
-    Presentation, VerificationFn,
+use one_providers::{
+    common_models::did::DidValue,
+    credential_formatter::{
+        error::FormatterError,
+        model::{
+            AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
+            ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
+            VerificationFn,
+        },
+        CredentialFormatter,
+    },
 };
 
 pub struct PhysicalCardFormatter {}

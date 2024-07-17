@@ -3,6 +3,11 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
+use one_providers::credential_formatter::model::{
+    CredentialStatus, CredentialSubject, DetailCredential, Presentation,
+};
+use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
+use one_providers::credential_formatter::MockCredentialFormatter;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
 use one_providers::key_storage::provider::MockKeyProvider;
@@ -26,12 +31,7 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
-use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, Presentation,
-};
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
-use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
 use crate::provider::exchange_protocol::openid4vc::dto::{
@@ -1593,8 +1593,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer_did: Some(issuer_did_clone.to_owned()),
-                subject: Some(holder_did_clone.to_owned()),
+                issuer_did: Some(issuer_did_clone.to_owned().into()),
+                subject: Some(holder_did_clone.to_owned().into()),
                 claims: CredentialSubject {
                     values: HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
@@ -1616,7 +1616,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some(holder_did_clone.to_owned()),
+                issuer_did: Some(holder_did_clone.to_owned().into()),
                 nonce: Some(nonce_clone.to_owned()),
                 credentials: vec!["credential".to_string()],
             })
@@ -1632,7 +1632,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some(holder_did_clone.to_owned()),
+                issuer_did: Some(holder_did_clone.to_owned().into()),
                 nonce: Some(nonce_clone.to_owned()),
                 credentials: vec!["credential".to_string()],
             })
@@ -1649,8 +1649,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer_did: Some(issuer_did_clone.to_owned()),
-                subject: Some(holder_did.to_owned()),
+                issuer_did: Some(issuer_did_clone.to_owned().into()),
+                subject: Some(holder_did.to_owned().into()),
                 claims: CredentialSubject {
                     values: HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
@@ -1780,8 +1780,8 @@ fn generic_detail_credential() -> DetailCredential {
         expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
         update_at: None,
         invalid_before: Some(OffsetDateTime::now_utc()),
-        issuer_did: Some(issuer_did),
-        subject: Some(holder_did),
+        issuer_did: Some(issuer_did.into()),
+        subject: Some(holder_did.into()),
         claims: CredentialSubject {
             values: HashMap::new(),
         },

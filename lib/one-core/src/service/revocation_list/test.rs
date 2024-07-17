@@ -1,4 +1,5 @@
 use mockall::predicate::eq;
+use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_storage::provider::MockKeyProvider;
 use std::sync::Arc;
@@ -8,10 +9,7 @@ use uuid::Uuid;
 use crate::model::revocation_list::RevocationListPurpose;
 use crate::{
     model::revocation_list::{RevocationList, RevocationListRelations},
-    provider::{
-        credential_formatter::provider::MockCredentialFormatterProvider,
-        revocation::provider::MockRevocationMethodProvider,
-    },
+    provider::revocation::provider::MockRevocationMethodProvider,
     repository::{
         credential_repository::MockCredentialRepository,
         revocation_list_repository::MockRevocationListRepository,
