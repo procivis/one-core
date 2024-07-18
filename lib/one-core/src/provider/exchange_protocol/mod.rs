@@ -32,6 +32,8 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::DataRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+
 pub mod dto;
 mod mapper;
 pub mod openid4vc;
@@ -61,6 +63,27 @@ pub enum ExchangeProtocolError {
     IncorrectCredentialSchemaType,
     #[error(transparent)]
     Other(anyhow::Error),
+    #[error(transparent)]
+    StorageAccessError(anyhow::Error),
+}
+
+pub type StorageAccess = dyn StorageProxy;
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[async_trait]
+pub trait StorageProxy: Send + Sync {
+    async fn create_interaction(
+        &self,
+        interaction: Interaction,
+    ) -> Result<crate::model::interaction::InteractionId, anyhow::Error>;
+    async fn get_schema(
+        &self,
+        schema_id: &str,
+        relations: &CredentialSchemaRelations,
+    ) -> Result<Option<CredentialSchema>, anyhow::Error>;
+    async fn create_credential_schema(
+        &self,
+        schema: CredentialSchema,
+    ) -> Result<shared_types::CredentialSchemaId, anyhow::Error>;
 }
 
 #[cfg_attr(test, mockall::automock(type VCInteractionContext = (); type VPInteractionContext = ();))]
@@ -76,6 +99,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         &self,
         url: Url,
         organisation: Organisation,
+        storage_access: &StorageAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError>;
 
     async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError>;
@@ -167,8 +191,11 @@ where
         &self,
         url: Url,
         organisation: Organisation,
+        storage_access: &StorageAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
-        self.inner.handle_invitation(url, organisation).await
+        self.inner
+            .handle_invitation(url, organisation, storage_access)
+            .await
     }
 
     async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {

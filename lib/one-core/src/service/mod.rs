@@ -17,6 +17,7 @@ pub mod ssi_holder;
 pub mod ssi_issuer;
 mod ssi_validator;
 pub mod ssi_verifier;
+pub mod storage_proxy;
 pub mod task;
 pub mod trust_anchor;
 pub mod trust_entity;

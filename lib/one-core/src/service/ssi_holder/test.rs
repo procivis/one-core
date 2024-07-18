@@ -33,8 +33,10 @@ use crate::provider::exchange_protocol::dto::{
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -776,6 +778,8 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         credential_repository: Arc::new(MockCredentialRepository::new()),
         proof_repository: Arc::new(MockProofRepository::new()),
         organisation_repository: Arc::new(MockOrganisationRepository::new()),
+        interaction_repository: Arc::new(MockInteractionRepository::new()),
+        credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
         history_repository: Arc::new(MockHistoryRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),

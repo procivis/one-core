@@ -3,7 +3,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use maplit::hashmap;
-use mockall::Sequence;
 use one_providers::common_models::key::Key;
 use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -36,7 +35,9 @@ use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VPInteractionData, OpenID4VPPresentationDefinition,
 };
 use crate::provider::exchange_protocol::openid4vc::mapper::prepare_claims;
-use crate::provider::exchange_protocol::{ExchangeProtocolError, ExchangeProtocolImpl};
+use crate::provider::exchange_protocol::{
+    ExchangeProtocolError, ExchangeProtocolImpl, MockStorageProxy,
+};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -394,15 +395,7 @@ fn generic_organisation() -> Organisation {
 
 #[tokio::test]
 async fn test_handle_invitation_proof_success() {
-    let mut interaction_repository = MockInteractionRepository::default();
-
-    let mut seq = Sequence::new();
-
-    interaction_repository
-        .expect_create_interaction()
-        .times(2)
-        .in_sequence(&mut seq)
-        .returning(move |request| Ok(request.id));
+    let interaction_repository = MockInteractionRepository::default();
 
     let protocol = setup_protocol(TestInputs {
         interaction_repository,
@@ -434,8 +427,14 @@ async fn test_handle_invitation_proof_success() {
     let url = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
         , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
 
+    let mut storage_proxy = MockStorageProxy::default();
+    storage_proxy
+        .expect_create_interaction()
+        .times(2)
+        .returning(move |request| Ok(request.id));
+
     let result = protocol
-        .handle_invitation(url, generic_organisation())
+        .handle_invitation(url, generic_organisation(), &storage_proxy)
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -467,7 +466,11 @@ async fn test_handle_invitation_proof_success() {
                                                               , nonce, callback_url, client_metadata_uri, callback_url, presentation_definition_uri)).unwrap();
 
     let result = protocol
-        .handle_invitation(url_using_uri_instead_of_values, generic_organisation())
+        .handle_invitation(
+            url_using_uri_instead_of_values,
+            generic_organisation(),
+            &storage_proxy,
+        )
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -503,10 +506,16 @@ async fn test_handle_invitation_proof_failed() {
     let nonce = Uuid::new_v4().to_string();
     let callback_url = "http://127.0.0.1/callback";
 
+    let storage_proxy = MockStorageProxy::default();
+
     let incorrect_response_type = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                       , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_response_type, generic_organisation())
+        .handle_invitation(
+            incorrect_response_type,
+            generic_organisation(),
+            &storage_proxy,
+        )
         .await
         .unwrap_err();
     assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
@@ -514,7 +523,7 @@ async fn test_handle_invitation_proof_failed() {
     let missing_nonce = Url::parse(&format!("openid4vp://?response_type=vp_token&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                             , callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(missing_nonce, generic_organisation())
+        .handle_invitation(missing_nonce, generic_organisation(), &storage_proxy)
         .await
         .unwrap_err();
     assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
@@ -522,7 +531,11 @@ async fn test_handle_invitation_proof_failed() {
     let incorrect_client_id_scheme = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=some_scheme&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                          , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_client_id_scheme, generic_organisation())
+        .handle_invitation(
+            incorrect_client_id_scheme,
+            generic_organisation(),
+            &storage_proxy,
+        )
         .await
         .unwrap_err();
     assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
@@ -530,7 +543,11 @@ async fn test_handle_invitation_proof_failed() {
     let incorrect_response_mode = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=some_mode&response_uri={}&presentation_definition={}"
                                                       , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_response_mode, generic_organisation())
+        .handle_invitation(
+            incorrect_response_mode,
+            generic_organisation(),
+            &storage_proxy,
+        )
         .await
         .unwrap_err();
     assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
@@ -538,7 +555,11 @@ async fn test_handle_invitation_proof_failed() {
     let incorrect_client_id_scheme = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=some_scheme&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                          , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_client_id_scheme, generic_organisation())
+        .handle_invitation(
+            incorrect_client_id_scheme,
+            generic_organisation(),
+            &storage_proxy,
+        )
         .await
         .unwrap_err();
     assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
@@ -553,7 +574,11 @@ async fn test_handle_invitation_proof_failed() {
     .unwrap();
     let missing_metadata_field = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}", nonce, callback_url, metadata_missing_jwt_vp_json, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(missing_metadata_field, generic_organisation())
+        .handle_invitation(
+            missing_metadata_field,
+            generic_organisation(),
+            &storage_proxy,
+        )
         .await
         .unwrap_err();
     assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
@@ -564,6 +589,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             both_client_metadata_and_uri_specified,
             generic_organisation(),
+            &storage_proxy,
         )
         .await
         .unwrap_err();
@@ -575,6 +601,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             both_presentation_definition_and_uri_specified,
             generic_organisation(),
+            &storage_proxy,
         )
         .await
         .unwrap_err();
@@ -597,7 +624,11 @@ async fn test_handle_invitation_proof_failed() {
     let client_metadata_uri_is_not_https = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                                , nonce, callback_url, invalid_client_metadata_uri, callback_url, presentation_definition)).unwrap();
     let result = protocol_https_only
-        .handle_invitation(client_metadata_uri_is_not_https, generic_organisation())
+        .handle_invitation(
+            client_metadata_uri_is_not_https,
+            generic_organisation(),
+            &storage_proxy,
+        )
         .await
         .unwrap_err();
     assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
@@ -609,6 +640,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             presentation_definition_uri_is_not_https,
             generic_organisation(),
+            &storage_proxy,
         )
         .await
         .unwrap_err();

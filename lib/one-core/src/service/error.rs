@@ -1010,6 +1010,7 @@ impl ExchangeProtocolError {
             ExchangeProtocolError::InvalidRequest(_) => ErrorCode::BR_0085,
             ExchangeProtocolError::Disabled(_) => ErrorCode::BR_0085,
             ExchangeProtocolError::Other(_) => ErrorCode::BR_0062,
+            ExchangeProtocolError::StorageAccessError(_) => ErrorCode::BR_0062,
         }
     }
 }

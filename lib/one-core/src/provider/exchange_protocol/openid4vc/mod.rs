@@ -42,7 +42,7 @@ use super::dto::{PresentedCredential, ShareResponse, SubmitIssuerResponse};
 use super::mapper::interaction_from_handle_invitation;
 use super::{
     deserialize_interaction_data, serialize_interaction_data, ExchangeProtocolError,
-    ExchangeProtocolImpl,
+    ExchangeProtocolImpl, StorageAccess,
 };
 use crate::config::core_config::{self, TransportType};
 use crate::model::claim::Claim;
@@ -296,6 +296,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         &self,
         url: Url,
         organisation: Organisation,
+        storage_access: &StorageAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         let invitation_type =
             self.detect_invitation_type(&url)
@@ -305,15 +306,16 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
         match invitation_type {
             InvitationType::CredentialIssuance => {
-                handle_credential_invitation(self, url, organisation).await
+                handle_credential_invitation(url, organisation, &self.client, storage_access).await
             }
             InvitationType::ProofRequestHttp => {
                 handle_proof_invitation(
                     url,
-                    self,
                     self.params
                         .allow_insecure_http_transport
                         .is_some_and(|value| value),
+                    &self.client,
+                    storage_access,
                 )
                 .await
             }
@@ -961,11 +963,12 @@ async fn resolve_credential_offer(
 }
 
 async fn handle_credential_invitation(
-    deps: &OpenID4VC,
     invitation_url: Url,
     organisation: Organisation,
+    client: &reqwest::Client,
+    storage_access: &StorageAccess,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
-    let credential_offer = resolve_credential_offer(&deps.client, invitation_url).await?;
+    let credential_offer = resolve_credential_offer(client, invitation_url).await?;
 
     let credential_issuer_endpoint: Url =
         credential_offer.credential_issuer.parse().map_err(|_| {
@@ -976,11 +979,9 @@ async fn handle_credential_invitation(
         })?;
 
     let (oicd_discovery, issuer_metadata) =
-        get_discovery_and_issuer_metadata(&deps.client, credential_issuer_endpoint.to_owned())
-            .await?;
+        get_discovery_and_issuer_metadata(client, credential_issuer_endpoint.to_owned()).await?;
 
-    let token_response: OpenID4VCITokenResponseDTO = deps
-        .client
+    let token_response: OpenID4VCITokenResponseDTO = client
         .post(&oicd_discovery.token_endpoint)
         .form(&OpenID4VCITokenRequestDTO::PreAuthorizedCode {
             pre_authorized_code: credential_offer.grants.code.pre_authorized_code.clone(),
@@ -1018,30 +1019,23 @@ async fn handle_credential_invitation(
     };
     let data = serialize_interaction_data(&holder_data)?;
 
-    let interaction = create_and_store_interaction(
-        &*deps.interaction_repository,
-        credential_issuer_endpoint,
-        data,
-    )
-    .await
-    .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
+    let interaction =
+        create_and_store_interaction(storage_access, credential_issuer_endpoint, data).await?;
     let interaction_id = interaction.id;
 
     let claim_keys = build_claim_keys(credential)?;
 
-    let credential_id = Uuid::new_v4().into();
-    let (claims, credential_schema) = match deps
-        .credential_schema_repository
-        .get_by_schema_id_and_organisation(
+    let credential_id: CredentialId = Uuid::new_v4().into();
+    let (claims, credential_schema) = match storage_access
+        .get_schema(
             &schema_id,
-            organisation.id,
             &CredentialSchemaRelations {
                 claim_schemas: Some(ClaimSchemaRelations::default()),
                 organisation: Some(Default::default()),
             },
         )
         .await
-        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
+        .map_err(ExchangeProtocolError::StorageAccessError)?
     {
         Some(credential_schema) => {
             if credential_schema.schema_type != schema_type {
@@ -1194,10 +1188,10 @@ async fn handle_credential_invitation(
                 }
             };
 
-            deps.credential_schema_repository
+            storage_access
                 .create_credential_schema(credential_schema.clone())
                 .await
-                .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
+                .map_err(ExchangeProtocolError::StorageAccessError)?;
 
             (claims, credential_schema)
         }
@@ -1362,15 +1356,19 @@ fn get_credential_schema_name(
 }
 
 async fn create_and_store_interaction(
-    repository: &dyn InteractionRepository,
-    base_url: Url,
+    storage_access: &StorageAccess,
+    credential_issuer_endpoint: Url,
     data: Vec<u8>,
-) -> Result<Interaction, DataLayerError> {
+) -> Result<Interaction, ExchangeProtocolError> {
     let now = OffsetDateTime::now_utc();
 
-    let interaction = interaction_from_handle_invitation(base_url, Some(data), now);
+    let interaction =
+        interaction_from_handle_invitation(credential_issuer_endpoint, Some(data), now);
 
-    repository.create_interaction(interaction.clone()).await?;
+    let _ = storage_access
+        .create_interaction(interaction.clone())
+        .await
+        .map_err(ExchangeProtocolError::StorageAccessError)?;
 
     Ok(interaction)
 }
@@ -1528,26 +1526,24 @@ async fn interaction_data_from_query(
 
 async fn handle_proof_invitation(
     url: Url,
-    deps: &OpenID4VC,
+    //deps: &OpenID4VC,
     allow_insecure_http_transport: bool,
+    client: &reqwest::Client,
+    storage_access: &StorageAccess,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
         "Query cannot be empty".to_string(),
     ))?;
 
     let interaction_data =
-        interaction_data_from_query(query, &deps.client, allow_insecure_http_transport).await?;
+        interaction_data_from_query(query, client, allow_insecure_http_transport).await?;
     validate_interaction_data(&interaction_data)?;
     let data = serialize_interaction_data(&interaction_data)?;
 
     let now = OffsetDateTime::now_utc();
-    let interaction = create_and_store_interaction(
-        &*deps.interaction_repository,
-        interaction_data.response_uri,
-        data,
-    )
-    .await
-    .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
+    let interaction =
+        create_and_store_interaction(storage_access, interaction_data.response_uri, data).await?;
+
     let interaction_id = interaction.id.to_owned();
 
     let proof_id = Uuid::new_v4().into();
