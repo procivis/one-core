@@ -40,6 +40,7 @@ use crate::service::error::{
 };
 use crate::service::ssi_issuer::dto::IssuerResponseDTO;
 use crate::service::ssi_validator::validate_config_entity_presence;
+use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::oidc::detect_correct_format;
 
 impl SSIHolderService {
@@ -63,7 +64,15 @@ impl SSIHolderService {
                 "Cannot detect exchange protocol".to_string(),
             ))?;
 
-        let response = protocol.handle_invitation(url, organisation).await?;
+        let storage_access = StorageProxyImpl::new(
+            organisation_id,
+            self.interaction_repository.clone(),
+            self.credential_schema_repository.clone(),
+        );
+
+        let response = protocol
+            .handle_invitation(url, organisation, &storage_access)
+            .await?;
         match &response {
             InvitationResponseDTO::Credential { credentials, .. } => {
                 for credential in credentials.iter() {

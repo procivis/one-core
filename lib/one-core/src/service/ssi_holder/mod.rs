@@ -6,8 +6,10 @@ use one_providers::key_storage::provider::KeyProvider;
 use crate::config::core_config;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
 use one_providers::did::provider::DidMethodProvider;
@@ -25,6 +27,8 @@ pub struct SSIHolderService {
     credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     key_provider: Arc<dyn KeyProvider>,
@@ -40,6 +44,8 @@ impl SSIHolderService {
         credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
+        interaction_repository: Arc<dyn InteractionRepository>,
+        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         key_provider: Arc<dyn KeyProvider>,
@@ -52,6 +58,8 @@ impl SSIHolderService {
             credential_repository,
             proof_repository,
             organisation_repository,
+            interaction_repository,
+            credential_schema_repository,
             did_repository,
             history_repository,
             key_provider,

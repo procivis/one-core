@@ -22,7 +22,7 @@ use self::mapper::{
 };
 use super::dto::ShareResponse;
 use super::mapper::get_relevant_credentials_to_credential_schemas;
-use super::ExchangeProtocolImpl;
+use super::{ExchangeProtocolImpl, StorageAccess};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim::{Claim, ClaimId};
@@ -136,6 +136,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         &self,
         url: Url,
         organisation: Organisation,
+        _: &StorageAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         let invitation_type = categorize_url(&url)?;
 

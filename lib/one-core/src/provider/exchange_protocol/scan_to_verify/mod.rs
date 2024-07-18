@@ -4,6 +4,7 @@ use std::sync::Arc;
 use url::Url;
 
 use super::dto::ShareResponse;
+use super::StorageAccess;
 use crate::model::credential::Credential;
 use crate::model::did::{Did, KeyRole};
 use crate::model::organisation::Organisation;
@@ -56,6 +57,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         &self,
         _url: Url,
         _organisation: Organisation,
+        _storage_access: &StorageAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         unimplemented!()
     }
