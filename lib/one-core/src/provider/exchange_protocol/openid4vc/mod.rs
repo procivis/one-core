@@ -6,8 +6,7 @@ use async_trait::async_trait;
 use dto::OpenID4VPBleData;
 use model::BLEOpenID4VPInteractionData;
 use one_providers::common_models::key::Key;
-use one_providers::credential_formatter::model::DetailCredential;
-use one_providers::credential_formatter::model::FormatPresentationCtx;
+use one_providers::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::crypto::imp::utilities;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
@@ -797,6 +796,8 @@ impl ExchangeProtocolImpl for OpenID4VC {
     async fn get_presentation_definition(
         &self,
         proof: &Proof,
+        _interaction_data: Self::VPInteractionContext,
+        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let presentation_definition = {
             if proof.transport == TransportType::Ble.to_string() {
@@ -884,7 +885,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
             .map_err(|e: ServiceError| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
-            &*self.credential_repository,
+            storage_access,
             credential_groups,
             group_id_to_schema_id,
             &allowed_schema_formats,

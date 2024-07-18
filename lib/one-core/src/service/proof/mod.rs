@@ -7,6 +7,7 @@ use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeriphe
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
@@ -24,6 +25,7 @@ pub struct ProofService {
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
+    credential_schema: Arc<dyn CredentialSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -41,6 +43,7 @@ impl ProofService {
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
         credential_repository: Arc<dyn CredentialRepository>,
+        credential_schema: Arc<dyn CredentialSchemaRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -55,6 +58,7 @@ impl ProofService {
             proof_schema_repository,
             did_repository,
             credential_repository,
+            credential_schema,
             history_repository,
             interaction_repository,
             credential_formatter_provider,

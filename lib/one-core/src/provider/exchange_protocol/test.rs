@@ -34,6 +34,7 @@ use crate::provider::exchange_protocol::mapper::get_relevant_credentials_to_cred
 use crate::provider::exchange_protocol::provider::{
     ExchangeProtocolProvider, ExchangeProtocolProviderImpl,
 };
+use crate::provider::exchange_protocol::MockStorageProxy;
 use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationInfo, JsonLdContext, MockRevocationMethod};
@@ -200,7 +201,7 @@ async fn test_issuer_submit_succeeds() {
 
 #[tokio::test]
 async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
-    let mut credential_repository = MockCredentialRepository::new();
+    let mut storage = MockStorageProxy::new();
     let mut credential = dummy_credential();
     credential
         .state
@@ -211,12 +212,12 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
         .state = CredentialStateEnum::Accepted;
 
     let credential_copy = credential.to_owned();
-    credential_repository
+    storage
         .expect_get_credentials_by_credential_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
-        &credential_repository,
+        &storage,
         vec![CredentialGroup {
             id: "input_0".to_string(),
             name: None,
@@ -241,16 +242,16 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
 
 #[tokio::test]
 async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state() {
-    let mut credential_repository = MockCredentialRepository::new();
+    let mut storage = MockStorageProxy::new();
     let credential = dummy_credential();
 
     let credential_copy = credential.to_owned();
-    credential_repository
+    storage
         .expect_get_credentials_by_credential_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
-        &credential_repository,
+        &storage,
         vec![CredentialGroup {
             id: "input_0".to_string(),
             name: None,
@@ -274,7 +275,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
 
 #[tokio::test]
 async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_allowed() {
-    let mut credential_repository = MockCredentialRepository::new();
+    let mut storage = MockStorageProxy::new();
     let mut credential = dummy_credential();
     credential
         .state
@@ -285,12 +286,12 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
         .state = CredentialStateEnum::Accepted;
 
     let credential_copy = credential.to_owned();
-    credential_repository
+    storage
         .expect_get_credentials_by_credential_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
-        &credential_repository,
+        &storage,
         vec![CredentialGroup {
             id: "input_0".to_string(),
             name: None,
@@ -368,16 +369,16 @@ fn mdoc_credential() -> Credential {
 
 #[tokio::test]
 async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
-    let mut credential_repository = MockCredentialRepository::new();
+    let mut storage = MockStorageProxy::new();
     let credential = mdoc_credential();
 
     let credential_copy = credential.to_owned();
-    credential_repository
+    storage
         .expect_get_credentials_by_credential_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
-        &credential_repository,
+        &storage,
         vec![CredentialGroup {
             id: "input_0".to_string(),
             name: None,
@@ -401,16 +402,16 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
 
 #[tokio::test]
 async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_selected() {
-    let mut credential_repository = MockCredentialRepository::new();
+    let mut storage = MockStorageProxy::new();
     let credential = mdoc_credential();
 
     let credential_copy = credential.to_owned();
-    credential_repository
+    storage
         .expect_get_credentials_by_credential_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
-        &credential_repository,
+        &storage,
         vec![CredentialGroup {
             id: "input_0".to_string(),
             name: None,

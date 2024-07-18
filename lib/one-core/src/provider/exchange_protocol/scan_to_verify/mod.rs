@@ -1,6 +1,12 @@
-use async_trait::async_trait;
-use one_providers::common_models::key::Key;
 use std::sync::Arc;
+
+use async_trait::async_trait;
+use dto::ScanToVerifyCredentialDTO;
+use one_providers::common_models::key::Key;
+use one_providers::credential_formatter::model::DetailCredential;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::did::provider::DidMethodProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use url::Url;
 
 use super::dto::ShareResponse;
@@ -16,11 +22,6 @@ use crate::provider::exchange_protocol::{ExchangeProtocolError, ExchangeProtocol
 use crate::service::proof::dto::ScanToVerifyRequestDTO;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 use crate::util::key_verification::KeyVerification;
-use dto::ScanToVerifyCredentialDTO;
-use one_providers::credential_formatter::model::DetailCredential;
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub mod dto;
 
@@ -111,6 +112,8 @@ impl ExchangeProtocolImpl for ScanToVerify {
     async fn get_presentation_definition(
         &self,
         _proof: &Proof,
+        _interaction_data: Self::VPInteractionContext,
+        _storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         unimplemented!()
     }

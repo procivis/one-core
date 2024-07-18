@@ -7,8 +7,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use dto_mapper::convert_inner;
 use one_providers::common_models::key::Key;
-use one_providers::credential_formatter::model::DetailCredential;
-use one_providers::credential_formatter::model::FormatPresentationCtx;
+use one_providers::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use shared_types::CredentialId;
@@ -42,7 +41,6 @@ use crate::provider::exchange_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
 use crate::provider::exchange_protocol::ExchangeProtocolError;
-use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
@@ -59,7 +57,6 @@ const REDIRECT_URI_QUERY_PARAM_KEY: &str = "redirect_uri";
 pub(crate) struct ProcivisTemp {
     client: reqwest::Client,
     base_url: Option<String>,
-    credential_repository: Arc<dyn CredentialRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
@@ -72,7 +69,6 @@ impl ProcivisTemp {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         base_url: Option<String>,
-        credential_repository: Arc<dyn CredentialRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
@@ -83,7 +79,6 @@ impl ProcivisTemp {
         Self {
             client: reqwest::Client::new(),
             base_url,
-            credential_repository,
             interaction_repository,
             credential_schema_repository,
             did_repository,
@@ -126,7 +121,7 @@ fn categorize_url(url: &Url) -> Result<InvitationType, ExchangeProtocolError> {
 #[async_trait]
 impl ExchangeProtocolImpl for ProcivisTemp {
     type VCInteractionContext = ();
-    type VPInteractionContext = ();
+    type VPInteractionContext = Vec<ProofClaimSchema>;
 
     fn can_handle(&self, url: &Url) -> bool {
         categorize_url(url).is_ok()
@@ -376,29 +371,20 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         Ok(ShareResponse {
             url: pairs.finish().to_string(),
             id: Uuid::new_v4(),
-            context: (),
+            context: vec![],
         })
     }
 
     async fn get_presentation_definition(
         &self,
         proof: &Proof,
+        proof_claim_schemas: Self::VPInteractionContext,
+        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let requested_claims = get_proof_claim_schemas_from_proof(proof)?;
         let mut credential_groups: Vec<CredentialGroup> = vec![];
         let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
 
-        let interaction = proof
-            .interaction
-            .as_ref()
-            .ok_or(ExchangeProtocolError::Failed(
-                "interaction is None".to_string(),
-            ))?;
-        let proof_claim_schemas: Vec<ProofClaimSchema> =
-            serde_json::from_slice(interaction.data.as_ref().ok_or(
-                ExchangeProtocolError::Failed("interaction.data is None".to_string()),
-            )?)
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
         let allowed_formats: HashSet<&str> = proof_claim_schemas
             .iter()
             .map(|proof_claim_schema| proof_claim_schema.credential_schema.format.as_str())
@@ -434,7 +420,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         }
 
         let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
-            &*self.credential_repository,
+            storage_access,
             credential_groups,
             group_id_to_schema_id,
             &allowed_formats,

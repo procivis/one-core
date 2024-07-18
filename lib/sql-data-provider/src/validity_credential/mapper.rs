@@ -1,6 +1,7 @@
-use one_core::{model, repository::error::DataLayerError};
+use one_core::model;
+use one_core::repository::error::DataLayerError;
 
-use crate::entity::validity_credential::{self};
+use crate::entity::validity_credential;
 
 impl From<model::validity_credential::ValidityCredential> for validity_credential::Model {
     fn from(value: model::validity_credential::ValidityCredential) -> Self {
