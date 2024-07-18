@@ -14,7 +14,7 @@ use super::StorageAccess;
 use crate::model::credential::Credential;
 use crate::model::did::{Did, KeyRole};
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
+use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::provider::exchange_protocol::dto::{
     PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
 };
@@ -74,7 +74,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _holder_did: &Did,
         _key: &Key,
         _jwk_key_id: Option<String>,
-    ) -> Result<(), ExchangeProtocolError> {
+    ) -> Result<Option<UpdateProofRequest>, ExchangeProtocolError> {
         unimplemented!()
     }
 

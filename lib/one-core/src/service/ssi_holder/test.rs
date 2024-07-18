@@ -329,7 +329,7 @@ async fn test_submit_proof_succeeds() {
             true
         })
         .once()
-        .returning(|_, _, _, _, _| Ok(()));
+        .returning(|_, _, _, _, _| Ok(None));
 
     let mut protocol_provider = MockExchangeProtocolProvider::new();
     protocol_provider
@@ -552,7 +552,7 @@ async fn test_submit_proof_repeating_claims() {
             true
         })
         .once()
-        .returning(|_, _, _, _, _| Ok(()));
+        .returning(|_, _, _, _, _| Ok(None));
 
     let mut protocol_provider = MockExchangeProtocolProvider::new();
     protocol_provider
