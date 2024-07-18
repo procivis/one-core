@@ -11,9 +11,7 @@ use crate::router::AppState;
 #[utoipa::path(
     get,
     path = "/api/jsonld-context/v1",
-    params(
-        ResolveJsonLDContextQuery
-    ),
+    params(ResolveJsonLDContextQuery),
     responses(OkOrErrorResponse<ResolveJsonLDContextResponseRestDTO>),
     tag = "jsonld",
     security(
