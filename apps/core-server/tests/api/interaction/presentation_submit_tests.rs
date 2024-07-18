@@ -1,22 +1,17 @@
 use std::str::FromStr;
 
-use one_core::model::{
-    credential::CredentialStateEnum,
-    did::{KeyRole, RelatedKey},
-    proof::ProofStateEnum,
-};
+use one_core::model::credential::CredentialStateEnum;
+use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use shared_types::DidValue;
-use wiremock::{
-    http::Method,
-    matchers::{body_string_contains, method, path, query_param},
-    Mock, MockServer, ResponseTemplate,
-};
+use wiremock::http::Method;
+use wiremock::matchers::{body_string_contains, method, path, query_param};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::{
-    fixtures::{self, TestingCredentialParams, TestingDidParams, TestingKeyParams},
-    utils::{self, server::run_server},
-};
+use crate::fixtures::{self, TestingCredentialParams, TestingDidParams, TestingKeyParams};
+use crate::utils;
+use crate::utils::server::run_server;
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_procivis_temp() {

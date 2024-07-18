@@ -38,6 +38,7 @@ use crate::service::error::{
 use crate::service::proof::validator::{
     validate_format_and_exchange_protocol_compatibility, validate_scan_to_verify_compatibility,
 };
+use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_proof_interaction,
 };
@@ -120,17 +121,16 @@ impl ProofService {
                 id,
                 &ProofRelations {
                     state: Some(ProofStateRelations::default()),
-                    holder_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations {
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
-
-        let Some(proof) = proof else {
-            return Err(EntityNotFoundError::Proof(*id).into());
-        };
+            .await?
+            .ok_or(EntityNotFoundError::Proof(*id))?;
 
         if proof
             .holder_did
@@ -148,7 +148,33 @@ impl ProofService {
         let exchange = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
             MissingProviderError::ExchangeProtocol(proof.exchange.clone()),
         )?;
-        Ok(exchange.get_presentation_definition(&proof).await?)
+        let interaction_data = proof
+            .interaction
+            .as_ref()
+            .and_then(|interaction| interaction.data.as_ref())
+            .map(|interaction| serde_json::from_slice(interaction))
+            .ok_or_else(|| ServiceError::MappingError("proof interaction is missing".into()))?
+            .map_err(|err| ServiceError::MappingError(err.to_string()))?;
+
+        let organisation_id = proof
+            .holder_did
+            .as_ref()
+            .ok_or_else(|| ServiceError::MappingError("holder_did is missing".into()))?
+            .organisation
+            .as_ref()
+            .ok_or_else(|| ServiceError::MappingError("holder_did.organisation is missing".into()))?
+            .id;
+
+        let storage_access = StorageProxyImpl::new(
+            organisation_id,
+            self.interaction_repository.clone(),
+            self.credential_schema.clone(),
+            self.credential_repository.clone(),
+        );
+
+        Ok(exchange
+            .get_presentation_definition(&proof, interaction_data, &storage_access)
+            .await?)
     }
 
     /// Returns list of proofs according to query

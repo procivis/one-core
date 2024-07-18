@@ -1,17 +1,13 @@
-use one_core::{
-    model::validity_credential::{ValidityCredential, ValidityCredentialType},
-    repository::{
-        error::DataLayerError, validity_credential_repository::ValidityCredentialRepository,
-    },
-};
+use one_core::model::validity_credential::{ValidityCredential, ValidityCredentialType};
+use one_core::repository::error::DataLayerError;
+use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
 };
 use shared_types::CredentialId;
 
-use crate::entity::validity_credential::{self};
-
 use super::ValidityCredentialProvider;
+use crate::entity::validity_credential;
 
 #[async_trait::async_trait]
 impl ValidityCredentialRepository for ValidityCredentialProvider {

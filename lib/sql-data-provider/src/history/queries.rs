@@ -1,23 +1,20 @@
+use one_core::model::history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn};
+use sea_orm::sea_query::{
+    ColumnRef, Condition, Expr, IntoCondition, IntoIden, IntoTableRef, Query, SimpleExpr,
+};
 use sea_orm::{
-    sea_query::{
-        ColumnRef, Condition, Expr, IntoCondition, IntoIden, IntoTableRef, Query, SimpleExpr,
-    },
     ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, QuerySelect, QueryTrait,
     RelationTrait,
 };
 
-use crate::{
-    entity::{
-        claim, claim_schema, credential, credential_schema, did,
-        history::{self},
-        proof, proof_claim, proof_input_claim_schema, proof_input_schema, proof_schema,
-    },
-    list_query_generic::{
-        get_comparison_condition, get_equals_condition, IntoFilterCondition, IntoJoinCondition,
-        IntoSortingColumn, JoinRelation,
-    },
+use crate::entity::{
+    claim, claim_schema, credential, credential_schema, did, history, proof, proof_claim,
+    proof_input_claim_schema, proof_input_schema, proof_schema,
 };
-use one_core::model::history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn};
+use crate::list_query_generic::{
+    get_comparison_condition, get_equals_condition, IntoFilterCondition, IntoJoinCondition,
+    IntoSortingColumn, JoinRelation,
+};
 
 impl IntoSortingColumn for SortableHistoryColumn {
     fn get_column(&self) -> SimpleExpr {

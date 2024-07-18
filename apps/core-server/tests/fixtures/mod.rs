@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::str::FromStr;
+
 use core_server::ServerConfig;
 use one_core::config::core_config::{
     self, AppConfig, CacheEntitiesConfig, JsonLdContextCacheType, JsonLdContextConfig,
@@ -34,8 +37,6 @@ use rand::Rng;
 use shared_types::{CredentialId, DidId, DidValue, KeyId, ProofId};
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
-use std::collections::HashMap;
-use std::str::FromStr;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;

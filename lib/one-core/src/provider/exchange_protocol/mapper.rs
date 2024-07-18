@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
+use super::StorageAccess;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -23,7 +24,6 @@ use crate::provider::exchange_protocol::dto::{
     CredentialGroup, CredentialGroupItem, PresentationDefinitionFieldDTO,
 };
 use crate::provider::exchange_protocol::ExchangeProtocolError;
-use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
@@ -107,7 +107,7 @@ pub fn credential_model_to_credential_dto(
 }
 
 pub async fn get_relevant_credentials_to_credential_schemas(
-    credential_repository: &dyn CredentialRepository,
+    storage_access: &StorageAccess,
     mut credential_groups: Vec<CredentialGroup>,
     group_id_to_schema_id_mapping: HashMap<String, String>,
     allowed_schema_formats: &HashSet<&str>,
@@ -121,9 +121,9 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                     "Incorrect group id to credential schema id mapping".to_owned(),
                 ))?;
 
-        let relevant_credentials_inner = credential_repository
+        let relevant_credentials_inner = storage_access
             .get_credentials_by_credential_schema_id(
-                credential_schema_id.to_owned(),
+                credential_schema_id,
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
                     issuer_did: Some(DidRelations::default()),

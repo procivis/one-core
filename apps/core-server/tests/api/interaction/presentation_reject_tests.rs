@@ -1,15 +1,11 @@
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
-use wiremock::{
-    http::Method,
-    matchers::{method, path, query_param},
-    Mock, MockServer, ResponseTemplate,
-};
+use wiremock::http::Method;
+use wiremock::matchers::{method, path, query_param};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::{
-    fixtures,
-    utils::{self, server::run_server},
-};
+use crate::utils::server::run_server;
+use crate::{fixtures, utils};
 
 #[tokio::test]
 async fn test_presentation_reject_endpoint_for_procivis_temp() {

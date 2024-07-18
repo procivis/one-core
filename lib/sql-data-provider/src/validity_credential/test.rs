@@ -1,26 +1,17 @@
 use std::time::Duration;
 
-use one_core::{
-    model::{
-        credential::CredentialStateEnum,
-        validity_credential::{Lvvc, ValidityCredential, ValidityCredentialType},
-    },
-    repository::validity_credential_repository::ValidityCredentialRepository,
-};
+use one_core::model::credential::CredentialStateEnum;
+use one_core::model::validity_credential::{Lvvc, ValidityCredential, ValidityCredentialType};
+use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel};
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    db_conn,
-    entity::{
-        did::DidType,
-        validity_credential::{self},
-    },
-    test_utilities,
-    validity_credential::ValidityCredentialProvider,
-};
+use crate::entity::did::DidType;
+use crate::entity::validity_credential;
+use crate::validity_credential::ValidityCredentialProvider;
+use crate::{db_conn, test_utilities};
 
 #[tokio::test]
 async fn test_insert_lvvc() {

@@ -46,6 +46,7 @@ use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
@@ -66,6 +67,7 @@ struct Repositories {
     pub proof_schema_repository: MockProofSchemaRepository,
     pub did_repository: MockDidRepository,
     pub credential_repository: MockCredentialRepository,
+    pub credential_schema_repository: MockCredentialSchemaRepository,
     pub history_repository: MockHistoryRepository,
     pub interaction_repository: MockInteractionRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
@@ -81,6 +83,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
         Arc::new(repositories.credential_repository),
+        Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.history_repository),
         Arc::new(repositories.interaction_repository),
         Arc::new(repositories.credential_formatter_provider),
@@ -247,18 +250,11 @@ async fn test_get_presentation_definition_holder_did_not_local() {
 
     {
         let res_clone = proof.clone();
+        let proof_id = proof.id;
         proof_repository
             .expect_get_proof()
             .once()
-            .with(
-                eq(proof.id.to_owned()),
-                eq(ProofRelations {
-                    state: Some(ProofStateRelations::default()),
-                    holder_did: Some(DidRelations::default()),
-                    interaction: Some(InteractionRelations::default()),
-                    ..Default::default()
-                }),
-            )
+            .withf(move |id, _| id == &proof_id)
             .returning(move |_, _| Ok(Some(res_clone.clone())));
     }
 

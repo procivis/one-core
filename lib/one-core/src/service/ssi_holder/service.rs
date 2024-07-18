@@ -68,6 +68,7 @@ impl SSIHolderService {
             organisation_id,
             self.interaction_repository.clone(),
             self.credential_schema_repository.clone(),
+            self.credential_repository.clone(),
         );
 
         let response = protocol
@@ -239,8 +240,29 @@ impl SSIHolderService {
             MissingProviderError::ExchangeProtocol(proof.exchange.clone()),
         )?;
 
+        let interaction_data = proof
+            .interaction
+            .as_ref()
+            .and_then(|interaction| interaction.data.as_ref())
+            .map(|interaction| serde_json::from_slice(interaction))
+            .ok_or_else(|| ServiceError::MappingError("missing interaction".into()))?
+            .map_err(|err| ServiceError::MappingError(err.to_string()))?;
+
+        let organisation_id = holder_did
+            .organisation
+            .as_ref()
+            .ok_or_else(|| ServiceError::MappingError("holder did organisation is missing".into()))?
+            .id;
+
+        let storage_access = StorageProxyImpl::new(
+            organisation_id,
+            self.interaction_repository.clone(),
+            self.credential_schema_repository.clone(),
+            self.credential_repository.clone(),
+        );
+
         let presentation_definition = exchange_protocol
-            .get_presentation_definition(&proof)
+            .get_presentation_definition(&proof, interaction_data, &storage_access)
             .await?;
 
         let requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseDTO> =

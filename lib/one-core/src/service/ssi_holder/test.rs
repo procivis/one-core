@@ -236,7 +236,7 @@ async fn test_submit_proof_succeeds() {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     host: Some("http://www.host.co".parse().unwrap()),
-                    data: None,
+                    data: Some(serde_json::to_vec(&()).unwrap()),
                 }),
                 ..dummy_proof()
             }))
@@ -289,12 +289,12 @@ async fn test_submit_proof_succeeds() {
     exchange_protocol
         .inner
         .expect_get_presentation_definition()
-        .withf(move |proof| {
+        .withf(move |proof, _, _| {
             assert_eq!(proof.id, proof_id);
             true
         })
         .once()
-        .returning(|_| {
+        .returning(|_, _, _| {
             Ok(PresentationDefinitionResponseDTO {
                 request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
                     id: "random".to_string(),
@@ -438,7 +438,7 @@ async fn test_submit_proof_repeating_claims() {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     host: Some("http://www.host.co".parse().unwrap()),
-                    data: None,
+                    data: Some(serde_json::to_vec(&()).unwrap()),
                 }),
                 ..dummy_proof()
             }))
@@ -486,12 +486,12 @@ async fn test_submit_proof_repeating_claims() {
     exchange_protocol
         .inner
         .expect_get_presentation_definition()
-        .withf(move |proof| {
+        .withf(move |proof, _, _| {
             assert_eq!(proof.id, proof_id);
             true
         })
         .once()
-        .returning(move |_| {
+        .returning(move |_, _, _| {
             Ok(PresentationDefinitionResponseDTO {
                 request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
                     id: "random".to_string(),

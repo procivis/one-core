@@ -10,6 +10,7 @@ use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use serde::de::{Deserialize, DeserializeOwned};
 use serde::Serialize;
+use shared_types::CredentialSchemaId;
 use thiserror::Error;
 use url::Url;
 
@@ -20,9 +21,10 @@ use super::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use super::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::config::ConfigValidationError;
-use crate::model::credential::Credential;
+use crate::model::credential::{Credential, CredentialRelations};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::Did;
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
@@ -31,8 +33,6 @@ use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::DataRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
-
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 
 pub mod dto;
 mod mapper;
@@ -71,19 +71,21 @@ pub type StorageAccess = dyn StorageProxy;
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]
 pub trait StorageProxy: Send + Sync {
-    async fn create_interaction(
-        &self,
-        interaction: Interaction,
-    ) -> Result<crate::model::interaction::InteractionId, anyhow::Error>;
+    async fn create_interaction(&self, interaction: Interaction) -> anyhow::Result<InteractionId>;
     async fn get_schema(
         &self,
         schema_id: &str,
         relations: &CredentialSchemaRelations,
-    ) -> Result<Option<CredentialSchema>, anyhow::Error>;
+    ) -> anyhow::Result<Option<CredentialSchema>>;
+    async fn get_credentials_by_credential_schema_id(
+        &self,
+        schema_id: &str,
+        relations: &CredentialRelations,
+    ) -> anyhow::Result<Vec<Credential>>;
     async fn create_credential_schema(
         &self,
         schema: CredentialSchema,
-    ) -> Result<shared_types::CredentialSchemaId, anyhow::Error>;
+    ) -> anyhow::Result<CredentialSchemaId>;
 }
 
 #[cfg_attr(test, mockall::automock(type VCInteractionContext = (); type VPInteractionContext = ();))]
@@ -127,6 +129,8 @@ pub trait ExchangeProtocolImpl: Send + Sync {
     async fn get_presentation_definition(
         &self,
         proof: &Proof,
+        context: Self::VPInteractionContext,
+        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError>;
 
     // issuer methods
@@ -237,8 +241,14 @@ where
     async fn get_presentation_definition(
         &self,
         proof: &Proof,
+        interaction_data: Self::VPInteractionContext,
+        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
-        self.inner.get_presentation_definition(proof).await
+        let interaction_data =
+            serde_json::from_value(interaction_data).map_err(ExchangeProtocolError::JsonError)?;
+        self.inner
+            .get_presentation_definition(proof, interaction_data, storage_access)
+            .await
     }
 
     async fn share_credential(
@@ -342,7 +352,6 @@ pub(crate) fn exchange_protocol_providers_from_config(
             ExchangeType::ProcivisTemporary => {
                 let protocol = Arc::new(ExchangeProtocolWrapper::new(ProcivisTemp::new(
                     core_base_url.clone(),
-                    data_provider.get_credential_repository(),
                     data_provider.get_interaction_repository(),
                     data_provider.get_credential_schema_repository(),
                     data_provider.get_did_repository(),
