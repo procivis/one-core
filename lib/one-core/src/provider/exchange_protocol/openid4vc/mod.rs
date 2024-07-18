@@ -4,6 +4,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use dto::OpenID4VPBleData;
+use model::BLEOpenID4VPInteractionData;
 use one_providers::common_models::key::Key;
 use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::credential_formatter::model::FormatPresentationCtx;
@@ -795,14 +796,23 @@ impl ExchangeProtocolImpl for OpenID4VC {
         &self,
         proof: &Proof,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
-        let interaction_data: OpenID4VPInteractionData =
-            deserialize_interaction_data(proof.interaction.as_ref())?;
-        let presentation_definition =
-            interaction_data
+        let presentation_definition = {
+            if proof.transport == TransportType::Ble.to_string() {
+                deserialize_interaction_data::<BLEOpenID4VPInteractionData>(
+                    proof.interaction.as_ref(),
+                )?
+                .presentation_definition
+            } else {
+                deserialize_interaction_data::<OpenID4VPInteractionData>(
+                    proof.interaction.as_ref(),
+                )?
                 .presentation_definition
                 .ok_or(ExchangeProtocolError::Failed(
                     "presentation_definition is None".to_string(),
-                ))?;
+                ))?
+            }
+        };
+
         let mut credential_groups: Vec<CredentialGroup> = vec![];
         let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
 

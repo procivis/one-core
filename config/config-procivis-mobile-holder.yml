@@ -1,4 +1,3 @@
-app:
 cacheEntites:
   JSON_LD_CONTEXT:
     cacheSize: 100
