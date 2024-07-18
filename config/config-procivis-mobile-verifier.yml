@@ -9,6 +9,14 @@ transport:
         verifierName: "OneVerifier"
   HTTP:
     disabled: true
+keyStorage:
+  SECURE_ELEMENT:
+    display: "keyStorage.secureElement"
+    type: "SECURE_ELEMENT"
+    order: 3
+    params:
+      private:
+        aliasPrefix: "ch.procivis.one.wallet.keys"
 exchange:
   SCAN_TO_VERIFY:
     type: "SCAN_TO_VERIFY"

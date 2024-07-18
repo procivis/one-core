@@ -36,7 +36,10 @@ use one_providers::{
         imp::{bbs::BBS, eddsa::Eddsa, es256::Es256, provider::KeyAlgorithmProviderImpl},
         KeyAlgorithm,
     },
-    key_storage::{imp::provider::KeyProviderImpl, KeyStorage},
+    key_storage::{
+        imp::{internal::InternalKeyProvider, provider::KeyProviderImpl},
+        KeyStorage,
+    },
 };
 use serde::{Deserialize, Serialize};
 use time::Duration;
@@ -178,24 +181,41 @@ fn initialize_core(
                 ))
             });
 
-            let key_storage_creator: KeyStorageCreator = Box::new(move |config, _providers| {
+            let key_storage_creator: KeyStorageCreator = Box::new(move |config, providers| {
                 let mut key_providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
 
                 for (name, field) in config.iter() {
-                    let provider = match field.r#type.as_str() {
-                        "SECURE_ELEMENT" => {
+                    let provider = match (field.r#type.as_str(), field.disabled()) {
+                        ("SECURE_ELEMENT", false) => {
                             let local_native_key_storage: Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage> =
                                 native_key_storage.clone().expect("Missing native key provider");
                             let params =
                                 config.get(name).expect("Secure element config is required");
-                            Arc::new(SecureElementKeyProvider::new(
+                            Some(Arc::new(SecureElementKeyProvider::new(
                                 local_native_key_storage.clone(),
                                 params,
-                            )) as _
+                            )) as _)
                         }
-                        other => panic!("Unexpected key storage: {other}"),
+                        ("INTERNAL", false) => {
+                            let params = config
+                                .get(name)
+                                .expect("Internal key provider config is required");
+                            Some(Arc::new(InternalKeyProvider::new(
+                                providers
+                                    .key_algorithm_provider
+                                    .as_ref()
+                                    .expect("Missing key algorithm provider")
+                                    .clone(),
+                                params,
+                            )) as _)
+                        }
+                        (other, false) => panic!("Unexpected key storage: {other}"),
+                        (_, true) => None,
                     };
-                    key_providers.insert(name.to_owned(), provider);
+
+                    if let Some(provider) = provider {
+                        key_providers.insert(name.to_owned(), provider);
+                    };
                 }
 
                 for (key, value) in config.iter_mut() {
