@@ -240,3 +240,12 @@ dependencies = [
   "package_ios_bindings",
 ]
 script = 'echo "--- output available in target/bindings/ios ---"'
+
+
+[tasks.clippy_debug_prints]
+script = '''
+    cargo clippy --all-targets -- \
+    -D clippy::print_stderr \
+    -D clippy::dbg_macro \
+
+'''
