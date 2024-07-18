@@ -32,7 +32,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidRelations, KeyRole};
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
+use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::provider::exchange_protocol::dto::{
     ConnectVerifierResponse, CredentialGroup, CredentialGroupItem,
     PresentationDefinitionResponseDTO, PresentedCredential, ProofClaimSchema, SubmitIssuerResponse,
@@ -214,7 +214,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<(), ExchangeProtocolError> {
+    ) -> Result<Option<UpdateProofRequest>, ExchangeProtocolError> {
         let presentation_formatter = self
             .formatter_provider
             .get_formatter("JWT")
@@ -261,7 +261,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
             .context("status error")
             .map_err(ExchangeProtocolError::Transport)?;
 
-        Ok(())
+        Ok(None)
     }
 
     async fn accept_credential(

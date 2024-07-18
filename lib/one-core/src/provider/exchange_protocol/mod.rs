@@ -26,7 +26,7 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelation
 use crate::model::did::Did;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
+use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::procivis_temp::ProcivisTemp;
 use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
@@ -113,7 +113,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<(), ExchangeProtocolError>;
+    ) -> Result<Option<UpdateProofRequest>, ExchangeProtocolError>;
 
     async fn accept_credential(
         &self,
@@ -213,7 +213,7 @@ where
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<(), ExchangeProtocolError> {
+    ) -> Result<Option<UpdateProofRequest>, ExchangeProtocolError> {
         self.inner
             .submit_proof(proof, credential_presentations, holder_did, key, jwk_key_id)
             .await

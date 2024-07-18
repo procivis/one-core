@@ -448,6 +448,13 @@ impl SSIHolderService {
             )
             .await;
 
+        if let Ok(Some(update_proof)) = &submit_result {
+            self.proof_repository
+                .update_proof(update_proof.clone())
+                .await
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+        }
+
         self.proof_repository
             .set_proof_holder_did(&proof.id, holder_did.to_owned())
             .await?;
@@ -486,7 +493,7 @@ impl SSIHolderService {
 
         let _ = self.history_repository.create_history(history_event).await;
 
-        Ok(submit_result?)
+        Ok(submit_result.map(|_| ())?)
     }
 
     pub async fn accept_credential(

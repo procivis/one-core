@@ -333,7 +333,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<(), ExchangeProtocolError> {
+    ) -> Result<Option<UpdateProofRequest>, ExchangeProtocolError> {
         let interaction_data: OpenID4VPInteractionData =
             deserialize_interaction_data(proof.interaction.as_ref())?;
 
@@ -355,11 +355,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
             };
 
             ("MDOC", "mso_mdoc")
-        } else if formats.contains("JSON_LD_CLASSIC")
-                || formats.contains("JSON_LD_BBSPLUS")
-                // Workaround for missing cryptosuite information in openid4vc
-                || formats.contains("JSON_LD")
-        {
+        } else if formats.contains("JSON_LD") {
             ("JSON_LD_CLASSIC", "ldp_vp")
         } else {
             ("JWT", "jwt_vp_json")
@@ -475,20 +471,17 @@ impl ExchangeProtocolImpl for OpenID4VC {
         let response: Result<OpenID4VPDirectPostResponseDTO, _> = response.json().await;
 
         if let Ok(value) = response {
-            self.proof_repository
-                .update_proof(UpdateProofRequest {
-                    id: proof.id,
-                    redirect_uri: Some(value.redirect_uri),
-                    holder_did_id: None,
-                    verifier_did_id: None,
-                    state: None,
-                    interaction: None,
-                })
-                .await
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+            Ok(Some(UpdateProofRequest {
+                id: proof.id,
+                redirect_uri: Some(value.redirect_uri),
+                holder_did_id: None,
+                verifier_did_id: None,
+                state: None,
+                interaction: None,
+            }))
+        } else {
+            Ok(None)
         }
-
-        Ok(())
     }
 
     async fn accept_credential(
@@ -1527,7 +1520,6 @@ async fn interaction_data_from_query(
 
 async fn handle_proof_invitation(
     url: Url,
-    //deps: &OpenID4VC,
     allow_insecure_http_transport: bool,
     client: &reqwest::Client,
     storage_access: &StorageAccess,
