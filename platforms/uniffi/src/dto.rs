@@ -44,7 +44,7 @@ use one_core::service::history::dto::GetHistoryListResponseDTO;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, ProofClaimDTO, ProofClaimValueDTO,
-    ProofInputDTO, ProofListItemResponseDTO,
+    ProofInputDTO, ProofListItemResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
 };
 use one_core::service::proof_schema::dto::{
     GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, GetProofSchemaResponseDTO,
@@ -1409,6 +1409,24 @@ pub struct CreateProofRequestBindingDTO {
     pub redirect_uri: Option<String>,
     #[try_into(with_fn = into_id_opt)]
     pub verifier_key: Option<String>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub scan_to_verify: Option<ScanToVerifyRequestBindingDTO>,
+}
+
+#[derive(Into)]
+#[into(ScanToVerifyRequestDTO)]
+pub struct ScanToVerifyRequestBindingDTO {
+    pub credential: String,
+    pub barcode: String,
+    pub barcode_type: ScanToVerifyBarcodeTypeBindingEnum,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(ScanToVerifyBarcodeTypeEnum)]
+pub enum ScanToVerifyBarcodeTypeBindingEnum {
+    #[allow(clippy::upper_case_acronyms)]
+    MRZ,
+    PDF417,
 }
 
 #[derive(From)]

@@ -383,7 +383,7 @@ impl SSIVerifierService {
                 first_claim.credential_schema.to_owned(),
                 claims,
                 issuer_did,
-                holder_did.clone(),
+                Some(holder_did.clone()),
             )?;
 
             proof_claims.append(

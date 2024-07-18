@@ -44,6 +44,8 @@ use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractio
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEPeer;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
@@ -54,6 +56,7 @@ use crate::service::error::{
 };
 use crate::service::proof::dto::{
     CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
+    ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
 };
 use crate::service::test_utilities::generic_config;
 
@@ -62,9 +65,11 @@ struct Repositories {
     pub proof_repository: MockProofRepository,
     pub proof_schema_repository: MockProofSchemaRepository,
     pub did_repository: MockDidRepository,
+    pub credential_repository: MockCredentialRepository,
     pub history_repository: MockHistoryRepository,
     pub interaction_repository: MockInteractionRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
+    pub revocation_method_provider: MockRevocationMethodProvider,
     pub protocol_provider: MockExchangeProtocolProvider,
     pub ble_peripheral: Option<MockBlePeripheral>,
     pub config: CoreConfig,
@@ -75,9 +80,11 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.proof_repository),
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
+        Arc::new(repositories.credential_repository),
         Arc::new(repositories.history_repository),
         Arc::new(repositories.interaction_repository),
         Arc::new(repositories.credential_formatter_provider),
+        Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.protocol_provider),
         repositories.ble_peripheral.map(|r| Arc::new(r) as _),
         Arc::new(repositories.config),
@@ -1843,6 +1850,7 @@ async fn test_create_proof_without_related_key() {
         exchange: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: None,
+        scan_to_verify: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -1945,6 +1953,7 @@ async fn test_create_proof_with_related_key() {
         exchange: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: Some(verifier_key_id),
+        scan_to_verify: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2044,6 +2053,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
         exchange: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: None,
+        scan_to_verify: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2123,6 +2133,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         exchange: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: None,
+        scan_to_verify: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2177,6 +2188,7 @@ async fn test_create_proof_did_deactivated_error() {
         exchange: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: None,
+        scan_to_verify: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2282,10 +2294,70 @@ async fn test_create_proof_schema_deleted() {
             exchange: "PROCIVIS_TEMPORARY".to_string(),
             redirect_uri: None,
             verifier_key: None,
+            scan_to_verify: None,
         })
         .await;
     assert2::assert!(
         let Err(ServiceError::BusinessLogic(BusinessLogicError::ProofSchemaDeleted {..})) = result
+    );
+}
+
+#[tokio::test]
+async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .once()
+        .returning(|id, _| {
+            Ok(Some(ProofSchema {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: None,
+                input_schemas: Some(vec![generic_proof_input_schema()]),
+            }))
+        });
+
+    let mut formatter = MockCredentialFormatter::default();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(move || FormatterCapabilities {
+            proof_exchange_protocols: vec!["PROCIVIS_TEMPORARY".to_string()],
+            ..Default::default()
+        });
+    credential_formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
+    let service = setup_service(Repositories {
+        proof_schema_repository,
+        credential_formatter_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_proof(CreateProofRequestDTO {
+            proof_schema_id: Uuid::new_v4().into(),
+            verifier_did_id: Uuid::new_v4().into(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            redirect_uri: None,
+            verifier_key: None,
+            scan_to_verify: Some(ScanToVerifyRequestDTO {
+                credential: "credential".to_string(),
+                barcode: "barcode".to_string(),
+                barcode_type: ScanToVerifyBarcodeTypeEnum::MRZ,
+            }),
+        })
+        .await;
+    assert2::assert!(
+        let Err(ServiceError::Validation(ValidationError::InvalidScanToVerifyParameters)) = result
     );
 }
 

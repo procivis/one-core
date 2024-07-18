@@ -128,6 +128,7 @@ pub enum ErrorCode {
     BR_0139,
     BR_0140,
     BR_0142,
+    BR_0144,
     BR_0145,
     BR_0146,
 }

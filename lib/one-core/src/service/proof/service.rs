@@ -11,6 +11,7 @@ use super::mapper::{
 use super::ProofService;
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
+use crate::config::core_config::ExchangeType;
 use crate::config::validator::exchange::validate_exchange_type;
 use crate::config::validator::transport::get_available_transport_type;
 use crate::model::claim::ClaimRelations;
@@ -34,7 +35,9 @@ use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractio
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use crate::service::proof::validator::validate_format_and_exchange_protocol_compatibility;
+use crate::service::proof::validator::{
+    validate_format_and_exchange_protocol_compatibility, validate_scan_to_verify_compatibility,
+};
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_proof_interaction,
 };
@@ -179,10 +182,13 @@ impl ProofService {
             .get_proof_schema(
                 &proof_schema_id,
                 &ProofSchemaRelations {
-                    organisation: None,
+                    organisation: Some(OrganisationRelations::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
-                        claim_schemas: None,
-                        credential_schema: Some(CredentialSchemaRelations::default()),
+                        claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                        credential_schema: Some(CredentialSchemaRelations {
+                            claim_schemas: Some(ClaimSchemaRelations::default()),
+                            ..Default::default()
+                        }),
                     }),
                 },
             )
@@ -200,6 +206,22 @@ impl ProofService {
             &proof_schema,
             &*self.credential_formatter_provider,
         )?;
+
+        validate_scan_to_verify_compatibility(&request, &self.config)?;
+
+        let exchange_type = self.config.exchange.get_fields(&request.exchange)?.r#type;
+        if exchange_type == ExchangeType::ScanToVerify {
+            return self
+                .handle_scan_to_verify(
+                    proof_schema,
+                    &request.exchange,
+                    request
+                        .scan_to_verify
+                        .as_ref()
+                        .ok_or(ValidationError::InvalidScanToVerifyParameters)?,
+                )
+                .await;
+        }
 
         let Some(verifier_did) = self
             .did_repository
@@ -280,22 +302,9 @@ impl ProofService {
             }
         }
 
-        let exchange_instance = &self
-            .config
-            .exchange
-            .get_fields(&proof.exchange)
-            .map_err(|err| {
-                ServiceError::MissingExchangeProtocol(format!("{}. {err}", proof.exchange))
-            })?
-            .r#type()
-            .to_string();
-
-        let exchange = self
-            .protocol_provider
-            .get_protocol(exchange_instance)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                exchange_instance.clone(),
-            ))?;
+        let exchange = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
+            MissingProviderError::ExchangeProtocol(proof.exchange.to_owned()),
+        )?;
 
         let ShareResponse {
             url,

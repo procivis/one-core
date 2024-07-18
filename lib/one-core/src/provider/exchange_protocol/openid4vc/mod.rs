@@ -5,6 +5,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use dto::OpenID4VPBleData;
 use one_providers::common_models::key::Key;
+use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::credential_formatter::model::FormatPresentationCtx;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::crypto::imp::utilities;
@@ -883,6 +884,14 @@ impl ExchangeProtocolImpl for OpenID4VC {
             credential_groups,
             &self.config,
         )
+    }
+
+    async fn verifier_handle_proof(
+        &self,
+        _proof: &Proof,
+        _submission: &[u8],
+    ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
+        unimplemented!()
     }
 }
 

@@ -201,7 +201,7 @@ pub fn extracted_credential_to_model(
     credential_schema: CredentialSchema,
     claims: Vec<(serde_json::Value, ClaimSchema)>,
     issuer_did: Did,
-    holder_did: Did,
+    holder_did: Option<Did>,
 ) -> Result<Credential, ServiceError> {
     let now = OffsetDateTime::now_utc();
     let credential_id = Uuid::new_v4().into();
@@ -233,7 +233,7 @@ pub fn extracted_credential_to_model(
         }]),
         claims: Some(model_claims),
         issuer_did: Some(issuer_did),
-        holder_did: Some(holder_did),
+        holder_did,
         schema: Some(credential_schema),
         redirect_uri: None,
         interaction: None,

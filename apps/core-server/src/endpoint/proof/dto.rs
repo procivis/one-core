@@ -9,7 +9,7 @@ use one_core::provider::exchange_protocol::dto::{
 };
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
-    ProofInputDTO, ProofListItemResponseDTO,
+    ProofInputDTO, ProofListItemResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
 };
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
@@ -44,13 +44,31 @@ pub enum ProofStateRestEnum {
 #[into(CreateProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateProofRequestRestDTO {
-    pub proof_schema_id: Uuid,
+    pub proof_schema_id: ProofSchemaId,
     #[into(rename = "verifier_did_id")]
     #[schema(example = "<uuid; did identifier>")]
     pub verifier_did: DidId,
     pub exchange: String,
     pub redirect_uri: Option<String>,
     pub verifier_key: Option<KeyId>,
+    #[into(with_fn = convert_inner)]
+    pub scan_to_verify: Option<ScanToVerifyRequestRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(ScanToVerifyRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanToVerifyRequestRestDTO {
+    pub credential: String,
+    pub barcode: String,
+    pub barcode_type: ScanToVerifyBarcodeTypeRestEnum,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[into(ScanToVerifyBarcodeTypeEnum)]
+pub enum ScanToVerifyBarcodeTypeRestEnum {
+    MRZ,
+    PDF417,
 }
 
 // list endpoint
