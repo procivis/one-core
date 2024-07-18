@@ -3,7 +3,9 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use one_providers::common_models::key::Key;
+use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use serde::de::{Deserialize, DeserializeOwned};
@@ -116,6 +118,13 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         &self,
         proof: &Proof,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError>;
+
+    /// For now: Specially for ScanToVerify
+    async fn verifier_handle_proof(
+        &self,
+        proof: &Proof,
+        submission: &[u8],
+    ) -> Result<Vec<DetailCredential>, ExchangeProtocolError>;
 }
 
 pub trait ExchangeProtocol:
@@ -232,6 +241,14 @@ where
                 context: serde_json::json!(resp.context),
             })
     }
+
+    async fn verifier_handle_proof(
+        &self,
+        proof: &Proof,
+        submission: &[u8],
+    ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
+        self.inner.verifier_handle_proof(proof, submission).await
+    }
 }
 
 impl<T> ExchangeProtocol for ExchangeProtocolWrapper<T>
@@ -287,6 +304,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     ble_central: Option<Arc<dyn BleCentral>>,
 ) -> Result<HashMap<String, Arc<dyn ExchangeProtocol>>, ConfigValidationError> {
@@ -309,7 +327,11 @@ pub(crate) fn exchange_protocol_providers_from_config(
                 providers.insert(name.to_string(), protocol);
             }
             ExchangeType::ScanToVerify => {
-                let protocol = Arc::new(ExchangeProtocolWrapper::new(ScanToVerify::new()));
+                let protocol = Arc::new(ExchangeProtocolWrapper::new(ScanToVerify::new(
+                    formatter_provider.clone(),
+                    key_algorithm_provider.clone(),
+                    did_method_provider.clone(),
+                )));
 
                 providers.insert(name.to_string(), protocol);
             }

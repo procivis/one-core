@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use shared_types::{DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 
@@ -17,6 +18,21 @@ pub struct CreateProofRequestDTO {
     pub exchange: String,
     pub redirect_uri: Option<String>,
     pub verifier_key: Option<KeyId>,
+    pub scan_to_verify: Option<ScanToVerifyRequestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanToVerifyRequestDTO {
+    pub credential: String,
+    pub barcode: String,
+    pub barcode_type: ScanToVerifyBarcodeTypeEnum,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ScanToVerifyBarcodeTypeEnum {
+    MRZ,
+    PDF417,
 }
 
 #[derive(Clone, Debug)]

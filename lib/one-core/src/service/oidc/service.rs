@@ -967,7 +967,7 @@ impl OIDCService {
                 first_claim.credential_schema.to_owned(),
                 claims,
                 issuer_did,
-                holder_did,
+                Some(holder_did),
             )?;
 
             proof_claims.append(

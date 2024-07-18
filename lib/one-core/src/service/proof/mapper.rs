@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 use dto_mapper::convert_inner;
+use one_providers::common_models::key::Key;
 use shared_types::{CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -15,6 +16,7 @@ use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::interaction::Interaction;
 use crate::model::proof::{self, Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
@@ -22,7 +24,6 @@ use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::error::ServiceError;
 use crate::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
-use one_providers::common_models::key::Key;
 
 fn build_claim_from_credential_claims(
     claims: &[CredentialSchemaClaim],
@@ -630,6 +631,41 @@ pub fn proof_from_create_request(
         holder_did: None,
         verifier_key,
         interaction: None,
+    }
+}
+
+pub fn proof_for_scan_to_verify(
+    exchange: &str,
+    schema: ProofSchema,
+    transport: &str,
+    interaction_data: Vec<u8>,
+) -> Proof {
+    let now = OffsetDateTime::now_utc();
+    Proof {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        issuance_date: now,
+        exchange: exchange.to_owned(),
+        redirect_uri: None,
+        state: Some(vec![proof::ProofState {
+            created_date: now,
+            last_modified: now,
+            state: ProofStateEnum::Created,
+        }]),
+        schema: Some(schema),
+        transport: transport.to_owned(),
+        claims: None,
+        verifier_did: None,
+        holder_did: None,
+        verifier_key: None,
+        interaction: Some(Interaction {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            host: None,
+            data: Some(interaction_data),
+        }),
     }
 }
 

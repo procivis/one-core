@@ -385,6 +385,9 @@ pub enum ValidationError {
     #[error("Validity constraint must be specified for LVVC revocation method")]
     ValidityConstraintMissingForLvvc,
 
+    #[error("Invalid SCAN_TO_VERIFY parameters")]
+    InvalidScanToVerifyParameters,
+
     #[error("Schema id not allowed for format")]
     SchemaIdNotAllowedForFormat,
 
@@ -807,6 +810,9 @@ pub enum ErrorCode {
     #[strum(to_string = "No default transport specified")]
     BR_0142,
 
+    #[strum(to_string = "Invalid SCAN_TO_VERIFY parameters")]
+    BR_0144,
+
     #[strum(to_string = "Forbidden claim name")]
     BR_0145,
 
@@ -983,6 +989,7 @@ impl ValidationError {
             ValidationError::MissingLayoutAttribute(_) => ErrorCode::BR_0105,
             ValidationError::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
             ValidationError::ValidityConstraintMissingForLvvc => ErrorCode::BR_0140,
+            ValidationError::InvalidScanToVerifyParameters => ErrorCode::BR_0144,
             ValidationError::CertificateRequestedForMoreThan457Days => ErrorCode::BR_0084,
             ValidationError::NestedClaimInArrayRequested => ErrorCode::BR_0125,
             ValidationError::OnlyOnePhysicalCardSchemaAllowedPerProof => ErrorCode::BR_0137,

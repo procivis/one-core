@@ -531,6 +531,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
 
                 proof::dto::ProofStateRestEnum,
                 proof::dto::CreateProofRequestRestDTO,
+                proof::dto::ScanToVerifyRequestRestDTO,
+                proof::dto::ScanToVerifyBarcodeTypeRestEnum,
                 proof::dto::ProofListItemResponseRestDTO,
                 proof::dto::ProofDetailResponseRestDTO,
                 proof::dto::ProofClaimRestDTO,

@@ -1,8 +1,9 @@
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-
-use crate::config::core_config::CoreConfig;
+use super::dto::CreateProofRequestDTO;
+use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::model::proof_schema::ProofSchema;
+use crate::service::error::ValidationError;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 
 pub(super) fn validate_format_and_exchange_protocol_compatibility(
     exchange: &str,
@@ -46,6 +47,31 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
 
         Ok(())
     })?;
+
+    Ok(())
+}
+
+pub(super) fn validate_scan_to_verify_compatibility(
+    request: &CreateProofRequestDTO,
+    config: &CoreConfig,
+) -> Result<(), ServiceError> {
+    let exchange_type = config.exchange.get_fields(&request.exchange)?.r#type;
+    match exchange_type {
+        ExchangeType::ScanToVerify => {
+            if request.redirect_uri.is_some() || request.scan_to_verify.is_none() {
+                return Err(ServiceError::Validation(
+                    ValidationError::InvalidScanToVerifyParameters,
+                ));
+            }
+        }
+        _ => {
+            if request.scan_to_verify.is_some() {
+                return Err(ServiceError::Validation(
+                    ValidationError::InvalidScanToVerifyParameters,
+                ));
+            }
+        }
+    };
 
     Ok(())
 }

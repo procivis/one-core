@@ -991,6 +991,17 @@ dictionary CreateProofRequestBindingDTO {
   string exchange;
   string? redirect_uri;
   string? verifier_key;
+  ScanToVerifyRequestBindingDTO? scan_to_verify;
+};
+
+dictionary ScanToVerifyRequestBindingDTO {
+   string credential;
+   string barcode;
+   ScanToVerifyBarcodeTypeBindingEnum barcode_type;
+};
+
+enum ScanToVerifyBarcodeTypeBindingEnum {
+  "MRZ", "PDF417"
 };
 
 dictionary ShareProofResponseBindingDTO {
