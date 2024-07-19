@@ -177,7 +177,10 @@ impl CredentialFormatter for SDJWTFormatter {
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
             ],
-            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
+            features: vec![
+                "SELECTIVE_DISCLOSURE".to_string(),
+                "SUPPORTS_CREDENTIAL_DESIGN".to_string(),
+            ],
             selective_disclosure: vec!["ANY_LEVEL".to_string()],
             issuance_did_methods: vec![
                 "KEY".to_string(),
