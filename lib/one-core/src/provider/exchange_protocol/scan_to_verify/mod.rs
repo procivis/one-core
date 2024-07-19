@@ -9,12 +9,12 @@ use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use url::Url;
 
-use super::dto::ShareResponse;
+use super::dto::{ShareResponse, UpdateResponse};
 use super::StorageAccess;
 use crate::model::credential::Credential;
 use crate::model::did::{Did, KeyRole};
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, UpdateProofRequest};
+use crate::model::proof::Proof;
 use crate::provider::exchange_protocol::dto::{
     PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
 };
@@ -74,7 +74,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _holder_did: &Did,
         _key: &Key,
         _jwk_key_id: Option<String>,
-    ) -> Result<Option<UpdateProofRequest>, ExchangeProtocolError> {
+    ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         unimplemented!()
     }
 
@@ -84,7 +84,8 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _holder_did: &Did,
         _key: &Key,
         _jwk_key_id: Option<String>,
-    ) -> Result<SubmitIssuerResponse, ExchangeProtocolError> {
+        _storage_access: &StorageAccess,
+    ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         unimplemented!()
     }
 

@@ -29,6 +29,7 @@ use crate::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, SubmitIssuerResponse,
+    UpdateResponse,
 };
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
@@ -44,7 +45,9 @@ use crate::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
 use crate::service::ssi_holder::SSIHolderService;
-use crate::service::test_utilities::{dummy_did, dummy_key, dummy_proof, generic_config};
+use crate::service::test_utilities::{
+    dummy_did, dummy_key, dummy_organisation, dummy_proof, generic_config,
+};
 
 #[tokio::test]
 async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_pending(
@@ -329,7 +332,7 @@ async fn test_submit_proof_succeeds() {
             true
         })
         .once()
-        .returning(|_, _, _, _, _| Ok(None));
+        .returning(|_, _, _, _, _| Ok(Default::default()));
 
     let mut protocol_provider = MockExchangeProtocolProvider::new();
     protocol_provider
@@ -552,7 +555,7 @@ async fn test_submit_proof_repeating_claims() {
             true
         })
         .once()
-        .returning(|_, _, _, _, _| Ok(None));
+        .returning(|_, _, _, _, _| Ok(Default::default()));
 
     let mut protocol_provider = MockExchangeProtocolProvider::new();
     protocol_provider
@@ -702,11 +705,17 @@ async fn test_accept_credential() {
         .inner
         .expect_accept_credential()
         .once()
-        .returning(|_, _, _, _| {
-            Ok(SubmitIssuerResponse {
-                credential: "credential".to_string(),
-                format: "credential format".to_string(),
-                redirect_uri: None,
+        .returning(|_, _, _, _, _| {
+            Ok(UpdateResponse {
+                result: SubmitIssuerResponse {
+                    credential: "credential".to_string(),
+                    format: "credential format".to_string(),
+                    redirect_uri: None,
+                },
+                update_proof: None,
+                create_did: None,
+                update_credential: None,
+                update_credential_schema: None,
             })
         });
 
@@ -829,7 +838,7 @@ fn dummy_credential() -> Credential {
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: None,
-            organisation: None,
+            organisation: Some(dummy_organisation()),
             deleted_at: None,
             layout_type: LayoutType::Card,
             layout_properties: None,

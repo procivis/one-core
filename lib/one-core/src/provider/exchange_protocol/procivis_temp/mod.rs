@@ -19,7 +19,7 @@ use self::mapper::{
     get_base_url, get_proof_claim_schemas_from_proof, presentation_definition_from_proof,
     remote_did_from_value,
 };
-use super::dto::ShareResponse;
+use super::dto::{ShareResponse, UpdateResponse};
 use super::mapper::get_relevant_credentials_to_credential_schemas;
 use super::{ExchangeProtocolImpl, StorageAccess};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
@@ -32,7 +32,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidRelations, KeyRole};
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, UpdateProofRequest};
+use crate::model::proof::Proof;
 use crate::provider::exchange_protocol::dto::{
     ConnectVerifierResponse, CredentialGroup, CredentialGroupItem,
     PresentationDefinitionResponseDTO, PresentedCredential, ProofClaimSchema, SubmitIssuerResponse,
@@ -214,7 +214,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<Option<UpdateProofRequest>, ExchangeProtocolError> {
+    ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         let presentation_formatter = self
             .formatter_provider
             .get_formatter("JWT")
@@ -261,7 +261,13 @@ impl ExchangeProtocolImpl for ProcivisTemp {
             .context("status error")
             .map_err(ExchangeProtocolError::Transport)?;
 
-        Ok(None)
+        Ok(UpdateResponse {
+            result: (),
+            update_proof: None,
+            create_did: None,
+            update_credential: None,
+            update_credential_schema: None,
+        })
     }
 
     async fn accept_credential(
@@ -270,7 +276,8 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         holder_did: &Did,
         _key: &Key,
         _jwk_key_id: Option<String>,
-    ) -> Result<SubmitIssuerResponse, ExchangeProtocolError> {
+        _storage_access: &StorageAccess,
+    ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         let mut url = super::get_base_url_from_interaction(credential.interaction.as_ref())?;
         url.set_path("/ssi/temporary-issuer/v1/submit");
         url.set_query(Some(&format!(
@@ -295,7 +302,16 @@ impl ExchangeProtocolImpl for ProcivisTemp {
             .context("parsing error")
             .map_err(ExchangeProtocolError::Transport)?;
 
-        serde_json::from_str(&response_value).map_err(ExchangeProtocolError::JsonError)
+        let result =
+            serde_json::from_str(&response_value).map_err(ExchangeProtocolError::JsonError)?;
+
+        Ok(UpdateResponse {
+            result,
+            update_proof: None,
+            create_did: None,
+            update_credential: None,
+            update_credential_schema: None,
+        })
     }
 
     async fn reject_credential(

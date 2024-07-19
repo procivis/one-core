@@ -170,6 +170,7 @@ impl ProofService {
             self.interaction_repository.clone(),
             self.credential_schema.clone(),
             self.credential_repository.clone(),
+            self.did_repository.clone(),
         );
 
         Ok(exchange

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use dto::UpdateResponse;
 use one_providers::common_models::key::Key;
 use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
@@ -10,7 +11,7 @@ use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use serde::de::{Deserialize, DeserializeOwned};
 use serde::Serialize;
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialSchemaId, DidValue};
 use thiserror::Error;
 use url::Url;
 
@@ -23,10 +24,10 @@ use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::config::ConfigValidationError;
 use crate::model::credential::{Credential, CredentialRelations};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
-use crate::model::did::Did;
+use crate::model::did::{Did, DidRelations};
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, UpdateProofRequest};
+use crate::model::proof::Proof;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::procivis_temp::ProcivisTemp;
 use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
@@ -86,6 +87,11 @@ pub trait StorageProxy: Send + Sync {
         &self,
         schema: CredentialSchema,
     ) -> anyhow::Result<CredentialSchemaId>;
+    async fn get_did_by_value(
+        &self,
+        value: &DidValue,
+        relations: &DidRelations,
+    ) -> anyhow::Result<Option<Did>>;
 }
 
 #[cfg_attr(test, mockall::automock(type VCInteractionContext = (); type VPInteractionContext = ();))]
@@ -113,7 +119,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<Option<UpdateProofRequest>, ExchangeProtocolError>;
+    ) -> Result<UpdateResponse<()>, ExchangeProtocolError>;
 
     async fn accept_credential(
         &self,
@@ -121,7 +127,8 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<SubmitIssuerResponse, ExchangeProtocolError>;
+        storage_access: &StorageAccess,
+    ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError>;
 
     async fn reject_credential(&self, credential: &Credential)
         -> Result<(), ExchangeProtocolError>;
@@ -213,7 +220,7 @@ where
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<Option<UpdateProofRequest>, ExchangeProtocolError> {
+    ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         self.inner
             .submit_proof(proof, credential_presentations, holder_did, key, jwk_key_id)
             .await
@@ -225,9 +232,10 @@ where
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<SubmitIssuerResponse, ExchangeProtocolError> {
+        storage_access: &StorageAccess,
+    ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         self.inner
-            .accept_credential(credential, holder_did, key, jwk_key_id)
+            .accept_credential(credential, holder_did, key, jwk_key_id, storage_access)
             .await
     }
 
@@ -376,9 +384,6 @@ pub(crate) fn exchange_protocol_providers_from_config(
 
                 let protocol = Arc::new(ExchangeProtocolWrapper::new(OpenID4VC::new(
                     core_base_url.clone(),
-                    data_provider.get_credential_repository(),
-                    data_provider.get_credential_schema_repository(),
-                    data_provider.get_did_repository(),
                     data_provider.get_proof_repository(),
                     data_provider.get_interaction_repository(),
                     formatter_provider.clone(),

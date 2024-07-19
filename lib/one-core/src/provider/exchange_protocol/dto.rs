@@ -5,10 +5,12 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential::Credential;
+use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaType, UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
 };
+use crate::model::did::Did;
+use crate::model::proof::UpdateProofRequest;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 
 #[derive(Clone, Deserialize)]
@@ -139,8 +141,18 @@ pub struct PresentedCredential {
     pub request: PresentationDefinitionRequestedCredentialResponseDTO,
 }
 
+#[derive(Clone, Debug)]
 pub struct ShareResponse<T> {
     pub url: String,
     pub id: Uuid,
     pub context: T,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct UpdateResponse<T> {
+    pub result: T,
+    pub update_proof: Option<UpdateProofRequest>,
+    pub create_did: Option<Did>,
+    pub update_credential: Option<UpdateCredentialRequest>,
+    pub update_credential_schema: Option<UpdateCredentialSchemaRequest>,
 }
