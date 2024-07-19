@@ -37,7 +37,7 @@ use self::model::{
     HolderInteractionData, JwePayload, OpenID4VCInteractionContent, OpenID4VPInteractionContent,
 };
 use self::validator::validate_interaction_data;
-use super::dto::{PresentedCredential, ShareResponse, SubmitIssuerResponse};
+use super::dto::{PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse};
 use super::mapper::interaction_from_handle_invitation;
 use super::{
     deserialize_interaction_data, serialize_interaction_data, ExchangeProtocolError,
@@ -67,9 +67,6 @@ use crate::provider::exchange_protocol::mapper::{
     get_relevant_credentials_to_credential_schemas, proof_from_handle_invitation,
 };
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -109,9 +106,6 @@ const PRESENTATION_DEFINITION_BLE_KEY: &str = "key";
 
 pub(crate) struct OpenID4VC {
     client: reqwest::Client,
-    credential_repository: Arc<dyn CredentialRepository>,
-    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-    did_repository: Arc<dyn DidRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -147,9 +141,6 @@ impl OpenID4VC {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         base_url: Option<String>,
-        credential_repository: Arc<dyn CredentialRepository>,
-        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-        did_repository: Arc<dyn DidRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -163,9 +154,6 @@ impl OpenID4VC {
     ) -> Self {
         Self {
             base_url,
-            credential_repository,
-            credential_schema_repository,
-            did_repository,
             proof_repository,
             interaction_repository,
             formatter_provider,
@@ -333,7 +321,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<Option<UpdateProofRequest>, ExchangeProtocolError> {
+    ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         let interaction_data: OpenID4VPInteractionData =
             deserialize_interaction_data(proof.interaction.as_ref())?;
 
@@ -471,16 +459,28 @@ impl ExchangeProtocolImpl for OpenID4VC {
         let response: Result<OpenID4VPDirectPostResponseDTO, _> = response.json().await;
 
         if let Ok(value) = response {
-            Ok(Some(UpdateProofRequest {
-                id: proof.id,
-                redirect_uri: Some(value.redirect_uri),
-                holder_did_id: None,
-                verifier_did_id: None,
-                state: None,
-                interaction: None,
-            }))
+            Ok(UpdateResponse {
+                result: (),
+                update_proof: Some(UpdateProofRequest {
+                    id: proof.id,
+                    redirect_uri: Some(value.redirect_uri),
+                    holder_did_id: None,
+                    verifier_did_id: None,
+                    state: None,
+                    interaction: None,
+                }),
+                create_did: None,
+                update_credential: None,
+                update_credential_schema: None,
+            })
         } else {
-            Ok(None)
+            Ok(UpdateResponse {
+                result: (),
+                update_proof: None,
+                create_did: None,
+                update_credential: None,
+                update_credential_schema: None,
+            })
         }
     }
 
@@ -490,7 +490,8 @@ impl ExchangeProtocolImpl for OpenID4VC {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<SubmitIssuerResponse, ExchangeProtocolError> {
+        storage_access: &StorageAccess,
+    ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         let schema = credential
             .schema
             .as_ref()
@@ -584,16 +585,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
             None
         };
 
-        self.credential_schema_repository
-            .update_credential_schema(UpdateCredentialSchemaRequest {
-                id: schema.id,
-                revocation_method,
-                format: Some(real_format),
-                claim_schemas: None,
-            })
-            .await
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
         // issuer_did must be set based on issued credential (unknown in credential offer)
         let issuer_did_value =
             response_credential
@@ -603,15 +594,14 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 ))?;
 
         let now = OffsetDateTime::now_utc();
-        let issuer_did_id = match self
-            .did_repository
+        let (issuer_did_id, create_did) = match storage_access
             .get_did_by_value(&issuer_did_value.clone().into(), &DidRelations::default())
             .await
             .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
         {
-            Some(did) => did.id,
+            Some(did) => (did.id, None),
             None => {
-                let id = Uuid::new_v4();
+                let id = Uuid::new_v4().into();
                 let did_method = match issuer_did_value.as_str() {
                     mdl if mdl.starts_with("did:mdl") => "MDL",
                     key if key.starts_with("did:key") => "KEY",
@@ -624,9 +614,10 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     }
                 };
 
-                self.did_repository
-                    .create_did(Did {
-                        id: id.into(),
+                (
+                    id,
+                    Some(Did {
+                        id,
                         name: format!("issuer {id}"),
                         created_date: now,
                         last_modified: now,
@@ -636,27 +627,34 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         did_method: did_method.to_string(),
                         keys: None,
                         deactivated: false,
-                    })
-                    .await
-                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+                    }),
+                )
             }
         };
 
-        self.credential_repository
-            .update_credential(UpdateCredentialRequest {
+        let redirect_uri = response_value.redirect_uri.clone();
+
+        Ok(UpdateResponse {
+            result: response_value.into(),
+            update_proof: None,
+            create_did,
+            update_credential_schema: Some(UpdateCredentialSchemaRequest {
+                id: schema.id,
+                revocation_method,
+                format: Some(real_format),
+                claim_schemas: None,
+            }),
+            update_credential: Some(UpdateCredentialRequest {
                 id: credential.id,
                 issuer_did_id: Some(issuer_did_id),
-                redirect_uri: Some(response_value.redirect_uri.to_owned()),
+                redirect_uri: Some(redirect_uri),
                 credential: None,
                 holder_did_id: None,
                 state: None,
                 interaction: None,
                 key: None,
-            })
-            .await
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        Ok(response_value.into())
+            }),
+        })
     }
 
     async fn reject_credential(

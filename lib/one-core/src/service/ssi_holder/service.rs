@@ -1,4 +1,5 @@
 use anyhow::Context;
+use futures::TryFutureExt;
 use one_providers::credential_formatter::model::CredentialPresentation;
 use one_providers::key_storage::model::KeySecurity;
 use shared_types::{DidId, KeyId, OrganisationId};
@@ -30,7 +31,7 @@ use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
 use crate::provider::exchange_protocol::dto::{
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentedCredential,
+    PresentationDefinitionRequestedCredentialResponseDTO, PresentedCredential, UpdateResponse,
 };
 use crate::provider::exchange_protocol::provider::DetectedProtocol;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
@@ -69,6 +70,7 @@ impl SSIHolderService {
             self.interaction_repository.clone(),
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
+            self.did_repository.clone(),
         );
 
         let response = protocol
@@ -259,6 +261,7 @@ impl SSIHolderService {
             self.interaction_repository.clone(),
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
+            self.did_repository.clone(),
         );
 
         let presentation_definition = exchange_protocol
@@ -446,14 +449,9 @@ impl SSIHolderService {
                 selected_key,
                 Some(holder_jwk_key_id),
             )
+            .map_err(ServiceError::from)
+            .and_then(|submit_result| async { self.resolve_update_response(submit_result).await })
             .await;
-
-        if let Ok(Some(update_proof)) = &submit_result {
-            self.proof_repository
-                .update_proof(update_proof.clone())
-                .await
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-        }
 
         self.proof_repository
             .set_proof_holder_did(&proof.id, holder_did.to_owned())
@@ -493,7 +491,7 @@ impl SSIHolderService {
 
         let _ = self.history_repository.create_history(history_event).await;
 
-        Ok(submit_result.map(|_| ())?)
+        submit_result
     }
 
     pub async fn accept_credential(
@@ -575,14 +573,33 @@ impl SSIHolderService {
                 return Err(BusinessLogicError::UnfulfilledWalletStorageType.into());
             }
 
+            let organisation_id = credential
+                .schema
+                .as_ref()
+                .ok_or_else(|| ServiceError::MappingError("schema is missing".into()))?
+                .organisation
+                .as_ref()
+                .ok_or_else(|| ServiceError::MappingError("organisation is missing".into()))?
+                .id;
+
+            let storage_access = StorageProxyImpl::new(
+                organisation_id,
+                self.interaction_repository.clone(),
+                self.credential_schema_repository.clone(),
+                self.credential_repository.clone(),
+                self.did_repository.clone(),
+            );
+
             let issuer_response = self
                 .protocol_provider
                 .get_protocol(&credential.exchange)
                 .ok_or(MissingProviderError::ExchangeProtocol(
                     credential.exchange.clone(),
                 ))?
-                .accept_credential(&credential, &did, selected_key, None)
+                .accept_credential(&credential, &did, selected_key, None, &storage_access)
                 .await?;
+
+            let issuer_response = self.resolve_update_response(issuer_response).await?;
 
             self.credential_repository
                 .update_credential(UpdateCredentialRequest {
@@ -678,5 +695,30 @@ impl SSIHolderService {
         }
 
         Ok(())
+    }
+
+    async fn resolve_update_response<T>(
+        &self,
+        update_response: UpdateResponse<T>,
+    ) -> Result<T, ServiceError> {
+        if let Some(update_proof) = update_response.update_proof {
+            self.proof_repository
+                .update_proof(update_proof.clone())
+                .await?;
+        }
+        if let Some(create_did) = update_response.create_did {
+            self.did_repository.create_did(create_did).await?;
+        }
+        if let Some(update_credential_schema) = update_response.update_credential_schema {
+            self.credential_schema_repository
+                .update_credential_schema(update_credential_schema)
+                .await?;
+        }
+        if let Some(update_credential) = update_response.update_credential {
+            self.credential_repository
+                .update_credential(update_credential)
+                .await?;
+        }
+        Ok(update_response.result)
     }
 }

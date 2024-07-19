@@ -39,9 +39,6 @@ use crate::provider::exchange_protocol::{
     ExchangeProtocolError, ExchangeProtocolImpl, MockStorageProxy,
 };
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
-use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
@@ -49,9 +46,6 @@ use crate::service::test_utilities::generic_config;
 
 #[derive(Default)]
 struct TestInputs {
-    pub credential_repository: MockCredentialRepository,
-    pub credential_schema_repository: MockCredentialSchemaRepository,
-    pub did_repository: MockDidRepository,
     pub proof_repository: MockProofRepository,
     pub interaction_repository: MockInteractionRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
@@ -64,9 +58,6 @@ struct TestInputs {
 fn setup_protocol(inputs: TestInputs) -> OpenID4VC {
     OpenID4VC::new(
         Some("http://base_url".to_string()),
-        Arc::new(inputs.credential_repository),
-        Arc::new(inputs.credential_schema_repository),
-        Arc::new(inputs.did_repository),
         Arc::new(inputs.proof_repository),
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.formatter_provider),
