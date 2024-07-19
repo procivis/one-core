@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use josekit::Value;
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::imp::jwt::mapper::string_to_b64url_string;
 use one_providers::credential_formatter::model::PublishedClaim;
@@ -186,32 +187,6 @@ pub(super) fn to_hashmap(
         .collect())
 }
 
-enum JsonValueVariant<'a> {
-    Array(&'a [serde_json::Value]),
-    Object(&'a serde_json::Map<String, serde_json::Value>),
-    String(&'a str),
-}
-
-fn match_json_value(value: &serde_json::Value) -> Result<JsonValueVariant, FormatterError> {
-    if value.is_array() {
-        Ok(JsonValueVariant::Array(value.as_array().ok_or(
-            FormatterError::Failed("json array is not an array".to_string()),
-        )?))
-    } else if value.is_string() {
-        Ok(JsonValueVariant::String(value.as_str().ok_or(
-            FormatterError::Failed("json string is not a string".to_string()),
-        )?))
-    } else if value.is_object() {
-        Ok(JsonValueVariant::Object(value.as_object().ok_or(
-            FormatterError::Failed("json object is not an object".to_string()),
-        )?))
-    } else {
-        Err(FormatterError::Failed(
-            "unsupported JSON variant".to_string(),
-        ))
-    }
-}
-
 pub(super) fn gather_disclosures(
     value: &serde_json::Value,
     algorithm: &str,
@@ -219,15 +194,15 @@ pub(super) fn gather_disclosures(
 ) -> Result<(Vec<String>, Vec<String>), FormatterError> {
     let hasher = crypto.get_hasher(algorithm)?;
 
-    let value_as_object = value.as_object().ok_or(FormatterError::JsonMapping(
-        "value is not an Object".to_string(),
-    ))?;
+    let value_as_object: &josekit::Map<String, josekit::Value> = value.as_object().ok_or(
+        FormatterError::JsonMapping("value is not an Object".to_string()),
+    )?;
     let mut disclosures = vec![];
     let mut hashed_disclosures = vec![];
 
     value_as_object.iter().try_for_each(|(k, v)| {
-        match match_json_value(v)? {
-            JsonValueVariant::Array(array) => {
+        match v {
+            Value::Array(array) => {
                 let salt = one_providers::crypto::imp::utilities::generate_salt_base64_16();
 
                 let value = serde_json::to_string(array)
@@ -245,7 +220,7 @@ pub(super) fn gather_disclosures(
                 disclosures.push(b64_encoded);
                 hashed_disclosures.push(hashed_disclosure);
             }
-            JsonValueVariant::Object(_object) => {
+            Value::Object(_object) => {
                 let (subdisclosures, sd_hashes) = gather_disclosures(v, algorithm, crypto)?;
                 disclosures.extend(subdisclosures);
 
@@ -269,10 +244,28 @@ pub(super) fn gather_disclosures(
                 disclosures.push(sd_disclosure_as_b64);
                 hashed_disclosures.push(hashed_subdisclosure);
             }
-            JsonValueVariant::String(value) => {
+            Value::String(value) => {
                 let salt = one_providers::crypto::imp::utilities::generate_salt_base64_16();
 
                 let result = serde_json::to_string(&[&salt, k, value])
+                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
+
+                let b64_encoded = string_to_b64url_string(&result)?;
+
+                let hashed_disclosure: String = hasher
+                    .hash_base64(result.as_bytes())
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+
+                disclosures.push(b64_encoded);
+                hashed_disclosures.push(hashed_disclosure);
+            }
+            Value::Number(number) => {
+                let salt = one_providers::crypto::imp::utilities::generate_salt_base64_16();
+
+                let value = serde_json::to_string(number)
+                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
+
+                let result = serde_json::to_string(&[&salt, k, &value])
                     .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
 
                 let b64_encoded = string_to_b64url_string(&result)?;
@@ -283,6 +276,29 @@ pub(super) fn gather_disclosures(
 
                 disclosures.push(b64_encoded);
                 hashed_disclosures.push(hashed_disclosure);
+            }
+            Value::Bool(bool) => {
+                let salt = one_providers::crypto::imp::utilities::generate_salt_base64_16();
+
+                let value = serde_json::to_string(bool)
+                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
+
+                let result = serde_json::to_string(&[&salt, k, &value])
+                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
+
+                let b64_encoded = string_to_b64url_string(&result)?;
+
+                let hashed_disclosure = hasher
+                    .hash_base64(result.as_bytes())
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+
+                disclosures.push(b64_encoded);
+                hashed_disclosures.push(hashed_disclosure);
+            }
+            _ => {
+                return Err(FormatterError::Failed(
+                    "unsupported JSON variant".to_string(),
+                ))
             }
         }
 
