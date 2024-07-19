@@ -133,6 +133,7 @@ impl From<DetailCredentialClaimResponseDTO> for ClaimBindingDTO {
         Self {
             id: value.schema.id.to_string(),
             key: value.schema.key,
+            array: value.schema.array,
             data_type: value.schema.datatype,
             value: value.value.into(),
         }

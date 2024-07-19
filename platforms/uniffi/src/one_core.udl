@@ -334,6 +334,7 @@ dictionary ClaimBindingDTO {
   string id;
   string key;
   string data_type;
+  boolean array;
   ClaimValueBindingDTO value;
 };
 
