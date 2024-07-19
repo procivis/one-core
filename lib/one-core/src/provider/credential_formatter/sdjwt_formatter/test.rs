@@ -637,7 +637,10 @@ fn test_get_capabilities() {
     };
 
     assert_eq!(
-        vec!["SELECTIVE_DISCLOSURE".to_string()],
+        vec![
+            "SELECTIVE_DISCLOSURE".to_string(),
+            "SUPPORTS_CREDENTIAL_DESIGN".to_string()
+        ],
         sd_formatter.get_capabilities().features
     );
 }

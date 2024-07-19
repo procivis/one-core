@@ -215,7 +215,7 @@ impl CredentialFormatter for JsonLdClassic {
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
             signing_key_algorithms: vec!["EDDSA".to_owned(), "ES256".to_owned()],
-            features: vec![],
+            features: vec!["SUPPORTS_CREDENTIAL_DESIGN".to_string()],
             selective_disclosure: vec![],
             issuance_did_methods: vec![
                 "KEY".to_string(),
