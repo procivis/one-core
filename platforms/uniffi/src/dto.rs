@@ -556,6 +556,7 @@ pub struct ClaimBindingDTO {
     pub id: String,
     pub key: String,
     pub data_type: String,
+    pub array: bool,
     pub value: ClaimValueBindingDTO,
 }
 
