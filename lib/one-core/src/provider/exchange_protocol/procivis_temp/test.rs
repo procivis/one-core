@@ -9,16 +9,10 @@ use super::ProcivisTemp;
 use crate::model::credential::{Credential, CredentialRole};
 use crate::model::proof::Proof;
 use crate::provider::exchange_protocol::{ExchangeProtocolError, ExchangeProtocolImpl};
-use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
-use crate::repository::did_repository::MockDidRepository;
-use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::test_utilities::generic_config;
 
 #[derive(Default)]
 struct Repositories {
-    pub credential_schema_repository: MockCredentialSchemaRepository,
-    pub did_repository: MockDidRepository,
-    pub interaction_repository: MockInteractionRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub key_provider: MockKeyProvider,
 }
@@ -26,9 +20,6 @@ struct Repositories {
 fn setup_protocol(base_url: Option<String>, repositories: Repositories) -> ProcivisTemp {
     ProcivisTemp::new(
         base_url,
-        Arc::new(repositories.interaction_repository),
-        Arc::new(repositories.credential_schema_repository),
-        Arc::new(repositories.did_repository),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.key_provider),
         Arc::new(generic_config().core),

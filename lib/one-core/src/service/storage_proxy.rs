@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
+use one_providers::common_models::did::{DidId, DidValue};
+use shared_types::{CredentialSchemaId, OrganisationId};
 
 use crate::model::credential::{Credential, CredentialRelations};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
@@ -80,14 +81,22 @@ impl StorageProxy for StorageProxyImpl {
             .context("Create credential schema error")
     }
 
+    async fn create_did(&self, did: Did) -> anyhow::Result<DidId> {
+        self.dids
+            .create_did(did)
+            .await
+            .context("Could not fetch did by value")
+            .map(Into::into)
+    }
+
     async fn get_did_by_value(
         &self,
         value: &DidValue,
         relations: &DidRelations,
     ) -> anyhow::Result<Option<Did>> {
         self.dids
-            .get_did_by_value(value, relations)
+            .get_did_by_value(&value.clone().into(), relations)
             .await
-            .context("get did by value error")
+            .context("Could not fetch did by value")
     }
 }

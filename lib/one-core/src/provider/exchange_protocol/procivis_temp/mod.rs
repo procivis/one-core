@@ -41,10 +41,6 @@ use crate::provider::exchange_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
 use crate::provider::exchange_protocol::ExchangeProtocolError;
-use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::error::DataLayerError;
-use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
@@ -57,9 +53,6 @@ const REDIRECT_URI_QUERY_PARAM_KEY: &str = "redirect_uri";
 pub(crate) struct ProcivisTemp {
     client: reqwest::Client,
     base_url: Option<String>,
-    interaction_repository: Arc<dyn InteractionRepository>,
-    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-    did_repository: Arc<dyn DidRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     config: Arc<CoreConfig>,
@@ -69,9 +62,6 @@ impl ProcivisTemp {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         base_url: Option<String>,
-        interaction_repository: Arc<dyn InteractionRepository>,
-        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-        did_repository: Arc<dyn DidRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<CoreConfig>,
@@ -79,9 +69,6 @@ impl ProcivisTemp {
         Self {
             client: reqwest::Client::new(),
             base_url,
-            interaction_repository,
-            credential_schema_repository,
-            did_repository,
             formatter_provider,
             key_provider,
             config,
@@ -131,7 +118,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         &self,
         url: Url,
         organisation: Organisation,
-        _: &StorageAccess,
+        storage_access: &StorageAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         let invitation_type = categorize_url(&url)?;
 
@@ -164,7 +151,13 @@ impl ExchangeProtocolImpl for ProcivisTemp {
                     .context("parsing error")
                     .map_err(ExchangeProtocolError::Transport)?;
 
-                handle_credential_invitation(self, base_url, organisation, issuer_response).await?
+                handle_credential_invitation(
+                    base_url,
+                    organisation,
+                    issuer_response,
+                    storage_access,
+                )
+                .await?
             }
             InvitationType::ProofRequest { proof_id, protocol } => {
                 let proof_request = response
@@ -174,13 +167,13 @@ impl ExchangeProtocolImpl for ProcivisTemp {
                     .map_err(ExchangeProtocolError::Transport)?;
 
                 handle_proof_invitation(
-                    self,
                     base_url,
                     proof_id,
                     proof_request,
                     &protocol,
                     organisation,
                     redirect_uri,
+                    storage_access,
                 )
                 .await?
             }
@@ -456,37 +449,32 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 }
 
 async fn handle_credential_invitation(
-    deps: &ProcivisTemp,
     base_url: Url,
     organisation: Organisation,
     issuer_response: ConnectIssuerResponseDTO,
+    storage_access: &StorageAccess,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let now = OffsetDateTime::now_utc();
-    let credential_schema = match deps
-        .credential_schema_repository
-        .get_by_schema_id_and_organisation(
-            &issuer_response.schema.schema_id,
-            organisation.id,
-            &Default::default(),
-        )
+    let credential_schema = match storage_access
+        .get_schema(&issuer_response.schema.schema_id, &Default::default())
         .await
-        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
+        .map_err(ExchangeProtocolError::StorageAccessError)?
     {
         Some(credential_schema) => {
             if credential_schema.schema_type != issuer_response.schema.schema_type.into() {
                 return Err(ExchangeProtocolError::IncorrectCredentialSchemaType);
             }
 
-            deps.credential_schema_repository
-                .get_credential_schema(
-                    &credential_schema.id,
+            storage_access
+                .get_schema(
+                    &credential_schema.id.to_string(),
                     &CredentialSchemaRelations {
                         claim_schemas: Some(ClaimSchemaRelations::default()),
                         organisation: Some(Default::default()),
                     },
                 )
                 .await
-                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
+                .map_err(ExchangeProtocolError::StorageAccessError)?
                 .ok_or(ExchangeProtocolError::Failed(
                     "Credential schema error".to_string(),
                 ))?
@@ -516,11 +504,10 @@ async fn handle_credential_invitation(
                 organisation: Some(organisation.to_owned()),
             };
 
-            let _ = deps
-                .credential_schema_repository
+            let _ = storage_access
                 .create_credential_schema(credential_schema.clone())
                 .await
-                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+                .map_err(ExchangeProtocolError::StorageAccessError)?;
 
             credential_schema
         }
@@ -528,36 +515,28 @@ async fn handle_credential_invitation(
 
     // insert issuer did if not yet known
     let issuer_did_value = issuer_response.issuer_did.did;
-    let issuer_did = remote_did_from_value(issuer_did_value.to_owned(), organisation);
-    let did_insert_result = deps.did_repository.create_did(issuer_did.clone()).await;
-    let issuer_did = match did_insert_result {
-        Ok(_) => issuer_did,
-        Err(DataLayerError::AlreadyExists) => {
-            let issuer_did = deps
-                .did_repository
-                .get_did_by_value(&issuer_did_value, &DidRelations::default())
-                .await
-                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+    let did = storage_access
+        .get_did_by_value(&issuer_did_value.clone().into(), &Default::default())
+        .await
+        .map_err(ExchangeProtocolError::StorageAccessError)?;
 
-            issuer_did.ok_or(ExchangeProtocolError::Failed(format!(
-                "Error while getting DID {issuer_did_value}"
-            )))?
-        }
-        Err(e) => {
-            return Err(ExchangeProtocolError::Failed(format!(
-                "Data layer error {e}"
-            )))
+    let issuer_did = match did {
+        Some(did) => did,
+        None => {
+            let issuer_did = remote_did_from_value(issuer_did_value.to_owned(), organisation);
+            let _ = storage_access
+                .create_did(issuer_did.clone())
+                .await
+                .map_err(ExchangeProtocolError::StorageAccessError)?;
+            issuer_did
         }
     };
 
     let interaction = interaction_from_handle_invitation(base_url, None, now);
-    let interaction_id = deps
-        .interaction_repository
+    let interaction_id = storage_access
         .create_interaction(interaction.clone())
         .await
-        .map_err(|error| {
-            ExchangeProtocolError::Failed(format!("Error while creating interaction {error}"))
-        })?;
+        .map_err(ExchangeProtocolError::StorageAccessError)?;
 
     // create credential
     let credential_id = issuer_response.id;
@@ -701,17 +680,19 @@ fn unnest_incoming_claim(
 }
 
 async fn handle_proof_invitation(
-    deps: &ProcivisTemp,
     base_url: Url,
     proof_id: String,
     proof_request: ConnectVerifierResponse,
     protocol: &str,
     organisation: Organisation,
     redirect_uri: Option<String>,
+    storage_access: &StorageAccess,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
-    let verifier_did_result = deps
-        .did_repository
-        .get_did_by_value(&proof_request.verifier_did, &DidRelations::default())
+    let verifier_did_result = storage_access
+        .get_did_by_value(
+            &proof_request.verifier_did.clone().into(),
+            &DidRelations::default(),
+        )
         .await
         .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
@@ -732,12 +713,10 @@ async fn handle_proof_invitation(
                 organisation: Some(organisation),
                 deactivated: false,
             };
-            deps.did_repository
+            storage_access
                 .create_did(new_did.clone())
                 .await
-                .map_err(|error| {
-                    ExchangeProtocolError::Failed(format!("Data layer error {error}"))
-                })?;
+                .map_err(ExchangeProtocolError::StorageAccessError)?;
 
             new_did
         }
@@ -760,11 +739,10 @@ async fn handle_proof_invitation(
 
     let interaction = interaction_from_handle_invitation(base_url, Some(data), now);
 
-    let interaction_id = deps
-        .interaction_repository
+    let interaction_id = storage_access
         .create_interaction(interaction.clone())
         .await
-        .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
+        .map_err(ExchangeProtocolError::StorageAccessError)?;
 
     let proof_id: Uuid = proof_id
         .parse()
