@@ -1,20 +1,21 @@
-use serde_json::Value;
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use self::suspend_check::SuspendCheckProvider;
-
+use crate::repository::revocation_list_repository::RevocationListRepository;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::error::ServiceError;
 use crate::{
     config::{
         core_config::{TaskConfig, TaskType},
         ConfigError,
     },
-    provider::revocation::provider::RevocationMethodProvider,
     repository::{
         credential_repository::CredentialRepository, history_repository::HistoryRepository,
     },
 };
+use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::provider::RevocationMethodProvider;
+use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 pub mod provider;
 pub mod suspend_check;
@@ -25,11 +26,16 @@ pub trait Task: Send + Sync {
     async fn run(&self) -> Result<Value, ServiceError>;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn tasks_from_config(
     config: &TaskConfig,
     credential_repository: Arc<dyn CredentialRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    revocation_list_repository: Arc<dyn RevocationListRepository>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+    key_provider: Arc<dyn KeyProvider>,
+    core_base_url: Option<String>,
 ) -> Result<HashMap<String, Arc<dyn Task>>, ConfigError> {
     let mut providers: HashMap<String, Arc<dyn Task>> = HashMap::new();
 
@@ -43,6 +49,10 @@ pub(crate) fn tasks_from_config(
                 credential_repository.to_owned(),
                 revocation_method_provider.to_owned(),
                 history_repository.to_owned(),
+                revocation_list_repository.to_owned(),
+                validity_credential_repository.to_owned(),
+                key_provider.to_owned(),
+                core_base_url.to_owned(),
             )),
         };
         providers.insert(name.to_owned(), provider);

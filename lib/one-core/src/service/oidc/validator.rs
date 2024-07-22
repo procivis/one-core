@@ -5,6 +5,10 @@ use one_providers::credential_formatter::model::{
     DetailCredential, ExtractPresentationCtx, Presentation, TokenVerifier,
 };
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::revocation::model::{
+    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
+};
+use one_providers::revocation::provider::RevocationMethodProvider;
 use time::{Duration, OffsetDateTime};
 
 use super::dto::ValidatedProofClaimDTO;
@@ -15,10 +19,6 @@ use crate::config::ConfigValidationError;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::interaction::Interaction;
 use crate::model::proof_schema::ProofInputSchema;
-use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::revocation::{
-    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
-};
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 use crate::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialRequestDTO, OpenID4VCIError,
@@ -262,12 +262,12 @@ pub(super) async fn validate_credential(
         match revocation_method
             .check_credential_revocation_status(
                 credential_status,
-                &issuer_did.clone().into(),
+                &issuer_did,
                 Some(CredentialDataByRole::Verifier(Box::new(
                     VerifierCredentialData {
                         credential: credential.to_owned(),
                         extracted_lvvcs: extracted_lvvcs.to_owned(),
-                        proof_input: proof_schema_input.to_owned(),
+                        proof_input: proof_schema_input.to_owned().into(),
                     },
                 ))),
             )

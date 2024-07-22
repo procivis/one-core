@@ -1,16 +1,20 @@
-use mockall::predicate::eq;
+use mockall::predicate::{always, eq};
 use uuid::Uuid;
 
 use super::SuspendCheckProvider;
 use crate::model::credential::{Credential, CredentialStateEnum, GetCredentialList};
 use crate::model::history::{HistoryAction, HistoryEntityType};
-use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
 use crate::provider::task::suspend_check::dto::SuspendCheckResultDTO;
 use crate::provider::task::Task;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::revocation_list_repository::MockRevocationListRepository;
+use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::test_utilities::dummy_credential;
+use one_providers::key_storage::provider::MockKeyProvider;
+use one_providers::revocation::model::{CredentialRevocationState, RevocationUpdate};
+use one_providers::revocation::provider::MockRevocationMethodProvider;
+use one_providers::revocation::MockRevocationMethod;
 use std::sync::Arc;
 
 #[derive(Default)]
@@ -18,6 +22,10 @@ struct TestDependencies {
     pub credential_repository: MockCredentialRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub history_repository: MockHistoryRepository,
+    pub revocation_list_repository: MockRevocationListRepository,
+    pub validity_credential_repository: MockValidityCredentialRepository,
+    pub key_provider: MockKeyProvider,
+    pub core_base_url: Option<String>,
 }
 
 fn setup(dependencies: TestDependencies) -> impl Task {
@@ -25,6 +33,10 @@ fn setup(dependencies: TestDependencies) -> impl Task {
         Arc::new(dependencies.credential_repository),
         Arc::new(dependencies.revocation_method_provider),
         Arc::new(dependencies.history_repository),
+        Arc::new(dependencies.revocation_list_repository),
+        Arc::new(dependencies.validity_credential_repository),
+        Arc::new(dependencies.key_provider),
+        dependencies.core_base_url,
     )
 }
 
@@ -104,18 +116,33 @@ async fn test_run_one_update() {
         })
         .return_once(|_| Ok(()));
 
+    let credential_model =
+        one_providers::common_models::credential::Credential::from(credential.clone());
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(eq(credential.clone()), eq(CredentialRevocationState::Valid))
-        .return_once(|_, _| Ok(()));
+        .with(
+            eq(credential_model.clone()),
+            eq(CredentialRevocationState::Valid),
+            always(),
+        )
+        .return_once(|_, _, _| {
+            Ok(RevocationUpdate {
+                status_type: "NONE".to_string(),
+                data: vec![],
+            })
+        });
+    revocation_method
+        .expect_get_status_type()
+        .return_once(|| "NONE".to_string());
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .once()
-        .return_once(move |_| Some(Arc::new(revocation_method)));
+        .times(2)
+        .returning(move |_| Some(revocation_method.clone()));
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository
@@ -136,6 +163,7 @@ async fn test_run_one_update() {
         credential_repository,
         revocation_method_provider,
         history_repository,
+        ..Default::default()
     });
 
     let result = task.run().await.unwrap();

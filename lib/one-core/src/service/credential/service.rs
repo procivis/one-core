@@ -1,6 +1,9 @@
 use anyhow::Context;
 use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::model::{
+    CredentialDataByRole, CredentialRevocationState, RevocationMethodCapabilities,
+};
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -28,9 +31,6 @@ use crate::provider::exchange_protocol::dto::ShareResponse;
 use crate::provider::exchange_protocol::openid4vc::dto::{OpenID4VCICredential, OpenID4VCIProof};
 use crate::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
-use crate::provider::revocation::{
-    CredentialDataByRole, CredentialRevocationState, RevocationMethodCapabilities,
-};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::interaction_repository::InteractionRepository;
@@ -53,6 +53,7 @@ use crate::util::interactions::{
 };
 use crate::util::oidc::detect_correct_format;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
+use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 
 impl CredentialService {
     /// Creates a credential according to request
@@ -571,9 +572,27 @@ impl CredentialService {
             );
         }
 
-        revocation_method
-            .mark_credential_as(&credential, revocation_state.to_owned())
+        let update = revocation_method
+            .mark_credential_as(
+                &credential.to_owned().into(),
+                revocation_state.to_owned(),
+                generate_credential_additional_data(
+                    &credential,
+                    &self.credential_repository,
+                    &self.revocation_list_repository,
+                    &self.revocation_method_provider,
+                    &self.key_provider,
+                    &self.base_url,
+                )
+                .await?,
+            )
             .await?;
+        process_update(
+            update,
+            &self.validity_credential_repository,
+            &self.revocation_list_repository,
+        )
+        .await?;
 
         let now: OffsetDateTime = OffsetDateTime::now_utc();
         let suspend_end_date =
@@ -615,7 +634,7 @@ impl CredentialService {
         &self,
         credential_id: CredentialId,
     ) -> Result<CredentialRevocationCheckResponseDTO, ServiceError> {
-        let credential = self
+        let mut credential = self
             .credential_repository
             .get_credential(
                 &credential_id,
@@ -626,17 +645,19 @@ impl CredentialService {
                         ..Default::default()
                     }),
                     issuer_did: Some(DidRelations::default()),
-                    holder_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
             )
-            .await?;
-
-        let Some(mut credential) = credential else {
-            return Err(EntityNotFoundError::Credential(credential_id).into());
-        };
+            .await?
+            .ok_or(ServiceError::EntityNotFound(
+                EntityNotFoundError::Credential(credential_id),
+            ))?;
 
         let credential_schema = credential
             .schema
@@ -771,11 +792,16 @@ impl CredentialService {
 
         let issuer_did = credential
             .issuer_did
+            .to_owned()
             .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
         let credential_data_by_role = match credential.role {
-            CredentialRole::Holder => Some(CredentialDataByRole::Holder(credential_id)),
-            CredentialRole::Issuer => Some(CredentialDataByRole::Issuer(credential_id)),
+            CredentialRole::Holder => {
+                Some(CredentialDataByRole::Holder(credential.to_owned().into()))
+            }
+            CredentialRole::Issuer => {
+                Some(CredentialDataByRole::Issuer(credential.to_owned().into()))
+            }
             CredentialRole::Verifier => None,
         };
 
@@ -784,7 +810,7 @@ impl CredentialService {
             match revocation_method
                 .check_credential_revocation_status(
                     &status,
-                    &issuer_did.did,
+                    &issuer_did.did.to_owned().into(),
                     credential_data_by_role.to_owned(),
                 )
                 .await

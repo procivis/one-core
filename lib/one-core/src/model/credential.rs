@@ -7,12 +7,14 @@ use super::list_query::ListQuery;
 use super::revocation_list::{RevocationList, RevocationListRelations};
 use crate::model::key::KeyRelations;
 use crate::service::credential::dto::{CredentialFilterValue, CredentialListIncludeEntityTypeEnum};
+use dto_mapper::{convert_inner, convert_inner_of_inner, Into};
 use one_providers::common_models::key::Key;
 use shared_types::{CredentialId, DidId, KeyId};
 use strum_macros::Display;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[into(one_providers::common_models::credential::Credential)]
 pub struct Credential {
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
@@ -25,13 +27,21 @@ pub struct Credential {
     pub role: CredentialRole,
 
     // Relations:
+    #[into(with_fn = "convert_inner_of_inner")]
     pub state: Option<Vec<CredentialState>>,
+    #[into(with_fn = "convert_inner_of_inner")]
     pub claims: Option<Vec<Claim>>,
+    #[into(with_fn = "convert_inner")]
     pub issuer_did: Option<Did>,
+    #[into(with_fn = "convert_inner")]
     pub holder_did: Option<Did>,
+    #[into(with_fn = "convert_inner")]
     pub schema: Option<CredentialSchema>,
+    #[into(skip)]
     pub interaction: Option<Interaction>,
+    #[into(skip)]
     pub revocation_list: Option<RevocationList>,
+    #[into(with_fn = "convert_inner")]
     pub key: Option<Key>,
 }
 
@@ -47,14 +57,16 @@ pub struct CredentialRelations {
     pub key: Option<KeyRelations>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[into(one_providers::common_models::credential::CredentialState)]
 pub struct CredentialState {
     pub created_date: OffsetDateTime,
     pub state: CredentialStateEnum,
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Display)]
+#[derive(Clone, Debug, Eq, PartialEq, Display, Into)]
+#[into(one_providers::common_models::credential::CredentialStateEnum)]
 pub enum CredentialStateEnum {
     Created,
     Pending,
@@ -93,7 +105,8 @@ pub struct UpdateCredentialRequest {
     pub redirect_uri: Option<Option<String>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Into)]
+#[into(one_providers::common_models::credential::CredentialRole)]
 pub enum CredentialRole {
     Holder,
     Issuer,

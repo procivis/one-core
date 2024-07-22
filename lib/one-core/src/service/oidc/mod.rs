@@ -1,14 +1,7 @@
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::key_storage::provider::KeyProvider;
-use std::sync::Arc;
-
 use crate::config::core_config;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
-use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -16,6 +9,12 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::did::provider::DidMethodProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::provider::RevocationMethodProvider;
+use std::sync::Arc;
 
 pub mod dto;
 pub mod mapper;

@@ -11,6 +11,7 @@ use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::crypto::imp::utilities;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::provider::RevocationMethodProvider;
 use openidvc_ble::oidc_ble_holder::OpenID4VCBLEHolder;
 use openidvc_ble::oidc_ble_verifier::OpenID4VCBLEVerifier;
 use serde::de::DeserializeOwned;
@@ -66,7 +67,6 @@ use crate::provider::exchange_protocol::dto::{
 use crate::provider::exchange_protocol::mapper::{
     get_relevant_credentials_to_credential_schemas, proof_from_handle_invitation,
 };
-use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::error::DataLayerError;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;

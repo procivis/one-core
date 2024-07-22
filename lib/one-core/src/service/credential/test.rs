@@ -10,6 +10,11 @@ use one_providers::credential_formatter::model::{
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
 use one_providers::key_storage::provider::MockKeyProvider;
+use one_providers::revocation::model::{
+    CredentialRevocationState, RevocationMethodCapabilities, RevocationUpdate,
+};
+use one_providers::revocation::provider::MockRevocationMethodProvider;
+use one_providers::revocation::MockRevocationMethod;
 use serde_json::json;
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
@@ -35,15 +40,12 @@ use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::exchange_protocol::dto::ShareResponse;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
-use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::provider::revocation::{
-    CredentialRevocationState, MockRevocationMethod, RevocationMethodCapabilities,
-};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::credential;
 use crate::service::credential::dto::{
@@ -66,6 +68,7 @@ struct Repositories {
     pub did_repository: MockDidRepository,
     pub history_repository: MockHistoryRepository,
     pub interaction_repository: MockInteractionRepository,
+    pub revocation_list_repository: MockRevocationListRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockExchangeProtocolProvider,
@@ -81,6 +84,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.did_repository),
         Arc::new(repositories.history_repository),
         Arc::new(repositories.interaction_repository),
+        Arc::new(repositories.revocation_list_repository),
         Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.protocol_provider),
@@ -2176,8 +2180,16 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(CredentialRevocationState::Revoked))
-        .return_once(move |_, _| Ok(()));
+        .with(always(), eq(CredentialRevocationState::Revoked), always())
+        .return_once(move |_, _, _| {
+            Ok(RevocationUpdate {
+                status_type: "NONE".to_string(),
+                data: vec![],
+            })
+        });
+    revocation_method
+        .expect_get_status_type()
+        .return_once(|| "NONE".to_string());
 
     credential_repository
         .expect_update_credential()
@@ -2188,10 +2200,11 @@ async fn test_revoke_credential_success_with_accepted_credential() {
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .once()
-        .return_once(move |_| Some(Arc::new(revocation_method)));
+        .times(2)
+        .returning(move |_| Some(revocation_method.clone()));
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository
@@ -2241,8 +2254,16 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(CredentialRevocationState::Revoked))
-        .return_once(move |_, _| Ok(()));
+        .with(always(), eq(CredentialRevocationState::Revoked), always())
+        .return_once(move |_, _, _| {
+            Ok(RevocationUpdate {
+                status_type: "NONE".to_string(),
+                data: vec![],
+            })
+        });
+    revocation_method
+        .expect_get_status_type()
+        .return_once(|| "NONE".to_string());
 
     credential_repository
         .expect_update_credential()
@@ -2253,10 +2274,11 @@ async fn test_revoke_credential_success_with_suspended_credential() {
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .once()
-        .return_once(move |_| Some(Arc::new(revocation_method)));
+        .times(2)
+        .returning(move |_| Some(revocation_method.clone()));
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository
@@ -2313,8 +2335,17 @@ async fn test_suspend_credential_success() {
             eq(CredentialRevocationState::Suspended {
                 suspend_end_date: Some(suspend_end_date),
             }),
+            always(),
         )
-        .return_once(move |_, _| Ok(()));
+        .return_once(move |_, _, _| {
+            Ok(RevocationUpdate {
+                status_type: "NONE".to_string(),
+                data: vec![],
+            })
+        });
+    revocation_method
+        .expect_get_status_type()
+        .return_once(|| "NONE".to_string());
 
     credential_repository
         .expect_update_credential()
@@ -2325,10 +2356,11 @@ async fn test_suspend_credential_success() {
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .once()
-        .return_once(move |_| Some(Arc::new(revocation_method)));
+        .times(2)
+        .returning(move |_| Some(revocation_method.clone()));
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository
@@ -2429,8 +2461,16 @@ async fn test_reactivate_credential_success() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(CredentialRevocationState::Valid))
-        .return_once(move |_, _| Ok(()));
+        .with(always(), eq(CredentialRevocationState::Valid), always())
+        .return_once(move |_, _, _| {
+            Ok(RevocationUpdate {
+                status_type: "NONE".to_string(),
+                data: vec![],
+            })
+        });
+    revocation_method
+        .expect_get_status_type()
+        .return_once(|| "NONE".to_string());
 
     credential_repository
         .expect_update_credential()
@@ -2441,10 +2481,11 @@ async fn test_reactivate_credential_success() {
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .once()
-        .return_once(move |_| Some(Arc::new(revocation_method)));
+        .times(2)
+        .returning(move |_| Some(revocation_method.clone()));
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository

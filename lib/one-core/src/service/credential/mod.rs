@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::key_storage::provider::KeyProvider;
-
 use crate::config::core_config;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
-use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::provider::RevocationMethodProvider;
 
 pub mod dto;
 pub mod mapper;
@@ -26,6 +26,7 @@ pub struct CredentialService {
     did_repository: Arc<dyn DidRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
+    revocation_list_repository: Arc<dyn RevocationListRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     protocol_provider: Arc<dyn ExchangeProtocolProvider>,
@@ -43,6 +44,7 @@ impl CredentialService {
         did_repository: Arc<dyn DidRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
+        revocation_list_repository: Arc<dyn RevocationListRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         protocol_provider: Arc<dyn ExchangeProtocolProvider>,
@@ -57,6 +59,7 @@ impl CredentialService {
             did_repository,
             history_repository,
             interaction_repository,
+            revocation_list_repository,
             revocation_method_provider,
             formatter_provider,
             protocol_provider,

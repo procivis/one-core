@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use mockall::predicate::eq;
+use mockall::predicate::{always, eq};
 use one_providers::common_models::key::Key;
 use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
@@ -11,6 +11,9 @@ use one_providers::credential_formatter::MockCredentialFormatter;
 use one_providers::did::model::{DidDocument, DidVerificationMethod};
 use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::key_storage::provider::MockKeyProvider;
+use one_providers::revocation::model::{CredentialRevocationInfo, JsonLdContext};
+use one_providers::revocation::provider::MockRevocationMethodProvider;
+use one_providers::revocation::MockRevocationMethod;
 use serde_json::{json, Value};
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
@@ -27,6 +30,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
+use crate::model::revocation_list::{RevocationList, RevocationListPurpose};
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::exchange_protocol::dto::{CredentialGroup, CredentialGroupItem};
@@ -36,10 +40,9 @@ use crate::provider::exchange_protocol::provider::{
 };
 use crate::provider::exchange_protocol::MockStorageProxy;
 use crate::provider::revocation::none::NoneRevocation;
-use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::provider::revocation::{CredentialRevocationInfo, JsonLdContext, MockRevocationMethod};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::OpenID4VCIError;
@@ -51,6 +54,44 @@ async fn test_issuer_submit_succeeds() {
     let key_storage_type = "storage type";
     let key_type = "EDDSA";
 
+    let key = Key {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        public_key: b"public_key".to_vec(),
+        name: "key name".to_string(),
+        key_reference: b"private_key".to_vec(),
+        storage_type: key_storage_type.to_string(),
+        key_type: key_type.to_string(),
+        organisation: Some(
+            Organisation {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }
+            .into(),
+        ),
+    };
+
+    let credential = Credential {
+        state: Some(vec![CredentialState {
+            created_date: OffsetDateTime::now_utc(),
+            state: CredentialStateEnum::Offered,
+            suspend_end_date: None,
+        }]),
+        holder_did: Some(dummy_did()),
+        issuer_did: Some(Did {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::AssertionMethod,
+                key: key.to_owned(),
+            }]),
+            ..dummy_did()
+        }),
+        key: Some(key),
+        ..dummy_credential()
+    };
+
+    let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credential()
@@ -59,44 +100,11 @@ async fn test_issuer_submit_succeeds() {
             true
         })
         .once()
-        .return_once(move |_, _| {
-            let key = Key {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                public_key: b"public_key".to_vec(),
-                name: "key name".to_string(),
-                key_reference: b"private_key".to_vec(),
-                storage_type: key_storage_type.to_string(),
-                key_type: key_type.to_string(),
-                organisation: Some(
-                    Organisation {
-                        id: Uuid::new_v4().into(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                    }
-                    .into(),
-                ),
-            };
+        .return_once(move |_, _| Ok(Some(credential_copy)));
 
-            Ok(Some(Credential {
-                state: Some(vec![CredentialState {
-                    created_date: OffsetDateTime::now_utc(),
-                    state: CredentialStateEnum::Offered,
-                    suspend_end_date: None,
-                }]),
-                holder_did: Some(dummy_did()),
-                issuer_did: Some(Did {
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: key.to_owned(),
-                    }]),
-                    ..dummy_did()
-                }),
-                key: Some(key),
-                ..dummy_credential()
-            }))
-        });
+    credential_repository
+        .expect_get_credentials_by_issuer_did_id()
+        .return_once(move |_, _| Ok(vec![credential]));
 
     credential_repository
         .expect_update_credential()
@@ -111,15 +119,18 @@ async fn test_issuer_submit_succeeds() {
     revocation_method
         .expect_add_issued_credential()
         .once()
-        .return_once(|_| {
-            Ok(vec![CredentialRevocationInfo {
-                credential_status: CredentialStatus {
-                    id: Uuid::new_v4().to_string(),
-                    r#type: "type".to_string(),
-                    status_purpose: Some("type".to_string()),
-                    additional_fields: HashMap::new(),
-                },
-            }])
+        .return_once(|_, _| {
+            Ok((
+                None,
+                vec![CredentialRevocationInfo {
+                    credential_status: CredentialStatus {
+                        id: Uuid::new_v4().to_string(),
+                        r#type: "type".to_string(),
+                        status_purpose: Some("type".to_string()),
+                        additional_fields: HashMap::new(),
+                    },
+                }],
+            ))
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -180,6 +191,34 @@ async fn test_issuer_submit_succeeds() {
             })
         });
 
+    let mut revocation_list_repository = MockRevocationListRepository::default();
+    revocation_list_repository
+        .expect_get_revocation_by_issuer_did_id()
+        .with(always(), eq(RevocationListPurpose::Revocation), always())
+        .return_once(move |_, _, _| {
+            Ok(Some(RevocationList {
+                id: Default::default(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                credentials: vec![],
+                purpose: RevocationListPurpose::Revocation,
+                issuer_did: None,
+            }))
+        });
+    revocation_list_repository
+        .expect_get_revocation_by_issuer_did_id()
+        .with(always(), eq(RevocationListPurpose::Suspension), always())
+        .return_once(move |_, _, _| {
+            Ok(Some(RevocationList {
+                id: Default::default(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                credentials: vec![],
+                purpose: RevocationListPurpose::Suspension,
+                issuer_did: None,
+            }))
+        });
+
     let service = ExchangeProtocolProviderImpl::new(
         Default::default(),
         Arc::new(formatter_provider),
@@ -188,6 +227,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(key_provider),
         Arc::new(history_repository),
         Arc::new(did_method_provider),
+        Arc::new(revocation_list_repository),
         Arc::new(MockValidityCredentialRepository::new()),
         Arc::new(generic_config().core),
         Some("base_url".to_string()),
@@ -367,6 +407,32 @@ fn mdoc_credential() -> Credential {
     credential
 }
 
+fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credential {
+    let key = dummy_key();
+
+    Credential {
+        state: Some(vec![CredentialState {
+            created_date: OffsetDateTime::now_utc(),
+            state,
+            suspend_end_date: None,
+        }]),
+        holder_did: Some(dummy_did()),
+        issuer_did: Some(Did {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::AssertionMethod,
+                key: key.to_owned(),
+            }]),
+            ..dummy_did()
+        }),
+        key: Some(key),
+        schema: Some(CredentialSchema {
+            format: format.to_string(),
+            ..dummy_credential().schema.unwrap()
+        }),
+        ..dummy_credential()
+    }
+}
+
 #[tokio::test]
 async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
     let mut storage = MockStorageProxy::new();
@@ -439,6 +505,9 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     let format = "MDOC";
 
     let mut credential_repository = MockCredentialRepository::new();
+
+    let credential = generic_mdoc_credential(format, CredentialStateEnum::Offered);
+    let credential_copy = credential.clone();
     credential_repository
         .expect_get_credential()
         .withf(move |_credential_id, _| {
@@ -446,31 +515,11 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
             true
         })
         .once()
-        .return_once(move |_, _| {
-            let key = dummy_key();
+        .return_once(move |_, _| Ok(Some(credential_copy)));
 
-            Ok(Some(Credential {
-                state: Some(vec![CredentialState {
-                    created_date: OffsetDateTime::now_utc(),
-                    state: CredentialStateEnum::Offered,
-                    suspend_end_date: None,
-                }]),
-                holder_did: Some(dummy_did()),
-                issuer_did: Some(Did {
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: key.to_owned(),
-                    }]),
-                    ..dummy_did()
-                }),
-                key: Some(key),
-                schema: Some(CredentialSchema {
-                    format: format.to_string(),
-                    ..dummy_credential().schema.unwrap()
-                }),
-                ..dummy_credential()
-            }))
-        });
+    credential_repository
+        .expect_get_credentials_by_issuer_did_id()
+        .return_once(move |_, _| Ok(vec![credential]));
 
     credential_repository
         .expect_update_credential()
@@ -514,6 +563,34 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .once()
         .returning(move |_| Ok(dummy_did_document()));
 
+    let mut revocation_list_repository = MockRevocationListRepository::default();
+    revocation_list_repository
+        .expect_get_revocation_by_issuer_did_id()
+        .with(always(), eq(RevocationListPurpose::Revocation), always())
+        .return_once(move |_, _, _| {
+            Ok(Some(RevocationList {
+                id: Default::default(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                credentials: vec![],
+                purpose: RevocationListPurpose::Revocation,
+                issuer_did: None,
+            }))
+        });
+    revocation_list_repository
+        .expect_get_revocation_by_issuer_did_id()
+        .with(always(), eq(RevocationListPurpose::Suspension), always())
+        .return_once(move |_, _, _| {
+            Ok(Some(RevocationList {
+                id: Default::default(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                credentials: vec![],
+                purpose: RevocationListPurpose::Suspension,
+                issuer_did: None,
+            }))
+        });
+
     let mut validity_credential_repository = MockValidityCredentialRepository::new();
     validity_credential_repository
         .expect_insert()
@@ -534,6 +611,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(key_provider),
         Arc::new(history_repository),
         Arc::new(did_method_provider),
+        Arc::new(revocation_list_repository),
         Arc::new(validity_credential_repository),
         Arc::new(dummy_config()),
         Some("base_url".to_string()),
@@ -550,6 +628,8 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format = "MDOC";
 
+    let credential = generic_mdoc_credential(format, CredentialStateEnum::Accepted);
+    let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credential()
@@ -558,31 +638,11 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             true
         })
         .once()
-        .return_once(move |_, _| {
-            let key = dummy_key();
+        .return_once(move |_, _| Ok(Some(credential_copy)));
 
-            Ok(Some(Credential {
-                state: Some(vec![CredentialState {
-                    created_date: OffsetDateTime::now_utc(),
-                    state: CredentialStateEnum::Accepted,
-                    suspend_end_date: None,
-                }]),
-                holder_did: Some(dummy_did()),
-                issuer_did: Some(Did {
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: key.to_owned(),
-                    }]),
-                    ..dummy_did()
-                }),
-                key: Some(key),
-                schema: Some(CredentialSchema {
-                    format: format.to_string(),
-                    ..dummy_credential().schema.unwrap()
-                }),
-                ..dummy_credential()
-            }))
-        });
+    credential_repository
+        .expect_get_credentials_by_issuer_did_id()
+        .return_once(move |_, _| Ok(vec![credential]));
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider
@@ -614,6 +674,34 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         .expect_resolve()
         .once()
         .returning(move |_| Ok(dummy_did_document()));
+
+    let mut revocation_list_repository = MockRevocationListRepository::default();
+    revocation_list_repository
+        .expect_get_revocation_by_issuer_did_id()
+        .with(always(), eq(RevocationListPurpose::Revocation), always())
+        .return_once(move |_, _, _| {
+            Ok(Some(RevocationList {
+                id: Default::default(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                credentials: vec![],
+                purpose: RevocationListPurpose::Revocation,
+                issuer_did: None,
+            }))
+        });
+    revocation_list_repository
+        .expect_get_revocation_by_issuer_did_id()
+        .with(always(), eq(RevocationListPurpose::Suspension), always())
+        .return_once(move |_, _, _| {
+            Ok(Some(RevocationList {
+                id: Default::default(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                credentials: vec![],
+                purpose: RevocationListPurpose::Suspension,
+                issuer_did: None,
+            }))
+        });
 
     let mut validity_credential_repository = MockValidityCredentialRepository::new();
 
@@ -670,6 +758,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(key_provider),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(did_method_provider),
+        Arc::new(revocation_list_repository),
         Arc::new(validity_credential_repository),
         Arc::new(config),
         Some("base_url".to_string()),
@@ -686,6 +775,9 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format = "MDOC";
 
+    let credential = generic_mdoc_credential(format, CredentialStateEnum::Accepted);
+
+    let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credential()
@@ -694,31 +786,11 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
             true
         })
         .once()
-        .return_once(move |_, _| {
-            let key = dummy_key();
+        .return_once(move |_, _| Ok(Some(credential_copy)));
 
-            Ok(Some(Credential {
-                state: Some(vec![CredentialState {
-                    created_date: OffsetDateTime::now_utc(),
-                    state: CredentialStateEnum::Accepted,
-                    suspend_end_date: None,
-                }]),
-                holder_did: Some(dummy_did()),
-                issuer_did: Some(Did {
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: key.to_owned(),
-                    }]),
-                    ..dummy_did()
-                }),
-                key: Some(key),
-                schema: Some(CredentialSchema {
-                    format: format.to_string(),
-                    ..dummy_credential().schema.unwrap()
-                }),
-                ..dummy_credential()
-            }))
-        });
+    credential_repository
+        .expect_get_credentials_by_issuer_did_id()
+        .return_once(move |_, _| Ok(vec![credential]));
 
     let mut validity_credential_repository = MockValidityCredentialRepository::new();
     validity_credential_repository
@@ -763,6 +835,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockKeyProvider::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockRevocationListRepository::new()),
         Arc::new(validity_credential_repository),
         Arc::new(config),
         Some("base_url".to_string()),

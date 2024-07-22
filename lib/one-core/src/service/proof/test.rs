@@ -6,6 +6,7 @@ use one_providers::common_models::key::Key;
 use one_providers::credential_formatter::model::FormatterCapabilities;
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
+use one_providers::revocation::provider::MockRevocationMethodProvider;
 use rstest::rstest;
 use shared_types::ProofId;
 use time::OffsetDateTime;
@@ -44,7 +45,6 @@ use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractio
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEPeer;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
-use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;

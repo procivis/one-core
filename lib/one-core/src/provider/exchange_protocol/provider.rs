@@ -1,10 +1,12 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
+use dto_mapper::convert_inner;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::model::CredentialAdditionalData;
+use one_providers::revocation::provider::RevocationMethodProvider;
 use shared_types::CredentialId;
+use std::collections::HashMap;
+use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -23,20 +25,22 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelation
 use crate::model::did::{Did, DidRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
+use crate::model::revocation_list::RevocationListPurpose;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
-use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
+use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::oidc::dto::OpenID4VCIError;
+use crate::util::revocation_update::{get_revocation_list_id, process_update};
 
 #[derive(Clone)]
 pub struct DetectedProtocol {
@@ -65,6 +69,7 @@ pub(crate) struct ExchangeProtocolProviderImpl {
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    revocation_list_repository: Arc<dyn RevocationListRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     config: Arc<CoreConfig>,
     core_base_url: Option<String>,
@@ -80,6 +85,7 @@ impl ExchangeProtocolProviderImpl {
         key_provider: Arc<dyn KeyProvider>,
         history_repository: Arc<dyn HistoryRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        revocation_list_repository: Arc<dyn RevocationListRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         config: Arc<CoreConfig>,
         core_base_url: Option<String>,
@@ -92,6 +98,7 @@ impl ExchangeProtocolProviderImpl {
             key_provider,
             history_repository,
             did_method_provider,
+            revocation_list_repository,
             validity_credential_repository,
             config,
             core_base_url,
@@ -193,6 +200,23 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
 
+        let issuer_did = credential
+            .issuer_did
+            .as_ref()
+            .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
+
+        let credentials_by_issuer_did = convert_inner(
+            self.credential_repository
+                .get_credentials_by_issuer_did_id(
+                    &issuer_did.id,
+                    &CredentialRelations {
+                        state: Some(CredentialStateRelations::default()),
+                        ..Default::default()
+                    },
+                )
+                .await?,
+        );
+
         credential.holder_did = Some(holder_did.clone());
 
         let credential_schema = credential
@@ -213,9 +237,42 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
                 credential_schema.revocation_method.clone(),
             ))?;
 
-        let credential_status = revocation_method
-            .add_issued_credential(&credential)
-            .await?
+        let (update, status) = revocation_method
+            .add_issued_credential(
+                &credential.to_owned().into(),
+                Some(CredentialAdditionalData {
+                    credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
+                    revocation_list_id: get_revocation_list_id(
+                        &credentials_by_issuer_did,
+                        issuer_did,
+                        RevocationListPurpose::Revocation,
+                        &self.revocation_list_repository,
+                        &self.key_provider,
+                        &self.core_base_url,
+                    )
+                    .await?,
+                    suspension_list_id: get_revocation_list_id(
+                        &credentials_by_issuer_did,
+                        issuer_did,
+                        RevocationListPurpose::Suspension,
+                        &self.revocation_list_repository,
+                        &self.key_provider,
+                        &self.core_base_url,
+                    )
+                    .await?,
+                }),
+            )
+            .await?;
+        if let Some(update) = update {
+            process_update(
+                update,
+                &self.validity_credential_repository,
+                &self.revocation_list_repository,
+            )
+            .await?;
+        }
+
+        let credential_status = status
             .into_iter()
             .map(|revocation_info| revocation_info.credential_status)
             .collect();

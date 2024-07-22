@@ -9,7 +9,6 @@ use uuid::Uuid;
 use crate::model::revocation_list::RevocationListPurpose;
 use crate::{
     model::revocation_list::{RevocationList, RevocationListRelations},
-    provider::revocation::provider::MockRevocationMethodProvider,
     repository::{
         credential_repository::MockCredentialRepository,
         revocation_list_repository::MockRevocationListRepository,
@@ -19,6 +18,7 @@ use crate::{
 };
 use one_providers::crypto::MockCryptoProvider;
 use one_providers::did::provider::MockDidMethodProvider;
+use one_providers::revocation::provider::MockRevocationMethodProvider;
 
 #[derive(Default)]
 struct Repositories {

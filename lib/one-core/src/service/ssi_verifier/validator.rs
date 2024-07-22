@@ -6,14 +6,14 @@ use crate::{
         did::{Did, KeyRole},
         proof_schema::{ProofInputClaimSchema, ProofSchema},
     },
-    provider::revocation::{
-        provider::RevocationMethodProvider, CredentialDataByRole, CredentialRevocationState,
-        VerifierCredentialData,
-    },
     service::error::{BusinessLogicError, MissingProviderError, ServiceError},
     util::{key_verification::KeyVerification, oidc::map_from_oidc_format_to_core_real},
 };
 
+use one_providers::revocation::model::{
+    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
+};
+use one_providers::revocation::provider::RevocationMethodProvider;
 use one_providers::{
     credential_formatter::model::{DetailCredential, ExtractPresentationCtx},
     key_algorithm::provider::KeyAlgorithmProvider,
@@ -210,12 +210,12 @@ pub(super) async fn validate_proof(
             match revocation_method
                 .check_credential_revocation_status(
                     credential_status,
-                    &issuer_did.clone().into(),
+                    issuer_did,
                     Some(CredentialDataByRole::Verifier(Box::new(
                         VerifierCredentialData {
                             credential: credential.to_owned(),
                             extracted_lvvcs: extracted_lvvcs.to_owned(),
-                            proof_input,
+                            proof_input: proof_input.into(),
                         },
                     ))),
                 )

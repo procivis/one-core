@@ -1,5 +1,6 @@
 use crate::model::key::KeyRelations;
 use crate::service::error::{ServiceError, ValidationError};
+use dto_mapper::{convert_inner_of_inner, Into};
 use one_providers::common_models::key::Key;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
@@ -12,7 +13,8 @@ use super::{
     organisation::{Organisation, OrganisationRelations},
 };
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Into)]
+#[into(one_providers::common_models::did::DidType)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DidType {
     Remote,
@@ -25,7 +27,8 @@ impl DidType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[into(one_providers::common_models::did::KeyRole)]
 pub enum KeyRole {
     Authentication,
     AssertionMethod,
@@ -34,13 +37,15 @@ pub enum KeyRole {
     CapabilityDelegation,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[into(one_providers::common_models::did::RelatedKey)]
 pub struct RelatedKey {
     pub role: KeyRole,
     pub key: Key,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[into(one_providers::common_models::did::Did)]
 pub struct Did {
     pub id: DidId,
     pub created_date: OffsetDateTime,
@@ -52,7 +57,9 @@ pub struct Did {
     pub deactivated: bool,
 
     // Relations:
+    #[into(with_fn = "convert_inner_of_inner")]
     pub keys: Option<Vec<RelatedKey>>,
+    #[into(skip)]
     pub organisation: Option<Organisation>,
 }
 

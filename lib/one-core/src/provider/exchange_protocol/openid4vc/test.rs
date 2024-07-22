@@ -9,6 +9,7 @@ use one_providers::credential_formatter::provider::MockCredentialFormatterProvid
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
 use one_providers::key_storage::provider::MockKeyProvider;
+use one_providers::revocation::provider::MockRevocationMethodProvider;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -38,7 +39,6 @@ use crate::provider::exchange_protocol::openid4vc::mapper::prepare_claims;
 use crate::provider::exchange_protocol::{
     ExchangeProtocolError, ExchangeProtocolImpl, MockStorageProxy,
 };
-use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;

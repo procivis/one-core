@@ -1,8 +1,8 @@
 use self::model::VC;
+use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::{
     error::FormatterError, imp::jwt::Jwt, model::VerificationFn,
 };
-use shared_types::DidValue;
 
 mod model;
 
@@ -26,7 +26,7 @@ impl StatusList2021JWTFormatter {
             ));
         }
 
-        if issuer_did != &payload.custom.vc.issuer {
+        if issuer_did.as_str() != payload.custom.vc.issuer.as_str() {
             return Err(FormatterError::CouldNotExtractCredentials(
                 "Invalid issuer".to_string(),
             ));

@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-
 use crate::config::core_config;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
-use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -13,6 +10,8 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::revocation::provider::RevocationMethodProvider;
 
 pub mod dto;
 mod mapper;

@@ -9,6 +9,7 @@ use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::provider::RevocationMethodProvider;
 use serde::de::{Deserialize, DeserializeOwned};
 use serde::Serialize;
 use shared_types::{CredentialSchemaId, DidValue};
@@ -31,7 +32,6 @@ use crate::model::proof::Proof;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::procivis_temp::ProcivisTemp;
 use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
-use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::DataRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 
