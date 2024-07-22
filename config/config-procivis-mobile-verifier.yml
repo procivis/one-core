@@ -22,3 +22,7 @@ exchange:
     type: "SCAN_TO_VERIFY"
     display: "exchange.scanToVerify"
     order: 2
+  ISO_MDL:
+    type: "ISO_MDL"
+    display: "exchange.isoMdl"
+    order: 3

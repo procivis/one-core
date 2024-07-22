@@ -31,17 +31,20 @@ use crate::model::did::{Did, DidRelations};
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
+use crate::provider::exchange_protocol::iso_mdl::IsoMdl;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 
 pub mod dto;
+pub mod iso_mdl;
 mod mapper;
 pub mod openid4vc;
 pub mod procivis_temp;
 pub(crate) mod provider;
 pub mod scan_to_verify;
+
 #[cfg(test)]
 mod test;
 
@@ -397,8 +400,10 @@ pub(crate) fn exchange_protocol_providers_from_config(
 
                 providers.insert(name.to_string(), protocol);
             }
-            ExchangeType::Mdl => {
-                continue;
+            ExchangeType::IsoMdl => {
+                let protocol = Arc::new(ExchangeProtocolWrapper::new(IsoMdl::new()));
+
+                providers.insert(name.to_string(), protocol);
             }
         }
     }

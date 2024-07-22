@@ -15,3 +15,8 @@ transport:
     display: "transport.ble"
     disabled: false
     order: 1
+exchange:
+  ISO_MDL:
+    type: "ISO_MDL"
+    display: "exchange.isoMdl"
+    order: 3

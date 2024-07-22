@@ -201,9 +201,9 @@ pub enum ExchangeType {
     #[serde(rename = "SCAN_TO_VERIFY")]
     #[strum(serialize = "SCAN_TO_VERIFY")]
     ScanToVerify,
-    #[serde(rename = "MDL")]
-    #[strum(serialize = "MDL")]
-    Mdl,
+    #[serde(rename = "ISO_MDL")]
+    #[strum(serialize = "ISO_MDL")]
+    IsoMdl,
 }
 
 pub type RevocationConfig = ConfigBlock<RevocationType>;
