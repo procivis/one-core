@@ -141,7 +141,9 @@ build:
 tests:
   stage: test
   script:
-    - cargo llvm-cov --no-clean --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$" --output-path lcov.info
+    # The default amount of codegen-units (256 for dev builds) vastly increases
+    # the RAM usage during compilation, hence we limit it in CI
+    - RUSTFLAGS="-C codegen-units=4" cargo llvm-cov --no-clean --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$" --output-path lcov.info
     - cargo llvm-cov report --cobertura --output-path cobertura.xml
     - cargo llvm-cov report
   coverage: '/^TOTAL\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(\d+\.\d+)%/'
