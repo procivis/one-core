@@ -595,7 +595,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
         let now = OffsetDateTime::now_utc();
         let (issuer_did_id, create_did) = match storage_access
-            .get_did_by_value(&issuer_did_value.clone().into(), &DidRelations::default())
+            .get_did_by_value(&issuer_did_value, &DidRelations::default())
             .await
             .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
         {

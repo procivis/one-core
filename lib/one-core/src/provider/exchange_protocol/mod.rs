@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use dto::UpdateResponse;
+use one_providers::common_models::did::{DidId, DidValue};
 use one_providers::common_models::key::Key;
 use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
@@ -10,9 +11,10 @@ use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
+use procivis_temp::ProcivisTemp;
 use serde::de::{Deserialize, DeserializeOwned};
 use serde::Serialize;
-use shared_types::{CredentialSchemaId, DidValue};
+use shared_types::CredentialSchemaId;
 use thiserror::Error;
 use url::Url;
 
@@ -30,7 +32,6 @@ use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
-use crate::provider::exchange_protocol::procivis_temp::ProcivisTemp;
 use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
@@ -87,6 +88,7 @@ pub trait StorageProxy: Send + Sync {
         &self,
         schema: CredentialSchema,
     ) -> anyhow::Result<CredentialSchemaId>;
+    async fn create_did(&self, did: Did) -> anyhow::Result<DidId>;
     async fn get_did_by_value(
         &self,
         value: &DidValue,
@@ -360,9 +362,6 @@ pub(crate) fn exchange_protocol_providers_from_config(
             ExchangeType::ProcivisTemporary => {
                 let protocol = Arc::new(ExchangeProtocolWrapper::new(ProcivisTemp::new(
                     core_base_url.clone(),
-                    data_provider.get_interaction_repository(),
-                    data_provider.get_credential_schema_repository(),
-                    data_provider.get_did_repository(),
                     formatter_provider.clone(),
                     key_provider.clone(),
                     config.clone(),
