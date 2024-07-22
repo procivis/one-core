@@ -1,8 +1,10 @@
+use serde::Deserialize;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Lvvc {
     pub id: Uuid,
     pub created_date: OffsetDateTime,

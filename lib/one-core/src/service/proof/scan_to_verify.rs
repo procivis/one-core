@@ -1,3 +1,6 @@
+use one_providers::revocation::model::{
+    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
+};
 use shared_types::ProofId;
 use time::OffsetDateTime;
 
@@ -12,9 +15,6 @@ use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::exchange_protocol::ExchangeProtocol;
-use crate::provider::revocation::{
-    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
-};
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 impl ProofService {
@@ -116,7 +116,7 @@ impl ProofService {
         let additional_data = CredentialDataByRole::Verifier(Box::new(VerifierCredentialData {
             credential: credential.to_owned(),
             extracted_lvvcs: vec![],
-            proof_input: input_schema.to_owned(),
+            proof_input: input_schema.to_owned().into(),
         }));
 
         let issuer_did = credential
@@ -136,7 +136,7 @@ impl ProofService {
             let state = revocation_method
                 .check_credential_revocation_status(
                     status,
-                    &issuer_did.to_owned().into(),
+                    issuer_did,
                     Some(additional_data.to_owned()),
                 )
                 .await?;

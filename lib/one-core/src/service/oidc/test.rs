@@ -40,8 +40,6 @@ use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
 };
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
-use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -70,6 +68,9 @@ use crate::service::test_utilities::*;
 use one_providers::common_models::key::Key;
 use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::did::provider::MockDidMethodProvider;
+use one_providers::revocation::model::CredentialRevocationState;
+use one_providers::revocation::provider::MockRevocationMethodProvider;
+use one_providers::revocation::MockRevocationMethod;
 
 #[derive(Default)]
 struct Mocks {

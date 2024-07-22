@@ -1,5 +1,8 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_providers::credential_formatter::error::FormatterError;
+use one_providers::revocation::imp::lvvc::create_lvvc_with_status;
+use one_providers::revocation::imp::lvvc::dto::LvvcStatus;
+use one_providers::revocation::imp::lvvc::mapper::status_from_lvvc_claims;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
@@ -9,10 +12,6 @@ use crate::{
         credential::CredentialRelations, credential_schema::CredentialSchemaRelations,
         did::DidRelations, revocation_list::RevocationListRelations,
         validity_credential::ValidityCredentialType,
-    },
-    provider::revocation::{
-        self,
-        lvvc::{dto::LvvcStatus, mapper::status_from_lvvc_claims},
     },
     service::{
         error::{EntityNotFoundError, MissingProviderError, ServiceError},
@@ -124,7 +123,7 @@ impl RevocationListService {
 
         // If issuanceDate + credentialExpiry < now then a new VC of the LVVC credential needs to be created and saved in database.
         let revocation_method = schema.revocation_method.to_string();
-        let revocation_params: revocation::lvvc::Params =
+        let revocation_params: one_providers::revocation::imp::lvvc::Params =
             self.config.revocation.get(&revocation_method)?;
         let expiry = revocation_params.credential_expiry;
 
@@ -138,13 +137,12 @@ impl RevocationListService {
                 .get_revocation_method(&revocation_method)
                 .ok_or(MissingProviderError::RevocationMethod(revocation_method))?;
 
-            let lvvc = revocation::lvvc::create_lvvc_with_status(
-                &credential,
+            let lvvc = create_lvvc_with_status(
+                &credential.to_owned().into(),
                 status,
                 &self.core_base_url,
                 expiry,
                 formatter,
-                self.lvvc_repository.clone(),
                 self.key_provider.clone(),
                 self.did_method_provider.clone(),
                 revocation.get_json_ld_context()?,

@@ -11,6 +11,7 @@ use one_providers::crypto::CryptoProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::provider::RevocationMethodProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderImpl;
@@ -34,7 +35,7 @@ use service::task::TaskService;
 use service::trust_anchor::TrustAnchorService;
 use service::trust_entity::TrustEntityService;
 
-use crate::config::core_config::DidConfig;
+use crate::config::core_config::{DidConfig, RevocationConfig};
 
 pub mod config;
 pub mod provider;
@@ -49,8 +50,6 @@ pub mod util;
 
 use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::exchange_protocol::exchange_protocol_providers_from_config;
-use crate::provider::revocation::provider::RevocationMethodProviderImpl;
-use crate::provider::revocation::RevocationMethod;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::history::HistoryService;
 use crate::service::key::KeyService;
@@ -81,9 +80,15 @@ pub type FormatterProviderCreator = Box<
 
 pub type DataProviderCreator = Box<dyn FnOnce() -> Arc<dyn DataRepository>>;
 
+pub type RevocationMethodCreator = Box<
+    dyn FnOnce(
+        &mut RevocationConfig,
+        &OneCoreBuilderProviders,
+    ) -> Arc<dyn RevocationMethodProvider>,
+>;
+
 pub struct OneCore {
     pub exchange_protocols: HashMap<String, Arc<dyn ExchangeProtocol>>,
-    pub revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>,
     pub organisation_service: OrganisationService,
     pub backup_service: BackupService,
     pub trust_anchor_service: TrustAnchorService,
@@ -115,6 +120,7 @@ pub struct OneCoreBuilderProviders {
     pub key_storage_provider: Option<Arc<dyn KeyProvider>>,
     pub did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
     pub formatter_provider: Option<Arc<dyn CredentialFormatterProvider>>,
+    pub revocation_method_provider: Option<Arc<dyn RevocationMethodProvider>>,
     //repository and providers that we initialize as we build
 }
 
@@ -168,6 +174,16 @@ impl OneCoreBuilder {
             did_met_provider(&mut self.core_config.did, &self.providers);
         self.providers.did_method_provider = Some(did_method_provider);
         self.providers.did_mdl_validator = did_mdl_validator;
+        self
+    }
+
+    pub fn with_revocation_method_provider(
+        mut self,
+        revocation_met_provider: RevocationMethodCreator,
+    ) -> Self {
+        let revocation_method_provider =
+            revocation_met_provider(&mut self.core_config.revocation, &self.providers);
+        self.providers.revocation_method_provider = Some(revocation_method_provider);
         self
     }
 
@@ -255,9 +271,13 @@ impl OneCore {
             .expect("Key provider is required")
             .clone();
 
-        let caching_loader: CachingLoader = caching_loader.expect("Caching loader is required");
+        let revocation_method_provider = providers
+            .revocation_method_provider
+            .as_ref()
+            .expect("Revocation method provider is required")
+            .clone();
 
-        let client = reqwest::Client::new();
+        let caching_loader: CachingLoader = caching_loader.expect("Caching loader is required");
 
         let data_provider = data_provider_creator();
 
@@ -267,28 +287,15 @@ impl OneCore {
             .expect("Formatter provider is required")
             .clone();
 
-        let revocation_methods = crate::provider::revocation::provider::from_config(
-            &mut core_config.revocation,
-            providers.core_base_url.clone(),
-            data_provider.get_credential_repository(),
-            data_provider.get_revocation_list_repository(),
-            data_provider.get_validity_credential_repository(),
-            key_provider.clone(),
-            key_algorithm_provider.clone(),
-            did_method_provider.clone(),
-            formatter_provider.clone(),
-            client,
-        )?;
-
-        let revocation_method_provider = Arc::new(RevocationMethodProviderImpl::new(
-            revocation_methods.to_owned(),
-        ));
-
         let task_providers = tasks_from_config(
             &core_config.task,
             data_provider.get_credential_repository(),
             data_provider.get_history_repository(),
             revocation_method_provider.to_owned(),
+            data_provider.get_revocation_list_repository(),
+            data_provider.get_validity_credential_repository(),
+            key_provider.to_owned(),
+            providers.core_base_url.clone(),
         )?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
 
@@ -320,6 +327,7 @@ impl OneCore {
             key_provider.clone(),
             data_provider.get_history_repository(),
             did_method_provider.clone(),
+            data_provider.get_revocation_list_repository(),
             data_provider.get_validity_credential_repository(),
             config.clone(),
             providers.core_base_url.clone(),
@@ -327,7 +335,6 @@ impl OneCore {
 
         Ok(OneCore {
             exchange_protocols,
-            revocation_methods,
             trust_anchor_service: TrustAnchorService::new(
                 data_provider.get_trust_anchor_repository(),
                 data_provider.get_trust_entity_repository(),
@@ -357,6 +364,7 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_interaction_repository(),
+                data_provider.get_revocation_list_repository(),
                 revocation_method_provider.clone(),
                 formatter_provider.clone(),
                 protocol_provider.clone(),

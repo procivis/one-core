@@ -1,13 +1,12 @@
+use one_providers::common_models::credential::Credential;
+use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::model::CredentialStatus;
-use shared_types::DidValue;
-
-use crate::model::credential::Credential;
-use crate::provider::revocation::{
-    CredentialDataByRole, CredentialRevocationState, JsonLdContext, RevocationMethod,
+use one_providers::revocation::error::RevocationError;
+use one_providers::revocation::model::{
+    CredentialAdditionalData, CredentialDataByRole, CredentialRevocationState, JsonLdContext,
+    RevocationMethodCapabilities, RevocationUpdate,
 };
-use crate::service::error::ServiceError;
-
-use super::{CredentialRevocationInfo, RevocationMethodCapabilities};
+use one_providers::revocation::RevocationMethod;
 
 pub struct NoneRevocation {}
 
@@ -17,15 +16,29 @@ impl RevocationMethod for NoneRevocation {
         "NONE".to_string()
     }
 
-    fn get_capabilities(&self) -> RevocationMethodCapabilities {
-        RevocationMethodCapabilities { operations: vec![] }
-    }
-
     async fn add_issued_credential(
         &self,
         _credential: &Credential,
-    ) -> Result<Vec<CredentialRevocationInfo>, ServiceError> {
-        Ok(vec![])
+        _additional_data: Option<CredentialAdditionalData>,
+    ) -> Result<
+        (
+            Option<RevocationUpdate>,
+            Vec<one_providers::revocation::model::CredentialRevocationInfo>,
+        ),
+        RevocationError,
+    > {
+        Ok((None, vec![]))
+    }
+
+    async fn mark_credential_as(
+        &self,
+        _credential: &Credential,
+        _new_state: CredentialRevocationState,
+        _additional_data: Option<CredentialAdditionalData>,
+    ) -> Result<RevocationUpdate, RevocationError> {
+        Err(RevocationError::ValidationError(
+            "Credential cannot be revoked, reactivated or suspended".to_string(),
+        ))
     }
 
     async fn check_credential_revocation_status(
@@ -33,23 +46,17 @@ impl RevocationMethod for NoneRevocation {
         _credential_status: &CredentialStatus,
         _issuer_did: &DidValue,
         _additional_credential_data: Option<CredentialDataByRole>,
-    ) -> Result<CredentialRevocationState, ServiceError> {
-        Err(ServiceError::ValidationError(
+    ) -> Result<CredentialRevocationState, RevocationError> {
+        Err(RevocationError::ValidationError(
             "Credential cannot be revoked - status invalid".to_string(),
         ))
     }
 
-    async fn mark_credential_as(
-        &self,
-        _credential: &Credential,
-        _new_state: CredentialRevocationState,
-    ) -> Result<(), ServiceError> {
-        Err(ServiceError::ValidationError(
-            "Credential cannot be revoked, reactivated or suspended".to_string(),
-        ))
+    fn get_capabilities(&self) -> RevocationMethodCapabilities {
+        RevocationMethodCapabilities { operations: vec![] }
     }
 
-    fn get_json_ld_context(&self) -> Result<JsonLdContext, ServiceError> {
+    fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
         Ok(JsonLdContext::default())
     }
 }

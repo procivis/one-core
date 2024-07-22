@@ -1,3 +1,4 @@
+use dto_mapper::{convert_inner, convert_inner_of_inner, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
@@ -15,7 +16,8 @@ pub type CredentialSchemaName = String;
 pub type CredentialFormat = String;
 pub type RevocationMethod = String;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[into(one_providers::common_models::credential_schema::CredentialSchema)]
 pub struct CredentialSchema {
     pub id: CredentialSchemaId,
     pub deleted_at: Option<OffsetDateTime>,
@@ -24,18 +26,23 @@ pub struct CredentialSchema {
     pub name: CredentialSchemaName,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
+    #[into(with_fn = "convert_inner")]
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub layout_type: LayoutType,
+    #[into(with_fn = "convert_inner")]
     pub layout_properties: Option<LayoutProperties>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
 
     // Relations
+    #[into(with_fn = "convert_inner_of_inner")]
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
+    #[into(skip)]
     pub organisation: Option<Organisation>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Into)]
+#[into(one_providers::common_models::credential_schema::CredentialSchemaType)]
 pub enum CredentialSchemaType {
     ProcivisOneSchema2024,
     FallbackSchema2024,
@@ -44,7 +51,8 @@ pub enum CredentialSchemaType {
     Other(String),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[into(one_providers::common_models::credential_schema::CredentialSchemaClaim)]
 pub struct CredentialSchemaClaim {
     pub schema: ClaimSchema,
     pub required: bool,
@@ -62,14 +70,16 @@ pub enum SortableCredentialSchemaColumn {
     Format,
     CreatedDate,
 }
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Into)]
+#[into(one_providers::common_models::credential_schema::WalletStorageTypeEnum)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum WalletStorageTypeEnum {
     Hardware,
     Software,
 }
 
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Into)]
+#[into(one_providers::common_models::credential_schema::LayoutType)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum LayoutType {
     Card,
@@ -77,25 +87,31 @@ pub enum LayoutType {
     SingleAttribute,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq, Into)]
+#[into(one_providers::common_models::credential_schema::LayoutProperties)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutProperties {
+    #[into(with_fn = "convert_inner")]
     pub background: Option<BackgroundProperties>,
+    #[into(with_fn = "convert_inner")]
     pub logo: Option<LogoProperties>,
     pub primary_attribute: Option<String>,
     pub secondary_attribute: Option<String>,
     pub picture_attribute: Option<String>,
+    #[into(with_fn = "convert_inner")]
     pub code: Option<CodeProperties>,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq, Into)]
+#[into(one_providers::common_models::credential_schema::BackgroundProperties)]
 #[serde(rename_all = "camelCase")]
 pub struct BackgroundProperties {
     pub color: Option<String>,
     pub image: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq, Into)]
+#[into(one_providers::common_models::credential_schema::LogoProperties)]
 #[serde(rename_all = "camelCase")]
 pub struct LogoProperties {
     pub font_color: Option<String>,
@@ -103,14 +119,16 @@ pub struct LogoProperties {
     pub image: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq, Into)]
+#[into(one_providers::common_models::credential_schema::CodeProperties)]
 #[serde(rename_all = "camelCase")]
 pub struct CodeProperties {
     pub attribute: String,
     pub r#type: CodeTypeEnum,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq, Into)]
+#[into(one_providers::common_models::credential_schema::CodeTypeEnum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CodeTypeEnum {
     Barcode,

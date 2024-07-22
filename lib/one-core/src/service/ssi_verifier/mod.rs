@@ -1,17 +1,16 @@
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::{
-    credential_formatter::provider::CredentialFormatterProvider, did::provider::DidMethodProvider,
-};
-use std::sync::Arc;
-
 use crate::{
     config::core_config,
-    provider::revocation::provider::RevocationMethodProvider,
     repository::{
         credential_repository::CredentialRepository, did_repository::DidRepository,
         history_repository::HistoryRepository, proof_repository::ProofRepository,
     },
 };
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::revocation::provider::RevocationMethodProvider;
+use one_providers::{
+    credential_formatter::provider::CredentialFormatterProvider, did::provider::DidMethodProvider,
+};
+use std::sync::Arc;
 
 pub mod dto;
 pub mod service;

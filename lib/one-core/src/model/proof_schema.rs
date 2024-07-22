@@ -1,3 +1,4 @@
+use dto_mapper::{convert_inner, convert_inner_of_inner, Into};
 use shared_types::ProofSchemaId;
 use time::OffsetDateTime;
 
@@ -22,16 +23,20 @@ pub struct ProofSchema {
     pub input_schemas: Option<Vec<ProofInputSchema>>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Eq, PartialEq, Default, Into)]
+#[into(one_providers::common_models::proof_schema::ProofInputSchema)]
 pub struct ProofInputSchema {
     pub validity_constraint: Option<i64>,
 
     // Relations
+    #[into(with_fn = "convert_inner_of_inner")]
     pub claim_schemas: Option<Vec<ProofInputClaimSchema>>,
+    #[into(with_fn = "convert_inner")]
     pub credential_schema: Option<CredentialSchema>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[into(one_providers::common_models::proof_schema::ProofInputClaimSchema)]
 pub struct ProofInputClaimSchema {
     pub schema: ClaimSchema,
     pub required: bool,

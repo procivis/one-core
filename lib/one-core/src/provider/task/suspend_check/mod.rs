@@ -1,11 +1,16 @@
-use std::sync::Arc;
-
+use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::model::CredentialRevocationState;
+use one_providers::revocation::provider::RevocationMethodProvider;
 use serde_json::Value;
+use std::sync::Arc;
 use time::OffsetDateTime;
 
 use self::dto::SuspendCheckResultDTO;
 use super::Task;
 use crate::model::key::KeyRelations;
+use crate::repository::revocation_list_repository::RevocationListRepository;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 use crate::{
     model::{
         credential::{
@@ -17,7 +22,6 @@ use crate::{
         list_filter::{ComparisonType, ListFilterValue, ValueComparison},
         organisation::OrganisationRelations,
     },
-    provider::revocation::{provider::RevocationMethodProvider, CredentialRevocationState},
     repository::{
         credential_repository::CredentialRepository, history_repository::HistoryRepository,
     },
@@ -33,6 +37,10 @@ pub(crate) struct SuspendCheckProvider {
     credential_repository: Arc<dyn CredentialRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     history_repository: Arc<dyn HistoryRepository>,
+    revocation_list_repository: Arc<dyn RevocationListRepository>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+    key_provider: Arc<dyn KeyProvider>,
+    core_base_url: Option<String>,
 }
 
 impl SuspendCheckProvider {
@@ -40,11 +48,19 @@ impl SuspendCheckProvider {
         credential_repository: Arc<dyn CredentialRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         history_repository: Arc<dyn HistoryRepository>,
+        revocation_list_repository: Arc<dyn RevocationListRepository>,
+        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+        key_provider: Arc<dyn KeyProvider>,
+        core_base_url: Option<String>,
     ) -> Self {
         SuspendCheckProvider {
             credential_repository,
             revocation_method_provider,
             history_repository,
+            revocation_list_repository,
+            validity_credential_repository,
+            key_provider,
+            core_base_url,
         }
     }
 }
@@ -109,9 +125,27 @@ impl Task for SuspendCheckProvider {
                 return Err(EntityNotFoundError::Credential(credential_id).into());
             };
 
-            revocation_method
-                .mark_credential_as(&credential, CredentialRevocationState::Valid)
+            let update = revocation_method
+                .mark_credential_as(
+                    &credential.to_owned().into(),
+                    CredentialRevocationState::Valid,
+                    generate_credential_additional_data(
+                        &credential,
+                        &self.credential_repository,
+                        &self.revocation_list_repository,
+                        &self.revocation_method_provider,
+                        &self.key_provider,
+                        &self.core_base_url,
+                    )
+                    .await?,
+                )
                 .await?;
+            process_update(
+                update,
+                &self.validity_credential_repository,
+                &self.revocation_list_repository,
+            )
+            .await?;
 
             self.credential_repository
                 .update_credential(UpdateCredentialRequest {

@@ -12,7 +12,6 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::did::Did;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::organisation::Organisation;
-use crate::provider::revocation::CredentialRevocationState;
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
     CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
@@ -21,6 +20,7 @@ use crate::service::credential::dto::{
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use one_providers::common_models::key::Key;
+use one_providers::revocation::model::CredentialRevocationState;
 
 pub fn credential_detail_response_from_model(
     value: Credential,

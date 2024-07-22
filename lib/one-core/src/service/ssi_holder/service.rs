@@ -2,6 +2,7 @@ use anyhow::Context;
 use futures::TryFutureExt;
 use one_providers::credential_formatter::model::CredentialPresentation;
 use one_providers::key_storage::model::KeySecurity;
+use one_providers::revocation::imp::lvvc::prepare_bearer_token;
 use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use url::Url;
@@ -35,7 +36,6 @@ use crate::provider::exchange_protocol::dto::{
 };
 use crate::provider::exchange_protocol::provider::DetectedProtocol;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
-use crate::provider::revocation::lvvc::prepare_bearer_token;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -403,7 +403,8 @@ impl SSIHolderService {
                     .to_owned();
 
                 let bearer_token =
-                    prepare_bearer_token(&credential, self.key_provider.clone()).await?;
+                    prepare_bearer_token(&credential.to_owned().into(), self.key_provider.clone())
+                        .await?;
 
                 let lvvc_url = credential_status.id;
 

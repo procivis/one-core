@@ -2,6 +2,10 @@
 
 use std::{collections::HashMap, sync::Arc};
 
+use one_providers::revocation::imp::bitstring_status_list::BitstringStatusList;
+use one_providers::revocation::imp::lvvc::LvvcProvider;
+use one_providers::revocation::imp::provider::RevocationMethodProviderImpl;
+use one_providers::revocation::RevocationMethod;
 use one_providers::{
     credential_formatter::{
         imp::{
@@ -66,7 +70,7 @@ use one_core::{
     },
     repository::DataRepository,
     DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyStorageCreator,
-    OneCoreBuilder,
+    OneCoreBuilder, RevocationMethodCreator,
 };
 use one_core::{provider::bluetooth_low_energy::BleError, KeyAlgorithmCreator};
 use serde_json::json;
@@ -85,7 +89,9 @@ mod utils;
 
 use binding::OneCoreBinding;
 use dto::*;
-use one_core::config::core_config::CacheEntitiesConfig;
+use one_core::config::core_config::{CacheEntitiesConfig, RevocationType};
+use one_core::provider::revocation::none::NoneRevocation;
+use one_core::provider::revocation::status_list_2021::StatusList2021;
 
 uniffi::include_scaffolding!("one_core");
 
@@ -429,6 +435,86 @@ fn initialize_core(
                 })
             };
 
+            let revocation_method_creator: RevocationMethodCreator =
+                Box::new(move |config, providers| {
+                    let mut revocation_methods: HashMap<String, Arc<dyn RevocationMethod>> =
+                        HashMap::new();
+
+                    let did_method_provider = providers
+                        .did_method_provider
+                        .as_ref()
+                        .expect("Did method provider is mandatory");
+
+                    let key_algorithm_provider = providers
+                        .key_algorithm_provider
+                        .as_ref()
+                        .expect("Key algorithm provider is mandatory");
+
+                    let key_provider = providers
+                        .key_storage_provider
+                        .clone()
+                        .expect("Key storage provider is mandatory");
+
+                    let formatter_provider = providers
+                        .formatter_provider
+                        .clone()
+                        .expect("Credential formatter provider is mandatory");
+
+                    let client = reqwest::Client::new();
+
+                    for (key, fields) in config.iter() {
+                        if fields.disabled() {
+                            continue;
+                        }
+
+                        let revocation_method = match fields.r#type {
+                            RevocationType::None => Arc::new(NoneRevocation {}) as _,
+                            RevocationType::BitstringStatusList => Arc::new(BitstringStatusList {
+                                core_base_url: None,
+                                key_provider: key_provider.clone(),
+                                key_algorithm_provider: key_algorithm_provider.clone(),
+                                did_method_provider: did_method_provider.clone(),
+                                client: client.clone(),
+                            })
+                                as _,
+                            RevocationType::Lvvc => {
+                                ({
+                                    let params =
+                                        config.get(key).expect("failed to get LVVC params");
+                                    Arc::new(LvvcProvider::new(
+                                        None,
+                                        formatter_provider.clone(),
+                                        did_method_provider.clone(),
+                                        key_provider.clone(),
+                                        client.clone(),
+                                        params,
+                                    ))
+                                }) as _
+                            }
+                        };
+
+                        revocation_methods.insert(key.to_string(), revocation_method);
+                    }
+
+                    for (key, value) in config.iter_mut() {
+                        if let Some(entity) = revocation_methods.get(key) {
+                            value.capabilities = Some(json!(entity.get_capabilities()));
+                        }
+                    }
+
+                    // we keep `STATUSLIST2021` only for validation
+                    revocation_methods.insert(
+                        "STATUSLIST2021".to_string(),
+                        Arc::new(StatusList2021 {
+                            key_algorithm_provider: key_algorithm_provider.clone(),
+                            did_method_provider: did_method_provider.clone(),
+                            client,
+                        }) as _,
+                    );
+
+                    Arc::new(RevocationMethodProviderImpl::new(revocation_methods))
+                });
+
             OneCoreBuilder::new(core_config.clone())
                 .with_crypto(crypto)
                 .with_caching_loader(caching_loader)
@@ -438,6 +524,7 @@ fn initialize_core(
                 .with_did_method_provider(did_method_creator)
                 .with_formatter_provider(formatter_provider_creator)
                 .with_ble(ble_peripheral, ble_central)
+                .with_revocation_method_provider(revocation_method_creator)
                 .build()
                 .map_err(|e| BindingError::DbErr(e.to_string()))
         }) as _

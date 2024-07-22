@@ -3,6 +3,8 @@ use one_providers::crypto::CryptoProviderError;
 use one_providers::did::error::{DidMethodError, DidMethodProviderError};
 use one_providers::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use one_providers::key_storage::error::{KeyStorageError, KeyStorageProviderError};
+use one_providers::revocation::error::RevocationError;
+use one_providers::util::bitstring::BitstringError;
 use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
     OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
@@ -21,7 +23,6 @@ use crate::model::revocation_list::RevocationListId;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::repository::error::DataLayerError;
 use crate::service::oidc::dto::OpenID4VCIError;
-use crate::util::bitstring::BitstringError;
 use crate::util::oidc::FormatError;
 
 #[derive(Debug, Error)]
@@ -101,7 +102,7 @@ pub enum ServiceError {
     ResponseMapping(String),
 
     #[error("Revocation error: {0}")]
-    Revocation(String),
+    Revocation(#[from] RevocationError),
 }
 
 #[derive(Debug, thiserror::Error)]
