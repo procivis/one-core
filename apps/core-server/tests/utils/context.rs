@@ -14,7 +14,7 @@ use super::db_clients::keys::es256_testing_params;
 use super::db_clients::DbClient;
 use super::mock_server::MockServer;
 use super::server::run_server;
-use crate::fixtures::{self, TestingDidParams};
+use crate::fixtures::{self, TestingConfigParams, TestingDidParams};
 
 pub struct TestContext {
     pub db: DbClient,
@@ -36,7 +36,13 @@ impl TestContext {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let base_url = format!("http://{}", listener.local_addr().unwrap());
 
-        let config = fixtures::create_config(&base_url, Some(server_mock.uri()));
+        let config = fixtures::create_config(
+            &base_url,
+            Some(TestingConfigParams {
+                mock_url: Some(server_mock.uri()),
+                ..Default::default()
+            }),
+        );
         let db = fixtures::create_db(&config).await;
         let _handle = run_server(listener, config.to_owned(), &db);
 

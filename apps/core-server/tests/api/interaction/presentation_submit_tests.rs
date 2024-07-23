@@ -9,7 +9,10 @@ use wiremock::http::Method;
 use wiremock::matchers::{body_string_contains, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::fixtures::{self, TestingCredentialParams, TestingDidParams, TestingKeyParams};
+use crate::fixtures::{
+    self, TestingCredentialParams, TestingCredentialSchemaParams, TestingDidParams,
+    TestingKeyParams,
+};
 use crate::utils;
 use crate::utils::server::run_server;
 
@@ -41,8 +44,15 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
     )
     .await;
 
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "Schema1", &organisation, "NONE").await;
+    let credential_schema = fixtures::create_credential_schema(
+        &db_conn,
+        &organisation,
+        Some(TestingCredentialSchemaParams {
+            name: Some("Schema1".to_string()),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     let credential = fixtures::create_credential(
         &db_conn,
@@ -203,8 +213,15 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
     )
     .await;
 
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "Schema1", &organisation, "NONE").await;
+    let credential_schema = fixtures::create_credential_schema(
+        &db_conn,
+        &organisation,
+        Some(TestingCredentialSchemaParams {
+            name: Some("Schema1".to_string()),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     let credential = fixtures::create_credential(
         &db_conn,

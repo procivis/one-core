@@ -39,8 +39,7 @@ async fn test_temporary_issuer_submit_success() {
 
     let holder_did = "did:key:z6MkttiJVZB4dwWkF9ALwaELUDq5Jj9j1BhZHNzNcLVNam6n";
 
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let credential = fixtures::create_credential(
         &db_conn,
         &credential_schema,

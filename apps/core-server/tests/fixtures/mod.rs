@@ -13,7 +13,7 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutType, WalletStorageTypeEnum,
+    LayoutProperties, LayoutType, WalletStorageTypeEnum,
 };
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
@@ -34,7 +34,7 @@ use one_core::repository::DataRepository;
 use one_providers::common_models::key::Key;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
-use shared_types::{CredentialId, DidId, DidValue, KeyId, ProofId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue, KeyId, ProofId};
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
 use time::{Duration, OffsetDateTime};
@@ -53,11 +53,18 @@ pub fn unwrap_or_random(op: Option<String>) -> String {
     })
 }
 
+#[derive(Debug, Default)]
+pub struct TestingConfigParams {
+    pub mock_url: Option<String>,
+    pub additional_config: Option<String>,
+}
+
 pub fn create_config(
     core_base_url: impl Into<String>,
-    mock_url: Option<String>,
+    params: Option<TestingConfigParams>,
 ) -> AppConfig<ServerConfig> {
-    let ion_config = mock_url.map(|mock_url| {
+    let params = params.unwrap_or_default();
+    let ion_config = params.mock_url.map(|mock_url| {
         indoc::formatdoc! {"
             did:
                 ION:
@@ -91,6 +98,7 @@ pub fn create_config(
     .into_iter()
     .map(|path| std::fs::read_to_string(path).unwrap())
     .chain(ion_config)
+    .chain(params.additional_config)
     .chain(allow_insecure_http);
 
     let mut app_config: AppConfig<ServerConfig> =
@@ -301,11 +309,26 @@ pub async fn create_did(
     did
 }
 
+#[derive(Debug, Default)]
+pub struct TestingCredentialSchemaParams {
+    pub id: Option<CredentialSchemaId>,
+    pub created_date: Option<OffsetDateTime>,
+    pub last_modified: Option<OffsetDateTime>,
+    pub deleted_at: Option<OffsetDateTime>,
+    pub name: Option<String>,
+    pub format: Option<String>,
+    pub wallet_storage_type: Option<Option<WalletStorageTypeEnum>>,
+    pub revocation_method: Option<String>,
+    pub layout_type: Option<LayoutType>,
+    pub layout_properties: Option<LayoutProperties>,
+    pub schema_type: Option<CredentialSchemaType>,
+    pub schema_id: Option<String>,
+}
+
 pub async fn create_credential_schema(
     db_conn: &DbConn,
-    name: &str,
     organisation: &Organisation,
-    revocation_method: &str,
+    params: Option<TestingCredentialSchemaParams>,
 ) -> CredentialSchema {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
@@ -322,22 +345,30 @@ pub async fn create_credential_schema(
         required: true,
     }];
 
-    let id = Uuid::new_v4();
+    let params = params.unwrap_or_default();
+    let now = OffsetDateTime::now_utc();
+    let id = params
+        .id
+        .unwrap_or(CredentialSchemaId::from(Uuid::new_v4()));
     let credential_schema = CredentialSchema {
-        id: id.into(),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-        name: name.to_owned(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        id,
+        created_date: params.created_date.unwrap_or(now),
+        last_modified: params.last_modified.unwrap_or(now),
+        name: unwrap_or_random(params.name),
+        wallet_storage_type: params
+            .wallet_storage_type
+            .unwrap_or(Some(WalletStorageTypeEnum::Software)),
         organisation: Some(organisation.to_owned()),
-        deleted_at: None,
-        format: "JWT".to_string(),
-        revocation_method: revocation_method.to_owned(),
+        deleted_at: params.deleted_at,
+        format: params.format.unwrap_or("JWT".to_string()),
+        revocation_method: params.revocation_method.unwrap_or("NONE".to_string()),
         claim_schemas: Some(claim_schemas),
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-        schema_id: id.to_string(),
+        layout_type: params.layout_type.unwrap_or(LayoutType::Card),
+        layout_properties: params.layout_properties,
+        schema_type: params
+            .schema_type
+            .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
+        schema_id: params.schema_id.unwrap_or(id.to_string()),
     };
 
     data_layer

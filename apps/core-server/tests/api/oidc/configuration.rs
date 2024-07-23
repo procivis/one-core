@@ -13,8 +13,7 @@ async fn test_get_issuer_configuration() {
     let config = fixtures::create_config(&base_url, None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
 
     // WHEN
     let _handle = run_server(listener, config, &db_conn);

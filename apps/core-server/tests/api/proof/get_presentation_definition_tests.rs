@@ -4,7 +4,7 @@ use one_core::model::{credential::CredentialStateEnum, credential_schema::Creden
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::fixtures::TestingDidParams;
+use crate::fixtures::{TestingCredentialSchemaParams, TestingDidParams};
 use crate::utils::server::run_server;
 use crate::{
     fixtures::{self, TestingCredentialParams},
@@ -47,8 +47,7 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
 
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
 
     let credential = fixtures::create_credential(
         &db_conn,
@@ -128,10 +127,25 @@ async fn test_get_presentation_definition_procivis_temporary_with_match_multiple
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
 
-    let credential_schema_1 =
-        fixtures::create_credential_schema(&db_conn, "schema1", &organisation, "NONE").await;
-    let credential_schema_2 =
-        fixtures::create_credential_schema(&db_conn, "schema2", &organisation, "NONE").await;
+    let credential_schema_1 = fixtures::create_credential_schema(
+        &db_conn,
+        &organisation,
+        Some(TestingCredentialSchemaParams {
+            name: Some("schema1".to_string()),
+            ..Default::default()
+        }),
+    )
+    .await;
+
+    let credential_schema_2 = fixtures::create_credential_schema(
+        &db_conn,
+        &organisation,
+        Some(TestingCredentialSchemaParams {
+            name: Some("schema2".to_string()),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     let credential1 = fixtures::create_credential(
         &db_conn,
@@ -223,8 +237,7 @@ async fn test_get_presentation_definition_procivis_temporary_no_match() {
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
 
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
 
     let interaction = fixtures::create_interaction(
         &db_conn,
@@ -569,8 +582,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
     )
     .await;
 
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
 
     let credential = fixtures::create_credential(
         &db_conn,
@@ -649,8 +661,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",

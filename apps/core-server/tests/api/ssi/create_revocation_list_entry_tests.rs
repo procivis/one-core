@@ -7,10 +7,13 @@ use one_core::model::{
 use serde_json::Value;
 use shared_types::DidValue;
 
-use crate::{fixtures::TestingCredentialParams, utils::server::run_server};
 use crate::{
     fixtures::{self, TestingDidParams},
     utils,
+};
+use crate::{
+    fixtures::{TestingCredentialParams, TestingCredentialSchemaParams},
+    utils::server::run_server,
 };
 
 #[tokio::test]
@@ -41,9 +44,16 @@ async fn test_add_credential_to_list() {
 
     let holder_did = "did:key:z6MkttiJVZB4dwWkF9ALwaELUDq5Jj9j1BhZHNzNcLVNam6n";
 
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "BITSTRINGSTATUSLIST")
-            .await;
+    let credential_schema = fixtures::create_credential_schema(
+        &db_conn,
+        &organisation,
+        Some(TestingCredentialSchemaParams {
+            revocation_method: Some("BITSTRINGSTATUSLIST".to_string()),
+            ..Default::default()
+        }),
+    )
+    .await;
+
     let credential = fixtures::create_credential(
         &db_conn,
         &credential_schema,
