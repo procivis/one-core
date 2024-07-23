@@ -784,8 +784,10 @@ checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-targets 0.52.6",
 ]
 
@@ -2852,6 +2854,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8bc45ce96192b5d8b20cffb10ccd85cc431c283a7d171a0d843ac0bd7d444598"
 
 [[package]]
+name = "mrtd"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76b293c9fda8b2fa29ba9d326cda91e7c123502d69025f860b8246e670a75c7e"
+dependencies = [
+ "chrono",
+ "lazy_static",
+ "regex",
+]
+
+[[package]]
 name = "native-tls"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3045,6 +3058,7 @@ dependencies = [
  "jsonptr",
  "maplit",
  "mockall",
+ "mrtd",
  "one-providers",
  "ouroboros 0.18.4",
  "pqc_dilithium",
@@ -3104,7 +3118,7 @@ dependencies = [
 [[package]]
 name = "one-providers"
 version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=ba0c739d#ba0c739da7e04543dbd6d587db26381c2f8f87b1"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=d073abe4#d073abe4401fb415f54e924f2a4d0d56844eb1f2"
 dependencies = [
  "anyhow",
  "async-trait",

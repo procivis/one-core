@@ -3,6 +3,7 @@ use one_providers::revocation::model::{
 };
 use shared_types::ProofId;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use super::dto::ScanToVerifyRequestDTO;
 use super::mapper::proof_for_scan_to_verify;
@@ -12,6 +13,7 @@ use crate::config::validator::transport::get_available_transport_type;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchemaClaim;
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::exchange_protocol::ExchangeProtocol;
@@ -29,6 +31,8 @@ impl ProofService {
             .get_protocol(exchange)
             .ok_or(MissingProviderError::ExchangeProtocol(exchange.to_owned()))?;
 
+        let organisation_id = proof_schema.organisation.to_owned();
+
         let submission_data = serde_json::to_vec(submission)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
@@ -37,19 +41,35 @@ impl ProofService {
         let proof =
             proof_for_scan_to_verify(exchange, proof_schema, transport, submission_data.clone());
 
-        self.proof_repository.create_proof(proof.clone()).await?;
-
         self.interaction_repository
             .create_interaction(proof.interaction.clone().ok_or(ServiceError::MappingError(
                 "interaction not created".to_string(),
             ))?)
             .await?;
 
+        self.proof_repository.create_proof(proof.clone()).await?;
+
         let result = self
             .validate_scan_to_verify_proof(&*exchange_protocol, &proof, &submission_data)
             .await;
 
         let now = OffsetDateTime::now_utc();
+
+        self.history_repository
+            .create_history(History {
+                id: Uuid::new_v4().into(),
+                entity_id: Some(proof.id.to_owned().into()),
+                entity_type: HistoryEntityType::Proof,
+                action: match result {
+                    Ok(_) => HistoryAction::Accepted,
+                    Err(_) => HistoryAction::Rejected,
+                },
+                created_date: now,
+                organisation: organisation_id,
+                metadata: None,
+            })
+            .await?;
+
         match result {
             Ok(claims) => {
                 self.proof_repository

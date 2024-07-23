@@ -406,7 +406,9 @@ impl SSIHolderService {
                     prepare_bearer_token(&credential.to_owned().into(), self.key_provider.clone())
                         .await?;
 
-                let lvvc_url = credential_status.id;
+                let lvvc_url = credential_status.id.ok_or(ServiceError::MappingError(
+                    "credential_status id is None".to_string(),
+                ))?;
 
                 let client = reqwest::Client::new();
                 let response: IssuerResponseDTO = client

@@ -58,6 +58,7 @@ one-providers              = { workspace = true }
 x25519-dalek               = { version = "2.0.1" }
 hkdf                       = { version = "0.12.4" }
 aes-gcm                    = { version = "0.10.3" }
+mrtd                       = { version = "0.5.2" }
 
 [dev-dependencies]
 bs58               = { version = "0.5" }
