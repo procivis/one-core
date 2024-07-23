@@ -17,7 +17,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use super::{build_claims_keys_for_mdoc, OpenID4VC, OpenID4VCParams};
+use super::{OpenID4VCHTTP, OpenID4VCParams};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
@@ -35,19 +35,18 @@ use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VCICredentialValueDetails, OpenID4VPClientMetadata, OpenID4VPFormat,
     OpenID4VPInteractionData, OpenID4VPPresentationDefinition,
 };
-use crate::provider::exchange_protocol::openid4vc::mapper::prepare_claims;
+use crate::provider::exchange_protocol::openid4vc::mapper::{
+    create_credential_offer, get_parent_claim_paths, prepare_claims,
+};
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::build_claims_keys_for_mdoc;
 use crate::provider::exchange_protocol::{
     ExchangeProtocolError, ExchangeProtocolImpl, MockStorageProxy,
 };
-use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::proof_repository::MockProofRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 use crate::service::test_utilities::generic_config;
 
 #[derive(Default)]
 struct TestInputs {
-    pub proof_repository: MockProofRepository,
-    pub interaction_repository: MockInteractionRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
     pub key_provider: MockKeyProvider,
@@ -55,11 +54,9 @@ struct TestInputs {
     pub params: Option<OpenID4VCParams>,
 }
 
-fn setup_protocol(inputs: TestInputs) -> OpenID4VC {
-    OpenID4VC::new(
+fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
+    OpenID4VCHTTP::new(
         Some("http://base_url".to_string()),
-        Arc::new(inputs.proof_repository),
-        Arc::new(inputs.interaction_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),
         Arc::new(inputs.key_provider),
@@ -74,8 +71,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VC {
             refresh_expires_in: 1000,
         }),
         Arc::new(generic_config().core),
-        None,
-        None,
     )
 }
 
@@ -279,7 +274,7 @@ async fn test_generate_offer() {
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     let credential = generic_credential();
 
-    let offer = super::mapper::create_credential_offer(
+    let offer = create_credential_offer(
         Some(base_url),
         &interaction_id,
         &credential,
@@ -386,12 +381,7 @@ fn generic_organisation() -> Organisation {
 
 #[tokio::test]
 async fn test_handle_invitation_proof_success() {
-    let interaction_repository = MockInteractionRepository::default();
-
-    let protocol = setup_protocol(TestInputs {
-        interaction_repository,
-        ..Default::default()
-    });
+    let protocol = setup_protocol(Default::default());
 
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
         jwks: vec![],
@@ -469,9 +459,7 @@ async fn test_handle_invitation_proof_success() {
 
 #[tokio::test]
 async fn test_handle_invitation_proof_failed() {
-    let protocol = setup_protocol(TestInputs {
-        ..Default::default()
-    });
+    let protocol = setup_protocol(Default::default());
 
     let client_metadata_uri = "https://127.0.0.1/client_metadata_uri";
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
@@ -781,8 +769,6 @@ fn test_prepare_claims_success_failed_missing_credential_schema_parent_claim_sch
 
 #[test]
 fn test_get_parent_claim_paths() {
-    use super::mapper::get_parent_claim_paths;
-
     assert!(get_parent_claim_paths("").is_empty());
     assert!(get_parent_claim_paths("this_is_not_yellow").is_empty());
     assert_eq!(

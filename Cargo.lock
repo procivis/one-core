@@ -531,12 +531,6 @@ dependencies = [
 
 [[package]]
 name = "bit-vec"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
-
-[[package]]
-name = "bit-vec"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
@@ -2311,12 +2305,12 @@ dependencies = [
 
 [[package]]
 name = "josekit"
-version = "0.8.6"
+version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0953340cf63354cec4a385f1fbcb3f409a5823778cae236078892f6030ed4565"
+checksum = "54b85e2125819afc4fd2ae57416207e792c7e12797858e5db2a6c6f24a166829"
 dependencies = [
  "anyhow",
- "base64 0.21.7",
+ "base64 0.22.1",
  "flate2",
  "once_cell",
  "openssl",
@@ -2824,7 +2818,21 @@ dependencies = [
  "downcast",
  "fragile",
  "lazy_static",
- "mockall_derive",
+ "mockall_derive 0.12.1",
+ "predicates",
+ "predicates-tree",
+]
+
+[[package]]
+name = "mockall"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4c28b3fb6d753d28c20e826cd46ee611fda1cf3cde03a443a974043247c065a"
+dependencies = [
+ "cfg-if",
+ "downcast",
+ "fragile",
+ "mockall_derive 0.13.0",
  "predicates",
  "predicates-tree",
 ]
@@ -2834,6 +2842,18 @@ name = "mockall_derive"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af7cbce79ec385a1d4f54baa90a76401eb15d9cab93685f62e7e9f942aa00ae2"
+dependencies = [
+ "cfg-if",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
+]
+
+[[package]]
+name = "mockall_derive"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "341014e7f530314e9a1fdbc7400b244efea7122662c96bfa248c31da5bfb2020"
 dependencies = [
  "cfg-if",
  "proc-macro2",
@@ -3036,7 +3056,6 @@ dependencies = [
  "anyhow",
  "assert2",
  "async-trait",
- "bit-vec 0.6.3",
  "bs58",
  "ciborium",
  "convert_case",
@@ -3057,7 +3076,7 @@ dependencies = [
  "json-ld",
  "jsonptr",
  "maplit",
- "mockall",
+ "mockall 0.13.0",
  "mrtd",
  "one-providers",
  "ouroboros 0.18.4",
@@ -3122,7 +3141,7 @@ source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/pro
 dependencies = [
  "anyhow",
  "async-trait",
- "bit-vec 0.8.0",
+ "bit-vec",
  "blstrs 0.7.1",
  "bs58",
  "chacha20poly1305",
@@ -3141,7 +3160,7 @@ dependencies = [
  "jsonptr",
  "locspan",
  "mime",
- "mockall",
+ "mockall 0.12.1",
  "p256",
  "pairing_crypto",
  "pbkdf2 0.12.2",
@@ -4199,7 +4218,7 @@ dependencies = [
  "once_cell",
  "ring",
  "rustls-pki-types",
- "rustls-webpki 0.102.5",
+ "rustls-webpki 0.102.6",
  "subtle",
  "zeroize",
 ]
@@ -4266,9 +4285,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.102.5"
+version = "0.102.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9a6fccd794a42c2c105b513a2f62bc3fd8f3ba57a4593677ceb0bd035164d78"
+checksum = "8e6b52d4fda176fd835fdc55a835d4a89b8499cad995885a21149d5ad62f852e"
 dependencies = [
  "ring",
  "rustls-pki-types",
@@ -5011,7 +5030,7 @@ dependencies = [
  "hex",
  "itertools 0.13.0",
  "migration",
- "mockall",
+ "mockall 0.13.0",
  "one-core",
  "one-providers",
  "sea-orm",

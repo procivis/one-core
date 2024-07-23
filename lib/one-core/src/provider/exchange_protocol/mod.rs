@@ -11,6 +11,8 @@ use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
+use openid4vc::openidvc_ble::OpenID4VCBLE;
+use openid4vc::openidvc_http::OpenID4VCHTTP;
 use procivis_temp::ProcivisTemp;
 use serde::de::{Deserialize, DeserializeOwned};
 use serde::Serialize;
@@ -383,21 +385,23 @@ pub(crate) fn exchange_protocol_providers_from_config(
             }
             ExchangeType::OpenId4Vc => {
                 let params = config.exchange.get(name)?;
-
-                let protocol = Arc::new(ExchangeProtocolWrapper::new(OpenID4VC::new(
-                    core_base_url.clone(),
+                let ble = OpenID4VCBLE::new(
                     data_provider.get_proof_repository(),
                     data_provider.get_interaction_repository(),
+                    ble_peripheral.clone(),
+                    ble_central.clone(),
+                    config.clone(),
+                );
+                let http = OpenID4VCHTTP::new(
+                    core_base_url.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
                     params,
                     config.clone(),
-                    ble_peripheral.clone(),
-                    ble_central.clone(),
-                )));
-
+                );
+                let protocol = Arc::new(OpenID4VC::new(http, ble));
                 providers.insert(name.to_string(), protocol);
             }
             ExchangeType::IsoMdl => {
