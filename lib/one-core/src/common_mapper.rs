@@ -16,7 +16,7 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::exchange_protocol::openid4vc::OpenID4VCParams;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 

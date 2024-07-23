@@ -1,17 +1,58 @@
-use crate::provider::bluetooth_low_energy::{low_level::dto::DeviceInfo, BleError};
+use std::collections::{HashMap, HashSet};
+use std::pin::Pin;
+use std::sync::Arc;
+
 use aes_gcm::aead::{Aead, Payload};
 use aes_gcm::{Aes256Gcm, KeyInit};
 use anyhow::{anyhow, Context, Result};
-use futures::Stream;
-use futures::TryStreamExt;
+use async_trait::async_trait;
+use futures::{Stream, TryStreamExt};
 use hkdf::Hkdf;
+use oidc_ble_holder::OpenID4VCBLEHolder;
+use oidc_ble_verifier::OpenID4VCBLEVerifier;
+use one_providers::common_models::key::Key;
+use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::crypto::imp::hasher::sha256::SHA256;
 use one_providers::crypto::Hasher;
 use rand::rngs::OsRng;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::pin::Pin;
+use time::OffsetDateTime;
+use url::Url;
+use uuid::Uuid;
 use x25519_dalek::{EphemeralSecret, PublicKey};
+
+use super::dto::OpenID4VPBleData;
+use super::mapper::{
+    create_open_id_for_vp_presentation_definition, get_claim_name_by_json_path,
+    presentation_definition_from_interaction_data,
+};
+use super::model::BLEOpenID4VPInteractionData;
+use crate::config::core_config::{self, TransportType};
+use crate::model::credential::Credential;
+use crate::model::did::Did;
+use crate::model::interaction::Interaction;
+use crate::model::organisation::Organisation;
+use crate::model::proof::Proof;
+use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
+use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
+use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
+use crate::provider::bluetooth_low_energy::BleError;
+use crate::provider::exchange_protocol::dto::{
+    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO, PresentedCredential,
+    ShareResponse, SubmitIssuerResponse, UpdateResponse,
+};
+use crate::provider::exchange_protocol::mapper::{
+    get_relevant_credentials_to_credential_schemas, proof_from_handle_invitation,
+};
+use crate::provider::exchange_protocol::{
+    ExchangeProtocolError, ExchangeProtocolImpl, StorageAccess,
+};
+use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::proof_repository::ProofRepository;
+use crate::service::error::ServiceError;
+use crate::service::ssi_holder::dto::InvitationResponseDTO;
+use crate::util::oidc::map_from_oidc_format_to_core;
 
 pub mod oidc_ble_holder;
 pub mod oidc_ble_verifier;
@@ -219,5 +260,314 @@ impl KeyAgreementKey {
 
     pub fn public_key_bytes(&self) -> [u8; 32] {
         PublicKey::from(&self.secret_key).to_bytes()
+    }
+}
+
+const PRESENTATION_DEFINITION_BLE_NAME: &str = "name";
+const PRESENTATION_DEFINITION_BLE_KEY: &str = "key";
+
+pub(crate) struct OpenID4VCBLE {
+    proof_repository: Arc<dyn ProofRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
+    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+    ble_central: Option<Arc<dyn BleCentral>>,
+    config: Arc<core_config::CoreConfig>,
+}
+
+impl OpenID4VCBLE {
+    pub fn new(
+        proof_repository: Arc<dyn ProofRepository>,
+        interaction_repository: Arc<dyn InteractionRepository>,
+        ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+        ble_central: Option<Arc<dyn BleCentral>>,
+        config: Arc<core_config::CoreConfig>,
+    ) -> Self {
+        Self {
+            proof_repository,
+            interaction_repository,
+            ble_peripheral,
+            ble_central,
+            config,
+        }
+    }
+}
+
+#[async_trait]
+impl ExchangeProtocolImpl for OpenID4VCBLE {
+    type VCInteractionContext = ();
+    type VPInteractionContext = Option<BLEOpenID4VPInteractionData>;
+
+    fn can_handle(&self, url: &Url) -> bool {
+        let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
+
+        url.scheme() == "openid4vp"
+            && query_has_key(PRESENTATION_DEFINITION_BLE_NAME)
+            && query_has_key(PRESENTATION_DEFINITION_BLE_KEY)
+    }
+
+    async fn handle_invitation(
+        &self,
+        url: Url,
+        _organisation: Organisation,
+        _storage_access: &StorageAccess,
+    ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
+        if !self.can_handle(&url) {
+            return Err(ExchangeProtocolError::Failed(
+                "No OpenID4VC over BLE query params detected".to_string(),
+            ));
+        }
+
+        if !self
+            .config
+            .transport
+            .ble_enabled_for(&TransportType::Ble.to_string())
+        {
+            return Err(ExchangeProtocolError::Disabled(
+                "BLE transport is disabled".to_string(),
+            ));
+        }
+
+        let Some(ble_central) = self.ble_central.clone() else {
+            return Err(ExchangeProtocolError::Failed(
+                "BLE central not available".to_string(),
+            ));
+        };
+
+        let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
+            "Query cannot be empty".to_string(),
+        ))?;
+
+        let OpenID4VPBleData { name, key } = serde_qs::from_str(query)
+            .map_err(|e| ExchangeProtocolError::InvalidRequest(e.to_string()))?;
+
+        let mut ble_holder = OpenID4VCBLEHolder::new(
+            self.proof_repository.clone(),
+            self.interaction_repository.clone(),
+            ble_central,
+            None,
+        );
+
+        if !ble_holder.enabled().await? {
+            return Err(ExchangeProtocolError::Disabled(
+                "BLE adapter is disabled".into(),
+            ));
+        }
+
+        let now = OffsetDateTime::now_utc();
+        let interaction = Interaction {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            host: None,
+            data: None,
+        };
+        let interaction_id = self
+            .interaction_repository
+            .create_interaction(interaction.clone())
+            .await
+            .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
+
+        let proof_id = Uuid::new_v4().into();
+        let proof = proof_from_handle_invitation(
+            &proof_id,
+            "OPENID4VC",
+            None,
+            None,
+            interaction,
+            now,
+            None,
+            "BLE",
+        );
+
+        ble_holder
+            .handle_invitation(name, key, proof.id, interaction_id)
+            .await?;
+
+        Ok(InvitationResponseDTO::ProofRequest {
+            interaction_id,
+            proof: Box::new(proof),
+        })
+    }
+
+    async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+        Err(ExchangeProtocolError::OperationNotSupported)
+    }
+
+    async fn submit_proof(
+        &self,
+        _proof: &Proof,
+        _credential_presentations: Vec<PresentedCredential>,
+        _holder_did: &Did,
+        _key: &Key,
+        _jwk_key_id: Option<String>,
+    ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
+        Err(ExchangeProtocolError::OperationNotSupported)
+    }
+
+    async fn accept_credential(
+        &self,
+        _credential: &Credential,
+        _holder_did: &Did,
+        _key: &Key,
+        _jwk_key_id: Option<String>,
+        _storage_access: &StorageAccess,
+    ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
+        Err(ExchangeProtocolError::OperationNotSupported)
+    }
+
+    async fn reject_credential(
+        &self,
+        _credential: &Credential,
+    ) -> Result<(), ExchangeProtocolError> {
+        Err(ExchangeProtocolError::OperationNotSupported)
+    }
+
+    async fn share_credential(
+        &self,
+        _credential: &Credential,
+    ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
+        Err(ExchangeProtocolError::OperationNotSupported)
+    }
+
+    async fn share_proof(
+        &self,
+        proof: &Proof,
+    ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
+        let interaction_id = Uuid::new_v4();
+
+        // Pass the expected presentation content to interaction for verification
+        let presentation_definition =
+            create_open_id_for_vp_presentation_definition(interaction_id, proof, &self.config)?;
+
+        if !self.config.transport.ble_enabled_for(&proof.transport) {
+            return Err(ExchangeProtocolError::Disabled(
+                "BLE transport is disabled".to_string(),
+            ));
+        }
+
+        if let Some(ble_peripheral) = self.ble_peripheral.clone() {
+            let ble_verifier =
+                OpenID4VCBLEVerifier::new(ble_peripheral.clone(), self.proof_repository.clone())?;
+
+            if !ble_verifier.enabled().await? {
+                return Err(ExchangeProtocolError::Disabled(
+                    "BLE adapter is disabled".into(),
+                ));
+            }
+
+            ble_verifier
+                .share_proof(presentation_definition, proof.id)
+                .await
+                .map(|url| ShareResponse {
+                    url,
+                    id: interaction_id,
+                    context: None,
+                })
+        } else {
+            Err(ExchangeProtocolError::Failed(
+                "BLE central not available".to_string(),
+            ))
+        }
+    }
+
+    async fn get_presentation_definition(
+        &self,
+        proof: &Proof,
+        interaction_data: Self::VPInteractionContext,
+        storage_access: &StorageAccess,
+    ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
+        let presentation_definition = interaction_data
+            .ok_or_else(|| ExchangeProtocolError::Failed("missing interaction data".to_owned()))?
+            .presentation_definition;
+
+        let mut credential_groups: Vec<CredentialGroup> = vec![];
+        let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
+
+        let mut allowed_oidc_formats = HashSet::new();
+
+        for input_descriptor in presentation_definition.input_descriptors {
+            input_descriptor.format.keys().for_each(|key| {
+                allowed_oidc_formats.insert(key.to_owned());
+            });
+            let validity_credential_nbf = input_descriptor.constraints.validity_credential_nbf;
+
+            let mut fields = input_descriptor.constraints.fields;
+
+            let schema_id_filter_index = fields
+                .iter()
+                .position(|field| {
+                    field.filter.is_some()
+                        && field.path.contains(&"$.credentialSchema.id".to_string())
+                })
+                .ok_or(ExchangeProtocolError::Failed(
+                    "schema_id filter not found".to_string(),
+                ))?;
+
+            let schema_id_filter = fields.remove(schema_id_filter_index).filter.ok_or(
+                ExchangeProtocolError::Failed("schema_id filter not found".to_string()),
+            )?;
+
+            group_id_to_schema_id.insert(input_descriptor.id.clone(), schema_id_filter.r#const);
+            credential_groups.push(CredentialGroup {
+                id: input_descriptor.id,
+                name: input_descriptor.name,
+                purpose: input_descriptor.purpose,
+                claims: fields
+                    .iter()
+                    .filter(|requested| requested.id.is_some())
+                    .map(|requested_claim| {
+                        Ok(CredentialGroupItem {
+                            id: requested_claim
+                                .id
+                                .ok_or(ExchangeProtocolError::Failed(
+                                    "requested_claim id is None".to_string(),
+                                ))?
+                                .to_string(),
+                            key: get_claim_name_by_json_path(&requested_claim.path)?,
+                            required: !requested_claim.optional.is_some_and(|optional| optional),
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+                applicable_credentials: vec![],
+                validity_credential_nbf,
+            });
+        }
+
+        let mut allowed_schema_formats = HashSet::new();
+        allowed_oidc_formats
+            .iter()
+            .try_for_each(|oidc_format| {
+                let schema_type = map_from_oidc_format_to_core(oidc_format)?;
+
+                self.config.format.iter().for_each(|(key, fields)| {
+                    if fields.r#type.to_string().starts_with(&schema_type) {
+                        allowed_schema_formats.insert(key);
+                    }
+                });
+                Ok(())
+            })
+            .map_err(|e: ServiceError| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
+            storage_access,
+            credential_groups,
+            group_id_to_schema_id,
+            &allowed_schema_formats,
+        )
+        .await?;
+        presentation_definition_from_interaction_data(
+            proof.id,
+            credentials,
+            credential_groups,
+            &self.config,
+        )
+    }
+
+    async fn verifier_handle_proof(
+        &self,
+        _proof: &Proof,
+        _submission: &[u8],
+    ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
+        unimplemented!()
     }
 }

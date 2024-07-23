@@ -1091,7 +1091,7 @@ struct RequestData {
 
 fn extract_jwe_header(jwe: &str) -> Result<JweHeader, anyhow::Error> {
     let header_b64 = jwe
-        .split(|c| c == '.')
+        .split('.')
         .next()
         .ok_or_else(|| anyhow::anyhow!("Invalid JWE"))?;
 

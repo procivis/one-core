@@ -27,7 +27,6 @@ strum.workspace            = true
 mockall                    = { workspace = true, optional = true }
 rand.workspace             = true
 sha2                       = { version = "0.10" }
-bit-vec                    = { version = "0.6" }
 flate2                     = { version = "1.0" }
 regex                      = { version = "1.10" }
 url.workspace              = true
