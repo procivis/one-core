@@ -19,8 +19,7 @@ async fn test_list_proof_schema_success() {
 
     let organisation = fixtures::create_organisation(&db_conn).await;
 
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
         .as_ref()

@@ -31,8 +31,7 @@ async fn test_temporary_issuer_reject_success() {
         }),
     )
     .await;
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let credential = fixtures::create_credential(
         &db_conn,
         &credential_schema,
