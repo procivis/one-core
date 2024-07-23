@@ -124,7 +124,7 @@ async fn test_issuer_submit_succeeds() {
                 None,
                 vec![CredentialRevocationInfo {
                     credential_status: CredentialStatus {
-                        id: Uuid::new_v4().to_string(),
+                        id: Some(Uuid::new_v4().to_string()),
                         r#type: "type".to_string(),
                         status_purpose: Some("type".to_string()),
                         additional_fields: HashMap::new(),

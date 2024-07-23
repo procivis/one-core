@@ -73,10 +73,10 @@ async fn test_format_credential_a() {
         credential_details,
         "http://base_url",
         vec![CredentialStatus {
-            id: "STATUS_ID".to_string(),
+            id: Some("STATUS_ID".to_string()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
-            additional_fields: HashMap::from([("Field1".to_owned(), "Val1".to_owned())]),
+            additional_fields: HashMap::from([("Field1".to_owned(), "Val1".into())]),
         }],
     )
     .unwrap();
@@ -157,7 +157,10 @@ async fn test_format_credential_a() {
 
     assert_eq!(1, vc.credential_status.len());
     let first_credential_status = vc.credential_status.first().unwrap();
-    assert_eq!(first_credential_status.id, "STATUS_ID");
+    assert!(first_credential_status
+        .id
+        .as_ref()
+        .is_some_and(|id| id == "STATUS_ID"));
     assert_eq!(first_credential_status.r#type, "TYPE");
     assert_eq!(
         first_credential_status.status_purpose.as_deref(),
@@ -165,7 +168,7 @@ async fn test_format_credential_a() {
     );
     assert_eq!(
         first_credential_status.additional_fields.get("Field1"),
-        Some(&"Val1".to_string())
+        Some(&"Val1".into())
     );
 }
 
@@ -220,7 +223,7 @@ async fn test_format_credential_with_array() {
         credential_details,
         "http://base_url",
         vec![CredentialStatus {
-            id: "STATUS_ID".to_string(),
+            id: Some("STATUS_ID".to_string()),
             r#type: "TYPE".to_string(),
             status_purpose: Some("PURPOSE".to_string()),
             additional_fields: HashMap::new(),
@@ -373,7 +376,10 @@ async fn test_extract_credentials() {
 
     assert_eq!(1, credentials.status.len());
     let first_credential_status = credentials.status.first().unwrap();
-    assert_eq!(first_credential_status.id, "STATUS_ID");
+    assert!(first_credential_status
+        .id
+        .as_ref()
+        .is_some_and(|id| id == "STATUS_ID"));
     assert_eq!(first_credential_status.r#type, "TYPE");
     assert_eq!(
         first_credential_status.status_purpose.as_deref(),
@@ -381,7 +387,7 @@ async fn test_extract_credentials() {
     );
     assert_eq!(
         first_credential_status.additional_fields.get("Field1"),
-        Some(&"Val1".to_string())
+        Some(&"Val1".into())
     );
 
     assert_eq!(credentials.claims.values.get("name").unwrap(), "John");

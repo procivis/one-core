@@ -1659,7 +1659,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                     ]),
                 },
                 status: vec![CredentialStatus {
-                    id: "".to_string(),
+                    id: Some("".to_string()),
                     r#type: "".to_string(),
                     status_purpose: None,
                     additional_fields: Default::default(),

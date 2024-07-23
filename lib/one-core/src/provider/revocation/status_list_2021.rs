@@ -67,6 +67,7 @@ impl RevocationMethod for StatusList2021 {
         let list_url = credential_status
             .additional_fields
             .get("statusListCredential")
+            .and_then(|v| v.as_str())
             .ok_or(RevocationError::ValidationError(
                 "Missing status list url".to_string(),
             ))?;
@@ -74,6 +75,7 @@ impl RevocationMethod for StatusList2021 {
         let list_index = credential_status
             .additional_fields
             .get("statusListIndex")
+            .and_then(|v| v.as_str())
             .ok_or(RevocationError::ValidationError(
                 "Missing status list index".to_string(),
             ))?;

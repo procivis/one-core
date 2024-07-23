@@ -1231,7 +1231,7 @@ async fn test_check_revocation_invalid_state() {
                         values: HashMap::new(),
                     },
                     status: vec![CredentialStatus {
-                        id: "id".to_string(),
+                        id: Some("id".to_string()),
                         r#type: "type".to_string(),
                         status_purpose: Some("purpose".to_string()),
                         additional_fields: HashMap::default(),
@@ -1400,7 +1400,7 @@ async fn test_check_revocation_already_revoked() {
                         values: HashMap::new(),
                     },
                     status: vec![CredentialStatus {
-                        id: "id".to_string(),
+                        id: Some("id".to_string()),
                         r#type: "type".to_string(),
                         status_purpose: Some("purpose".to_string()),
                         additional_fields: HashMap::default(),
@@ -1487,7 +1487,7 @@ async fn test_check_revocation_being_revoked() {
                     values: Default::default(),
                 },
                 status: vec![CredentialStatus {
-                    id: "id".to_string(),
+                    id: Some("id".to_string()),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),

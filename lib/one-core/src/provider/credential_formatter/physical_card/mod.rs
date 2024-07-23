@@ -1,9 +1,13 @@
-use async_trait::async_trait;
+use std::sync::Arc;
+use std::vec;
 
+use async_trait::async_trait;
+use model::OptiocalBarcodeCredential;
 use one_providers::{
     common_models::did::DidValue,
     credential_formatter::{
         error::FormatterError,
+        imp::json_ld::context::caching_loader::CachingLoader,
         model::{
             AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
             ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
@@ -11,9 +15,21 @@ use one_providers::{
         },
         CredentialFormatter,
     },
+    crypto::CryptoProvider,
 };
 
-pub struct PhysicalCardFormatter {}
+use super::json_ld_classic::verify_credential_signature;
+
+mod mappers;
+mod model;
+
+pub struct PhysicalCardFormatter {
+    pub crypto: Arc<dyn CryptoProvider>,
+    pub caching_loader: CachingLoader,
+}
+
+#[cfg(test)]
+mod test;
 
 #[async_trait]
 impl CredentialFormatter for PhysicalCardFormatter {
@@ -33,17 +49,29 @@ impl CredentialFormatter for PhysicalCardFormatter {
 
     async fn extract_credentials(
         &self,
-        _token: &str,
-        _verification: VerificationFn,
+        token: &str,
+        verification_fn: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
-        todo!()
+        let credential_with_optical_data = OptiocalBarcodeCredential::from_token(token)?;
+        let extra_information_for_proof = credential_with_optical_data.extra_information_bytes();
+
+        verify_credential_signature(
+            credential_with_optical_data.credential.clone(),
+            verification_fn,
+            &*self.crypto,
+            self.caching_loader.clone(),
+            Some(&extra_information_for_proof?),
+        )
+        .await?;
+
+        credential_with_optical_data.try_into()
     }
 
     async fn extract_credentials_unverified(
         &self,
-        _token: &str,
+        token: &str,
     ) -> Result<DetailCredential, FormatterError> {
-        todo!()
+        OptiocalBarcodeCredential::from_token(token)?.try_into()
     }
 
     async fn format_presentation(
@@ -124,7 +152,10 @@ impl CredentialFormatter for PhysicalCardFormatter {
 
 #[allow(clippy::new_without_default)]
 impl PhysicalCardFormatter {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(crypto: Arc<dyn CryptoProvider>, caching_loader: CachingLoader) -> Self {
+        Self {
+            crypto,
+            caching_loader,
+        }
     }
 }

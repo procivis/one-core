@@ -4,11 +4,11 @@ use std::vec;
 use async_trait::async_trait;
 use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::error::FormatterError;
-use one_providers::credential_formatter::imp::json_ld;
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
 use one_providers::credential_formatter::imp::json_ld::model::{
     LdCredential, LdPresentation, LdProof,
 };
+use one_providers::credential_formatter::imp::json_ld::{self, canonize_any};
 use one_providers::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
     DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities,
@@ -94,6 +94,7 @@ impl CredentialFormatter for JsonLdClassic {
             &*self.crypto,
             &proof,
             self.caching_loader.to_owned(),
+            None,
         )
         .await?;
 
@@ -184,6 +185,7 @@ impl CredentialFormatter for JsonLdClassic {
             &*self.crypto,
             &proof,
             self.caching_loader.to_owned(),
+            None,
         )
         .await?;
 
@@ -295,6 +297,7 @@ impl JsonLdClassic {
                 verification_fn,
                 &*self.crypto,
                 self.caching_loader.to_owned(),
+                None,
             )
             .await?;
         }
@@ -321,13 +324,13 @@ impl JsonLdClassic {
         };
 
         Ok(DetailCredential {
-            id: Some(credential.id),
-            issued_at: Some(credential.issuance_date),
+            id: credential.id,
+            issued_at: credential.issuance_date,
             expires_at: None,
             update_at: None,
             invalid_before: None,
             issuer_did: Some(credential.issuer),
-            subject: Some(credential.credential_subject.id),
+            subject: credential.credential_subject.id,
             claims,
             status: credential.credential_status,
             credential_schema: credential.credential_schema,
@@ -378,6 +381,7 @@ pub(super) async fn verify_credential_signature(
     verification_fn: VerificationFn,
     crypto: &dyn CryptoProvider,
     caching_loader: CachingLoader,
+    extra_information: Option<&[u8]>,
 ) -> Result<(), FormatterError> {
     let mut proof = ld_credential
         .proof
@@ -394,7 +398,19 @@ pub(super) async fn verify_credential_signature(
     proof.proof_value = None;
     ld_credential.proof = None;
 
-    let proof_hash = prepare_proof_hash(&ld_credential, crypto, &proof, caching_loader).await?;
+    // In case the node proof does not have a dedicated context, we should use the one from the credential
+    if proof.context.is_none() {
+        proof.context = Some(ld_credential.context.to_owned());
+    }
+
+    let proof_hash = prepare_proof_hash(
+        &ld_credential,
+        crypto,
+        &proof,
+        caching_loader,
+        extra_information,
+    )
+    .await?;
     verify_proof_signature(
         &proof_hash,
         &proof_value,
@@ -429,7 +445,8 @@ pub(super) async fn verify_presentation_signature(
     proof.proof_value = None;
     presentation.proof = None;
 
-    let proof_hash = prepare_proof_hash(&presentation, crypto, &proof, caching_loader).await?;
+    let proof_hash =
+        prepare_proof_hash(&presentation, crypto, &proof, caching_loader, None).await?;
     verify_proof_signature(
         &proof_hash,
         &proof_value,
@@ -458,6 +475,7 @@ pub(super) async fn verify_proof_signature(
     let algorithm = match cryptosuite {
         "eddsa-rdfc-2022" => "EDDSA",
         "ecdsa-rdfc-2019" => "ES256",
+        "ecdsa-xi-2023" => "ES256",
         _ => {
             return Err(FormatterError::CouldNotVerify(format!(
                 "Unsupported cryptosuite: {cryptosuite}"
@@ -496,13 +514,14 @@ pub(super) async fn prepare_proof_hash<T>(
     crypto: &dyn CryptoProvider,
     proof: &LdProof,
     caching_loader: CachingLoader,
+    extra_information: Option<&[u8]>,
 ) -> Result<Vec<u8>, FormatterError>
 where
     T: Serialize,
 {
     let transformed_document = json_ld::canonize_any(object, caching_loader.clone()).await?;
 
-    let transformed_proof_config = json_ld::canonize_any(proof, caching_loader).await?;
+    let transformed_proof_config = canonize_any(proof, caching_loader).await?;
 
     let hashing_function = "sha-256";
     let hasher = crypto.get_hasher(hashing_function).map_err(|_| {
@@ -516,6 +535,14 @@ where
     let mut transformed_proof_config_hash = hasher
         .hash(transformed_proof_config.as_bytes())
         .map_err(|e| FormatterError::CouldNotFormat(format!("Hasher error: `{}`", e)))?;
+
+    if let Some(extra_information) = extra_information {
+        let extra_information_hash = hasher
+            .hash(extra_information)
+            .map_err(|e| FormatterError::CouldNotFormat(format!("Hasher error: `{}`", e)))?;
+
+        transformed_proof_config_hash.extend(extra_information_hash);
+    }
 
     transformed_proof_config_hash.extend(transformed_document_hash);
     Ok(transformed_proof_config_hash)

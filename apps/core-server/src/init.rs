@@ -300,7 +300,10 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                             .expect("JWT formatter params are mandatory");
                         Arc::new(JWTFormatter::new(params)) as _
                     }
-                    "PHYSICAL_CARD" => Arc::new(PhysicalCardFormatter::new()) as _,
+                    "PHYSICAL_CARD" => Arc::new(PhysicalCardFormatter::new(
+                        crypto.clone(),
+                        caching_loader.clone(),
+                    )) as _,
                     "SDJWT" => {
                         let params = format_config
                             .get(name)
