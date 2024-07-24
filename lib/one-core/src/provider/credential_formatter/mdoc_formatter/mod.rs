@@ -47,7 +47,7 @@ use crate::model::credential_schema::CredentialSchemaType;
 use crate::provider::did_method::mdl::DidMdlValidator;
 
 mod cose;
-mod mdoc;
+pub mod mdoc;
 
 #[cfg(test)]
 mod test;

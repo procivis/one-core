@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use ciborium::{cbor, tag::Required, Value};
 use coset::AsCborValue;
 use indexmap::IndexMap;
@@ -253,7 +254,7 @@ impl From<DateTime> for OffsetDateTime {
 
 // using custom type since ciborium doesn't understand if a Vec<u8> is Value::Bytes(..) or Value::Array(Value)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(from = "Vec<u8>", into = "ciborium::Value")]
+#[serde(try_from = "ciborium::Value", into = "ciborium::Value")]
 pub struct Bstr(pub Vec<u8>);
 
 impl From<Bstr> for ciborium::Value {
@@ -262,9 +263,13 @@ impl From<Bstr> for ciborium::Value {
     }
 }
 
-impl From<Vec<u8>> for Bstr {
-    fn from(value: Vec<u8>) -> Self {
-        Self(value)
+impl TryFrom<ciborium::Value> for Bstr {
+    type Error = anyhow::Error;
+
+    fn try_from(value: ciborium::Value) -> Result<Self, Self::Error> {
+        Ok(Self(
+            value.into_bytes().map_err(|_| anyhow!("Value not bytes"))?,
+        ))
     }
 }
 
