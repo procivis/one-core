@@ -107,6 +107,7 @@ rusty_fork_test! {
                     params: null
             task: {}
             trustManagement: {}
+            cacheEntities: {}
         "};
 
         let config3 = indoc::indoc! {"

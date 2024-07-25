@@ -7,11 +7,6 @@ app:
   traceJson: false
   traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error"
   hideErrorResponseCause: false
-  cacheEntites:
-    JSON_LD_CONTEXT:
-      cacheType: DB
-      cacheRefreshTimeout: 86400
-      cacheSize: 1000
 exchange:
   OPENID4VC:
     params:
@@ -31,3 +26,19 @@ trustManagement:
     params:
       public:
         disablePublishing: false
+cacheEntities:
+  STATUS_LIST_CREDENTIAL:
+    cacheType: DB
+    refreshAfter: 300
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000
+  DID_DOCUMENT:
+    cacheType: DB
+    refreshAfter: 86400
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000
+  JSON_LD_CONTEXT:
+    cacheType: DB
+    refreshAfter: 86400
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000

@@ -1,6 +1,5 @@
 use std::net::IpAddr;
 
-use one_core::config::core_config::CacheEntitiesConfig;
 use serde::{Deserialize, Serialize};
 
 pub mod deserialize;
@@ -36,6 +35,4 @@ pub struct ServerConfig {
     pub trace_level: Option<String>,
     // when set to true hides the `cause` field in the error response
     pub hide_error_response_cause: bool,
-    #[serde(default)]
-    pub cache_entities: Option<CacheEntitiesConfig>,
 }

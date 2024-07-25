@@ -1,4 +1,8 @@
-cacheEntites:
+cacheEntities:
+  STATUS_LIST_CREDENTIAL:
+    cacheSize: 100
+  DID_DOCUMENT:
+    cacheSize: 100
   JSON_LD_CONTEXT:
     cacheSize: 100
 keyStorage:

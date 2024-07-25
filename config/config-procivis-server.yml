@@ -8,11 +8,6 @@ app:
   sentryDsn: "https://2deca538f2c80d91bf6fd718fde96db6@o153694.ingest.sentry.io/4505940972142592"
   sentryEnvironment: ""
   hideErrorResponseCause: false
-  cacheEntites:
-    JSON_LD_CONTEXT:
-      cacheType: DB
-      cacheRefreshTimeout: 86400
-      cacheSize: 1000
 keyStorage:
   AZURE_VAULT:
     display: "keyStorage.azureKeyVault"
@@ -26,3 +21,19 @@ keyStorage:
         adTenantId: "0e235e47-054b-41b2-9c63-6aa0c115ce5b"
         clientId: "de515d45-53da-4b82-a34a-0e6b513db700"
         clientSecret: ""
+cacheEntities:
+  STATUS_LIST_CREDENTIAL:
+    cacheType: DB
+    refreshAfter: 300
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000
+  DID_DOCUMENT:
+    cacheType: DB
+    refreshAfter: 86400
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000
+  JSON_LD_CONTEXT:
+    cacheType: DB
+    refreshAfter: 86400
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000

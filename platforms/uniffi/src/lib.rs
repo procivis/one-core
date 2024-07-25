@@ -52,7 +52,7 @@ use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
 use error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
 use one_core::{
     config::{
-        core_config::{self, AppConfig, JsonLdContextCacheType, JsonLdContextConfig},
+        core_config::{self, AppConfig, CacheEntityCacheType, CacheEntityConfig},
         ConfigError, ConfigParsingError, ConfigValidationError,
     },
     provider::{
@@ -598,10 +598,10 @@ pub fn initialize_cache_loader(
     let cache_entities_config = cache_entities_config.unwrap_or(CacheEntitiesConfig {
         entities: HashMap::from([(
             "JSON_LD_CONTEXT".to_string(),
-            JsonLdContextConfig {
+            CacheEntityConfig {
                 cache_refresh_timeout: Duration::seconds(86400),
                 cache_size: 100,
-                cache_type: JsonLdContextCacheType::Db,
+                cache_type: CacheEntityCacheType::Db,
             },
         )]),
     });
@@ -614,10 +614,10 @@ pub fn initialize_cache_loader(
 
     let json_ld_context_storage: Arc<dyn JsonLdContextStorage> =
         match json_ld_context_config.cache_type {
-            JsonLdContextCacheType::Db => Arc::new(DbStorage::new(
+            CacheEntityCacheType::Db => Arc::new(DbStorage::new(
                 data_provider.get_json_ld_context_repository(),
             )),
-            JsonLdContextCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
+            CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
         };
     CachingLoader {
         cache_size: json_ld_context_config.cache_size as usize,
