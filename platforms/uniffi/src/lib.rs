@@ -102,6 +102,15 @@ fn initialize_core(
     ble_central: Option<Arc<dyn BleCentral>>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
+    #[cfg(target_os = "android")]
+    {
+        use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+        _ = tracing_subscriber::registry()
+            .with(tracing_android::layer("ProcivisOneCore").unwrap())
+            .try_init();
+    }
+
     let native_key_storage: Option<
         Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>,
     > = native_key_storage.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);

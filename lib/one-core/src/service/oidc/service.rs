@@ -28,7 +28,7 @@ use crate::common_mapper::{
 use crate::common_validator::{
     is_lvvc, throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
-use crate::config::core_config::ExchangeType;
+use crate::config::core_config::{ExchangeType, TransportType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{
@@ -52,7 +52,9 @@ use crate::provider::exchange_protocol::openid4vc::dto::{
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_credential_offer, create_open_id_for_vp_client_metadata,
 };
-use crate::provider::exchange_protocol::openid4vc::model::JwePayload;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    BLEOpenID4VPInteractionData, JwePayload,
+};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -484,6 +486,100 @@ impl OIDCService {
         interaction_data.try_into()
     }
 
+    // TODO (Eugeniu) - this method is used as part of the OIDC BLE flow
+    // as soon as ONE-2754 is finalized, we should remove this method, and move
+    // all logic to the provider instead. This is a temporary solution.
+    pub async fn oidc_verifier_ble_presentation(
+        &self,
+        proof_id: &ProofId,
+    ) -> Result<(), ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
+        let (proof, presentation_submission) = loop {
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+            let proof = self
+                .proof_repository
+                .get_proof(
+                    proof_id,
+                    &ProofRelations {
+                        schema: Some(ProofSchemaRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                            proof_inputs: Some(ProofInputSchemaRelations {
+                                claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                                credential_schema: Some(CredentialSchemaRelations {
+                                    claim_schemas: Some(ClaimSchemaRelations::default()),
+                                    ..Default::default()
+                                }),
+                            }),
+                        }),
+                        interaction: Some(InteractionRelations::default()),
+                        state: Some(ProofStateRelations::default()),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(
+                    *proof_id,
+                )))?;
+
+            if proof.transport != TransportType::Ble.to_string() {
+                return Err(OpenID4VCIError::InvalidRequest.into());
+            };
+
+            let proof_state = proof
+                .state
+                .as_ref()
+                .ok_or(ServiceError::MappingError("state is None".to_string()))?
+                .first()
+                .ok_or(ServiceError::MappingError("state is empty".to_string()))?;
+
+            let state = proof_state.state.clone();
+
+            if state.eq(&ProofStateEnum::Created)
+                || state.eq(&ProofStateEnum::Accepted)
+                || state.eq(&ProofStateEnum::Rejected)
+                || state.eq(&ProofStateEnum::Error)
+            {
+                return Ok(());
+            }
+
+            if let Some(data) = proof
+                .interaction
+                .as_ref()
+                .and_then(|interaction| interaction.data.as_ref())
+            {
+                if let Ok(interaction_data) =
+                    serde_json::from_slice::<BLEOpenID4VPInteractionData>(data)
+                {
+                    if let Some(ble_response) = interaction_data.presentation_submission {
+                        let state =
+                            Uuid::from_str(&ble_response.presentation_submission.definition_id)
+                                .map_err(|e| {
+                                    ServiceError::MappingError(format!(
+                                        "Failed to parse BLE interaction data: {:?}",
+                                        e.to_string()
+                                    ))
+                                })?;
+
+                        let request_data = RequestData {
+                            presentation_submission: ble_response.presentation_submission,
+                            vp_token: ble_response.vp_token,
+                            state,
+                            mdoc_generated_nonce: None,
+                        };
+
+                        break Ok((proof, request_data)) as Result<_, ServiceError>;
+                    }
+                }
+            }
+        }?;
+
+        self.oidc_verifier_verify_submission(proof, presentation_submission)
+            .await?;
+        Ok(())
+    }
+
     pub async fn oidc_verifier_direct_post(
         &self,
         request: OpenID4VPDirectPostRequestDTO,
@@ -491,7 +587,6 @@ impl OIDCService {
         validate_config_entity_presence(&self.config)?;
 
         let unpacked_request = self.unpack_direct_post_request(request).await?;
-
         let interaction_id = unpacked_request.state;
 
         let proof = self
@@ -520,13 +615,22 @@ impl OIDCService {
             return Err(BusinessLogicError::MissingProofForInteraction(interaction_id).into());
         };
 
-        validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &proof.exchange)?;
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
-
-        match self
-            .process_proof_submission(unpacked_request, &proof)
+        self.oidc_verifier_verify_submission(proof, unpacked_request)
             .await
-        {
+    }
+
+    pub async fn oidc_verifier_verify_submission(
+        &self,
+        proof: Proof,
+        request_data: RequestData,
+    ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
+        validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &proof.exchange)?;
+
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending).or(
+            throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested),
+        )?;
+
+        match self.process_proof_submission(request_data, &proof).await {
             Ok(proved_claims) => {
                 let redirect_uri = proof.redirect_uri.to_owned();
                 self.accept_proof(proof, proved_claims).await?;
@@ -1082,7 +1186,7 @@ impl OIDCService {
 }
 
 #[derive(Debug)]
-struct RequestData {
+pub struct RequestData {
     pub presentation_submission: PresentationSubmissionMappingDTO,
     pub vp_token: String,
     pub state: Uuid,

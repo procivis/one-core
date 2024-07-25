@@ -1,5 +1,6 @@
 use shared_types::ProofId;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use super::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
@@ -156,14 +157,14 @@ impl ProofService {
             .ok_or_else(|| ServiceError::MappingError("proof interaction is missing".into()))?
             .map_err(|err| ServiceError::MappingError(err.to_string()))?;
 
+        // The holder did / org is not set on the proof until it is shared by a holder
+        // get_presentation_definition is called before the proof is shared.
         let organisation_id = proof
             .holder_did
             .as_ref()
-            .ok_or_else(|| ServiceError::MappingError("holder_did is missing".into()))?
-            .organisation
-            .as_ref()
-            .ok_or_else(|| ServiceError::MappingError("holder_did.organisation is missing".into()))?
-            .id;
+            .and_then(|did| did.organisation.as_ref())
+            .map(|org| org.id)
+            .unwrap_or(Uuid::new_v4().into());
 
         let storage_access = StorageProxyImpl::new(
             organisation_id,
@@ -415,33 +416,28 @@ impl ProofService {
                     ServiceError::Other(format!("BLE peripheral stop advertisement error: {err}"))
                 })?;
             }
+            if let Ok(ble_interaction_data) =
+                serde_json::from_slice::<BLEOpenID4VPInteractionData>(&interaction_data)
+            {
+                let service = "00000001-5026-444A-9E0E-D6F2450F3A77".to_owned();
+                // todo: add an enum for different characteristic values
+                let characteristic = "0000000B-5026-444A-9E0E-D6F2450F3A77".to_owned();
+                let data = &[1];
 
-            let ble_interaction_data: BLEOpenID4VPInteractionData =
-                serde_json::from_slice(&interaction_data).map_err(|err| {
-                    ServiceError::Other(format!(
-                        "Failed deserializing BLEOpenID4VPInteractionData: {err}"
-                    ))
-                })?;
-
-            let service = "00000001-5026-444A-9E0E-D6F2450F3A77".to_owned();
-            // todo: add an enum for different characteristic values
-            let characteristic = "0000000B-5026-444A-9E0E-D6F2450F3A77".to_owned();
-            let data = &[1];
-
-            ble_peripheral
-                .notify_characteristic_data(
-                    ble_interaction_data.peer.device_info.address,
-                    service,
-                    characteristic,
-                    data,
-                )
-                .await
-                .map_err(|err| {
-                    ServiceError::Other(format!(
-                        "BLE peripheral error notifying characteristic data: {err}"
-                    ))
-                })?;
-
+                ble_peripheral
+                    .notify_characteristic_data(
+                        ble_interaction_data.peer.device_info.address,
+                        service,
+                        characteristic,
+                        data,
+                    )
+                    .await
+                    .map_err(|err| {
+                        ServiceError::Other(format!(
+                            "BLE peripheral error notifying characteristic data: {err}"
+                        ))
+                    })?;
+            };
             ble_peripheral.stop_server().await.map_err(|err| {
                 ServiceError::Other(format!("BLE peripheral error stopping server: {err}"))
             })?;

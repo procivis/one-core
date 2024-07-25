@@ -34,8 +34,8 @@ use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialOfferCredentialDTO,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails,
     OpenID4VCIGrant, OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
-    OpenID4VPFormat, OpenID4VPInteractionData, OpenID4VPPresentationDefinition,
-    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VPFormat, OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
+    OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
     OpenID4VPPresentationDefinitionInputDescriptorFormat,
@@ -676,18 +676,10 @@ pub(super) fn create_claims_from_credential_definition(
 }
 
 pub(super) fn create_presentation_submission(
-    interaction_data: &OpenID4VPInteractionData,
+    presentation_definition_id: &Uuid,
     credential_presentations: Vec<PresentedCredential>,
     format: &str,
 ) -> Result<PresentationSubmissionMappingDTO, ExchangeProtocolError> {
-    let presentation_definition_id = &interaction_data
-        .presentation_definition
-        .as_ref()
-        .ok_or(ExchangeProtocolError::Failed(
-            "presentation_definition is None".to_string(),
-        ))?
-        .id;
-
     Ok(PresentationSubmissionMappingDTO {
         id: Uuid::new_v4().to_string(),
         definition_id: presentation_definition_id.to_string(),

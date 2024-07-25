@@ -2693,10 +2693,12 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     [1; 32],
                     [2; 12],
                 ),
-                presentation_definition: OpenID4VPPresentationDefinition {
+                nonce: Some("nonce".to_string()),
+                presentation_definition: Some(OpenID4VPPresentationDefinition {
                     id: interaction_id,
                     input_descriptors: vec![],
-                },
+                }),
+                presentation_submission: None,
             };
 
             serde_json::to_vec(&data).unwrap()

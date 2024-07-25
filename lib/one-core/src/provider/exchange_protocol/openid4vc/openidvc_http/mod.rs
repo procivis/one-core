@@ -244,8 +244,16 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
             .get_signature_provider(&key.to_owned(), jwk_key_id)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
+        let presentation_definition_id = interaction_data
+            .presentation_definition
+            .as_ref()
+            .map(|pd| pd.id)
+            .ok_or(ExchangeProtocolError::Failed(
+                "presentation_definition is None".to_string(),
+            ))?;
+
         let presentation_submission = create_presentation_submission(
-            &interaction_data,
+            &presentation_definition_id,
             credential_presentations,
             oidc_format,
         )?;

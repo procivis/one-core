@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::vec;
 
-use futures::{StreamExt, TryFutureExt};
+use futures::{stream, StreamExt, TryFutureExt};
 use rand::rngs::OsRng;
 use rand::Rng;
 use shared_types::ProofId;
@@ -14,18 +14,24 @@ use crate::model::interaction::Interaction;
 use crate::model::proof::{ProofState, ProofStateEnum};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
-use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, OpenID4VPPresentationDefinition};
-use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
+use crate::provider::exchange_protocol::openid4vc::dto::{
+    Chunk, ChunkExt, Chunks, OpenID4VPPresentationDefinition,
+};
+use crate::provider::exchange_protocol::openid4vc::model::{
+    BLEOpenID4VPInteractionData, BleOpenId4VpResponse,
+};
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
     PRESENTATION_REQUEST_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::service::oidc::dto::PresentationSubmissionMappingDTO;
 
 use super::{
-    BLEParse, BLEPeer, BLEStream, IdentityRequest, KeyAgreementKey, MessageSize, IDENTITY_UUID,
-    REQUEST_SIZE_UUID, SERVICE_UUID, TRANSFER_SUMMARY_REPORT_UUID,
+    BLEParse, BLEPeer, BLEStream, IdentityRequest, KeyAgreementKey, MessageSize,
+    TransferSummaryReport, CONTENT_SIZE_UUID, IDENTITY_UUID, REQUEST_SIZE_UUID, SERVICE_UUID,
+    SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
 };
 
 pub struct OpenID4VCBLEHolder {
@@ -87,6 +93,7 @@ impl OpenID4VCBLEHolder {
                 .context("Invalid verifier public key length")
                 .map_err(ExchangeProtocolError::Transport)?;
 
+            tracing::debug!("Connecting to verifier: {name}");
             let device_info = self
                 .connect_to_verifier(&name, &verifier_public_key)
                 .await
@@ -96,6 +103,7 @@ impl OpenID4VCBLEHolder {
                     ))
                 })?;
 
+            tracing::debug!("session_key_and_identity_request");
             let (identity_request, ble_peer) =
                 self.session_key_and_identity_request(device_info, verifier_public_key)?;
 
@@ -103,7 +111,7 @@ impl OpenID4VCBLEHolder {
 
             self.send(IDENTITY_UUID, identity_request.clone().encode().as_ref())
                 .await?;
-
+            tracing::debug!("read_presentation_definition");
             let presentation_definition = self.read_presentation_definition().await?;
 
             let now = OffsetDateTime::now_utc();
@@ -116,7 +124,9 @@ impl OpenID4VCBLEHolder {
                     data: Some(
                         serde_json::to_vec(&BLEOpenID4VPInteractionData {
                             peer: ble_peer,
-                            presentation_definition,
+                            nonce: Some(hex::encode(identity_request.nonce)),
+                            presentation_definition: Some(presentation_definition),
+                            presentation_submission: None,
                         })
                         .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
                     ),
@@ -147,6 +157,22 @@ impl OpenID4VCBLEHolder {
         Ok(())
     }
 
+    pub async fn disconnect_from_verifier(&self) -> Result<(), ExchangeProtocolError> {
+        let connected_verifier =
+            self.connected_verifier
+                .as_ref()
+                .ok_or(ExchangeProtocolError::Failed(
+                    "Verifier is not connected".to_string(),
+                ))?;
+
+        self.ble_central
+            .disconnect(connected_verifier.device_info.address.clone())
+            .await
+            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+        Ok(())
+    }
+
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     async fn connect_to_verifier(
         &self,
@@ -160,7 +186,7 @@ impl OpenID4VCBLEHolder {
                 ExchangeProtocolError::Transport(anyhow!("stop_discovery failed: {err}"))
             })?;
         }
-
+        tracing::debug!("start_scan");
         self.ble_central
             .start_scan(Some(vec![SERVICE_UUID.to_string()]))
             .await
@@ -168,7 +194,7 @@ impl OpenID4VCBLEHolder {
                 ExchangeProtocolError::Transport(anyhow!("start_discovery failed: {err}"))
             })?;
 
-        let expected_adv_data = [format!("OVP{}_", name).as_bytes(), &public_key[..5]].concat();
+        tracing::debug!("Started scanning");
 
         loop {
             let discovered = self
@@ -180,24 +206,20 @@ impl OpenID4VCBLEHolder {
                         "get_discovered_devices failed: {err}"
                     ))
                 })?;
+            tracing::debug!("Discovered: {}", discovered.len());
 
             for device in discovered {
-                // The peripheral advertises via the local device name (iOS)
+                tracing::debug!(
+                    "local_device_name_matches: {:?} == {name}",
+                    device.local_device_name
+                );
+
                 let local_device_name_matches = device
                     .local_device_name
-                    .as_ref()
-                    .map(|advertised_name| advertised_name.eq(name))
+                    .map(|advertised_name| advertised_name == name)
                     .unwrap_or(false);
 
-                // The peripheral advertises via the advertised service data (Android)
-                let advertised_name_matches = device
-                    .advertised_service_data
-                    .as_ref()
-                    .and_then(|data| data.get(&SERVICE_UUID.to_string()))
-                    .map(|data| data.eq(&expected_adv_data))
-                    .unwrap_or(false);
-
-                if local_device_name_matches || advertised_name_matches {
+                if local_device_name_matches {
                     let mtu = self
                         .ble_central
                         .connect(device.device_address.clone())
@@ -205,6 +227,8 @@ impl OpenID4VCBLEHolder {
                         .map_err(|err| {
                             ExchangeProtocolError::Transport(anyhow!("connect failed: {err}"))
                         })?;
+
+                    tracing::debug!("Connected to `{name}`, MTU: {mtu}");
 
                     self.ble_central.stop_scan().await.map_err(|err| {
                         ExchangeProtocolError::Transport(anyhow!("stop_discovery failed: {err}"))
@@ -217,6 +241,90 @@ impl OpenID4VCBLEHolder {
                 }
             }
         }
+    }
+
+    pub async fn submit_presentation(
+        &self,
+        vp_token: String,
+        presentation_submission: PresentationSubmissionMappingDTO,
+    ) -> Result<(), ExchangeProtocolError> {
+        let response = BleOpenId4VpResponse {
+            vp_token,
+            presentation_submission,
+        };
+
+        let connected_verifier =
+            self.connected_verifier
+                .as_ref()
+                .ok_or(ExchangeProtocolError::Failed(
+                    "Verifier is not connected".to_string(),
+                ))?;
+
+        let enc_payload = connected_verifier
+            .encrypt(response)
+            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+        let chunks = Chunks::from_bytes(&enc_payload[..], connected_verifier.device_info.mtu);
+
+        let payload_len = (chunks.len() as u16).to_be_bytes();
+        self.send(CONTENT_SIZE_UUID, &payload_len).await?;
+
+        for chunk in &chunks {
+            self.send(SUBMIT_VC_UUID, &chunk.to_bytes()).await?;
+        }
+
+        let missing_chunks = self.get_transfer_summary().await?;
+
+        if !missing_chunks.is_empty() {
+            return Err(ExchangeProtocolError::Failed(
+                "did not send all chunks".to_string(),
+            ));
+        }
+
+        self.disconnect_from_verifier().await?;
+        Ok(())
+    }
+
+    async fn get_transfer_summary(&self) -> Result<Vec<u16>, ExchangeProtocolError> {
+        let connected_verifier = self
+            .connected_verifier
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "Verifier is not connected".to_string(),
+            ))?
+            .device_info
+            .address
+            .clone();
+
+        self.ble_central
+            .subscribe_to_characteristic_notifications(
+                connected_verifier.clone(),
+                SERVICE_UUID.to_string(),
+                TRANSFER_SUMMARY_REPORT_UUID.to_string(),
+            )
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        self.send(TRANSFER_SUMMARY_REQUEST_UUID, &[]).await?;
+
+        let report = self
+            .ble_central
+            .get_notifications(
+                connected_verifier.clone(),
+                SERVICE_UUID.to_string(),
+                TRANSFER_SUMMARY_REPORT_UUID.to_string(),
+            )
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let report: TransferSummaryReport = stream::iter(report)
+            .map(Ok)
+            .boxed()
+            .parse()
+            .map_err(ExchangeProtocolError::Transport)
+            .await?;
+
+        Ok(report)
     }
 
     fn session_key_and_identity_request(
@@ -252,7 +360,8 @@ impl OpenID4VCBLEHolder {
                     "Verifier is not connected".to_string(),
                 ))?;
 
-        let mut received_chunks: Vec<Chunk> = vec![];
+        // give some time to set_characteristic to finish so we can safely do characteristic read
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
         let request_size: MessageSize = self
             .read(REQUEST_SIZE_UUID)?
@@ -261,6 +370,26 @@ impl OpenID4VCBLEHolder {
             .await?;
 
         let mut message_stream = self.read(PRESENTATION_REQUEST_UUID)?;
+
+        self.ble_central
+            .subscribe_to_characteristic_notifications(
+                connected_verifier.device_info.address.clone(),
+                SERVICE_UUID.to_string(),
+                TRANSFER_SUMMARY_REPORT_UUID.to_string(),
+            )
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let mut notification = self
+            .ble_central
+            .get_notifications(
+                connected_verifier.device_info.address.clone(),
+                SERVICE_UUID.to_string(),
+                TRANSFER_SUMMARY_REPORT_UUID.to_string(),
+            )
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()));
+
+        let mut received_chunks: Vec<Chunk> = vec![];
 
         loop {
             tokio::select! {
@@ -275,13 +404,9 @@ impl OpenID4VCBLEHolder {
                     } else {
                         received_chunks.push(chunk);
                     }
-
-                    if received_chunks.len() as u16 == request_size {
-                        break;
-                    };
                 },
-                _ = self.summary_report_notification() => {
-                    let missing_chunks = (0..request_size)
+                _ = &mut notification => {
+                    let missing_chunks = (1..request_size)
                         .filter(|idx| !received_chunks.iter().any(|c| c.index == *idx))
                         .map(|idx| idx.to_be_bytes())
                         .collect::<Vec<[u8; 2]>>()
@@ -290,10 +415,23 @@ impl OpenID4VCBLEHolder {
                     self.send(
                         TRANSFER_SUMMARY_REQUEST_UUID,
                         missing_chunks.as_ref(),
-                    ).await?
+                    ).await?;
+
+                    if missing_chunks.is_empty() {
+                        break;
+                    };
                 }
             }
         }
+
+        self.ble_central
+            .unsubscribe_from_characteristic_notifications(
+                connected_verifier.device_info.address.clone(),
+                SERVICE_UUID.to_string(),
+                TRANSFER_SUMMARY_REPORT_UUID.to_string(),
+            )
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         if received_chunks.len() as u16 != request_size {
             return Err(ExchangeProtocolError::Failed(
@@ -315,44 +453,6 @@ impl OpenID4VCBLEHolder {
                     "Failed to decrypt presentation request: {e}"
                 ))
             })
-    }
-
-    pub async fn summary_report_notification(&self) -> Result<(), ExchangeProtocolError> {
-        let wallet = self
-            .connected_verifier
-            .as_ref()
-            .ok_or(ExchangeProtocolError::Failed(
-                "Verifier is not connected".to_string(),
-            ))?;
-
-        self.ble_central
-            .subscribe_to_characteristic_notifications(
-                wallet.device_info.address.clone(),
-                SERVICE_UUID.to_string(),
-                TRANSFER_SUMMARY_REPORT_UUID.to_string(),
-            )
-            .await
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        self.ble_central
-            .get_notifications(
-                wallet.device_info.address.clone(),
-                SERVICE_UUID.to_string(),
-                TRANSFER_SUMMARY_REPORT_UUID.to_string(),
-            )
-            .await
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        self.ble_central
-            .unsubscribe_from_characteristic_notifications(
-                wallet.device_info.address.clone(),
-                SERVICE_UUID.to_string(),
-                TRANSFER_SUMMARY_REPORT_UUID.to_string(),
-            )
-            .await
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        Ok(())
     }
 }
 

@@ -8,6 +8,12 @@ use super::dto::OpenID4VPPresentationDefinition;
 use super::openidvc_ble::BLEPeer;
 use crate::service::oidc::dto::PresentationSubmissionMappingDTO;
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BleOpenId4VpResponse {
+    pub vp_token: String,
+    pub presentation_submission: PresentationSubmissionMappingDTO,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OpenID4VCInteractionContent {
     pub pre_authorized_code_used: bool,
@@ -42,10 +48,12 @@ pub struct HolderInteractionData {
     pub refresh_token_expires_at: Option<OffsetDateTime>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct BLEOpenID4VPInteractionData {
     pub peer: BLEPeer,
-    pub presentation_definition: OpenID4VPPresentationDefinition,
+    pub nonce: Option<String>,
+    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
+    pub presentation_submission: Option<BleOpenId4VpResponse>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

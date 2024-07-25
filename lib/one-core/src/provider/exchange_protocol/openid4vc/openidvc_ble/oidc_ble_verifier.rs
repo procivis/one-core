@@ -10,26 +10,34 @@ use shared_types::ProofId;
 use time::OffsetDateTime;
 
 use super::{
-    BLEPeer, BLEStream, IdentityRequest, KeyAgreementKey, TransferSummaryReport, CONTENT_SIZE_UUID,
-    DISCONNECT_UUID, IDENTITY_UUID, PRESENTATION_REQUEST_UUID, REQUEST_SIZE_UUID, SERVICE_UUID,
-    SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
+    BLEPeer, BLEStream, IdentityRequest, KeyAgreementKey, MessageSize, TransferSummaryReport,
+    CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, PRESENTATION_REQUEST_UUID,
+    REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
+    TRANSFER_SUMMARY_REQUEST_UUID,
 };
-use crate::model::proof::{self, ProofState};
+use crate::model::interaction::InteractionId;
+use crate::model::proof::{self, ProofState, ProofStateEnum};
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceInfo, ServiceDescription,
 };
 use crate::provider::exchange_protocol::openid4vc::dto::{
-    ChunkExt, Chunks, OpenID4VPPresentationDefinition,
+    Chunk, ChunkExt, Chunks, OpenID4VPPresentationDefinition,
+};
+use crate::provider::exchange_protocol::openid4vc::model::{
+    BLEOpenID4VPInteractionData, BleOpenId4VpResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEParse;
 use crate::provider::exchange_protocol::ExchangeProtocolError;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::util::interactions::{add_new_interaction, update_proof_interaction};
 
 pub struct OpenID4VCBLEVerifier {
     pub(crate) ble_peripheral: Arc<dyn BlePeripheral>,
-    pub proof_repository: Arc<dyn ProofRepository>,
+    proof_repository: Arc<dyn ProofRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
     connected_wallet: Option<BLEPeer>,
 }
 
@@ -37,10 +45,13 @@ impl OpenID4VCBLEVerifier {
     pub fn new(
         ble_peripheral: Arc<dyn BlePeripheral>,
         proof_repository: Arc<dyn ProofRepository>,
+        interaction_repository: Arc<dyn InteractionRepository>,
+        connected_wallet: Option<BLEPeer>,
     ) -> Result<Self, ExchangeProtocolError> {
         Ok(Self {
             ble_peripheral,
-            connected_wallet: None,
+            connected_wallet,
+            interaction_repository,
             proof_repository,
         })
     }
@@ -74,6 +85,7 @@ impl OpenID4VCBLEVerifier {
         mut self,
         proof_request: OpenID4VPPresentationDefinition,
         proof_id: ProofId,
+        interaction_id: InteractionId,
     ) -> Result<String, ExchangeProtocolError> {
         let keypair = KeyAgreementKey::new_random();
         let qr_url = self.start_advertisement(keypair.public_key_bytes()).await?;
@@ -89,14 +101,55 @@ impl OpenID4VCBLEVerifier {
                     .derive_session_secrets(identity_request.key, identity_request.nonce)
                     .map_err(ExchangeProtocolError::Transport)?;
 
-                self.connected_wallet = Some(BLEPeer::new(
-                    wallet,
-                    sender_key,
-                    receiver_key,
-                    identity_request.nonce,
-                ));
+                let peer = BLEPeer::new(wallet, sender_key, receiver_key, identity_request.nonce);
 
-                self.write_presentation_request(proof_request).await
+                self.connected_wallet = Some(peer.clone());
+
+                self.write_presentation_request(proof_request.clone())
+                    .await?;
+
+                let now = OffsetDateTime::now_utc();
+                self.proof_repository
+                    .set_proof_state(
+                        &proof_id,
+                        ProofState {
+                            created_date: now,
+                            last_modified: now,
+                            state: ProofStateEnum::Requested,
+                        },
+                    )
+                    .await
+                    .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+                let submission = self.read_presentation_submission().await?;
+
+                let new_data = BLEOpenID4VPInteractionData {
+                    peer,
+                    nonce: Some(hex::encode(identity_request.nonce)),
+                    presentation_definition: Some(proof_request),
+                    presentation_submission: Some(submission),
+                };
+
+                let new_interaction = uuid::Uuid::new_v4();
+                add_new_interaction(
+                    new_interaction,
+                    &None,
+                    &*self.interaction_repository,
+                    serde_json::to_vec(&new_data).ok(),
+                )
+                .await
+                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+                update_proof_interaction(proof_id, new_interaction, &*self.proof_repository)
+                    .await
+                    .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+                self.interaction_repository
+                    .delete_interaction(&interaction_id)
+                    .await
+                    .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+                Ok(())
             }
             .await;
 
@@ -139,18 +192,11 @@ impl OpenID4VCBLEVerifier {
         // https://openid.bitbucket.io/connect/openid-4-verifiable-presentations-over-ble-1_0.html#section-5.1.1
         // The verifier can advertise via BLE only or via BLE + QR.
         // Depending on the use case, the advertised name is different.
-        let (verifier_name, adv_data) = {
-            let random_name = utilities::generate_alphanumeric(11);
-            let adv_data = [format!("OVP{}_", random_name).as_bytes(), &public_key[..5]].concat();
-
-            (random_name, adv_data)
-        };
+        // The name can be max 8 bytes for Android.
+        let verifier_name = utilities::generate_alphanumeric(8);
 
         self.ble_peripheral
-            .start_advertisement(
-                Some(verifier_name.clone()),
-                vec![get_advertise_data(adv_data)],
-            )
+            .start_advertisement(Some(verifier_name.clone()), vec![get_advertise_data()])
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -250,6 +296,83 @@ impl OpenID4VCBLEVerifier {
         Ok(report_bytes)
     }
 
+    pub async fn read_presentation_submission(
+        &self,
+    ) -> Result<BleOpenId4VpResponse, ExchangeProtocolError> {
+        let connected_wallet =
+            self.connected_wallet
+                .as_ref()
+                .ok_or(ExchangeProtocolError::Failed(
+                    "Wallet is not connected".to_string(),
+                ))?;
+
+        let request_size: MessageSize = self
+            .read(CONTENT_SIZE_UUID, None)?
+            .parse()
+            .map_err(ExchangeProtocolError::Transport)
+            .await?;
+
+        let mut received_chunks: Vec<Chunk> = vec![];
+        let mut message_stream = self.read(SUBMIT_VC_UUID, None)?;
+        let mut summary_report_request = self.read(TRANSFER_SUMMARY_REQUEST_UUID, None)?;
+
+        loop {
+            tokio::select! {
+                Some(chunk) = message_stream.next() => {
+                    let chunk = Chunk::from_bytes(&chunk.map_err(|e| ExchangeProtocolError::Transport(e.into()))?).map_err(ExchangeProtocolError::Transport)?;
+
+                    if received_chunks.iter().any(|c| c.index == chunk.index) {
+                        continue;
+                    } else {
+                        received_chunks.push(chunk);
+                    }
+                },
+                _ = summary_report_request.next() => {
+                    let missing_chunks = (1..request_size)
+                        .filter(|idx| !received_chunks.iter().any(|c| c.index == *idx))
+                        .map(|idx| idx.to_be_bytes())
+                        .collect::<Vec<[u8; 2]>>()
+                        .concat();
+
+                    self.ble_peripheral
+                        .notify_characteristic_data(
+                            connected_wallet.device_info.address.clone(),
+                            SERVICE_UUID.to_owned(),
+                            TRANSFER_SUMMARY_REPORT_UUID.to_owned(),
+                            &missing_chunks,
+                        )
+                        .await
+                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+                    if missing_chunks.is_empty() {
+                        break;
+                    }
+                },
+            }
+        }
+
+        if received_chunks.len() as u16 != request_size {
+            return Err(ExchangeProtocolError::Failed(
+                "not all chunks received".to_string(),
+            ));
+        }
+
+        received_chunks.sort_by(|a, b| a.index.cmp(&b.index));
+
+        let presentation_request: Vec<u8> = received_chunks
+            .into_iter()
+            .flat_map(|c| c.payload)
+            .collect();
+
+        connected_wallet
+            .decrypt(&presentation_request)
+            .map_err(|e| {
+                ExchangeProtocolError::Transport(anyhow!(
+                    "Failed to decrypt presentation request: {e}"
+                ))
+            })
+    }
+
     fn write_chunks_with_report(
         &self,
         chunks: Chunks,
@@ -278,7 +401,7 @@ impl OpenID4VCBLEVerifier {
     }
 }
 
-fn get_advertise_data(service_name: Vec<u8>) -> ServiceDescription {
+fn get_advertise_data() -> ServiceDescription {
     let read_characteristics = vec![REQUEST_SIZE_UUID, PRESENTATION_REQUEST_UUID];
     let write_characteristics = vec![
         IDENTITY_UUID,
@@ -327,7 +450,7 @@ fn get_advertise_data(service_name: Vec<u8>) -> ServiceDescription {
     ServiceDescription {
         uuid: SERVICE_UUID.to_string(),
         advertise: true,
-        advertised_service_data: Some(service_name),
+        advertised_service_data: None,
         characteristics,
     }
 }
