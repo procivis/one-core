@@ -72,7 +72,11 @@ impl ExchangeProtocolImpl for OpenID4VC {
     }
 
     async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
-        self.openid_http.reject_proof(proof).await
+        if proof.transport == TransportType::Ble.to_string() {
+            self.openid_ble.reject_proof(proof).await
+        } else {
+            self.openid_http.reject_proof(proof).await
+        }
     }
 
     async fn submit_proof(
@@ -83,9 +87,15 @@ impl ExchangeProtocolImpl for OpenID4VC {
         key: &Key,
         jwk_key_id: Option<String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
-        self.openid_http
-            .submit_proof(proof, credential_presentations, holder_did, key, jwk_key_id)
-            .await
+        if proof.transport == TransportType::Ble.to_string() {
+            self.openid_ble
+                .submit_proof(proof, credential_presentations, holder_did, key, jwk_key_id)
+                .await
+        } else {
+            self.openid_http
+                .submit_proof(proof, credential_presentations, holder_did, key, jwk_key_id)
+                .await
+        }
     }
 
     async fn accept_credential(

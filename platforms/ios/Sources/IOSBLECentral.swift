@@ -383,7 +383,7 @@ extension IOSBLECentral: CBCentralManagerDelegate {
 #if DEBUG
         print("connected to \(peripheral.name ?? "unnamed") \(peripheral.identifier)")
 #endif
-        let mtu = peripheral.maximumWriteValueLength(for: .withoutResponse)
+        let mtu = peripheral.maximumWriteValueLength(for: .withResponse)
         peripheral.delegate = self
         connectedPeripherals.insert(peripheral)
         peripheralConnectResultCallback?(Result.success(UInt16(mtu)))
