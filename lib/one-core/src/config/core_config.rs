@@ -44,6 +44,7 @@ pub struct CoreConfig {
     pub(crate) key_storage: KeyStorageConfig,
     pub(crate) task: TaskConfig,
     pub(crate) trust_management: TrustManagementConfig,
+    pub cache_entities: CacheEntitiesConfig,
 }
 
 impl CoreConfig {
@@ -65,12 +66,12 @@ impl CoreConfig {
 #[serde(rename_all = "camelCase")]
 pub struct CacheEntitiesConfig {
     #[serde(flatten)]
-    pub entities: HashMap<String, JsonLdContextConfig>,
+    pub entities: HashMap<String, CacheEntityConfig>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum JsonLdContextCacheType {
+pub enum CacheEntityCacheType {
     Db,
     #[default]
     InMemory,
@@ -79,11 +80,11 @@ pub enum JsonLdContextCacheType {
 #[serde_as]
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct JsonLdContextConfig {
+pub struct CacheEntityConfig {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub cache_refresh_timeout: time::Duration,
     pub cache_size: u32,
-    pub cache_type: JsonLdContextCacheType,
+    pub cache_type: CacheEntityCacheType,
 }
 
 #[derive(Debug)]

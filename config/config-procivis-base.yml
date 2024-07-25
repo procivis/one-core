@@ -271,3 +271,19 @@ task:
     display: "task.suspendCheck"
     order: 0
     params: null
+cacheEntities:
+  STATUS_LIST_CREDENTIAL:
+    cacheType: DB
+    refreshAfter: 300
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000
+  DID_DOCUMENT:
+    cacheType: DB
+    refreshAfter: 86400
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000
+  JSON_LD_CONTEXT:
+    cacheType: DB
+    refreshAfter: 86400
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000

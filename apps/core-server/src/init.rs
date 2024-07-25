@@ -28,7 +28,7 @@ use time::Duration;
 use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
 use crate::{build_info, did_config, ServerConfig};
 use one_core::config::core_config::{
-    CacheEntitiesConfig, Fields, JsonLdContextCacheType, JsonLdContextConfig, RevocationType,
+    CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, Fields, RevocationType,
 };
 use one_core::config::{core_config, ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::did_method::mdl::{DidMdl, DidMdlValidator};
@@ -270,7 +270,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
     });
 
     let caching_loader =
-        initialize_cache_loader(app_config.app.cache_entities.to_owned(), data_repository);
+        initialize_cache_loader(app_config.core.cache_entities.to_owned(), data_repository);
 
     let formatter_provider_creator: FormatterProviderCreator = {
         let caching_loader = caching_loader.clone();
@@ -537,32 +537,25 @@ pub fn initialize_tracing(config: &ServerConfig) {
 }
 
 pub fn initialize_cache_loader(
-    cache_entities_config: Option<CacheEntitiesConfig>,
+    cache_entities_config: CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
 ) -> CachingLoader {
-    let cache_entities_config = cache_entities_config.unwrap_or(CacheEntitiesConfig {
-        entities: HashMap::from([(
-            "JSON_LD_CONTEXT".to_string(),
-            JsonLdContextConfig {
-                cache_refresh_timeout: Duration::seconds(86400),
-                cache_size: 100,
-                cache_type: JsonLdContextCacheType::Db,
-            },
-        )]),
-    });
-
     let json_ld_context_config = cache_entities_config
         .entities
         .get("JSON_LD_CONTEXT")
-        .map(|v| v.to_owned())
-        .unwrap_or_default();
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::seconds(86400),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+        });
 
     let json_ld_context_storage: Arc<dyn JsonLdContextStorage> =
         match json_ld_context_config.cache_type {
-            JsonLdContextCacheType::Db => Arc::new(DbStorage::new(
+            CacheEntityCacheType::Db => Arc::new(DbStorage::new(
                 data_provider.get_json_ld_context_repository(),
             )),
-            JsonLdContextCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
+            CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
         };
     CachingLoader {
         cache_size: json_ld_context_config.cache_size as usize,

@@ -129,6 +129,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params: null
         task: {}
         trustManagement: {}
+        cacheEntities: {}
     "};
 
     AppConfig::from_yaml_str_configs(vec![config]).unwrap()
