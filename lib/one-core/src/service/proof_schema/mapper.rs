@@ -93,34 +93,38 @@ pub(super) fn credential_schema_from_proof_input_schema(
     }
 }
 
-pub(super) fn proof_input_from_import_response(
+pub(super) fn proof_input_from_import_request(
     input_schema: &ImportProofSchemaInputSchemaDTO,
     credential_schema: CredentialSchema,
-    now: OffsetDateTime,
-) -> ProofInputSchema {
-    let claim_schemas = input_schema
+) -> Result<ProofInputSchema, ServiceError> {
+    let claim_schemas = credential_schema
+        .claim_schemas
+        .as_ref()
+        .ok_or_else(|| ServiceError::MappingError("claim_schemas is None".to_string()))?;
+
+    let proof_claim_schemas = input_schema
         .claim_schemas
         .iter()
         .enumerate()
-        .map(|(i, claim_schema)| ProofInputClaimSchema {
-            schema: ClaimSchema {
-                id: claim_schema.id,
-                key: claim_schema.key.clone(),
-                data_type: claim_schema.data_type.clone(),
-                created_date: now,
-                last_modified: now,
-                array: claim_schema.array,
-            },
-            required: claim_schema.required,
-            order: i as u32,
-        })
-        .collect();
+        .map(|(i, input_claim_schema)| {
+            let claim_schema = claim_schemas
+                .iter()
+                .find(|claim_schema| claim_schema.schema.key == input_claim_schema.key)
+                .ok_or_else(|| ServiceError::MappingError("claim_schema missing".to_string()))?;
 
-    ProofInputSchema {
+            Ok(ProofInputClaimSchema {
+                schema: claim_schema.schema.to_owned(),
+                required: input_claim_schema.required,
+                order: i as u32,
+            })
+        })
+        .collect::<Result<_, ServiceError>>()?;
+
+    Ok(ProofInputSchema {
         validity_constraint: input_schema.validity_constraint,
-        claim_schemas: Some(claim_schemas),
+        claim_schemas: Some(proof_claim_schemas),
         credential_schema: Some(credential_schema),
-    }
+    })
 }
 
 fn unnest_proof_claim_schemas(

@@ -11,7 +11,7 @@ use super::dto::{
     ProofSchemaShareResponseDTO,
 };
 use super::mapper::{
-    credential_schema_from_proof_input_schema, proof_input_from_import_response,
+    credential_schema_from_proof_input_schema, proof_input_from_import_request,
     proof_schema_created_history_event, proof_schema_from_create_request,
     proof_schema_history_event,
 };
@@ -23,8 +23,7 @@ use super::ProofSchemaService;
 use crate::common_mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
-    UpdateCredentialSchemaRequest,
+    CredentialSchemaRelations, GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
 };
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::list_filter::ListFilterValue;
@@ -289,7 +288,7 @@ impl ProofSchemaService {
             schema
                 .proof_input_schemas
                 .into_iter()
-                .map(|response_input_schema| {
+                .map(|request_input_schema| {
                     let organisation = organisation.clone();
 
                     async move {
@@ -297,7 +296,7 @@ impl ProofSchemaService {
                         let maybe_credential_schema = self
                             .credential_schema_repository
                             .get_by_schema_id_and_organisation(
-                                &response_input_schema.credential_schema.schema_id,
+                                &request_input_schema.credential_schema.schema_id,
                                 organisation.id,
                                 &CredentialSchemaRelations {
                                     claim_schemas: Some(Default::default()),
@@ -317,7 +316,7 @@ impl ProofSchemaService {
                                     .collect();
 
                                 let missing_claim_schemas: Vec<_> = credential_schema_from_proof_input_schema(
-                                    &response_input_schema,
+                                    &request_input_schema,
                                     organisation.clone(),
                                     now,
                                 )
@@ -348,7 +347,7 @@ impl ProofSchemaService {
                              // if not exists create new credential schema deriving the possible claims from the input_schema
                             else {
                                 let credential_schema = credential_schema_from_proof_input_schema(
-                                    &response_input_schema,
+                                    &request_input_schema,
                                     organisation.clone(),
                                     now,
                                 );
@@ -373,18 +372,14 @@ impl ProofSchemaService {
                                 credential_schema
                             };
 
-                        let input_schema = proof_input_from_import_response(
-                            &response_input_schema,
-                            credential_schema.clone(),
-                            now,
-                        );
+                        let input_schema = proof_input_from_import_request(
+                            &request_input_schema,
+                            credential_schema.to_owned()
+                        )?;
 
                         Ok::<_, ServiceError>(ProofInputSchema {
                             claim_schemas: input_schema.claim_schemas,
-                            credential_schema: Some(CredentialSchema {
-                                id: credential_schema.id,
-                                ..credential_schema
-                            }),
+                            credential_schema: Some(credential_schema),
                             validity_constraint: input_schema.validity_constraint,
                         })
                     }
