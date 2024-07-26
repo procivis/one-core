@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use dto_mapper::{convert_inner, convert_inner_of_inner};
+use dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 use one_core::model::common::GetListQueryParams;
 use one_core::model::did::DidType;
 use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
@@ -11,7 +11,9 @@ use one_core::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
     DetailCredentialSchemaResponseDTO,
 };
-use one_core::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
+use one_core::service::credential_schema::dto::{
+    CredentialSchemaListItemResponseDTO, ImportCredentialSchemaClaimSchemaDTO,
+};
 use one_core::service::did::dto::{
     CreateDidRequestDTO, CreateDidRequestKeysDTO, DidListItemResponseDTO,
 };
@@ -19,6 +21,7 @@ use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDTO};
 use one_core::service::key::dto::KeyRequestDTO;
 use one_core::service::proof::dto::{GetProofQueryDTO, ProofDetailResponseDTO, ProofFilterValue};
+use one_core::service::proof_schema::dto::ImportProofSchemaClaimSchemaDTO;
 use one_core::service::ssi_holder::dto::InvitationResponseDTO;
 use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, ListTrustAnchorsQueryDTO, TrustAnchorFilterValue,
@@ -34,10 +37,11 @@ use crate::dto::{
     ProofRequestBindingDTO,
 };
 use crate::error::BindingError;
-use crate::utils::{into_id, TimestampFormat};
+use crate::utils::{into_id, into_timestamp, TimestampFormat};
 use crate::{
     CreateTrustAnchorRequestBindingDTO, CredentialSchemaTypeBindingEnum,
     ExactTrustAnchorFilterColumnBindings, HistoryListItemBindingDTO, HistoryMetadataBinding,
+    ImportCredentialSchemaClaimSchemaBindingDTO, ImportProofSchemaClaimSchemaBindingDTO,
     ListProofSchemasFiltersBindingDTO, ListTrustAnchorsFiltersBindings, ProofListQueryBindingDTO,
     ProofListQueryExactColumnBindingEnum,
 };
@@ -446,6 +450,40 @@ impl TryFrom<ProofListQueryBindingDTO> for GetProofQueryDTO {
                 filtering: filtering.into(),
                 include: None,
             }
+        })
+    }
+}
+
+impl TryFrom<ImportProofSchemaClaimSchemaBindingDTO> for ImportProofSchemaClaimSchemaDTO {
+    type Error = BindingError;
+
+    fn try_from(value: ImportProofSchemaClaimSchemaBindingDTO) -> Result<Self, Self::Error> {
+        let claims = value.claims.unwrap_or_default();
+        Ok(Self {
+            id: into_id(&value.id)?,
+            required: value.required,
+            key: value.key,
+            data_type: value.data_type,
+            claims: try_convert_inner(claims)?,
+            array: value.array,
+        })
+    }
+}
+
+impl TryFrom<ImportCredentialSchemaClaimSchemaBindingDTO> for ImportCredentialSchemaClaimSchemaDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: ImportCredentialSchemaClaimSchemaBindingDTO) -> Result<Self, Self::Error> {
+        let claims = value.claims.unwrap_or_default();
+        Ok(Self {
+            id: into_id(&value.id)?,
+            created_date: into_timestamp(&value.created_date)?,
+            last_modified: into_timestamp(&value.last_modified)?,
+            required: value.required,
+            key: value.key,
+            datatype: value.datatype,
+            array: value.array,
+            claims: try_convert_inner(claims)?,
         })
     }
 }

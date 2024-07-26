@@ -426,7 +426,7 @@ dictionary ImportProofSchemaClaimSchemaBindingDTO {
   boolean required;
   string key;
   string data_type;
-  sequence<ImportProofSchemaClaimSchemaBindingDTO> claims;
+  sequence<ImportProofSchemaClaimSchemaBindingDTO>? claims;
   boolean array;
 };
 
@@ -974,7 +974,7 @@ dictionary ImportCredentialSchemaClaimSchemaBindingDTO {
   string key;
   boolean? array;
   string datatype;
-  sequence<ImportCredentialSchemaClaimSchemaBindingDTO> claims;
+  sequence<ImportCredentialSchemaClaimSchemaBindingDTO>? claims;
 };
 
 dictionary ImportCredentialSchemaLayoutPropertiesBindingDTO {

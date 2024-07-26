@@ -34,9 +34,8 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
     CredentialSchemaDetailResponseDTO, CredentialSchemaLayoutPropertiesRequestDTO,
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaLogoPropertiesRequestDTO,
-    GetCredentialSchemaListResponseDTO, ImportCredentialSchemaClaimSchemaDTO,
-    ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
-    ImportCredentialSchemaRequestSchemaDTO,
+    GetCredentialSchemaListResponseDTO, ImportCredentialSchemaLayoutPropertiesDTO,
+    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
 };
 use one_core::service::did::dto::{DidListItemResponseDTO, GetDidListResponseDTO};
 use one_core::service::error::ServiceError;
@@ -48,9 +47,8 @@ use one_core::service::proof::dto::{
 };
 use one_core::service::proof_schema::dto::{
     GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, GetProofSchemaResponseDTO,
-    ImportProofSchemaClaimSchemaDTO, ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO,
-    ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO,
-    ProofInputSchemaResponseDTO,
+    ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO, ImportProofSchemaInputSchemaDTO,
+    ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
 };
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::service::trust_anchor::dto::{
@@ -641,20 +639,13 @@ pub struct ProofClaimSchemaBindingDTO {
     pub array: bool,
 }
 
-#[derive(Debug, TryInto)]
-#[try_into(T = ImportProofSchemaClaimSchemaDTO, Error = BindingError)]
+#[derive(Debug)]
 pub struct ImportProofSchemaClaimSchemaBindingDTO {
-    #[try_into(with_fn_ref = into_id)]
     pub id: String,
-    #[try_into(infallible)]
     pub required: bool,
-    #[try_into(infallible)]
     pub key: String,
-    #[try_into(infallible)]
     pub data_type: String,
-    #[try_into(with_fn = try_convert_inner)]
-    pub claims: Vec<ImportProofSchemaClaimSchemaBindingDTO>,
-    #[try_into(infallible)]
+    pub claims: Option<Vec<ImportProofSchemaClaimSchemaBindingDTO>>,
     pub array: bool,
 }
 
@@ -1362,25 +1353,16 @@ pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesBindingDTO>,
 }
 
-#[derive(Debug, TryInto)]
-#[try_into(T = ImportCredentialSchemaClaimSchemaDTO, Error = ServiceError)]
+#[derive(Debug)]
 pub struct ImportCredentialSchemaClaimSchemaBindingDTO {
-    #[try_into(with_fn_ref = into_id)]
     pub id: String,
-    #[try_into(with_fn_ref = into_timestamp)]
     pub created_date: String,
-    #[try_into(with_fn_ref = into_timestamp)]
     pub last_modified: String,
-    #[try_into(infallible)]
     pub required: bool,
-    #[try_into(infallible)]
     pub key: String,
-    #[try_into(infallible)]
     pub datatype: String,
-    #[try_into(infallible)]
     pub array: Option<bool>,
-    #[try_into(with_fn = try_convert_inner)]
-    pub claims: Vec<ImportCredentialSchemaClaimSchemaBindingDTO>,
+    pub claims: Option<Vec<ImportCredentialSchemaClaimSchemaBindingDTO>>,
 }
 
 #[derive(Debug, Into)]
