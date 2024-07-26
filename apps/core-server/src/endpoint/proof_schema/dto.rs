@@ -100,6 +100,7 @@ pub struct ImportProofSchemaClaimSchemaRestDTO {
     #[schema(example = "STRING")]
     pub data_type: String,
     #[into(with_fn = convert_inner)]
+    #[serde(default)]
     pub claims: Vec<ImportProofSchemaClaimSchemaRestDTO>,
     pub array: bool,
 }
