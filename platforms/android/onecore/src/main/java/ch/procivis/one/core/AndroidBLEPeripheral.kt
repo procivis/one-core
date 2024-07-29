@@ -548,7 +548,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                         )
                         return
                     }
-
+         
                     mServer?.sendResponse(
                         device,
                         requestId,
@@ -625,7 +625,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                         synchronized(lock) {
                             val newEvent = when (newState) {
                                 BluetoothProfile.STATE_CONNECTED -> {
-                                    val mtu = mMTU[deviceAddress] ?: MAX_MTU.toUShort()
+                                    val mtu = mMTU[deviceAddress] ?:  MAX_MTU.toUShort()
                                     ConnectionEventBindingEnum.Connected(
                                         DeviceInfoBindingDto(
                                             deviceAddress,

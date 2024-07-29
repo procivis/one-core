@@ -265,9 +265,8 @@ private extension IOSBLEPeripheral {
     private func sendConnectedEventIfIsNewCentral(central: CBCentral) {
         if connectedCentrals[central] == nil {
             connectedCentrals[central] = []
-            // The -2 is to account for the L2CAP header overhead which is 4 bytes but only 2 bytes are used for MTU negotiation
-            let mtu = UInt16(central.maximumUpdateValueLength - 2)
-            let deviceInfo = DeviceInfoBindingDto(address: central.identifier.uuidString, mtu: mtu)
+            let deviceInfo = DeviceInfoBindingDto(address: central.identifier.uuidString, 
+                                                  mtu: UInt16(central.maximumUpdateValueLength))
             if let callback = getConnectionChangeEventsResultCallback {
                 callback(Result.success([.connected(deviceInfo: deviceInfo)]))
             } else {

@@ -2685,10 +2685,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         data: Some({
             let data = BLEOpenID4VPInteractionData {
                 peer: BLEPeer::new(
-                    DeviceInfo {
-                        address: device_address.to_owned(),
-                        mtu: 123,
-                    },
+                    DeviceInfo::new(device_address.to_owned(), 123),
                     [0; 32],
                     [1; 32],
                     [2; 12],

@@ -111,6 +111,11 @@ impl OpenID4VCBLEHolder {
 
             self.send(IDENTITY_UUID, identity_request.clone().encode().as_ref())
                 .await?;
+
+            // Wait to ensure the verifier processed the identity request and updated
+            // the relevant characteristics
+            tokio::time::sleep(Duration::from_millis(200)).await;
+
             tracing::debug!("read_presentation_definition");
             let presentation_definition = self.read_presentation_definition().await?;
 
@@ -234,15 +239,13 @@ impl OpenID4VCBLEHolder {
                         ExchangeProtocolError::Transport(anyhow!("stop_discovery failed: {err}"))
                     })?;
 
-                    return Ok(DeviceInfo {
-                        address: device.device_address,
-                        mtu,
-                    });
+                    return Ok(DeviceInfo::new(device.device_address, mtu));
                 }
             }
         }
     }
 
+    #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     pub async fn submit_presentation(
         &self,
         vp_token: String,
@@ -264,7 +267,7 @@ impl OpenID4VCBLEHolder {
             .encrypt(response)
             .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
-        let chunks = Chunks::from_bytes(&enc_payload[..], connected_verifier.device_info.mtu);
+        let chunks = Chunks::from_bytes(&enc_payload[..], connected_verifier.device_info.mtu());
 
         let payload_len = (chunks.len() as u16).to_be_bytes();
         self.send(CONTENT_SIZE_UUID, &payload_len).await?;
@@ -272,6 +275,9 @@ impl OpenID4VCBLEHolder {
         for chunk in &chunks {
             self.send(SUBMIT_VC_UUID, &chunk.to_bytes()).await?;
         }
+
+        // Wait to ensure the verifier has received and processed all chunks
+        tokio::time::sleep(Duration::from_millis(500)).await;
 
         let missing_chunks = self.get_transfer_summary().await?;
 
@@ -281,10 +287,14 @@ impl OpenID4VCBLEHolder {
             ));
         }
 
+        // Give some to the verifier to read everything
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
         self.disconnect_from_verifier().await?;
         Ok(())
     }
 
+    #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     async fn get_transfer_summary(&self) -> Result<Vec<u16>, ExchangeProtocolError> {
         let connected_verifier = self
             .connected_verifier
@@ -360,9 +370,6 @@ impl OpenID4VCBLEHolder {
                     "Verifier is not connected".to_string(),
                 ))?;
 
-        // give some time to set_characteristic to finish so we can safely do characteristic read
-        tokio::time::sleep(Duration::from_millis(50)).await;
-
         let request_size: MessageSize = self
             .read(REQUEST_SIZE_UUID)?
             .parse()
@@ -393,6 +400,8 @@ impl OpenID4VCBLEHolder {
 
         loop {
             tokio::select! {
+               biased;
+
                Some(chunk) = message_stream.next() => {
                     let chunk = chunk.map_err(|err| {
                            ExchangeProtocolError::Transport(anyhow!("Reading presentation request chunk failed: {err}"))
@@ -416,6 +425,10 @@ impl OpenID4VCBLEHolder {
                         TRANSFER_SUMMARY_REQUEST_UUID,
                         missing_chunks.as_ref(),
                     ).await?;
+
+                    tracing::debug!(
+                        "Sent TRANSFER_SUMMARY_REQUEST_UUID.",
+                    );
 
                     if missing_chunks.is_empty() {
                         break;

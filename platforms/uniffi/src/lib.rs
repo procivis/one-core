@@ -107,6 +107,9 @@ fn initialize_core(
         use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
         _ = tracing_subscriber::registry()
+            .with(tracing_subscriber::EnvFilter::new(
+                "info,sea_orm=warn,sqlx::query=error",
+            ))
             .with(tracing_android::layer("ProcivisOneCore").unwrap())
             .try_init();
     }
