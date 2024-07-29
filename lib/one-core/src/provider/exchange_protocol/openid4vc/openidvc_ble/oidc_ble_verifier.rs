@@ -246,6 +246,8 @@ impl OpenID4VCBLEVerifier {
 
         holder_wallet
     }
+
+    #[tracing::instrument(level = "debug", skip(self))]
     async fn write_presentation_request(
         &self,
         proof_request: OpenID4VPPresentationDefinition,
@@ -261,13 +263,14 @@ impl OpenID4VCBLEVerifier {
             ExchangeProtocolError::Transport(anyhow!("Failed to encrypt proof request: {e}"))
         })?;
 
-        let chunks = Chunks::from_bytes(encrypted.as_slice(), peer.device_info.mtu);
+        let chunks = Chunks::from_bytes(encrypted.as_slice(), peer.device_info.mtu());
         let len = (chunks.len() as u16).to_be_bytes();
 
         self.send(REQUEST_SIZE_UUID, &len).await?;
         self.write_chunks_with_report(chunks).await
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     async fn request_write_report(&self) -> Result<Vec<u16>, ExchangeProtocolError> {
         let device_address = self
             .connected_wallet
@@ -296,6 +299,7 @@ impl OpenID4VCBLEVerifier {
         Ok(report_bytes)
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     pub async fn read_presentation_submission(
         &self,
     ) -> Result<BleOpenId4VpResponse, ExchangeProtocolError> {
@@ -316,6 +320,7 @@ impl OpenID4VCBLEVerifier {
         let mut message_stream = self.read(SUBMIT_VC_UUID, None)?;
         let mut summary_report_request = self.read(TRANSFER_SUMMARY_REQUEST_UUID, None)?;
 
+        tracing::info!("About to start reading data");
         loop {
             tokio::select! {
                 Some(chunk) = message_stream.next() => {
@@ -351,6 +356,7 @@ impl OpenID4VCBLEVerifier {
             }
         }
 
+        tracing::info!("Received all chunks");
         if received_chunks.len() as u16 != request_size {
             return Err(ExchangeProtocolError::Failed(
                 "not all chunks received".to_string(),
@@ -373,6 +379,7 @@ impl OpenID4VCBLEVerifier {
             })
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn write_chunks_with_report(
         &self,
         chunks: Chunks,
@@ -382,6 +389,9 @@ impl OpenID4VCBLEVerifier {
                 self.send(PRESENTATION_REQUEST_UUID, chunk.to_bytes().as_slice())
                     .await?
             }
+
+            // Wait for the wallet to receive all the chunks
+            tokio::time::sleep(Duration::from_millis(500)).await;
 
             let missed_chunks = self.request_write_report().await?;
             let to_resend = chunks

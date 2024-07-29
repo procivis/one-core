@@ -6,6 +6,7 @@ use one_core::model::did::DidType;
 use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::proof_schema::SortableProofSchemaColumn;
+use one_core::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use one_core::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialSchemaType,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -39,7 +40,7 @@ use crate::dto::{
 use crate::error::BindingError;
 use crate::utils::{into_id, into_timestamp, TimestampFormat};
 use crate::{
-    CreateTrustAnchorRequestBindingDTO, CredentialSchemaTypeBindingEnum,
+    CreateTrustAnchorRequestBindingDTO, CredentialSchemaTypeBindingEnum, DeviceInfoBindingDTO,
     ExactTrustAnchorFilterColumnBindings, HistoryListItemBindingDTO, HistoryMetadataBinding,
     ImportCredentialSchemaClaimSchemaBindingDTO, ImportProofSchemaClaimSchemaBindingDTO,
     ListProofSchemasFiltersBindingDTO, ListTrustAnchorsFiltersBindings, ProofListQueryBindingDTO,
@@ -485,6 +486,12 @@ impl TryFrom<ImportCredentialSchemaClaimSchemaBindingDTO> for ImportCredentialSc
             array: value.array,
             claims: try_convert_inner(claims)?,
         })
+    }
+}
+
+impl From<DeviceInfoBindingDTO> for DeviceInfo {
+    fn from(value: DeviceInfoBindingDTO) -> Self {
+        Self::new(value.address, value.mtu)
     }
 }
 

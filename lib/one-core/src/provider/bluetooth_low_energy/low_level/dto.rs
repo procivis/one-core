@@ -37,7 +37,20 @@ pub enum CharacteristicWriteType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceInfo {
     pub address: DeviceAddress,
-    pub mtu: u16,
+    mtu: u16,
+}
+
+impl DeviceInfo {
+    pub fn new(address: DeviceAddress, mtu: u16) -> Self {
+        Self { address, mtu }
+    }
+
+    pub fn mtu(&self) -> u16 {
+        // we need to send data bellow the agreed MTU since on some devices the header overhead is part of the negotiated MTU
+        const HEADER_OVERHEAD: u16 = 3;
+
+        self.mtu - HEADER_OVERHEAD
+    }
 }
 
 #[derive(Debug, Clone)]

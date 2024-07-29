@@ -80,6 +80,7 @@ impl one_core::provider::bluetooth_low_energy::low_level::ble_central::BleCentra
                 .map_err(BleError::from),
         )
     }
+
     async fn subscribe_to_characteristic_notifications(
         &self,
         peripheral: DeviceAddress,

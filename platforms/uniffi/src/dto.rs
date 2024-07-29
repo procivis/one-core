@@ -14,7 +14,7 @@ use one_core::model::trust_anchor::TrustAnchorRole;
 use one_core::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, CharacteristicUUID,
     CharacteristicWriteType, ConnectionEvent, CreateCharacteristicOptions, DeviceAddress,
-    DeviceInfo, MacAddress, PeripheralDiscoveryData, ServiceDescription, ServiceUUID,
+    MacAddress, PeripheralDiscoveryData, ServiceDescription, ServiceUUID,
 };
 use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
@@ -826,8 +826,6 @@ pub enum ConnectionEventBindingEnum {
     Disconnected { device_address: DeviceAddress },
 }
 
-#[derive(Into)]
-#[into(DeviceInfo)]
 pub struct DeviceInfoBindingDTO {
     pub address: String,
     pub mtu: u16,
