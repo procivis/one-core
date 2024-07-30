@@ -141,13 +141,29 @@ fn value_to_model_claims(
     let mut model_claims = vec![];
 
     match json_value {
-        serde_json::Value::String(value) => {
+        serde_json::Value::String(_)
+        | serde_json::Value::Bool(_)
+        | serde_json::Value::Number(_) => {
+            let value = match json_value {
+                serde_json::Value::String(v) => v.to_owned(),
+                serde_json::Value::Bool(v) => {
+                    if *v {
+                        "true".to_string()
+                    } else {
+                        "false".to_string()
+                    }
+                }
+                serde_json::Value::Number(v) => v.to_string(),
+                _ => {
+                    return Err(ServiceError::MappingError("invalid value type".to_string()));
+                }
+            };
             model_claims.push(Claim {
                 id: ClaimId::new_v4(),
                 credential_id,
                 created_date: now,
                 last_modified: now,
-                value: value.to_owned(),
+                value,
                 path: path.to_owned(),
                 schema: Some(claim_schema.to_owned()),
             });
