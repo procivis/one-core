@@ -10,7 +10,7 @@ use coset::{
     CoseKey, CoseKeyBuilder, Header, HeaderBuilder, Label, ProtectedHeader,
     RegisteredLabelWithPrivate, SignatureContext,
 };
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use mdoc::DataElementValue;
 use one_providers::common_models::did::DidValue;
@@ -877,23 +877,11 @@ fn build_ciborium_value(
     datatype_config: &DatatypeConfig,
 ) -> Result<DataElementValue, FormatterError> {
     match value {
-        // Basically all the types goes here. Like - picture, bool and so on.
-        serde_json::Value::String(_) => {
-            let claim =
-                claims
-                    .iter()
-                    .find(|c| c.key == this_path)
-                    .ok_or(FormatterError::Failed(format!(
-                        "Missing claim: {this_path}"
-                    )))?;
-
-            map_to_ciborium_value(claim, datatype_config)
-        }
         serde_json::Value::Object(object) => {
             let mut items: Vec<(ciborium::Value, ciborium::Value)> = Vec::new();
             for (key, value) in object {
                 items.push((
-                    ciborium::Value::from(key.clone()),
+                    ciborium::Value::Text(key.to_owned()),
                     build_ciborium_value(
                         value,
                         &format!("{this_path}/{key}"),
@@ -917,7 +905,17 @@ fn build_ciborium_value(
             Ok(ciborium::Value::Array(items))
         }
         serde_json::Value::Null => Ok(ciborium::Value::Null),
-        _ => unimplemented!(),
+        _ => {
+            let claim =
+                claims
+                    .iter()
+                    .find(|c| c.key == this_path)
+                    .ok_or(FormatterError::Failed(format!(
+                        "Missing claim: {this_path}"
+                    )))?;
+
+            map_to_ciborium_value(claim, datatype_config)
+        }
     }
 }
 
@@ -938,12 +936,12 @@ fn map_to_ciborium_value(
 
     let value_as_string = claim.value.to_string();
     Ok(match fields.r#type {
-        DatatypeType::String => ciborium::Value::from(value_as_string),
+        DatatypeType::String => ciborium::Value::Text(value_as_string),
         DatatypeType::Number => {
             let value = value_as_string
                 .parse::<u32>()
                 .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-            ciborium::Value::from(value)
+            ciborium::Value::Integer(value.into())
         }
         DatatypeType::Date => {
             ciborium::Value::Tag(FULL_DATE_TAG, ciborium::Value::from(value_as_string).into())
@@ -959,7 +957,7 @@ fn map_to_ciborium_value(
                     )));
                 }
             };
-            ciborium::Value::from(value)
+            ciborium::Value::Bool(value)
         }
         DatatypeType::File => {
             let mut file_parts = value_as_string.splitn(2, ',');
@@ -970,20 +968,24 @@ fn map_to_ciborium_value(
 
             let content = file_parts
                 .next()
-                .map(str::as_bytes)
                 .ok_or(FormatterError::Failed("Missing base64 data".to_string()))?;
 
             if let Some(params) = &fields.params {
                 if let Some(public) = &params.public {
                     if public["encodeAsMdlPortrait"].as_bool().unwrap_or(false) {
-                        return Ok(ciborium::Value::from(content));
+                        let decoded = Base64::decode_to_vec(content, None).map_err(|e| {
+                            FormatterError::CouldNotFormat(format!(
+                                "Base64url decoding failed: {e}"
+                            ))
+                        })?;
+                        return Ok(ciborium::Value::Bytes(decoded));
                     }
                 }
             }
 
             ciborium::Value::Array(vec![
-                ciborium::Value::from(mime_type),
-                ciborium::Value::from(content),
+                ciborium::Value::Text(mime_type.to_string()),
+                ciborium::Value::Bytes(content.as_bytes().to_vec()),
             ])
         }
         _ => {
@@ -1269,10 +1271,10 @@ fn handle_array(array: Vec<Value>) -> Result<serde_json::Value, FormatterError> 
 }
 
 fn handle_bytes(bytes: &[u8]) -> Result<serde_json::Value, FormatterError> {
-    let value = String::from_utf8_lossy(bytes);
+    let value = Base64::encode_to_string(bytes)
+        .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
     Ok(serde_json::Value::String(format!(
-        "data:image/jpg;base64,{}",
-        value
+        "data:image/jpg;base64,{value}"
     )))
 }
 
