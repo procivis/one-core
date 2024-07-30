@@ -166,9 +166,14 @@ async fn test_post_issuer_credential_mdoc() {
         )
         .await;
 
+    let str_claim_id = Uuid::new_v4();
+    let num_claim_id = Uuid::new_v4();
+    let bool_claim_id = Uuid::new_v4();
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
         (Uuid::new_v4(), "root", true, "OBJECT", false),
-        (Uuid::new_v4(), "root/other", true, "STRING", false),
+        (str_claim_id, "root/str", true, "STRING", false),
+        (num_claim_id, "root/num", true, "NUMBER", false),
+        (bool_claim_id, "root/bool", true, "BOOLEAN", false),
     ];
 
     let credential_schema = context
@@ -211,6 +216,11 @@ async fn test_post_issuer_credential_mdoc() {
             TestingCredentialParams {
                 interaction: Some(interaction),
                 key: Some(key),
+                claims_data: Some(vec![
+                    (str_claim_id, "root/str", "str-value"),
+                    (num_claim_id, "root/num", "12"),
+                    (bool_claim_id, "root/bool", "false"),
+                ]),
                 ..Default::default()
             },
         )
