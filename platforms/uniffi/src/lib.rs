@@ -247,7 +247,7 @@ fn initialize_core(
                 Arc::new(KeyProviderImpl::new(key_providers.to_owned()))
             });
 
-            let data_repository = Arc::new(DataLayer::build(db_conn, vec![]));
+            let data_repository = Arc::new(DataLayer::build(db_conn, vec!["INTERNAL".to_string()]));
 
             let storage_creator: DataProviderCreator = {
                 let data_repository = data_repository.clone();
