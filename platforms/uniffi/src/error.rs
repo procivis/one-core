@@ -2,6 +2,8 @@ use one_core::config::{ConfigError, ConfigParsingError};
 use one_core::provider::bluetooth_low_energy::BleError;
 use one_core::provider::exchange_protocol::ExchangeProtocolError;
 use one_core::service::error::{BusinessLogicError, ServiceError, ValidationError};
+use one_providers::crypto::SignerError;
+use one_providers::key_storage::error::KeyStorageError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -47,6 +49,12 @@ impl From<ServiceError> for BindingError {
             ServiceError::BusinessLogic(e) => match e {
                 BusinessLogicError::OrganisationAlreadyExists => {
                     Self::AlreadyExists(error.to_string())
+                }
+                error => Self::Unknown(error.to_string()),
+            },
+            ServiceError::KeyStorageError(e) => match e {
+                KeyStorageError::NotSupported(description) => {
+                    Self::NotSupported(description.to_string())
                 }
                 error => Self::Unknown(error.to_string()),
             },
@@ -98,13 +106,24 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for NativeKeyStorageError {
     }
 }
 
-impl From<NativeKeyStorageError> for ServiceError {
+impl From<NativeKeyStorageError> for KeyStorageError {
     fn from(error: NativeKeyStorageError) -> Self {
         match &error {
             NativeKeyStorageError::Unsupported => {
-                Self::Validation(ValidationError::UnsupportedKeyOperation)
+                Self::NotSupported("Unsupported by native storage".to_string())
             }
-            _ => Self::Other(error.to_string()),
+            _ => Self::Failed(error.to_string()),
+        }
+    }
+}
+
+impl From<NativeKeyStorageError> for SignerError {
+    fn from(error: NativeKeyStorageError) -> Self {
+        match &error {
+            NativeKeyStorageError::SignatureFailure { reason } => {
+                SignerError::CouldNotSign(format!("Native signature failed: {reason}"))
+            }
+            _ => Self::CouldNotSign(error.to_string()),
         }
     }
 }
