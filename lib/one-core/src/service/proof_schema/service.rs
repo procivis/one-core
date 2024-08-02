@@ -158,6 +158,7 @@ impl ProofSchemaService {
 
         throw_if_proof_schema_contains_physical_card_schema_with_other_schemas(
             &credential_schemas,
+            &self.config,
         )?;
         throw_if_validity_constraint_missing_for_lvvc(&credential_schemas, &request)?;
 

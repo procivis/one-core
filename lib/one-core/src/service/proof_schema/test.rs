@@ -685,7 +685,7 @@ async fn test_create_proof_schema_array_object_fail() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
-                format: "SD-JWT".to_string(),
+                format: "SDJWT".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
                 claim_schemas: Some(vec![
@@ -845,7 +845,7 @@ async fn test_create_proof_schema_array_success() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
-                format: "SD-JWT".to_string(),
+                format: "SDJWT".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
                 claim_schemas: Some(vec![

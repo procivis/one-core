@@ -52,6 +52,10 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 display: 'display'
                 order: 2
                 params: null
+            PHYSICAL_CARD:
+                type: 'PHYSICAL_CARD'
+                display: 'format.physicalCard'
+                order: 5
             MDOC:
               type: 'MDOC'
               display: 'format.mdoc'
