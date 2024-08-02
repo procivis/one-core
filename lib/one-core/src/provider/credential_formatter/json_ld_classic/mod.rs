@@ -8,7 +8,7 @@ use one_providers::credential_formatter::imp::json_ld::context::caching_loader::
 use one_providers::credential_formatter::imp::json_ld::model::{
     LdCredential, LdPresentation, LdProof,
 };
-use one_providers::credential_formatter::imp::json_ld::{self, canonize_any};
+use one_providers::credential_formatter::imp::json_ld::{self};
 use one_providers::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
     DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities,
@@ -468,7 +468,14 @@ pub(super) async fn verify_proof_signature(
     cryptosuite: &str,
     verification_fn: VerificationFn,
 ) -> Result<(), FormatterError> {
-    let signature = bs58::decode(proof_value_bs58)
+    if !proof_value_bs58.starts_with('z') {
+        return Err(FormatterError::CouldNotVerify(format!(
+            "Only base58 multibase encoding is supported for suite {}",
+            cryptosuite
+        )));
+    }
+
+    let signature = bs58::decode(&proof_value_bs58[1..])
         .into_vec()
         .map_err(|_| FormatterError::CouldNotVerify("Hash decoding error".to_owned()))?;
 
@@ -506,7 +513,7 @@ pub(super) async fn sign_proof_hash(
         .await
         .map_err(|e| FormatterError::CouldNotSign(e.to_string()))?;
 
-    Ok(bs58::encode(signature).into_string())
+    Ok(format!("z{}", bs58::encode(signature).into_string()))
 }
 
 pub(super) async fn prepare_proof_hash<T>(
@@ -521,20 +528,22 @@ where
 {
     let transformed_document = json_ld::canonize_any(object, caching_loader.clone()).await?;
 
-    let transformed_proof_config = canonize_any(proof, caching_loader).await?;
+    let transformed_proof_config = json_ld::canonize_any(proof, caching_loader).await?;
 
     let hashing_function = "sha-256";
     let hasher = crypto.get_hasher(hashing_function).map_err(|_| {
         FormatterError::CouldNotFormat(format!("Hasher {} unavailable", hashing_function))
     })?;
 
+    let mut transformed_proof_config_hash = hasher
+        .hash(transformed_proof_config.as_bytes())
+        .map_err(|e| FormatterError::CouldNotFormat(format!("Hasher error: `{}`", e)))?;
+
     let transformed_document_hash = hasher
         .hash(transformed_document.as_bytes())
         .map_err(|e| FormatterError::CouldNotFormat(format!("Hasher error: `{}`", e)))?;
 
-    let mut transformed_proof_config_hash = hasher
-        .hash(transformed_proof_config.as_bytes())
-        .map_err(|e| FormatterError::CouldNotFormat(format!("Hasher error: `{}`", e)))?;
+    transformed_proof_config_hash.extend(transformed_document_hash);
 
     if let Some(extra_information) = extra_information {
         let extra_information_hash = hasher
@@ -544,6 +553,5 @@ where
         transformed_proof_config_hash.extend(extra_information_hash);
     }
 
-    transformed_proof_config_hash.extend(transformed_document_hash);
     Ok(transformed_proof_config_hash)
 }
