@@ -1,4 +1,5 @@
-use dto_mapper::{From, Into};
+use dto_mapper::{convert_inner, From, Into};
+use one_providers::common_models::did::DidValue;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, From, Into)]
@@ -70,4 +71,32 @@ pub struct PublicKeyJwkEllipticDataDTO {
     pub x: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub y: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, From, Into)]
+#[from(one_providers::did::model::DidDocument)]
+#[into(one_providers::did::model::DidDocument)]
+pub struct DidDocumentDTO {
+    pub context: serde_json::Value,
+    pub id: DidValue,
+    #[from(with_fn = "convert_inner")]
+    #[into(with_fn = "convert_inner")]
+    pub verification_method: Vec<DidVerificationMethod>,
+    pub authentication: Option<Vec<String>>,
+    pub assertion_method: Option<Vec<String>>,
+    pub key_agreement: Option<Vec<String>>,
+    pub capability_invocation: Option<Vec<String>>,
+    pub capability_delegation: Option<Vec<String>>,
+
+    pub rest: serde_json::Value,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, From, Into)]
+#[from(one_providers::did::model::DidVerificationMethod)]
+#[into(one_providers::did::model::DidVerificationMethod)]
+pub struct DidVerificationMethod {
+    pub id: String,
+    pub r#type: String,
+    pub controller: String,
+    pub public_key_jwk: PublicKeyJwkDTO,
 }

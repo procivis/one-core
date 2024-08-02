@@ -4,7 +4,7 @@ use std::vec;
 use async_trait::async_trait;
 use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::error::FormatterError;
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_providers::credential_formatter::imp::json_ld::model::{
     LdCredential, LdPresentation, LdProof,
 };
@@ -26,7 +26,7 @@ pub struct JsonLdClassic {
     pub base_url: Option<String>,
     pub crypto: Arc<dyn CryptoProvider>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
-    pub caching_loader: CachingLoader,
+    pub caching_loader: JsonLdCachingLoader,
     params: Params,
 }
 
@@ -272,7 +272,7 @@ impl JsonLdClassic {
         crypto: Arc<dyn CryptoProvider>,
         base_url: Option<String>,
         did_method_provider: Arc<dyn DidMethodProvider>,
-        caching_loader: CachingLoader,
+        caching_loader: JsonLdCachingLoader,
     ) -> Self {
         Self {
             params,
@@ -380,7 +380,7 @@ pub(super) async fn verify_credential_signature(
     mut ld_credential: LdCredential,
     verification_fn: VerificationFn,
     crypto: &dyn CryptoProvider,
-    caching_loader: CachingLoader,
+    caching_loader: JsonLdCachingLoader,
     extra_information: Option<&[u8]>,
 ) -> Result<(), FormatterError> {
     let mut proof = ld_credential
@@ -428,7 +428,7 @@ pub(super) async fn verify_presentation_signature(
     mut presentation: LdPresentation,
     verification_fn: VerificationFn,
     crypto: &dyn CryptoProvider,
-    caching_loader: CachingLoader,
+    caching_loader: JsonLdCachingLoader,
 ) -> Result<(), FormatterError> {
     let mut proof = presentation
         .proof
@@ -513,7 +513,7 @@ pub(super) async fn prepare_proof_hash<T>(
     object: &T,
     crypto: &dyn CryptoProvider,
     proof: &LdProof,
-    caching_loader: CachingLoader,
+    caching_loader: JsonLdCachingLoader,
     extra_information: Option<&[u8]>,
 ) -> Result<Vec<u8>, FormatterError>
 where

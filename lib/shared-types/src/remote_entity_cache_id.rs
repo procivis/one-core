@@ -7,9 +7,9 @@ use crate::macros::{impls_for_seaorm_newtype, impls_for_uuid_newtype};
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(transparent)]
 #[repr(transparent)]
-pub struct JsonLdContextId(Uuid);
+pub struct RemoteEntityCacheId(Uuid);
 
-impls_for_uuid_newtype!(JsonLdContextId);
+impls_for_uuid_newtype!(RemoteEntityCacheId);
 
 #[cfg(feature = "sea-orm")]
-impls_for_seaorm_newtype!(JsonLdContextId);
+impls_for_seaorm_newtype!(RemoteEntityCacheId);

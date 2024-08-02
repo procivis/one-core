@@ -2,6 +2,15 @@
 
 use std::{collections::HashMap, sync::Arc};
 
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
+    JsonLdCachingLoader, JsonLdResolver,
+};
+use one_providers::did::imp::resolver::{DidCachingLoader, DidResolver};
+use one_providers::remote_entity_storage::in_memory::InMemoryStorage;
+use one_providers::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
+use one_providers::revocation::imp::bitstring_status_list::resolver::{
+    StatusListCachingLoader, StatusListResolver,
+};
 use one_providers::revocation::imp::bitstring_status_list::BitstringStatusList;
 use one_providers::revocation::imp::lvvc::LvvcProvider;
 use one_providers::revocation::imp::provider::RevocationMethodProviderImpl;
@@ -9,12 +18,7 @@ use one_providers::revocation::RevocationMethod;
 use one_providers::{
     credential_formatter::{
         imp::{
-            json_ld::context::{
-                caching_loader::CachingLoader,
-                storage::{in_memory_storage::InMemoryStorage, JsonLdContextStorage},
-            },
-            json_ld_bbsplus::JsonLdBbsplus,
-            jwt_formatter::JWTFormatter,
+            json_ld_bbsplus::JsonLdBbsplus, jwt_formatter::JWTFormatter,
             provider::CredentialFormatterProviderImpl,
         },
         CredentialFormatter,
@@ -57,9 +61,9 @@ use one_core::{
     },
     provider::{
         credential_formatter::{
-            json_ld::storage::db_storage::DbStorage, json_ld_classic::JsonLdClassic,
-            mdoc_formatter::MdocFormatter, physical_card::PhysicalCardFormatter,
-            sdjwt_formatter::SDJWTFormatter, FormatterCapabilities,
+            json_ld_classic::JsonLdClassic, mdoc_formatter::MdocFormatter,
+            physical_card::PhysicalCardFormatter, sdjwt_formatter::SDJWTFormatter,
+            FormatterCapabilities,
         },
         did_method::{
             mdl::{DidMdl, DidMdlValidator},
@@ -90,6 +94,7 @@ mod utils;
 use binding::OneCoreBinding;
 use dto::*;
 use one_core::config::core_config::{CacheEntitiesConfig, RevocationType};
+use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::revocation::none::NoneRevocation;
 use one_core::provider::revocation::status_list_2021::StatusList2021;
 
@@ -139,7 +144,6 @@ fn initialize_core(
 
     let core_builder = move |db_path: String| {
         let core_config = placeholder_config.core.clone();
-        let mobile_config = placeholder_config.app.clone();
 
         let native_key_storage = native_key_storage.clone();
         let ble_peripheral = ble_peripheral.clone();
@@ -254,6 +258,8 @@ fn initialize_core(
                 Box::new(move || data_repository)
             };
 
+            let cache_entities_config = core_config.cache_entities.to_owned();
+            let data_provider = data_repository.clone();
             let did_method_creator: DidMethodCreator = Box::new(move |config, providers| {
                 let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
 
@@ -347,14 +353,22 @@ fn initialize_core(
                     }
                 }
 
+                let did_caching_loader = initialize_did_caching_loader(
+                    &cache_entities_config,
+                    data_provider,
+                    did_methods.to_owned(),
+                );
+
                 (
-                    Arc::new(DidMethodProviderImpl::new(did_methods)),
+                    Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods)),
                     did_mdl_validator,
                 )
             });
 
-            let caching_loader =
-                initialize_cache_loader(mobile_config.cache_entities.to_owned(), data_repository);
+            let caching_loader = initialize_jsonld_cache_loader(
+                core_config.cache_entities.to_owned(),
+                data_repository.to_owned(),
+            );
 
             let formatter_provider_creator: FormatterProviderCreator = {
                 let caching_loader = caching_loader.clone();
@@ -450,6 +464,7 @@ fn initialize_core(
                 })
             };
 
+            let cache_entities_config = core_config.cache_entities.to_owned();
             let revocation_method_creator: RevocationMethodCreator =
                 Box::new(move |config, providers| {
                     let mut revocation_methods: HashMap<String, Arc<dyn RevocationMethod>> =
@@ -489,7 +504,10 @@ fn initialize_core(
                                 key_provider: key_provider.clone(),
                                 key_algorithm_provider: key_algorithm_provider.clone(),
                                 did_method_provider: did_method_provider.clone(),
-                                client: client.clone(),
+                                caching_loader: initialize_statuslist_resolver(
+                                    &cache_entities_config,
+                                    data_repository.clone(),
+                                ),
                             })
                                 as _,
                             RevocationType::Lvvc => {
@@ -532,7 +550,7 @@ fn initialize_core(
 
             OneCoreBuilder::new(core_config.clone())
                 .with_crypto(crypto)
-                .with_caching_loader(caching_loader)
+                .with_jsonld_caching_loader(caching_loader)
                 .with_data_provider_creator(storage_creator)
                 .with_key_algorithm_provider(key_algo_creator)
                 .with_key_storage_provider(key_storage_creator)
@@ -589,43 +607,103 @@ fn initialize_holder_core(
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct MobileConfig {
-    #[serde(default)]
-    pub cache_entities: Option<CacheEntitiesConfig>,
-}
+pub struct MobileConfig;
 
-pub fn initialize_cache_loader(
-    cache_entities_config: Option<CacheEntitiesConfig>,
+pub fn initialize_jsonld_cache_loader(
+    cache_entities_config: CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
-) -> CachingLoader {
-    let cache_entities_config = cache_entities_config.unwrap_or(CacheEntitiesConfig {
-        entities: HashMap::from([(
-            "JSON_LD_CONTEXT".to_string(),
-            CacheEntityConfig {
-                cache_refresh_timeout: Duration::seconds(86400),
-                cache_size: 100,
-                cache_type: CacheEntityCacheType::Db,
-            },
-        )]),
-    });
-
+) -> JsonLdCachingLoader {
     let json_ld_context_config = cache_entities_config
         .entities
         .get("JSON_LD_CONTEXT")
-        .map(|v| v.to_owned())
-        .unwrap_or_default();
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        });
 
-    let json_ld_context_storage: Arc<dyn JsonLdContextStorage> =
+    let remote_entity_storage: Arc<dyn RemoteEntityStorage> =
         match json_ld_context_config.cache_type {
             CacheEntityCacheType::Db => Arc::new(DbStorage::new(
-                data_provider.get_json_ld_context_repository(),
+                data_provider.get_remote_entity_cache_repository(),
             )),
             CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
         };
-    CachingLoader {
-        cache_size: json_ld_context_config.cache_size as usize,
-        cache_refresh_timeout: json_ld_context_config.cache_refresh_timeout,
-        client: reqwest::Client::new(),
-        json_ld_context_storage,
-    }
+    JsonLdCachingLoader::new(
+        Arc::new(JsonLdResolver::default()),
+        RemoteEntityType::JsonLdContext,
+        remote_entity_storage,
+        json_ld_context_config.cache_size as usize,
+        json_ld_context_config.cache_refresh_timeout,
+        json_ld_context_config.refresh_after,
+    )
+}
+
+pub fn initialize_did_caching_loader(
+    cache_entities_config: &CacheEntitiesConfig,
+    data_provider: Arc<dyn DataRepository>,
+    did_methods: HashMap<String, Arc<dyn DidMethod>>,
+) -> DidCachingLoader {
+    let config = cache_entities_config
+        .entities
+        .get("DID_DOCUMENT")
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        });
+
+    let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            data_provider.get_remote_entity_cache_repository(),
+        )),
+        CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
+    };
+
+    let resolver = DidResolver { did_methods };
+
+    DidCachingLoader::new(
+        Arc::new(resolver),
+        RemoteEntityType::DidDocument,
+        storage,
+        config.cache_size as usize,
+        config.cache_refresh_timeout,
+        config.refresh_after,
+    )
+}
+
+pub fn initialize_statuslist_resolver(
+    cache_entities_config: &CacheEntitiesConfig,
+    data_provider: Arc<dyn DataRepository>,
+) -> StatusListCachingLoader {
+    let config = cache_entities_config
+        .entities
+        .get("STATUS_LIST_CREDENTIAL")
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        });
+
+    let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            data_provider.get_remote_entity_cache_repository(),
+        )),
+        CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
+    };
+
+    StatusListCachingLoader::new(
+        Arc::new(StatusListResolver::default()),
+        RemoteEntityType::StatusListCredential,
+        storage,
+        config.cache_size as usize,
+        config.cache_refresh_timeout,
+        config.refresh_after,
+    )
 }

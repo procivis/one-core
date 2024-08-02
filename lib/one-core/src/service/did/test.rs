@@ -23,16 +23,20 @@ use mockall::predicate::*;
 use one_providers::common_models::did::DidValue;
 use one_providers::common_models::key::Key;
 use one_providers::did::imp::provider::DidMethodProviderImpl;
+use one_providers::did::imp::resolver::DidResolver;
 use one_providers::did::model::DidCapabilities;
 use one_providers::did::{DidMethod, MockDidMethod};
 use serde_json::Value;
 use shared_types::DidId;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::model::key::KeyRelations;
+use one_providers::caching_loader::CachingLoader;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::remote_entity_storage::in_memory::InMemoryStorage;
+use one_providers::remote_entity_storage::RemoteEntityType;
 
 fn setup_service(
     did_repository: MockDidRepository,
@@ -47,7 +51,18 @@ fn setup_service(
     did_methods.insert("KEY".to_string(), Arc::new(did_method));
 
     let did_repository = Arc::new(did_repository);
-    let did_method_provider = DidMethodProviderImpl::new(did_methods);
+    let did_resolver = DidResolver {
+        did_methods: did_methods.to_owned(),
+    };
+    let did_caching_loader = CachingLoader::new(
+        Arc::new(did_resolver),
+        RemoteEntityType::DidDocument,
+        Arc::new(InMemoryStorage::new(HashMap::new())),
+        999,
+        Duration::seconds(1000),
+        Duration::seconds(999),
+    );
+    let did_method_provider = DidMethodProviderImpl::new(did_caching_loader, did_methods);
 
     DidService::new(
         did_repository,

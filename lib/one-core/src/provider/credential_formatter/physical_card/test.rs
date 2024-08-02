@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
 use mockall::predicate;
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
-use one_providers::credential_formatter::imp::json_ld::context::storage::{
-    JsonLdContext, MockJsonLdContextStorage,
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
+    JsonLdCachingLoader, JsonLdResolver,
 };
 use one_providers::credential_formatter::model::MockTokenVerifier;
 use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::crypto::{MockCryptoProvider, MockHasher};
+use one_providers::remote_entity_storage::{
+    MockRemoteEntityStorage, RemoteEntity, RemoteEntityType,
+};
 use serde_json::json;
 use time::OffsetDateTime;
 
@@ -26,63 +28,65 @@ const MRZ: &str = "IAUTO0000007010SRC0000000701<<\
     8804190M2601054NOT<<<<<<<<<<<7\
     SMITH<<JOHN<<<<<<<<<<<<<<<<<<<";
 
-fn prepare_caching_loader() -> CachingLoader {
-    let mut repository = MockJsonLdContextStorage::default();
-    repository
-        .expect_get_json_ld_context_by_url()
+fn prepare_caching_loader() -> JsonLdCachingLoader {
+    let mut storage = MockRemoteEntityStorage::default();
+    storage
+        .expect_get_by_key()
         .with(predicate::eq("https://www.w3.org/ns/credentials/v2"))
         .returning(|url| {
             let now = OffsetDateTime::now_utc();
-            Ok(Some(JsonLdContext {
+            Ok(Some(RemoteEntity {
                 last_modified: now,
-                context: W3_ORG_NS_CREDENTIALS_V2.to_string().into_bytes(),
-                url: url.parse().unwrap(),
+                entity_type: RemoteEntityType::JsonLdContext,
+                value: W3_ORG_NS_CREDENTIALS_V2.to_string().into_bytes(),
+                key: url.to_string(),
                 hit_counter: 0,
             }))
         });
 
-    repository
-        .expect_get_json_ld_context_by_url()
+    storage
+        .expect_get_by_key()
         .with(predicate::eq("https://w3id.org/vc-barcodes/v1"))
         .returning(|url| {
             let now = OffsetDateTime::now_utc();
-            Ok(Some(JsonLdContext {
+            Ok(Some(RemoteEntity {
                 last_modified: now,
-                context: BARCODE_CONTEXT.to_string().into_bytes(),
-                url: url.parse().unwrap(),
+                entity_type: RemoteEntityType::JsonLdContext,
+                value: BARCODE_CONTEXT.to_string().into_bytes(),
+                key: url.to_string(),
                 hit_counter: 0,
             }))
         });
 
-    repository
-        .expect_get_json_ld_context_by_url()
+    storage
+        .expect_get_by_key()
         .with(predicate::eq("https://w3id.org/utopia/v2"))
         .returning(|url| {
             let now = OffsetDateTime::now_utc();
-            Ok(Some(JsonLdContext {
+            Ok(Some(RemoteEntity {
                 last_modified: now,
-                context: UTOPIA_CONTEXT.to_string().into_bytes(),
-                url: url.parse().unwrap(),
+                entity_type: RemoteEntityType::JsonLdContext,
+                value: UTOPIA_CONTEXT.to_string().into_bytes(),
+                key: url.to_string(),
                 hit_counter: 0,
             }))
         });
 
-    repository
-        .expect_insert_json_ld_context()
-        .times(..)
-        .returning(|_| Ok(()));
+    storage.expect_insert().times(..).returning(|_| Ok(()));
 
-    repository
+    storage
         .expect_get_storage_size()
         .times(..)
-        .returning(|| Ok(2));
+        .returning(|_| Ok(2));
 
-    CachingLoader {
-        client: Default::default(),
-        json_ld_context_storage: Arc::new(repository),
-        cache_size: 10000,
-        cache_refresh_timeout: time::Duration::seconds(1000),
-    }
+    JsonLdCachingLoader::new(
+        Arc::new(JsonLdResolver::default()),
+        RemoteEntityType::JsonLdContext,
+        Arc::new(storage),
+        10000,
+        time::Duration::seconds(1000),
+        time::Duration::seconds(999),
+    )
 }
 
 fn employment_document_credential() -> serde_json::Value {
@@ -327,7 +331,7 @@ const W3_ORG_NS_CREDENTIALS_V2: &str = r#"{
   }
 }"#;
 
-const BARCODE_CONTEXT: &str = r#"{ 
+const BARCODE_CONTEXT: &str = r#"{
     "@context": {
       "MachineReadableZone": "https://w3id.org/vc-barcodes#MachineReadableZone",
       "AamvaDriversLicenseScannableInformation": "https://w3id.org/vc-barcodes#AamvaDriversLicenseScannableInformation",

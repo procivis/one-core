@@ -85,6 +85,8 @@ pub struct CacheEntityConfig {
     pub cache_refresh_timeout: time::Duration,
     pub cache_size: u32,
     pub cache_type: CacheEntityCacheType,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub refresh_after: time::Duration,
 }
 
 #[derive(Debug)]

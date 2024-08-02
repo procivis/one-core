@@ -3,10 +3,10 @@ use crate::service::error::ServiceError;
 
 impl JsonLdService {
     pub async fn resolve_context(&self, url: String) -> Result<serde_json::Value, ServiceError> {
-        serde_json::from_str(
+        serde_json::from_slice(
             &self
                 .caching_loader
-                .load_context(&url)
+                .resolve(&url)
                 .await
                 .map_err(|err| ServiceError::Other(err.to_string()))?,
         )

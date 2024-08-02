@@ -54,7 +54,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum JsonLdContext {
+pub enum JsonLdContext {
     Table,
     Id,
     CreatedDate,

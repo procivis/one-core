@@ -2,8 +2,7 @@ pub mod error;
 
 mod common;
 
-// Implementations
-pub mod json_ld;
+// Implementatio
 pub mod json_ld_classic;
 pub mod mapper;
 pub mod mdoc_formatter;

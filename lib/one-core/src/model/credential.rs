@@ -37,7 +37,7 @@ pub struct Credential {
     pub holder_did: Option<Did>,
     #[into(with_fn = "convert_inner")]
     pub schema: Option<CredentialSchema>,
-    #[into(skip)]
+    #[into(with_fn = "convert_inner")]
     pub interaction: Option<Interaction>,
     #[into(skip)]
     pub revocation_list: Option<RevocationList>,

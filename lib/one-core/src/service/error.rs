@@ -1043,7 +1043,11 @@ pub fn error_code_formatter(error: &FormatterError) -> ErrorCode {
 pub fn did_method_provider_error_code(error: &DidMethodProviderError) -> ErrorCode {
     match error {
         DidMethodProviderError::DidMethod(_)
+        | DidMethodProviderError::CachingLoader(_)
+        | DidMethodProviderError::FailedToResolve(_)
+        | DidMethodProviderError::JsonParse(_)
         | DidMethodProviderError::MissingDidMethodNameInDidValue
+        | DidMethodProviderError::RemoteEntityStorage(_)
         | DidMethodProviderError::Other(_) => ErrorCode::BR_0064,
         DidMethodProviderError::MissingProvider(_) => ErrorCode::BR_0031,
     }

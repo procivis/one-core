@@ -1,4 +1,4 @@
-use crate::utils::db_clients::json_ld_context::JsonLdContextDB;
+use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
 use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
 use one_core::repository::DataRepository;
 use sql_data_provider::{DataLayer, DbConn};
@@ -21,11 +21,11 @@ pub mod credentials;
 pub mod dids;
 pub mod histories;
 pub mod interactions;
-pub mod json_ld_context;
 pub mod keys;
 pub mod organisations;
 pub mod proof_schemas;
 pub mod proofs;
+pub mod remote_entity_cache;
 pub mod revocation_lists;
 pub mod trust_anchors;
 pub mod trust_entities;
@@ -37,7 +37,7 @@ pub struct DbClient {
     pub credential_schemas: CredentialSchemasDB,
     pub credentials: CredentialsDB,
     pub histories: HistoriesDB,
-    pub json_ld_contexts: JsonLdContextDB,
+    pub json_ld_contexts: RemoteEntityCacheDB,
     pub keys: KeysDB,
     pub validity_credentials: ValidityCredentialsDB,
     pub revocation_lists: RevocationListsDB,
@@ -57,7 +57,7 @@ impl DbClient {
             credential_schemas: CredentialSchemasDB::new(layer.get_credential_schema_repository()),
             credentials: CredentialsDB::new(layer.get_credential_repository()),
             histories: HistoriesDB::new(layer.get_history_repository()),
-            json_ld_contexts: JsonLdContextDB::new(layer.get_json_ld_context_repository()),
+            json_ld_contexts: RemoteEntityCacheDB::new(layer.get_remote_entity_cache_repository()),
             keys: KeysDB::new(layer.get_key_repository()),
             validity_credentials: ValidityCredentialsDB::new(
                 layer.get_validity_credential_repository(),

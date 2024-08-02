@@ -2816,21 +2816,6 @@ dependencies = [
 
 [[package]]
 name = "mockall"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43766c2b5203b10de348ffe19f7e54564b64f3d6018ff7648d1e2d6d3a0f0a48"
-dependencies = [
- "cfg-if",
- "downcast",
- "fragile",
- "lazy_static",
- "mockall_derive 0.12.1",
- "predicates",
- "predicates-tree",
-]
-
-[[package]]
-name = "mockall"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4c28b3fb6d753d28c20e826cd46ee611fda1cf3cde03a443a974043247c065a"
@@ -2838,21 +2823,9 @@ dependencies = [
  "cfg-if",
  "downcast",
  "fragile",
- "mockall_derive 0.13.0",
+ "mockall_derive",
  "predicates",
  "predicates-tree",
-]
-
-[[package]]
-name = "mockall_derive"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af7cbce79ec385a1d4f54baa90a76401eb15d9cab93685f62e7e9f942aa00ae2"
-dependencies = [
- "cfg-if",
- "proc-macro2",
- "quote",
- "syn 2.0.72",
 ]
 
 [[package]]
@@ -3082,7 +3055,7 @@ dependencies = [
  "json-ld",
  "jsonptr",
  "maplit",
- "mockall 0.13.0",
+ "mockall",
  "mrtd",
  "one-providers",
  "ouroboros 0.18.4",
@@ -3145,7 +3118,7 @@ dependencies = [
 [[package]]
 name = "one-providers"
 version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=d073abe4#d073abe4401fb415f54e924f2a4d0d56844eb1f2"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=2b275a8#2b275a81015074178c67517c59bd1e5f5c178dc8"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3168,7 +3141,7 @@ dependencies = [
  "jsonptr",
  "locspan",
  "mime",
- "mockall 0.12.1",
+ "mockall",
  "p256",
  "pairing_crypto",
  "pbkdf2 0.12.2",
@@ -3179,6 +3152,8 @@ dependencies = [
  "reqwest 0.12.5",
  "serde",
  "serde_json",
+ "serde_qs",
+ "serde_urlencoded",
  "serde_with",
  "sha2 0.10.8",
  "sophia_api",
@@ -5038,7 +5013,7 @@ dependencies = [
  "hex",
  "itertools 0.13.0",
  "migration",
- "mockall 0.13.0",
+ "mockall",
  "one-core",
  "one-providers",
  "sea-orm",

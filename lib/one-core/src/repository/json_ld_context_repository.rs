@@ -1,29 +1,26 @@
 use super::error::DataLayerError;
-use crate::model::json_ld_context::{JsonLdContext, JsonLdContextRelations};
-use shared_types::JsonLdContextId;
+use crate::model::remote_entity_cache::{CacheType, RemoteEntityCache, RemoteEntityCacheRelations};
+use shared_types::RemoteEntityCacheId;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
-pub trait JsonLdContextRepository: Send + Sync {
-    async fn create_json_ld_context(
+pub trait RemoteEntityCacheRepository: Send + Sync {
+    async fn create(
         &self,
-        request: JsonLdContext,
-    ) -> Result<JsonLdContextId, DataLayerError>;
+        request: RemoteEntityCache,
+    ) -> Result<RemoteEntityCacheId, DataLayerError>;
 
-    async fn delete_oldest_context(&self) -> Result<(), DataLayerError>;
+    async fn delete_oldest(&self, r#type: CacheType) -> Result<(), DataLayerError>;
 
-    async fn get_json_ld_context(
+    async fn get_by_id(
         &self,
-        id: &JsonLdContextId,
-        relations: &JsonLdContextRelations,
-    ) -> Result<Option<JsonLdContext>, DataLayerError>;
+        id: &RemoteEntityCacheId,
+        relations: &RemoteEntityCacheRelations,
+    ) -> Result<Option<RemoteEntityCache>, DataLayerError>;
 
-    async fn get_json_ld_context_by_url(
-        &self,
-        url: &str,
-    ) -> Result<Option<JsonLdContext>, DataLayerError>;
+    async fn get_by_key(&self, key: &str) -> Result<Option<RemoteEntityCache>, DataLayerError>;
 
-    async fn get_repository_size(&self) -> Result<u32, DataLayerError>;
+    async fn get_repository_size(&self, r#type: CacheType) -> Result<u32, DataLayerError>;
 
-    async fn update_json_ld_context(&self, request: JsonLdContext) -> Result<(), DataLayerError>;
+    async fn update(&self, request: RemoteEntityCache) -> Result<(), DataLayerError>;
 }
