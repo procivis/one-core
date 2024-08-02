@@ -481,21 +481,30 @@ impl OpenID4VCBLEVerifier {
                 "Wallet is not connected".to_string(),
             ))?;
 
-        Ok(Box::pin(futures::stream::unfold(
+        let stream_of_streams = futures::stream::unfold(
             (address, id.to_string(), self.ble_peripheral.clone()),
             move |(address, id, ble_peripheral)| async move {
-                let data = ble_peripheral
+                let result = ble_peripheral
                     .get_characteristic_writes(
                         address.clone(),
                         SERVICE_UUID.to_string(),
                         id.clone(),
                     )
-                    .await
-                    .map(|data| data.concat());
+                    .await;
 
-                Some((data, (address, id, ble_peripheral)))
+                let vec_of_results = match result {
+                    Ok(items) => items.into_iter().map(Ok).collect(),
+                    Err(err) => vec![Err(err)],
+                };
+
+                Some((
+                    futures::stream::iter(vec_of_results),
+                    (address, id, ble_peripheral),
+                ))
             },
-        )))
+        );
+
+        Ok(stream_of_streams.flatten().boxed())
     }
 
     pub async fn send(&self, id: &str, data: &[u8]) -> Result<(), ExchangeProtocolError> {
