@@ -3,15 +3,19 @@ use std::sync::Arc;
 use std::vec;
 
 use mockall::predicate::eq;
+use one_providers::caching_loader::CachingLoader;
 use one_providers::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, Presentation,
 };
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
 use one_providers::did::imp::provider::DidMethodProviderImpl;
+use one_providers::did::imp::resolver::DidResolver;
 use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::did::{DidMethod, MockDidMethod};
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::remote_entity_storage::in_memory::InMemoryStorage;
+use one_providers::remote_entity_storage::RemoteEntityType;
 use one_providers::revocation::model::CredentialRevocationState;
 use one_providers::revocation::provider::MockRevocationMethodProvider;
 use one_providers::revocation::MockRevocationMethod;
@@ -974,7 +978,19 @@ fn mock_ssi_verifier_service() -> SSIVerifierService {
     let did_method = MockDidMethod::new();
     let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
     did_methods.insert("INTERNAL".to_string(), Arc::new(did_method));
-    let did_method_provider = DidMethodProviderImpl::new(did_methods);
+
+    let did_resolver = DidResolver {
+        did_methods: did_methods.to_owned(),
+    };
+    let did_caching_loader = CachingLoader::new(
+        Arc::new(did_resolver),
+        RemoteEntityType::DidDocument,
+        Arc::new(InMemoryStorage::new(HashMap::new())),
+        999,
+        Duration::seconds(1000),
+        Duration::seconds(999),
+    );
+    let did_method_provider = DidMethodProviderImpl::new(did_caching_loader, did_methods);
 
     SSIVerifierService {
         did_repository: Arc::new(MockDidRepository::new()),

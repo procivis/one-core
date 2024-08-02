@@ -2,15 +2,15 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use one_core::model::json_ld_context::JsonLdContext;
-use one_core::repository::json_ld_context_repository::JsonLdContextRepository;
+use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCache};
+use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
 
-pub struct JsonLdContextDB {
-    repository: Arc<dyn JsonLdContextRepository>,
+pub struct RemoteEntityCacheDB {
+    repository: Arc<dyn RemoteEntityCacheRepository>,
 }
 
-impl JsonLdContextDB {
-    pub fn new(repository: Arc<dyn JsonLdContextRepository>) -> Self {
+impl RemoteEntityCacheDB {
+    pub fn new(repository: Arc<dyn RemoteEntityCacheRepository>) -> Self {
         Self { repository }
     }
 
@@ -18,40 +18,43 @@ impl JsonLdContextDB {
         let now = OffsetDateTime::now_utc();
 
         self.repository
-            .create_json_ld_context(JsonLdContext {
+            .create(RemoteEntityCache {
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
-                context: W3_ORG_2018_CREDENTIALS_V1.to_string().as_bytes().to_vec(),
-                url: "https://www.w3.org/2018/credentials/v1".parse().unwrap(),
+                value: W3_ORG_2018_CREDENTIALS_V1.to_string().as_bytes().to_vec(),
+                key: "https://www.w3.org/2018/credentials/v1".parse().unwrap(),
                 hit_counter: 0,
+                r#type: CacheType::JsonLdContext,
             })
             .await
             .unwrap();
 
         self.repository
-            .create_json_ld_context(JsonLdContext {
+            .create(RemoteEntityCache {
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
-                context: W3ID_ORG_SECURITY_DATA_INTEGRITY_V2.as_bytes().to_vec(),
-                url: "https://w3id.org/security/data-integrity/v2"
+                value: W3ID_ORG_SECURITY_DATA_INTEGRITY_V2.as_bytes().to_vec(),
+                key: "https://w3id.org/security/data-integrity/v2"
                     .parse()
                     .unwrap(),
                 hit_counter: 0,
+                r#type: CacheType::JsonLdContext,
             })
             .await
             .unwrap();
 
         for (url, context) in additional {
             self.repository
-                .create_json_ld_context(JsonLdContext {
+                .create(RemoteEntityCache {
                     id: Uuid::new_v4().into(),
                     created_date: now,
                     last_modified: now,
-                    context: context.to_string().as_bytes().to_vec(),
-                    url: url.parse().unwrap(),
+                    value: context.to_string().as_bytes().to_vec(),
+                    key: url.parse().unwrap(),
                     hit_counter: 0,
+                    r#type: CacheType::JsonLdContext,
                 })
                 .await
                 .unwrap();

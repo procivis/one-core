@@ -7,7 +7,7 @@ use did::DidProvider;
 use interaction::InteractionProvider;
 use migration::{Migrator, MigratorTrait};
 use one_core::repository::backup_repository::BackupRepository;
-use one_core::repository::json_ld_context_repository::JsonLdContextRepository;
+use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -31,8 +31,8 @@ use validity_credential::ValidityCredentialProvider;
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::history::HistoryProvider;
-use crate::json_ld_context::JsonLdContextProvider;
 use crate::key::KeyProvider;
+use crate::remote_entity_cache::RemoteEntityCacheProvider;
 use crate::revocation_list::RevocationListProvider;
 
 mod common;
@@ -51,11 +51,11 @@ pub mod credential_schema;
 pub mod did;
 pub mod history;
 pub mod interaction;
-pub mod json_ld_context;
 pub mod key;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
+pub mod remote_entity_cache;
 pub mod revocation_list;
 pub mod trust_anchor;
 pub mod trust_entity;
@@ -77,7 +77,7 @@ pub struct DataLayer {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     key_repository: Arc<dyn KeyRepository>,
-    json_ld_context_repository: Arc<dyn JsonLdContextRepository>,
+    json_ld_context_repository: Arc<dyn RemoteEntityCacheRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
@@ -112,7 +112,7 @@ impl DataLayer {
             organisation_repository: organisation_repository.clone(),
         });
 
-        let json_ld_context_repository = Arc::new(JsonLdContextProvider { db: db.clone() });
+        let json_ld_context_repository = Arc::new(RemoteEntityCacheProvider { db: db.clone() });
 
         let history_repository = Arc::new(HistoryProvider { db: db.clone() });
 
@@ -212,7 +212,7 @@ impl DataRepository for DataLayer {
     fn get_history_repository(&self) -> Arc<dyn HistoryRepository> {
         self.history_repository.clone()
     }
-    fn get_json_ld_context_repository(&self) -> Arc<dyn JsonLdContextRepository> {
+    fn get_remote_entity_cache_repository(&self) -> Arc<dyn RemoteEntityCacheRepository> {
         self.json_ld_context_repository.clone()
     }
     fn get_key_repository(&self) -> Arc<dyn KeyRepository> {

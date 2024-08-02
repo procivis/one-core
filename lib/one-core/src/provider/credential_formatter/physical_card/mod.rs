@@ -1,13 +1,14 @@
 use std::sync::Arc;
 use std::vec;
 
+use super::json_ld_classic::verify_credential_signature;
 use async_trait::async_trait;
 use model::OptiocalBarcodeCredential;
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_providers::{
     common_models::did::DidValue,
     credential_formatter::{
         error::FormatterError,
-        imp::json_ld::context::caching_loader::CachingLoader,
         model::{
             AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
             ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
@@ -18,14 +19,12 @@ use one_providers::{
     crypto::CryptoProvider,
 };
 
-use super::json_ld_classic::verify_credential_signature;
-
 mod mappers;
 mod model;
 
 pub struct PhysicalCardFormatter {
     pub crypto: Arc<dyn CryptoProvider>,
-    pub caching_loader: CachingLoader,
+    pub caching_loader: JsonLdCachingLoader,
 }
 
 #[cfg(test)]
@@ -152,7 +151,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
 
 #[allow(clippy::new_without_default)]
 impl PhysicalCardFormatter {
-    pub fn new(crypto: Arc<dyn CryptoProvider>, caching_loader: CachingLoader) -> Self {
+    pub fn new(crypto: Arc<dyn CryptoProvider>, caching_loader: JsonLdCachingLoader) -> Self {
         Self {
             crypto,
             caching_loader,

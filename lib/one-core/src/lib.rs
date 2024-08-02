@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
+use crate::config::core_config::{DidConfig, RevocationConfig};
 use config::core_config::{
     CoreConfig, DatatypeConfig, FormatConfig, KeyAlgorithmConfig, KeyStorageConfig,
 };
 use config::ConfigError;
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::CachingLoader;
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::crypto::CryptoProvider;
 use one_providers::did::provider::DidMethodProvider;
@@ -34,8 +32,8 @@ use service::ssi_verifier::SSIVerifierService;
 use service::task::TaskService;
 use service::trust_anchor::TrustAnchorService;
 use service::trust_entity::TrustEntityService;
-
-use crate::config::core_config::{DidConfig, RevocationConfig};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 pub mod config;
 pub mod provider;
@@ -131,7 +129,7 @@ pub struct OneCoreBuilder {
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     ble_central: Option<Arc<dyn BleCentral>>,
     data_provider_creator: Option<DataProviderCreator>,
-    caching_loader: Option<CachingLoader>,
+    jsonld_caching_loader: Option<JsonLdCachingLoader>,
 }
 
 impl OneCoreBuilder {
@@ -216,8 +214,8 @@ impl OneCoreBuilder {
         self
     }
 
-    pub fn with_caching_loader(mut self, loader: CachingLoader) -> Self {
-        self.caching_loader = Some(loader);
+    pub fn with_jsonld_caching_loader(mut self, loader: JsonLdCachingLoader) -> Self {
+        self.jsonld_caching_loader = Some(loader);
         self
     }
 
@@ -229,7 +227,7 @@ impl OneCoreBuilder {
             self.ble_peripheral,
             self.ble_central,
             self.providers,
-            self.caching_loader,
+            self.jsonld_caching_loader,
         )
     }
 }
@@ -242,7 +240,7 @@ impl OneCore {
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         ble_central: Option<Arc<dyn BleCentral>>,
         providers: OneCoreBuilderProviders,
-        caching_loader: Option<CachingLoader>,
+        jsonld_caching_loader: Option<JsonLdCachingLoader>,
     ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
@@ -277,7 +275,7 @@ impl OneCore {
             .expect("Revocation method provider is required")
             .clone();
 
-        let caching_loader: CachingLoader = caching_loader.expect("Caching loader is required");
+        let jsonld_caching_loader = jsonld_caching_loader.expect("Caching loader is required");
 
         let data_provider = data_provider_creator();
 
@@ -490,7 +488,7 @@ impl OneCore {
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),
-            jsonld_service: JsonLdService::new(caching_loader),
+            jsonld_service: JsonLdService::new(jsonld_caching_loader),
             config,
         })
     }

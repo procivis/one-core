@@ -1,6 +1,7 @@
 use dto_mapper::{convert_inner, convert_inner_of_inner, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::CredentialSchemaId;
+use strum_macros::Display;
 use time::OffsetDateTime;
 
 use crate::service::credential_schema::dto::{
@@ -32,6 +33,7 @@ pub struct CredentialSchema {
     #[into(with_fn = "convert_inner")]
     pub layout_properties: Option<LayoutProperties>,
     pub schema_id: String,
+    #[into(with_fn_ref = "ToString::to_string")]
     pub schema_type: CredentialSchemaType,
 
     // Relations
@@ -41,8 +43,7 @@ pub struct CredentialSchema {
     pub organisation: Option<Organisation>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Into)]
-#[into(one_providers::common_models::credential_schema::CredentialSchemaType)]
+#[derive(Clone, Debug, Display, Serialize, Deserialize, Eq, PartialEq)]
 pub enum CredentialSchemaType {
     ProcivisOneSchema2024,
     FallbackSchema2024,
