@@ -12,6 +12,7 @@ class IOSBLECentral: NSObject {
     private var peripheralDisconnectResultCallback: BLEThrowingResultCallback<Void>?
     private var getDiscoveredDevicesCallback: BLEResultCallback<[PeripheralDiscoveryDataBindingDto]>?
     private var characteristicWriteResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Void>] = [:]
+    private var characteristicWriteWithoutResponseResultCallbacks: [UUID: BLEThrowingResultCallback<Void>] = [:]
     private var characteristicReadResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Data>] = [:]
     private var subscribeToCharacteristicNotificationsResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Void>] = [:]
     private var subscribedCharacteristics = Set<CharacteristicKey>()
@@ -126,18 +127,37 @@ extension IOSBLECentral: BleCentral {
         let service = CBUUID(string: serviceUuid)
         let characteristic = CBUUID(string: characteristicUuid)
         let characteristicKey = characteristicKey(peripheral: peripheralUuid, service: service, characteristic: characteristic)
-        guard characteristicWriteResultCallbacks[characteristicKey] == nil, characteristicReadResultCallbacks[characteristicKey] == nil else {
+        guard characteristicWriteResultCallbacks[characteristicKey] == nil, characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] == nil, characteristicReadResultCallbacks[characteristicKey] == nil else {
             throw BleErrorWrapper.Ble(error: BleError.AnotherOperationInProgress)
         }
         let (cbCharacteristic, cbPeripheral) = try retrieveCharacteristic(peripheral: peripheralUuid, service: service, characteristic: characteristic)
-        cbPeripheral.writeValue(data, for: cbCharacteristic, type: writeType.cbCharacteristicWriteType)
-        if (writeType == .withoutResponse) {
-            return
+        
+        let delayedWrite = writeType == .withoutResponse && !cbPeripheral.canSendWriteWithoutResponse
+        if (!delayedWrite) {
+            cbPeripheral.writeValue(data, for: cbCharacteristic, type: writeType.cbCharacteristicWriteType)
+            if (writeType == .withoutResponse) {
+                return
+            }
         }
+        
         return try await withCheckedThrowingContinuation { continuation in
-            characteristicWriteResultCallbacks[characteristicKey] = { [weak self] result in
-                self?.characteristicWriteResultCallbacks[characteristicKey] = nil
-                continuation.resume(with: result)
+            if (delayedWrite) {
+                characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] = { [weak self] result in
+                    self?.characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] = nil
+                    switch (result) {
+                    case .success:
+                        cbPeripheral.writeValue(data, for: cbCharacteristic, type: writeType.cbCharacteristicWriteType)
+                        break
+                    default:
+                        break
+                    }
+                    continuation.resume(with: result)
+                }
+            } else {
+                characteristicWriteResultCallbacks[characteristicKey] = { [weak self] result in
+                    self?.characteristicWriteResultCallbacks[characteristicKey] = nil
+                    continuation.resume(with: result)
+                }
             }
         }
     }
@@ -149,13 +169,13 @@ extension IOSBLECentral: BleCentral {
         let service = CBUUID(string: serviceUuid)
         let characteristic = CBUUID(string: characteristicUuid)
         let characteristicKey = characteristicKey(peripheral: peripheralUuid, service: service, characteristic: characteristic)
-        guard characteristicWriteResultCallbacks[characteristicKey] == nil, characteristicReadResultCallbacks[characteristicKey] == nil else {
+        guard characteristicWriteResultCallbacks[characteristicKey] == nil, characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] == nil, characteristicReadResultCallbacks[characteristicKey] == nil else {
             throw BleErrorWrapper.Ble(error: BleError.AnotherOperationInProgress)
         }
         guard !subscribedCharacteristics.contains(characteristicKey) else {
             throw BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: serviceUuid,
-                                                          characteristic: characteristicUuid,
-                                                          operation: "read"))
+                                                                                     characteristic: characteristicUuid,
+                                                                                     operation: "read"))
         }
         let (cbCharacteristic, cbPeripheral) = try retrieveCharacteristic(peripheral: peripheralUuid, service: service, characteristic: characteristic)
         cbPeripheral.readValue(for: cbCharacteristic)
@@ -178,8 +198,8 @@ extension IOSBLECentral: BleCentral {
                 unsubscribeFromCharacteristicNotificationsResultCallbacks[characteristicKey] == nil &&
                 !subscribedCharacteristics.contains(characteristicKey) else {
             throw BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: service,
-                                                          characteristic: characteristic,
-                                                          operation: "subscribe"))
+                                                                                     characteristic: characteristic,
+                                                                                     operation: "subscribe"))
         }
         let (cbCharacteristic, cbPeripheral) = try retrieveCharacteristic(peripheral: peripheralUuid, service: serviceUuid, characteristic: characteristicUuid)
         subscribedCharacteristics.insert(characteristicKey)
@@ -202,8 +222,8 @@ extension IOSBLECentral: BleCentral {
         guard subscribedCharacteristics.contains(characteristicKey) &&
                 subscribeToCharacteristicNotificationsResultCallbacks[characteristicKey] == nil else {
             throw BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: service,
-                                                          characteristic: characteristic,
-                                                          operation: "unsubscribe"))
+                                                                                     characteristic: characteristic,
+                                                                                     operation: "unsubscribe"))
         }
         let (cbCharacteristic, cbPeripheral) = try retrieveCharacteristic(peripheral: peripheralUuid, service: serviceUuid, characteristic: characteristicUuid)
         subscribedCharacteristics.remove(characteristicKey)
@@ -348,7 +368,7 @@ private extension IOSBLECentral {
         } else if let value = value {
             result = Result.success(value)
         } else {
-            result = Result.failure(BleError.Unknown(reason: error?.localizedDescription ?? "Unknown"))
+            result = Result.failure(BleErrorWrapper.Ble(error: BleError.Unknown(reason: error?.localizedDescription ?? "Unknown")))
         }
         return result
     }
@@ -393,7 +413,7 @@ extension IOSBLECentral: CBCentralManagerDelegate {
 #if DEBUG
         print("failed to connect to \(peripheral.name ?? "unnamed") \(peripheral.identifier)")
 #endif
-        peripheralConnectResultCallback?(Result.failure(BleError.Unknown(reason: error?.localizedDescription ?? "Unknown")))
+        peripheralConnectResultCallback?(Result.failure(BleErrorWrapper.Ble(error: BleError.Unknown(reason: error?.localizedDescription ?? "Unknown"))))
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
@@ -408,20 +428,26 @@ extension IOSBLECentral: CBCentralManagerDelegate {
     }
     
     private func cleanupAwaitingCallbacks(peripheral: CBPeripheral) {
+        let error = BleErrorWrapper.Ble(error: BleError.DeviceNotConnected(address: peripheral.identifier.uuidString))
+        
         if let keys = getKeys(characteristicWriteResultCallbacks.keys, for: peripheral) {
             keys.forEach { key in
                 if let callback = characteristicWriteResultCallbacks[key] {
                     characteristicWriteResultCallbacks[key] = nil
-                    callback(Result.failure(BleError.DeviceNotConnected(address: peripheral.identifier.uuidString)))
+                    callback(Result.failure(error))
                 }
             }
+        }
+        
+        if let writeWithoutResponse = characteristicWriteWithoutResponseResultCallbacks[peripheral.identifier] {
+            writeWithoutResponse(Result.failure(error))
         }
         
         if let keys = getKeys(characteristicReadResultCallbacks.keys, for: peripheral) {
             keys.forEach { key in
                 if let callback = characteristicReadResultCallbacks[key] {
                     characteristicReadResultCallbacks[key] = nil
-                    callback(Result.failure(BleError.DeviceNotConnected(address: peripheral.identifier.uuidString)))
+                    callback(Result.failure(error))
                 }
             }
         }
@@ -430,7 +456,7 @@ extension IOSBLECentral: CBCentralManagerDelegate {
             keys.forEach { key in
                 if let callback = subscribeToCharacteristicNotificationsResultCallbacks[key] {
                     subscribeToCharacteristicNotificationsResultCallbacks[key] = nil
-                    callback(Result.failure(BleError.DeviceNotConnected(address: peripheral.identifier.uuidString)))
+                    callback(Result.failure(error))
                 }
             }
         }
@@ -439,7 +465,7 @@ extension IOSBLECentral: CBCentralManagerDelegate {
             keys.forEach { key in
                 if let callback = unsubscribeFromCharacteristicNotificationsResultCallbacks[key] {
                     unsubscribeFromCharacteristicNotificationsResultCallbacks[key] = nil
-                    callback(Result.failure(BleError.DeviceNotConnected(address: peripheral.identifier.uuidString)))
+                    callback(Result.failure(error))
                 }
             }
         }
@@ -449,7 +475,7 @@ extension IOSBLECentral: CBCentralManagerDelegate {
                 keys.forEach { key in
                     if let callback = getNotificationsCallbacks[key] {
                         getNotificationsCallbacks[key] = nil
-                        callback(Result.failure(BleError.DeviceNotConnected(address: peripheral.identifier.uuidString)))
+                        callback(Result.failure(error))
                     }
                 }
             }
@@ -462,11 +488,11 @@ extension IOSBLECentral: CBCentralManagerDelegate {
     
     private func getKeys<T>(_ keys: Dictionary<CharacteristicKey, T>.Keys, for peripheral: CBPeripheral) -> [CharacteristicKey]? {
         let deviceKey = peripheral.identifier
-        let keys = characteristicWriteResultCallbacks.keys.filter({ $0.deviceAddress == deviceKey })
-        guard !keys.isEmpty else {
+        let result = keys.filter({ $0.deviceAddress == deviceKey })
+        guard !result.isEmpty else {
             return nil
         }
-        return keys
+        return result
     }
 }
 
@@ -511,6 +537,14 @@ extension IOSBLECentral: CBPeripheralDelegate {
 #if DEBUG
         print("did write value for \(characteristic): \(String(describing: characteristic.value))")
 #endif
+    }
+    
+    func peripheralIsReady(toSendWriteWithoutResponse peripheral: CBPeripheral) {
+#if DEBUG
+        print("peripheralIsReady")
+#endif
+        let result = getResult(value: (), error: nil)
+        characteristicWriteWithoutResponseResultCallbacks[peripheral.identifier]?(result)
     }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: (any Error)?) {

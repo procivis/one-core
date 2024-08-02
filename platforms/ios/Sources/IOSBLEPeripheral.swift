@@ -130,9 +130,9 @@ extension IOSBLEPeripheral: BlePeripheral {
             notifyLock.withLock {
                 readyToUpdateSubscribersCallback[id] = { [weak self] in
                     guard let self = self else {
-                        continuation.resume(throwing: BleError.InvalidCharacteristicOperation(service: serviceUuid,
-                                                                                              characteristic: characteristicUuid,
-                                                                                              operation: "notify"))
+                        continuation.resume(throwing: BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: serviceUuid,
+                                                                                                                         characteristic: characteristicUuid,
+                                                                                                                         operation: "notify")))
                         return
                     }
                     self.readyToUpdateSubscribersCallback[id] = nil
@@ -265,7 +265,7 @@ private extension IOSBLEPeripheral {
     private func sendConnectedEventIfIsNewCentral(central: CBCentral) {
         if connectedCentrals[central] == nil {
             connectedCentrals[central] = []
-            let deviceInfo = DeviceInfoBindingDto(address: central.identifier.uuidString, 
+            let deviceInfo = DeviceInfoBindingDto(address: central.identifier.uuidString,
                                                   mtu: UInt16(central.maximumUpdateValueLength))
             if let callback = getConnectionChangeEventsResultCallback {
                 callback(Result.success([.connected(deviceInfo: deviceInfo)]))
@@ -307,7 +307,7 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
         connectionLock.withLock {
             sendConnectedEventIfIsNewCentral(central: request.central)
         }
-
+        
         guard let characteristicValueKey = characteristicValueKey(characteristic: request.characteristic),
               let value = characteristicValues[characteristicValueKey] ?? request.characteristic.value else  {
             peripheral.respond(to: request, withResult: .attributeNotFound)
