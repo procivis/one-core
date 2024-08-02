@@ -52,14 +52,25 @@ pub fn throw_if_validity_constraint_missing_for_lvvc(
 
 pub fn throw_if_proof_schema_contains_physical_card_schema_with_other_schemas(
     schemas: &[CredentialSchema],
+    config: &CoreConfig,
 ) -> Result<(), ValidationError> {
-    if schemas
-        .iter()
-        .any(|schema| schema.format == "PHYSICAL_CARD")
-        && schemas.len() > 1
-    {
+    let mut contains_physical_card = false;
+
+    for schema in schemas {
+        let format = config
+            .format
+            .get_if_enabled(schema.format.as_str())
+            .map_err(|_| ValidationError::InvalidFormatter(schema.format.to_owned()))?;
+        if format.r#type == "PHYSICAL_CARD" {
+            contains_physical_card = true;
+            break;
+        }
+    }
+
+    if contains_physical_card && schemas.len() > 1 {
         return Err(ValidationError::OnlyOnePhysicalCardSchemaAllowedPerProof);
     }
+
     Ok(())
 }
 
