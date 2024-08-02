@@ -163,7 +163,7 @@ async fn test_mrz_proof_process() {
             assert_eq!(verification_method, verification_method);
             assert_eq!(alg, "ES256");
             assert_eq!(digest.len(), 3);
-            assert_eq!(signature.len(), 66);
+            assert_eq!(signature.len(), 64);
             Ok(())
         },
     );
