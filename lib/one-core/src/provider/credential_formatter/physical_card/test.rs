@@ -204,16 +204,10 @@ async fn test_employment_document_mrz_claim_extraction() {
     assert_eq!(given_names.as_array().unwrap()[0].as_str().unwrap(), "JOHN");
 
     let birth_date = credential.claims.values.get("Date of Birth").unwrap();
-    assert_eq!(
-        birth_date.as_str().unwrap(),
-        "1988-04-19 0:00:00.0 +00:00:00"
-    );
+    assert_eq!(birth_date.as_str().unwrap(), "1988-04-19T00:00:00Z");
 
     let expiration_date = credential.claims.values.get("Date of Expiry").unwrap();
-    assert_eq!(
-        expiration_date.as_str().unwrap(),
-        "2026-01-05 0:00:00.0 +00:00:00"
-    );
+    assert_eq!(expiration_date.as_str().unwrap(), "2026-01-05T00:00:00Z");
 }
 
 #[tokio::test]
