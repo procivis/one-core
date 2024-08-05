@@ -5,6 +5,7 @@ use one_providers::credential_formatter::imp::json_ld::model::LdCredential;
 use one_providers::credential_formatter::model::CredentialSchema;
 use serde::{Deserialize, Serialize};
 use time::format_description::well_known::Iso8601;
+use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
 use super::mappers::ProtectedOpticalData;
@@ -36,7 +37,7 @@ pub struct IdentityCard {
     #[serde(rename = "Nationality")]
     pub nationality: String,
 
-    #[try_from(with_fn = "iso_8601_to_offset_datetime")]
+    #[try_from(with_fn = "iso_8601_date_to_rfc3339_datetime")]
     #[serde(rename = "Date of Birth")]
     pub birth_date: String,
 
@@ -45,11 +46,11 @@ pub struct IdentityCard {
     pub gender: Gender,
 
     #[serde(rename = "Date of Expiry")]
-    #[try_from(with_fn = "iso_8601_to_offset_datetime")]
+    #[try_from(with_fn = "iso_8601_date_to_rfc3339_datetime")]
     pub expiry_date: String,
 }
 
-fn iso_8601_to_offset_datetime<T>(date: T) -> Result<String, FormatterError>
+fn iso_8601_date_to_rfc3339_datetime<T>(date: T) -> Result<String, FormatterError>
 where
     T: ToString,
 {
@@ -57,7 +58,16 @@ where
         .map_err(|e| {
             FormatterError::CouldNotExtractCredentials(format!("Failed to parse date: {}", e))
         })
-        .map(|d| OffsetDateTime::new_utc(d, time::Time::MIDNIGHT).to_string())
+        .and_then(|d| {
+            OffsetDateTime::new_utc(d, time::Time::MIDNIGHT)
+                .format(&Rfc3339)
+                .map_err(|e| {
+                    FormatterError::CouldNotExtractCredentials(format!(
+                        "Failed to format date: {}",
+                        e
+                    ))
+                })
+        })
 }
 
 #[derive(Deserialize, Serialize, From)]
