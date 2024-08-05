@@ -18,6 +18,7 @@ serde_json.workspace       = true
 serde_qs.workspace         = true
 serde_urlencoded.workspace = true
 serde_with.workspace       = true
+serde_repr                 = { version = "0.1" }
 thiserror.workspace        = true
 time.workspace             = true
 tokio.workspace            = true
@@ -38,7 +39,7 @@ pqc_dilithium              = { version = "0.2.0", git = "https://github.com/ihor
 convert_case               = { version = "0.6" }
 json-ld                    = { version = "0.15" }
 ciborium                   = { version = "0.2" }
-coset                      = { version = "0.3" }
+coset                      = { version = "0.3", features = ["std"] }
 tempfile.workspace         = true
 zip                        = { version = "2.1" }
 futures.workspace          = true
@@ -55,8 +56,8 @@ ouroboros                  = { version = "0.18" }
 itertools                  = { version = "0.13" }
 one-providers              = { workspace = true }
 x25519-dalek               = { version = "2.0.1" }
-hkdf                       = { version = "0.12.4" }
-aes-gcm                    = { version = "0.10.3" }
+hkdf                       = { version = "0.12.4", features = ["std"] }
+aes-gcm                    = { version = "0.10.3", features = ["std"] }
 mrtd                       = { version = "0.5.2" }
 
 [dev-dependencies]

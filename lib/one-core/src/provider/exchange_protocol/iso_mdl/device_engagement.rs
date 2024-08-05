@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use ciborium::cbor;
-use coset::{AsCborValue, CoseKey};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use serde::{de, ser, Deserialize, Serialize, Serializer};
 use std::convert::TryInto;
@@ -8,8 +7,8 @@ use uuid::Uuid;
 
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::Bytes;
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct EDeviceKey(pub CoseKey);
+use super::common::EDeviceKey;
+
 pub type EDeviceKeyBytes = Bytes<EDeviceKey>;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -349,30 +348,6 @@ where
     })
 }
 
-impl Serialize for EDeviceKey {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.0
-            .clone()
-            .to_cbor_value()
-            .map_err(ser::Error::custom)?
-            .serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for EDeviceKey {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let value = ciborium::Value::deserialize(deserializer)?;
-        let key = CoseKey::from_cbor_value(value).map_err(de::Error::custom)?;
-        Ok(Self(key))
-    }
-}
-
 fn serialize_mac_address<S>(mac: &str) -> Result<[u8; 6], S::Error>
 where
     S: Serializer,
@@ -407,11 +382,8 @@ fn get_cbor_map_value(
 
 #[cfg(test)]
 mod test {
-    use coset::{
-        iana::{EllipticCurve, EnumI64, KeyType, OkpKeyParameter},
-        Label, RegisteredLabel,
-    };
     use hex_literal::hex;
+    use rand::rngs::OsRng;
     use uuid::uuid;
 
     use super::*;
@@ -429,12 +401,12 @@ mod test {
 
     #[test]
     fn test_device_engagement_qr_code() {
-        let engagment = get_example_engagement();
+        let engagement = get_example_engagement();
 
-        let generated = engagment.generate_qr_code().unwrap();
+        let generated = engagement.generate_qr_code().unwrap();
         let parsed = DeviceEngagement::parse_qr_code(&generated.qr_code_content).unwrap();
 
-        assert_eq!(engagment, parsed.device_engagement);
+        assert_eq!(engagement, parsed.device_engagement);
         assert_eq!(
             generated.device_engagement_bytes,
             parsed.device_engagement_bytes
@@ -448,36 +420,21 @@ mod test {
             hex!(
             "a30063312e30018201d818584ba4010220012158205a88d182bce5f42efa59943f33359d2e8a968ff289d93e5fa444b624343167fe225820b16e8cf858ddc7690407ba61d4c338237a8cfcf3de6aa672fc60a557aa32fc670281830201a300f401f50b5045efef742b2c4837a9a3b0e1d05a6917").to_vec();
 
-        // failing due to unsupported client central mode
+        // failing due to unsupported key type
         let failure = ciborium::from_reader::<DeviceEngagement, _>(&data[..]).unwrap_err();
         assert_eq!(
             failure.to_string(),
-            "Semantic(None, \"Invalid BleOptions peripheral_server_mode_supported\")"
+            "Semantic(None, \"Custom(\\\"Semantic(None, \\\\\\\"Unsupported key type, expected OKP(x25519) found Assigned(EC2)\\\\\\\")\\\")\")"
         );
     }
 
     fn get_example_engagement() -> DeviceEngagement {
+        let pk =
+            x25519_dalek::PublicKey::from(&x25519_dalek::EphemeralSecret::random_from_rng(OsRng));
+
         DeviceEngagement {
             security: Security {
-                key_bytes: Bytes(EDeviceKey(CoseKey {
-                    kty: RegisteredLabel::Assigned(KeyType::OKP),
-                    key_id: vec![],
-                    alg: None,
-                    key_ops: Default::default(),
-                    base_iv: Default::default(),
-                    params: vec![
-                        (
-                            Label::Int(OkpKeyParameter::Crv.to_i64()),
-                            EllipticCurve::X25519.to_i64().into(),
-                        ),
-                        (
-                            Label::Int(OkpKeyParameter::X.to_i64()),
-                            ciborium::Value::Bytes(
-                                hex!("8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a").to_vec(),
-                            ),
-                        ),
-                    ],
-                })),
+                key_bytes: Bytes(EDeviceKey::new(pk)),
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {

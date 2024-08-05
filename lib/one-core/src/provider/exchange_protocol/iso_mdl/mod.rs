@@ -15,7 +15,9 @@ use crate::provider::exchange_protocol::dto::{
 use crate::provider::exchange_protocol::{ExchangeProtocolError, ExchangeProtocolImpl};
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 
+mod common;
 mod device_engagement;
+mod session;
 
 pub(crate) struct IsoMdl {}
 
