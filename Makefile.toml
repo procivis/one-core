@@ -13,6 +13,10 @@ args    = ["clean"]
 command = "cargo"
 args    = ["build", "-p", "core-server"]
 
+[tasks.clippy]
+command = "cargo"
+args    = ["clippy", "--all-targets", "--", "-D", "clippy::print_stderr", "-D", "clippy::dbg_macro"]
+
 [tasks.run]
 command = "cargo"
 args = [
@@ -240,12 +244,3 @@ dependencies = [
   "package_ios_bindings",
 ]
 script = 'echo "--- output available in target/bindings/ios ---"'
-
-
-[tasks.clippy_debug_prints]
-script = '''
-    cargo clippy --all-targets -- \
-    -D clippy::print_stderr \
-    -D clippy::dbg_macro \
-
-'''
