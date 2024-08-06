@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use super::mapper::{fetch_procivis_schema, from_create_request};
 use one_providers::common_models::credential::CredentialId;
-use one_providers::common_models::credential_schema::{CredentialSchema, LayoutType};
-use one_providers::common_models::organisation::Organisation;
+use one_providers::common_models::credential_schema::{OpenCredentialSchema, OpenLayoutType};
+use one_providers::common_models::organisation::OpenOrganisation;
 use one_providers::exchange_protocol::openid4vc::model::{
     CreateCredentialSchemaRequestDTO, OpenID4VCICredentialOfferCredentialDTO,
     OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
@@ -29,13 +29,13 @@ use super::mapper::parse_procivis_schema_claim;
 pub const NESTED_CLAIM_MARKER: char = '/';
 
 pub struct HandleInvitationOperationsImpl {
-    pub organisation: Organisation,
+    pub organisation: OpenOrganisation,
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
 }
 
 impl HandleInvitationOperationsImpl {
     pub fn new(
-        organisation: Organisation,
+        organisation: OpenOrganisation,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
     ) -> Self {
         Self {
@@ -158,7 +158,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                             .map(parse_procivis_schema_claim)
                             .collect(),
                         wallet_storage_type: procivis_schema.wallet_storage_type,
-                        layout_type: procivis_schema.layout_type.unwrap_or(LayoutType::Card),
+                        layout_type: procivis_schema.layout_type.unwrap_or(OpenLayoutType::Card),
                         layout_properties: procivis_schema.layout_properties,
                         schema_id: Some(schema_data.schema_id.clone()),
                     },
@@ -169,7 +169,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 )
                 .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
-                let schema = CredentialSchema {
+                let schema = OpenCredentialSchema {
                     schema_type: schema_data.schema_type.clone(),
                     ..schema
                 };
@@ -213,7 +213,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                             vec![]
                         },
                         wallet_storage_type: credential.wallet_storage_type.to_owned(),
-                        layout_type: LayoutType::Card,
+                        layout_type: OpenLayoutType::Card,
                         layout_properties: None,
                         schema_id: Some(schema_data.schema_id.clone()),
                     },
@@ -241,7 +241,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
                     BuildCredentialSchemaResponse {
                         claims,
-                        schema: CredentialSchema {
+                        schema: OpenCredentialSchema {
                             claim_schemas: Some(claim_schemas),
                             ..credential_schema
                         },
@@ -256,7 +256,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     create_claims_from_credential_definition(*credential_id, claim_keys)?;
 
                 let now = OffsetDateTime::now_utc();
-                let credential_schema = CredentialSchema {
+                let credential_schema = OpenCredentialSchema {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: now,
@@ -266,7 +266,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     wallet_storage_type: credential.wallet_storage_type.to_owned(),
                     revocation_method: "NONE".to_string(),
                     claim_schemas: Some(claim_schemas),
-                    layout_type: LayoutType::Card,
+                    layout_type: OpenLayoutType::Card,
                     layout_properties: None,
                     schema_type: schema_data.schema_type.clone(),
                     schema_id: schema_data.schema_id.clone(),

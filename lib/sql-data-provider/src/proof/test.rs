@@ -27,7 +27,7 @@ use one_core::repository::proof_schema_repository::{
     MockProofSchemaRepository, ProofSchemaRepository,
 };
 use one_core::service::proof::dto::ProofFilterValue;
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
 use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
@@ -305,7 +305,7 @@ async fn test_create_proof_success() {
             deactivated: false,
         }),
         holder_did: None,
-        verifier_key: Some(Key {
+        verifier_key: Some(OpenKey {
             id: key_id.into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -523,7 +523,7 @@ async fn test_get_proof_with_relations() {
         .expect_get_key()
         .once()
         .returning(|key_id, _| {
-            Ok(Some(Key {
+            Ok(Some(OpenKey {
                 id: key_id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -714,7 +714,7 @@ async fn test_get_proof_by_interaction_id_success() {
         .expect_get_key()
         .once()
         .returning(|key_id, _| {
-            Ok(Some(Key {
+            Ok(Some(OpenKey {
                 id: key_id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),

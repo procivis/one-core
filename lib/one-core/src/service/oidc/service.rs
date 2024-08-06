@@ -4,7 +4,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dto_mapper::convert_inner;
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use one_providers::crypto::imp::utilities;
 use one_providers::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use one_providers::exchange_protocol::openid4vc::model::{
@@ -883,7 +883,7 @@ fn extract_jwe_header(jwe: &str) -> Result<JweHeader, anyhow::Error> {
 
 fn build_jwe_decrypter(
     key_provider: &dyn KeyProvider,
-    key: &Key,
+    key: &OpenKey,
 ) -> Result<impl JweDecrypter, ServiceError> {
     let key_storage = key_provider
         .get_key_storage(&key.storage_type)

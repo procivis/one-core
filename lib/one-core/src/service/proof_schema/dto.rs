@@ -1,5 +1,5 @@
 use dto_mapper::From;
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use serde::Deserialize;
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
@@ -124,7 +124,7 @@ pub struct ImportProofSchemaCredentialSchemaDTO {
     pub name: String,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,

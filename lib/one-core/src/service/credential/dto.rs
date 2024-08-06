@@ -1,5 +1,5 @@
 use dto_mapper::{convert_inner, From, Into};
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use one_providers::common_models::key::KeyId;
 use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, OrganisationId};
@@ -81,7 +81,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub organisation_id: OrganisationId,
     #[from(with_fn = convert_inner)]
     #[into(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
     pub schema_id: String,
     #[into(with_fn_ref = "ToString::to_string")]
     pub schema_type: CredentialSchemaType,

@@ -3,18 +3,18 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::{always, eq};
-use one_providers::common_models::claim::Claim;
-use one_providers::common_models::claim_schema::ClaimSchema;
+use one_providers::common_models::claim::OpenClaim;
+use one_providers::common_models::claim_schema::OpenClaimSchema;
 use one_providers::common_models::credential::{
-    Credential, CredentialRole, CredentialState, CredentialStateEnum,
+    OpenCredential, OpenCredentialRole, OpenCredentialState, OpenCredentialStateEnum,
 };
 use one_providers::common_models::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
+    OpenCredentialSchema, OpenCredentialSchemaClaim, OpenLayoutType, OpenWalletStorageTypeEnum,
 };
-use one_providers::common_models::interaction::Interaction;
-use one_providers::common_models::key::Key;
-use one_providers::common_models::organisation::Organisation;
-use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::common_models::interaction::OpenInteraction;
+use one_providers::common_models::key::OpenKey;
+use one_providers::common_models::organisation::OpenOrganisation;
+use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
@@ -55,7 +55,7 @@ async fn test_issuer_submit_succeeds() {
     let key_storage_type = "storage type";
     let key_type = "EDDSA";
 
-    let key = Key {
+    let key = OpenKey {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
@@ -64,17 +64,17 @@ async fn test_issuer_submit_succeeds() {
         key_reference: b"private_key".to_vec(),
         storage_type: key_storage_type.to_string(),
         key_type: key_type.to_string(),
-        organisation: Some(Organisation {
+        organisation: Some(OpenOrganisation {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
         }),
     };
 
-    let credential = Credential {
-        state: Some(vec![CredentialState {
+    let credential = OpenCredential {
+        state: Some(vec![OpenCredentialState {
             created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Offered,
+            state: OpenCredentialStateEnum::Offered,
             suspend_end_date: None,
         }]),
         holder_did: Some(dummy_did().into()),
@@ -183,7 +183,7 @@ async fn test_issuer_submit_succeeds() {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    public_key_jwk: OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -255,7 +255,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
         .unwrap()
         .first_mut()
         .unwrap()
-        .state = CredentialStateEnum::Accepted;
+        .state = OpenCredentialStateEnum::Accepted;
 
     let credential_copy = credential.to_owned();
     storage
@@ -329,7 +329,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
         .unwrap()
         .first_mut()
         .unwrap()
-        .state = CredentialStateEnum::Accepted;
+        .state = OpenCredentialStateEnum::Accepted;
 
     let credential_copy = credential.to_owned();
     storage
@@ -359,11 +359,11 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
     assert_eq!(0, result_credentials.len());
 }
 
-fn mdoc_credential() -> Credential {
+fn mdoc_credential() -> OpenCredential {
     let mut credential = dummy_credential();
 
     let new_claim_schemas = [
-        ClaimSchema {
+        OpenClaimSchema {
             id: Uuid::new_v4().into(),
             key: "namespace".to_string(),
             data_type: "OBJECT".to_string(),
@@ -371,7 +371,7 @@ fn mdoc_credential() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             array: false,
         },
-        ClaimSchema {
+        OpenClaimSchema {
             id: Uuid::new_v4().into(),
             key: "namespace/name".to_string(),
             data_type: "STRING".to_string(),
@@ -387,20 +387,20 @@ fn mdoc_credential() -> Credential {
         .unwrap()
         .first_mut()
         .unwrap()
-        .state = CredentialStateEnum::Accepted;
+        .state = OpenCredentialStateEnum::Accepted;
     let schema = credential.schema.as_mut().unwrap();
     schema.format = "MDOC".to_string();
     *schema.claim_schemas.as_mut().unwrap() = vec![
-        CredentialSchemaClaim {
+        OpenCredentialSchemaClaim {
             schema: new_claim_schemas[0].to_owned(),
             required: true,
         },
-        CredentialSchemaClaim {
+        OpenCredentialSchemaClaim {
             schema: new_claim_schemas[1].to_owned(),
             required: true,
         },
     ];
-    *credential.claims.as_mut().unwrap() = vec![Claim {
+    *credential.claims.as_mut().unwrap() = vec![OpenClaim {
         id: Uuid::new_v4().into(),
         credential_id: credential.id.to_owned(),
         created_date: get_dummy_date(),
@@ -413,11 +413,11 @@ fn mdoc_credential() -> Credential {
     credential
 }
 
-fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credential {
+fn generic_mdoc_credential(format: &str, state: OpenCredentialStateEnum) -> OpenCredential {
     let key = dummy_key();
 
-    Credential {
-        state: Some(vec![CredentialState {
+    OpenCredential {
+        state: Some(vec![OpenCredentialState {
             created_date: OffsetDateTime::now_utc(),
             state,
             suspend_end_date: None,
@@ -434,7 +434,7 @@ fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credenti
             .into(),
         ),
         key: Some(key),
-        schema: Some(CredentialSchema {
+        schema: Some(OpenCredentialSchema {
             format: format.to_string(),
             ..dummy_credential().schema.unwrap()
         }),
@@ -515,7 +515,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
 
     let mut credential_repository = MockCredentialRepository::new();
 
-    let credential = generic_mdoc_credential(format, CredentialStateEnum::Offered);
+    let credential = generic_mdoc_credential(format, OpenCredentialStateEnum::Offered);
     let credential_copy = credential.clone();
     credential_repository
         .expect_get_credential()
@@ -644,7 +644,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format = "MDOC";
 
-    let credential = generic_mdoc_credential(format, CredentialStateEnum::Accepted);
+    let credential = generic_mdoc_credential(format, OpenCredentialStateEnum::Accepted);
     let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -798,7 +798,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format = "MDOC";
 
-    let credential = generic_mdoc_credential(format, CredentialStateEnum::Accepted);
+    let credential = generic_mdoc_credential(format, OpenCredentialStateEnum::Accepted);
 
     let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
@@ -878,10 +878,10 @@ fn dummy_config() -> CoreConfig {
     CoreConfig::default()
 }
 
-fn dummy_credential() -> Credential {
+fn dummy_credential() -> OpenCredential {
     let claim_schema_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
-    Credential {
+    OpenCredential {
         id: credential_id,
         created_date: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -890,20 +890,20 @@ fn dummy_credential() -> Credential {
         credential: b"credential".to_vec(),
         exchange: "protocol".to_string(),
         redirect_uri: None,
-        role: CredentialRole::Holder,
-        state: Some(vec![CredentialState {
+        role: OpenCredentialRole::Holder,
+        state: Some(vec![OpenCredentialState {
             created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Pending,
+            state: OpenCredentialStateEnum::Pending,
             suspend_end_date: None,
         }]),
-        claims: Some(vec![Claim {
+        claims: Some(vec![OpenClaim {
             id: Uuid::new_v4().into(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             value: "claim value".to_string(),
             path: "key".to_string(),
-            schema: Some(ClaimSchema {
+            schema: Some(OpenClaimSchema {
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
@@ -914,17 +914,17 @@ fn dummy_credential() -> Credential {
         }]),
         issuer_did: None,
         holder_did: None,
-        schema: Some(CredentialSchema {
+        schema: Some(OpenCredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
             name: "schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "revocation method".to_string(),
-            claim_schemas: Some(vec![CredentialSchemaClaim {
-                schema: ClaimSchema {
+            claim_schemas: Some(vec![OpenCredentialSchemaClaim {
+                schema: OpenClaimSchema {
                     id: claim_schema_id,
                     key: "key".to_string(),
                     data_type: "STRING".to_string(),
@@ -934,12 +934,12 @@ fn dummy_credential() -> Credential {
                 },
                 required: true,
             }]),
-            layout_type: LayoutType::Card,
+            layout_type: OpenLayoutType::Card,
             layout_properties: None,
             schema_type: "ProcivisOneSchema2024".into(),
             schema_id: "CredentialSchemaId".to_owned(),
         }),
-        interaction: Some(Interaction {
+        interaction: Some(OpenInteraction {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -973,7 +973,7 @@ fn dummy_did_document() -> DidDocument {
             id: "did-vm-id".to_string(),
             r#type: "did-vm-type".to_string(),
             controller: "did-vm-controller".to_string(),
-            public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            public_key_jwk: OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "P-256".to_string(),
                 x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -989,8 +989,8 @@ fn dummy_did_document() -> DidDocument {
     }
 }
 
-fn dummy_key() -> Key {
-    Key {
+fn dummy_key() -> OpenKey {
+    OpenKey {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
@@ -999,7 +999,7 @@ fn dummy_key() -> Key {
         key_reference: b"private_key".to_vec(),
         storage_type: "SOFTWARE".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: Some(Organisation {
+        organisation: Some(OpenOrganisation {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),

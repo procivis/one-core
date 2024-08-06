@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
@@ -16,7 +16,7 @@ use uuid::Uuid;
 #[derive(Debug, Default, Clone)]
 pub struct TestingCreateSchemaParams {
     pub format: Option<String>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
     pub schema_type: Option<CredentialSchemaType>,
 }
 
@@ -72,7 +72,7 @@ impl CredentialSchemasDB {
             wallet_storage_type: Some(
                 params
                     .wallet_storage_type
-                    .unwrap_or(WalletStorageTypeEnum::Software),
+                    .unwrap_or(OpenWalletStorageTypeEnum::Software),
             ),
             organisation: Some(organisation.clone()),
             deleted_at: None,
@@ -192,7 +192,7 @@ impl CredentialSchemasDB {
             wallet_storage_type: Some(
                 params
                     .wallet_storage_type
-                    .unwrap_or(WalletStorageTypeEnum::Software),
+                    .unwrap_or(OpenWalletStorageTypeEnum::Software),
             ),
             organisation: Some(organisation.clone()),
             deleted_at: None,
@@ -307,7 +307,7 @@ impl CredentialSchemasDB {
             wallet_storage_type: Some(
                 params
                     .wallet_storage_type
-                    .unwrap_or(WalletStorageTypeEnum::Software),
+                    .unwrap_or(OpenWalletStorageTypeEnum::Software),
             ),
             organisation: Some(organisation.clone()),
             deleted_at: None,

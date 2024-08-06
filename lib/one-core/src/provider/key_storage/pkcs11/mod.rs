@@ -1,5 +1,5 @@
 use one_providers::{
-    common_models::key::{Key, KeyId},
+    common_models::key::{KeyId, OpenKey},
     key_storage::{
         error::KeyStorageError,
         model::{KeyStorageCapabilities, StorageGeneratedKey},
@@ -15,7 +15,7 @@ pub struct PKCS11KeyProvider {}
 
 #[async_trait::async_trait]
 impl KeyStorage for PKCS11KeyProvider {
-    async fn sign(&self, _key: &Key, _message: &[u8]) -> Result<Vec<u8>, SignerError> {
+    async fn sign(&self, _key: &OpenKey, _message: &[u8]) -> Result<Vec<u8>, SignerError> {
         todo!()
     }
 
@@ -27,7 +27,7 @@ impl KeyStorage for PKCS11KeyProvider {
         todo!()
     }
 
-    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, KeyStorageError> {
+    fn secret_key_as_jwk(&self, _key: &OpenKey) -> Result<Zeroizing<String>, KeyStorageError> {
         unimplemented!()
     }
 

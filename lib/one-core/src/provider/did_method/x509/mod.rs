@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use one_providers::common_models::did::{DidId, DidValue};
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use one_providers::did::error::DidMethodError;
 use one_providers::did::keys::Keys;
 use one_providers::did::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
@@ -21,7 +21,7 @@ impl DidMethod for X509Method {
         &self,
         _id: &DidId,
         _params: &Option<serde_json::Value>,
-        _keys: &[Key],
+        _keys: &[OpenKey],
     ) -> Result<DidValue, DidMethodError> {
         todo!()
     }

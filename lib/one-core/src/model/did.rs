@@ -1,5 +1,5 @@
 use dto_mapper::{convert_inner_of_inner, From, Into};
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
@@ -42,12 +42,12 @@ pub enum KeyRole {
 #[from(one_providers::common_models::did::RelatedKey)]
 pub struct RelatedKey {
     pub role: KeyRole,
-    pub key: Key,
+    pub key: OpenKey,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::did::Did)]
-#[from(one_providers::common_models::did::Did)]
+#[into(one_providers::common_models::did::OpenDid)]
+#[from(one_providers::common_models::did::OpenDid)]
 pub struct Did {
     pub id: DidId,
     pub created_date: OffsetDateTime,
@@ -72,7 +72,7 @@ impl Did {
         self.did_type.is_remote()
     }
 
-    pub fn find_key(&self, key_id: &KeyId, role: KeyRole) -> Result<&Key, ServiceError> {
+    pub fn find_key(&self, key_id: &KeyId, role: KeyRole) -> Result<&OpenKey, ServiceError> {
         let key_id: one_providers::common_models::key::KeyId = key_id.to_owned().into();
 
         let mut same_id_keys = self
@@ -93,7 +93,7 @@ impl Did {
             .key)
     }
 
-    pub fn find_first_key_by_role(&self, role: KeyRole) -> Result<&Key, ServiceError> {
+    pub fn find_first_key_by_role(&self, role: KeyRole) -> Result<&OpenKey, ServiceError> {
         Ok(&self
             .keys
             .as_ref()

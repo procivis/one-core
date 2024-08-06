@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
@@ -185,7 +185,7 @@ async fn test_create_proof_schema_already_exists() {
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
-                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                    wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     name: "schema".to_string(),
@@ -281,7 +281,7 @@ async fn test_create_proof_schema_success() {
                 credential_schema: Some(CredentialSchema {
                     id: credential_schema_id,
                     deleted_at: None,
-                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                    wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     name: "schema".to_string(),
@@ -492,7 +492,7 @@ async fn test_get_proof_schema_with_relations() {
             Ok(Some(CredentialSchema {
                 id: id.to_owned(),
                 deleted_at: None,
-                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "schema".to_string(),
@@ -629,7 +629,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
             Ok(Some(CredentialSchema {
                 id: id.to_owned(),
                 deleted_at: None,
-                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "schema".to_string(),

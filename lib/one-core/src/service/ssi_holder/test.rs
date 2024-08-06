@@ -4,8 +4,8 @@ use std::vec;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
-use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
+use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
 use one_providers::did::model::{DidDocument, DidVerificationMethod};
@@ -357,7 +357,7 @@ async fn test_submit_proof_succeeds() {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    public_key_jwk: OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -601,7 +601,7 @@ async fn test_submit_proof_repeating_claims() {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    public_key_jwk: OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -833,7 +833,7 @@ fn dummy_credential() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "schema".to_string(),
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: None,

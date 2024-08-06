@@ -1,4 +1,4 @@
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
 use x509_parser::{certificate::X509Certificate, error::X509Error};
 
@@ -34,7 +34,7 @@ pub trait DidMdlValidator: Send + Sync {
     fn validate_subject_public_key<'cert>(
         &self,
         certificate: &X509Certificate<'cert>,
-        key: &Key,
+        key: &OpenKey,
     ) -> Result<(), DidMdlValidationError>;
 }
 
@@ -55,7 +55,7 @@ impl DidMdlValidator for DidMdl {
     fn validate_subject_public_key(
         &self,
         certificate: &X509Certificate<'_>,
-        key: &Key,
+        key: &OpenKey,
     ) -> Result<(), DidMdlValidationError> {
         check_is_valid_now(certificate)?;
 

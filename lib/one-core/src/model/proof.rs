@@ -1,5 +1,5 @@
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use shared_types::{DidId, ProofId};
 use strum_macros::Display;
 use time::OffsetDateTime;
@@ -15,8 +15,8 @@ use crate::model::key::KeyRelations;
 use crate::service::proof::dto::ProofFilterValue;
 
 #[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::proof::Proof)]
-#[from(one_providers::common_models::proof::Proof)]
+#[into(one_providers::common_models::proof::OpenProof)]
+#[from(one_providers::common_models::proof::OpenProof)]
 pub struct Proof {
     pub id: ProofId,
     pub created_date: OffsetDateTime,
@@ -44,15 +44,15 @@ pub struct Proof {
     pub holder_did: Option<Did>, // empty either because relation not specified or not set in database
     #[into(with_fn = "convert_inner")]
     #[from(with_fn = "convert_inner")]
-    pub verifier_key: Option<Key>,
+    pub verifier_key: Option<OpenKey>,
     #[into(with_fn = "convert_inner")]
     #[from(with_fn = "convert_inner")]
     pub interaction: Option<Interaction>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Display, Into, From)]
-#[into(one_providers::common_models::proof::ProofStateEnum)]
-#[from(one_providers::common_models::proof::ProofStateEnum)]
+#[into(one_providers::common_models::proof::OpenProofStateEnum)]
+#[from(one_providers::common_models::proof::OpenProofStateEnum)]
 pub enum ProofStateEnum {
     Created,
     Pending,
@@ -63,8 +63,8 @@ pub enum ProofStateEnum {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::proof::ProofState)]
-#[from(one_providers::common_models::proof::ProofState)]
+#[into(one_providers::common_models::proof::OpenProofState)]
+#[from(one_providers::common_models::proof::OpenProofState)]
 pub struct ProofState {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
@@ -72,8 +72,8 @@ pub struct ProofState {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::proof::ProofClaim)]
-#[from(one_providers::common_models::proof::ProofClaim)]
+#[into(one_providers::common_models::proof::OpenProofClaim)]
+#[from(one_providers::common_models::proof::OpenProofClaim)]
 pub struct ProofClaim {
     pub claim: Claim,
 
@@ -115,7 +115,7 @@ pub struct ProofClaimRelations {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From)]
-#[from(one_providers::common_models::proof::UpdateProofRequest)]
+#[from(one_providers::common_models::proof::OpenUpdateProofRequest)]
 pub struct UpdateProofRequest {
     pub id: ProofId,
 

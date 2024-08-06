@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn test_jwk_to_bytes() {
-    let jwk = PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
+    let jwk = OpenPublicKeyJwk::Mlwe(OpenPublicKeyJwkMlweData {
         r#use: None,
         alg: "CRYDI3".to_owned(),
         // Fake key just to prove the flow.
@@ -24,7 +24,7 @@ fn test_jwk_to_bytes() {
 
 #[test]
 fn test_jwk_to_bytes_fail_wrong_variant() {
-    let jwk = PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
+    let jwk = OpenPublicKeyJwk::Mlwe(OpenPublicKeyJwkMlweData {
         r#use: None,
         alg: "CRYDI5".to_owned(), // Incorrect variant
         // Fake key just to prove the flow.

@@ -7,16 +7,18 @@ use anyhow::Context;
 use async_trait::async_trait;
 use dto_mapper::convert_inner;
 use one_providers::common_dto::PublicKeyJwkDTO;
-use one_providers::common_models::claim::Claim;
-use one_providers::common_models::claim_schema::ClaimSchema;
+use one_providers::common_models::claim::OpenClaim;
+use one_providers::common_models::claim_schema::OpenClaimSchema;
 use one_providers::common_models::credential::{
-    Credential, CredentialRole, CredentialState, CredentialStateEnum,
+    OpenCredential, OpenCredentialRole, OpenCredentialState, OpenCredentialStateEnum,
 };
-use one_providers::common_models::credential_schema::{CredentialSchema, CredentialSchemaClaim};
-use one_providers::common_models::did::{Did, DidType, KeyRole};
-use one_providers::common_models::key::{Key, KeyId};
-use one_providers::common_models::organisation::Organisation;
-use one_providers::common_models::proof::Proof;
+use one_providers::common_models::credential_schema::{
+    OpenCredentialSchema, OpenCredentialSchemaClaim,
+};
+use one_providers::common_models::did::{DidType, KeyRole, OpenDid};
+use one_providers::common_models::key::{KeyId, OpenKey};
+use one_providers::common_models::organisation::OpenOrganisation;
+use one_providers::common_models::proof::OpenProof;
 use one_providers::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::exchange_protocol::openid4vc::model::{
@@ -178,7 +180,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         })
     }
 
-    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    async fn reject_proof(&self, proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
         let mut url = super::get_base_url_from_interaction(proof.interaction.as_ref())?;
         url.set_path("/ssi/temporary-verifier/v1/reject");
         url.set_query(Some(&format!("proof={}", proof.id)));
@@ -200,10 +202,10 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn submit_proof(
         &self,
-        proof: &Proof,
+        proof: &OpenProof,
         credential_presentations: Vec<PresentedCredential>,
-        holder_did: &Did,
-        key: &Key,
+        holder_did: &OpenDid,
+        key: &OpenKey,
         jwk_key_id: Option<String>,
         _format_map: HashMap<String, String>,
         _presentation_format_map: HashMap<String, String>,
@@ -265,9 +267,9 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn accept_credential(
         &self,
-        credential: &Credential,
-        holder_did: &Did,
-        _key: &Key,
+        credential: &OpenCredential,
+        holder_did: &OpenDid,
+        _key: &OpenKey,
         _jwk_key_id: Option<String>,
         _format: &str,
         _storage_access: &StorageAccess,
@@ -310,7 +312,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn reject_credential(
         &self,
-        credential: &Credential,
+        credential: &OpenCredential,
     ) -> Result<(), ExchangeProtocolError> {
         let mut url = super::get_base_url_from_interaction(credential.interaction.as_ref())?;
         url.set_path("/ssi/temporary-issuer/v1/reject");
@@ -333,7 +335,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn share_credential(
         &self,
-        credential: &Credential,
+        credential: &OpenCredential,
         _credential_format: &str,
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         let base_url = self
@@ -361,7 +363,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn share_proof(
         &self,
-        proof: &Proof,
+        proof: &OpenProof,
         _format_to_type_mapper: FormatMapper,
         _key_id: KeyId,
         _encryption_key_jwk: PublicKeyJwkDTO,
@@ -393,12 +395,12 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn get_presentation_definition(
         &self,
-        proof: &Proof,
+        proof: &OpenProof,
         proof_claim_schemas: Self::VPInteractionContext,
         storage_access: &StorageAccess,
         _format_map: HashMap<String, String>,
         _types: HashMap<String, DatatypeType>,
-        organisation: Organisation,
+        organisation: OpenOrganisation,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let requested_claims = get_proof_claim_schemas_from_proof(proof)?;
         let mut credential_groups: Vec<CredentialGroup> = vec![];
@@ -457,7 +459,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn verifier_handle_proof(
         &self,
-        _proof: &Proof,
+        _proof: &OpenProof,
         _submission: &[u8],
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
         unimplemented!()
@@ -489,7 +491,7 @@ async fn handle_credential_invitation(
                 ))?
         }
         None => {
-            let credential_schema = CredentialSchema {
+            let credential_schema = OpenCredentialSchema {
                 id: issuer_response.schema.id.into(),
                 deleted_at: None,
                 created_date: now,
@@ -567,7 +569,7 @@ async fn handle_credential_invitation(
         .flatten()
         .collect();
 
-    let credential = Credential {
+    let credential = OpenCredential {
         id: Uuid::from(credential_id).into(),
         created_date: now,
         issuance_date: now,
@@ -576,10 +578,10 @@ async fn handle_credential_invitation(
         credential: vec![],
         exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: issuer_response.redirect_uri,
-        role: CredentialRole::Holder,
-        state: Some(vec![CredentialState {
+        role: OpenCredentialRole::Holder,
+        state: Some(vec![OpenCredentialState {
             created_date: now,
-            state: CredentialStateEnum::Pending,
+            state: OpenCredentialStateEnum::Pending,
             suspend_end_date: None,
         }]),
         claims: Some(claims),
@@ -600,13 +602,13 @@ fn extract_claim_schemas_from_incoming(
     incoming_claims: &[CredentialClaimSchemaDTO],
     now: OffsetDateTime,
     prefix: &str,
-) -> Result<Vec<CredentialSchemaClaim>, ExchangeProtocolError> {
+) -> Result<Vec<OpenCredentialSchemaClaim>, ExchangeProtocolError> {
     let mut result = vec![];
 
     incoming_claims.iter().try_for_each(|incoming_claim| {
         let key = format!("{prefix}{}", incoming_claim.key);
-        result.push(CredentialSchemaClaim {
-            schema: ClaimSchema {
+        result.push(OpenCredentialSchemaClaim {
+            schema: OpenClaimSchema {
                 id: Uuid::from(incoming_claim.id).into(),
                 key: key.to_owned(),
                 data_type: incoming_claim.datatype.to_owned(),
@@ -635,10 +637,10 @@ fn extract_claim_schemas_from_incoming(
 fn unnest_incoming_claim(
     credential_id: CredentialId,
     incoming_claim: &DetailCredentialClaimResponseDTO,
-    claim_schemas: &[CredentialSchemaClaim],
+    claim_schemas: &[OpenCredentialSchemaClaim],
     now: OffsetDateTime,
     prefix: &str,
-) -> Result<Vec<Claim>, ExchangeProtocolError> {
+) -> Result<Vec<OpenClaim>, ExchangeProtocolError> {
     let value =
         match &incoming_claim.value {
             DetailCredentialClaimValueResponseDTO::Boolean(value) => serde_json::to_string(value)
@@ -676,7 +678,7 @@ fn unnest_incoming_claim(
         .ok_or(ExchangeProtocolError::Failed(format!(
             "missing claim schema with key {expected_key}",
         )))?;
-    Ok(vec![Claim {
+    Ok(vec![OpenClaim {
         id: Uuid::new_v4().into(),
         credential_id: Uuid::from(credential_id).into(),
         path: current_claim_schema.schema.key.to_owned(),
@@ -705,7 +707,7 @@ async fn handle_proof_invitation(
         Some(did) => did,
         None => {
             let id = Uuid::new_v4();
-            let new_did = Did {
+            let new_did = OpenDid {
                 id: id.into(),
                 created_date: now,
                 last_modified: now,

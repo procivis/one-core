@@ -313,7 +313,7 @@ impl From<ImportCredentialSchemaRequestSchemaDTO> for CreateCredentialSchemaRequ
 }
 
 impl From<CredentialSchemaBackgroundPropertiesRequestDTO>
-    for one_providers::common_models::credential_schema::BackgroundProperties
+    for one_providers::common_models::credential_schema::OpenBackgroundProperties
 {
     fn from(value: CredentialSchemaBackgroundPropertiesRequestDTO) -> Self {
         Self {
@@ -324,7 +324,7 @@ impl From<CredentialSchemaBackgroundPropertiesRequestDTO>
 }
 
 impl From<CredentialSchemaLogoPropertiesRequestDTO>
-    for one_providers::common_models::credential_schema::LogoProperties
+    for one_providers::common_models::credential_schema::OpenLogoProperties
 {
     fn from(value: CredentialSchemaLogoPropertiesRequestDTO) -> Self {
         Self {
@@ -336,7 +336,7 @@ impl From<CredentialSchemaLogoPropertiesRequestDTO>
 }
 
 impl From<CredentialSchemaCodePropertiesRequestDTO>
-    for one_providers::common_models::credential_schema::CodeProperties
+    for one_providers::common_models::credential_schema::OpenCodeProperties
 {
     fn from(value: CredentialSchemaCodePropertiesRequestDTO) -> Self {
         Self {
@@ -347,7 +347,7 @@ impl From<CredentialSchemaCodePropertiesRequestDTO>
 }
 
 impl From<CredentialSchemaCodeTypeEnum>
-    for one_providers::common_models::credential_schema::CodeTypeEnum
+    for one_providers::common_models::credential_schema::OpenCodeTypeEnum
 {
     fn from(value: CredentialSchemaCodeTypeEnum) -> Self {
         match value {
@@ -359,7 +359,7 @@ impl From<CredentialSchemaCodeTypeEnum>
 }
 
 impl From<CredentialSchemaLayoutPropertiesRequestDTO>
-    for one_providers::common_models::credential_schema::LayoutProperties
+    for one_providers::common_models::credential_schema::OpenLayoutProperties
 {
     fn from(value: CredentialSchemaLayoutPropertiesRequestDTO) -> Self {
         Self {

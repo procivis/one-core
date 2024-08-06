@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use dto_mapper::convert_inner;
-use one_providers::common_models::key::{Key, KeyId};
-use one_providers::common_models::PublicKeyJwk;
+use one_providers::common_models::key::{KeyId, OpenKey};
+use one_providers::common_models::OpenPublicKeyJwk;
 use one_providers::did::model::{DidDocument, DidVerificationMethod};
 use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
@@ -71,7 +71,7 @@ pub(super) fn did_from_did_request(
     request: CreateDidRequestDTO,
     organisation: Organisation,
     did_value: DidValue,
-    found_keys: Vec<Key>,
+    found_keys: Vec<OpenKey>,
     now: OffsetDateTime,
 ) -> Result<Did, EntityNotFoundError> {
     let mut keys: Vec<RelatedKey> = vec![];
@@ -166,7 +166,7 @@ pub(super) fn get_key_id_by_role(
 pub(super) fn map_key_to_verification_method(
     did_value: &DidValue,
     public_key_id: &KeyId,
-    public_key_jwk: PublicKeyJwk,
+    public_key_jwk: OpenPublicKeyJwk,
 ) -> Result<DidVerificationMethod, ServiceError> {
     Ok(DidVerificationMethod {
         id: format!("{}#key-{}", did_value, public_key_id),

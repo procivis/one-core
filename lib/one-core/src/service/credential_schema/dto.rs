@@ -1,6 +1,6 @@
 use dto_mapper::{convert_inner, From, Into};
 use one_providers::common_models::credential_schema::{
-    CodeTypeEnum, LayoutProperties, WalletStorageTypeEnum,
+    OpenCodeTypeEnum, OpenLayoutProperties, OpenWalletStorageTypeEnum,
 };
 use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
@@ -32,7 +32,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub name: String,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
@@ -53,7 +53,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
@@ -111,7 +111,7 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub revocation_method: String,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
     pub layout_type: LayoutType,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub schema_id: Option<String>,
@@ -153,8 +153,8 @@ pub struct CredentialSchemaLayoutPropertiesRequestDTO {
     pub code: Option<CredentialSchemaCodePropertiesRequestDTO>,
 }
 
-impl From<LayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
-    fn from(value: LayoutProperties) -> Self {
+impl From<OpenLayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
+    fn from(value: OpenLayoutProperties) -> Self {
         Self {
             background: value.background.map(|value| {
                 CredentialSchemaBackgroundPropertiesRequestDTO {
@@ -177,9 +177,9 @@ impl From<LayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
                 .map(|v| CredentialSchemaCodePropertiesRequestDTO {
                     attribute: v.attribute,
                     r#type: match v.r#type {
-                        CodeTypeEnum::Barcode => crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::Barcode,
-                        CodeTypeEnum::Mrz => crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::Mrz,
-                        CodeTypeEnum::QrCode => crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::QrCode,
+                        OpenCodeTypeEnum::Barcode => crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::Barcode,
+                        OpenCodeTypeEnum::Mrz => crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::Mrz,
+                        OpenCodeTypeEnum::QrCode => crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::QrCode,
                     },
                 }),
         }
@@ -244,7 +244,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub revocation_method: String,
     pub organisation_id: Uuid,
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,

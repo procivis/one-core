@@ -1,7 +1,7 @@
 use one_core::model::key::KeyRelations;
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::key_repository::KeyRepository;
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use shared_types::KeyId;
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -18,10 +18,10 @@ impl KeysDB {
         Self { repository }
     }
 
-    pub async fn create(&self, organisation: &Organisation, params: TestingKeyParams) -> Key {
+    pub async fn create(&self, organisation: &Organisation, params: TestingKeyParams) -> OpenKey {
         let now = OffsetDateTime::now_utc();
 
-        let key = Key {
+        let key = OpenKey {
             id: params.id.unwrap_or(Uuid::new_v4().into()).into(),
             created_date: params.created_date.unwrap_or(now),
             last_modified: params.last_modified.unwrap_or(now),
@@ -38,7 +38,7 @@ impl KeysDB {
         self.get(&key.id.to_owned().into()).await
     }
 
-    pub async fn get(&self, id: &KeyId) -> Key {
+    pub async fn get(&self, id: &KeyId) -> OpenKey {
         self.repository
             .get_key(
                 &id.to_owned().into(),

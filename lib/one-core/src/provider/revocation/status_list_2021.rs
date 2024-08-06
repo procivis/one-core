@@ -6,7 +6,7 @@ use std::sync::Arc;
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList2021JWTFormatter;
 use crate::util::key_verification::KeyVerification;
-use one_providers::common_models::credential::Credential;
+use one_providers::common_models::credential::OpenCredential;
 use one_providers::common_models::did::DidValue;
 use one_providers::revocation::error::RevocationError;
 use one_providers::revocation::model::{
@@ -32,7 +32,7 @@ impl RevocationMethod for StatusList2021 {
 
     async fn add_issued_credential(
         &self,
-        _credential: &Credential,
+        _credential: &OpenCredential,
         _additional_data: Option<CredentialAdditionalData>,
     ) -> Result<(Option<RevocationUpdate>, Vec<CredentialRevocationInfo>), RevocationError> {
         Err(RevocationError::OperationNotSupported(
@@ -42,7 +42,7 @@ impl RevocationMethod for StatusList2021 {
 
     async fn mark_credential_as(
         &self,
-        _credential: &Credential,
+        _credential: &OpenCredential,
         _new_state: CredentialRevocationState,
         _additional_data: Option<CredentialAdditionalData>,
     ) -> Result<RevocationUpdate, RevocationError> {

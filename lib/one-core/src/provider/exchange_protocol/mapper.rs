@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use one_providers::common_models::credential::{Credential, CredentialStateEnum};
-use one_providers::common_models::did::Did;
-use one_providers::common_models::interaction::Interaction;
-use one_providers::common_models::key::Key;
-use one_providers::common_models::proof::{self, Proof, ProofId, ProofStateEnum};
+use one_providers::common_models::credential::{OpenCredential, OpenCredentialStateEnum};
+use one_providers::common_models::did::OpenDid;
+use one_providers::common_models::interaction::OpenInteraction;
+use one_providers::common_models::key::OpenKey;
+use one_providers::common_models::proof::{self, OpenProof, OpenProofStateEnum, ProofId};
 use one_providers::exchange_protocol::openid4vc::model::{
     CredentialGroup, CredentialGroupItem, PresentationDefinitionFieldDTO,
 };
@@ -46,8 +46,8 @@ pub fn interaction_from_handle_invitation(
     host: Url,
     data: Option<Vec<u8>>,
     now: OffsetDateTime,
-) -> Interaction {
-    Interaction {
+) -> OpenInteraction {
+    OpenInteraction {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
@@ -61,13 +61,13 @@ pub fn proof_from_handle_invitation(
     proof_id: &ProofId,
     protocol: &str,
     redirect_uri: Option<String>,
-    verifier_did: Option<Did>,
-    interaction: Interaction,
+    verifier_did: Option<OpenDid>,
+    interaction: OpenInteraction,
     now: OffsetDateTime,
-    verifier_key: Option<Key>,
+    verifier_key: Option<OpenKey>,
     transport: &str,
-) -> Proof {
-    Proof {
+) -> OpenProof {
+    OpenProof {
         id: proof_id.to_owned(),
         created_date: now,
         last_modified: now,
@@ -75,10 +75,10 @@ pub fn proof_from_handle_invitation(
         exchange: protocol.to_owned(),
         redirect_uri,
         transport: transport.to_owned(),
-        state: Some(vec![proof::ProofState {
+        state: Some(vec![proof::OpenProofState {
             created_date: now,
             last_modified: now,
-            state: ProofStateEnum::Pending,
+            state: OpenProofStateEnum::Pending,
         }]),
         schema: None,
         claims: None,
@@ -90,7 +90,7 @@ pub fn proof_from_handle_invitation(
 }
 
 pub fn credential_model_to_credential_dto(
-    credentials: Vec<Credential>,
+    credentials: Vec<OpenCredential>,
     config: &CoreConfig,
     organisation: &Organisation,
 ) -> Result<Vec<CredentialDetailResponseDTO>, ExchangeProtocolError> {
@@ -109,8 +109,8 @@ pub async fn get_relevant_credentials_to_credential_schemas(
     mut credential_groups: Vec<CredentialGroup>,
     group_id_to_schema_id_mapping: HashMap<String, String>,
     allowed_schema_formats: &HashSet<&str>,
-) -> Result<(Vec<Credential>, Vec<CredentialGroup>), ExchangeProtocolError> {
-    let mut relevant_credentials: Vec<Credential> = Vec::new();
+) -> Result<(Vec<OpenCredential>, Vec<CredentialGroup>), ExchangeProtocolError> {
+    let mut relevant_credentials: Vec<OpenCredential> = Vec::new();
     for group in &mut credential_groups {
         let credential_schema_id =
             group_id_to_schema_id_mapping
@@ -146,9 +146,9 @@ pub async fn get_relevant_credentials_to_credential_schemas(
 
             // only consider credentials that have finished the issuance flow
             if ![
-                CredentialStateEnum::Accepted,
-                CredentialStateEnum::Revoked,
-                CredentialStateEnum::Suspended,
+                OpenCredentialStateEnum::Accepted,
+                OpenCredentialStateEnum::Revoked,
+                OpenCredentialStateEnum::Suspended,
             ]
             .contains(&credential_state.state.clone())
             {
@@ -200,7 +200,7 @@ pub async fn get_relevant_credentials_to_credential_schemas(
 
 pub fn create_presentation_definition_field(
     field: CredentialGroupItem,
-    credentials: &[Credential],
+    credentials: &[OpenCredential],
 ) -> Result<PresentationDefinitionFieldDTO, ExchangeProtocolError> {
     let mut key_map: HashMap<String, String> = HashMap::new();
     let key = field.key;

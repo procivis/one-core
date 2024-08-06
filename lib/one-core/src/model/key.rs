@@ -1,7 +1,7 @@
 use crate::model::organisation::OrganisationRelations;
 
 use crate::model::common::{GetListQueryParams, GetListResponse};
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct KeyRelations {
@@ -17,5 +17,5 @@ pub enum SortableKeyColumn {
     StorageType,
 }
 
-pub type GetKeyList = GetListResponse<Key>;
+pub type GetKeyList = GetListResponse<OpenKey>;
 pub type GetKeyQuery = GetListQueryParams<SortableKeyColumn>;

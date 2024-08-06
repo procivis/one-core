@@ -185,8 +185,8 @@ pub enum SortableCredentialSchemaColumnRestEnum {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[serde(rename_all = "UPPERCASE")]
-#[into("one_providers::common_models::credential_schema::WalletStorageTypeEnum")]
-#[from("one_providers::common_models::credential_schema::WalletStorageTypeEnum")]
+#[into("one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum")]
+#[from("one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum")]
 pub enum WalletStorageTypeRestEnum {
     Software,
     Hardware,

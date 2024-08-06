@@ -1,5 +1,5 @@
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use shared_types::{CredentialId, DidId, KeyId};
 use strum_macros::Display;
 use time::OffsetDateTime;
@@ -15,8 +15,8 @@ use crate::model::key::KeyRelations;
 use crate::service::credential::dto::{CredentialFilterValue, CredentialListIncludeEntityTypeEnum};
 
 #[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::credential::Credential)]
-#[from(one_providers::common_models::credential::Credential)]
+#[into(one_providers::common_models::credential::OpenCredential)]
+#[from(one_providers::common_models::credential::OpenCredential)]
 pub struct Credential {
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
@@ -52,7 +52,7 @@ pub struct Credential {
     pub revocation_list: Option<RevocationList>,
     #[into(with_fn = "convert_inner")]
     #[from(with_fn = "convert_inner")]
-    pub key: Option<Key>,
+    pub key: Option<OpenKey>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -68,8 +68,8 @@ pub struct CredentialRelations {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential::CredentialState)]
-#[into(one_providers::common_models::credential::CredentialState)]
+#[from(one_providers::common_models::credential::OpenCredentialState)]
+#[into(one_providers::common_models::credential::OpenCredentialState)]
 pub struct CredentialState {
     pub created_date: OffsetDateTime,
     pub state: CredentialStateEnum,
@@ -77,8 +77,8 @@ pub struct CredentialState {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Display, From, Into)]
-#[from(one_providers::common_models::credential::CredentialStateEnum)]
-#[into(one_providers::common_models::credential::CredentialStateEnum)]
+#[from(one_providers::common_models::credential::OpenCredentialStateEnum)]
+#[into(one_providers::common_models::credential::OpenCredentialStateEnum)]
 pub enum CredentialStateEnum {
     Created,
     Pending,
@@ -105,7 +105,7 @@ pub type GetCredentialQuery =
     ListQuery<SortableCredentialColumn, CredentialFilterValue, CredentialListIncludeEntityTypeEnum>;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, From)]
-#[from(one_providers::common_models::credential::UpdateCredentialRequest)]
+#[from(one_providers::common_models::credential::OpenUpdateCredentialRequest)]
 pub struct UpdateCredentialRequest {
     pub id: CredentialId,
 
@@ -124,8 +124,8 @@ pub struct UpdateCredentialRequest {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, From, Into)]
-#[from(one_providers::common_models::credential::CredentialRole)]
-#[into(one_providers::common_models::credential::CredentialRole)]
+#[from(one_providers::common_models::credential::OpenCredentialRole)]
+#[into(one_providers::common_models::credential::OpenCredentialRole)]
 pub enum CredentialRole {
     Holder,
     Issuer,

@@ -30,7 +30,7 @@ use crate::{
     repository::error::DataLayerError,
     service::{did::mapper::map_did_model_to_did_web_response, error::BusinessLogicError},
 };
-use one_providers::common_models::key::{Key, KeyId};
+use one_providers::common_models::key::{KeyId, OpenKey};
 use one_providers::did::error::DidMethodProviderError;
 
 impl DidService {
@@ -66,7 +66,7 @@ impl DidService {
             return Err(BusinessLogicError::DidIsDeactivated(did.id).into());
         }
 
-        let mut grouped_key: HashMap<KeyId, Key> = HashMap::new();
+        let mut grouped_key: HashMap<KeyId, OpenKey> = HashMap::new();
         let keys = did
             .keys
             .as_ref()

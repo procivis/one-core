@@ -4,7 +4,7 @@ use std::vec;
 
 use mockall::predicate::eq;
 use one_providers::caching_loader::CachingLoader;
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use one_providers::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, Presentation,
 };
@@ -91,7 +91,7 @@ async fn test_connect_to_holder_succeeds() {
                         credential_schema: Some(CredentialSchema {
                             id: Uuid::new_v4().into(),
                             deleted_at: None,
-                            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
                             created_date: OffsetDateTime::now_utc(),
                             last_modified: OffsetDateTime::now_utc(),
                             name: "name".to_string(),
@@ -209,7 +209,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
                         credential_schema: Some(CredentialSchema {
                             id: Uuid::new_v4().into(),
                             deleted_at: None,
-                            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
                             created_date: OffsetDateTime::now_utc(),
                             last_modified: OffsetDateTime::now_utc(),
                             name: "name".to_string(),

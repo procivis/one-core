@@ -1,5 +1,5 @@
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use serde::{Deserialize, Serialize};
 use shared_types::CredentialSchemaId;
 use strum::Display;
@@ -18,8 +18,8 @@ pub type CredentialFormat = String;
 pub type RevocationMethod = String;
 
 #[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::credential_schema::CredentialSchema)]
-#[from(one_providers::common_models::credential_schema::CredentialSchema)]
+#[into(one_providers::common_models::credential_schema::OpenCredentialSchema)]
+#[from(one_providers::common_models::credential_schema::OpenCredentialSchema)]
 pub struct CredentialSchema {
     pub id: CredentialSchemaId,
     pub deleted_at: Option<OffsetDateTime>,
@@ -30,7 +30,7 @@ pub struct CredentialSchema {
     pub revocation_method: RevocationMethod,
     #[into(with_fn = "convert_inner")]
     #[from(with_fn = "convert_inner")]
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
     pub layout_type: LayoutType,
     #[into(with_fn = "convert_inner")]
     #[from(with_fn = "convert_inner")]
@@ -73,8 +73,8 @@ impl From<String> for CredentialSchemaType {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::CredentialSchemaClaim)]
-#[into(one_providers::common_models::credential_schema::CredentialSchemaClaim)]
+#[from(one_providers::common_models::credential_schema::OpenCredentialSchemaClaim)]
+#[into(one_providers::common_models::credential_schema::OpenCredentialSchemaClaim)]
 pub struct CredentialSchemaClaim {
     pub schema: ClaimSchema,
     pub required: bool,
@@ -94,8 +94,8 @@ pub enum SortableCredentialSchemaColumn {
 }
 
 #[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::LayoutType)]
-#[into(one_providers::common_models::credential_schema::LayoutType)]
+#[from(one_providers::common_models::credential_schema::OpenLayoutType)]
+#[into(one_providers::common_models::credential_schema::OpenLayoutType)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum LayoutType {
     Card,
@@ -104,8 +104,8 @@ pub enum LayoutType {
 }
 
 #[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::LayoutProperties)]
-#[into(one_providers::common_models::credential_schema::LayoutProperties)]
+#[from(one_providers::common_models::credential_schema::OpenLayoutProperties)]
+#[into(one_providers::common_models::credential_schema::OpenLayoutProperties)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutProperties {
     #[from(with_fn = "convert_inner")]
@@ -123,8 +123,8 @@ pub struct LayoutProperties {
 }
 
 #[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::BackgroundProperties)]
-#[into(one_providers::common_models::credential_schema::BackgroundProperties)]
+#[from(one_providers::common_models::credential_schema::OpenBackgroundProperties)]
+#[into(one_providers::common_models::credential_schema::OpenBackgroundProperties)]
 #[serde(rename_all = "camelCase")]
 pub struct BackgroundProperties {
     pub color: Option<String>,
@@ -132,8 +132,8 @@ pub struct BackgroundProperties {
 }
 
 #[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::LogoProperties)]
-#[into(one_providers::common_models::credential_schema::LogoProperties)]
+#[from(one_providers::common_models::credential_schema::OpenLogoProperties)]
+#[into(one_providers::common_models::credential_schema::OpenLogoProperties)]
 #[serde(rename_all = "camelCase")]
 pub struct LogoProperties {
     pub font_color: Option<String>,
@@ -142,8 +142,8 @@ pub struct LogoProperties {
 }
 
 #[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::CodeProperties)]
-#[into(one_providers::common_models::credential_schema::CodeProperties)]
+#[from(one_providers::common_models::credential_schema::OpenCodeProperties)]
+#[into(one_providers::common_models::credential_schema::OpenCodeProperties)]
 #[serde(rename_all = "camelCase")]
 pub struct CodeProperties {
     pub attribute: String,
@@ -151,8 +151,8 @@ pub struct CodeProperties {
 }
 
 #[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::CodeTypeEnum)]
-#[into(one_providers::common_models::credential_schema::CodeTypeEnum)]
+#[from(one_providers::common_models::credential_schema::OpenCodeTypeEnum)]
+#[into(one_providers::common_models::credential_schema::OpenCodeTypeEnum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CodeTypeEnum {
     Barcode,
@@ -168,7 +168,7 @@ pub type GetCredentialSchemaQuery = ListQuery<
 >;
 
 #[derive(Clone, Debug, Eq, PartialEq, From)]
-#[from(one_providers::common_models::credential_schema::UpdateCredentialSchemaRequest)]
+#[from(one_providers::common_models::credential_schema::OpenUpdateCredentialSchemaRequest)]
 pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
     pub revocation_method: Option<RevocationMethod>,

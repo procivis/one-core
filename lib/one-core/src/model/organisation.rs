@@ -3,8 +3,8 @@ use shared_types::OrganisationId;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into)]
-#[from(one_providers::common_models::organisation::Organisation)]
-#[into(one_providers::common_models::organisation::Organisation)]
+#[from(one_providers::common_models::organisation::OpenOrganisation)]
+#[into(one_providers::common_models::organisation::OpenOrganisation)]
 pub struct Organisation {
     pub id: OrganisationId,
     pub created_date: OffsetDateTime,

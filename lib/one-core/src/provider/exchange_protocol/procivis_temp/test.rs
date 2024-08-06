@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use one_providers::common_models::credential::{Credential, CredentialRole};
-use one_providers::common_models::did::{Did, KeyRole, RelatedKey};
-use one_providers::common_models::proof::Proof;
-use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::common_models::credential::{OpenCredential, OpenCredentialRole};
+use one_providers::common_models::did::{KeyRole, OpenDid, RelatedKey};
+use one_providers::common_models::proof::OpenProof;
+use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, TypeToDescriptorMapper,
@@ -36,8 +36,8 @@ fn setup_protocol(base_url: Option<String>, repositories: Repositories) -> Proci
     )
 }
 
-fn generate_credential(redirect_uri: Option<String>) -> Credential {
-    Credential {
+fn generate_credential(redirect_uri: Option<String>) -> OpenCredential {
+    OpenCredential {
         id: Uuid::default().into(),
         created_date: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -46,7 +46,7 @@ fn generate_credential(redirect_uri: Option<String>) -> Credential {
         credential: vec![],
         exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri,
-        role: CredentialRole::Issuer,
+        role: OpenCredentialRole::Issuer,
         state: None,
         claims: None,
         issuer_did: None,
@@ -57,8 +57,8 @@ fn generate_credential(redirect_uri: Option<String>) -> Credential {
     }
 }
 
-fn generate_proof(redirect_uri: Option<String>) -> Proof {
-    Proof {
+fn generate_proof(redirect_uri: Option<String>) -> OpenProof {
+    OpenProof {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
@@ -114,7 +114,7 @@ async fn test_share_proof_no_base_url() {
     let protocol = setup_protocol(None, Repositories::default());
     let mut proof = generate_proof(None);
 
-    let did = Did {
+    let did = OpenDid {
         keys: Some(vec![RelatedKey {
             role: KeyRole::KeyAgreement,
             key: dummy_key(),
@@ -126,7 +126,7 @@ async fn test_share_proof_no_base_url() {
 
     let mut key_alg = MockKeyAlgorithm::default();
     key_alg.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+        Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
             crv: "123".to_string(),
             x: "456".to_string(),
@@ -172,7 +172,7 @@ async fn test_share_proof_success_no_redirect_uri() {
     let protocol = setup_protocol(Some("http://base_url".to_string()), Repositories::default());
     let mut proof = generate_proof(None);
 
-    let did = Did {
+    let did = OpenDid {
         keys: Some(vec![RelatedKey {
             role: KeyRole::KeyAgreement,
             key: dummy_key(),
@@ -184,7 +184,7 @@ async fn test_share_proof_success_no_redirect_uri() {
 
     let mut key_alg = MockKeyAlgorithm::default();
     key_alg.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+        Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
             crv: "123".to_string(),
             x: "456".to_string(),
@@ -231,7 +231,7 @@ async fn test_share_proof_success_with_redirect_uri_is_percent_encoded() {
     let protocol = setup_protocol(Some("http://base_url".to_string()), Repositories::default());
     let mut proof = generate_proof(Some("http://base_url/redirect?queryParam=1".to_string()));
 
-    let did = Did {
+    let did = OpenDid {
         keys: Some(vec![RelatedKey {
             role: KeyRole::KeyAgreement,
             key: dummy_key(),
@@ -243,7 +243,7 @@ async fn test_share_proof_success_with_redirect_uri_is_percent_encoded() {
 
     let mut key_alg = MockKeyAlgorithm::default();
     key_alg.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+        Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
             crv: "123".to_string(),
             x: "456".to_string(),

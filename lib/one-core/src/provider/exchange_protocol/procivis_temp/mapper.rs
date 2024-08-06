@@ -1,7 +1,7 @@
 use dto_mapper::convert_inner;
-use one_providers::common_models::credential::Credential;
-use one_providers::common_models::did::{Did, DidType, DidValue};
-use one_providers::common_models::proof::Proof;
+use one_providers::common_models::credential::OpenCredential;
+use one_providers::common_models::did::{DidType, DidValue, OpenDid};
+use one_providers::common_models::proof::OpenProof;
 use one_providers::exchange_protocol::openid4vc::model::{
     CredentialGroup, CredentialGroupItem, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -18,10 +18,10 @@ use crate::provider::exchange_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
 };
 
-pub fn remote_did_from_value(did_value: DidValue) -> Did {
+pub fn remote_did_from_value(did_value: DidValue) -> OpenDid {
     let id = Uuid::new_v4();
     let now = OffsetDateTime::now_utc();
-    Did {
+    OpenDid {
         id: id.into(),
         name: format!("issuer {id}"),
         created_date: now,
@@ -57,7 +57,7 @@ fn create_requested_credential(
     name: Option<String>,
     purpose: Option<String>,
     fields: Vec<CredentialGroupItem>,
-    applicable_credentials: Vec<Credential>,
+    applicable_credentials: Vec<OpenCredential>,
     validity_credential_nbf: Option<OffsetDateTime>,
 ) -> Result<PresentationDefinitionRequestedCredentialResponseDTO, ExchangeProtocolError> {
     Ok(PresentationDefinitionRequestedCredentialResponseDTO {
@@ -77,8 +77,8 @@ fn create_requested_credential(
 }
 
 pub(super) fn presentation_definition_from_proof(
-    proof: &Proof,
-    credentials: Vec<Credential>,
+    proof: &OpenProof,
+    credentials: Vec<OpenCredential>,
     credential_groups: Vec<CredentialGroup>,
     config: &CoreConfig,
     organisation: &Organisation,
@@ -118,7 +118,7 @@ pub(super) fn presentation_definition_from_proof(
 }
 
 pub fn get_proof_claim_schemas_from_proof(
-    value: &Proof,
+    value: &OpenProof,
 ) -> Result<Vec<ProofClaimSchema>, ExchangeProtocolError> {
     let interaction_data = value
         .interaction
