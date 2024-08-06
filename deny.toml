@@ -16,14 +16,13 @@ targets = [
 all-features        = false
 no-default-features = false
 
-
 # This section is considered when running `cargo deny check advisories`
 # More documentation for the advisories section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
 [advisories]
-version = 2
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
+version = 2
 yanked  = "deny"
 
 ignore = [
@@ -35,7 +34,6 @@ ignore = [
 # More documentation for the licenses section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html
 [licenses]
-version = 2
 allow = [
     "Apache-2.0",
     "BSD-2-Clause",
@@ -50,6 +48,7 @@ allow = [
     "BSL-1.0",
 ]
 confidence-threshold = 0.8
+version = 2
 
 exceptions = [
     # Allow MPL-2.0 for libraries we do not modify
@@ -74,27 +73,26 @@ ignore = true
 
 # Clarify ring crate license (LICENSE file not properly detected)
 [[licenses.clarify]]
-name          = "ring"
 expression    = "MIT AND ISC AND OpenSSL"
 license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
+name          = "ring"
 
 # This section is considered when running `cargo deny check bans`.
 # More documentation about the 'bans' section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/bans/cfg.html
 [bans]
+allow                      = []
+deny                       = []
+external-default-features  = "allow"
 multiple-versions          = "allow"
 wildcards                  = "deny"
 workspace-default-features = "allow"
-external-default-features  = "allow"
-allow                      = []
-deny                       = []
-
 
 # This section is considered when running `cargo deny check sources`.
 # More documentation about the 'sources' section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/sources/cfg.html
 [sources]
-unknown-registry = "deny"
-unknown-git      = "deny"
 allow-registry   = ["https://github.com/rust-lang/crates.io-index"]
 private          = ["https://gitlab.procivis.ch"]
+unknown-git      = "deny"
+unknown-registry = "deny"

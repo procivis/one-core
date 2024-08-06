@@ -1,8 +1,8 @@
 [package]
-name    = "migration"
-version = "0.1.0"
 edition = "2021"
+name    = "migration"
 publish = false
+version = "0.1.0"
 
 [lib]
 name = "migration"
@@ -20,8 +20,8 @@ time.workspace    = true
 tokio             = { workspace = true, features = ["macros", "rt-multi-thread"], optional = true }
 
 [features]
-default = ["cli", "mysql"]
 cli     = ["sea-orm-migration/cli", "tokio"]
+default = ["cli", "mysql"]
 mysql   = ["sea-orm-migration/sqlx-mysql"]
 
 [lints]

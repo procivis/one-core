@@ -40,7 +40,7 @@ use crate::provider::exchange_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
-use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::SERVICE_UUID;
 use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -435,55 +435,17 @@ impl ProofService {
             .into());
         }
 
-        let (interaction_id, interaction_data) = proof
-            .interaction
-            .and_then(|i| Some((i.id, i.data?)))
-            .ok_or_else(|| {
-                ServiceError::MappingError(format!("Missing interaction data in proof {proof_id}"))
-            })?;
+        let interaction_id = proof.interaction.map(|i| i.id).ok_or_else(|| {
+            ServiceError::MappingError(format!("Missing interaction data in proof {proof_id}"))
+        })?;
 
         if proof.exchange == "OPENID4VC" && self.config.transport.ble_enabled_for(&proof.transport)
         {
-            let ble_peripheral = self.ble_peripheral.as_ref().ok_or_else(|| {
-                ServiceError::Other(
-                    "BLE peripheral is enabled in config but missing in services".to_string(),
-                )
-            })?;
-
-            let is_advertising = ble_peripheral.is_advertising().await.map_err(|err| {
-                ServiceError::Other(format!("BLE peripheral is advertising check error: {err}"))
-            })?;
-
-            if is_advertising {
-                ble_peripheral.stop_advertisement().await.map_err(|err| {
-                    ServiceError::Other(format!("BLE peripheral stop advertisement error: {err}"))
-                })?;
-            }
-            if let Ok(ble_interaction_data) =
-                serde_json::from_slice::<BLEOpenID4VPInteractionData>(&interaction_data)
-            {
-                let service = "00000001-5026-444A-9E0E-D6F2450F3A77".to_owned();
-                // todo: add an enum for different characteristic values
-                let characteristic = "0000000B-5026-444A-9E0E-D6F2450F3A77".to_owned();
-                let data = &[1];
-
-                ble_peripheral
-                    .notify_characteristic_data(
-                        ble_interaction_data.peer.device_info.address,
-                        service,
-                        characteristic,
-                        data,
-                    )
-                    .await
-                    .map_err(|err| {
-                        ServiceError::Other(format!(
-                            "BLE peripheral error notifying characteristic data: {err}"
-                        ))
-                    })?;
-            };
-            ble_peripheral.stop_server().await.map_err(|err| {
-                ServiceError::Other(format!("BLE peripheral error stopping server: {err}"))
-            })?;
+            self.ble
+                .as_ref()
+                .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?
+                .abort(uuid::uuid!(SERVICE_UUID).into())
+                .await;
         }
 
         self.proof_repository

@@ -2,9 +2,8 @@ use ciborium::cbor;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, Bytes};
-
 use super::common::EReaderKey;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, Bytes};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -33,6 +32,7 @@ pub enum StatusCode {
 //  Handover = null for QRHandover
 //]
 #[derive(Debug, PartialEq, Clone)]
+#[allow(dead_code)]
 pub struct SessionTranscript {
     pub(crate) device_engagement_bytes: Bstr,
     pub(crate) e_reader_key_bytes: Bstr,
@@ -53,14 +53,11 @@ impl Serialize for SessionTranscript {
 mod test {
     use uuid::Uuid;
 
-    use crate::provider::exchange_protocol::iso_mdl::{
-        common::{EDeviceKey, KeyAgreement},
-        device_engagement::{
-            BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
-        },
-    };
-
     use super::*;
+    use crate::provider::exchange_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
+    use crate::provider::exchange_protocol::iso_mdl::device_engagement::{
+        BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
+    };
 
     #[test]
     fn test_session_establishment_serialization() {

@@ -6,19 +6,18 @@ env_files = ["./dev.env"]
 default_to_workspace = false
 
 [tasks.clean]
-command = "cargo"
 args    = ["clean"]
+command = "cargo"
 
 [tasks.build]
-command = "cargo"
 args    = ["build", "-p", "core-server"]
+command = "cargo"
 
 [tasks.clippy]
 command = "cargo"
 args    = ["clippy", "--all-targets", "--", "-D", "clippy::print_stderr", "-D", "clippy::dbg_macro"]
 
 [tasks.run]
-command = "cargo"
 args = [
   "run",
   "-p",
@@ -29,10 +28,9 @@ args = [
   "--config",
   "config/config-local.yml",
 ]
+command = "cargo"
 
 [tasks.runwallet]
-command = "cargo"
-env = { "ONE_app__serverPort" = "3001", "ONE_app__databaseUrl" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost:3307/core", "ONE_app__coreBaseUrl" = "http://0.0.0.0:3001" }
 args = [
   "run",
   "-p",
@@ -43,31 +41,33 @@ args = [
   "--config",
   "config/config-local.yml",
 ]
+command = "cargo"
+env = { "ONE_app__serverPort" = "3001", "ONE_app__databaseUrl" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost:3307/core", "ONE_app__coreBaseUrl" = "http://0.0.0.0:3001" }
 
 [tasks.runw]
-command = "cargo"
 args    = ["watch", "--ignore", "*.md", "--ignore", "*.yaml", "--ignore", "*.yml", "--exec", "make run"]
+command = "cargo"
 
 [tasks.test]
-workspace = true
-command   = "cargo"
 args      = ["test"]
+command   = "cargo"
+workspace = true
 
 [tasks.unit-tests]
-command = "cargo"
 args    = ["test", "--lib"]
+command = "cargo"
 
 [tasks.integration-tests]
-command = "cargo"
 args    = ["test", "--test", "integration_tests"]
+command = "cargo"
 
 [tasks.dbstart]
-command = "docker"
 args    = ["compose", "-f", "docker/db.yml", "up", "-d"]
+command = "docker"
 
 [tasks.dbstop]
-command = "docker"
 args    = ["compose", "-f", "docker/db.yml", "down"]
+command = "docker"
 
 [tasks.dbdrop]
 script = [
@@ -77,25 +77,24 @@ script = [
 ]
 
 [tasks.install_seaormcli]
-command = "cargo"
 args    = ["install", "sea-orm-cli", "--force", "--version", "0.12.1"]
+command = "cargo"
 
 [tasks.dbup1]
-env     = { "DATABASE_URL" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core" }
-command = "cargo"
 args    = ["run", "-p", "migration", "--", "up", "-n1"]
+command = "cargo"
+env     = { "DATABASE_URL" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core" }
 
 [tasks.dbdown1]
-env     = { "DATABASE_URL" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core" }
-command = "cargo"
 args    = ["run", "-p", "migration", "--", "down", "-n1"]
+command = "cargo"
+env     = { "DATABASE_URL" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core" }
 
 [tasks.generate_migration]
-command = "sea-orm-cli"
 args    = ["migrate", "generate", "${@}", "-d", "./apps/migration/"]
+command = "sea-orm-cli"
 
 [tasks.dbtempent]
-command = "sea-orm-cli"
 args = [
   "generate",
   "entity",
@@ -106,6 +105,7 @@ args = [
   "-o",
   "lib/sql-data-provider/src/entity_new/",
 ]
+command = "sea-orm-cli"
 
 [tasks.mobile-build]
 script.pre = '''
@@ -118,12 +118,12 @@ export CARGO_PROFILE_RELEASE_STRIP=symbols
 ############################################################### ANDROID-UNIFFI
 [tasks.add_android_targets]
 # x86_64 is skipped due to: https://github.com/rust-lang/rust/issues/109717
-command = "rustup"
 args    = ["target", "add", "i686-linux-android", "armv7-linux-androideabi", "aarch64-linux-android"]
+command = "rustup"
 
 [tasks.install_cross]
-command = "cargo"
 args    = ["install", "cross", "--git", "https://github.com/cross-rs/cross", "--tag", "v0.2.5"]
+command = "cargo"
 
 [tasks.generateuniffi_android]
 script = '''

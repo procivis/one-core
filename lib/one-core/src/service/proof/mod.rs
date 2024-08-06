@@ -5,7 +5,6 @@ use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
 
 use crate::config::core_config;
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProviderExtra;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -14,6 +13,7 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
+use crate::util::ble_resource::BleWaiter;
 
 pub mod dto;
 mod mapper;
@@ -33,7 +33,7 @@ pub struct ProofService {
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
-    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+    ble: Option<BleWaiter>,
     config: Arc<core_config::CoreConfig>,
     base_url: Option<String>,
 }
@@ -52,7 +52,7 @@ impl ProofService {
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
-        ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+        ble: Option<BleWaiter>,
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
     ) -> Self {
@@ -68,7 +68,7 @@ impl ProofService {
             credential_formatter_provider,
             revocation_method_provider,
             protocol_provider,
-            ble_peripheral,
+            ble,
             config,
             base_url,
         }

@@ -4,6 +4,7 @@ use one_providers::exchange_protocol::openid4vc::model::PresentationSubmissionMa
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use url::Url;
+use uuid::Uuid;
 
 use super::dto::OpenID4VPPresentationDefinition;
 use super::openidvc_ble::BLEPeer;
@@ -48,8 +49,9 @@ pub struct HolderInteractionData {
     pub refresh_token_expires_at: Option<OffsetDateTime>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BLEOpenID4VPInteractionData {
+    pub task_id: Uuid,
     pub peer: BLEPeer,
     pub nonce: Option<String>,
     pub presentation_definition: Option<OpenID4VPPresentationDefinition>,

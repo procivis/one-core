@@ -1,4 +1,4 @@
-image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.76.0-0.1
+image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.80.0-0.1
 
 variables:
   DOCKER_DRIVER: overlay2

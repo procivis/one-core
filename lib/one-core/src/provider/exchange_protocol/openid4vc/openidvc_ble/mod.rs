@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::pin::Pin;
 use std::sync::Arc;
 
 use aes_gcm::aead::{Aead, Payload};
@@ -45,8 +44,6 @@ use super::mapper::{get_claim_name_by_json_path, presentation_definition_from_in
 use super::model::BLEOpenID4VPInteractionData;
 use crate::config::core_config::{self, TransportType};
 use crate::model::interaction::Interaction;
-use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::exchange_protocol::mapper::{
@@ -58,6 +55,7 @@ use crate::provider::exchange_protocol::{
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
+use crate::util::ble_resource::BleWaiter;
 use crate::util::oidc::{create_core_to_oicd_format_map, map_from_oidc_format_to_core};
 
 pub mod oidc_ble_holder;
@@ -96,17 +94,18 @@ impl IdentityRequest {
     }
 }
 
-type BLEStream = Pin<Box<dyn Stream<Item = Result<Vec<u8>, BleError>> + Send>>;
 #[async_trait::async_trait]
 pub trait BLEParse<T, Error> {
     async fn parse(self) -> Result<T, Error>;
 }
 
-// todo(mite): this can be also implemented for unboxed streams (for T: Stream<...> and then impl that for boxed stream)
-
 #[async_trait::async_trait]
-impl BLEParse<TransferSummaryReport, anyhow::Error> for BLEStream {
-    async fn parse(mut self) -> Result<TransferSummaryReport> {
+impl<T> BLEParse<TransferSummaryReport, anyhow::Error> for T
+where
+    T: Stream<Item = Result<Vec<u8>, BleError>> + Send,
+{
+    async fn parse(self) -> Result<TransferSummaryReport> {
+        tokio::pin!(self);
         let data = self
             .try_next()
             .await?
@@ -123,8 +122,12 @@ impl BLEParse<TransferSummaryReport, anyhow::Error> for BLEStream {
 }
 
 #[async_trait::async_trait]
-impl BLEParse<IdentityRequest, anyhow::Error> for BLEStream {
-    async fn parse(mut self) -> Result<IdentityRequest> {
+impl<T> BLEParse<IdentityRequest, anyhow::Error> for T
+where
+    T: Stream<Item = Result<Vec<u8>, BleError>> + Send,
+{
+    async fn parse(self) -> Result<IdentityRequest> {
+        tokio::pin!(self);
         let data = self
             .try_next()
             .await?
@@ -148,8 +151,12 @@ impl BLEParse<IdentityRequest, anyhow::Error> for BLEStream {
 }
 
 #[async_trait::async_trait]
-impl BLEParse<MessageSize, anyhow::Error> for BLEStream {
-    async fn parse(mut self) -> Result<u16> {
+impl<T> BLEParse<MessageSize, anyhow::Error> for T
+where
+    T: Stream<Item = Result<Vec<u8>, BleError>> + Send,
+{
+    async fn parse(self) -> Result<u16> {
+        tokio::pin!(self);
         let data = self
             .try_next()
             .await?
@@ -279,8 +286,7 @@ pub(crate) struct OpenID4VCBLE {
     interaction_repository: Arc<dyn InteractionRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
-    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
-    ble_central: Option<Arc<dyn BleCentral>>,
+    ble: Option<BleWaiter>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -290,8 +296,7 @@ impl OpenID4VCBLE {
         interaction_repository: Arc<dyn InteractionRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
-        ble_peripheral: Option<Arc<dyn BlePeripheral>>,
-        ble_central: Option<Arc<dyn BleCentral>>,
+        ble: Option<BleWaiter>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
@@ -299,8 +304,7 @@ impl OpenID4VCBLE {
             interaction_repository,
             formatter_provider,
             key_provider,
-            ble_peripheral,
-            ble_central,
+            ble,
             config,
         }
     }
@@ -341,11 +345,9 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             ));
         }
 
-        let Some(ble_central) = self.ble_central.clone() else {
-            return Err(ExchangeProtocolError::Failed(
-                "BLE central not available".to_string(),
-            ));
-        };
+        let ble = self.ble.clone().ok_or_else(|| {
+            ExchangeProtocolError::Failed("BLE central not available".to_string())
+        })?;
 
         let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
             "Query cannot be empty".to_string(),
@@ -357,8 +359,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         let mut ble_holder = OpenID4VCBLEHolder::new(
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
-            ble_central,
-            None,
+            ble,
         );
 
         if !ble_holder.enabled().await? {
@@ -403,27 +404,16 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         })
     }
 
-    async fn reject_proof(&self, proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
-        let interaction_data: BLEOpenID4VPInteractionData = deserialize_interaction_data(
-            proof
-                .interaction
-                .as_ref()
-                .and_then(|interaction| interaction.data.as_ref()),
-        )?;
-
+    async fn reject_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
         let ble_holder = OpenID4VCBLEHolder::new(
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
-            self.ble_central.clone().ok_or_else(|| {
+            self.ble.clone().ok_or_else(|| {
                 ExchangeProtocolError::Failed("Missing BLE central for reject proof".to_string())
             })?,
-            Some(interaction_data.peer),
         );
 
-        if ble_holder.enabled().await? {
-            ble_holder.disconnect_from_verifier().await?;
-        };
-
+        ble_holder.disconnect_from_verifier().await;
         Ok(())
     }
 
@@ -437,7 +427,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         _format_map: HashMap<String, String>,
         _presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
-        let ble_central = self.ble_central.as_ref().ok_or_else(|| {
+        let ble = self.ble.clone().ok_or_else(|| {
             ExchangeProtocolError::Failed("Missing BLE central for submit proof".to_string())
         })?;
 
@@ -451,8 +441,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         let ble_holder = OpenID4VCBLEHolder::new(
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
-            ble_central.clone(),
-            Some(interaction_data.peer),
+            ble,
         );
 
         if !ble_holder.enabled().await? {
@@ -503,6 +492,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
 
         let presentation_definition_id = interaction_data
             .presentation_definition
+            .as_ref()
             .ok_or(ExchangeProtocolError::Failed(
                 "Missing presentation definition".into(),
             ))?
@@ -534,7 +524,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         ble_holder
-            .submit_presentation(vp_token, presentation_submission)
+            .submit_presentation(vp_token, presentation_submission, &interaction_data)
             .await?;
 
         Ok(UpdateResponse {
@@ -598,17 +588,14 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             ));
         }
 
-        let Some(ble_peripheral) = self.ble_peripheral.as_ref() else {
-            return Err(ExchangeProtocolError::Failed(
-                "BLE central not available".to_string(),
-            ));
-        };
+        let ble = self.ble.clone().ok_or_else(|| {
+            ExchangeProtocolError::Failed("BLE central not available".to_string())
+        })?;
 
         let ble_verifier = OpenID4VCBLEVerifier::new(
-            ble_peripheral.clone(),
+            ble,
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
-            None,
         )?;
 
         if !ble_verifier.enabled().await? {
