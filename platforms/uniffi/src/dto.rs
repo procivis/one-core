@@ -53,7 +53,7 @@ use one_core::service::trust_anchor::dto::{
     GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO, SortableTrustAnchorColumn,
     TrustAnchorsListItemResponseDTO,
 };
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use one_providers::key_storage::model::StorageGeneratedKey;
 
 use crate::error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
@@ -541,8 +541,8 @@ pub enum LayoutTypeBindingEnum {
 }
 
 #[derive(From, Clone, Debug, Into)]
-#[from(WalletStorageTypeEnum)]
-#[into(WalletStorageTypeEnum)]
+#[from(OpenWalletStorageTypeEnum)]
+#[into(OpenWalletStorageTypeEnum)]
 pub enum WalletStorageTypeBindingEnum {
     Hardware,
     Software,

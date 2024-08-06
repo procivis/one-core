@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use dto_mapper::convert_inner;
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use one_providers::revocation::model::CredentialRevocationState;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
@@ -529,7 +529,7 @@ pub(super) fn from_create_request(
     claims: Vec<Claim>,
     issuer_did: Did,
     schema: CredentialSchema,
-    key: Key,
+    key: OpenKey,
 ) -> Credential {
     let now = OffsetDateTime::now_utc();
 
@@ -649,31 +649,39 @@ pub(super) fn credential_revocation_state_to_model_state(
     }
 }
 
-impl From<one_providers::common_models::credential::CredentialStateEnum>
+impl From<one_providers::common_models::credential::OpenCredentialStateEnum>
     for crate::service::credential::dto::CredentialStateEnum
 {
-    fn from(value: one_providers::common_models::credential::CredentialStateEnum) -> Self {
+    fn from(value: one_providers::common_models::credential::OpenCredentialStateEnum) -> Self {
         match value {
-            one_providers::common_models::credential::CredentialStateEnum::Created => Self::Created,
-            one_providers::common_models::credential::CredentialStateEnum::Pending => Self::Pending,
-            one_providers::common_models::credential::CredentialStateEnum::Offered => Self::Offered,
-            one_providers::common_models::credential::CredentialStateEnum::Accepted => {
+            one_providers::common_models::credential::OpenCredentialStateEnum::Created => {
+                Self::Created
+            }
+            one_providers::common_models::credential::OpenCredentialStateEnum::Pending => {
+                Self::Pending
+            }
+            one_providers::common_models::credential::OpenCredentialStateEnum::Offered => {
+                Self::Offered
+            }
+            one_providers::common_models::credential::OpenCredentialStateEnum::Accepted => {
                 Self::Accepted
             }
-            one_providers::common_models::credential::CredentialStateEnum::Rejected => {
+            one_providers::common_models::credential::OpenCredentialStateEnum::Rejected => {
                 Self::Rejected
             }
-            one_providers::common_models::credential::CredentialStateEnum::Revoked => Self::Revoked,
-            one_providers::common_models::credential::CredentialStateEnum::Suspended => {
+            one_providers::common_models::credential::OpenCredentialStateEnum::Revoked => {
+                Self::Revoked
+            }
+            one_providers::common_models::credential::OpenCredentialStateEnum::Suspended => {
                 Self::Suspended
             }
-            one_providers::common_models::credential::CredentialStateEnum::Error => Self::Error,
+            one_providers::common_models::credential::OpenCredentialStateEnum::Error => Self::Error,
         }
     }
 }
 
 impl From<crate::service::credential::dto::CredentialStateEnum>
-    for one_providers::common_models::credential::CredentialStateEnum
+    for one_providers::common_models::credential::OpenCredentialStateEnum
 {
     fn from(value: crate::service::credential::dto::CredentialStateEnum) -> Self {
         match value {
@@ -700,17 +708,23 @@ impl From<String> for CredentialSchemaType {
     }
 }
 
-impl From<one_providers::common_models::credential::CredentialRole> for super::dto::CredentialRole {
-    fn from(value: one_providers::common_models::credential::CredentialRole) -> Self {
+impl From<one_providers::common_models::credential::OpenCredentialRole>
+    for super::dto::CredentialRole
+{
+    fn from(value: one_providers::common_models::credential::OpenCredentialRole) -> Self {
         match value {
-            one_providers::common_models::credential::CredentialRole::Holder => Self::Holder,
-            one_providers::common_models::credential::CredentialRole::Issuer => Self::Issuer,
-            one_providers::common_models::credential::CredentialRole::Verifier => Self::Verifier,
+            one_providers::common_models::credential::OpenCredentialRole::Holder => Self::Holder,
+            one_providers::common_models::credential::OpenCredentialRole::Issuer => Self::Issuer,
+            one_providers::common_models::credential::OpenCredentialRole::Verifier => {
+                Self::Verifier
+            }
         }
     }
 }
 
-impl From<super::dto::CredentialRole> for one_providers::common_models::credential::CredentialRole {
+impl From<super::dto::CredentialRole>
+    for one_providers::common_models::credential::OpenCredentialRole
+{
     fn from(value: super::dto::CredentialRole) -> Self {
         match value {
             super::dto::CredentialRole::Holder => Self::Holder,

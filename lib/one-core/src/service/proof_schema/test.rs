@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::PredicateBooleanExt;
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
 use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
@@ -1261,7 +1261,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
                 schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
@@ -1329,7 +1329,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
                 schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
@@ -1401,7 +1401,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
                 name: "test-credential-schema".to_string(),
                 format: "OTHER_FORMAT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
                 schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,

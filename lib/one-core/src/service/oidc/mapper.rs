@@ -235,7 +235,7 @@ pub(super) async fn credential_from_proved(
 }
 
 fn from_provider_schema(
-    schema: one_providers::common_models::credential_schema::CredentialSchema,
+    schema: one_providers::common_models::credential_schema::OpenCredentialSchema,
     organisation: Organisation,
 ) -> CredentialSchema {
     CredentialSchema {

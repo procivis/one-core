@@ -117,7 +117,7 @@ async fn test_run_one_update() {
         .return_once(|_| Ok(()));
 
     let credential_model =
-        one_providers::common_models::credential::Credential::from(credential.clone());
+        one_providers::common_models::credential::OpenCredential::from(credential.clone());
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
         .expect_mark_credential_as()

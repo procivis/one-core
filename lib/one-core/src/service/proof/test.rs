@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::Sequence;
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
-use one_providers::common_models::key::Key;
-use one_providers::common_models::PublicKeyJwk;
-use one_providers::common_models::PublicKeyJwkEllipticData;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
+use one_providers::common_models::key::OpenKey;
+use one_providers::common_models::OpenPublicKeyJwk;
+use one_providers::common_models::OpenPublicKeyJwkEllipticData;
 use one_providers::credential_formatter::model::FormatterCapabilities;
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
@@ -134,7 +134,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::KeyAgreement,
-                key: Key {
+                key: OpenKey {
                     id: Uuid::new_v4().into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -226,7 +226,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
-                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                    wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),
@@ -340,7 +340,7 @@ async fn test_get_proof_exists() {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
-                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                    wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),
@@ -466,7 +466,7 @@ async fn test_get_proof_with_array_holder() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -681,7 +681,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -898,7 +898,7 @@ async fn test_get_proof_with_object_array_holder() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1094,7 +1094,7 @@ async fn test_get_proof_with_array() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1326,7 +1326,7 @@ async fn test_get_proof_with_array_in_object() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1561,7 +1561,7 @@ async fn test_get_proof_with_object_array() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1908,7 +1908,7 @@ async fn test_create_proof_without_related_key() {
                 organisation: None,
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
-                    key: Key {
+                    key: OpenKey {
                         id: verifier_key_id.into(),
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
@@ -2009,7 +2009,7 @@ async fn test_create_proof_with_related_key() {
                 organisation: None,
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
-                    key: Key {
+                    key: OpenKey {
                         id: verifier_key_id.into(),
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
@@ -2387,7 +2387,7 @@ async fn test_share_proof_created_success() {
 
     let mut key_algorithm = MockKeyAlgorithm::new();
     key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+        Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
             crv: "123".to_string(),
             x: "456".to_string(),
@@ -2493,7 +2493,7 @@ async fn test_share_proof_pending_success() {
 
     let mut key_algorithm = MockKeyAlgorithm::new();
     key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+        Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
             crv: "123".to_string(),
             x: "456".to_string(),

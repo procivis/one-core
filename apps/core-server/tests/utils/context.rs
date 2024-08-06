@@ -2,7 +2,7 @@ use core_server::ServerConfig;
 use one_core::config::core_config::AppConfig;
 use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::organisation::Organisation;
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use shared_types::DidValue;
 use std::str::FromStr;
 use tokio::task::JoinHandle;
@@ -77,7 +77,7 @@ impl TestContext {
         (context, organisation)
     }
 
-    pub async fn new_with_did() -> (Self, Organisation, Did, Key) {
+    pub async fn new_with_did() -> (Self, Organisation, Did, OpenKey) {
         let (context, organisation) = Self::new_with_organisation().await;
         let key = context
             .db

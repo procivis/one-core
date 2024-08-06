@@ -1,7 +1,7 @@
 use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
 use mockall::predicate::eq;
 use one_providers::{
-    common_models::key::Key,
+    common_models::key::OpenKey,
     key_storage::{error::KeyStorageError, model::StorageGeneratedKey, KeyStorage},
 };
 use std::sync::Arc;
@@ -62,7 +62,7 @@ async fn test_sign_success() {
 
     let result = provider
         .sign(
-            &Key {
+            &OpenKey {
                 id: Uuid::new_v4().into(),
                 key_reference: b"key_reference".to_vec(),
                 created_date: OffsetDateTime::now_utc(),

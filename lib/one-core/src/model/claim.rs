@@ -8,8 +8,8 @@ use super::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 pub type ClaimId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into)]
-#[from(one_providers::common_models::claim::Claim)]
-#[into(one_providers::common_models::claim::Claim)]
+#[from(one_providers::common_models::claim::OpenClaim)]
+#[into(one_providers::common_models::claim::OpenClaim)]
 pub struct Claim {
     pub id: ClaimId,
     pub credential_id: CredentialId, // cannot be a relation, because credential defines a reverse relation already

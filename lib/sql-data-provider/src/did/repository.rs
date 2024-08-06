@@ -5,7 +5,7 @@ use one_core::model::did::{
     Did, DidListQuery, DidRelations, GetDidList, RelatedKey, UpdateDidRequest,
 };
 use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, Set, Unchanged,
@@ -47,7 +47,7 @@ impl DidProvider {
                 .map_err(|e| DataLayerError::Db(e.into()))?;
 
             let mut related_keys: Vec<RelatedKey> = vec![];
-            let mut key_map: HashMap<KeyId, Key> = HashMap::default();
+            let mut key_map: HashMap<KeyId, OpenKey> = HashMap::default();
             for key_did_model in key_dids {
                 let key_id = &key_did_model.key_id;
                 let key = if let Some(key) = key_map.get(key_id) {

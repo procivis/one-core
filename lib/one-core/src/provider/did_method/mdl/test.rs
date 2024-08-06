@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use one_providers::did::keys::Keys;
 use one_providers::did::DidMethod;
 use one_providers::key_algorithm::imp::{eddsa::Eddsa, es256::Es256};
@@ -88,7 +88,7 @@ async fn test_create_mdl_did_for(
         "certificate": certificate.pem()
     });
 
-    let keys = [Key {
+    let keys = [OpenKey {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),

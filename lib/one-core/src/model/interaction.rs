@@ -6,8 +6,8 @@ use uuid::Uuid;
 pub type InteractionId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into)]
-#[from(one_providers::common_models::interaction::Interaction)]
-#[into(one_providers::common_models::interaction::Interaction)]
+#[from(one_providers::common_models::interaction::OpenInteraction)]
+#[into(one_providers::common_models::interaction::OpenInteraction)]
 pub struct Interaction {
     pub id: InteractionId,
     pub created_date: OffsetDateTime,

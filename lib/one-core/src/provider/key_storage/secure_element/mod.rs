@@ -1,4 +1,4 @@
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use serde::Deserialize;
 use std::sync::Arc;
 use zeroize::Zeroizing;
@@ -47,11 +47,11 @@ impl KeyStorage for SecureElementKeyProvider {
         self.native_storage.generate_key(key_alias)
     }
 
-    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+    async fn sign(&self, key: &OpenKey, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         self.native_storage.sign(&key.key_reference, message)
     }
 
-    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, KeyStorageError> {
+    fn secret_key_as_jwk(&self, _key: &OpenKey) -> Result<Zeroizing<String>, KeyStorageError> {
         unimplemented!()
     }
 

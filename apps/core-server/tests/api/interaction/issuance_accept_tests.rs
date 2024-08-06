@@ -1,7 +1,7 @@
 use serde_json::json;
 use uuid::Uuid;
 
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 
 use one_core::model::{
     credential::CredentialStateEnum,
@@ -425,7 +425,7 @@ async fn test_fail_issuance_accept_procivis_temp_wallet_storage_type_not_met() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
                 ..Default::default()
             },
         )
@@ -1007,7 +1007,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
                 ..Default::default()
             },
         )

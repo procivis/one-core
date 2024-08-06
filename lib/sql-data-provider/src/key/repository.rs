@@ -8,7 +8,7 @@ use one_core::model::key::{GetKeyList, GetKeyQuery, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
-use one_providers::common_models::key::{Key, KeyId};
+use one_providers::common_models::key::{KeyId, OpenKey};
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
@@ -40,7 +40,7 @@ impl KeyProvider {
 #[autometrics]
 #[async_trait::async_trait]
 impl KeyRepository for KeyProvider {
-    async fn create_key(&self, request: Key) -> Result<KeyId, DataLayerError> {
+    async fn create_key(&self, request: OpenKey) -> Result<KeyId, DataLayerError> {
         let organisation_id = request.organisation.ok_or(DataLayerError::MappingError)?.id;
 
         key::ActiveModel {
@@ -66,7 +66,7 @@ impl KeyRepository for KeyProvider {
         &self,
         id: &KeyId,
         relations: &KeyRelations,
-    ) -> Result<Option<Key>, DataLayerError> {
+    ) -> Result<Option<OpenKey>, DataLayerError> {
         let key = key::Entity::find_by_id(*id)
             .filter(key::Column::DeletedAt.is_null())
             .one(&self.db)
@@ -87,7 +87,7 @@ impl KeyRepository for KeyProvider {
         Ok(Some(key))
     }
 
-    async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError> {
+    async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<OpenKey>, DataLayerError> {
         let keys = key::Entity::find()
             .filter(key::Column::DeletedAt.is_null())
             .filter(key::Column::Id.is_in(ids.iter().map(ToString::to_string)))

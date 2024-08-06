@@ -1,6 +1,6 @@
 use super::KeyService;
 
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use one_providers::key_storage::imp::provider::KeyProviderImpl;
 use one_providers::key_storage::model::StorageGeneratedKey;
 use one_providers::key_storage::{KeyStorage, MockKeyStorage};
@@ -47,9 +47,9 @@ fn setup_service(
     )
 }
 
-fn generic_key(name: &str, organisation_id: Uuid) -> Key {
+fn generic_key(name: &str, organisation_id: Uuid) -> OpenKey {
     let now = OffsetDateTime::now_utc();
-    Key {
+    OpenKey {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,

@@ -1,6 +1,6 @@
 use anyhow::Context;
 use futures::TryFutureExt;
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use one_providers::credential_formatter::model::CredentialPresentation;
 use one_providers::exchange_protocol::openid4vc::model::{
     InvitationResponseDTO, PresentationDefinitionRequestedCredentialResponseDTO,
@@ -585,10 +585,10 @@ impl SSIHolderService {
                 .as_ref()
                 .and_then(|schema| schema.wallet_storage_type.as_ref())
             {
-                Some(WalletStorageTypeEnum::Hardware) => {
+                Some(OpenWalletStorageTypeEnum::Hardware) => {
                     key_security.contains(&KeySecurity::Hardware)
                 }
-                Some(WalletStorageTypeEnum::Software) => {
+                Some(OpenWalletStorageTypeEnum::Software) => {
                     key_security.contains(&KeySecurity::Software)
                 }
                 None => true,

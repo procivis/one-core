@@ -1,4 +1,4 @@
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use serde::{Deserialize, Serialize};
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
@@ -30,7 +30,7 @@ pub struct KeyResponseDTO {
 }
 
 #[derive(Clone, Debug, From, Serialize, Deserialize)]
-#[from(Key)]
+#[from(OpenKey)]
 pub struct KeyListItemResponseDTO {
     pub id: Uuid,
     #[serde(with = "time::serde::rfc3339")]

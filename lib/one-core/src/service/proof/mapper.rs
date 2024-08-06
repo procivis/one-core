@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 use dto_mapper::convert_inner;
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use shared_types::{CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -622,7 +622,7 @@ pub fn proof_from_create_request(
     schema: ProofSchema,
     transport: &str,
     verifier_did: Did,
-    verifier_key: Option<Key>,
+    verifier_key: Option<OpenKey>,
 ) -> Proof {
     Proof {
         id: Uuid::new_v4().into(),

@@ -1,6 +1,6 @@
 use dto_mapper::convert_inner;
-use one_providers::common_models::key::{Key, KeyId};
-use one_providers::common_models::organisation::Organisation;
+use one_providers::common_models::key::{KeyId, OpenKey};
+use one_providers::common_models::organisation::OpenOrganisation;
 use one_providers::key_storage::model::StorageGeneratedKey;
 use rcgen::{CertificateParams, CustomExtension, DistinguishedName, DnType};
 use time::OffsetDateTime;
@@ -20,12 +20,12 @@ use crate::{
 pub(super) fn from_create_request(
     key_id: KeyId,
     request: KeyRequestDTO,
-    organisation: Organisation,
+    organisation: OpenOrganisation,
     generated_key: StorageGeneratedKey,
-) -> Key {
+) -> OpenKey {
     let now = OffsetDateTime::now_utc();
 
-    Key {
+    OpenKey {
         id: key_id,
         created_date: now,
         last_modified: now,
@@ -38,10 +38,10 @@ pub(super) fn from_create_request(
     }
 }
 
-impl TryFrom<Key> for KeyResponseDTO {
+impl TryFrom<OpenKey> for KeyResponseDTO {
     type Error = ServiceError;
 
-    fn try_from(value: Key) -> Result<Self, Self::Error> {
+    fn try_from(value: OpenKey) -> Result<Self, Self::Error> {
         let organisation_id = value
             .organisation
             .ok_or(ServiceError::MappingError(
@@ -72,7 +72,7 @@ impl From<GetKeyList> for GetKeyListResponseDTO {
     }
 }
 
-pub(super) fn key_create_history_event(key: Key) -> History {
+pub(super) fn key_create_history_event(key: OpenKey) -> History {
     History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),

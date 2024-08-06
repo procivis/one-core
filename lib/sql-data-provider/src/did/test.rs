@@ -11,7 +11,7 @@ use one_core::model::{
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use shared_types::{DidId, DidValue};
@@ -25,7 +25,7 @@ struct TestSetup {
     pub provider: DidProvider,
     pub organisation: Organisation,
     pub db: sea_orm::DatabaseConnection,
-    pub key: Key,
+    pub key: OpenKey,
 }
 
 #[derive(Default)]
@@ -61,7 +61,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
         },
-        key: Key {
+        key: OpenKey {
             id: key_id.into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -82,7 +82,7 @@ struct TestSetupWithDid {
     pub did_value: DidValue,
     pub did_id: DidId,
     pub organisation: Organisation,
-    pub key: Key,
+    pub key: OpenKey,
 }
 
 async fn setup_with_did(repositories: Repositories) -> TestSetupWithDid {
@@ -269,7 +269,7 @@ async fn test_get_did_existing() {
 
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_key().times(1).returning(|id, _| {
-        Ok(Some(Key {
+        Ok(Some(OpenKey {
             id: id.to_owned(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),

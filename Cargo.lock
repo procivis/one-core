@@ -3120,7 +3120,7 @@ dependencies = [
 [[package]]
 name = "one-providers"
 version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=72d9f3e454ccb9e0e1e8bbc3da3b28427fcc41ac#72d9f3e454ccb9e0e1e8bbc3da3b28427fcc41ac"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=c768d719c5d8c9748b0e7e3d1f187d5a8162cf78#c768d719c5d8c9748b0e7e3d1f187d5a8162cf78"
 dependencies = [
  "anyhow",
  "async-trait",

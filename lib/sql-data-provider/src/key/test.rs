@@ -1,5 +1,5 @@
 use super::KeyProvider;
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, Set};
 use shared_types::KeyId;
@@ -118,7 +118,7 @@ async fn test_create_key_success() {
 
     let id = Uuid::new_v4().into();
     let result = provider
-        .create_key(Key {
+        .create_key(OpenKey {
             id,
             created_date: now,
             last_modified: now,

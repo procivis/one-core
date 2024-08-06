@@ -3,7 +3,7 @@ use one_core::model::{
     did::{Did, DidType, KeyRole, RelatedKey},
     organisation::Organisation,
 };
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue};
 use std::str::FromStr;
@@ -21,7 +21,7 @@ pub(super) async fn prepare_dids_for_mdoc(
     organisation: &Organisation,
     local_key_params: TestKey,
     remote_key_params: TestKey,
-) -> (Did, Did, Key) {
+) -> (Did, Did, OpenKey) {
     let local_key = context
         .db
         .keys
@@ -70,7 +70,7 @@ pub(super) async fn prepare_dids(
     organisation: &Organisation,
     local_key_params: Option<TestKey>,
     remote_key_params: Option<TestKey>,
-) -> (Option<Did>, Option<Did>, Option<Key>) {
+) -> (Option<Did>, Option<Did>, Option<OpenKey>) {
     let (local_did, local_key) = if let Some(local_key_params) = local_key_params {
         let local_key = context
             .db
@@ -118,7 +118,7 @@ pub(super) async fn prepare_dids(
     (local_did, remote_did, local_key)
 }
 
-pub(super) fn key_to_did_params(key: Option<&Key>, multibase: &str) -> TestingDidParams {
+pub(super) fn key_to_did_params(key: Option<&OpenKey>, multibase: &str) -> TestingDidParams {
     TestingDidParams {
         did_method: Some("KEY".to_string()),
         did: Some(DidValue::from_str(&format!("did:key:{multibase}",)).unwrap()),

@@ -8,8 +8,8 @@ use super::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use super::organisation::{Organisation, OrganisationRelations};
 
 #[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::proof_schema::ProofSchema)]
-#[from(one_providers::common_models::proof_schema::ProofSchema)]
+#[into(one_providers::common_models::proof_schema::OpenProofSchema)]
+#[from(one_providers::common_models::proof_schema::OpenProofSchema)]
 pub struct ProofSchema {
     pub id: ProofSchemaId,
     pub created_date: OffsetDateTime,
@@ -28,8 +28,8 @@ pub struct ProofSchema {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default, Into, From)]
-#[into(one_providers::common_models::proof_schema::ProofInputSchema)]
-#[from(one_providers::common_models::proof_schema::ProofInputSchema)]
+#[into(one_providers::common_models::proof_schema::OpenProofInputSchema)]
+#[from(one_providers::common_models::proof_schema::OpenProofInputSchema)]
 pub struct ProofInputSchema {
     pub validity_constraint: Option<i64>,
 
@@ -43,8 +43,8 @@ pub struct ProofInputSchema {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::proof_schema::ProofInputClaimSchema)]
-#[from(one_providers::common_models::proof_schema::ProofInputClaimSchema)]
+#[into(one_providers::common_models::proof_schema::OpenProofInputClaimSchema)]
+#[from(one_providers::common_models::proof_schema::OpenProofInputClaimSchema)]
 pub struct ProofInputClaimSchema {
     pub schema: ClaimSchema,
     pub required: bool,

@@ -14,7 +14,7 @@ use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use mdoc::DataElementValue;
 use one_providers::common_models::did::DidValue;
-use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema, CredentialSubject,
@@ -483,9 +483,9 @@ fn try_extract_holder_did_mdl_public_key(
 ) -> Result<DidValue, FormatterError> {
     let holder_public_key = try_extract_holder_public_key(issuer_auth)?;
     let algorithm = match &holder_public_key {
-        PublicKeyJwk::Ec(_) => "ES256",
-        PublicKeyJwk::Okp(_) => "EDDSA",
-        key @ (PublicKeyJwk::Rsa(_) | PublicKeyJwk::Oct(_) | PublicKeyJwk::Mlwe(_)) => {
+        OpenPublicKeyJwk::Ec(_) => "ES256",
+        OpenPublicKeyJwk::Okp(_) => "EDDSA",
+        key @ (OpenPublicKeyJwk::Rsa(_) | OpenPublicKeyJwk::Oct(_) | OpenPublicKeyJwk::Mlwe(_)) => {
             return Err(FormatterError::Failed(format!(
                 "Key `{key:?}` should not be available for mdoc",
             )));
@@ -511,7 +511,7 @@ fn try_extract_holder_did_mdl_public_key(
 
 fn try_extract_holder_public_key(
     CoseSign1(issuer_auth): &CoseSign1,
-) -> Result<PublicKeyJwk, FormatterError> {
+) -> Result<OpenPublicKeyJwk, FormatterError> {
     let mso = issuer_auth
         .payload
         .as_ref()
@@ -546,7 +546,7 @@ fn try_extract_holder_public_key(
                 .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
                 .context("Missing P-256  Y value in params")?;
 
-            let key = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            let key = OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "P-256".to_owned(),
                 x,
@@ -570,7 +570,7 @@ fn try_extract_holder_public_key(
                 .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
                 .context("Missing Ed25519 X value in params")?;
 
-            let key = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            let key = OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "Ed25519".to_owned(),
                 x,
@@ -1151,7 +1151,7 @@ async fn try_build_cose_key(
         .swap_remove(0)
         .public_key_jwk
     {
-        PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+        OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
             crv, x, y: Some(y), ..
         }) if &crv == "P-256" => {
             let x = base64decode(x)?;
@@ -1160,7 +1160,7 @@ async fn try_build_cose_key(
             CoseKeyBuilder::new_ec2_pub_key(iana::EllipticCurve::P_256, x, y).build()
         }
 
-        PublicKeyJwk::Okp(key) if key.crv == "Ed25519" => {
+        OpenPublicKeyJwk::Okp(key) if key.crv == "Ed25519" => {
             let x = base64decode(key.x)?;
 
             CoseKeyBuilder::new_okp_key()

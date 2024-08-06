@@ -1,7 +1,7 @@
 use std::ops::Add;
 use std::sync::Arc;
 
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 
 use mockall::predicate::{always, eq};
 use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
@@ -87,7 +87,7 @@ async fn setup_empty() -> TestSetup {
         last_modified: get_dummy_date(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(
             new_claim_schemas

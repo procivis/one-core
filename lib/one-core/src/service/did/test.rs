@@ -21,7 +21,7 @@ use crate::{
 };
 use mockall::predicate::*;
 use one_providers::common_models::did::DidValue;
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use one_providers::did::imp::provider::DidMethodProviderImpl;
 use one_providers::did::imp::resolver::DidResolver;
 use one_providers::did::model::DidCapabilities;
@@ -115,7 +115,7 @@ async fn test_get_did_exists() {
         did_method: "KEY".to_string(),
         keys: Some(vec![RelatedKey {
             role: KeyRole::Authentication,
-            key: Key {
+            key: OpenKey {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -270,7 +270,7 @@ async fn test_create_did_success() {
 
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_keys().once().returning(move |_| {
-        Ok(vec![Key {
+        Ok(vec![OpenKey {
             id: key_id.into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -358,7 +358,7 @@ async fn test_create_did_value_already_exists() {
 
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_keys().once().returning(move |_| {
-        Ok(vec![Key {
+        Ok(vec![OpenKey {
             id: key_id.into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),

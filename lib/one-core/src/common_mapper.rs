@@ -1,5 +1,5 @@
 use dto_mapper::{convert_inner, try_convert_inner};
-use one_providers::common_models::PublicKeyJwk;
+use one_providers::common_models::OpenPublicKeyJwk;
 use one_providers::exchange_protocol::openid4vc::imp::OpenID4VCParams;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
@@ -261,7 +261,7 @@ pub fn extracted_credential_to_model(
 
 pub struct PublicKeyWithJwk {
     pub key_id: KeyId,
-    pub jwk: PublicKeyJwk,
+    pub jwk: OpenPublicKeyJwk,
 }
 
 pub fn get_encryption_key_jwk_from_proof(

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use dto_mapper::convert_inner;
-use one_providers::common_models::claim::Claim;
-use one_providers::common_models::claim_schema::{ClaimSchema, ClaimSchemaId};
+use one_providers::common_models::claim::OpenClaim;
+use one_providers::common_models::claim_schema::{ClaimSchemaId, OpenClaimSchema};
 use one_providers::common_models::credential::CredentialId;
 use one_providers::common_models::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaId,
+    CredentialSchemaId, OpenCredentialSchema, OpenCredentialSchemaClaim,
 };
 
 use one_providers::exchange_protocol::openid4vc::error::OpenID4VCError;
@@ -149,8 +149,8 @@ pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VPFormat
 }
 
 pub(crate) fn credentials_format_mdoc(
-    credential_schema: &CredentialSchema,
-    claims: &[Claim],
+    credential_schema: &OpenCredentialSchema,
+    claims: &[OpenClaim],
     config: &CoreConfig,
 ) -> Result<Vec<OpenID4VCICredentialOfferCredentialDTO>, OpenID4VCError> {
     let claims = prepare_claims(credential_schema, claims, config)?;
@@ -166,8 +166,8 @@ pub(crate) fn credentials_format_mdoc(
 }
 
 pub(super) fn prepare_claims(
-    credential_schema: &CredentialSchema,
-    claims: &[Claim],
+    credential_schema: &OpenCredentialSchema,
+    claims: &[OpenClaim],
     config: &CoreConfig,
 ) -> Result<HashMap<String, OpenID4VCICredentialOfferClaim>, OpenID4VCError> {
     let object_types = config
@@ -282,15 +282,15 @@ fn nest_claims(
 pub(super) fn create_claims_from_credential_definition(
     credential_id: CredentialId,
     claim_keys: &HashMap<String, OpenID4VCICredentialValueDetails>,
-) -> Result<(Vec<CredentialSchemaClaim>, Vec<Claim>), ExchangeProtocolError> {
+) -> Result<(Vec<OpenCredentialSchemaClaim>, Vec<OpenClaim>), ExchangeProtocolError> {
     let now = OffsetDateTime::now_utc();
-    let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
-    let mut claims: Vec<Claim> = vec![];
+    let mut claim_schemas: Vec<OpenCredentialSchemaClaim> = vec![];
+    let mut claims: Vec<OpenClaim> = vec![];
     let mut object_claim_schemas: Vec<&str> = vec![];
 
     for (key, value_details) in claim_keys {
-        let new_schema_claim = CredentialSchemaClaim {
-            schema: ClaimSchema {
+        let new_schema_claim = OpenCredentialSchemaClaim {
+            schema: OpenClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: key.to_string(),
                 data_type: value_details.value_type.to_string(),
@@ -301,7 +301,7 @@ pub(super) fn create_claims_from_credential_definition(
             required: false,
         };
 
-        let claim = Claim {
+        let claim = OpenClaim {
             id: Uuid::new_v4().into(),
             credential_id,
             created_date: now,
@@ -324,8 +324,8 @@ pub(super) fn create_claims_from_credential_definition(
     }
 
     for object_claim in object_claim_schemas {
-        claim_schemas.push(CredentialSchemaClaim {
-            schema: ClaimSchema {
+        claim_schemas.push(OpenCredentialSchemaClaim {
+            schema: OpenClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: object_claim.into(),
                 data_type: DatatypeType::Object.to_string(),
@@ -398,10 +398,10 @@ fn parse_mdoc_schema_elements(
 }
 
 pub(crate) fn map_offered_claims_to_credential_schema(
-    credential_schema: &CredentialSchema,
+    credential_schema: &OpenCredentialSchema,
     credential_id: CredentialId,
     claim_keys: &HashMap<String, OpenID4VCICredentialValueDetails>,
-) -> Result<Vec<Claim>, ExchangeProtocolError> {
+) -> Result<Vec<OpenClaim>, ExchangeProtocolError> {
     let claim_schemas =
         credential_schema
             .claim_schemas
@@ -419,7 +419,7 @@ pub(crate) fn map_offered_claims_to_credential_schema(
         let credential_value_details = &claim_keys.get(&claim_schema.schema.key);
         match credential_value_details {
             Some(value_details) => {
-                let claim = Claim {
+                let claim = OpenClaim {
                     id: Uuid::new_v4().into(),
                     credential_id,
                     created_date: now,
@@ -489,9 +489,9 @@ fn from_jwt_request_claim_schema(
     datatype: String,
     required: bool,
     array: Option<bool>,
-) -> CredentialSchemaClaim {
-    CredentialSchemaClaim {
-        schema: ClaimSchema {
+) -> OpenCredentialSchemaClaim {
+    OpenCredentialSchemaClaim {
+        schema: OpenClaimSchema {
             id,
             key,
             data_type: datatype,
@@ -519,7 +519,7 @@ pub fn from_create_request(
     core_base_url: &str,
     format_type: &str,
     schema_type: Option<String>,
-) -> Result<CredentialSchema, ExchangeProtocolError> {
+) -> Result<OpenCredentialSchema, ExchangeProtocolError> {
     from_create_request_with_id(
         Uuid::new_v4().into(),
         request,
@@ -537,7 +537,7 @@ pub fn from_create_request_with_id(
     core_base_url: &str,
     format_type: &str,
     schema_type: Option<String>,
-) -> Result<CredentialSchema, ExchangeProtocolError> {
+) -> Result<OpenCredentialSchema, ExchangeProtocolError> {
     if request.claims.is_empty() {
         return Err(ExchangeProtocolError::Failed(
             "Claim schemas cannot be empty".to_string(),
@@ -556,7 +556,7 @@ pub fn from_create_request_with_id(
         _ => "ProcivisOneSchema2024".to_owned(),
     });
 
-    Ok(CredentialSchema {
+    Ok(OpenCredentialSchema {
         id,
         deleted_at: None,
         created_date: now,

@@ -12,7 +12,7 @@ use one_core::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use one_core::repository::proof_repository::ProofRepository;
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use shared_types::ProofId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use std::sync::Arc;
@@ -37,7 +37,7 @@ impl ProofsDB {
         state: ProofStateEnum,
         exchange: &str,
         interaction: Option<&Interaction>,
-        verifier_key: Key,
+        verifier_key: OpenKey,
     ) -> Proof {
         let proof = Proof {
             id: id.unwrap_or_else(|| Uuid::new_v4().into()),

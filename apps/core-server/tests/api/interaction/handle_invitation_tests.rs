@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 
 use one_core::model::credential_schema::CredentialSchemaType;
 use one_core::model::proof::ProofStateEnum;
@@ -617,7 +617,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         .await;
     assert_eq!(
         credential.schema.unwrap().wallet_storage_type,
-        Some(WalletStorageTypeEnum::Software)
+        Some(OpenWalletStorageTypeEnum::Software)
     );
 
     let interaction: HolderInteractionData =
@@ -1166,7 +1166,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
         .await;
     assert_eq!(
         credential.schema.unwrap().wallet_storage_type,
-        Some(WalletStorageTypeEnum::Software)
+        Some(OpenWalletStorageTypeEnum::Software)
     );
 
     let interaction: HolderInteractionData =

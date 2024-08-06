@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
 use one_providers::common_dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
-use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
-use one_providers::common_models::key::Key;
-use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
+use one_providers::common_models::key::OpenKey;
+use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, Presentation,
 };
@@ -101,7 +101,7 @@ fn generic_credential_schema() -> CredentialSchema {
         created_date: now,
         last_modified: now,
         name: "".to_string(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
         format: "JWT".to_string(),
         revocation_method: "".to_string(),
         claim_schemas: None,
@@ -1797,7 +1797,7 @@ async fn test_get_client_metadata_success() {
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::KeyAgreement,
-                key: Key {
+                key: OpenKey {
                     id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
                         .unwrap()
                         .into(),
@@ -1824,7 +1824,7 @@ async fn test_get_client_metadata_success() {
             .return_once(move |_, _| Ok(Some(proof)));
 
         key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
-            Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
                 r#use: Some("enc".to_string()),
                 crv: "123".to_string(),
                 x: "456".to_string(),

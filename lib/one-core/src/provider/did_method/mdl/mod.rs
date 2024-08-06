@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_providers::common_models::did::{DidId, DidValue};
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use one_providers::did::error::DidMethodError;
 use one_providers::did::imp::common::jwk_context;
 use one_providers::did::imp::key_helpers::{decode_did, generate_document, DidKeyType};
@@ -71,7 +71,7 @@ impl DidMethod for DidMdl {
         &self,
         _id: &DidId,
         params: &Option<serde_json::Value>,
-        keys: &[Key],
+        keys: &[OpenKey],
     ) -> Result<DidValue, DidMethodError> {
         let Some(params) = params.as_ref() else {
             return Err(DidMethodError::CouldNotCreate(
@@ -268,7 +268,7 @@ fn parse_x509_from_der(certificate: &[u8]) -> Result<X509Certificate, DidMethodE
     Ok(certificate)
 }
 
-fn select_key(keys: &[Key]) -> Result<&Key, DidMethodError> {
+fn select_key(keys: &[OpenKey]) -> Result<&OpenKey, DidMethodError> {
     let [key] = keys else {
         return Err(DidMethodError::CouldNotCreate(format!(
             "Expected 1 provided {} keys for DID MDL creation",

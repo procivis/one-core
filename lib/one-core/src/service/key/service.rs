@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Context};
-use one_providers::common_models::key::Key;
+use one_providers::common_models::key::OpenKey;
 use one_providers::key_algorithm::imp::es256::Es256;
 use one_providers::key_storage::KeyStorage;
 use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
@@ -167,7 +167,7 @@ impl KeyService {
 }
 
 struct RemoteKeyAdapter {
-    key: Key,
+    key: OpenKey,
     decompressed_public_key: Option<Vec<u8>>,
     key_storage: Arc<dyn KeyStorage>,
     algorithm: &'static rcgen::SignatureAlgorithm,
@@ -176,7 +176,7 @@ struct RemoteKeyAdapter {
 
 impl RemoteKeyAdapter {
     fn create_remote_key(
-        key: Key,
+        key: OpenKey,
         key_storage: Arc<dyn KeyStorage>,
         handle: tokio::runtime::Handle,
     ) -> anyhow::Result<Box<(dyn RemoteKeyPair + Send + Sync + 'static)>> {

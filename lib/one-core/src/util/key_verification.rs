@@ -82,7 +82,7 @@ impl TokenVerifier for KeyVerification {
 mod test {
     use super::*;
     use mockall::predicate::*;
-    use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
+    use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
     use one_providers::crypto::MockSigner;
     use one_providers::did::error::DidMethodProviderError;
     use one_providers::did::model::{DidDocument, DidVerificationMethod};
@@ -100,8 +100,8 @@ mod test {
                     id: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
                     r#type: "JsonWebKey2020".to_owned(),
                     controller: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
-                    public_key_jwk: PublicKeyJwk::Ec(
-                        PublicKeyJwkEllipticData {
+                    public_key_jwk: OpenPublicKeyJwk::Ec(
+                        OpenPublicKeyJwkEllipticData {
                             r#use: None,
                             crv: "P-256".to_owned(),
                             x: "AjDk2GBBiI_M6HvEmgfzXiVhJCWiVFqvoItknJgc-oEE".to_owned(),

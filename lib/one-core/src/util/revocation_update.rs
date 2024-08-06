@@ -112,7 +112,7 @@ pub(crate) async fn process_update(
 }
 
 pub(crate) async fn get_revocation_list_id(
-    credentials_by_issuer_did: &[one_providers::common_models::credential::Credential],
+    credentials_by_issuer_did: &[one_providers::common_models::credential::OpenCredential],
     issuer_did: &Did,
     purpose: RevocationListPurpose,
     revocation_list_repository: &Arc<dyn RevocationListRepository>,

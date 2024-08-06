@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use one_providers::common_models::interaction::Interaction;
+use one_providers::common_models::interaction::OpenInteraction;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::exchange_protocol::imp::provider::ExchangeProtocolWrapper;
@@ -39,7 +39,7 @@ pub mod scan_to_verify;
 mod test;
 
 pub(super) fn get_base_url_from_interaction(
-    interaction: Option<&Interaction>,
+    interaction: Option<&OpenInteraction>,
 ) -> Result<Url, ExchangeProtocolError> {
     interaction
         .ok_or(ExchangeProtocolError::Failed(

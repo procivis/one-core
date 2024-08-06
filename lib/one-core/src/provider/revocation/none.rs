@@ -1,4 +1,4 @@
-use one_providers::common_models::credential::Credential;
+use one_providers::common_models::credential::OpenCredential;
 use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::model::CredentialStatus;
 use one_providers::revocation::error::RevocationError;
@@ -18,7 +18,7 @@ impl RevocationMethod for NoneRevocation {
 
     async fn add_issued_credential(
         &self,
-        _credential: &Credential,
+        _credential: &OpenCredential,
         _additional_data: Option<CredentialAdditionalData>,
     ) -> Result<
         (
@@ -32,7 +32,7 @@ impl RevocationMethod for NoneRevocation {
 
     async fn mark_credential_as(
         &self,
-        _credential: &Credential,
+        _credential: &OpenCredential,
         _new_state: CredentialRevocationState,
         _additional_data: Option<CredentialAdditionalData>,
     ) -> Result<RevocationUpdate, RevocationError> {
