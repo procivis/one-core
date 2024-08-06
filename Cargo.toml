@@ -48,8 +48,8 @@ autometrics        = { version = "1.0", features = ["prometheus-0_13"] }
 futures            = { version = "0.3" }
 tempfile           = { version = "3.10" }
 hex                = { version = "0.4", features = ["serde"] }
-one-providers      = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "d749f649f1d2d8b9702c4b0eab643c3f24fd445e" }
-one-crypto         = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "d749f649f1d2d8b9702c4b0eab643c3f24fd445e" }
+one-providers      = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "5ef96dd1a1ef63559dc2c650d276c924b9c49293" }
+one-crypto         = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "5ef96dd1a1ef63559dc2c650d276c924b9c49293" }
 #one-providers = { version = "0.1.0", path = "../one-open-core/one-providers" }
 
 
