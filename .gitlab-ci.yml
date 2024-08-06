@@ -211,9 +211,8 @@ publish:
 
 bitrise_ios_sdk:
   stage: sdk_build
-  needs:
-    - build
-    - tests
+  needs: []
+  dependencies: []
   variables:
     # ONE-wallet project on Bitrise
     BITRISE_PROJECT_SLUG: 6ee8c26f-6d7b-4bcb-8ddc-be1ba3cd2687
@@ -233,14 +232,14 @@ bitrise_ios_sdk:
     paths:
       - artifacts
     expire_in: 10 days
+  allow_failure: false
 
 build_android_sdk:
   services:
     - docker:dind
   stage: sdk_build
-  needs:
-    - build
-    - tests
+  needs: []
+  dependencies: []
   script:
     - export HOSTNAME=$(docker ps -ql)
     - export CROSS_CONTAINER_OPTS='--env="CI_PIPELINE_ID='$CI_PIPELINE_ID'"'
@@ -251,6 +250,7 @@ build_android_sdk:
     expire_in: 5 days
   extends:
     - .only_main_or_tag_manual
+  allow_failure: false
 
 upload_sdk_artifacts:
   stage: sdk_artifact
@@ -274,11 +274,11 @@ upload_sdk_artifacts:
     - ANDROID_CONTAINER_PATH_RELEASE=$ANDROID_CONTAINER_PATH/$ANDROID_SDK_RELEASE_FILE
     - IOS_CONTAINER_PATH=$IOS_CONTAINER_PATH/$IOS_BUILD_FILE
     # Upload Android debug file
-    - az storage blob upload -c $AZURE_CONTAINER_NAME -n $ANDROID_CONTAINER_PATH_DEBUG -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_DEBUG_FILE
+    - az storage blob upload --overwrite -c $AZURE_CONTAINER_NAME -n $ANDROID_CONTAINER_PATH_DEBUG -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_DEBUG_FILE
     # Upload Android release file
-    - az storage blob upload -c $AZURE_CONTAINER_NAME -n $ANDROID_CONTAINER_PATH_RELEASE -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE
+    - az storage blob upload --overwrite -c $AZURE_CONTAINER_NAME -n $ANDROID_CONTAINER_PATH_RELEASE -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE
     # Upload IOS zip file
-    - az storage blob upload -c $AZURE_CONTAINER_NAME -n $IOS_CONTAINER_PATH -f $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE
+    - az storage blob upload --overwrite -c $AZURE_CONTAINER_NAME -n $IOS_CONTAINER_PATH -f $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE
     - >
       cat <<-EOM
         =========================
