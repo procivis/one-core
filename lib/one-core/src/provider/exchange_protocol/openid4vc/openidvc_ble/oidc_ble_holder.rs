@@ -108,8 +108,12 @@ impl OpenID4VCBLEHolder {
 
             self.connected_verifier = Some(ble_peer.clone());
 
-            self.send(IDENTITY_UUID, identity_request.clone().encode().as_ref())
-                .await?;
+            self.send(
+                IDENTITY_UUID,
+                identity_request.clone().encode().as_ref(),
+                CharacteristicWriteType::WithResponse,
+            )
+            .await?;
 
             // Wait to ensure the verifier processed the identity request and updated
             // the relevant characteristics
@@ -269,10 +273,20 @@ impl OpenID4VCBLEHolder {
         let chunks = Chunks::from_bytes(&enc_payload[..], connected_verifier.device_info.mtu());
 
         let payload_len = (chunks.len() as u16).to_be_bytes();
-        self.send(CONTENT_SIZE_UUID, &payload_len).await?;
+        self.send(
+            CONTENT_SIZE_UUID,
+            &payload_len,
+            CharacteristicWriteType::WithResponse,
+        )
+        .await?;
 
         for chunk in &chunks {
-            self.send(SUBMIT_VC_UUID, &chunk.to_bytes()).await?;
+            self.send(
+                SUBMIT_VC_UUID,
+                &chunk.to_bytes(),
+                CharacteristicWriteType::WithoutResponse,
+            )
+            .await?;
         }
 
         // Wait to ensure the verifier has received and processed all chunks
@@ -314,7 +328,12 @@ impl OpenID4VCBLEHolder {
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-        self.send(TRANSFER_SUMMARY_REQUEST_UUID, &[]).await?;
+        self.send(
+            TRANSFER_SUMMARY_REQUEST_UUID,
+            &[],
+            CharacteristicWriteType::WithResponse,
+        )
+        .await?;
 
         let report = self
             .ble_central
@@ -423,6 +442,7 @@ impl OpenID4VCBLEHolder {
                     self.send(
                         TRANSFER_SUMMARY_REQUEST_UUID,
                         missing_chunks.as_ref(),
+                        CharacteristicWriteType::WithResponse,
                     ).await?;
 
                     tracing::debug!(
@@ -506,7 +526,12 @@ impl OpenID4VCBLEHolder {
         )))
     }
 
-    pub async fn send(&self, id: &str, data: &[u8]) -> Result<(), ExchangeProtocolError> {
+    pub async fn send(
+        &self,
+        id: &str,
+        data: &[u8],
+        write_type: CharacteristicWriteType,
+    ) -> Result<(), ExchangeProtocolError> {
         let verifier = self
             .connected_verifier
             .as_ref()
@@ -520,7 +545,7 @@ impl OpenID4VCBLEHolder {
                 SERVICE_UUID.to_string(),
                 id.to_string(),
                 data,
-                CharacteristicWriteType::WithResponse,
+                write_type,
             )
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
             .await
