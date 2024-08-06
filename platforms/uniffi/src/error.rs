@@ -1,7 +1,7 @@
 use one_core::config::{ConfigError, ConfigParsingError};
 use one_core::provider::bluetooth_low_energy::BleError;
 use one_core::service::error::{BusinessLogicError, ServiceError, ValidationError};
-use one_providers::crypto::SignerError;
+use one_crypto::SignerError;
 use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use one_providers::key_storage::error::KeyStorageError;
 use thiserror::Error;

@@ -1,7 +1,5 @@
-use one_providers::{
-    crypto::SignerError,
-    key_storage::{error::KeyStorageError, model::StorageGeneratedKey},
-};
+use one_crypto::SignerError;
+use one_providers::key_storage::{error::KeyStorageError, model::StorageGeneratedKey};
 
 /// Adapter between `NativeKeyStorage` interfaces (one_core lib and uniffi bindings)
 pub struct NativeKeyStorageWrapper(pub Box<dyn crate::dto::NativeKeyStorage>);

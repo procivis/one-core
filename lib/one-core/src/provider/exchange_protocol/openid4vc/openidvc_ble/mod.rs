@@ -11,6 +11,8 @@ use futures::{Stream, TryStreamExt};
 use hkdf::Hkdf;
 use oidc_ble_holder::OpenID4VCBLEHolder;
 use oidc_ble_verifier::OpenID4VCBLEVerifier;
+use one_crypto::imp::hasher::sha256::SHA256;
+use one_crypto::Hasher;
 use one_providers::common_dto::PublicKeyJwkDTO;
 use one_providers::common_models::credential::OpenCredential;
 use one_providers::common_models::did::{DidValue, OpenDid};
@@ -19,8 +21,6 @@ use one_providers::common_models::organisation::OpenOrganisation;
 use one_providers::common_models::proof::OpenProof;
 use one_providers::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::crypto::imp::hasher::sha256::SHA256;
-use one_providers::crypto::Hasher;
 use one_providers::exchange_protocol::openid4vc::imp::create_presentation_submission;
 use one_providers::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_presentation_definition;
 use one_providers::exchange_protocol::openid4vc::model::{

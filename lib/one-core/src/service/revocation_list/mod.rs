@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use one_crypto::CryptoProvider;
+
 use crate::{
     config::core_config,
     repository::{
@@ -13,8 +15,7 @@ use one_providers::{
     credential_formatter::provider::CredentialFormatterProvider, did::provider::DidMethodProvider,
 };
 use one_providers::{
-    crypto::CryptoProvider, key_algorithm::provider::KeyAlgorithmProvider,
-    key_storage::provider::KeyProvider,
+    key_algorithm::provider::KeyAlgorithmProvider, key_storage::provider::KeyProvider,
 };
 
 pub mod dto;

@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use mockall::predicate;
+use one_crypto::{MockCryptoProvider, MockHasher};
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
     JsonLdCachingLoader, JsonLdResolver,
 };
 use one_providers::credential_formatter::model::MockTokenVerifier;
 use one_providers::credential_formatter::CredentialFormatter;
-use one_providers::crypto::{MockCryptoProvider, MockHasher};
 use one_providers::remote_entity_storage::{
     MockRemoteEntityStorage, RemoteEntity, RemoteEntityType,
 };

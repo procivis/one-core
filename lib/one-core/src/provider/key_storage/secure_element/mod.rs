@@ -3,9 +3,10 @@ use serde::Deserialize;
 use std::sync::Arc;
 use zeroize::Zeroizing;
 
+use one_crypto::SignerError;
+
 use one_providers::{
     common_models::key::KeyId,
-    crypto::SignerError,
     key_storage::{
         error::KeyStorageError,
         model::{KeySecurity, KeyStorageCapabilities, StorageGeneratedKey},

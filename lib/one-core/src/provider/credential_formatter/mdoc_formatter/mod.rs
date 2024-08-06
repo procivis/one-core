@@ -13,6 +13,7 @@ use coset::{
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use mdoc::DataElementValue;
+use one_crypto::SignerError;
 use one_providers::common_models::did::DidValue;
 use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::error::FormatterError;
@@ -22,7 +23,6 @@ use one_providers::credential_formatter::model::{
     Presentation, PublishedClaim, SignatureProvider, TokenVerifier, VerificationFn,
 };
 use one_providers::credential_formatter::CredentialFormatter;
-use one_providers::crypto::SignerError;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use rand::RngCore;
