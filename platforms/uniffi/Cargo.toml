@@ -26,6 +26,7 @@ thiserror.workspace  = true
 async-trait          = { version = "0.1" }
 shared-types         = { version = "0.1.0", path = "../../lib/shared-types" }
 one-providers        = { workspace = true }
+one-crypto           = { workspace = true }
 reqwest              = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
 
 [target.'cfg(target_os = "android")'.dependencies]

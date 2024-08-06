@@ -2,6 +2,15 @@
 
 use std::{collections::HashMap, sync::Arc};
 
+use one_crypto::{
+    imp::{
+        hasher::sha256::SHA256,
+        signer::{bbs::BBSSigner, crydi3::CRYDI3Signer, eddsa::EDDSASigner, es256::ES256Signer},
+        CryptoProviderImpl,
+    },
+    Hasher, Signer,
+};
+
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
     JsonLdCachingLoader, JsonLdResolver,
 };
@@ -23,16 +32,6 @@ use one_providers::{
             provider::CredentialFormatterProviderImpl,
         },
         CredentialFormatter,
-    },
-    crypto::{
-        imp::{
-            hasher::sha256::SHA256,
-            signer::{
-                bbs::BBSSigner, crydi3::CRYDI3Signer, eddsa::EDDSASigner, es256::ES256Signer,
-            },
-            CryptoProviderImpl,
-        },
-        Hasher, Signer,
     },
     did::{
         imp::{

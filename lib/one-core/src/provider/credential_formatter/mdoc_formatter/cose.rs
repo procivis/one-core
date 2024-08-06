@@ -1,5 +1,6 @@
 use coset::{CoseSign1, Header, ProtectedHeader, SignatureContext};
-use one_providers::{credential_formatter::model::SignatureProvider, crypto::SignerError};
+use one_crypto::SignerError;
+use one_providers::credential_formatter::model::SignatureProvider;
 
 /// Adaptation of the [`coset::CoseSign1Builder`] to allow signing with async signer
 #[derive(Debug, Default)]

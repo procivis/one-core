@@ -4,8 +4,8 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dto_mapper::convert_inner;
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
+use one_crypto::imp::utilities;
 use one_providers::common_models::key::OpenKey;
-use one_providers::crypto::imp::utilities;
 use one_providers::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use one_providers::exchange_protocol::openid4vc::model::{
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCIDiscoveryResponseDTO,

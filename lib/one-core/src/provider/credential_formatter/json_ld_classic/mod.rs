@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::vec;
 
 use async_trait::async_trait;
+use one_crypto::CryptoProvider;
 use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
@@ -15,7 +16,6 @@ use one_providers::credential_formatter::model::{
     Presentation, VerificationFn,
 };
 use one_providers::credential_formatter::CredentialFormatter;
-use one_providers::crypto::CryptoProvider;
 use one_providers::did::provider::DidMethodProvider;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds};

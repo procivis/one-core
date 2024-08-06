@@ -971,6 +971,7 @@ dependencies = [
  "headers",
  "indoc",
  "one-core",
+ "one-crypto",
  "one-providers",
  "p256",
  "prometheus",
@@ -3044,7 +3045,6 @@ dependencies = [
  "ct-codecs",
  "dto_mapper",
  "figment",
- "flate2",
  "futures",
  "hex",
  "hex-literal",
@@ -3058,6 +3058,7 @@ dependencies = [
  "maplit",
  "mockall",
  "mrtd",
+ "one-crypto",
  "one-providers",
  "ouroboros 0.18.4",
  "pqc_dilithium",
@@ -3071,7 +3072,6 @@ dependencies = [
  "serde_json",
  "serde_qs",
  "serde_repr",
- "serde_urlencoded",
  "serde_with",
  "serde_yaml",
  "sha2 0.10.8",
@@ -3086,7 +3086,6 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
- "wiremock",
  "x25519-dalek",
  "x509-parser",
  "yasna",
@@ -3101,6 +3100,7 @@ dependencies = [
  "async-trait",
  "dto_mapper",
  "one-core",
+ "one-crypto",
  "one-providers",
  "reqwest 0.12.5",
  "serde",
@@ -3118,16 +3118,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "one-crypto"
+version = "0.1.0"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=d749f649f1d2d8b9702c4b0eab643c3f24fd445e#d749f649f1d2d8b9702c4b0eab643c3f24fd445e"
+dependencies = [
+ "chacha20poly1305",
+ "ct-codecs",
+ "ed25519-compact",
+ "hmac 0.12.1",
+ "mockall",
+ "p256",
+ "pairing_crypto",
+ "pbkdf2 0.12.2",
+ "pqc_dilithium",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
 name = "one-providers"
 version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=c768d719c5d8c9748b0e7e3d1f187d5a8162cf78#c768d719c5d8c9748b0e7e3d1f187d5a8162cf78"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=d749f649f1d2d8b9702c4b0eab643c3f24fd445e#d749f649f1d2d8b9702c4b0eab643c3f24fd445e"
 dependencies = [
  "anyhow",
  "async-trait",
  "bit-vec",
  "blstrs 0.7.1",
  "bs58",
- "chacha20poly1305",
  "ciborium",
  "cocoon",
  "convert_case",
@@ -3135,7 +3156,6 @@ dependencies = [
  "ed25519-compact",
  "flate2",
  "futures",
- "hmac 0.12.1",
  "itertools 0.13.0",
  "josekit",
  "json-ld",
@@ -3144,12 +3164,9 @@ dependencies = [
  "locspan",
  "mime",
  "mockall",
+ "one-crypto",
  "p256",
  "pairing_crypto",
- "pbkdf2 0.12.2",
- "pqc_dilithium",
- "rand",
- "rand_chacha",
  "rdf-types",
  "reqwest 0.12.5",
  "serde",

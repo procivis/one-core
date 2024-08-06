@@ -8,7 +8,7 @@ use one_providers::{
 };
 use zeroize::Zeroizing;
 
-use one_providers::crypto::SignerError;
+use one_crypto::SignerError;
 
 #[derive(Default)]
 pub struct PKCS11KeyProvider {}

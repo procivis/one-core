@@ -5,7 +5,7 @@ use anyhow::anyhow;
 use futures::future::BoxFuture;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt, TryFutureExt};
-use one_providers::crypto::imp::utilities;
+use one_crypto::imp::utilities;
 use one_providers::exchange_protocol::openid4vc::model::OpenID4VPPresentationDefinition;
 use shared_types::ProofId;
 use time::OffsetDateTime;

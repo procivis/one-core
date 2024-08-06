@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use std::vec;
 
+use one_crypto::CryptoProvider;
+
 use super::json_ld_classic::verify_credential_signature;
 use async_trait::async_trait;
 use model::OptiocalBarcodeCredential;
@@ -16,7 +18,6 @@ use one_providers::{
         },
         CredentialFormatter,
     },
-    crypto::CryptoProvider,
 };
 
 mod mappers;

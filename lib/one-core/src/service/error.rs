@@ -1,5 +1,5 @@
+use one_crypto::CryptoProviderError;
 use one_providers::credential_formatter::error::FormatterError;
-use one_providers::crypto::CryptoProviderError;
 use one_providers::did::error::{DidMethodError, DidMethodProviderError};
 use one_providers::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;

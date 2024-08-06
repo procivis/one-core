@@ -3,9 +3,9 @@ use config::core_config::{
     CoreConfig, DatatypeConfig, FormatConfig, KeyAlgorithmConfig, KeyStorageConfig,
 };
 use config::ConfigError;
+use one_crypto::CryptoProvider;
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::crypto::CryptoProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::exchange_protocol::imp::provider::ExchangeProtocolProviderImpl;
 use one_providers::exchange_protocol::provider::ExchangeProtocol;

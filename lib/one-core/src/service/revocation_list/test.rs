@@ -16,7 +16,7 @@ use crate::{
     },
     service::{revocation_list::RevocationListService, test_utilities::generic_config},
 };
-use one_providers::crypto::MockCryptoProvider;
+use one_crypto::MockCryptoProvider;
 use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::revocation::provider::MockRevocationMethodProvider;
 

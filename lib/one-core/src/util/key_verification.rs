@@ -1,9 +1,10 @@
 use crate::model::did::KeyRole;
 use async_trait::async_trait;
+use one_crypto::SignerError;
 use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::model::TokenVerifier;
 use one_providers::did::provider::DidMethodProvider;
-use one_providers::{crypto::SignerError, key_algorithm::provider::KeyAlgorithmProvider};
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use std::sync::Arc;
 use tracing::info;
 
@@ -82,8 +83,8 @@ impl TokenVerifier for KeyVerification {
 mod test {
     use super::*;
     use mockall::predicate::*;
+    use one_crypto::MockSigner;
     use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
-    use one_providers::crypto::MockSigner;
     use one_providers::did::error::DidMethodProviderError;
     use one_providers::did::model::{DidDocument, DidVerificationMethod};
     use one_providers::did::provider::MockDidMethodProvider;

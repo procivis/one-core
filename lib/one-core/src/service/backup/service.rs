@@ -14,7 +14,7 @@ use crate::model::history::HistoryAction;
 use crate::repository::error::DataLayerError;
 use crate::service::backup::mapper::unexportable_entities_to_response_dto;
 use crate::service::error::ServiceError;
-use one_providers::crypto::imp::encryption::{decrypt_file, encrypt_file};
+use one_crypto::imp::encryption::{decrypt_file, encrypt_file};
 
 impl BackupService {
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]

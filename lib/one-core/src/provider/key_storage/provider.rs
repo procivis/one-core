@@ -1,5 +1,5 @@
 use one_providers::common_models::key::Key;
-use one_providers::crypto::SignerError;
+use one_crypto::SignerError;
 use std::{collections::HashMap, sync::Arc};
 
 use super::KeyStorage;
