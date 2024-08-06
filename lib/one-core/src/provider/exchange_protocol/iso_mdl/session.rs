@@ -4,7 +4,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, Bytes};
 
-use super::{common::EReaderKey, device_engagement::DeviceEngagement};
+use super::common::EReaderKey;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -34,8 +34,8 @@ pub enum StatusCode {
 //]
 #[derive(Debug, PartialEq, Clone)]
 pub struct SessionTranscript {
-    pub(crate) device_engagement: Bytes<DeviceEngagement>,
-    pub(crate) e_reader_key: Bytes<EReaderKey>,
+    pub(crate) device_engagement_bytes: Bstr,
+    pub(crate) e_reader_key_bytes: Bstr,
 }
 
 impl Serialize for SessionTranscript {
@@ -43,7 +43,7 @@ impl Serialize for SessionTranscript {
     where
         S: serde::Serializer,
     {
-        cbor!([self.device_engagement, self.e_reader_key, null])
+        cbor!([self.device_engagement_bytes, self.e_reader_key_bytes, null])
             .map_err(serde::ser::Error::custom)?
             .serialize(serializer)
     }
@@ -55,7 +55,9 @@ mod test {
 
     use crate::provider::exchange_protocol::iso_mdl::{
         common::{EDeviceKey, KeyAgreement},
-        device_engagement::{BleOptions, DeviceRetrievalMethod, RetrievalOptions, Security},
+        device_engagement::{
+            BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
+        },
     };
 
     use super::*;
@@ -96,7 +98,7 @@ mod test {
         let reader_key = KeyAgreement::<EReaderKey>::new();
 
         let session_transcript = SessionTranscript {
-            device_engagement: Bytes(DeviceEngagement {
+            device_engagement_bytes: Bytes(DeviceEngagement {
                 security: Security {
                     key_bytes: Bytes(device_key.device_key().clone()),
                 },
@@ -106,8 +108,14 @@ mod test {
                         peripheral_server_mac_address: None,
                     }),
                 }],
-            }),
-            e_reader_key: Bytes(reader_key.reader_key().clone()),
+            })
+            .to_cbor_bytes()
+            .map(Bstr)
+            .unwrap(),
+            e_reader_key_bytes: Bytes(reader_key.reader_key().clone())
+                .to_cbor_bytes()
+                .map(Bstr)
+                .unwrap(),
         };
 
         let mut writer = vec![];
@@ -117,12 +125,12 @@ mod test {
         let value = value.into_array().unwrap();
 
         assert_eq!(
-            session_transcript.device_engagement,
+            session_transcript.device_engagement_bytes,
             value[0].deserialized().unwrap()
         );
 
         assert_eq!(
-            session_transcript.e_reader_key,
+            session_transcript.e_reader_key_bytes,
             value[1].deserialized().unwrap()
         );
 
