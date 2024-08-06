@@ -700,11 +700,7 @@ fn extract_credentials_internal(
         status: vec![],
         credential_schema: Some(CredentialSchema {
             id: mso.doc_type,
-            r#type: serde_json::to_string(&CredentialSchemaType::Mdoc).map_err(|err| {
-                FormatterError::Failed(format!(
-                    "Could not serialize CredentialSchemaType enum. Error: {err}"
-                ))
-            })?,
+            r#type: CredentialSchemaType::Mdoc.to_string(),
         }),
     })
 }

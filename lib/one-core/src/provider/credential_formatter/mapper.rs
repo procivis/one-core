@@ -73,11 +73,7 @@ pub fn credential_data_from_credential_detail_response(
         status: credential_status,
         schema: CredentialSchemaData {
             id: Some(credential.schema.schema_id),
-            r#type: Some(
-                serde_json::to_string(&credential.schema.schema_type).map_err(|_| {
-                    ServiceError::MappingError("Could not serialize schema type".to_string())
-                })?,
-            ),
+            r#type: Some(credential.schema.schema_type.to_string()),
             context: Some(format!(
                 "{core_base_url}/ssi/context/v1/{}",
                 credential.schema.id

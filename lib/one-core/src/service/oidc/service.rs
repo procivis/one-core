@@ -108,8 +108,7 @@ impl OIDCService {
         let format = &self.config.format.get_fields(&schema.format)?;
         let oidc_format = map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?;
 
-        let schema_type = serde_json::to_string(&schema.schema_type)
-            .map_err(|_| ServiceError::MappingError("Could not map schema_type".to_owned()))?;
+        let schema_type = schema.schema_type.to_string();
 
         match format.r#type.as_str() {
             "MDOC" => credentials_supported_mdoc(&base_url, schema),
