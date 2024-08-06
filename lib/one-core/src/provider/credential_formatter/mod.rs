@@ -7,13 +7,11 @@ pub mod json_ld_classic;
 pub mod mapper;
 pub mod mdoc_formatter;
 pub mod physical_card;
-pub mod sdjwt_formatter;
+//pub mod sdjwt_formatter;
 pub mod status_list_jwt_formatter;
 
 #[cfg(test)]
 mod test;
-#[cfg(test)]
-pub(crate) mod test_utilities;
 
 use dto_mapper::{From, Into};
 use one_providers::credential_formatter::model::{PublishedClaim, PublishedClaimValue};

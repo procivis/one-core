@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, CredentialSchemaClaim,
     CredentialSchemaRelations, CredentialSchemaType, LayoutProperties, LayoutType, LogoProperties,
-    WalletStorageTypeEnum,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;

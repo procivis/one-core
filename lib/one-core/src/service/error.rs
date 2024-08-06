@@ -1,6 +1,8 @@
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::crypto::CryptoProviderError;
 use one_providers::did::error::{DidMethodError, DidMethodProviderError};
+use one_providers::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
+use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use one_providers::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use one_providers::key_storage::error::{KeyStorageError, KeyStorageProviderError};
 use one_providers::revocation::error::RevocationError;
@@ -20,9 +22,7 @@ use crate::model::credential::CredentialStateEnum;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofStateEnum;
 use crate::model::revocation_list::RevocationListId;
-use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::repository::error::DataLayerError;
-use crate::service::oidc::dto::OpenID4VCIError;
 use crate::util::oidc::FormatError;
 
 #[derive(Debug, Error)]
@@ -33,8 +33,11 @@ pub enum ServiceError {
     #[error("Validation error: `{0}`")]
     ValidationError(String),
 
+    #[error("OpenID4VC validation error `{0}`")]
+    OpenID4VCError(#[from] OpenID4VCError),
+
     #[error("OpenID4VCI validation error `{0}`")]
-    OpenID4VCError(#[from] OpenID4VCIError),
+    OpenID4VCIError(#[from] OpenID4VCIError),
 
     #[error("Config validation error `{0}`")]
     ConfigValidationError(#[from] ConfigValidationError),
@@ -835,8 +838,12 @@ impl From<uuid::Error> for ServiceError {
     }
 }
 
-impl ServiceError {
-    pub fn error_code(&self) -> ErrorCode {
+pub trait ErrorCodeMixin {
+    fn error_code(&self) -> ErrorCode;
+}
+
+impl ErrorCodeMixin for ServiceError {
+    fn error_code(&self) -> ErrorCode {
         match self {
             ServiceError::EntityNotFound(error) => error.error_code(),
             ServiceError::BusinessLogic(error) => error.error_code(),
@@ -851,7 +858,9 @@ impl ServiceError {
                 ErrorCode::BR_0039
             }
             ServiceError::MappingError(_) => ErrorCode::BR_0047,
-            ServiceError::OpenID4VCError(_) => ErrorCode::BR_0048,
+            ServiceError::OpenID4VCError(_) | ServiceError::OpenID4VCIError(_) => {
+                ErrorCode::BR_0048
+            }
             ServiceError::ConfigValidationError(error) => error.error_code(),
             ServiceError::BitstringError(_) => ErrorCode::BR_0049,
             ServiceError::MissingSigner(_) => ErrorCode::BR_0060,
@@ -867,8 +876,8 @@ impl ServiceError {
     }
 }
 
-impl ConfigValidationError {
-    pub fn error_code(&self) -> ErrorCode {
+impl ErrorCodeMixin for ConfigValidationError {
+    fn error_code(&self) -> ErrorCode {
         match self {
             ConfigValidationError::TypeNotFound(_) => ErrorCode::BR_0089,
             ConfigValidationError::InvalidKey(_)
@@ -881,8 +890,8 @@ impl ConfigValidationError {
     }
 }
 
-impl EntityNotFoundError {
-    pub fn error_code(&self) -> ErrorCode {
+impl ErrorCodeMixin for EntityNotFoundError {
+    fn error_code(&self) -> ErrorCode {
         match self {
             EntityNotFoundError::Credential(_) => ErrorCode::BR_0001,
             EntityNotFoundError::Did(_) => ErrorCode::BR_0024,
@@ -900,8 +909,8 @@ impl EntityNotFoundError {
     }
 }
 
-impl BusinessLogicError {
-    pub fn error_code(&self) -> ErrorCode {
+impl ErrorCodeMixin for BusinessLogicError {
+    fn error_code(&self) -> ErrorCode {
         match self {
             BusinessLogicError::OrganisationAlreadyExists => ErrorCode::BR_0023,
             BusinessLogicError::IncompatibleDidType { .. } => ErrorCode::BR_0025,
@@ -960,8 +969,8 @@ impl BusinessLogicError {
     }
 }
 
-impl ValidationError {
-    pub fn error_code(&self) -> ErrorCode {
+impl ErrorCodeMixin for ValidationError {
+    fn error_code(&self) -> ErrorCode {
         match self {
             ValidationError::InvalidExchangeType { .. } => ErrorCode::BR_0052,
             ValidationError::MissingDefaultTransport => ErrorCode::BR_0142,
@@ -999,8 +1008,8 @@ impl ValidationError {
     }
 }
 
-impl ExchangeProtocolError {
-    pub fn error_code(&self) -> ErrorCode {
+impl ErrorCodeMixin for ExchangeProtocolError {
+    fn error_code(&self) -> ErrorCode {
         match self {
             ExchangeProtocolError::Failed(_) => ErrorCode::BR_0062,
             ExchangeProtocolError::IncorrectCredentialSchemaType => ErrorCode::BR_0087,

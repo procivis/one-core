@@ -4,6 +4,8 @@ use tempfile::NamedTempFile;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+
 use super::BackupService;
 use crate::model::backup::{Metadata, UnexportableEntities};
 use crate::model::claim::Claim;
@@ -11,7 +13,6 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
 };
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::organisation::Organisation;

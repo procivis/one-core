@@ -1,6 +1,8 @@
 use std::ops::Add;
 use std::sync::Arc;
 
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+
 use mockall::predicate::{always, eq};
 use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -10,7 +12,7 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutType, WalletStorageTypeEnum,
+    LayoutType,
 };
 use one_core::model::did::{Did, DidRelations};
 use one_core::model::interaction::{Interaction, InteractionRelations};

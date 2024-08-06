@@ -1,26 +1,29 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use dto::ScanToVerifyCredentialDTO;
-use one_providers::common_models::key::Key;
+use one_providers::common_dto::PublicKeyJwkDTO;
+use one_providers::common_models::credential::Credential;
+use one_providers::common_models::did::{Did, KeyRole};
+use one_providers::common_models::key::{Key, KeyId};
+use one_providers::common_models::organisation::Organisation;
+use one_providers::common_models::proof::Proof;
 use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
+use one_providers::exchange_protocol::openid4vc::model::{
+    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentationDefinitionResponseDTO,
+    PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
+};
+use one_providers::exchange_protocol::openid4vc::{
+    ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
+    StorageAccess, TypeToDescriptorMapper,
+};
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use url::Url;
 
-use super::dto::{ShareResponse, UpdateResponse};
-use super::StorageAccess;
-use crate::model::credential::Credential;
-use crate::model::did::{Did, KeyRole};
-use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
-use crate::provider::exchange_protocol::dto::{
-    PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
-};
-use crate::provider::exchange_protocol::{ExchangeProtocolError, ExchangeProtocolImpl};
 use crate::service::proof::dto::ScanToVerifyRequestDTO;
-use crate::service::ssi_holder::dto::InvitationResponseDTO;
 use crate::util::key_verification::KeyVerification;
 
 pub mod dto;
@@ -57,8 +60,8 @@ impl ExchangeProtocolImpl for ScanToVerify {
     async fn handle_invitation(
         &self,
         _url: Url,
-        _organisation: Organisation,
         _storage_access: &StorageAccess,
+        _handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         unimplemented!()
     }
@@ -74,6 +77,8 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _holder_did: &Did,
         _key: &Key,
         _jwk_key_id: Option<String>,
+        _format_map: HashMap<String, String>,
+        _presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         unimplemented!()
     }
@@ -84,6 +89,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _holder_did: &Did,
         _key: &Key,
         _jwk_key_id: Option<String>,
+        _format: &str,
         _storage_access: &StorageAccess,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         unimplemented!()
@@ -99,6 +105,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
     async fn share_credential(
         &self,
         _credential: &Credential,
+        _credential_format: &str,
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         unimplemented!()
     }
@@ -106,6 +113,11 @@ impl ExchangeProtocolImpl for ScanToVerify {
     async fn share_proof(
         &self,
         _proof: &Proof,
+        _format_to_type_mapper: FormatMapper,
+        _key_id: KeyId,
+        _encryption_key_jwk: PublicKeyJwkDTO,
+        _vp_formats: HashMap<String, OpenID4VPFormat>,
+        _type_to_descriptor: TypeToDescriptorMapper,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         unimplemented!()
     }
@@ -115,6 +127,9 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _proof: &Proof,
         _interaction_data: Self::VPInteractionContext,
         _storage_access: &StorageAccess,
+        _format_map: HashMap<String, String>,
+        _types: HashMap<String, DatatypeType>,
+        _organisation: Organisation,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         unimplemented!()
     }
@@ -165,7 +180,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         let key_verification = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
-            key_role: KeyRole::AssertionMethod,
+            key_role: KeyRole::AssertionMethod.into(),
         });
 
         let credential = formatter

@@ -3,13 +3,26 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::{always, eq};
+use one_providers::common_models::claim::Claim;
+use one_providers::common_models::claim_schema::ClaimSchema;
+use one_providers::common_models::credential::{
+    Credential, CredentialRole, CredentialState, CredentialStateEnum,
+};
+use one_providers::common_models::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
+};
+use one_providers::common_models::interaction::Interaction;
 use one_providers::common_models::key::Key;
+use one_providers::common_models::organisation::Organisation;
 use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
 use one_providers::did::model::{DidDocument, DidVerificationMethod};
 use one_providers::did::provider::MockDidMethodProvider;
+use one_providers::exchange_protocol::openid4vc::error::OpenID4VCIError;
+use one_providers::exchange_protocol::openid4vc::model::{CredentialGroup, CredentialGroupItem};
+use one_providers::exchange_protocol::openid4vc::MockStorageProxy;
 use one_providers::key_storage::provider::MockKeyProvider;
 use one_providers::revocation::model::{CredentialRevocationInfo, JsonLdContext};
 use one_providers::revocation::provider::MockRevocationMethodProvider;
@@ -20,33 +33,21 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::{CoreConfig, Fields, Params};
-use crate::model::claim::Claim;
-use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
-};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::interaction::Interaction;
-use crate::model::organisation::Organisation;
 use crate::model::revocation_list::{RevocationList, RevocationListPurpose};
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
-use crate::provider::credential_formatter::test_utilities::get_dummy_date;
-use crate::provider::exchange_protocol::dto::{CredentialGroup, CredentialGroupItem};
 use crate::provider::exchange_protocol::mapper::get_relevant_credentials_to_credential_schemas;
 use crate::provider::exchange_protocol::provider::{
-    ExchangeProtocolProvider, ExchangeProtocolProviderImpl,
+    ExchangeProtocolProviderCoreImpl, ExchangeProtocolProviderExtra,
+    MockExchangeProtocolProviderExtra,
 };
-use crate::provider::exchange_protocol::MockStorageProxy;
 use crate::provider::revocation::none::NoneRevocation;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::ServiceError;
-use crate::service::oidc::dto::OpenID4VCIError;
-use crate::service::test_utilities::generic_config;
+use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 
 #[tokio::test]
 async fn test_issuer_submit_succeeds() {
@@ -63,14 +64,11 @@ async fn test_issuer_submit_succeeds() {
         key_reference: b"private_key".to_vec(),
         storage_type: key_storage_type.to_string(),
         key_type: key_type.to_string(),
-        organisation: Some(
-            Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }
-            .into(),
-        ),
+        organisation: Some(Organisation {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
     };
 
     let credential = Credential {
@@ -79,14 +77,17 @@ async fn test_issuer_submit_succeeds() {
             state: CredentialStateEnum::Offered,
             suspend_end_date: None,
         }]),
-        holder_did: Some(dummy_did()),
-        issuer_did: Some(Did {
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key: key.to_owned(),
-            }]),
-            ..dummy_did()
-        }),
+        holder_did: Some(dummy_did().into()),
+        issuer_did: Some(
+            Did {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: key.to_owned(),
+                }]),
+                ..dummy_did()
+            }
+            .into(),
+        ),
         key: Some(key),
         ..dummy_credential()
     };
@@ -100,11 +101,18 @@ async fn test_issuer_submit_succeeds() {
             true
         })
         .once()
-        .return_once(move |_, _| Ok(Some(credential_copy)));
+        .return_once(move |_, _| {
+            let mut credential: crate::model::credential::Credential = credential_copy.into();
+            credential.schema = Some(crate::model::credential_schema::CredentialSchema {
+                organisation: Some(dummy_organisation()),
+                ..credential.schema.unwrap()
+            });
+            Ok(Some(credential))
+        });
 
     credential_repository
         .expect_get_credentials_by_issuer_did_id()
-        .return_once(move |_, _| Ok(vec![credential]));
+        .return_once(move |_, _| Ok(vec![credential.into()]));
 
     credential_repository
         .expect_update_credential()
@@ -219,8 +227,8 @@ async fn test_issuer_submit_succeeds() {
             }))
         });
 
-    let service = ExchangeProtocolProviderImpl::new(
-        Default::default(),
+    let service = ExchangeProtocolProviderCoreImpl::new(
+        Arc::new(MockExchangeProtocolProviderExtra::default()),
         Arc::new(formatter_provider),
         Arc::new(credential_repository),
         Arc::new(revocation_method_provider),
@@ -233,10 +241,8 @@ async fn test_issuer_submit_succeeds() {
         Some("base_url".to_string()),
     );
 
-    service
-        .issue_credential(&credential_id, dummy_did())
-        .await
-        .unwrap();
+    let result = service.issue_credential(&credential_id, dummy_did()).await;
+    assert!(result.is_ok());
 }
 
 #[tokio::test]
@@ -254,7 +260,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
     let credential_copy = credential.to_owned();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_, _| Ok(vec![credential_copy]));
+        .return_once(|_| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -288,7 +294,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
     let credential_copy = credential.to_owned();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_, _| Ok(vec![credential_copy]));
+        .return_once(|_| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -328,7 +334,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
     let credential_copy = credential.to_owned();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_, _| Ok(vec![credential_copy]));
+        .return_once(|_| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -395,7 +401,7 @@ fn mdoc_credential() -> Credential {
         },
     ];
     *credential.claims.as_mut().unwrap() = vec![Claim {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         credential_id: credential.id.to_owned(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
@@ -416,14 +422,17 @@ fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credenti
             state,
             suspend_end_date: None,
         }]),
-        holder_did: Some(dummy_did()),
-        issuer_did: Some(Did {
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key: key.to_owned(),
-            }]),
-            ..dummy_did()
-        }),
+        holder_did: Some(dummy_did().into()),
+        issuer_did: Some(
+            Did {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: key.to_owned(),
+                }]),
+                ..dummy_did()
+            }
+            .into(),
+        ),
         key: Some(key),
         schema: Some(CredentialSchema {
             format: format.to_string(),
@@ -441,7 +450,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
     let credential_copy = credential.to_owned();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_, _| Ok(vec![credential_copy]));
+        .return_once(|_| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -474,7 +483,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_se
     let credential_copy = credential.to_owned();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_, _| Ok(vec![credential_copy]));
+        .return_once(|_| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -515,11 +524,18 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
             true
         })
         .once()
-        .return_once(move |_, _| Ok(Some(credential_copy)));
+        .return_once(move |_, _| {
+            let mut credential: crate::model::credential::Credential = credential_copy.into();
+            credential.schema = Some(crate::model::credential_schema::CredentialSchema {
+                organisation: Some(dummy_organisation()),
+                ..credential.schema.unwrap()
+            });
+            Ok(Some(credential))
+        });
 
     credential_repository
         .expect_get_credentials_by_issuer_did_id()
-        .return_once(move |_, _| Ok(vec![credential]));
+        .return_once(move |_, _| Ok(vec![credential.into()]));
 
     credential_repository
         .expect_update_credential()
@@ -603,8 +619,8 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         })
         .return_once(|_| Ok(()));
 
-    let service = ExchangeProtocolProviderImpl::new(
-        Default::default(),
+    let service = ExchangeProtocolProviderCoreImpl::new(
+        Arc::new(MockExchangeProtocolProviderExtra::default()),
         Arc::new(formatter_provider),
         Arc::new(credential_repository),
         Arc::new(revocation_method_provider),
@@ -638,11 +654,18 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             true
         })
         .once()
-        .return_once(move |_, _| Ok(Some(credential_copy)));
+        .return_once(move |_, _| {
+            let mut credential: crate::model::credential::Credential = credential_copy.into();
+            credential.schema = Some(crate::model::credential_schema::CredentialSchema {
+                organisation: Some(dummy_organisation()),
+                ..credential.schema.unwrap()
+            });
+            Ok(Some(credential))
+        });
 
     credential_repository
         .expect_get_credentials_by_issuer_did_id()
-        .return_once(move |_, _| Ok(vec![credential]));
+        .return_once(move |_, _| Ok(vec![credential.into()]));
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider
@@ -750,8 +773,8 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         },
     );
 
-    let service = ExchangeProtocolProviderImpl::new(
-        Default::default(),
+    let service = ExchangeProtocolProviderCoreImpl::new(
+        Arc::new(MockExchangeProtocolProviderExtra::default()),
         Arc::new(formatter_provider),
         Arc::new(credential_repository),
         Arc::new(revocation_method_provider),
@@ -786,11 +809,11 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
             true
         })
         .once()
-        .return_once(move |_, _| Ok(Some(credential_copy)));
+        .return_once(move |_, _| Ok(Some(credential_copy.into())));
 
     credential_repository
         .expect_get_credentials_by_issuer_did_id()
-        .return_once(move |_, _| Ok(vec![credential]));
+        .return_once(move |_, _| Ok(vec![credential.into()]));
 
     let mut validity_credential_repository = MockValidityCredentialRepository::new();
     validity_credential_repository
@@ -827,8 +850,8 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         },
     );
 
-    let service = ExchangeProtocolProviderImpl::new(
-        Default::default(),
+    let service = ExchangeProtocolProviderCoreImpl::new(
+        Arc::new(MockExchangeProtocolProviderExtra::default()),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(credential_repository),
         Arc::new(MockRevocationMethodProvider::new()),
@@ -842,7 +865,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
     );
 
     assert2::assert!(
-        let ServiceError::OpenID4VCError(OpenID4VCIError::InvalidRequest) =
+        let ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest) =
         service
         .issue_credential(&credential_id, dummy_did())
         .await
@@ -874,7 +897,7 @@ fn dummy_credential() -> Credential {
             suspend_end_date: None,
         }]),
         claims: Some(vec![Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -911,24 +934,18 @@ fn dummy_credential() -> Credential {
                 },
                 required: true,
             }]),
-            organisation: Some(Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_type: "ProcivisOneSchema2024".into(),
             schema_id: "CredentialSchemaId".to_owned(),
         }),
         interaction: Some(Interaction {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             host: Some("https://core.dev.one-trust-solution.com".parse().unwrap()),
             data: Some(b"interaction data".to_vec()),
         }),
-        revocation_list: None,
         key: None,
     }
 }
@@ -982,13 +999,10 @@ fn dummy_key() -> Key {
         key_reference: b"private_key".to_vec(),
         storage_type: "SOFTWARE".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: Some(
-            Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }
-            .into(),
-        ),
+        organisation: Some(Organisation {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
     }
 }

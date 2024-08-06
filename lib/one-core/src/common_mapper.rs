@@ -1,5 +1,6 @@
 use dto_mapper::{convert_inner, try_convert_inner};
 use one_providers::common_models::PublicKeyJwk;
+use one_providers::exchange_protocol::openid4vc::imp::OpenID4VCParams;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use serde::{Deserialize, Deserializer};
@@ -16,7 +17,6 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 

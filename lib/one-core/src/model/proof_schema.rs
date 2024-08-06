@@ -1,15 +1,15 @@
-use dto_mapper::{convert_inner, convert_inner_of_inner, Into};
+use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use shared_types::ProofSchemaId;
 use time::OffsetDateTime;
 
-use super::{
-    claim_schema::ClaimSchema,
-    common::{GetListQueryParams, GetListResponse},
-    credential_schema::{CredentialSchema, CredentialSchemaRelations},
-    organisation::{Organisation, OrganisationRelations},
-};
+use super::claim_schema::ClaimSchema;
+use super::common::{GetListQueryParams, GetListResponse};
+use super::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use super::organisation::{Organisation, OrganisationRelations};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
+#[into(one_providers::common_models::proof_schema::ProofSchema)]
+#[from(one_providers::common_models::proof_schema::ProofSchema)]
 pub struct ProofSchema {
     pub id: ProofSchemaId,
     pub created_date: OffsetDateTime,
@@ -19,24 +19,32 @@ pub struct ProofSchema {
     pub expire_duration: u32,
 
     // Relations
+    #[into(skip)]
+    #[from(replace = None)]
     pub organisation: Option<Organisation>,
+    #[into(with_fn = "convert_inner_of_inner")]
+    #[from(with_fn = "convert_inner_of_inner")]
     pub input_schemas: Option<Vec<ProofInputSchema>>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Default, Into, From)]
 #[into(one_providers::common_models::proof_schema::ProofInputSchema)]
+#[from(one_providers::common_models::proof_schema::ProofInputSchema)]
 pub struct ProofInputSchema {
     pub validity_constraint: Option<i64>,
 
     // Relations
     #[into(with_fn = "convert_inner_of_inner")]
+    #[from(with_fn = "convert_inner_of_inner")]
     pub claim_schemas: Option<Vec<ProofInputClaimSchema>>,
     #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub credential_schema: Option<CredentialSchema>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
 #[into(one_providers::common_models::proof_schema::ProofInputClaimSchema)]
+#[from(one_providers::common_models::proof_schema::ProofInputClaimSchema)]
 pub struct ProofInputClaimSchema {
     pub schema: ClaimSchema,
     pub required: bool,

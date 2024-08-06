@@ -1,9 +1,13 @@
-use dto_mapper::convert_inner;
-use shared_types::CredentialId;
 use std::collections::BTreeMap;
+
+use dto_mapper::convert_inner;
+use one_providers::common_models::key::Key;
+use one_providers::revocation::model::CredentialRevocationState;
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::dto::CredentialSchemaType;
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::claim::Claim;
@@ -19,16 +23,17 @@ use crate::service::credential::dto::{
 };
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::{BusinessLogicError, ServiceError};
-use one_providers::common_models::key::Key;
-use one_providers::revocation::model::CredentialRevocationState;
 
 pub fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
+    organisation: &Organisation,
 ) -> Result<CredentialDetailResponseDTO, ServiceError> {
-    let schema = value.schema.ok_or(ServiceError::MappingError(
+    let mut schema = value.schema.ok_or(ServiceError::MappingError(
         "credential_schema is None".to_string(),
     ))?;
+    schema.organisation = Some(organisation.to_owned());
+
     let claims = value
         .claims
         .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
@@ -50,7 +55,7 @@ pub fn credential_detail_response_from_model(
         state: latest_state.state.into(),
         last_modified: value.last_modified,
         claims: from_vec_claim(claims, &schema, config)?,
-        schema: schema.try_into()?,
+        schema: schema.try_into()?, // This requires organisation to be set
         issuer_did: convert_inner(value.issuer_did),
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
@@ -641,5 +646,141 @@ pub(super) fn credential_revocation_state_to_model_state(
         CredentialRevocationState::Revoked => CredentialStateEnum::Revoked,
         CredentialRevocationState::Valid => CredentialStateEnum::Accepted,
         CredentialRevocationState::Suspended { .. } => CredentialStateEnum::Suspended,
+    }
+}
+
+impl From<one_providers::common_models::credential::CredentialStateEnum>
+    for crate::service::credential::dto::CredentialStateEnum
+{
+    fn from(value: one_providers::common_models::credential::CredentialStateEnum) -> Self {
+        match value {
+            one_providers::common_models::credential::CredentialStateEnum::Created => Self::Created,
+            one_providers::common_models::credential::CredentialStateEnum::Pending => Self::Pending,
+            one_providers::common_models::credential::CredentialStateEnum::Offered => Self::Offered,
+            one_providers::common_models::credential::CredentialStateEnum::Accepted => {
+                Self::Accepted
+            }
+            one_providers::common_models::credential::CredentialStateEnum::Rejected => {
+                Self::Rejected
+            }
+            one_providers::common_models::credential::CredentialStateEnum::Revoked => Self::Revoked,
+            one_providers::common_models::credential::CredentialStateEnum::Suspended => {
+                Self::Suspended
+            }
+            one_providers::common_models::credential::CredentialStateEnum::Error => Self::Error,
+        }
+    }
+}
+
+impl From<crate::service::credential::dto::CredentialStateEnum>
+    for one_providers::common_models::credential::CredentialStateEnum
+{
+    fn from(value: crate::service::credential::dto::CredentialStateEnum) -> Self {
+        match value {
+            crate::service::credential::dto::CredentialStateEnum::Created => Self::Created,
+            crate::service::credential::dto::CredentialStateEnum::Pending => Self::Pending,
+            crate::service::credential::dto::CredentialStateEnum::Offered => Self::Offered,
+            crate::service::credential::dto::CredentialStateEnum::Accepted => Self::Accepted,
+            crate::service::credential::dto::CredentialStateEnum::Rejected => Self::Rejected,
+            crate::service::credential::dto::CredentialStateEnum::Revoked => Self::Revoked,
+            crate::service::credential::dto::CredentialStateEnum::Suspended => Self::Suspended,
+            crate::service::credential::dto::CredentialStateEnum::Error => Self::Error,
+        }
+    }
+}
+
+impl From<String> for CredentialSchemaType {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "ProcivisOneSchema2024" => CredentialSchemaType::ProcivisOneSchema2024,
+            "FallbackSchema2024" => CredentialSchemaType::FallbackSchema2024,
+            "mdoc" => CredentialSchemaType::Mdoc,
+            _ => Self::Other(value),
+        }
+    }
+}
+
+impl From<one_providers::common_models::credential::CredentialRole> for super::dto::CredentialRole {
+    fn from(value: one_providers::common_models::credential::CredentialRole) -> Self {
+        match value {
+            one_providers::common_models::credential::CredentialRole::Holder => Self::Holder,
+            one_providers::common_models::credential::CredentialRole::Issuer => Self::Issuer,
+            one_providers::common_models::credential::CredentialRole::Verifier => Self::Verifier,
+        }
+    }
+}
+
+impl From<super::dto::CredentialRole> for one_providers::common_models::credential::CredentialRole {
+    fn from(value: super::dto::CredentialRole) -> Self {
+        match value {
+            super::dto::CredentialRole::Holder => Self::Holder,
+            super::dto::CredentialRole::Issuer => Self::Issuer,
+            super::dto::CredentialRole::Verifier => Self::Verifier,
+        }
+    }
+}
+
+impl From<crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO> for one_providers::exchange_protocol::openid4vc::model::CredentialSchemaLayoutPropertiesRequestDTO {
+    fn from(value: crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO) -> Self {
+        Self {
+            background: convert_inner(value.background),
+            logo: convert_inner(value.logo),
+            primary_attribute: value.primary_attribute,
+            secondary_attribute: value.secondary_attribute,
+            picture_attribute: value.picture_attribute,
+            code: convert_inner(value.code),
+        }
+    }
+}
+
+impl From<crate::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO> for one_providers::exchange_protocol::openid4vc::model::CredentialSchemaBackgroundPropertiesRequestDTO {
+    fn from(value: crate::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO) -> Self {
+        Self {
+            color: value.color,
+            image: value.image,
+        }
+    }
+}
+
+impl From<crate::service::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO>
+    for one_providers::exchange_protocol::openid4vc::model::CredentialSchemaLogoPropertiesRequestDTO
+{
+    fn from(
+        value: crate::service::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO,
+    ) -> Self {
+        Self {
+            font_color: value.font_color,
+            background_color: value.background_color,
+            image: value.image,
+        }
+    }
+}
+
+impl From<crate::service::credential_schema::dto::CredentialSchemaCodePropertiesRequestDTO>
+    for one_providers::exchange_protocol::openid4vc::model::CredentialSchemaCodePropertiesRequestDTO
+{
+    fn from(
+        value: crate::service::credential_schema::dto::CredentialSchemaCodePropertiesRequestDTO,
+    ) -> Self {
+        Self {
+            attribute: value.attribute,
+            r#type: value.r#type.into(),
+        }
+    }
+}
+
+impl From<crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum>
+    for one_providers::exchange_protocol::openid4vc::model::CredentialSchemaCodeTypeEnum
+{
+    fn from(value: crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum) -> Self {
+        match value {
+            crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::Barcode => {
+                Self::Barcode
+            }
+            crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::Mrz => Self::Mrz,
+            crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::QrCode => {
+                Self::QrCode
+            }
+        }
     }
 }

@@ -10,7 +10,7 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutProperties, LayoutType, WalletStorageTypeEnum,
+    LayoutProperties, LayoutType,
 };
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
@@ -28,6 +28,7 @@ use one_core::model::revocation_list::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::DataRepository;
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
 use one_providers::common_models::key::Key;
 use rand::distributions::Alphanumeric;
 use rand::Rng;

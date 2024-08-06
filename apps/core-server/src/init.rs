@@ -3,7 +3,6 @@ use std::{collections::HashMap, sync::Arc};
 use one_core::provider::credential_formatter::json_ld_classic::JsonLdClassic;
 use one_core::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use one_core::provider::credential_formatter::physical_card::PhysicalCardFormatter;
-use one_core::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use one_core::provider::credential_formatter::FormatterCapabilities;
 use one_core::provider::key_algorithm::ml_dsa::MlDsa;
 use one_core::provider::key_storage::pkcs11::PKCS11KeyProvider;
@@ -21,6 +20,7 @@ use one_providers::credential_formatter::imp::json_ld::context::caching_loader::
 use one_providers::credential_formatter::imp::json_ld_bbsplus::JsonLdBbsplus;
 use one_providers::credential_formatter::imp::jwt_formatter::JWTFormatter;
 use one_providers::credential_formatter::imp::provider::CredentialFormatterProviderImpl;
+use one_providers::credential_formatter::imp::sdjwt_formatter::SDJWTFormatter;
 use one_providers::credential_formatter::CredentialFormatter;
 use time::Duration;
 

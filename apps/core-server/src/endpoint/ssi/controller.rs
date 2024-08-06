@@ -7,7 +7,8 @@ use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use headers::Authorization;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use one_core::service::oidc::dto::OpenID4VCITokenRequestDTO;
+use one_providers::exchange_protocol::openid4vc::error::OpenID4VCError;
+use one_providers::exchange_protocol::openid4vc::model::OpenID4VCITokenRequestDTO;
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, ProofId, ProofSchemaId, TrustAnchorId,
 };
@@ -269,7 +270,7 @@ pub(crate) async fn oidc_get_credential_offer(
             Json(OpenID4VCICredentialOfferRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::OpenID4VCError(error)) => {
+        Err(ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential offer error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,
@@ -329,7 +330,7 @@ pub(crate) async fn oidc_create_token(
             Json(OpenID4VCITokenResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::OpenID4VCError(error)) => {
+        Err(ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI token validation error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,
@@ -399,7 +400,7 @@ pub(crate) async fn oidc_create_credential(
             Json(OpenID4VCICredentialResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::OpenID4VCError(error)) => {
+        Err(ServiceError::OpenID4VCIError(error)) => {
             tracing::error!("OpenID4VCI credential validation error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,
@@ -453,7 +454,10 @@ pub(crate) async fn oidc_verifier_direct_post(
             Json(OpenID4VPDirectPostResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::OpenID4VCError(error)) => {
+        Err(
+            ServiceError::OpenID4VCIError(error)
+            | ServiceError::OpenID4VCError(OpenID4VCError::OpenID4VCI(error)),
+        ) => {
             tracing::error!("OpenID4VCI validation error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,

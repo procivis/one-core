@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::macros::{impls_for_seaorm_newtype, impls_for_uuid_newtype};
+use crate::macros::{
+    impl_from_unnamed, impl_into, impls_for_seaorm_newtype, impls_for_uuid_newtype,
+};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
@@ -13,3 +15,6 @@ impls_for_uuid_newtype!(ProofId);
 
 #[cfg(feature = "sea-orm")]
 impls_for_seaorm_newtype!(ProofId);
+
+impl_from_unnamed!(ProofId; one_providers::common_models::proof::ProofId);
+impl_into!(ProofId; one_providers::common_models::proof::ProofId);

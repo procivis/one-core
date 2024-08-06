@@ -1,6 +1,8 @@
 use indoc::indoc;
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
 use one_providers::credential_formatter::model::FormatterCapabilities;
 use serde::{Deserialize, Serialize};
+use time::macros::datetime;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -10,7 +12,6 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
@@ -143,6 +144,10 @@ pub fn dummy_credential() -> Credential {
     dummy_credential_with_exchange("EXCHANGE")
 }
 
+pub fn get_dummy_date() -> OffsetDateTime {
+    datetime!(2005-04-02 21:37 +1)
+}
+
 pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
     let claim_schema_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
@@ -251,7 +256,20 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: None,
-        schema: None,
+        schema: Some(ProofSchema {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
+            name: "dummy".to_string(),
+            expire_duration: 0,
+            organisation: Some(Organisation {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
+            input_schemas: None,
+        }),
         claims: None,
         verifier_did: None,
         holder_did: None,

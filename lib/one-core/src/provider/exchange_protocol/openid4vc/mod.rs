@@ -1,31 +1,34 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
-use one_providers::common_models::key::Key;
+use one_providers::common_dto::PublicKeyJwkDTO;
+use one_providers::common_models::credential::Credential;
+use one_providers::common_models::did::Did;
+use one_providers::common_models::key::{Key, KeyId};
+use one_providers::common_models::organisation::Organisation;
+use one_providers::common_models::proof::Proof;
 use one_providers::credential_formatter::model::DetailCredential;
+use one_providers::exchange_protocol::openid4vc::imp::OpenID4VCHTTP;
+use one_providers::exchange_protocol::openid4vc::model::{
+    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentationDefinitionResponseDTO,
+    PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
+};
+use one_providers::exchange_protocol::openid4vc::{
+    FormatMapper, HandleInvitationOperationsAccess, TypeToDescriptorMapper,
+};
 use openidvc_ble::OpenID4VCBLE;
-use openidvc_http::OpenID4VCHTTP;
 use serde_json::json;
 use url::Url;
 
-use super::dto::{PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse};
-use super::{
-    deserialize_interaction_data, serialize_interaction_data, ExchangeProtocol,
-    ExchangeProtocolError, ExchangeProtocolImpl, StorageAccess,
-};
+use super::{ExchangeProtocol, ExchangeProtocolError, ExchangeProtocolImpl, StorageAccess};
 use crate::config::core_config::TransportType;
-use crate::model::credential::Credential;
-use crate::model::did::Did;
-use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
-use crate::provider::exchange_protocol::dto::PresentationDefinitionResponseDTO;
-use crate::service::ssi_holder::dto::InvitationResponseDTO;
 
 pub mod dto;
+pub mod handle_invitation_operations;
 pub(crate) mod mapper;
-mod mdoc;
 pub mod model;
 pub(crate) mod openidvc_ble;
-pub(crate) mod openidvc_http;
-mod validator;
+//pub(crate) mod openidvc_http;
 
 pub(crate) struct OpenID4VC {
     openid_http: OpenID4VCHTTP,
@@ -53,16 +56,16 @@ impl ExchangeProtocolImpl for OpenID4VC {
     async fn handle_invitation(
         &self,
         url: Url,
-        organisation: Organisation,
         storage_access: &StorageAccess,
+        handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         if self.openid_http.can_handle(&url) {
             self.openid_http
-                .handle_invitation(url, organisation, storage_access)
+                .handle_invitation(url, storage_access, handle_invitation_operations)
                 .await
         } else if self.openid_ble.can_handle(&url) {
             self.openid_ble
-                .handle_invitation(url, organisation, storage_access)
+                .handle_invitation(url, storage_access, handle_invitation_operations)
                 .await
         } else {
             Err(ExchangeProtocolError::Failed(
@@ -86,14 +89,32 @@ impl ExchangeProtocolImpl for OpenID4VC {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
+        format_map: HashMap<String, String>,
+        presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         if proof.transport == TransportType::Ble.to_string() {
             self.openid_ble
-                .submit_proof(proof, credential_presentations, holder_did, key, jwk_key_id)
+                .submit_proof(
+                    proof,
+                    credential_presentations,
+                    holder_did,
+                    key,
+                    jwk_key_id,
+                    format_map,
+                    presentation_format_map,
+                )
                 .await
         } else {
             self.openid_http
-                .submit_proof(proof, credential_presentations, holder_did, key, jwk_key_id)
+                .submit_proof(
+                    proof,
+                    credential_presentations,
+                    holder_did,
+                    key,
+                    jwk_key_id,
+                    format_map,
+                    presentation_format_map,
+                )
                 .await
         }
     }
@@ -104,10 +125,18 @@ impl ExchangeProtocolImpl for OpenID4VC {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
+        format: &str,
         storage_access: &StorageAccess,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         self.openid_http
-            .accept_credential(credential, holder_did, key, jwk_key_id, storage_access)
+            .accept_credential(
+                credential,
+                holder_did,
+                key,
+                jwk_key_id,
+                format,
+                storage_access,
+            )
             .await
     }
 
@@ -121,9 +150,10 @@ impl ExchangeProtocolImpl for OpenID4VC {
     async fn share_credential(
         &self,
         credential: &Credential,
+        credential_format: &str,
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         self.openid_http
-            .share_credential(credential)
+            .share_credential(credential, credential_format)
             .await
             .map(|context| ShareResponse {
                 url: context.url,
@@ -135,10 +165,22 @@ impl ExchangeProtocolImpl for OpenID4VC {
     async fn share_proof(
         &self,
         proof: &Proof,
+        format_to_type_mapper: FormatMapper,
+        key_id: KeyId,
+        encryption_key_jwk: PublicKeyJwkDTO,
+        vp_formats: HashMap<String, OpenID4VPFormat>,
+        type_to_descriptor: TypeToDescriptorMapper,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         if proof.transport == TransportType::Ble.to_string() {
             self.openid_ble
-                .share_proof(proof)
+                .share_proof(
+                    proof,
+                    format_to_type_mapper,
+                    key_id,
+                    encryption_key_jwk,
+                    vp_formats,
+                    type_to_descriptor,
+                )
                 .await
                 .map(|context| ShareResponse {
                     url: context.url,
@@ -147,7 +189,14 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 })
         } else {
             self.openid_http
-                .share_proof(proof)
+                .share_proof(
+                    proof,
+                    format_to_type_mapper,
+                    key_id,
+                    encryption_key_jwk,
+                    vp_formats,
+                    type_to_descriptor,
+                )
                 .await
                 .map(|context| ShareResponse {
                     url: context.url,
@@ -162,18 +211,35 @@ impl ExchangeProtocolImpl for OpenID4VC {
         proof: &Proof,
         interaction_data: Self::VPInteractionContext,
         storage_access: &StorageAccess,
+        format_map: HashMap<String, String>,
+        types: HashMap<String, DatatypeType>,
+        organisation: Organisation,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         if proof.transport == TransportType::Ble.to_string() {
             let interaction_data = serde_json::from_value(interaction_data)
                 .map_err(ExchangeProtocolError::JsonError)?;
             self.openid_ble
-                .get_presentation_definition(proof, interaction_data, storage_access)
+                .get_presentation_definition(
+                    proof,
+                    interaction_data,
+                    storage_access,
+                    format_map,
+                    types,
+                    organisation,
+                )
                 .await
         } else {
             let interaction_data = serde_json::from_value(interaction_data)
                 .map_err(ExchangeProtocolError::JsonError)?;
             self.openid_http
-                .get_presentation_definition(proof, interaction_data, storage_access)
+                .get_presentation_definition(
+                    proof,
+                    interaction_data,
+                    storage_access,
+                    format_map,
+                    types,
+                    organisation,
+                )
                 .await
         }
     }

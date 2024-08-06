@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::config::ConfigValidationError;
 use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
-use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
+use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -200,7 +200,7 @@ fn mock_ssi_issuer_service() -> SSIIssuerService {
         credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
         credential_repository: Arc::new(MockCredentialRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
-        protocol_provider: Arc::new(MockExchangeProtocolProvider::new()),
+        protocol_provider: Arc::new(MockExchangeProtocolProviderExtra::new()),
         config: Arc::new(generic_config().core),
         core_base_url: Some("http://127.0.0.1".to_string()),
         history_repository: Arc::new(MockHistoryRepository::new()),

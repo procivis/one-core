@@ -1,15 +1,21 @@
-use anyhow::{anyhow, Context};
 use std::sync::Arc;
 use std::time::Duration;
 use std::vec;
 
+use anyhow::{anyhow, Context};
 use futures::{stream, StreamExt, TryFutureExt};
+use one_providers::exchange_protocol::openid4vc::model::PresentationSubmissionMappingDTO;
 use rand::rngs::OsRng;
 use rand::Rng;
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::{
+    BLEParse, BLEPeer, BLEStream, IdentityRequest, KeyAgreementKey, MessageSize,
+    TransferSummaryReport, CONTENT_SIZE_UUID, IDENTITY_UUID, REQUEST_SIZE_UUID, SERVICE_UUID,
+    SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
+};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{ProofState, ProofStateEnum};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
@@ -26,13 +32,6 @@ use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::oidc::dto::PresentationSubmissionMappingDTO;
-
-use super::{
-    BLEParse, BLEPeer, BLEStream, IdentityRequest, KeyAgreementKey, MessageSize,
-    TransferSummaryReport, CONTENT_SIZE_UUID, IDENTITY_UUID, REQUEST_SIZE_UUID, SERVICE_UUID,
-    SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
-};
 
 pub struct OpenID4VCBLEHolder {
     pub proof_repository: Arc<dyn ProofRepository>,

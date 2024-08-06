@@ -1,8 +1,9 @@
-use dto_mapper::Into;
+use dto_mapper::{From, Into};
 use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, From, Into)]
+#[from(one_providers::common_models::claim_schema::ClaimSchema)]
 #[into(one_providers::common_models::claim_schema::ClaimSchema)]
 pub struct ClaimSchema {
     pub id: ClaimSchemaId,

@@ -1,6 +1,11 @@
+use std::sync::Arc;
+
+use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
+use one_providers::exchange_protocol::openid4vc::{
+    ExchangeProtocolError, FormatMapper, TypeToDescriptorMapper,
+};
 use shared_types::ProofId;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
@@ -10,7 +15,7 @@ use super::mapper::{
     proof_requested_history_event,
 };
 use super::ProofService;
-use crate::common_mapper::list_response_try_into;
+use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::ExchangeType;
 use crate::config::validator::exchange::validate_exchange_type;
@@ -31,8 +36,12 @@ use crate::model::proof::{
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use crate::provider::exchange_protocol::dto::{PresentationDefinitionResponseDTO, ShareResponse};
+use crate::provider::exchange_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::provider::exchange_protocol::openid4vc::mapper::{
+    create_format_map, create_open_id_for_vp_formats,
+};
 use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
+use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -43,6 +52,7 @@ use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_proof_interaction,
 };
+use crate::util::oidc::create_oicd_to_core_format_map;
 
 impl ProofService {
     /// Returns details of a proof
@@ -157,17 +167,18 @@ impl ProofService {
             .ok_or_else(|| ServiceError::MappingError("proof interaction is missing".into()))?
             .map_err(|err| ServiceError::MappingError(err.to_string()))?;
 
-        // The holder did / org is not set on the proof until it is shared by a holder
-        // get_presentation_definition is called before the proof is shared.
-        let organisation_id = proof
+        let organisation = proof
             .holder_did
             .as_ref()
-            .and_then(|did| did.organisation.as_ref())
-            .map(|org| org.id)
-            .unwrap_or(Uuid::new_v4().into());
+            .ok_or_else(|| ServiceError::MappingError("holder_did is missing".into()))?
+            .organisation
+            .as_ref()
+            .ok_or_else(|| {
+                ServiceError::MappingError("holder_did.organisation is missing".into())
+            })?;
 
         let storage_access = StorageProxyImpl::new(
-            organisation_id,
+            organisation.to_owned(),
             self.interaction_repository.clone(),
             self.credential_schema.clone(),
             self.credential_repository.clone(),
@@ -175,8 +186,16 @@ impl ProofService {
         );
 
         Ok(exchange
-            .get_presentation_definition(&proof, interaction_data, &storage_access)
-            .await?)
+            .get_presentation_definition(
+                &proof.clone().into(),
+                interaction_data,
+                &storage_access,
+                create_oicd_to_core_format_map(),
+                core_type_to_open_core_type(&self.config.datatype),
+                organisation.clone().into(),
+            )
+            .await?
+            .into())
     }
 
     /// Returns list of proofs according to query
@@ -334,11 +353,35 @@ impl ProofService {
             MissingProviderError::ExchangeProtocol(proof.exchange.to_owned()),
         )?;
 
+        let formats = create_open_id_for_vp_formats();
+        let jwk = get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider)?;
+
+        let config = self.config.clone();
+        let format_type_mapper: FormatMapper = Arc::new(move |input| {
+            Ok(config
+                .format
+                .get_fields(input)
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+                .r#type
+                .to_owned())
+        });
+
+        let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(create_format_map);
+
         let ShareResponse {
             url,
             id: interaction_id,
             context,
-        } = exchange.share_proof(&proof).await?;
+        } = exchange
+            .share_proof(
+                &proof.clone().into(),
+                format_type_mapper,
+                jwk.key_id.into(),
+                jwk.jwk.into(),
+                formats,
+                type_to_descriptor_mapper,
+            )
+            .await?;
 
         add_new_interaction(
             interaction_id,

@@ -1,20 +1,19 @@
-use crate::model::key::KeyRelations;
-use crate::service::error::{ServiceError, ValidationError};
-use dto_mapper::{convert_inner_of_inner, Into};
+use dto_mapper::{convert_inner_of_inner, From, Into};
 use one_providers::common_models::key::Key;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
 
-use super::{
-    common::GetListResponse,
-    list_filter::{ListFilterValue, StringMatch},
-    list_query::ListQuery,
-    organisation::{Organisation, OrganisationRelations},
-};
+use super::common::GetListResponse;
+use super::list_filter::{ListFilterValue, StringMatch};
+use super::list_query::ListQuery;
+use super::organisation::{Organisation, OrganisationRelations};
+use crate::model::key::KeyRelations;
+use crate::service::error::{ServiceError, ValidationError};
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Into, From)]
 #[into(one_providers::common_models::did::DidType)]
+#[from(one_providers::common_models::did::DidType)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DidType {
     Remote,
@@ -27,8 +26,9 @@ impl DidType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
 #[into(one_providers::common_models::did::KeyRole)]
+#[from(one_providers::common_models::did::KeyRole)]
 pub enum KeyRole {
     Authentication,
     AssertionMethod,
@@ -37,15 +37,17 @@ pub enum KeyRole {
     CapabilityDelegation,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
 #[into(one_providers::common_models::did::RelatedKey)]
+#[from(one_providers::common_models::did::RelatedKey)]
 pub struct RelatedKey {
     pub role: KeyRole,
     pub key: Key,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
 #[into(one_providers::common_models::did::Did)]
+#[from(one_providers::common_models::did::Did)]
 pub struct Did {
     pub id: DidId,
     pub created_date: OffsetDateTime,
@@ -58,8 +60,10 @@ pub struct Did {
 
     // Relations:
     #[into(with_fn = "convert_inner_of_inner")]
+    #[from(with_fn = "convert_inner_of_inner")]
     pub keys: Option<Vec<RelatedKey>>,
     #[into(skip)]
+    #[from(replace = None)]
     pub organisation: Option<Organisation>,
 }
 

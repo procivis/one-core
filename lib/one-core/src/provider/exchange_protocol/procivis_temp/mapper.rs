@@ -1,24 +1,24 @@
-use crate::config::core_config::CoreConfig;
-use shared_types::DidValue;
+use dto_mapper::convert_inner;
+use one_providers::common_models::credential::Credential;
+use one_providers::common_models::did::{Did, DidType, DidValue};
+use one_providers::common_models::proof::Proof;
+use one_providers::exchange_protocol::openid4vc::model::{
+    CredentialGroup, CredentialGroupItem, PresentationDefinitionRequestGroupResponseDTO,
+    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, ProofClaimSchema,
+};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
 use super::ExchangeProtocolError;
-use crate::model::credential::Credential;
-use crate::model::did::{Did, DidType};
+use crate::config::core_config::CoreConfig;
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
-use crate::provider::exchange_protocol::dto::{
-    CredentialGroup, CredentialGroupItem, PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, ProofClaimSchema,
-};
 use crate::provider::exchange_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
 };
 
-pub fn remote_did_from_value(did_value: DidValue, organisation: Organisation) -> Did {
+pub fn remote_did_from_value(did_value: DidValue) -> Did {
     let id = Uuid::new_v4();
     let now = OffsetDateTime::now_utc();
     Did {
@@ -26,7 +26,6 @@ pub fn remote_did_from_value(did_value: DidValue, organisation: Organisation) ->
         name: format!("issuer {id}"),
         created_date: now,
         last_modified: now,
-        organisation: Some(organisation),
         did: did_value,
         did_type: DidType::Remote,
         did_method: "KEY".to_string(),
@@ -82,6 +81,7 @@ pub(super) fn presentation_definition_from_proof(
     credentials: Vec<Credential>,
     credential_groups: Vec<CredentialGroup>,
     config: &CoreConfig,
+    organisation: &Organisation,
 ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
@@ -103,13 +103,17 @@ pub(super) fn presentation_definition_from_proof(
                         group.name,
                         group.purpose,
                         group.claims,
-                        group.applicable_credentials,
+                        convert_inner(group.applicable_credentials),
                         group.validity_credential_nbf,
                     )
                 })
                 .collect::<Result<Vec<_>, ExchangeProtocolError>>()?,
         }],
-        credentials: credential_model_to_credential_dto(credentials, config)?,
+        credentials: convert_inner(credential_model_to_credential_dto(
+            credentials,
+            config,
+            organisation,
+        )?),
     })
 }
 

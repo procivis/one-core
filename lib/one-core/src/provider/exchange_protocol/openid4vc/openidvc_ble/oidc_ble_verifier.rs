@@ -6,6 +6,7 @@ use futures::future::BoxFuture;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt, TryFutureExt};
 use one_providers::crypto::imp::utilities;
+use one_providers::exchange_protocol::openid4vc::model::OpenID4VPPresentationDefinition;
 use shared_types::ProofId;
 use time::OffsetDateTime;
 
@@ -22,9 +23,7 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceInfo, ServiceDescription,
 };
-use crate::provider::exchange_protocol::openid4vc::dto::{
-    Chunk, ChunkExt, Chunks, OpenID4VPPresentationDefinition,
-};
+use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::model::{
     BLEOpenID4VPInteractionData, BleOpenId4VpResponse,
 };
@@ -126,7 +125,7 @@ impl OpenID4VCBLEVerifier {
                 let new_data = BLEOpenID4VPInteractionData {
                     peer,
                     nonce: Some(hex::encode(identity_request.nonce)),
-                    presentation_definition: Some(proof_request),
+                    presentation_definition: Some(proof_request.into()),
                     presentation_submission: Some(submission),
                 };
 

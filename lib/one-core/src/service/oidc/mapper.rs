@@ -1,53 +1,29 @@
-use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
-use crate::config::core_config::CoreConfig;
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
-use crate::model::interaction::{Interaction, InteractionId};
-use crate::service::error::ServiceError;
-use crate::service::oidc::{
-    dto::{
-        OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError, OpenID4VCIInteractionDataDTO,
-        OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
-        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
-        OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenResponseDTO, Timestamp,
-    },
-    model::OpenID4VPInteractionContent,
-};
-use crate::util::oidc::map_core_to_oidc_format;
 use std::collections::HashMap;
-use std::str::FromStr;
-use uuid::Uuid;
 
-use super::dto::{
-    OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
+use dto_mapper::{convert_inner, convert_inner_of_inner};
+use one_providers::exchange_protocol::openid4vc::model::{
+    OpenID4VCIInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
+    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VPInteractionContent, ProvedCredential,
 };
 
-pub(super) fn create_issuer_metadata_response(
-    base_url: String,
+use crate::common_mapper::{get_or_create_did, remove_first_nesting_layer, NESTED_CLAIM_MARKER};
+use crate::model::credential::Credential;
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::model::interaction::Interaction;
+use crate::model::organisation::Organisation;
+use crate::repository::did_repository::DidRepository;
+use crate::service::error::ServiceError;
+use crate::util::oidc::map_core_to_oidc_format;
+
+pub(super) fn credentials_supported_mdoc(
+    base_url: &str,
     schema: CredentialSchema,
-    config: &CoreConfig,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
-    let format = config.format.get_fields(&schema.format)?;
-
-    let credentials_supported = match format.r#type.as_str() {
-        "MDOC" => credentials_supported_mdoc(schema),
-        _ => credentials_supported_others(schema),
-    }?;
-
-    Ok(OpenID4VCIIssuerMetadataResponseDTO {
-        credential_issuer: base_url.to_owned(),
-        credential_endpoint: format!("{base_url}/credential"),
-        credentials_supported,
-    })
-}
-
-fn credentials_supported_mdoc(
-    schema: CredentialSchema,
-) -> Result<Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO>, ServiceError> {
-    let claim_schemas = schema.claim_schemas.ok_or(ServiceError::MappingError(
-        "claim_schemas is None".to_string(),
-    ))?;
+    let claim_schemas: Vec<CredentialSchemaClaim> = schema.claim_schemas.ok_or(
+        ServiceError::MappingError("claim_schemas is None".to_string()),
+    )?;
 
     // order of namespaces and elements inside MDOC schema as defined in OpenID4VCI mdoc spec: `{namespace}~{element}`
     let element_order: Vec<String> = claim_schemas
@@ -70,23 +46,27 @@ fn credentials_supported_mdoc(
         .map(|(namespace, elements)| (namespace, elements.value))
         .collect();
 
-    Ok(vec![
-        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
-            wallet_storage_type: schema.wallet_storage_type,
-            format: map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?,
-            claims: Some(claims),
-            order: if element_order.len() > 1 {
-                Some(element_order)
-            } else {
-                None
-            },
-            credential_definition: None,
-            doctype: Some(schema.schema_id),
-            display: Some(vec![
-                OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema.name },
-            ]),
+    let credentials_supported = vec![OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
+        wallet_storage_type: schema.wallet_storage_type.map(Into::into),
+        format: map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?,
+        claims: Some(claims),
+        order: if element_order.len() > 1 {
+            Some(element_order)
+        } else {
+            None
         },
-    ])
+        credential_definition: None,
+        doctype: Some(schema.schema_id),
+        display: Some(vec![
+            OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema.name },
+        ]),
+    }];
+
+    Ok(OpenID4VCIIssuerMetadataResponseDTO {
+        credential_issuer: base_url.to_owned(),
+        credential_endpoint: format!("{base_url}/credential"),
+        credentials_supported,
+    })
 }
 
 fn schemas_to_mdoc_values(
@@ -182,88 +162,6 @@ fn order_mdoc_claims(
         .collect()
 }
 
-fn credentials_supported_others(
-    schema: CredentialSchema,
-) -> Result<Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO>, ServiceError> {
-    Ok(vec![
-        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
-            wallet_storage_type: schema.wallet_storage_type,
-            format: map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?,
-            claims: None,
-            order: None,
-            credential_definition: Some(OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO {
-                r#type: vec!["VerifiableCredential".to_string()],
-                credential_schema: Some(OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO {
-                    id: schema.schema_id,
-                    r#type: schema.schema_type.into(),
-                }),
-            }),
-            doctype: None,
-            display: Some(vec![
-                OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema.name },
-            ]),
-        },
-    ])
-}
-
-pub(super) fn create_service_discovery_response(
-    base_url: String,
-) -> Result<OpenID4VCIDiscoveryResponseDTO, ServiceError> {
-    Ok(OpenID4VCIDiscoveryResponseDTO {
-        issuer: base_url.to_owned(),
-        authorization_endpoint: format!("{base_url}/authorize"),
-        token_endpoint: format!("{base_url}/token"),
-        jwks_uri: format!("{base_url}/jwks"),
-        response_types_supported: vec!["token".to_string()],
-        grant_types_supported: vec![
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
-            "refresh_token".to_string(),
-        ],
-        subject_types_supported: vec!["public".to_string()],
-        id_token_signing_alg_values_supported: vec![],
-    })
-}
-
-impl TryFrom<OpenID4VCIInteractionDataDTO> for OpenID4VCITokenResponseDTO {
-    type Error = ServiceError;
-    fn try_from(value: OpenID4VCIInteractionDataDTO) -> Result<Self, Self::Error> {
-        Ok(Self {
-            access_token: value.access_token.to_string(),
-            token_type: "bearer".to_string(),
-            expires_in: Timestamp(
-                value
-                    .access_token_expires_at
-                    .ok_or(ServiceError::MappingError(
-                        "access_token_expires_at missing".to_string(),
-                    ))?
-                    .unix_timestamp(),
-            ),
-            refresh_token: value.refresh_token,
-            refresh_token_expires_in: value
-                .refresh_token_expires_at
-                .map(|dt| Timestamp(dt.unix_timestamp())),
-        })
-    }
-}
-
-pub(super) fn parse_refresh_token(token: &str) -> Result<InteractionId, ServiceError> {
-    parse_access_token(token)
-}
-
-pub(super) fn parse_access_token(access_token: &str) -> Result<InteractionId, ServiceError> {
-    let mut splitted_token = access_token.split('.');
-    if splitted_token.to_owned().count() != 2 {
-        return Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken));
-    }
-
-    let interaction_id = Uuid::from_str(
-        splitted_token
-            .next()
-            .ok_or(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken))?,
-    )?;
-    Ok(interaction_id)
-}
-
 pub(crate) fn interaction_data_to_dto(
     interaction: &Interaction,
 ) -> Result<OpenID4VCIInteractionDataDTO, ServiceError> {
@@ -281,28 +179,6 @@ pub(crate) fn interaction_data_to_dto(
     Ok(interaction_data_parsed)
 }
 
-pub(crate) fn vec_last_position_from_token_path(path: &str) -> Result<usize, ServiceError> {
-    // Find the position of '[' and ']'
-    if let Some(open_bracket) = path.rfind('[') {
-        if let Some(close_bracket) = path.rfind(']') {
-            // Extract the substring between '[' and ']'
-            let value = &path[open_bracket + 1..close_bracket];
-
-            let parsed_value = value.parse().map_err(|_| {
-                ServiceError::MappingError("Could not parse vec position".to_string())
-            })?;
-
-            Ok(parsed_value)
-        } else {
-            Err(ServiceError::MappingError(
-                "Credential path is incorrect".to_string(),
-            ))
-        }
-    } else {
-        Ok(0)
-    }
-}
-
 pub(super) fn parse_interaction_content(
     data: Option<&Vec<u8>>,
 ) -> Result<OpenID4VPInteractionContent, ServiceError> {
@@ -313,5 +189,69 @@ pub(super) fn parse_interaction_content(
         Err(ServiceError::MappingError(
             "Interaction data is missing or incorrect".to_string(),
         ))
+    }
+}
+
+pub(super) async fn credential_from_proved(
+    proved_credential: ProvedCredential,
+    organisation: &Organisation,
+    did_repository: &dyn DidRepository,
+) -> Result<Credential, ServiceError> {
+    let issuer_did = get_or_create_did(
+        did_repository,
+        &Some(organisation.to_owned()),
+        &proved_credential.issuer_did_value.into(),
+    )
+    .await?;
+    let holder_did = get_or_create_did(
+        did_repository,
+        &Some(organisation.to_owned()),
+        &proved_credential.holder_did_value.into(),
+    )
+    .await?;
+
+    Ok(Credential {
+        id: proved_credential.credential.id.into(),
+        created_date: proved_credential.credential.created_date,
+        issuance_date: proved_credential.credential.issuance_date,
+        last_modified: proved_credential.credential.last_modified,
+        deleted_at: proved_credential.credential.deleted_at,
+        credential: proved_credential.credential.credential,
+        exchange: proved_credential.credential.exchange,
+        redirect_uri: proved_credential.credential.redirect_uri,
+        role: proved_credential.credential.role.into(),
+        state: convert_inner_of_inner(proved_credential.credential.state),
+        claims: convert_inner_of_inner(proved_credential.credential.claims),
+        issuer_did: Some(issuer_did),
+        holder_did: Some(holder_did),
+        schema: proved_credential
+            .credential
+            .schema
+            .map(|schema| from_provider_schema(schema, organisation.to_owned())),
+        interaction: None,
+        revocation_list: None,
+        key: proved_credential.credential.key,
+    })
+}
+
+fn from_provider_schema(
+    schema: one_providers::common_models::credential_schema::CredentialSchema,
+    organisation: Organisation,
+) -> CredentialSchema {
+    CredentialSchema {
+        id: schema.id.into(),
+        deleted_at: schema.deleted_at,
+        created_date: schema.created_date,
+        last_modified: schema.last_modified,
+        name: schema.name,
+        format: schema.format,
+        revocation_method: schema.revocation_method,
+        wallet_storage_type: convert_inner(schema.wallet_storage_type),
+        layout_type: schema.layout_type.into(),
+        layout_properties: convert_inner(schema.layout_properties),
+        schema_id: schema.schema_id,
+        schema_type: schema.schema_type.into(),
+        claim_schemas: convert_inner_of_inner(schema.claim_schemas),
+        organisation: organisation.into(),
     }
 }

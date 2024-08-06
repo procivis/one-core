@@ -1,29 +1,23 @@
 use std::collections::{HashMap, HashSet};
 
+use one_providers::common_models::credential::{Credential, CredentialStateEnum};
+use one_providers::common_models::did::Did;
+use one_providers::common_models::interaction::Interaction;
 use one_providers::common_models::key::Key;
-use shared_types::{CredentialId, DidId, ProofId};
+use one_providers::common_models::proof::{self, Proof, ProofId, ProofStateEnum};
+use one_providers::exchange_protocol::openid4vc::model::{
+    CredentialGroup, CredentialGroupItem, PresentationDefinitionFieldDTO,
+};
+use shared_types::{CredentialId, DidId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use super::StorageAccess;
+use super::{ExchangeProtocolError, StorageAccess};
 use crate::config::core_config::CoreConfig;
-use crate::model::claim::ClaimRelations;
-use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential::{
-    Credential, CredentialRelations, CredentialState, CredentialStateEnum,
-    CredentialStateRelations, UpdateCredentialRequest,
-};
-use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::{Did, DidRelations};
+use crate::model::credential::{CredentialState, UpdateCredentialRequest};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::interaction::Interaction;
-use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{self, Proof, ProofStateEnum};
-use crate::provider::exchange_protocol::dto::{
-    CredentialGroup, CredentialGroupItem, PresentationDefinitionFieldDTO,
-};
-use crate::provider::exchange_protocol::ExchangeProtocolError;
+use crate::model::organisation::Organisation;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
@@ -37,7 +31,7 @@ pub(super) fn get_issued_credential_update(
         credential: Some(token.bytes().collect()),
         state: Some(CredentialState {
             created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Accepted,
+            state: crate::model::credential::CredentialStateEnum::Accepted,
             suspend_end_date: None,
         }),
         key: None,
@@ -54,7 +48,7 @@ pub fn interaction_from_handle_invitation(
     now: OffsetDateTime,
 ) -> Interaction {
     Interaction {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         host: Some(host),
@@ -98,10 +92,14 @@ pub fn proof_from_handle_invitation(
 pub fn credential_model_to_credential_dto(
     credentials: Vec<Credential>,
     config: &CoreConfig,
+    organisation: &Organisation,
 ) -> Result<Vec<CredentialDetailResponseDTO>, ExchangeProtocolError> {
+    // Missing organisation here.
     credentials
         .into_iter()
-        .map(|credential| credential_detail_response_from_model(credential, config))
+        .map(|credential| {
+            credential_detail_response_from_model(credential.into(), config, organisation)
+        })
         .collect::<Result<Vec<CredentialDetailResponseDTO>, _>>()
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
 }
@@ -122,21 +120,7 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                 ))?;
 
         let relevant_credentials_inner = storage_access
-            .get_credentials_by_credential_schema_id(
-                credential_schema_id,
-                &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
-                    issuer_did: Some(DidRelations::default()),
-                    claims: Some(ClaimRelations {
-                        schema: Some(ClaimSchemaRelations::default()),
-                    }),
-                    schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
-                    ..Default::default()
-                },
-            )
+            .get_credentials_by_credential_schema_id(credential_schema_id)
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -166,7 +150,7 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                 CredentialStateEnum::Revoked,
                 CredentialStateEnum::Suspended,
             ]
-            .contains(&credential_state.state)
+            .contains(&credential_state.state.clone())
             {
                 continue;
             }
@@ -247,7 +231,9 @@ pub fn create_presentation_definition_field(
     })
 }
 
-pub(super) fn credential_accepted_history_event(credential: Credential) -> History {
+pub(super) fn credential_accepted_history_event(
+    credential: crate::model::credential::Credential,
+) -> History {
     History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),

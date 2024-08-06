@@ -1,3 +1,9 @@
+use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
+use one_providers::common_models::key::Key;
+use shared_types::{DidId, ProofId};
+use strum_macros::Display;
+use time::OffsetDateTime;
+
 use super::claim::{Claim, ClaimRelations};
 use super::common::GetListResponse;
 use super::credential::{Credential, CredentialRelations};
@@ -7,12 +13,10 @@ use super::list_query::ListQuery;
 use super::proof_schema::{ProofSchema, ProofSchemaRelations};
 use crate::model::key::KeyRelations;
 use crate::service::proof::dto::ProofFilterValue;
-use one_providers::common_models::key::Key;
-use shared_types::{DidId, ProofId};
-use strum_macros::Display;
-use time::OffsetDateTime;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
+#[into(one_providers::common_models::proof::Proof)]
+#[from(one_providers::common_models::proof::Proof)]
 pub struct Proof {
     pub id: ProofId,
     pub created_date: OffsetDateTime,
@@ -23,16 +27,32 @@ pub struct Proof {
     pub redirect_uri: Option<String>,
 
     // Relations
+    #[into(with_fn = "convert_inner_of_inner")]
+    #[from(with_fn = "convert_inner_of_inner")]
     pub state: Option<Vec<ProofState>>,
+    #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub schema: Option<ProofSchema>,
+    #[into(with_fn = "convert_inner_of_inner")]
+    #[from(with_fn = "convert_inner_of_inner")]
     pub claims: Option<Vec<ProofClaim>>,
+    #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub verifier_did: Option<Did>,
+    #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub holder_did: Option<Did>, // empty either because relation not specified or not set in database
+    #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub verifier_key: Option<Key>,
+    #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub interaction: Option<Interaction>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Display)]
+#[derive(Clone, Debug, Eq, PartialEq, Display, Into, From)]
+#[into(one_providers::common_models::proof::ProofStateEnum)]
+#[from(one_providers::common_models::proof::ProofStateEnum)]
 pub enum ProofStateEnum {
     Created,
     Pending,
@@ -42,18 +62,24 @@ pub enum ProofStateEnum {
     Error,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
+#[into(one_providers::common_models::proof::ProofState)]
+#[from(one_providers::common_models::proof::ProofState)]
 pub struct ProofState {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub state: ProofStateEnum,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
+#[into(one_providers::common_models::proof::ProofClaim)]
+#[from(one_providers::common_models::proof::ProofClaim)]
 pub struct ProofClaim {
     pub claim: Claim,
 
     // Relations
+    #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub credential: Option<Credential>,
 }
 
@@ -88,13 +114,18 @@ pub struct ProofClaimRelations {
     pub credential: Option<CredentialRelations>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(one_providers::common_models::proof::UpdateProofRequest)]
 pub struct UpdateProofRequest {
     pub id: ProofId,
 
+    #[from(with_fn = convert_inner)]
     pub holder_did_id: Option<DidId>,
+    #[from(with_fn = convert_inner)]
     pub verifier_did_id: Option<DidId>,
+    #[from(with_fn = convert_inner)]
     pub state: Option<ProofState>,
+    #[from(with_fn = convert_inner_of_inner)]
     pub interaction: Option<Option<InteractionId>>,
     pub redirect_uri: Option<Option<String>>,
 }

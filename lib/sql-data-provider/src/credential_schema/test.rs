@@ -1,9 +1,11 @@
 use std::sync::Arc;
 
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    GetCredentialSchemaQuery, LayoutType, UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
+    GetCredentialSchemaQuery, LayoutType, UpdateCredentialSchemaRequest,
 };
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;

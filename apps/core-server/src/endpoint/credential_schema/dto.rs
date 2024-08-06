@@ -60,6 +60,17 @@ pub enum CredentialSchemaType {
     Other(String),
 }
 
+impl From<String> for CredentialSchemaType {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "ProcivisOneSchema2024" => CredentialSchemaType::ProcivisOneSchema2024,
+            "FallbackSchema2024" => CredentialSchemaType::FallbackSchema2024,
+            "mdoc" => CredentialSchemaType::Mdoc,
+            _ => Self::Other(value),
+        }
+    }
+}
+
 impl<'a> utoipa::ToSchema<'a> for CredentialSchemaType {
     fn schema() -> (
         &'a str,
@@ -174,8 +185,8 @@ pub enum SortableCredentialSchemaColumnRestEnum {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[serde(rename_all = "UPPERCASE")]
-#[into("one_core::model::credential_schema::WalletStorageTypeEnum")]
-#[from("one_core::model::credential_schema::WalletStorageTypeEnum")]
+#[into("one_providers::common_models::credential_schema::WalletStorageTypeEnum")]
+#[from("one_providers::common_models::credential_schema::WalletStorageTypeEnum")]
 pub enum WalletStorageTypeRestEnum {
     Software,
     Hardware,

@@ -1,12 +1,11 @@
 use dto_mapper::From;
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
 use serde::Deserialize;
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 
 use crate::model::common::{GetListQueryParams, GetListResponse};
-use crate::model::credential_schema::{
-    CredentialFormat, LayoutType, RevocationMethod, WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CredentialFormat, LayoutType, RevocationMethod};
 use crate::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};
 use crate::service::credential::dto::CredentialSchemaType;
 use crate::service::credential_schema::dto::{

@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 
-use one_providers::credential_formatter::model::{
-    CredentialData, CredentialSchemaData, CredentialStatus, ExtractPresentationCtx,
-    FormatPresentationCtx,
+use one_providers::{
+    credential_formatter::model::{
+        CredentialData, CredentialSchemaData, CredentialStatus, ExtractPresentationCtx,
+        FormatPresentationCtx,
+    },
+    exchange_protocol::openid4vc::model::OpenID4VPInteractionContent,
 };
 use time::OffsetDateTime;
 
 use crate::{
     config::core_config::CoreConfig,
     provider::exchange_protocol::openid4vc::dto::OpenID4VPInteractionData,
-    service::{
-        credential::dto::CredentialDetailResponseDTO, error::ServiceError,
-        oidc::model::OpenID4VPInteractionContent,
-    },
+    service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
 };
 
 use super::map_claims;
