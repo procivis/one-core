@@ -1,9 +1,8 @@
 [workspace.package]
-version = "0.1.0"
 edition = "2021"
+version = "0.1.0"
 
 [workspace]
-resolver = "2"
 members = [
   "lib/one-core",
   "lib/sql-data-provider",
@@ -15,47 +14,46 @@ members = [
   "apps/core-server",
   "apps/migration",
 ]
+resolver = "2"
 
 [workspace.dependencies]
 anyhow             = { version = "1.0" }
+autometrics        = { version = "2.0", features = ["prometheus-0_13"] }
 axum               = { version = "0.7", features = ["macros"] }
 ct-codecs          = { version = "1.1" }
 dto_mapper         = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git", tag = "0.1.6" }
-wiremock           = { version = "0.6" }
+futures            = { version = "0.3" }
+hex                = { version = "0.4", features = ["serde"] }
 mockall            = { version = "0.13" }
+one-crypto         = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "5ef96dd1a1ef63559dc2c650d276c924b9c49293" }
+one-providers      = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "5ef96dd1a1ef63559dc2c650d276c924b9c49293" }
+p256               = { version = "0.13", features = ["arithmetic", "jwk"] }
+rand               = { version = "0.8" }
 reqwest            = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
+sea-orm            = { version = "0.12", default-features = false }
 serde              = { version = "1.0" }
 serde_json         = { version = "1.0" }
 serde_qs           = { version = "0.13" }
 serde_urlencoded   = { version = "0.7" }
 serde_with         = { version = "3.8", features = ["json", "time_0_3"] }
+shadow-rs          = { version = "0.31" }
 strum              = { version = "0.26", features = ["derive"] }
-shadow-rs          = { version = "0.29" }
+tempfile           = { version = "3.10" }
+thiserror          = { version = "1.0" }
 time               = { version = "0.3", features = ["macros", "serde"] }
+tokio              = { version = "1.38" }
 tracing            = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
-uuid               = { version = "1.10", features = ["v4", "serde"] }
-validator          = { version = "0.18", features = ["derive"] }
 uniffi             = { version = "0.28", features = ["cli"] }
-thiserror          = { version = "1.0" }
-tokio              = { version = "1.38" }
 url                = { version = "2.5", features = ["serde"] }
 utoipa             = { version = "4.2", default-features = false }
-sea-orm            = { version = "0.12", default-features = false }
-p256               = { version = "0.13", features = ["arithmetic", "jwk"] }
-rand               = { version = "0.8" }
-autometrics        = { version = "1.0", features = ["prometheus-0_13"] }
-futures            = { version = "0.3" }
-tempfile           = { version = "3.10" }
-hex                = { version = "0.4", features = ["serde"] }
-one-providers      = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "5ef96dd1a1ef63559dc2c650d276c924b9c49293" }
-one-crypto         = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "5ef96dd1a1ef63559dc2c650d276c924b9c49293" }
-#one-providers = { version = "0.1.0", path = "../one-open-core/one-providers" }
-
+uuid               = { version = "1.10", features = ["v4", "serde"] }
+validator          = { version = "0.18", features = ["derive"] }
+wiremock           = { version = "0.6" }
 
 [workspace.lints.clippy]
-redundant_clone = "warn"
 dbg_macro       = "warn"
+redundant_clone = "warn"
 
 [patch.crates-io]
 json-ld = { git = "https://github.com/strozynskiw/json-ld-rustls", rev = "cfab4c341b4c2514aa3c5799a0494c5b399692a6" }

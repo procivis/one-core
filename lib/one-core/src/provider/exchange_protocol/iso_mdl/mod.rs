@@ -19,7 +19,7 @@ use one_providers::exchange_protocol::openid4vc::{
 use url::Url;
 
 mod common;
-mod device_engagement;
+pub(crate) mod device_engagement;
 mod session;
 
 pub(crate) struct IsoMdl {}

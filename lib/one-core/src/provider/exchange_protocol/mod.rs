@@ -18,14 +18,13 @@ use procivis_temp::ProcivisTemp;
 use serde::de::Deserialize;
 use url::Url;
 
-use super::bluetooth_low_energy::low_level::ble_central::BleCentral;
-use super::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::config::ConfigValidationError;
 use crate::provider::exchange_protocol::iso_mdl::IsoMdl;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
+use crate::util::ble_resource::BleWaiter;
 
 pub mod dto;
 pub mod iso_mdl;
@@ -72,8 +71,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
-    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
-    ble_central: Option<Arc<dyn BleCentral>>,
+    ble: Option<BleWaiter>,
 ) -> Result<HashMap<String, Arc<dyn ExchangeProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn ExchangeProtocol>> = HashMap::new();
 
@@ -105,8 +103,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     data_provider.get_interaction_repository(),
                     formatter_provider.clone(),
                     key_provider.clone(),
-                    ble_peripheral.clone(),
-                    ble_central.clone(),
+                    ble.clone(),
                     config.clone(),
                 );
                 let http = OpenID4VCHTTP::new(

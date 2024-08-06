@@ -7,8 +7,6 @@ use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
 
 use crate::config::core_config;
-use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProviderExtra;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -41,10 +39,6 @@ pub struct OIDCService {
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-    #[allow(dead_code)] // TODO Remove in ONE-2649 / 2660 / 2650
-    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
-    #[allow(dead_code)] // TODO Remove in ONE-2649 / 2660 / 2650
-    ble_central: Option<Arc<dyn BleCentral>>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -65,8 +59,6 @@ impl OIDCService {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-        ble_peripheral: Option<Arc<dyn BlePeripheral>>,
-        ble_central: Option<Arc<dyn BleCentral>>,
     ) -> Self {
         Self {
             core_base_url,
@@ -84,8 +76,6 @@ impl OIDCService {
             did_method_provider,
             key_algorithm_provider,
             revocation_method_provider,
-            ble_peripheral,
-            ble_central,
         }
     }
 }

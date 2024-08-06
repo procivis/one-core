@@ -1,87 +1,87 @@
 [package]
-name    = "one-core"
-version = "0.1.0"
-edition = "2021"
 build   = "build.rs"
+edition = "2021"
+name    = "one-core"
 publish = false
+version = "0.1.0"
 
 [dependencies]
+aes-gcm              = { version = "0.10.3", features = ["std"] }
 anyhow.workspace     = true
 async-trait          = { version = "0.1" }
+bs58                 = { version = "0.5" }
+ciborium             = { version = "0.2" }
+convert_case         = { version = "0.6" }
+coset                = { version = "0.3", features = ["std"] }
 crc                  = { version = "3.2.1" }
 ct-codecs.workspace  = true
 dto_mapper.workspace = true
+figment              = { version = "0.10", default-features = false }
+futures.workspace    = true
+hex.workspace        = true
+hkdf                 = { version = "0.12.4", features = ["std"] }
+indexmap             = { version = "2.2", features = ["serde"] }
+itertools            = { version = "0.13" }
+josekit              = { version = "0.8", features = ["vendored"] }
+json-ld              = { version = "0.15" }
+jsonptr              = { version = "0.4" }
+mockall              = { workspace = true, optional = true }
+mrtd                 = { version = "0.5.2" }
+one-crypto           = { workspace = true }
+one-providers        = { workspace = true }
+ouroboros            = { version = "0.18" }
+pqc_dilithium        = { version = "0.2.0", git = "https://github.com/ihor-rud/dilithium", rev = "e02a683" }
+rand.workspace       = true
+rcgen                = { version = "0.13" }
+regex                = { version = "1.10" }
 reqwest.workspace    = true
-serde_yaml           = { version = "0.9" }
 serde.workspace      = true
 serde_json.workspace = true
 serde_qs.workspace   = true
-serde_with.workspace = true
 serde_repr           = { version = "0.1" }
+serde_with.workspace = true
+serde_yaml           = { version = "0.9" }
+sha2                 = { version = "0.10" }
+shadow-rs.workspace  = true
+shared-types         = { version = "0.1.0", path = "../shared-types" }
+strum.workspace      = true
+strum_macros         = { version = "0.26" }
+tempfile.workspace   = true
 thiserror.workspace  = true
 time.workspace       = true
+tokio-util           = { version = "0.7", features = ["rt"] }
 tokio.workspace      = true
-uuid.workspace       = true
-shadow-rs.workspace  = true
-strum.workspace      = true
-mockall              = { workspace = true, optional = true }
-rand.workspace       = true
-sha2                 = { version = "0.10" }
-regex                = { version = "1.10" }
-url.workspace        = true
-figment              = { version = "0.10", default-features = false }
-bs58                 = { version = "0.5" }
-strum_macros         = { version = "0.26" }
-shared-types         = { version = "0.1.0", path = "../shared-types" }
-pqc_dilithium        = { version = "0.2.0", git = "https://github.com/ihor-rud/dilithium", rev = "e02a683" }
-convert_case         = { version = "0.6" }
-json-ld              = { version = "0.15" }
-ciborium             = { version = "0.2" }
-coset                = { version = "0.3", features = ["std"] }
-tempfile.workspace   = true
-zip                  = { version = "2.1" }
-futures.workspace    = true
 tracing.workspace    = true
-hex.workspace        = true
-jsonptr              = { version = "0.4" }
-indexmap             = { version = "2.2", features = ["serde"] }
-josekit              = { version = "0.8", features = ["vendored"] }
-zeroize              = { version = "1.8", features = ["serde"] }
-rcgen                = { version = "0.13" }
-yasna                = { version = "0.5" }
-x509-parser          = { version = "0.16", features = ["verify"] }
-ouroboros            = { version = "0.18" }
-itertools            = { version = "0.13" }
-one-providers        = { workspace = true }
-one-crypto           = { workspace = true }
+url.workspace        = true
+uuid.workspace       = true
 x25519-dalek         = { version = "2.0.1" }
-hkdf                 = { version = "0.12.4", features = ["std"] }
-aes-gcm              = { version = "0.10.3", features = ["std"] }
-mrtd                 = { version = "0.5.2" }
+x509-parser          = { version = "0.16", features = ["verify"] }
+yasna                = { version = "0.5" }
+zeroize              = { version = "1.8", features = ["serde"] }
+zip                  = { version = "2.1" }
 
 [dev-dependencies]
-bs58              = { version = "0.5" }
-mockall.workspace = true
-tokio             = { workspace = true, features = ["rt-multi-thread", "macros"] }
 assert2           = { version = "0.3" }
-indoc             = { version = "2.0" }
-rusty-fork        = { version = "0.3" }
+bs58              = { version = "0.5" }
 hex-literal       = { version = "0.4" }
+indoc             = { version = "2.0" }
 maplit            = { version = "1.0" }
-rstest            = { version = "0.21" }
-one-providers     = { workspace = true, features = ["mock"] }
+mockall.workspace = true
 one-crypto        = { workspace = true, features = ["mock"] }
+one-providers     = { workspace = true, features = ["mock"] }
+rstest            = { version = "0.22" }
+rusty-fork        = { version = "0.3" }
+tokio             = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 [build-dependencies]
 shadow-rs.workspace = true
 
 [features]
+config_env  = ["figment/env"]
+config_json = ["figment/json"]
+config_yaml = ["figment/yaml"]
 default     = ["config_yaml"]
 mock        = ["mockall"]
-config_yaml = ["figment/yaml"]
-config_json = ["figment/json"]
-config_env  = ["figment/env"]
-
 
 [lints]
 workspace = true

@@ -4,8 +4,7 @@ use mockall::predicate::*;
 use mockall::Sequence;
 use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use one_providers::common_models::key::OpenKey;
-use one_providers::common_models::OpenPublicKeyJwk;
-use one_providers::common_models::OpenPublicKeyJwkEllipticData;
+use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::model::FormatterCapabilities;
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
@@ -43,6 +42,7 @@ use crate::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPPresentationDefinition;
@@ -63,9 +63,8 @@ use crate::service::proof::dto::{
     CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
     ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
 };
-use crate::service::test_utilities::dummy_did;
-use crate::service::test_utilities::generic_config;
-use crate::service::test_utilities::get_dummy_date;
+use crate::service::test_utilities::{dummy_did, generic_config, get_dummy_date};
+use crate::util::ble_resource::BleWaiter;
 
 #[derive(Default)]
 struct Repositories {
@@ -97,7 +96,9 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.credential_formatter_provider),
         Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.protocol_provider),
-        repositories.ble_peripheral.map(|r| Arc::new(r) as _),
+        repositories
+            .ble_peripheral
+            .map(|p| BleWaiter::new(Arc::new(MockBleCentral::new()), Arc::new(p))),
         Arc::new(repositories.config),
         None,
     )
@@ -2745,6 +2746,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         host: None,
         data: Some({
             let data = BLEOpenID4VPInteractionData {
+                task_id: Uuid::new_v4(),
                 peer: BLEPeer::new(
                     DeviceInfo::new(device_address.to_owned(), 123),
                     [0; 32],
@@ -2791,34 +2793,6 @@ async fn test_retract_proof_with_bluetooth_ok() {
         })
         .returning(move |_| Ok(()));
 
-    let mut ble_peripheral = MockBlePeripheral::new();
-
-    ble_peripheral
-        .expect_is_advertising()
-        .once()
-        .returning(|| Ok(true));
-
-    ble_peripheral
-        .expect_stop_advertisement()
-        .once()
-        .returning(|| Ok(()));
-
-    ble_peripheral
-        .expect_notify_characteristic_data()
-        .once()
-        .withf(|device_address, service, characteristic, data| {
-            device_address == &device_address.to_owned()
-                && service == "00000001-5026-444A-9E0E-D6F2450F3A77"
-                && characteristic == "0000000B-5026-444A-9E0E-D6F2450F3A77"
-                && data == [1]
-        })
-        .returning(|_, _, _, _| Ok(()));
-
-    ble_peripheral
-        .expect_stop_server()
-        .once()
-        .returning(|| Ok(()));
-
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_delete_interaction()
@@ -2842,7 +2816,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
     let service = setup_service(Repositories {
         proof_repository,
         interaction_repository,
-        ble_peripheral: Some(ble_peripheral),
+        ble_peripheral: Some(Default::default()),
         config,
         ..Default::default()
     });

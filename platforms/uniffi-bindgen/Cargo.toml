@@ -1,8 +1,8 @@
 [package]
-name    = "uniffi-bindgen"
-version = "0.1.0"
 edition = "2021"
+name    = "uniffi-bindgen"
 publish = false
+version = "0.1.0"
 
 [dependencies]
 uniffi.workspace = true

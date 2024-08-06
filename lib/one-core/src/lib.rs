@@ -1,4 +1,6 @@
-use crate::config::core_config::{DidConfig, RevocationConfig};
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use config::core_config::{
     CoreConfig, DatatypeConfig, FormatConfig, KeyAlgorithmConfig, KeyStorageConfig,
 };
@@ -33,8 +35,9 @@ use service::ssi_verifier::SSIVerifierService;
 use service::task::TaskService;
 use service::trust_anchor::TrustAnchorService;
 use service::trust_entity::TrustEntityService;
-use std::collections::HashMap;
-use std::sync::Arc;
+use util::ble_resource::BleWaiter;
+
+use crate::config::core_config::{DidConfig, RevocationConfig};
 
 pub mod config;
 pub mod provider;
@@ -246,6 +249,13 @@ impl OneCore {
         // For now we will just put them here.
         // We will introduce a builder later.
 
+        let ble_waiter = match (ble_peripheral, ble_central) {
+            (Some(ble_peripheral), Some(ble_central)) => {
+                Some(BleWaiter::new(ble_central, ble_peripheral))
+            }
+            _ => None,
+        };
+
         let did_method_provider = providers
             .did_method_provider
             .as_ref()
@@ -314,8 +324,7 @@ impl OneCore {
             key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
             did_method_provider.clone(),
-            ble_peripheral.clone(),
-            ble_central.clone(),
+            ble_waiter.clone(),
         )?;
 
         let protocol_provider = Arc::new(ExchangeProtocolProviderCoreImpl::new(
@@ -412,8 +421,6 @@ impl OneCore {
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
-                ble_peripheral.clone(),
-                ble_central,
             ),
             credential_schema_service: CredentialSchemaService::new(
                 providers.core_base_url.clone(),
@@ -452,7 +459,7 @@ impl OneCore {
                 formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 protocol_provider.clone(),
-                ble_peripheral,
+                ble_waiter,
                 config.clone(),
                 providers.core_base_url.clone(),
             ),
