@@ -2889,6 +2889,8 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     input_descriptors: vec![],
                 }),
                 presentation_submission: None,
+                holder_nonce: None,
+                client_id: None,
             };
 
             serde_json::to_vec(&data).unwrap()

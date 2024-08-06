@@ -22,11 +22,9 @@ use crate::model::proof::{ProofState, ProofStateEnum};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
 use crate::provider::bluetooth_low_energy::BleError;
-use crate::provider::exchange_protocol::openid4vc::dto::{
-    Chunk, ChunkExt, Chunks, OpenID4VPPresentationDefinition,
-};
+use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, BleOpenId4VpResponse,
+    BLEOpenID4VPInteractionData, BleOpenId4VpRequest, BleOpenId4VpResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
     PRESENTATION_REQUEST_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
@@ -135,9 +133,11 @@ impl OpenID4VCBLEHolder {
                                     serde_json::to_vec(&BLEOpenID4VPInteractionData {
                                         task_id,
                                         peer: ble_peer,
-                                        nonce: Some(hex::encode(identity_request.nonce)),
+                                        nonce: Some(request.nonce),
+                                holder_nonce: Some(hex::encode(identity_request.nonce)),
                                         presentation_definition: Some(presentation_definition),
                                         presentation_submission: None,
+                                client_id: Some(request.verifier_client_id),
                                     })
                                     .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
                                 ),
@@ -513,10 +513,10 @@ async fn send(
 }
 
 #[tracing::instrument(level = "debug", skip(ble_central), err(Debug))]
-async fn read_presentation_definition(
+async fn read_presentation_request(
     connected_verifier: &BLEPeer,
     ble_central: Arc<dyn BleCentral>,
-) -> Result<OpenID4VPPresentationDefinition, ExchangeProtocolError> {
+) -> Result<BleOpenId4VpRequest, ExchangeProtocolError> {
     let request_size: MessageSize =
         read(REQUEST_SIZE_UUID, connected_verifier, ble_central.clone())
             .parse()

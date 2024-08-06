@@ -359,6 +359,7 @@ impl CredentialFormatter for MdocFormatter {
         let (session_transcript, nonce) = self.extract_presentation_context(&context)?;
 
         let did_mdl_validator = self.did_mdl_validator()?;
+
         let mut current_issuer_did = None;
 
         // can we have more than one document?
@@ -393,6 +394,8 @@ impl CredentialFormatter for MdocFormatter {
             try_verify_device_signed(
                 session_transcript.to_owned(),
                 &doc_type,
+                &client_id,
+                response_uri,
                 &signature,
                 &holder_did,
                 &verification,

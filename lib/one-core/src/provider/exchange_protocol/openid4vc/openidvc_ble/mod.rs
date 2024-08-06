@@ -500,21 +500,16 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             create_core_to_oicd_format_map(),
         )?;
 
-        if format == "MDOC" {
-            return Err(ExchangeProtocolError::Failed(
-                "Mdoc over BLE not available".to_string(),
-            ));
-        }
-
-        let nonce = interaction_data.nonce.to_owned();
         let ctx = FormatPresentationCtx {
-            nonce,
+            format_nonce: interaction_data.holder_nonce.clone(),
+            nonce: interaction_data.nonce.clone(),
+            client_id: interaction_data.client_id.clone(),
             token_formats: Some(token_formats),
             vc_format_map: format_map,
             ..Default::default()
         };
-
         let holder_did: DidValue = holder_did.did.to_string().into();
+
         let vp_token = presentation_formatter
             .format_presentation(&tokens, &holder_did, &key.key_type, auth_fn, ctx)
             .await

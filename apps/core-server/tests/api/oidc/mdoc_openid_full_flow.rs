@@ -851,7 +851,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
         )
         .await;
 
-    // // THEN
+    // THEN
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
 
     let server_proof = server_context.db.proofs.get(&proof.id).await;
