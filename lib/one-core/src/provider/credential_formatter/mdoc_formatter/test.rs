@@ -477,13 +477,7 @@ async fn test_unverified_credential_extraction() {
     assert_eq!(
         CredentialSchema {
             id: "doctype".to_owned(),
-            r#type: serde_json::to_string(&CredentialSchemaType::Mdoc)
-                .map_err(|err| {
-                    FormatterError::Failed(format!(
-                        "Could not serialize CredentialSchemaType enum. Error: {err}"
-                    ))
-                })
-                .unwrap()
+            r#type: CredentialSchemaType::Mdoc.to_string(),
         },
         credential.credential_schema.unwrap()
     );
