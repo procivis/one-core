@@ -7,13 +7,14 @@ use one_providers::credential_formatter::imp::json_ld::context::caching_loader::
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::crypto::CryptoProvider;
 use one_providers::did::provider::DidMethodProvider;
+use one_providers::exchange_protocol::imp::provider::ExchangeProtocolProviderImpl;
+use one_providers::exchange_protocol::provider::ExchangeProtocol;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
-use provider::exchange_protocol::provider::ExchangeProtocolProviderImpl;
-use provider::exchange_protocol::ExchangeProtocol;
+use provider::exchange_protocol::provider::ExchangeProtocolProviderCoreImpl;
 use provider::task::provider::TaskProviderImpl;
 use provider::task::tasks_from_config;
 use provider::trust_management::provider::TrustManagementProviderImpl;
@@ -317,8 +318,10 @@ impl OneCore {
             ble_central.clone(),
         )?;
 
-        let protocol_provider = Arc::new(ExchangeProtocolProviderImpl::new(
-            exchange_protocols.to_owned(),
+        let protocol_provider = Arc::new(ExchangeProtocolProviderCoreImpl::new(
+            Arc::new(ExchangeProtocolProviderImpl::new(
+                exchange_protocols.to_owned(),
+            )),
             formatter_provider.clone(),
             data_provider.get_credential_repository(),
             revocation_method_provider.clone(),
@@ -439,6 +442,7 @@ impl OneCore {
             ),
             proof_service: ProofService::new(
                 data_provider.get_proof_repository(),
+                key_algorithm_provider.clone(),
                 data_provider.get_proof_schema_repository(),
                 data_provider.get_did_repository(),
                 data_provider.get_credential_repository(),

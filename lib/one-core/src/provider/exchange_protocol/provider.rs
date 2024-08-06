@@ -1,12 +1,15 @@
+use std::sync::Arc;
+
 use dto_mapper::convert_inner;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
+use one_providers::exchange_protocol::openid4vc::error::OpenID4VCIError;
+use one_providers::exchange_protocol::openid4vc::model::SubmitIssuerResponse;
+use one_providers::exchange_protocol::provider::ExchangeProtocolProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::model::CredentialAdditionalData;
 use one_providers::revocation::provider::RevocationMethodProvider;
 use shared_types::CredentialId;
-use std::collections::HashMap;
-use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -29,7 +32,6 @@ use crate::model::revocation_list::RevocationListPurpose;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
-use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
@@ -39,21 +41,10 @@ use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use crate::service::oidc::dto::OpenID4VCIError;
 use crate::util::revocation_update::{get_revocation_list_id, process_update};
 
-#[derive(Clone)]
-pub struct DetectedProtocol {
-    pub protocol: Arc<dyn ExchangeProtocol>,
-}
-
-#[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
-pub(crate) trait ExchangeProtocolProvider: Send + Sync {
-    fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn ExchangeProtocol>>;
-
-    fn detect_protocol(&self, url: &Url) -> Option<DetectedProtocol>;
-
+pub(crate) trait ExchangeProtocolProviderExtra: ExchangeProtocolProvider {
     async fn issue_credential(
         &self,
         credential_id: &CredentialId,
@@ -61,8 +52,28 @@ pub(crate) trait ExchangeProtocolProvider: Send + Sync {
     ) -> Result<SubmitIssuerResponse, ServiceError>;
 }
 
-pub(crate) struct ExchangeProtocolProviderImpl {
-    protocols: HashMap<String, Arc<dyn ExchangeProtocol>>,
+#[cfg(test)]
+mockall::mock! {
+    pub ExchangeProtocolProviderExtra {}
+
+    #[async_trait::async_trait]
+    impl ExchangeProtocolProvider for ExchangeProtocolProviderExtra {
+        fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn ExchangeProtocol>>;
+        fn detect_protocol(&self, url: &Url) -> Option<Arc<dyn ExchangeProtocol>>;
+    }
+
+    #[async_trait::async_trait]
+    impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderExtra {
+        async fn issue_credential(
+            &self,
+            credential_id: &CredentialId,
+            holder_did: Did,
+        ) -> Result<SubmitIssuerResponse, ServiceError>;
+    }
+}
+
+pub(crate) struct ExchangeProtocolProviderCoreImpl {
+    inner: Arc<dyn ExchangeProtocolProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     history_repository: Arc<dyn HistoryRepository>,
@@ -76,9 +87,9 @@ pub(crate) struct ExchangeProtocolProviderImpl {
 }
 
 #[allow(clippy::too_many_arguments)]
-impl ExchangeProtocolProviderImpl {
+impl ExchangeProtocolProviderCoreImpl {
     pub fn new(
-        protocols: HashMap<String, Arc<dyn ExchangeProtocol>>,
+        inner: Arc<dyn ExchangeProtocolProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         credential_repository: Arc<dyn CredentialRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -91,7 +102,7 @@ impl ExchangeProtocolProviderImpl {
         core_base_url: Option<String>,
     ) -> Self {
         Self {
-            protocols,
+            inner,
             formatter_provider,
             credential_repository,
             revocation_method_provider,
@@ -135,7 +146,7 @@ impl ExchangeProtocolProviderImpl {
                     mdoc_validity_credentials.created_date + mso_expected_update_in;
 
                 if can_be_updated_at > OffsetDateTime::now_utc() {
-                    return Err(ServiceError::OpenID4VCError(
+                    return Err(ServiceError::OpenID4VCIError(
                         OpenID4VCIError::InvalidRequest,
                     ));
                 }
@@ -155,20 +166,18 @@ impl ExchangeProtocolProviderImpl {
 }
 
 #[async_trait::async_trait]
-impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
+impl ExchangeProtocolProvider for ExchangeProtocolProviderCoreImpl {
     fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn ExchangeProtocol>> {
-        self.protocols.get(protocol_id).cloned()
+        self.inner.get_protocol(protocol_id)
     }
 
-    fn detect_protocol(&self, url: &Url) -> Option<DetectedProtocol> {
-        self.protocols
-            .values()
-            .find(|protocol| protocol.can_handle(url))
-            .map(|protocol| DetectedProtocol {
-                protocol: protocol.to_owned(),
-            })
+    fn detect_protocol(&self, url: &Url) -> Option<Arc<dyn ExchangeProtocol>> {
+        self.inner.detect_protocol(url)
     }
+}
 
+#[async_trait::async_trait]
+impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
     async fn issue_credential(
         &self,
         credential_id: &CredentialId,
@@ -222,10 +231,11 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
         let credential_schema = credential
             .schema
             .as_ref()
-            .ok_or(BusinessLogicError::MissingCredentialSchema)?;
+            .ok_or(BusinessLogicError::MissingCredentialSchema)?
+            .clone();
         let latest_credential_state = &get_latest_state(&credential)?.state;
 
-        self.validate(credential_id, latest_credential_state, credential_schema)
+        self.validate(credential_id, latest_credential_state, &credential_schema)
             .await?;
 
         let format = credential_schema.format.to_owned();
@@ -322,8 +332,15 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
             "Missing core_base_url for credential issuance".to_string(),
         ))?;
 
+        let organisation = credential_schema
+            .organisation
+            .ok_or(ServiceError::MappingError(
+                "Missing organisation".to_owned(),
+            ))?;
+
+        // TODO - remove organisation usage from here when moved to open core
         let credential_detail =
-            credential_detail_response_from_model(credential.clone(), &self.config)?;
+            credential_detail_response_from_model(credential.clone(), &self.config, &organisation)?;
         let credential_data = credential_data_from_credential_detail_response(
             &self.config,
             credential_detail,

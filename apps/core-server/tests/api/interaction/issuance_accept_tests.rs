@@ -1,9 +1,10 @@
 use serde_json::json;
 use uuid::Uuid;
 
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+
 use one_core::model::{
     credential::CredentialStateEnum,
-    credential_schema::WalletStorageTypeEnum,
     did::{DidType, KeyRole, RelatedKey},
 };
 

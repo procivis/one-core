@@ -5,6 +5,7 @@ use std::{collections::HashMap, sync::Arc};
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
     JsonLdCachingLoader, JsonLdResolver,
 };
+use one_providers::credential_formatter::imp::sdjwt_formatter::SDJWTFormatter;
 use one_providers::did::imp::resolver::{DidCachingLoader, DidResolver};
 use one_providers::remote_entity_storage::in_memory::InMemoryStorage;
 use one_providers::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
@@ -62,8 +63,7 @@ use one_core::{
     provider::{
         credential_formatter::{
             json_ld_classic::JsonLdClassic, mdoc_formatter::MdocFormatter,
-            physical_card::PhysicalCardFormatter, sdjwt_formatter::SDJWTFormatter,
-            FormatterCapabilities,
+            physical_card::PhysicalCardFormatter, FormatterCapabilities,
         },
         did_method::{
             mdl::{DidMdl, DidMdlValidator},

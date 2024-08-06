@@ -4,11 +4,19 @@ use std::vec;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
 use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
 use one_providers::did::model::{DidDocument, DidVerificationMethod};
 use one_providers::did::provider::MockDidMethodProvider;
+use one_providers::exchange_protocol::imp::provider::MockExchangeProtocol;
+use one_providers::exchange_protocol::openid4vc::model::{
+    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, SubmitIssuerResponse,
+    UpdateResponse,
+};
 use one_providers::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use one_providers::key_storage::provider::MockKeyProvider;
 use one_providers::key_storage::MockKeyStorage;
@@ -19,20 +27,11 @@ use uuid::Uuid;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
-use crate::provider::exchange_protocol::dto::{
-    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, SubmitIssuerResponse,
-    UpdateResponse,
-};
-use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
-use crate::provider::exchange_protocol::MockExchangeProtocol;
+use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -101,14 +100,14 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
     exchange_protocol_mock
         .inner
         .expect_reject_proof()
-        .withf(move |_proof_id| {
-            assert_eq!(_proof_id.id, proof_id);
+        .withf(move |proof| {
+            assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
         .return_once(move |_| Ok(()));
 
-    let mut protocol_provider = MockExchangeProtocolProvider::new();
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
     protocol_provider
         .expect_get_protocol()
         .withf(move |_protocol| {
@@ -292,12 +291,12 @@ async fn test_submit_proof_succeeds() {
     exchange_protocol
         .inner
         .expect_get_presentation_definition()
-        .withf(move |proof, _, _| {
-            assert_eq!(proof.id, proof_id);
+        .withf(move |proof, _, _, _, _, _| {
+            assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _| {
+        .returning(|_, _, _, _, _, _| {
             Ok(PresentationDefinitionResponseDTO {
                 request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
                     id: "random".to_string(),
@@ -327,14 +326,14 @@ async fn test_submit_proof_succeeds() {
     exchange_protocol
         .inner
         .expect_submit_proof()
-        .withf(move |proof, _, _, _, _| {
-            assert_eq!(proof.id, proof_id);
+        .withf(move |proof, _, _, _, _, _, _| {
+            assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _, _, _| Ok(Default::default()));
+        .returning(|_, _, _, _, _, _, _| Ok(Default::default()));
 
-    let mut protocol_provider = MockExchangeProtocolProvider::new();
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
     protocol_provider
         .expect_get_protocol()
         .with(eq(protocol))
@@ -489,12 +488,12 @@ async fn test_submit_proof_repeating_claims() {
     exchange_protocol
         .inner
         .expect_get_presentation_definition()
-        .withf(move |proof, _, _| {
-            assert_eq!(proof.id, proof_id);
+        .withf(move |proof, _, _, _, _, _| {
+            assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(move |_, _, _| {
+        .returning(move |_, _, _, _, _, _| {
             Ok(PresentationDefinitionResponseDTO {
                 request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
                     id: "random".to_string(),
@@ -550,14 +549,14 @@ async fn test_submit_proof_repeating_claims() {
     exchange_protocol
         .inner
         .expect_submit_proof()
-        .withf(move |proof, _, _, _, _| {
-            assert_eq!(proof.id, proof_id);
+        .withf(move |proof, _, _, _, _, _, _| {
+            assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _, _, _| Ok(Default::default()));
+        .returning(|_, _, _, _, _, _, _| Ok(Default::default()));
 
-    let mut protocol_provider = MockExchangeProtocolProvider::new();
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
     protocol_provider
         .expect_get_protocol()
         .with(eq(protocol))
@@ -705,7 +704,7 @@ async fn test_accept_credential() {
         .inner
         .expect_accept_credential()
         .once()
-        .returning(|_, _, _, _, _| {
+        .returning(|_, _, _, _, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
@@ -719,7 +718,7 @@ async fn test_accept_credential() {
             })
         });
 
-    let mut protocol_provider = MockExchangeProtocolProvider::new();
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -765,7 +764,7 @@ async fn test_reject_credential() {
         .once()
         .returning(|_| Ok(()));
 
-    let mut protocol_provider = MockExchangeProtocolProvider::new();
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::new();
     protocol_provider
         .expect_get_protocol()
         .once()
@@ -793,7 +792,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         history_repository: Arc::new(MockHistoryRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
-        protocol_provider: Arc::new(MockExchangeProtocolProvider::new()),
+        protocol_provider: Arc::new(MockExchangeProtocolProviderExtra::new()),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         config: Arc::new(generic_config().core),
     }

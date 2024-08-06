@@ -258,8 +258,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
             &holder_organisation,
             revocation_method,
             &new_claim_schemas,
-            // This reflects latest changes - on the holder side we don't really know what's the correct format here
-            "JSON_LD",
+            "JSON_LD_BBSPLUS",
             &credential_schema.schema_id,
         )
         .await;
@@ -670,8 +669,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
             &holder_organisation,
             revocation_method,
             &new_claim_schemas,
-            // This reflects latest changes - on the holder side we don't really know what's the correct format here
-            "JSON_LD",
+            "JSON_LD_BBSPLUS",
             &credential_schema.schema_id,
         )
         .await;

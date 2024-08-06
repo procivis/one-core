@@ -1,12 +1,12 @@
 use anyhow::Context;
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use one_providers::exchange_protocol::openid4vc::model::PresentationSubmissionMappingDTO;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use url::Url;
 
 use super::dto::OpenID4VPPresentationDefinition;
 use super::openidvc_ble::BLEPeer;
-use crate::service::oidc::dto::PresentationSubmissionMappingDTO;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BleOpenId4VpResponse {
@@ -67,14 +67,6 @@ pub struct JwePayload {
 }
 
 impl JwePayload {
-    pub(crate) fn try_into_json_base64_encode(&self) -> anyhow::Result<String> {
-        let payload = serde_json::to_vec(self).context("MdocJwePayload serialization failed")?;
-        let payload = Base64UrlSafeNoPadding::encode_to_string(payload)
-            .context("MdocJwePayload base64 encoding failed")?;
-
-        Ok(payload)
-    }
-
     pub(crate) fn try_from_json_base64_decode(payload: &[u8]) -> anyhow::Result<Self> {
         let payload = Base64UrlSafeNoPadding::decode_to_vec(payload, None)
             .context("MdocJwePayload base64 decoding failed")?;

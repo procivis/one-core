@@ -1,24 +1,14 @@
 use std::collections::HashMap;
 
+use dto_mapper::{convert_inner, From, Into};
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
-use crate::model::credential::{Credential, UpdateCredentialRequest};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaType, UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
-};
-use crate::model::did::Did;
-use crate::model::proof::UpdateProofRequest;
+use crate::model::credential::Credential;
+use crate::model::credential_schema::CredentialSchemaType;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
-
-#[derive(Clone, Deserialize)]
-pub struct SubmitIssuerResponse {
-    pub credential: String,
-    pub format: String,
-    pub redirect_uri: Option<String>,
-}
 
 #[derive(Clone)]
 pub enum InvitationResponse {
@@ -69,32 +59,50 @@ pub struct ProofCredentialSchema {
     pub schema_id: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From, Into)]
+#[from(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionResponseDTO)]
+#[into(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionResponseDTO)]
 pub struct PresentationDefinitionResponseDTO {
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub request_groups: Vec<PresentationDefinitionRequestGroupResponseDTO>,
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub credentials: Vec<CredentialDetailResponseDTO>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From, Into)]
+#[from(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionRequestGroupResponseDTO)]
+#[into(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionRequestGroupResponseDTO)]
 pub struct PresentationDefinitionRequestGroupResponseDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub rule: PresentationDefinitionRuleDTO,
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseDTO>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From, Into)]
+#[from(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionRequestedCredentialResponseDTO)]
+#[into(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionRequestedCredentialResponseDTO)]
 pub struct PresentationDefinitionRequestedCredentialResponseDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub fields: Vec<PresentationDefinitionFieldDTO>,
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub applicable_credentials: Vec<String>,
     pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From, Into)]
+#[from(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionFieldDTO)]
+#[into(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionFieldDTO)]
 pub struct PresentationDefinitionFieldDTO {
     pub id: String,
     pub name: Option<String>,
@@ -103,13 +111,17 @@ pub struct PresentationDefinitionFieldDTO {
     pub key_map: HashMap<String, String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From, Into)]
+#[from(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionRuleTypeEnum)]
+#[into(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionRuleTypeEnum)]
 pub enum PresentationDefinitionRuleTypeEnum {
     All,
     Pick,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From, Into)]
+#[from(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionRuleDTO)]
+#[into(one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionRuleDTO)]
 pub struct PresentationDefinitionRuleDTO {
     pub r#type: PresentationDefinitionRuleTypeEnum,
     pub min: Option<u32>,
@@ -117,42 +129,27 @@ pub struct PresentationDefinitionRuleDTO {
     pub count: Option<u32>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Into, From)]
+#[into(one_providers::exchange_protocol::openid4vc::model::CredentialGroup)]
+#[from(one_providers::exchange_protocol::openid4vc::model::CredentialGroup)]
 pub struct CredentialGroup {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
+    #[into(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialGroupItem>,
+    #[into(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub applicable_credentials: Vec<Credential>,
     pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Into, From)]
+#[into(one_providers::exchange_protocol::openid4vc::model::CredentialGroupItem)]
+#[from(one_providers::exchange_protocol::openid4vc::model::CredentialGroupItem)]
 pub struct CredentialGroupItem {
     pub id: String,
     pub key: String,
     pub required: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct PresentedCredential {
-    pub presentation: String,
-    pub credential_schema: CredentialSchema,
-    pub request: PresentationDefinitionRequestedCredentialResponseDTO,
-}
-
-#[derive(Clone, Debug)]
-pub struct ShareResponse<T> {
-    pub url: String,
-    pub id: Uuid,
-    pub context: T,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct UpdateResponse<T> {
-    pub result: T,
-    pub update_proof: Option<UpdateProofRequest>,
-    pub create_did: Option<Did>,
-    pub update_credential: Option<UpdateCredentialRequest>,
-    pub update_credential_schema: Option<UpdateCredentialSchemaRequest>,
 }

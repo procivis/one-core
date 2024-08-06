@@ -1,3 +1,9 @@
+use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
+use one_providers::common_models::key::Key;
+use shared_types::{CredentialId, DidId, KeyId};
+use strum_macros::Display;
+use time::OffsetDateTime;
+
 use super::claim::{Claim, ClaimRelations};
 use super::common::GetListResponse;
 use super::credential_schema::{CredentialSchema, CredentialSchemaRelations};
@@ -7,14 +13,10 @@ use super::list_query::ListQuery;
 use super::revocation_list::{RevocationList, RevocationListRelations};
 use crate::model::key::KeyRelations;
 use crate::service::credential::dto::{CredentialFilterValue, CredentialListIncludeEntityTypeEnum};
-use dto_mapper::{convert_inner, convert_inner_of_inner, Into};
-use one_providers::common_models::key::Key;
-use shared_types::{CredentialId, DidId, KeyId};
-use strum_macros::Display;
-use time::OffsetDateTime;
 
-#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
 #[into(one_providers::common_models::credential::Credential)]
+#[from(one_providers::common_models::credential::Credential)]
 pub struct Credential {
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
@@ -28,20 +30,28 @@ pub struct Credential {
 
     // Relations:
     #[into(with_fn = "convert_inner_of_inner")]
+    #[from(with_fn = "convert_inner_of_inner")]
     pub state: Option<Vec<CredentialState>>,
     #[into(with_fn = "convert_inner_of_inner")]
+    #[from(with_fn = "convert_inner_of_inner")]
     pub claims: Option<Vec<Claim>>,
     #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub issuer_did: Option<Did>,
     #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub holder_did: Option<Did>,
     #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub schema: Option<CredentialSchema>,
     #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub interaction: Option<Interaction>,
     #[into(skip)]
+    #[from(replace = None)]
     pub revocation_list: Option<RevocationList>,
     #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub key: Option<Key>,
 }
 
@@ -57,7 +67,8 @@ pub struct CredentialRelations {
     pub key: Option<KeyRelations>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, From, Into)]
+#[from(one_providers::common_models::credential::CredentialState)]
 #[into(one_providers::common_models::credential::CredentialState)]
 pub struct CredentialState {
     pub created_date: OffsetDateTime,
@@ -65,7 +76,8 @@ pub struct CredentialState {
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Display, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Display, From, Into)]
+#[from(one_providers::common_models::credential::CredentialStateEnum)]
 #[into(one_providers::common_models::credential::CredentialStateEnum)]
 pub enum CredentialStateEnum {
     Created,
@@ -92,20 +104,27 @@ pub type GetCredentialList = GetListResponse<Credential>;
 pub type GetCredentialQuery =
     ListQuery<SortableCredentialColumn, CredentialFilterValue, CredentialListIncludeEntityTypeEnum>;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, From)]
+#[from(one_providers::common_models::credential::UpdateCredentialRequest)]
 pub struct UpdateCredentialRequest {
     pub id: CredentialId,
 
     pub credential: Option<Vec<u8>>,
+    #[from(with_fn = convert_inner)]
     pub holder_did_id: Option<DidId>,
+    #[from(with_fn = convert_inner)]
     pub issuer_did_id: Option<DidId>,
+    #[from(with_fn = convert_inner)]
     pub state: Option<CredentialState>,
+    #[from(with_fn = convert_inner)]
     pub interaction: Option<InteractionId>,
+    #[from(with_fn = convert_inner)]
     pub key: Option<KeyId>,
     pub redirect_uri: Option<Option<String>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Into)]
+#[derive(Clone, Debug, PartialEq, Eq, From, Into)]
+#[from(one_providers::common_models::credential::CredentialRole)]
 #[into(one_providers::common_models::credential::CredentialRole)]
 pub enum CredentialRole {
     Holder,

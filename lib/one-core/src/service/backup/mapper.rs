@@ -13,7 +13,22 @@ pub(super) fn unexportable_entities_to_response_dto(
         credentials: entities
             .credentials
             .into_iter()
-            .map(|credential| credential_detail_response_from_model(credential, config))
+            .map(|credential| {
+                let organisation = credential
+                    .schema
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError(
+                        "Missing credential schema".to_string(),
+                    ))?
+                    .organisation
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError(
+                        "Missing organisation".to_string(),
+                    ))?
+                    .clone();
+
+                credential_detail_response_from_model(credential, config, &organisation)
+            })
             .collect::<Result<Vec<_>, _>>()?,
         keys: convert_inner(entities.keys),
         dids: convert_inner(entities.dids),

@@ -1,8 +1,11 @@
+use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::proof::ProofStateEnum;
 use serde_json::Value;
+use shared_types::DidValue;
 use std::str::FromStr;
 use uuid::Uuid;
 
+use crate::fixtures::TestingDidParams;
 use crate::utils::context::TestContext;
 use crate::{
     fixtures,
@@ -51,7 +54,23 @@ async fn test_share_proof_success() {
     )
     .await;
 
-    let did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let key = fixtures::create_eddsa_key(&db_conn, &organisation).await;
+    let did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::KeyAgreement,
+                key,
+            }]),
+            did: Some(
+                DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")
+                    .unwrap(),
+            ),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     let proof = fixtures::create_proof(
         &db_conn,

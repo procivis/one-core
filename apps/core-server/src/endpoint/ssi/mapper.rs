@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use dto_mapper::{convert_inner, convert_inner_of_inner};
-use one_core::provider::dto::PublicKeyJwkDTO;
-use one_core::provider::exchange_protocol::openid4vc::dto::OpenID4VCICredentialOfferClaimValue;
 use one_core::service::error::ServiceError;
-use one_core::service::oidc::dto::{
-    OpenID4VCIError, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCITokenRequestDTO,
-    Timestamp,
-};
+use one_providers::common_dto::PublicKeyJwkDTO;
 use one_providers::common_models::PublicKeyJwk;
+use one_providers::exchange_protocol::openid4vc::error::OpenID4VCIError;
+use one_providers::exchange_protocol::openid4vc::model::{
+    OpenID4VCICredentialOfferClaimValue, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
+    OpenID4VCITokenRequestDTO, Timestamp,
+};
 
 use super::dto::{
     OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO, OpenID4VCITokenRequestRestDTO,
@@ -65,14 +65,14 @@ impl TryFrom<OpenID4VCITokenRequestRestDTO> for OpenID4VCITokenRequestDTO {
                 Ok(Self::RefreshToken { refresh_token })
             }
             ("urn:ietf:params:oauth:grant-type:pre-authorized_code" | "refresh_token", _, _) => {
-                Err(ServiceError::OpenID4VCError(
+                Err(ServiceError::OpenID4VCIError(
                     OpenID4VCIError::InvalidRequest,
                 ))
             }
-            (grant, _, _) if !grant.is_empty() => Err(ServiceError::OpenID4VCError(
+            (grant, _, _) if !grant.is_empty() => Err(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::UnsupportedGrantType,
             )),
-            _ => Err(ServiceError::OpenID4VCError(
+            _ => Err(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::InvalidRequest,
             )),
         }

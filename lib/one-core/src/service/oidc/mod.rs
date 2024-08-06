@@ -1,7 +1,15 @@
+use std::sync::Arc;
+
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::did::provider::DidMethodProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::provider::RevocationMethodProvider;
+
 use crate::config::core_config;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
-use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
+use crate::provider::exchange_protocol::provider::ExchangeProtocolProviderExtra;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -9,12 +17,6 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::key_storage::provider::KeyProvider;
-use one_providers::revocation::provider::RevocationMethodProvider;
-use std::sync::Arc;
 
 pub mod dto;
 pub mod mapper;
@@ -33,7 +35,7 @@ pub struct OIDCService {
     key_provider: Arc<dyn KeyProvider>,
     interaction_repository: Arc<dyn InteractionRepository>,
     config: Arc<core_config::CoreConfig>,
-    protocol_provider: Arc<dyn ExchangeProtocolProvider>,
+    protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
     did_repository: Arc<dyn DidRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -57,7 +59,7 @@ impl OIDCService {
         key_provider: Arc<dyn KeyProvider>,
         interaction_repository: Arc<dyn InteractionRepository>,
         config: Arc<core_config::CoreConfig>,
-        protocol_provider: Arc<dyn ExchangeProtocolProvider>,
+        protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
         did_repository: Arc<dyn DidRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,

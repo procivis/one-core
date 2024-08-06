@@ -1,3 +1,4 @@
+use one_providers::exchange_protocol::provider::ExchangeProtocol;
 use one_providers::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
@@ -16,7 +17,6 @@ use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
-use crate::provider::exchange_protocol::ExchangeProtocol;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 impl ProofService {
@@ -126,7 +126,7 @@ impl ProofService {
             ))?;
 
         let credentials = exchange_protocol
-            .verifier_handle_proof(proof, submission)
+            .verifier_handle_proof(&proof.clone().into(), submission)
             .await?;
 
         let credential = credentials.first().ok_or(ServiceError::MappingError(

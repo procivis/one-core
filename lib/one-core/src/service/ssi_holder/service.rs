@@ -1,13 +1,19 @@
 use anyhow::Context;
 use futures::TryFutureExt;
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
 use one_providers::credential_formatter::model::CredentialPresentation;
+use one_providers::exchange_protocol::openid4vc::model::{
+    InvitationResponseDTO, PresentationDefinitionRequestedCredentialResponseDTO,
+    PresentedCredential, UpdateResponse,
+};
+use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use one_providers::key_storage::model::KeySecurity;
 use one_providers::revocation::imp::lvvc::prepare_bearer_token;
 use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use url::Url;
 
-use super::dto::{InvitationResponseDTO, PresentationSubmitRequestDTO};
+use super::dto::PresentationSubmitRequestDTO;
 use super::mapper::{
     credential_accepted_history_event, credential_offered_history_event,
     credential_pending_history_event, credential_rejected_history_event,
@@ -25,24 +31,24 @@ use crate::model::credential::{
     CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
     UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
+use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
-use crate::model::organisation::OrganisationRelations;
+use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
-use crate::provider::exchange_protocol::dto::{
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentedCredential, UpdateResponse,
-};
-use crate::provider::exchange_protocol::provider::DetectedProtocol;
-use crate::provider::exchange_protocol::ExchangeProtocolError;
+use crate::provider::exchange_protocol::openid4vc::handle_invitation_operations::HandleInvitationOperationsImpl;
+use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::ssi_issuer::dto::IssuerResponseDTO;
 use crate::service::ssi_validator::validate_config_entity_presence;
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::oidc::detect_correct_format;
+use crate::util::oidc::{
+    create_core_to_oicd_format_map, create_core_to_oicd_presentation_format_map,
+    create_oicd_to_core_format_map, detect_correct_format, map_core_to_oidc_format,
+};
 
 impl SSIHolderService {
     pub async fn handle_invitation(
@@ -58,55 +64,61 @@ impl SSIHolderService {
             .await?
             .ok_or(EntityNotFoundError::Organisation(organisation_id))?;
 
-        let DetectedProtocol { protocol, .. } = self
-            .protocol_provider
-            .detect_protocol(&url)
-            .ok_or(ServiceError::MissingExchangeProtocol(
-                "Cannot detect exchange protocol".to_string(),
-            ))?;
+        let protocol = self.protocol_provider.detect_protocol(&url).ok_or(
+            ServiceError::MissingExchangeProtocol("Cannot detect exchange protocol".to_string()),
+        )?;
 
         let storage_access = StorageProxyImpl::new(
-            organisation_id,
+            organisation.to_owned(),
             self.interaction_repository.clone(),
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
             self.did_repository.clone(),
         );
 
+        let handle_operations = HandleInvitationOperationsImpl::new(
+            organisation.into(),
+            self.credential_schema_repository.clone(),
+        );
+
         let response = protocol
-            .handle_invitation(url, organisation, &storage_access)
+            .handle_invitation(url, &storage_access, &handle_operations)
             .await?;
         match &response {
             InvitationResponseDTO::Credential { credentials, .. } => {
-                for credential in credentials.iter() {
+                for credential in credentials {
                     let _ = self
                         .history_repository
-                        .create_history(credential_offered_history_event(credential))
+                        .create_history(credential_offered_history_event(
+                            &credential.to_owned().into(),
+                        ))
                         .await;
 
                     self.credential_repository
-                        .create_credential(credential.to_owned())
+                        .create_credential(credential.to_owned().into())
                         .await?;
 
                     let _ = self
                         .history_repository
-                        .create_history(credential_pending_history_event(credential))
+                        .create_history(credential_pending_history_event(
+                            &credential.to_owned().into(),
+                        ))
                         .await;
                 }
             }
             InvitationResponseDTO::ProofRequest { proof, .. } => {
                 let _ = self
                     .history_repository
-                    .create_history(proof_requested_history_event(proof))
+                    .create_history(proof_requested_history_event(&(**proof).to_owned().into()))
                     .await;
 
                 self.proof_repository
-                    .create_proof(*proof.to_owned())
+                    .create_proof((**proof).to_owned().into())
                     .await?;
 
                 let _ = self
                     .history_repository
-                    .create_history(proof_pending_history_event(proof))
+                    .create_history(proof_pending_history_event(&(**proof).to_owned().into()))
                     .await;
             }
         }
@@ -147,7 +159,7 @@ impl SSIHolderService {
             .ok_or(MissingProviderError::ExchangeProtocol(
                 proof.exchange.clone(),
             ))?
-            .reject_proof(&proof)
+            .reject_proof(&proof.clone().into())
             .await?;
 
         let now = OffsetDateTime::now_utc();
@@ -250,14 +262,12 @@ impl SSIHolderService {
             .ok_or_else(|| ServiceError::MappingError("missing interaction".into()))?
             .map_err(|err| ServiceError::MappingError(err.to_string()))?;
 
-        let organisation_id = holder_did
-            .organisation
-            .as_ref()
-            .ok_or_else(|| ServiceError::MappingError("holder did organisation is missing".into()))?
-            .id;
+        let holder_organisation = holder_did.organisation.as_ref().ok_or_else(|| {
+            ServiceError::MappingError("holder did organisation is missing".into())
+        })?;
 
         let storage_access = StorageProxyImpl::new(
-            organisation_id,
+            holder_organisation.to_owned(),
             self.interaction_repository.clone(),
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
@@ -265,7 +275,14 @@ impl SSIHolderService {
         );
 
         let presentation_definition = exchange_protocol
-            .get_presentation_definition(&proof, interaction_data, &storage_access)
+            .get_presentation_definition(
+                &proof.clone().into(),
+                interaction_data,
+                &storage_access,
+                create_oicd_to_core_format_map(),
+                core_type_to_open_core_type(&self.config.datatype),
+                holder_organisation.clone().into(),
+            )
             .await?;
 
         let requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseDTO> =
@@ -382,7 +399,7 @@ impl SSIHolderService {
 
             credential_presentations.push(PresentedCredential {
                 presentation: formatted_credential_presentation.to_owned(),
-                credential_schema: credential_schema.to_owned(),
+                credential_schema: credential_schema.to_owned().into(),
                 request: requested_credential.to_owned(),
             });
 
@@ -438,7 +455,7 @@ impl SSIHolderService {
 
                 credential_presentations.push(PresentedCredential {
                     presentation: formatted_lvvc_presentation,
-                    credential_schema: credential_schema.to_owned(),
+                    credential_schema: credential_schema.to_owned().into(),
                     request: requested_credential.to_owned(),
                 });
             }
@@ -446,14 +463,19 @@ impl SSIHolderService {
 
         let submit_result = exchange_protocol
             .submit_proof(
-                &proof,
+                &proof.clone().into(),
                 credential_presentations,
-                &holder_did,
+                &holder_did.clone().into(),
                 selected_key,
                 Some(holder_jwk_key_id),
+                create_core_to_oicd_format_map(),
+                create_core_to_oicd_presentation_format_map(),
             )
             .map_err(ServiceError::from)
-            .and_then(|submit_result| async { self.resolve_update_response(submit_result).await })
+            .and_then(|submit_result| async {
+                self.resolve_update_response(submit_result, holder_organisation)
+                    .await
+            })
             .await;
 
         self.proof_repository
@@ -576,22 +598,33 @@ impl SSIHolderService {
                 return Err(BusinessLogicError::UnfulfilledWalletStorageType.into());
             }
 
-            let organisation_id = credential
+            let organisation = credential
                 .schema
                 .as_ref()
                 .ok_or_else(|| ServiceError::MappingError("schema is missing".into()))?
                 .organisation
                 .as_ref()
-                .ok_or_else(|| ServiceError::MappingError("organisation is missing".into()))?
-                .id;
+                .ok_or_else(|| ServiceError::MappingError("organisation is missing".into()))?;
 
             let storage_access = StorageProxyImpl::new(
-                organisation_id,
+                organisation.to_owned(),
                 self.interaction_repository.clone(),
                 self.credential_schema_repository.clone(),
                 self.credential_repository.clone(),
                 self.did_repository.clone(),
             );
+
+            let schema = credential
+                .schema
+                .as_ref()
+                .ok_or(ExchangeProtocolError::Failed("schema is None".to_string()))?;
+
+            let format = if &credential.exchange == "OPENID4VC" {
+                map_core_to_oidc_format(&schema.format)
+                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+            } else {
+                schema.format.to_owned()
+            };
 
             let issuer_response = self
                 .protocol_provider
@@ -599,10 +632,19 @@ impl SSIHolderService {
                 .ok_or(MissingProviderError::ExchangeProtocol(
                     credential.exchange.clone(),
                 ))?
-                .accept_credential(&credential, &did, selected_key, None, &storage_access)
+                .accept_credential(
+                    &credential.clone().into(),
+                    &did.clone().into(),
+                    selected_key,
+                    None,
+                    &format,
+                    &storage_access,
+                )
                 .await?;
 
-            let issuer_response = self.resolve_update_response(issuer_response).await?;
+            let issuer_response = self
+                .resolve_update_response(issuer_response, organisation)
+                .await?;
 
             self.credential_repository
                 .update_credential(UpdateCredentialRequest {
@@ -671,7 +713,7 @@ impl SSIHolderService {
                 .ok_or(MissingProviderError::ExchangeProtocol(
                     credential.exchange.clone(),
                 ))?
-                .reject_credential(&credential)
+                .reject_credential(&credential.clone().into())
                 .await?;
 
             self.credential_repository
@@ -703,23 +745,26 @@ impl SSIHolderService {
     async fn resolve_update_response<T>(
         &self,
         update_response: UpdateResponse<T>,
+        organisation: &Organisation,
     ) -> Result<T, ServiceError> {
         if let Some(update_proof) = update_response.update_proof {
             self.proof_repository
-                .update_proof(update_proof.clone())
+                .update_proof(update_proof.clone().into())
                 .await?;
         }
         if let Some(create_did) = update_response.create_did {
-            self.did_repository.create_did(create_did).await?;
+            let mut did: crate::model::did::Did = create_did.into();
+            did.organisation = Some(organisation.to_owned());
+            self.did_repository.create_did(did).await?;
         }
         if let Some(update_credential_schema) = update_response.update_credential_schema {
             self.credential_schema_repository
-                .update_credential_schema(update_credential_schema)
+                .update_credential_schema(update_credential_schema.into())
                 .await?;
         }
         if let Some(update_credential) = update_response.update_credential {
             self.credential_repository
-                .update_credential(update_credential)
+                .update_credential(update_credential.into())
                 .await?;
         }
         Ok(update_response.result)

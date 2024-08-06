@@ -4,6 +4,7 @@ use std::vec;
 
 use mockall::predicate::eq;
 use one_providers::caching_loader::CachingLoader;
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
 use one_providers::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, Presentation,
 };
@@ -26,9 +27,7 @@ use uuid::Uuid;
 
 use crate::config::ConfigValidationError;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidRelations};
 use crate::model::history::HistoryAction;
 use crate::model::organisation::Organisation;

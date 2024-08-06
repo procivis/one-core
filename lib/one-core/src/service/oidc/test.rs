@@ -3,14 +3,24 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
+use one_providers::common_dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+use one_providers::common_models::key::Key;
+use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, Presentation,
 };
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
+use one_providers::did::provider::MockDidMethodProvider;
+use one_providers::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
+use one_providers::exchange_protocol::openid4vc::model::*;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
 use one_providers::key_storage::provider::MockKeyProvider;
+use one_providers::revocation::model::CredentialRevocationState;
+use one_providers::revocation::provider::MockRevocationMethodProvider;
+use one_providers::revocation::MockRevocationMethod;
 use serde_json::json;
 use shared_types::{DidId, DidValue, ProofId};
 use time::{Duration, OffsetDateTime};
@@ -18,12 +28,11 @@ use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
 use crate::config::ConfigValidationError;
-
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutType, WalletStorageTypeEnum,
+    LayoutType,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::HistoryAction;
@@ -31,15 +40,7 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
-use crate::provider::credential_formatter::test_utilities::get_dummy_date;
-use crate::provider::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
-use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
-use crate::provider::exchange_protocol::openid4vc::dto::{
-    AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadata,
-    OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
-};
-use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
+use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -47,30 +48,9 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
-use crate::service::error::{BusinessLogicError, ServiceError};
-use crate::service::oidc::dto::{
-    NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialDefinitionRequestDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCIError, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
-    OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VPDirectPostRequestDTO,
-    PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
-};
-use crate::service::oidc::mapper::vec_last_position_from_token_path;
-use crate::service::oidc::model::{
-    OpenID4VPInteractionContent, OpenID4VPPresentationDefinition,
-    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
-    OpenID4VPPresentationDefinitionConstraintFieldFilter,
-    OpenID4VPPresentationDefinitionInputDescriptor,
-    OpenID4VPPresentationDefinitionInputDescriptorFormat,
-};
-use crate::service::oidc::validator::validate_claims;
+use crate::service::error::ServiceError;
 use crate::service::oidc::OIDCService;
 use crate::service::test_utilities::*;
-use one_providers::common_models::key::Key;
-use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
-use one_providers::did::provider::MockDidMethodProvider;
-use one_providers::revocation::model::CredentialRevocationState;
-use one_providers::revocation::provider::MockRevocationMethodProvider;
-use one_providers::revocation::MockRevocationMethod;
 
 #[derive(Default)]
 struct Mocks {
@@ -82,7 +62,7 @@ struct Mocks {
     pub key_repository: MockKeyRepository,
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
-    pub exchange_provider: MockExchangeProtocolProvider,
+    pub exchange_provider: MockExchangeProtocolProviderExtra,
     pub did_repository: MockDidRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub did_method_provider: MockDidMethodProvider,
@@ -134,6 +114,7 @@ fn generic_credential_schema() -> CredentialSchema {
 }
 
 fn dummy_interaction(
+    id: Option<Uuid>,
     pre_authorized_code: bool,
     access_token_expires_at: Option<&str>,
     refresh_token: Option<&str>,
@@ -159,7 +140,7 @@ fn dummy_interaction(
     }
 
     Interaction {
-        id: Uuid::new_v4(),
+        id: id.unwrap_or(Uuid::new_v4()),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         host: Some("http://host-base-url".parse().unwrap()),
@@ -191,7 +172,13 @@ fn dummy_credential(
         issuer_did: None,
         holder_did: None,
         schema: None,
-        interaction: Some(dummy_interaction(pre_authroized_code, None, None, None)),
+        interaction: Some(dummy_interaction(
+            None,
+            pre_authroized_code,
+            None,
+            None,
+            None,
+        )),
         revocation_list: None,
         key: None,
     }
@@ -480,10 +467,24 @@ async fn test_oidc_create_token_incorrect_protocol() {
 
 #[tokio::test]
 async fn test_oidc_create_token_empty_pre_authorized_code() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+
     let schema = generic_credential_schema();
+    {
+        let clone = schema.clone();
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .times(1)
+            .with(
+                eq(schema.id.to_owned()),
+                eq(CredentialSchemaRelations::default()),
+            )
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
 
     let service = setup_service(Mocks {
         config: generic_config().core,
+        credential_schema_repository,
         ..Default::default()
     });
     let result = service
@@ -498,9 +499,9 @@ async fn test_oidc_create_token_empty_pre_authorized_code() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCError(
+        Err(ServiceError::OpenID4VCError(OpenID4VCError::OpenID4VCI(
             OpenID4VCIError::InvalidRequest
-        ))
+        )))
     ));
 }
 
@@ -552,7 +553,9 @@ async fn test_oidc_create_token_pre_authorized_code_used() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidGrant))
+        Err(ServiceError::OpenID4VCError(OpenID4VCError::OpenID4VCI(
+            OpenID4VCIError::InvalidGrant
+        )))
     ));
 }
 
@@ -604,8 +607,8 @@ async fn test_oidc_create_token_wrong_credential_state() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::InvalidCredentialState { .. }
+        Err(ServiceError::OpenID4VCError(
+            OpenID4VCError::InvalidCredentialState { .. }
         ))
     ));
 }
@@ -615,7 +618,7 @@ async fn test_oidc_create_credential_success() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let mut exchange_provider = MockExchangeProtocolProvider::default();
+    let mut exchange_provider = MockExchangeProtocolProviderExtra::default();
     let mut did_repository = MockDidRepository::default();
     let now = OffsetDateTime::now_utc();
 
@@ -639,7 +642,7 @@ async fn test_oidc_create_credential_success() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(true, None, None, None))));
+            .return_once(|_, _| Ok(Some(dummy_interaction(None, true, None, None, None))));
 
         exchange_provider
             .expect_issue_credential()
@@ -738,7 +741,7 @@ async fn test_oidc_create_credential_incorrect_protocol() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(true, None, None, None))));
+            .return_once(|_, _| Ok(Some(dummy_interaction(None, true, None, None, None))));
     }
 
     let service = setup_service(Mocks {
@@ -778,7 +781,7 @@ async fn test_oidc_create_credential_success_mdoc() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let mut exchange_provider = MockExchangeProtocolProvider::default();
+    let mut exchange_provider = MockExchangeProtocolProviderExtra::default();
     let mut did_repository = MockDidRepository::default();
     let now = OffsetDateTime::now_utc();
 
@@ -806,7 +809,7 @@ async fn test_oidc_create_credential_success_mdoc() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(true, None, None, None))));
+            .return_once(|_, _| Ok(Some(dummy_interaction(None, true, None, None, None))));
 
         exchange_provider
             .expect_issue_credential()
@@ -918,9 +921,9 @@ async fn test_oidc_create_credential_format_invalid() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCError(
+        Err(ServiceError::OpenID4VCError(OpenID4VCError::OpenID4VCI(
             OpenID4VCIError::UnsupportedCredentialFormat
-        ))
+        )))
     ));
 }
 
@@ -964,7 +967,7 @@ async fn test_oidc_create_credential_format_invalid_for_credential_schema() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCError(
+        Err(ServiceError::OpenID4VCIError(
             OpenID4VCIError::UnsupportedCredentialFormat
         ))
     ));
@@ -1010,7 +1013,7 @@ async fn test_oidc_create_credential_format_invalid_credential_definition() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCError(
+        Err(ServiceError::OpenID4VCIError(
             OpenID4VCIError::UnsupportedCredentialType
         ))
     ));
@@ -1056,7 +1059,7 @@ async fn test_oidc_create_credential_format_invalid_bearer_token() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken))
+        Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidToken))
     ));
 }
 
@@ -1065,7 +1068,7 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let exchange_provider = MockExchangeProtocolProvider::default();
+    let exchange_provider = MockExchangeProtocolProviderExtra::default();
 
     let schema = generic_credential_schema();
     {
@@ -1079,7 +1082,7 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(false, None, None, None))));
+            .return_once(|_, _| Ok(Some(dummy_interaction(None, false, None, None, None))));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -1111,7 +1114,7 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken))
+        Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidToken))
     ));
 }
 
@@ -1120,7 +1123,7 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let exchange_provider = MockExchangeProtocolProvider::default();
+    let exchange_provider = MockExchangeProtocolProviderExtra::default();
 
     let schema = generic_credential_schema();
     {
@@ -1134,7 +1137,7 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(true, None, None, None))));
+            .return_once(|_, _| Ok(Some(dummy_interaction(None, true, None, None, None))));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -1166,7 +1169,7 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken))
+        Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidToken))
     ));
 }
 
@@ -1175,7 +1178,7 @@ async fn test_oidc_create_credential_access_token_expired() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let exchange_provider = MockExchangeProtocolProvider::default();
+    let exchange_provider = MockExchangeProtocolProviderExtra::default();
 
     let schema = generic_credential_schema();
     {
@@ -1191,6 +1194,7 @@ async fn test_oidc_create_credential_access_token_expired() {
             .once()
             .return_once(|_, _| {
                 Ok(Some(dummy_interaction(
+                    None,
                     true,
                     Some("2022-10-28T07:03:38.4404734Z"),
                     None,
@@ -1228,35 +1232,8 @@ async fn test_oidc_create_credential_access_token_expired() {
     assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken))
+        Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidToken))
     ));
-}
-
-#[test]
-fn test_vec_last_position_from_token_path() {
-    assert_eq!(
-        vec_last_position_from_token_path("$[0].verifiableCredential[0]").unwrap(),
-        0
-    );
-    assert_eq!(
-        vec_last_position_from_token_path("$[0].verifiableCredential[1]").unwrap(),
-        1
-    );
-    assert_eq!(
-        vec_last_position_from_token_path("$[1].verifiableCredential[2]").unwrap(),
-        2
-    );
-    assert_eq!(
-        vec_last_position_from_token_path("$.verifiableCredential[3]").unwrap(),
-        3
-    );
-    assert_eq!(vec_last_position_from_token_path("$[4]").unwrap(), 4);
-    assert_eq!(
-        vec_last_position_from_token_path("$[152046]").unwrap(),
-        152046
-    );
-    assert_eq!(vec_last_position_from_token_path("$").unwrap(), 0);
-    assert!(vec_last_position_from_token_path("$[ABC]").is_err());
 }
 
 fn jwt_format_map() -> HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat> {
@@ -1546,7 +1523,9 @@ async fn test_submit_proof_failed_credential_suspended() {
                         claim_schemas: Some(vec![
                             ProofInputClaimSchema {
                                 schema: ClaimSchema {
-                                    id: claim_id,
+                                    id: shared_types::ClaimSchemaId::from(Into::<Uuid>::into(
+                                        claim_id,
+                                    )),
                                     key: "required_key".to_string(),
                                     ..dummy_claim_schema()
                                 },
@@ -1564,6 +1543,11 @@ async fn test_submit_proof_failed_credential_suspended() {
                         ]),
                         credential_schema: Some(credential_schema),
                     }]),
+                    organisation: Some(Organisation {
+                        id: Uuid::new_v4().into(),
+                        created_date: now,
+                        last_modified: now,
+                    }),
                     ..dummy_proof_schema()
                 }),
                 interaction: Some(interaction),
@@ -1726,7 +1710,7 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     assert!(matches!(
         err,
-        ServiceError::BusinessLogic(BusinessLogicError::CredentialIsRevokedOrSuspended)
+        ServiceError::OpenID4VCError(OpenID4VCError::CredentialIsRevokedOrSuspended)
     ));
 }
 
@@ -1769,138 +1753,6 @@ async fn test_submit_proof_incorrect_protocol() {
         x,
         ServiceError::ConfigValidationError(ConfigValidationError::InvalidType(_, _))
     )));
-}
-
-fn generic_detail_credential() -> DetailCredential {
-    let holder_did: DidValue = "did:holder".parse().unwrap();
-    let issuer_did: DidValue = "did:issuer".parse().unwrap();
-
-    DetailCredential {
-        id: None,
-        issued_at: Some(OffsetDateTime::now_utc()),
-        expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-        update_at: None,
-        invalid_before: Some(OffsetDateTime::now_utc()),
-        issuer_did: Some(issuer_did.into()),
-        subject: Some(holder_did.into()),
-        claims: CredentialSubject {
-            values: HashMap::new(),
-        },
-        status: vec![],
-        credential_schema: None,
-    }
-}
-
-fn generic_proof_input_schema() -> ProofInputSchema {
-    let now = OffsetDateTime::now_utc();
-
-    ProofInputSchema {
-        validity_constraint: Some(100),
-        claim_schemas: None,
-        credential_schema: Some(CredentialSchema {
-            id: Uuid::new_v4().into(),
-            deleted_at: None,
-            created_date: now,
-            last_modified: now,
-            name: "schema".to_string(),
-            format: "JWT".to_string(),
-            revocation_method: "None".to_string(),
-            wallet_storage_type: None,
-            layout_type: LayoutType::Card,
-            layout_properties: None,
-            schema_id: "".to_string(),
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-            claim_schemas: None,
-            organisation: None,
-        }),
-    }
-}
-
-#[test]
-fn test_validate_claims_success_nested_claims() {
-    let mut detail_credential = generic_detail_credential();
-    detail_credential.claims.values = HashMap::from([(
-        "location".to_string(),
-        json!({
-            "X": "123",
-            "Y": "456"
-        }),
-    )]);
-
-    let mut proof_input_schema = generic_proof_input_schema();
-    proof_input_schema.claim_schemas = Some(vec![
-        ProofInputClaimSchema {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "location/X".to_owned(),
-                data_type: "STRING".to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                array: false,
-            },
-            required: true,
-            order: 0,
-        },
-        ProofInputClaimSchema {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "location/Y".to_owned(),
-                data_type: "STRING".to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                array: false,
-            },
-            required: true,
-            order: 0,
-        },
-    ]);
-
-    validate_claims(detail_credential, &proof_input_schema).unwrap();
-}
-
-#[test]
-fn test_validate_claims_failed_malformed_claim() {
-    let mut detail_credential = generic_detail_credential();
-    detail_credential.claims.values = HashMap::from([(
-        "location/".to_string(),
-        json!({
-            "X": "123",
-            "Y": "456"
-        }),
-    )]);
-
-    let mut proof_input_schema = generic_proof_input_schema();
-    proof_input_schema.claim_schemas = Some(vec![
-        ProofInputClaimSchema {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "location/X".to_owned(),
-                data_type: "STRING".to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                array: false,
-            },
-            required: true,
-            order: 0,
-        },
-        ProofInputClaimSchema {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "location/Y".to_owned(),
-                data_type: "STRING".to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                array: false,
-            },
-            required: true,
-            order: 0,
-        },
-    ]);
-
-    matches!(
-        validate_claims(detail_credential, &proof_input_schema,).unwrap_err(),
-        ServiceError::OpenID4VCError(OpenID4VCIError::InvalidRequest)
-    );
 }
 
 #[tokio::test]
@@ -1993,7 +1845,10 @@ async fn test_get_client_metadata_success() {
     assert_eq!(
         OpenID4VPClientMetadata {
             jwks: vec![OpenID4VPClientMetadataJwkDTO {
-                key_id: "c322aa7f-9803-410d-b891-939b279fb965".parse().unwrap(),
+                key_id: "c322aa7f-9803-410d-b891-939b279fb965"
+                    .parse::<Uuid>()
+                    .unwrap()
+                    .into(),
                 jwk: PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
                     r#use: Some("enc".to_string()),
                     crv: "123".to_string(),
@@ -2154,6 +2009,7 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
     let refresh_token_expires_at = "2077-10-28T07:03:38.4404734Z";
     let credential = Credential {
         interaction: Some(dummy_interaction(
+            Some(interaction_id),
             false,
             None,
             Some(refresh_token),
@@ -2229,6 +2085,7 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
     let refresh_token_expires_at = "2023-10-28T07:03:38.4404734Z";
     let credential = Credential {
         interaction: Some(dummy_interaction(
+            Some(interaction_id),
             false,
             None,
             Some(refresh_token),
@@ -2261,5 +2118,5 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
         .err()
         .unwrap();
 
-    assert2::assert!(let ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken) = result);
+    assert2::assert!(let ServiceError::OpenID4VCError(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidToken)) = result);
 }

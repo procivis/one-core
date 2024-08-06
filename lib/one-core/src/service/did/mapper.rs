@@ -1,23 +1,22 @@
+use std::collections::HashMap;
+
 use dto_mapper::convert_inner;
-use shared_types::{DidId, DidValue};
-use time::OffsetDateTime;
-
-use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
-
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::service::error::EntityNotFoundError;
-use crate::{
-    model::{
-        did::{Did, GetDidList, KeyRole, RelatedKey},
-        organisation::Organisation,
-    },
-    service::{error::ServiceError, key::dto::KeyListItemResponseDTO},
-};
 use one_providers::common_models::key::{Key, KeyId};
 use one_providers::common_models::PublicKeyJwk;
 use one_providers::did::model::{DidDocument, DidVerificationMethod};
-use std::collections::HashMap;
+use shared_types::{DidId, DidValue};
+use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::dto::{
+    CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO, DidResponseKeysDTO,
+    GetDidListResponseDTO,
+};
+use crate::model::did::{Did, GetDidList, KeyRole, RelatedKey};
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::organisation::Organisation;
+use crate::service::error::{EntityNotFoundError, ServiceError};
+use crate::service::key::dto::KeyListItemResponseDTO;
 
 impl TryFrom<Did> for DidResponseDTO {
     type Error = ServiceError;
@@ -194,5 +193,41 @@ fn history_event(did: Did, action: HistoryAction) -> History {
         entity_type: HistoryEntityType::Did,
         metadata: None,
         organisation: did.organisation,
+    }
+}
+
+impl From<one_providers::exchange_protocol::openid4vc::model::DidListItemResponseDTO>
+    for DidListItemResponseDTO
+{
+    fn from(
+        value: one_providers::exchange_protocol::openid4vc::model::DidListItemResponseDTO,
+    ) -> Self {
+        Self {
+            id: Uuid::from(value.id).into(),
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            did: value.did.into(),
+            did_type: value.did_type.into(),
+            did_method: value.did_method,
+            deactivated: value.deactivated,
+        }
+    }
+}
+
+impl From<DidListItemResponseDTO>
+    for one_providers::exchange_protocol::openid4vc::model::DidListItemResponseDTO
+{
+    fn from(value: DidListItemResponseDTO) -> Self {
+        Self {
+            id: Uuid::from(value.id).into(),
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            did: value.did.into(),
+            did_type: value.did_type.into(),
+            did_method: value.did_method,
+            deactivated: value.deactivated,
+        }
     }
 }

@@ -46,7 +46,7 @@ impl OrganisationService {
     /// # Arguments
     ///
     /// * `Option<OrganisationId>` - Optional Id for a new organisation. If not set then the
-    /// ID will be created automatically
+    ///   ID will be created automatically
     pub async fn create_organisation(
         &self,
         id: Option<OrganisationId>,

@@ -1,11 +1,12 @@
-use dto_mapper::Into;
+use dto_mapper::{From, Into};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
 pub type InteractionId = Uuid;
 
-#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, From, Into)]
+#[from(one_providers::common_models::interaction::Interaction)]
 #[into(one_providers::common_models::interaction::Interaction)]
 pub struct Interaction {
     pub id: InteractionId,

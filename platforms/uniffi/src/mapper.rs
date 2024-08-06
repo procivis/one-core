@@ -23,11 +23,11 @@ use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDT
 use one_core::service::key::dto::KeyRequestDTO;
 use one_core::service::proof::dto::{GetProofQueryDTO, ProofDetailResponseDTO, ProofFilterValue};
 use one_core::service::proof_schema::dto::ImportProofSchemaClaimSchemaDTO;
-use one_core::service::ssi_holder::dto::InvitationResponseDTO;
 use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, ListTrustAnchorsQueryDTO, TrustAnchorFilterValue,
 };
 use one_providers::common_models::key::KeyId;
+use one_providers::exchange_protocol::openid4vc::model::InvitationResponseDTO;
 use serde_json::json;
 use time::OffsetDateTime;
 

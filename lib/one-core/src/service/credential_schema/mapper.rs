@@ -3,7 +3,12 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::{CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO};
+use super::dto::{
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
+    CredentialSchemaCodeTypeEnum, CredentialSchemaFilterValue,
+    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
+    ImportCredentialSchemaRequestSchemaDTO,
+};
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
@@ -303,6 +308,130 @@ impl From<ImportCredentialSchemaRequestSchemaDTO> for CreateCredentialSchemaRequ
             layout_type: value.layout_type.unwrap_or(LayoutType::Card),
             layout_properties: convert_inner(value.layout_properties),
             schema_id: Some(value.schema_id),
+        }
+    }
+}
+
+impl From<CredentialSchemaBackgroundPropertiesRequestDTO>
+    for one_providers::common_models::credential_schema::BackgroundProperties
+{
+    fn from(value: CredentialSchemaBackgroundPropertiesRequestDTO) -> Self {
+        Self {
+            color: convert_inner(value.color),
+            image: convert_inner(value.image),
+        }
+    }
+}
+
+impl From<CredentialSchemaLogoPropertiesRequestDTO>
+    for one_providers::common_models::credential_schema::LogoProperties
+{
+    fn from(value: CredentialSchemaLogoPropertiesRequestDTO) -> Self {
+        Self {
+            font_color: value.font_color,
+            background_color: value.background_color,
+            image: value.image,
+        }
+    }
+}
+
+impl From<CredentialSchemaCodePropertiesRequestDTO>
+    for one_providers::common_models::credential_schema::CodeProperties
+{
+    fn from(value: CredentialSchemaCodePropertiesRequestDTO) -> Self {
+        Self {
+            attribute: value.attribute,
+            r#type: value.r#type.into(),
+        }
+    }
+}
+
+impl From<CredentialSchemaCodeTypeEnum>
+    for one_providers::common_models::credential_schema::CodeTypeEnum
+{
+    fn from(value: CredentialSchemaCodeTypeEnum) -> Self {
+        match value {
+            CredentialSchemaCodeTypeEnum::Barcode => Self::Barcode,
+            CredentialSchemaCodeTypeEnum::Mrz => Self::Mrz,
+            CredentialSchemaCodeTypeEnum::QrCode => Self::QrCode,
+        }
+    }
+}
+
+impl From<CredentialSchemaLayoutPropertiesRequestDTO>
+    for one_providers::common_models::credential_schema::LayoutProperties
+{
+    fn from(value: CredentialSchemaLayoutPropertiesRequestDTO) -> Self {
+        Self {
+            background: convert_inner(value.background),
+            logo: convert_inner(value.logo),
+            primary_attribute: value.primary_attribute,
+            secondary_attribute: value.secondary_attribute,
+            picture_attribute: value.picture_attribute,
+            code: convert_inner(value.code),
+        }
+    }
+}
+
+impl From<one_providers::exchange_protocol::openid4vc::model::CredentialSchemaBackgroundPropertiesRequestDTO>
+    for CredentialSchemaBackgroundPropertiesRequestDTO
+{
+    fn from(value: one_providers::exchange_protocol::openid4vc::model::CredentialSchemaBackgroundPropertiesRequestDTO) -> Self {
+        Self {
+            color: value.color,
+            image: value.image,
+        }
+    }
+}
+
+impl From<one_providers::exchange_protocol::openid4vc::model::CredentialSchemaLogoPropertiesRequestDTO>
+    for CredentialSchemaLogoPropertiesRequestDTO
+{
+    fn from(value: one_providers::exchange_protocol::openid4vc::model::CredentialSchemaLogoPropertiesRequestDTO) -> Self {
+        Self {
+            font_color: value.font_color,
+            background_color: value.background_color,
+            image: value.image,
+        }
+    }
+}
+
+impl From<one_providers::exchange_protocol::openid4vc::model::CredentialSchemaCodePropertiesRequestDTO>
+    for CredentialSchemaCodePropertiesRequestDTO
+{
+    fn from(value: one_providers::exchange_protocol::openid4vc::model::CredentialSchemaCodePropertiesRequestDTO) -> Self {
+        Self {
+            attribute: value.attribute,
+            r#type: value.r#type.into(),
+        }
+    }
+}
+
+impl From<one_providers::exchange_protocol::openid4vc::model::CredentialSchemaCodeTypeEnum>
+    for CredentialSchemaCodeTypeEnum
+{
+    fn from(
+        value: one_providers::exchange_protocol::openid4vc::model::CredentialSchemaCodeTypeEnum,
+    ) -> Self {
+        match value {
+            one_providers::exchange_protocol::openid4vc::model::CredentialSchemaCodeTypeEnum::Barcode => Self::Barcode,
+            one_providers::exchange_protocol::openid4vc::model::CredentialSchemaCodeTypeEnum::Mrz => Self::Mrz,
+            one_providers::exchange_protocol::openid4vc::model::CredentialSchemaCodeTypeEnum::QrCode => Self::QrCode,
+        }
+    }
+}
+
+impl From<one_providers::exchange_protocol::openid4vc::model::CredentialSchemaLayoutPropertiesRequestDTO>
+    for CredentialSchemaLayoutPropertiesRequestDTO
+{
+    fn from(value: one_providers::exchange_protocol::openid4vc::model::CredentialSchemaLayoutPropertiesRequestDTO) -> Self {
+        Self {
+            background: convert_inner(value.background),
+            logo: convert_inner(value.logo),
+            primary_attribute: value.primary_attribute,
+            secondary_attribute: value.secondary_attribute,
+            picture_attribute: value.picture_attribute,
+            code: convert_inner(value.code),
         }
     }
 }

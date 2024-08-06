@@ -3,12 +3,15 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use mockall::predicate::*;
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
 use one_providers::common_models::key::Key;
 use one_providers::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential,
 };
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
+use one_providers::exchange_protocol::imp::provider::MockExchangeProtocol;
+use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
 use one_providers::key_storage::provider::MockKeyProvider;
 use one_providers::revocation::model::{
     CredentialRevocationState, RevocationMethodCapabilities, RevocationUpdate,
@@ -30,16 +33,12 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
-use crate::provider::credential_formatter::test_utilities::get_dummy_date;
-use crate::provider::exchange_protocol::dto::ShareResponse;
-use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
-use crate::provider::exchange_protocol::MockExchangeProtocol;
+use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -59,7 +58,9 @@ use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
-use crate::service::test_utilities::{generic_config, generic_formatter_capabilities};
+use crate::service::test_utilities::{
+    generic_config, generic_formatter_capabilities, get_dummy_date,
+};
 
 #[derive(Default)]
 struct Repositories {
@@ -71,7 +72,7 @@ struct Repositories {
     pub revocation_list_repository: MockRevocationListRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
-    pub protocol_provider: MockExchangeProtocolProvider,
+    pub protocol_provider: MockExchangeProtocolProviderExtra,
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
     pub lvvc_repository: MockValidityCredentialRepository,
@@ -595,7 +596,7 @@ async fn test_share_credential_success() {
     let revocation_method_provider = MockRevocationMethodProvider::default();
 
     let mut protocol = MockExchangeProtocol::default();
-    let mut protocol_provider = MockExchangeProtocolProvider::default();
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
@@ -603,7 +604,7 @@ async fn test_share_credential_success() {
         .inner
         .expect_share_credential()
         .times(1)
-        .returning(move |_| {
+        .returning(move |_, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 id: interaction_id,

@@ -1,15 +1,25 @@
 use std::sync::Arc;
 
+use one_providers::common_models::credential::{Credential, CredentialRole};
+use one_providers::common_models::did::{Did, KeyRole, RelatedKey};
+use one_providers::common_models::proof::Proof;
+use one_providers::common_models::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
+use one_providers::exchange_protocol::openid4vc::{
+    ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, TypeToDescriptorMapper,
+};
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::key_algorithm::MockKeyAlgorithm;
 use one_providers::key_storage::provider::MockKeyProvider;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProcivisTemp;
-use crate::model::credential::{Credential, CredentialRole};
-use crate::model::proof::Proof;
-use crate::provider::exchange_protocol::{ExchangeProtocolError, ExchangeProtocolImpl};
-use crate::service::test_utilities::generic_config;
+use crate::common_mapper::get_encryption_key_jwk_from_proof;
+use crate::provider::exchange_protocol::openid4vc::mapper::{
+    create_format_map, create_open_id_for_vp_formats,
+};
+use crate::service::test_utilities::{dummy_did, dummy_key, generic_config};
 
 #[derive(Default)]
 struct Repositories {
@@ -43,7 +53,6 @@ fn generate_credential(redirect_uri: Option<String>) -> Credential {
         holder_did: None,
         schema: None,
         interaction: None,
-        revocation_list: None,
         key: None,
     }
 }
@@ -72,7 +81,7 @@ async fn test_share_credential_no_base_url() {
     let protocol = setup_protocol(None, Repositories::default());
     let credential = generate_credential(None);
 
-    let result = protocol.share_credential(&credential).await;
+    let result = protocol.share_credential(&credential, "jwt_vc_json").await;
     assert!(matches!(result, Err(ExchangeProtocolError::MissingBaseUrl)));
 }
 
@@ -81,7 +90,10 @@ async fn test_share_credential_success_no_redirect_uri() {
     let protocol = setup_protocol(Some("http://base_url".to_string()), Repositories::default());
     let credential = generate_credential(None);
 
-    let result = protocol.share_credential(&credential).await.unwrap();
+    let result = protocol
+        .share_credential(&credential, "jwt_vc_json")
+        .await
+        .unwrap();
     assert_eq!("http://base_url/ssi/temporary-issuer/v1/connect?protocol=PROCIVIS_TEMPORARY&credential=00000000-0000-0000-0000-000000000000", result.url);
 }
 
@@ -90,33 +102,186 @@ async fn test_share_credential_success_with_redirect_uri_is_percent_encoded() {
     let protocol = setup_protocol(Some("http://base_url".to_string()), Repositories::default());
     let credential = generate_credential(Some("http://base_url/redirect?queryParam=1".to_string()));
 
-    let result = protocol.share_credential(&credential).await.unwrap();
+    let result = protocol
+        .share_credential(&credential, "jwt_vc_json")
+        .await
+        .unwrap();
     assert_eq!("http://base_url/ssi/temporary-issuer/v1/connect?protocol=PROCIVIS_TEMPORARY&credential=00000000-0000-0000-0000-000000000000&redirect_uri=http%3A%2F%2Fbase_url%2Fredirect%3FqueryParam%3D1", result.url);
 }
 
 #[tokio::test]
 async fn test_share_proof_no_base_url() {
     let protocol = setup_protocol(None, Repositories::default());
-    let proof = generate_proof(None);
+    let mut proof = generate_proof(None);
 
-    let result = protocol.share_proof(&proof).await;
+    let did = Did {
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::KeyAgreement,
+            key: dummy_key(),
+        }]),
+        ..dummy_did().into()
+    };
+
+    proof.verifier_did = Some(did);
+
+    let mut key_alg = MockKeyAlgorithm::default();
+    key_alg.expect_bytes_to_jwk().return_once(|_, _| {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            r#use: Some("enc".to_string()),
+            crv: "123".to_string(),
+            x: "456".to_string(),
+            y: None,
+        }))
+    });
+
+    let key_alg = Arc::new(key_alg);
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .once()
+        .withf(move |alg| {
+            assert_eq!(alg, "bar");
+            true
+        })
+        .returning(move |_| Some(key_alg.clone()));
+
+    let formats = create_open_id_for_vp_formats();
+    let jwk =
+        get_encryption_key_jwk_from_proof(&proof.clone().into(), &key_algorithm_provider).unwrap();
+
+    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+
+    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(create_format_map);
+
+    let result = protocol
+        .share_proof(
+            &proof,
+            format_type_mapper,
+            jwk.key_id.into(),
+            jwk.jwk.into(),
+            formats,
+            type_to_descriptor_mapper,
+        )
+        .await;
     assert!(matches!(result, Err(ExchangeProtocolError::MissingBaseUrl)));
 }
 
 #[tokio::test]
 async fn test_share_proof_success_no_redirect_uri() {
     let protocol = setup_protocol(Some("http://base_url".to_string()), Repositories::default());
-    let proof = generate_proof(None);
+    let mut proof = generate_proof(None);
 
-    let result = protocol.share_proof(&proof).await.unwrap();
+    let did = Did {
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::KeyAgreement,
+            key: dummy_key(),
+        }]),
+        ..dummy_did().into()
+    };
+
+    proof.verifier_did = Some(did);
+
+    let mut key_alg = MockKeyAlgorithm::default();
+    key_alg.expect_bytes_to_jwk().return_once(|_, _| {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            r#use: Some("enc".to_string()),
+            crv: "123".to_string(),
+            x: "456".to_string(),
+            y: None,
+        }))
+    });
+
+    let key_alg = Arc::new(key_alg);
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .once()
+        .withf(move |alg| {
+            assert_eq!(alg, "bar");
+            true
+        })
+        .returning(move |_| Some(key_alg.clone()));
+
+    let formats = create_open_id_for_vp_formats();
+    let jwk =
+        get_encryption_key_jwk_from_proof(&proof.clone().into(), &key_algorithm_provider).unwrap();
+
+    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+
+    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(create_format_map);
+
+    let result = protocol
+        .share_proof(
+            &proof,
+            format_type_mapper,
+            jwk.key_id.into(),
+            jwk.jwk.into(),
+            formats,
+            type_to_descriptor_mapper,
+        )
+        .await
+        .unwrap();
     assert_eq!(format!("http://base_url/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof={}", proof.id), result.url);
 }
 
 #[tokio::test]
 async fn test_share_proof_success_with_redirect_uri_is_percent_encoded() {
     let protocol = setup_protocol(Some("http://base_url".to_string()), Repositories::default());
-    let proof = generate_proof(Some("http://base_url/redirect?queryParam=1".to_string()));
+    let mut proof = generate_proof(Some("http://base_url/redirect?queryParam=1".to_string()));
 
-    let result = protocol.share_proof(&proof).await.unwrap();
+    let did = Did {
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::KeyAgreement,
+            key: dummy_key(),
+        }]),
+        ..dummy_did().into()
+    };
+
+    proof.verifier_did = Some(did);
+
+    let mut key_alg = MockKeyAlgorithm::default();
+    key_alg.expect_bytes_to_jwk().return_once(|_, _| {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            r#use: Some("enc".to_string()),
+            crv: "123".to_string(),
+            x: "456".to_string(),
+            y: None,
+        }))
+    });
+
+    let key_alg = Arc::new(key_alg);
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .once()
+        .withf(move |alg| {
+            assert_eq!(alg, "bar");
+            true
+        })
+        .returning(move |_| Some(key_alg.clone()));
+
+    let formats = create_open_id_for_vp_formats();
+    let jwk =
+        get_encryption_key_jwk_from_proof(&proof.clone().into(), &key_algorithm_provider).unwrap();
+
+    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+
+    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(create_format_map);
+
+    let result = protocol
+        .share_proof(
+            &proof,
+            format_type_mapper,
+            jwk.key_id.into(),
+            jwk.jwk.into(),
+            formats,
+            type_to_descriptor_mapper,
+        )
+        .await
+        .unwrap();
+
     assert_eq!(format!("http://base_url/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof={}&redirect_uri=http%3A%2F%2Fbase_url%2Fredirect%3FqueryParam%3D1", proof.id), result.url);
 }

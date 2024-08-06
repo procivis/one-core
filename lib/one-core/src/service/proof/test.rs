@@ -2,10 +2,17 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::Sequence;
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
 use one_providers::common_models::key::Key;
+use one_providers::common_models::PublicKeyJwk;
+use one_providers::common_models::PublicKeyJwkEllipticData;
 use one_providers::credential_formatter::model::FormatterCapabilities;
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
+use one_providers::exchange_protocol::imp::provider::MockExchangeProtocol;
+use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::key_algorithm::MockKeyAlgorithm;
 use one_providers::revocation::provider::MockRevocationMethodProvider;
 use rstest::rstest;
 use shared_types::ProofId;
@@ -21,7 +28,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutType, WalletStorageTypeEnum,
+    LayoutType,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
@@ -38,13 +45,10 @@ use crate::model::proof_schema::{
 };
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
-use crate::provider::credential_formatter::test_utilities::get_dummy_date;
-use crate::provider::exchange_protocol::dto::ShareResponse;
 use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPPresentationDefinition;
 use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEPeer;
-use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
-use crate::provider::exchange_protocol::MockExchangeProtocol;
+use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -59,11 +63,14 @@ use crate::service::proof::dto::{
     CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
     ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
 };
+use crate::service::test_utilities::dummy_did;
 use crate::service::test_utilities::generic_config;
+use crate::service::test_utilities::get_dummy_date;
 
 #[derive(Default)]
 struct Repositories {
     pub proof_repository: MockProofRepository,
+    pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub proof_schema_repository: MockProofSchemaRepository,
     pub did_repository: MockDidRepository,
     pub credential_repository: MockCredentialRepository,
@@ -72,7 +79,7 @@ struct Repositories {
     pub interaction_repository: MockInteractionRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
-    pub protocol_provider: MockExchangeProtocolProvider,
+    pub protocol_provider: MockExchangeProtocolProviderExtra,
     pub ble_peripheral: Option<MockBlePeripheral>,
     pub config: CoreConfig,
 }
@@ -80,6 +87,7 @@ struct Repositories {
 fn setup_service(repositories: Repositories) -> ProofService {
     ProofService::new(
         Arc::new(repositories.proof_repository),
+        Arc::new(repositories.key_algorithm_provider),
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
         Arc::new(repositories.credential_repository),
@@ -124,7 +132,20 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             did: "did".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
-            keys: None,
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::KeyAgreement,
+                key: Key {
+                    id: Uuid::new_v4().into(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    public_key: vec![],
+                    name: "key".to_string(),
+                    key_reference: vec![],
+                    storage_type: "INTERNAL".to_string(),
+                    key_type: "EDDSA".to_string(),
+                    organisation: None,
+                },
+            }]),
             deactivated: false,
         }),
         holder_did: None,
@@ -541,7 +562,7 @@ async fn test_get_proof_with_array_holder() {
             keys: None,
             deactivated: false,
         }),
-        holder_did: None,
+        holder_did: Some(dummy_did()),
         verifier_key: None,
         interaction: None,
     };
@@ -753,7 +774,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             keys: None,
             deactivated: false,
         }),
-        holder_did: None,
+        holder_did: Some(dummy_did()),
         verifier_key: None,
         interaction: None,
     };
@@ -970,7 +991,7 @@ async fn test_get_proof_with_object_array_holder() {
             keys: None,
             deactivated: false,
         }),
-        holder_did: None,
+        holder_did: Some(dummy_did()),
         verifier_key: None,
         interaction: None,
     };
@@ -2362,7 +2383,26 @@ async fn test_share_proof_created_success() {
     let proof_id = Uuid::new_v4().into();
     let proof = construct_proof_with_state(&proof_id, ProofStateEnum::Created);
     let mut protocol = MockExchangeProtocol::default();
-    let mut protocol_provider = MockExchangeProtocolProvider::default();
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+
+    let mut key_algorithm = MockKeyAlgorithm::new();
+    key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            r#use: Some("enc".to_string()),
+            crv: "123".to_string(),
+            x: "456".to_string(),
+            y: None,
+        }))
+    });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .once()
+        .returning({
+            let key_algorithm = Arc::new(key_algorithm);
+            move |_| Some(key_algorithm.clone())
+        });
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
@@ -2370,7 +2410,7 @@ async fn test_share_proof_created_success() {
         .inner
         .expect_share_proof()
         .once()
-        .returning(move |_| {
+        .returning(move |_, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 id: interaction_id,
@@ -2432,6 +2472,7 @@ async fn test_share_proof_created_success() {
         protocol_provider,
         history_repository,
         interaction_repository,
+        key_algorithm_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2448,7 +2489,26 @@ async fn test_share_proof_pending_success() {
     let proof_id = Uuid::new_v4().into();
     let proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
     let mut protocol = MockExchangeProtocol::default();
-    let mut protocol_provider = MockExchangeProtocolProvider::default();
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+
+    let mut key_algorithm = MockKeyAlgorithm::new();
+    key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            r#use: Some("enc".to_string()),
+            crv: "123".to_string(),
+            x: "456".to_string(),
+            y: None,
+        }))
+    });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .once()
+        .returning({
+            let key_algorithm = Arc::new(key_algorithm);
+            move |_| Some(key_algorithm.clone())
+        });
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
@@ -2456,7 +2516,7 @@ async fn test_share_proof_pending_success() {
         .inner
         .expect_share_proof()
         .once()
-        .returning(move |_| {
+        .returning(move |_, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 id: interaction_id,
@@ -2505,6 +2565,7 @@ async fn test_share_proof_pending_success() {
         protocol_provider,
         history_repository,
         interaction_repository,
+        key_algorithm_provider,
         config: generic_config().core,
         ..Default::default()
     });

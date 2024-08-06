@@ -1,5 +1,10 @@
 use anyhow::Context;
 use one_providers::credential_formatter::model::DetailCredential;
+use one_providers::exchange_protocol::openid4vc::model::OpenID4VCICredential;
+use one_providers::exchange_protocol::openid4vc::model::OpenID4VCIProof;
+use one_providers::exchange_protocol::openid4vc::model::OpenID4VCITokenResponseDTO;
+use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
+use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, RevocationMethodCapabilities,
@@ -27,10 +32,8 @@ use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
-use crate::provider::exchange_protocol::dto::ShareResponse;
-use crate::provider::exchange_protocol::openid4vc::dto::{OpenID4VCICredential, OpenID4VCIProof};
+use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
-use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::interaction_repository::InteractionRepository;
@@ -47,13 +50,14 @@ use crate::service::credential::CredentialService;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use crate::service::oidc::dto::{OpenID4VCICredentialResponseDTO, OpenID4VCITokenResponseDTO};
+use crate::service::oidc::dto::OpenID4VCICredentialResponseDTO;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_credentials_interaction,
 };
 use crate::util::oidc::detect_correct_format;
-use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
+use crate::util::oidc::map_core_to_oidc_format;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
+use one_providers::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 
 impl CredentialService {
     /// Creates a credential according to request
@@ -280,8 +284,24 @@ impl CredentialService {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         }
 
-        let mut response = credential_detail_response_from_model(credential, &self.config)
-            .map_err(|err| ServiceError::ResponseMapping(err.to_string()))?;
+        let credential_schema = credential
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::ResponseMapping(
+                "Missing credential schema".to_owned(),
+            ))?;
+
+        let organisation = credential_schema
+            .organisation
+            .as_ref()
+            .ok_or(ServiceError::ResponseMapping(
+                "Missing organisation".to_owned(),
+            ))?
+            .clone();
+
+        let mut response =
+            credential_detail_response_from_model(credential, &self.config, &organisation)
+                .map_err(|err| ServiceError::ResponseMapping(err.to_string()))?;
 
         if response.schema.revocation_method == "LVVC" {
             let latest_lvvc = self
@@ -415,6 +435,20 @@ impl CredentialService {
 
         let credential_exchange = &credential.exchange;
 
+        let credential_schema = credential
+            .schema
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "credential schema missing".to_string(),
+            ))?;
+
+        let format = if credential_exchange == "OPENID4VC" {
+            map_core_to_oidc_format(&credential_schema.format)
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+        } else {
+            credential_schema.format.to_owned()
+        };
+
         let exchange_instance = &self
             .config
             .exchange
@@ -436,7 +470,9 @@ impl CredentialService {
             url,
             id: interaction_id,
             context,
-        } = exchange.share_credential(&credential).await?;
+        } = exchange
+            .share_credential(&credential.clone().into(), &format)
+            .await?;
 
         add_new_interaction(
             interaction_id,
@@ -692,8 +728,12 @@ impl CredentialService {
             .await?;
 
         if format == "MDOC" {
-            let interaction_data: HolderInteractionData =
-                deserialize_interaction_data(credential.interaction.as_ref())?;
+            let interaction_data: HolderInteractionData = deserialize_interaction_data(
+                credential
+                    .interaction
+                    .as_ref()
+                    .and_then(|i| i.data.as_ref()),
+            )?;
 
             let result = update_mso_interaction_access_token(
                 &mut credential,
@@ -905,7 +945,7 @@ async fn obtain_and_update_new_mso(
 
     let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
         interaction_data.issuer_url,
-        &holder_did,
+        &holder_did.clone().into(),
         key.key_type.to_owned(),
         auth_fn,
     )

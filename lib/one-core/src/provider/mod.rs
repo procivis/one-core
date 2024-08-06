@@ -1,7 +1,6 @@
 pub mod bluetooth_low_energy;
 pub mod credential_formatter;
 pub mod did_method;
-pub mod dto;
 pub mod exchange_protocol;
 pub mod key_algorithm;
 pub mod key_storage;

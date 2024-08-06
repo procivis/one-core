@@ -1,38 +1,7 @@
 use std::collections::HashMap;
 
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
-use one_core::provider::dto::{
-    PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO,
-    PublicKeyJwkRsaDataDTO,
-};
-use one_core::provider::exchange_protocol::openid4vc::dto::{
-    AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VCICredentialDefinition,
-    OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferCredentialDTO,
-    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails,
-    OpenID4VCIGrant, OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
-    OpenID4VPFormat,
-};
-use one_core::service::oidc::dto::{
-    NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialDefinitionRequestDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
-    OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
-    OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
-    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VPDirectPostRequestDTO,
-    OpenID4VPDirectPostResponseDTO, PresentationSubmissionDescriptorDTO,
-    PresentationSubmissionMappingDTO,
-};
-use one_core::service::oidc::model::{
-    OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
-    OpenID4VPPresentationDefinitionConstraintField,
-    OpenID4VPPresentationDefinitionConstraintFieldFilter,
-    OpenID4VPPresentationDefinitionInputDescriptor,
-    OpenID4VPPresentationDefinitionInputDescriptorFormat,
-};
+use one_core::service::oidc::dto::OpenID4VCICredentialResponseDTO;
 use one_core::service::ssi_issuer::dto::{
     ConnectIssuerResponseDTO, IssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO,
     JsonLDEntityDTO, JsonLDInlineEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
@@ -40,7 +9,34 @@ use one_core::service::ssi_issuer::dto::{
 use one_core::service::ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO};
 use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
 use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
+use one_providers::common_dto::{
+    PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO,
+    PublicKeyJwkRsaDataDTO,
+};
 use one_providers::did::model::{DidDocument, DidVerificationMethod};
+use one_providers::exchange_protocol::openid4vc::error::OpenID4VCIError;
+use one_providers::exchange_protocol::openid4vc::model::{
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm,
+    NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialDefinition,
+    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferClaim,
+    OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialOfferDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant, OpenID4VCIGrants,
+    OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+    OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
+    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VPClientMetadata,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
+    OpenID4VPFormat, OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
+    OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VPPresentationDefinitionConstraintFieldFilter,
+    OpenID4VPPresentationDefinitionInputDescriptor,
+    OpenID4VPPresentationDefinitionInputDescriptorFormat, PresentationSubmissionDescriptorDTO,
+    PresentationSubmissionMappingDTO,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
 use shared_types::{CredentialId, DidValue, KeyId, ProofId, TrustAnchorId, TrustEntityId};
@@ -333,6 +329,7 @@ pub enum OpenID4VCIErrorRestEnum {
     UnsupportedCredentialType,
     VPFormatsNotSupported,
     VCFormatsNotSupported,
+    RuntimeError(String),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]

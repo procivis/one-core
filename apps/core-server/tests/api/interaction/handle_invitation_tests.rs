@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use one_core::model::credential_schema::{CredentialSchemaType, WalletStorageTypeEnum};
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+
+use one_core::model::credential_schema::CredentialSchemaType;
 use one_core::model::proof::ProofStateEnum;
-use one_core::provider::exchange_protocol::openid4vc::dto::{
-    OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
-};
+use one_core::provider::exchange_protocol::openid4vc::dto::OpenID4VPPresentationDefinition;
 use one_core::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
+use one_providers::exchange_protocol::openid4vc::model::OpenID4VPClientMetadata;
+use one_providers::exchange_protocol::openid4vc::model::OpenID4VPFormat;
 use serde_json::json;
 use shared_types::ProofId;
 use time::OffsetDateTime;

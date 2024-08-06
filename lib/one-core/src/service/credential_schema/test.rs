@@ -10,7 +10,9 @@ use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
+
+use crate::model::credential_schema::{CredentialSchemaType, LayoutType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::service::credential_schema::dto::{

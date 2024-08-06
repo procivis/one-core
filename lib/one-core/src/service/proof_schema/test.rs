@@ -2,18 +2,16 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::PredicateBooleanExt;
+use one_providers::common_models::credential_schema::WalletStorageTypeEnum;
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
-use shared_types::CredentialSchemaId;
-use shared_types::OrganisationId;
-use shared_types::ProofSchemaId;
+use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofSchemaService;
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::common::GetListResponse;
-use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
     LayoutType,
@@ -30,16 +28,13 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, ErrorCode, ServiceError, ValidationError,
+    BusinessLogicError, EntityNotFoundError, ErrorCode, ErrorCodeMixin, ServiceError,
+    ValidationError,
 };
-use crate::service::proof_schema::dto::ImportProofSchemaClaimSchemaDTO;
-use crate::service::proof_schema::dto::ImportProofSchemaCredentialSchemaDTO;
-use crate::service::proof_schema::dto::ImportProofSchemaDTO;
-use crate::service::proof_schema::dto::ImportProofSchemaInputSchemaDTO;
-use crate::service::proof_schema::dto::ImportProofSchemaRequestDTO;
 use crate::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
-    ProofInputSchemaRequestDTO,
+    ImportProofSchemaClaimSchemaDTO, ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO,
+    ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO, ProofInputSchemaRequestDTO,
 };
 use crate::service::proof_schema::ProofSchemaImportError;
 use crate::service::test_utilities::{generic_config, generic_formatter_capabilities};

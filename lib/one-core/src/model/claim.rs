@@ -1,4 +1,4 @@
-use dto_mapper::{convert_inner, Into};
+use dto_mapper::{convert_inner, From, Into};
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -7,7 +7,8 @@ use super::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 
 pub type ClaimId = Uuid;
 
-#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, From, Into)]
+#[from(one_providers::common_models::claim::Claim)]
 #[into(one_providers::common_models::claim::Claim)]
 pub struct Claim {
     pub id: ClaimId,
@@ -18,6 +19,7 @@ pub struct Claim {
     pub path: String,
 
     // Relations
+    #[from(with_fn = "convert_inner")]
     #[into(with_fn = "convert_inner")]
     pub schema: Option<ClaimSchema>,
 }
