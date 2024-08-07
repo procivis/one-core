@@ -105,7 +105,11 @@ async fn test_create_mdl_did_for(
 
     // act
     let did = service
-        .create(&did_id.to_owned().into(), &Some(params), &keys)
+        .create(
+            Some(did_id.to_owned().into()),
+            &Some(params),
+            Some(keys.to_vec()),
+        )
         .await
         .unwrap();
 

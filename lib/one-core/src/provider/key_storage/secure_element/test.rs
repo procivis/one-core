@@ -32,7 +32,10 @@ async fn test_generate_success() {
 
     let provider = SecureElementKeyProvider::new(Arc::new(native_storage), get_params());
 
-    let result = provider.generate(&key_id.into(), "ES256").await.unwrap();
+    let result = provider
+        .generate(Some(key_id.into()), "ES256")
+        .await
+        .unwrap();
     assert_eq!(result.public_key, b"public_key");
     assert_eq!(result.key_reference, b"key_reference");
 }
@@ -42,7 +45,9 @@ async fn test_generate_invalid_key_type() {
     let provider =
         SecureElementKeyProvider::new(Arc::new(MockNativeKeyStorage::default()), get_params());
 
-    let result = provider.generate(&Uuid::new_v4().into(), "invalid").await;
+    let result = provider
+        .generate(Some(Uuid::new_v4().into()), "invalid")
+        .await;
     assert!(matches!(
         result,
         Err(KeyStorageError::UnsupportedKeyType { .. })

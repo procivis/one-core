@@ -182,7 +182,11 @@ impl DidService {
         }
 
         let did_value = did_method
-            .create(&new_did_id.into(), &request.params, &keys)
+            .create(
+                Some(new_did_id.into()),
+                &request.params,
+                Some(keys.to_owned()),
+            )
             .await?;
 
         let now = OffsetDateTime::now_utc();

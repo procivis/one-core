@@ -35,7 +35,7 @@ pub struct Params {
 impl KeyStorage for SecureElementKeyProvider {
     async fn generate(
         &self,
-        key_id: &KeyId,
+        key_id: Option<KeyId>,
         key_type: &str,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if key_type != "ES256" {
@@ -43,6 +43,8 @@ impl KeyStorage for SecureElementKeyProvider {
                 key_type: key_type.to_owned(),
             });
         }
+
+        let key_id = key_id.ok_or(KeyStorageError::Failed("Missing key id".to_string()))?;
 
         let key_alias = format!("{}.{}", self.params.alias_prefix, key_id);
         self.native_storage.generate_key(key_alias)
