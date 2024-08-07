@@ -34,7 +34,11 @@ impl TrustAnchorService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
-        let anchor = trust_anchor_from_request(request, organisation.clone());
+        let core_base_url = self.core_base_url.as_ref().ok_or(ServiceError::Other(
+            "Missing core_base_url in trust anchor service".to_string(),
+        ))?;
+
+        let anchor = trust_anchor_from_request(request, organisation.clone(), core_base_url);
 
         let result = self.trust_anchor_repository.create(anchor).await;
 

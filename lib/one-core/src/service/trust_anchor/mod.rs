@@ -20,6 +20,7 @@ pub struct TrustAnchorService {
     history_repository: Arc<dyn HistoryRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     config: Arc<core_config::CoreConfig>,
+    core_base_url: Option<String>,
 }
 
 impl TrustAnchorService {
@@ -28,6 +29,7 @@ impl TrustAnchorService {
         trust_entity_repository: Arc<dyn TrustEntityRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
+        core_base_url: Option<String>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
@@ -35,6 +37,7 @@ impl TrustAnchorService {
             trust_entity_repository,
             history_repository,
             organisation_repository,
+            core_base_url,
             config,
         }
     }

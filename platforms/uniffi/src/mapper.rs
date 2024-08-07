@@ -322,7 +322,6 @@ impl TryFrom<CreateTrustAnchorRequestBindingDTO> for CreateTrustAnchorRequestDTO
         Ok(Self {
             name: value.name,
             r#type: value.r#type,
-            publisher_reference: value.publisher_reference,
             role: value.role.into(),
             priority: value.priority,
             organisation_id: into_id(&value.organisation_id)?,
