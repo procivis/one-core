@@ -332,15 +332,9 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             "Missing core_base_url for credential issuance".to_string(),
         ))?;
 
-        let organisation = credential_schema
-            .organisation
-            .ok_or(ServiceError::MappingError(
-                "Missing organisation".to_owned(),
-            ))?;
-
         // TODO - remove organisation usage from here when moved to open core
         let credential_detail =
-            credential_detail_response_from_model(credential.clone(), &self.config, &organisation)?;
+            credential_detail_response_from_model(credential.clone(), &self.config)?;
         let credential_data = credential_data_from_credential_detail_response(
             &self.config,
             credential_detail,

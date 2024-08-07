@@ -284,24 +284,8 @@ impl CredentialService {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         }
 
-        let credential_schema = credential
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::ResponseMapping(
-                "Missing credential schema".to_owned(),
-            ))?;
-
-        let organisation = credential_schema
-            .organisation
-            .as_ref()
-            .ok_or(ServiceError::ResponseMapping(
-                "Missing organisation".to_owned(),
-            ))?
-            .clone();
-
-        let mut response =
-            credential_detail_response_from_model(credential, &self.config, &organisation)
-                .map_err(|err| ServiceError::ResponseMapping(err.to_string()))?;
+        let mut response = credential_detail_response_from_model(credential, &self.config)
+            .map_err(|err| ServiceError::ResponseMapping(err.to_string()))?;
 
         if response.schema.revocation_method == "LVVC" {
             let latest_lvvc = self

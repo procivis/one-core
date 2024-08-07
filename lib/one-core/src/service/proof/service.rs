@@ -167,18 +167,7 @@ impl ProofService {
             .ok_or_else(|| ServiceError::MappingError("proof interaction is missing".into()))?
             .map_err(|err| ServiceError::MappingError(err.to_string()))?;
 
-        let organisation = proof
-            .holder_did
-            .as_ref()
-            .ok_or_else(|| ServiceError::MappingError("holder_did is missing".into()))?
-            .organisation
-            .as_ref()
-            .ok_or_else(|| {
-                ServiceError::MappingError("holder_did.organisation is missing".into())
-            })?;
-
         let storage_access = StorageProxyImpl::new(
-            organisation.to_owned(),
             self.interaction_repository.clone(),
             self.credential_schema.clone(),
             self.credential_repository.clone(),
@@ -192,7 +181,6 @@ impl ProofService {
                 &storage_access,
                 create_oicd_to_core_format_map(),
                 core_type_to_open_core_type(&self.config.datatype),
-                organisation.clone().into(),
             )
             .await?
             .into())

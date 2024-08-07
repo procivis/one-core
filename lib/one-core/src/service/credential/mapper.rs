@@ -27,12 +27,10 @@ use crate::service::error::{BusinessLogicError, ServiceError};
 pub fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
-    organisation: &Organisation,
 ) -> Result<CredentialDetailResponseDTO, ServiceError> {
-    let mut schema = value.schema.ok_or(ServiceError::MappingError(
+    let schema = value.schema.ok_or(ServiceError::MappingError(
         "credential_schema is None".to_string(),
     ))?;
-    schema.organisation = Some(organisation.to_owned());
 
     let claims = value
         .claims
@@ -55,7 +53,7 @@ pub fn credential_detail_response_from_model(
         state: latest_state.state.into(),
         last_modified: value.last_modified,
         claims: from_vec_claim(claims, &schema, config)?,
-        schema: schema.try_into()?, // This requires organisation to be set
+        schema: schema.try_into()?,
         issuer_did: convert_inner(value.issuer_did),
         redirect_uri: value.redirect_uri,
         role: value.role.into(),

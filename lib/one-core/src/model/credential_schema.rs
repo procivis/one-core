@@ -43,8 +43,8 @@ pub struct CredentialSchema {
     #[into(with_fn = "convert_inner_of_inner")]
     #[from(with_fn = "convert_inner_of_inner")]
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
-    #[into(skip)]
-    #[from(replace = None)]
+    #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub organisation: Option<Organisation>,
 }
 

@@ -56,16 +56,27 @@ impl ExchangeProtocolImpl for OpenID4VC {
     async fn handle_invitation(
         &self,
         url: Url,
+        organisation: OpenOrganisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         if self.openid_http.can_handle(&url) {
             self.openid_http
-                .handle_invitation(url, storage_access, handle_invitation_operations)
+                .handle_invitation(
+                    url,
+                    organisation,
+                    storage_access,
+                    handle_invitation_operations,
+                )
                 .await
         } else if self.openid_ble.can_handle(&url) {
             self.openid_ble
-                .handle_invitation(url, storage_access, handle_invitation_operations)
+                .handle_invitation(
+                    url,
+                    organisation,
+                    storage_access,
+                    handle_invitation_operations,
+                )
                 .await
         } else {
             Err(ExchangeProtocolError::Failed(
@@ -213,7 +224,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
         storage_access: &StorageAccess,
         format_map: HashMap<String, String>,
         types: HashMap<String, DatatypeType>,
-        organisation: OpenOrganisation,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         if proof.transport == TransportType::Ble.to_string() {
             let interaction_data = serde_json::from_value(interaction_data)
@@ -225,7 +235,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     storage_access,
                     format_map,
                     types,
-                    organisation,
                 )
                 .await
         } else {
@@ -238,7 +247,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     storage_access,
                     format_map,
                     types,
-                    organisation,
                 )
                 .await
         }

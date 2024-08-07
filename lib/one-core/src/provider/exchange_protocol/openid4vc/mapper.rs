@@ -40,7 +40,6 @@ pub(super) fn presentation_definition_from_interaction_data(
     credentials: Vec<Credential>,
     credential_groups: Vec<CredentialGroup>,
     config: &CoreConfig,
-    organisation: &Organisation,
 ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
@@ -85,7 +84,7 @@ pub(super) fn presentation_definition_from_interaction_data(
         credentials: credential_model_to_credential_dto(
             convert_inner(credentials),
             config,
-            organisation,
+            // organisation,
         )?,
     })
 }
@@ -533,7 +532,7 @@ pub fn from_create_request(
 pub fn from_create_request_with_id(
     id: CredentialSchemaId,
     request: CreateCredentialSchemaRequestDTO,
-    _organisation: Organisation,
+    organisation: Organisation,
     core_base_url: &str,
     format_type: &str,
     schema_type: Option<String>,
@@ -584,6 +583,7 @@ pub fn from_create_request_with_id(
         layout_properties: request.layout_properties.map(Into::into),
         schema_type,
         schema_id,
+        organisation: Some(organisation.into()),
     })
 }
 

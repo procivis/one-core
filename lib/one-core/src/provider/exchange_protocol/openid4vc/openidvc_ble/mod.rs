@@ -326,6 +326,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
     async fn handle_invitation(
         &self,
         url: Url,
+        _organisation: OpenOrganisation,
         _storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
@@ -621,7 +622,6 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         storage_access: &StorageAccess,
         _format_map: HashMap<String, String>,
         _types: HashMap<String, DatatypeType>,
-        organisation: OpenOrganisation,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let presentation_definition = interaction_data
             .and_then(|i| i.presentation_definition)
@@ -707,7 +707,6 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             convert_inner(credentials),
             convert_inner(credential_groups),
             &self.config,
-            &organisation.clone().into(),
         )
         .map(Into::into)
     }
