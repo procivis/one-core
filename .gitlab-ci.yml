@@ -211,6 +211,7 @@ publish:
 
 bitrise_ios_sdk:
   stage: sdk_build
+  image: registry.gitlab.procivis.ch/procivis/one/one-operations/bitrise-builder:0.1.0
   needs: []
   dependencies: []
   variables:
