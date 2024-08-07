@@ -84,9 +84,22 @@ impl IntoFilterCondition for HistoryFilterValue {
             HistoryFilterValue::OrganisationId(organisation_id) => {
                 get_equals_condition(history::Column::OrganisationId, organisation_id.to_string())
             }
-            HistoryFilterValue::ProofSchemaId(proof_schema_id) => {
-                get_equals_condition(history::Column::EntityId, proof_schema_id.to_string())
-            }
+            HistoryFilterValue::ProofSchemaId(proof_schema_id) => history::Column::EntityId
+                .eq(proof_schema_id)
+                .and(history::Column::EntityType.eq(history::HistoryEntityType::ProofSchema))
+                .or(history::Column::EntityId.in_subquery(
+                    Query::select()
+                        .expr(proof::Column::Id.into_expr())
+                        .from(proof::Entity)
+                        .inner_join(
+                            proof_schema::Entity,
+                            Expr::col((proof_schema::Entity, proof_schema::Column::Id))
+                                .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
+                        )
+                        .cond_where(proof_schema::Column::Id.eq(proof_schema_id.to_string()))
+                        .to_owned(),
+                ))
+                .into_condition(),
         }
     }
 }
