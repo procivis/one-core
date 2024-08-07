@@ -19,9 +19,9 @@ impl X509Method {
 impl DidMethod for X509Method {
     async fn create(
         &self,
-        _id: &DidId,
+        _id: Option<DidId>,
         _params: &Option<serde_json::Value>,
-        _keys: &[OpenKey],
+        _keys: Option<Vec<OpenKey>>,
     ) -> Result<DidValue, DidMethodError> {
         todo!()
     }

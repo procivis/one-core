@@ -69,9 +69,9 @@ impl DidMdl {
 impl DidMethod for DidMdl {
     async fn create(
         &self,
-        _id: &DidId,
+        _id: Option<DidId>,
         params: &Option<serde_json::Value>,
-        keys: &[OpenKey],
+        keys: Option<Vec<OpenKey>>,
     ) -> Result<DidValue, DidMethodError> {
         let Some(params) = params.as_ref() else {
             return Err(DidMethodError::CouldNotCreate(
@@ -81,7 +81,9 @@ impl DidMethod for DidMdl {
 
         let certificate = extract_x509_certificate(params)?;
 
-        let selected_key = select_key(keys)?;
+        let keys = keys.ok_or(DidMethodError::ResolutionError("Missing keys".to_string()))?;
+
+        let selected_key = select_key(keys.as_slice())?;
 
         let pem = parse_pem(certificate)?;
         let certificate = parse_x509_from_pem(&pem)?;

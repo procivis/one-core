@@ -21,7 +21,7 @@ impl KeyStorage for PKCS11KeyProvider {
 
     async fn generate(
         &self,
-        _key_id: &KeyId,
+        _key_id: Option<KeyId>,
         _key_type: &str,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         todo!()

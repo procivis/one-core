@@ -80,7 +80,7 @@ impl KeyService {
             ))?;
 
         let key_id = Uuid::new_v4().into();
-        let key = provider.generate(&key_id, &request.key_type).await?;
+        let key = provider.generate(Some(key_id), &request.key_type).await?;
 
         let key_entity = from_create_request(key_id, request, organisation.into(), key);
 
