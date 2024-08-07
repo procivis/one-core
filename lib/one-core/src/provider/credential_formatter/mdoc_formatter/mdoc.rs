@@ -12,7 +12,7 @@ use url::Url;
 
 pub type Namespace = String;
 
-pub type Namespaces = IndexMap<Namespace, Vec<Bytes<IssuerSignedItem>>>;
+pub type Namespaces = IndexMap<Namespace, Vec<EmbeddedCbor<IssuerSignedItem>>>;
 
 pub type DeviceNamespaces = IndexMap<Namespace, DeviceSignedItems>;
 pub type DeviceSignedItems = IndexMap<DataElementIdentifier, DataElementValue>;
@@ -73,7 +73,7 @@ pub struct IssuerSignedItem {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceSigned {
-    pub name_spaces: Bytes<DeviceNamespaces>,
+    pub name_spaces: EmbeddedCbor<DeviceNamespaces>,
     pub device_auth: DeviceAuth,
 }
 
@@ -277,9 +277,9 @@ impl TryFrom<ciborium::Value> for Bstr {
 // should be serialized as cbor array: DeviceAuthentication = ["DeviceAuthentication", SessionTranscriptBytes, DocType; DeviceNameSpaceBytes]
 #[derive(Debug, PartialEq)]
 pub struct DeviceAuthentication {
-    pub session_transcript: Bytes<SessionTranscript>,
+    pub session_transcript: EmbeddedCbor<SessionTranscript>,
     pub doctype: DocType,
-    pub device_namespaces: Bytes<DeviceNamespaces>,
+    pub device_namespaces: EmbeddedCbor<DeviceNamespaces>,
 }
 
 impl Serialize for DeviceAuthentication {
@@ -362,28 +362,29 @@ impl Serialize for OID4VPHandover {
     }
 }
 
-// Wrapper when T needs to get serialized as "#6.24(bstr .cbor T)" as required by the spec
+/// Represents Embedded CBOR type, where T gets converted to a byte array(`bstr`).
+/// In CDDL this is represented as: `#6.24(bstr .cbor T)`
 #[derive(Debug, PartialEq, Clone)]
-pub struct Bytes<T>(pub T);
+pub struct EmbeddedCbor<T>(pub T);
 
-impl<T> Bytes<T> {
-    pub(crate) fn to_cbor_bytes(&self) -> Result<Vec<u8>, ciborium::ser::Error<std::io::Error>>
+impl<T> EmbeddedCbor<T> {
+    pub(crate) fn to_vec(&self) -> Result<Vec<u8>, ciborium::ser::Error<std::io::Error>>
     where
         Self: Serialize,
     {
-        let mut output = vec![];
+        let mut output = Vec::with_capacity(128);
         ciborium::into_writer(self, &mut output)?;
 
         Ok(output)
     }
 }
 
-impl<T: Serialize> Serialize for Bytes<T> {
+impl<T: Serialize> Serialize for EmbeddedCbor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut t = vec![];
+        let mut t = Vec::with_capacity(128);
         ciborium::into_writer(&self.0, &mut t).map_err(ser::Error::custom)?;
 
         let tagged_value = Required::<_, EMBEDDED_CBOR_TAG>(Bstr(t));
@@ -392,7 +393,7 @@ impl<T: Serialize> Serialize for Bytes<T> {
     }
 }
 
-impl<'de, T> Deserialize<'de> for Bytes<T>
+impl<'de, T> Deserialize<'de> for EmbeddedCbor<T>
 where
     T: DeserializeOwned,
 {
