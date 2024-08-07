@@ -9,6 +9,7 @@ use one_core::model::organisation::Organisation;
 use one_core::repository::history_repository::HistoryRepository;
 use shared_types::{
     ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, OrganisationId, ProofId,
+    ProofSchemaId,
 };
 use uuid::Uuid;
 
@@ -50,6 +51,7 @@ struct TestSetupWithCredentialsSchemaAndProof {
     pub claim_schema_name: &'static str,
     pub claim_value: &'static str,
     pub credential_id: CredentialId,
+    pub proof_schema_id: ProofSchemaId,
 }
 
 async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSchemaAndProof {
@@ -240,6 +242,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         claim_schema_name,
         claim_value,
         credential_id,
+        proof_schema_id,
     }
 }
 
@@ -424,12 +427,13 @@ async fn test_get_history_list_schema_joins_credentials() {
 }
 
 #[tokio::test]
-async fn test_get_history_list_joins_schema_credential_claim_and_proof() {
+async fn test_get_history_list_joins_schema_credential_claim_proof_and_proof_schema() {
     let TestSetupWithCredentialsSchemaAndProof {
         provider,
         organisation,
         credential_id,
         credential_schema_id,
+        proof_schema_id,
         ..
     } = setup_with_credential_schema_and_proof().await;
 
@@ -455,6 +459,17 @@ async fn test_get_history_list_joins_schema_credential_claim_and_proof() {
         .unwrap();
 
     let expected_count = /* create(credential, proof) */ 2;
+    assert_result(expected_count, result);
+
+    let result = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::ProofSchemaId(ProofSchemaId::from(Uuid::from(proof_schema_id))),
+        ))
+        .await
+        .unwrap();
+
+    let expected_count = /* create(proof_schema, proof) */ 2;
     assert_result(expected_count, result);
 }
 
