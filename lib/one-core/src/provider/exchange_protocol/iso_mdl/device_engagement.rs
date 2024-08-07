@@ -5,11 +5,11 @@ use serde::{de, ser, Deserialize, Serialize, Serializer};
 use std::convert::TryInto;
 use uuid::Uuid;
 
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::Bytes;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
 
 use super::common::EDeviceKey;
 
-pub type EDeviceKeyBytes = Bytes<EDeviceKey>;
+pub type EDeviceKeyBytes = EmbeddedCbor<EDeviceKey>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct DeviceEngagement {
@@ -434,7 +434,7 @@ mod test {
 
         DeviceEngagement {
             security: Security {
-                key_bytes: Bytes(EDeviceKey::new(pk)),
+                key_bytes: EmbeddedCbor(EDeviceKey::new(pk)),
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {

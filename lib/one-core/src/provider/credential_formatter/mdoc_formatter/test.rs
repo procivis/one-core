@@ -62,12 +62,12 @@ fn test_issuer_auth_serialize_deserialize() {
     let issuer_auth: CoseSign1 = ciborium::from_reader(&issuer_auth_cbor_data[..]).unwrap();
     let payload = issuer_auth.0.payload.unwrap();
 
-    let mso: Bytes<MobileSecurityObject> = ciborium::from_reader(&payload[..]).unwrap();
+    let mso: EmbeddedCbor<MobileSecurityObject> = ciborium::from_reader(&payload[..]).unwrap();
 
     let mut payload = vec![];
     ciborium::into_writer(&mso, &mut payload).unwrap();
 
-    let mso1: Bytes<MobileSecurityObject> = ciborium::from_reader(&payload[..]).unwrap();
+    let mso1: EmbeddedCbor<MobileSecurityObject> = ciborium::from_reader(&payload[..]).unwrap();
 
     assert_eq!(mso, mso1);
 }
@@ -320,7 +320,7 @@ async fn test_credential_formatting_ok_for_es256() {
     assert_eq!(&expected_issuer_did, x5chain);
 
     // check MSO
-    let Bytes::<MobileSecurityObject>(mso) =
+    let EmbeddedCbor::<MobileSecurityObject>(mso) =
         ciborium::from_reader(cose_sign1.payload.unwrap().as_slice()).unwrap();
 
     // check value digests
