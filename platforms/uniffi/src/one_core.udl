@@ -221,6 +221,7 @@ dictionary ConfigBindingDTO {
   record<string, string> datatype;
   record<string, string> key_algorithm;
   record<string, string> key_storage;
+  record<string, string> cache_entities;
 };
 
 enum CredentialStateBindingEnum {

@@ -52,6 +52,7 @@ fn convert_internal_structure_to_dto() {
           "keyAlgorithm": {},
           "keyStorage": {},
           "trustManagement": {},
+          "cacheEntities": {},
         }),
         output
     );
@@ -100,6 +101,7 @@ fn do_not_serialize_private_parameters() {
           "keyAlgorithm": {},
           "keyStorage": {},
           "trustManagement": {},
+          "cacheEntities": {},
         }),
         output
     );
