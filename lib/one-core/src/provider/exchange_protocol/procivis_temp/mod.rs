@@ -124,6 +124,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
     async fn handle_invitation(
         &self,
         url: Url,
+        organisation: OpenOrganisation,
         storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
@@ -158,7 +159,13 @@ impl ExchangeProtocolImpl for ProcivisTemp {
                     .context("parsing error")
                     .map_err(ExchangeProtocolError::Transport)?;
 
-                handle_credential_invitation(base_url, issuer_response, storage_access).await?
+                handle_credential_invitation(
+                    base_url,
+                    organisation.to_owned(),
+                    issuer_response,
+                    storage_access,
+                )
+                .await?
             }
             InvitationType::ProofRequest { proof_id, protocol } => {
                 let proof_request = response
@@ -172,6 +179,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
                     proof_id,
                     proof_request,
                     &protocol,
+                    organisation,
                     redirect_uri,
                     storage_access,
                 )
@@ -400,7 +408,6 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         storage_access: &StorageAccess,
         _format_map: HashMap<String, String>,
         _types: HashMap<String, DatatypeType>,
-        organisation: OpenOrganisation,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let requested_claims = get_proof_claim_schemas_from_proof(proof)?;
         let mut credential_groups: Vec<CredentialGroup> = vec![];
@@ -448,13 +455,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         )
         .await?;
 
-        presentation_definition_from_proof(
-            proof,
-            credentials,
-            credential_groups,
-            &self.config,
-            &organisation.clone().into(),
-        )
+        presentation_definition_from_proof(proof, credentials, credential_groups, &self.config)
     }
 
     async fn verifier_handle_proof(
@@ -468,12 +469,13 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
 async fn handle_credential_invitation(
     base_url: Url,
+    organisation: OpenOrganisation,
     issuer_response: ConnectIssuerResponseDTO,
     storage_access: &StorageAccess,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let now = OffsetDateTime::now_utc();
     let credential_schema = match storage_access
-        .get_schema(&issuer_response.schema.schema_id)
+        .get_schema(&issuer_response.schema.schema_id, organisation.id)
         .await
         .map_err(ExchangeProtocolError::StorageAccessError)?
     {
@@ -483,7 +485,7 @@ async fn handle_credential_invitation(
             }
 
             storage_access
-                .get_schema(&credential_schema.id.to_string())
+                .get_schema(&credential_schema.id.to_string(), organisation.id)
                 .await
                 .map_err(ExchangeProtocolError::StorageAccessError)?
                 .ok_or(ExchangeProtocolError::Failed(
@@ -513,6 +515,7 @@ async fn handle_credential_invitation(
                     now,
                     "",
                 )?),
+                organisation: Some(organisation.to_owned()),
             };
 
             let _ = storage_access
@@ -534,7 +537,8 @@ async fn handle_credential_invitation(
     let issuer_did = match did {
         Some(did) => did,
         None => {
-            let issuer_did = remote_did_from_value(issuer_did_value.to_owned());
+            let issuer_did =
+                remote_did_from_value(issuer_did_value.to_owned(), organisation.into());
             let _ = storage_access
                 .create_did(issuer_did.clone())
                 .await
@@ -694,6 +698,7 @@ async fn handle_proof_invitation(
     proof_id: String,
     proof_request: ConnectVerifierResponse,
     protocol: &str,
+    organisation: OpenOrganisation,
     redirect_uri: Option<String>,
     storage_access: &StorageAccess,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
@@ -717,6 +722,7 @@ async fn handle_proof_invitation(
                 did_method: "KEY".to_owned(),
                 keys: None,
                 deactivated: false,
+                organisation: Some(organisation),
             };
             storage_access
                 .create_did(new_did.clone())

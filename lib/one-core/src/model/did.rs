@@ -1,4 +1,4 @@
-use dto_mapper::{convert_inner_of_inner, From, Into};
+use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use one_providers::common_models::key::OpenKey;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
@@ -62,8 +62,8 @@ pub struct Did {
     #[into(with_fn = "convert_inner_of_inner")]
     #[from(with_fn = "convert_inner_of_inner")]
     pub keys: Option<Vec<RelatedKey>>,
-    #[into(skip)]
-    #[from(replace = None)]
+    #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub organisation: Option<Organisation>,
 }
 

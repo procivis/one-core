@@ -19,8 +19,8 @@ pub struct ProofSchema {
     pub expire_duration: u32,
 
     // Relations
-    #[into(skip)]
-    #[from(replace = None)]
+    #[into(with_fn = "convert_inner")]
+    #[from(with_fn = "convert_inner")]
     pub organisation: Option<Organisation>,
     #[into(with_fn = "convert_inner_of_inner")]
     #[from(with_fn = "convert_inner_of_inner")]

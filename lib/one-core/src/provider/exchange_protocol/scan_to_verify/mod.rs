@@ -60,6 +60,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
     async fn handle_invitation(
         &self,
         _url: Url,
+        _organisation: OpenOrganisation,
         _storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
@@ -129,7 +130,6 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _storage_access: &StorageAccess,
         _format_map: HashMap<String, String>,
         _types: HashMap<String, DatatypeType>,
-        _organisation: OpenOrganisation,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         unimplemented!()
     }

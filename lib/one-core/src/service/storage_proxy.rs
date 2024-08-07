@@ -6,19 +6,18 @@ use one_providers::common_models::credential::OpenCredential;
 use one_providers::common_models::credential_schema::{CredentialSchemaId, OpenCredentialSchema};
 use one_providers::common_models::did::{DidId, DidValue, OpenDid};
 use one_providers::common_models::interaction::{InteractionId, OpenInteraction};
+use one_providers::common_models::organisation::OrganisationId;
 use one_providers::exchange_protocol::openid4vc::StorageProxy;
 
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::organisation::Organisation;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 
 pub struct StorageProxyImpl {
-    pub organisation: Organisation,
     pub interactions: Arc<dyn InteractionRepository>,
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
     pub credentials: Arc<dyn CredentialRepository>,
@@ -27,14 +26,12 @@ pub struct StorageProxyImpl {
 
 impl StorageProxyImpl {
     pub fn new(
-        organisation: Organisation,
         interactions: Arc<dyn InteractionRepository>,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         credentials: Arc<dyn CredentialRepository>,
         dids: Arc<dyn DidRepository>,
     ) -> Self {
         Self {
-            organisation,
             interactions,
             credential_schemas,
             credentials,
@@ -57,12 +54,16 @@ impl StorageProxy for StorageProxyImpl {
         )
     }
 
-    async fn get_schema(&self, schema_id: &str) -> anyhow::Result<Option<OpenCredentialSchema>> {
+    async fn get_schema(
+        &self,
+        schema_id: &str,
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<OpenCredentialSchema>> {
         convert_inner_of_inner(
             self.credential_schemas
                 .get_by_schema_id_and_organisation(
                     schema_id,
-                    self.organisation.id,
+                    organisation_id.into(),
                     &CredentialSchemaRelations {
                         claim_schemas: Some(Default::default()),
                         organisation: Some(Default::default()),
@@ -103,8 +104,7 @@ impl StorageProxy for StorageProxyImpl {
         &self,
         schema: OpenCredentialSchema,
     ) -> anyhow::Result<CredentialSchemaId> {
-        let mut schema: crate::model::credential_schema::CredentialSchema = schema.into();
-        schema.organisation = Some(self.organisation.to_owned());
+        let schema: crate::model::credential_schema::CredentialSchema = schema.into();
 
         convert_inner(
             self.credential_schemas
@@ -115,8 +115,7 @@ impl StorageProxy for StorageProxyImpl {
     }
 
     async fn create_did(&self, did: OpenDid) -> anyhow::Result<DidId> {
-        let mut did: crate::model::did::Did = did.into();
-        did.organisation = Some(self.organisation.to_owned());
+        let did: crate::model::did::Did = did.into();
 
         convert_inner(
             self.dids

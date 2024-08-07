@@ -35,7 +35,7 @@ use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
 use crate::provider::exchange_protocol::openid4vc::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::service::common_mapper::core_type_to_open_core_type;
@@ -69,7 +69,6 @@ impl SSIHolderService {
         )?;
 
         let storage_access = StorageProxyImpl::new(
-            organisation.to_owned(),
             self.interaction_repository.clone(),
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
@@ -77,12 +76,17 @@ impl SSIHolderService {
         );
 
         let handle_operations = HandleInvitationOperationsImpl::new(
-            organisation.into(),
+            organisation.clone().into(),
             self.credential_schema_repository.clone(),
         );
 
         let response = protocol
-            .handle_invitation(url, &storage_access, &handle_operations)
+            .handle_invitation(
+                url,
+                organisation.into(),
+                &storage_access,
+                &handle_operations,
+            )
             .await?;
         match &response {
             InvitationResponseDTO::Credential { credentials, .. } => {
@@ -262,12 +266,7 @@ impl SSIHolderService {
             .ok_or_else(|| ServiceError::MappingError("missing interaction".into()))?
             .map_err(|err| ServiceError::MappingError(err.to_string()))?;
 
-        let holder_organisation = holder_did.organisation.as_ref().ok_or_else(|| {
-            ServiceError::MappingError("holder did organisation is missing".into())
-        })?;
-
         let storage_access = StorageProxyImpl::new(
-            holder_organisation.to_owned(),
             self.interaction_repository.clone(),
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
@@ -281,7 +280,6 @@ impl SSIHolderService {
                 &storage_access,
                 create_oicd_to_core_format_map(),
                 core_type_to_open_core_type(&self.config.datatype),
-                holder_organisation.clone().into(),
             )
             .await?;
 
@@ -472,10 +470,7 @@ impl SSIHolderService {
                 create_core_to_oicd_presentation_format_map(),
             )
             .map_err(ServiceError::from)
-            .and_then(|submit_result| async {
-                self.resolve_update_response(submit_result, holder_organisation)
-                    .await
-            })
+            .and_then(|submit_result| async { self.resolve_update_response(submit_result).await })
             .await;
 
         self.proof_repository
@@ -598,16 +593,7 @@ impl SSIHolderService {
                 return Err(BusinessLogicError::UnfulfilledWalletStorageType.into());
             }
 
-            let organisation = credential
-                .schema
-                .as_ref()
-                .ok_or_else(|| ServiceError::MappingError("schema is missing".into()))?
-                .organisation
-                .as_ref()
-                .ok_or_else(|| ServiceError::MappingError("organisation is missing".into()))?;
-
             let storage_access = StorageProxyImpl::new(
-                organisation.to_owned(),
                 self.interaction_repository.clone(),
                 self.credential_schema_repository.clone(),
                 self.credential_repository.clone(),
@@ -642,9 +628,7 @@ impl SSIHolderService {
                 )
                 .await?;
 
-            let issuer_response = self
-                .resolve_update_response(issuer_response, organisation)
-                .await?;
+            let issuer_response = self.resolve_update_response(issuer_response).await?;
 
             self.credential_repository
                 .update_credential(UpdateCredentialRequest {
@@ -745,7 +729,6 @@ impl SSIHolderService {
     async fn resolve_update_response<T>(
         &self,
         update_response: UpdateResponse<T>,
-        organisation: &Organisation,
     ) -> Result<T, ServiceError> {
         if let Some(update_proof) = update_response.update_proof {
             self.proof_repository
@@ -753,9 +736,7 @@ impl SSIHolderService {
                 .await?;
         }
         if let Some(create_did) = update_response.create_did {
-            let mut did: crate::model::did::Did = create_did.into();
-            did.organisation = Some(organisation.to_owned());
-            self.did_repository.create_did(did).await?;
+            self.did_repository.create_did(create_did.into()).await?;
         }
         if let Some(update_credential_schema) = update_response.update_credential_schema {
             self.credential_schema_repository

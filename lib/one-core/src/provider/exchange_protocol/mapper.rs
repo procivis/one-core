@@ -17,7 +17,6 @@ use super::{ExchangeProtocolError, StorageAccess};
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::{CredentialState, UpdateCredentialRequest};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::organisation::Organisation;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
@@ -92,14 +91,11 @@ pub fn proof_from_handle_invitation(
 pub fn credential_model_to_credential_dto(
     credentials: Vec<OpenCredential>,
     config: &CoreConfig,
-    organisation: &Organisation,
 ) -> Result<Vec<CredentialDetailResponseDTO>, ExchangeProtocolError> {
     // Missing organisation here.
     credentials
         .into_iter()
-        .map(|credential| {
-            credential_detail_response_from_model(credential.into(), config, organisation)
-        })
+        .map(|credential| credential_detail_response_from_model(credential.into(), config))
         .collect::<Result<Vec<CredentialDetailResponseDTO>, _>>()
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
 }

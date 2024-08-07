@@ -18,7 +18,7 @@ use crate::provider::exchange_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
 };
 
-pub fn remote_did_from_value(did_value: DidValue) -> OpenDid {
+pub fn remote_did_from_value(did_value: DidValue, organisation: Organisation) -> OpenDid {
     let id = Uuid::new_v4();
     let now = OffsetDateTime::now_utc();
     OpenDid {
@@ -31,6 +31,7 @@ pub fn remote_did_from_value(did_value: DidValue) -> OpenDid {
         did_method: "KEY".to_string(),
         keys: None,
         deactivated: false,
+        organisation: Some(organisation.into()),
     }
 }
 
@@ -81,7 +82,6 @@ pub(super) fn presentation_definition_from_proof(
     credentials: Vec<OpenCredential>,
     credential_groups: Vec<CredentialGroup>,
     config: &CoreConfig,
-    organisation: &Organisation,
 ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
@@ -109,11 +109,7 @@ pub(super) fn presentation_definition_from_proof(
                 })
                 .collect::<Result<Vec<_>, ExchangeProtocolError>>()?,
         }],
-        credentials: convert_inner(credential_model_to_credential_dto(
-            credentials,
-            config,
-            organisation,
-        )?),
+        credentials: convert_inner(credential_model_to_credential_dto(credentials, config)?),
     })
 }
 

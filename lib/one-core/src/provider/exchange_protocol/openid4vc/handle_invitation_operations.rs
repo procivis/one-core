@@ -139,6 +139,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
         credential: &OpenID4VCICredentialOfferCredentialDTO,
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
         credential_schema_name: &str,
+        organisation: OpenOrganisation,
     ) -> Result<BuildCredentialSchemaResponse, ExchangeProtocolError> {
         let result = match schema_data.schema_type.as_str() {
             "ProcivisOneSchema2024" => {
@@ -270,6 +271,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     layout_properties: None,
                     schema_type: schema_data.schema_type.clone(),
                     schema_id: schema_data.schema_id.clone(),
+                    organisation: Some(organisation),
                 };
 
                 BuildCredentialSchemaResponse {

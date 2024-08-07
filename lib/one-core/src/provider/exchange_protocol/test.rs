@@ -938,6 +938,11 @@ fn dummy_credential() -> OpenCredential {
             layout_properties: None,
             schema_type: "ProcivisOneSchema2024".into(),
             schema_id: "CredentialSchemaId".to_owned(),
+            organisation: Some(OpenOrganisation {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
         }),
         interaction: Some(OpenInteraction {
             id: Uuid::new_v4().into(),

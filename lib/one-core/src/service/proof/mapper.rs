@@ -180,8 +180,7 @@ pub fn get_verifier_proof_detail(
                         credential.id
                     ))
                 })?;
-                let credential =
-                    credential_detail_response_from_model(credential, config, organisation)?;
+                let credential = credential_detail_response_from_model(credential, config)?;
 
                 Ok((credential_schema.id, credential))
             })
@@ -502,16 +501,10 @@ pub fn get_holder_proof_detail(
     value: Proof,
     config: &CoreConfig,
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
-    let organisation = value
+    let organisation_id = value
         .holder_did
         .as_ref()
-        .and_then(|did| did.organisation.clone());
-
-    let organisation = organisation.ok_or(ServiceError::MappingError(
-        "Missing organisation of Holder Did".to_owned(),
-    ))?;
-
-    let organisation_id = organisation.id;
+        .and_then(|did| did.organisation.as_ref().map(|o| o.id));
 
     let holder_did_id = value.holder_did.as_ref().map(|did| did.id);
 
@@ -574,11 +567,7 @@ pub fn get_holder_proof_detail(
             Entry::Vacant(entry) => {
                 entry.insert((
                     vec![claim],
-                    credential_detail_response_from_model(
-                        credential.clone(),
-                        config,
-                        &organisation,
-                    )?,
+                    credential_detail_response_from_model(credential.clone(), config)?,
                     credential_schema.clone().into(),
                 ));
             }
@@ -609,7 +598,7 @@ pub fn get_holder_proof_detail(
         transport: list_item_response.transport,
         exchange: list_item_response.exchange,
         state: list_item_response.state,
-        organisation_id: Some(organisation_id),
+        organisation_id,
         schema: list_item_response.schema,
         redirect_uri,
         proof_inputs,
