@@ -350,6 +350,7 @@ impl OneCore {
                 data_provider.get_trust_entity_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
+                providers.core_base_url.clone(),
                 config.clone(),
             ),
             trust_entity_service: TrustEntityService::new(

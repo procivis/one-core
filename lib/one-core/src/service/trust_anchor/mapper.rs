@@ -11,6 +11,7 @@ use super::dto::{CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO};
 pub(super) fn trust_anchor_from_request(
     request: CreateTrustAnchorRequestDTO,
     organisation: Organisation,
+    core_base_url: &String,
 ) -> TrustAnchor {
     let id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
@@ -21,7 +22,7 @@ pub(super) fn trust_anchor_from_request(
         created_date: now,
         last_modified: now,
         type_field: request.r#type,
-        publisher_reference: request.publisher_reference,
+        publisher_reference: Some(format!("{}/ssi/trust/v1/{}", core_base_url, id)),
         role: request.role,
         priority: request.priority,
         organisation: Some(organisation),

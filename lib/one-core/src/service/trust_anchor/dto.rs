@@ -11,7 +11,6 @@ use crate::service::trust_entity::dto::GetTrustEntityResponseDTO;
 pub struct CreateTrustAnchorRequestDTO {
     pub name: String,
     pub r#type: String,
-    pub publisher_reference: Option<String>,
     pub role: TrustAnchorRole,
     pub priority: Option<u32>,
     pub organisation_id: OrganisationId,
