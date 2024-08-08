@@ -17,7 +17,7 @@ dto_mapper.workspace = true
 one-core             = { version = "0.1.0", path = "../../lib/one-core" }
 one-providers        = { workspace = true }
 one-crypto           = { workspace = true }
-reqwest              = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
+reqwest              = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
 serde.workspace      = true
 serde_json.workspace = true
 shared-types         = { version = "0.1.0", path = "../../lib/shared-types" }
