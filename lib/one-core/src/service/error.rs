@@ -1043,8 +1043,8 @@ pub fn error_code_formatter(error: &FormatterError) -> ErrorCode {
         | FormatterError::CryptoError(_)
         | FormatterError::MissingBaseUrl { .. }
         | FormatterError::JsonMapping(_)
-        | FormatterError::JsonPtrMalformed(_)
-        | FormatterError::JsonPtrError(_)
+        | FormatterError::JsonPtrAssignError(_)
+        | FormatterError::JsonPtrParseError(_)
         | FormatterError::FloatValueIsNaN => ErrorCode::BR_0057,
     }
 }
