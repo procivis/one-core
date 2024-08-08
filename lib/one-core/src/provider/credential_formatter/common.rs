@@ -11,7 +11,8 @@ pub(super) fn nest_claims(
     claims.sort_unstable_by(|a, b| a.key.cmp(&b.key));
 
     for claim in claims {
-        let pointer = jsonptr::Pointer::try_from(format!("/{}", claim.key))?;
+        let path = format!("/{}", claim.key);
+        let pointer = jsonptr::Pointer::parse(&path)?;
         let value: serde_json::Value = claim.value.try_into()?;
         pointer.assign(&mut data, value)?;
     }

@@ -24,7 +24,7 @@ indexmap             = { version = "2.2", features = ["serde"] }
 itertools            = { version = "0.13" }
 josekit              = { version = "0.8", features = ["vendored"] }
 json-ld              = { version = "0.15" }
-jsonptr              = { version = "0.4" }
+jsonptr              = { version = "0.5" }
 mockall              = { workspace = true, optional = true }
 mrtd                 = { version = "0.5.2" }
 one-crypto           = { workspace = true }
