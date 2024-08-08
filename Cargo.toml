@@ -25,8 +25,8 @@ dto_mapper         = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6Udo
 futures            = { version = "0.3" }
 hex                = { version = "0.4", features = ["serde"] }
 mockall            = { version = "0.13" }
-one-crypto         = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "a7e73b57f77f582f06470046d6c8e207427182b8" }
-one-providers      = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "a7e73b57f77f582f06470046d6c8e207427182b8" }
+one-crypto         = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "11887527c66fd96c67fa65dc1150341ad5228285" }
+one-providers      = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "11887527c66fd96c67fa65dc1150341ad5228285" }
 p256               = { version = "0.13", features = ["arithmetic", "jwk"] }
 rand               = { version = "0.8" }
 reqwest            = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }

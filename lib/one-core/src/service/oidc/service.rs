@@ -663,9 +663,6 @@ impl OIDCService {
             ))?;
 
         validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &proof.exchange)?;
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending).or(
-            throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested),
-        )?;
 
         let interaction = proof
             .interaction
