@@ -6,7 +6,7 @@ use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use one_providers::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use one_providers::key_storage::error::{KeyStorageError, KeyStorageProviderError};
 use one_providers::revocation::error::RevocationError;
-use one_providers::util::bitstring::BitstringError;
+use one_providers::revocation::imp::bitstring_status_list::util::BitstringError;
 use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
     OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
