@@ -33,6 +33,10 @@ uuid.workspace       = true
 tracing-android    = { version = "0.2" }
 tracing-subscriber = { version = "0.3" }
 
+[target.'cfg(target_os = "ios")'.dependencies]
+tracing-oslog      = { version = "0.1.2" }
+tracing-subscriber = { version = "0.3" }
+
 [build-dependencies]
 uniffi = { workspace = true, features = ["build"] }
 

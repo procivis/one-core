@@ -118,6 +118,19 @@ fn initialize_core(
             .try_init();
     }
 
+    #[cfg(target_os = "ios")]
+    {
+        use tracing_oslog::OsLogger;
+        use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+        _ = tracing_subscriber::registry()
+            .with(tracing_subscriber::EnvFilter::new(
+                "info,sea_orm=warn,sqlx::query=error",
+            ))
+            .with(OsLogger::new("ProcivisOneCore", "default"))
+            .try_init();
+    }
+
     let native_key_storage: Option<
         Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>,
     > = native_key_storage.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);

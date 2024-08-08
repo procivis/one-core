@@ -106,95 +106,109 @@ impl OpenID4VCBLEVerifier {
             .ble
             .schedule(
                 uuid!(SERVICE_UUID),
-                |task_id, _, peripheral| async move {
-                    start_advertisement(keypair.public_key_bytes(), verifier_name, &*peripheral)
-                        .await?;
-
-                    let result: Result<(), ExchangeProtocolError> = async {
-                        let (wallet, identity_request) =
-                            wait_for_wallet_identify_request(peripheral.clone()).await?;
-
-                        let (sender_key, receiver_key) = keypair
-                            .derive_session_secrets(identity_request.key, identity_request.nonce)
-                            .map_err(ExchangeProtocolError::Transport)?;
-
-                        let peer =
-                            BLEPeer::new(wallet, sender_key, receiver_key, identity_request.nonce);
-
-                        write_presentation_request(
-                            proof_request.clone(),
-                            &peer,
-                            peripheral.clone(),
+                |task_id, _, peripheral| {
+                    async move {
+                        start_advertisement(
+                            keypair.public_key_bytes(),
+                            verifier_name,
+                            &*peripheral,
                         )
                         .await?;
 
-                        let now = OffsetDateTime::now_utc();
-                        proof_repository
-                            .set_proof_state(
-                                &proof_id,
-                                ProofState {
-                                    created_date: now,
-                                    last_modified: now,
-                                    state: ProofStateEnum::Requested,
-                                },
+                        let result: Result<(), ExchangeProtocolError> = async {
+                            let (wallet, identity_request) =
+                                wait_for_wallet_identify_request(peripheral.clone()).await?;
+
+                            let (sender_key, receiver_key) = keypair
+                                .derive_session_secrets(
+                                    identity_request.key,
+                                    identity_request.nonce,
+                                )
+                                .map_err(ExchangeProtocolError::Transport)?;
+
+                            let peer = BLEPeer::new(
+                                wallet,
+                                sender_key,
+                                receiver_key,
+                                identity_request.nonce,
+                            );
+
+                            write_presentation_request(
+                                proof_request.clone(),
+                                &peer,
+                                peripheral.clone(),
+                            )
+                            .await?;
+
+                            let now = OffsetDateTime::now_utc();
+                            proof_repository
+                                .set_proof_state(
+                                    &proof_id,
+                                    ProofState {
+                                        created_date: now,
+                                        last_modified: now,
+                                        state: ProofStateEnum::Requested,
+                                    },
+                                )
+                                .await
+                                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+                            let submission =
+                                read_presentation_submission(&peer, peripheral.clone()).await?;
+
+                            let new_data = BLEOpenID4VPInteractionData {
+                                task_id,
+                                peer,
+                                nonce: Some(hex::encode(identity_request.nonce)),
+                                presentation_definition: Some(proof_request.into()),
+                                presentation_submission: Some(submission),
+                            };
+
+                            let new_interaction = uuid::Uuid::new_v4();
+                            add_new_interaction(
+                                new_interaction,
+                                &None,
+                                &*self.interaction_repository,
+                                serde_json::to_vec(&new_data).ok(),
                             )
                             .await
                             .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
-                        let submission =
-                            read_presentation_submission(&peer, peripheral.clone()).await?;
+                            update_proof_interaction(
+                                proof_id,
+                                new_interaction,
+                                &*self.proof_repository,
+                            )
+                            .await
+                            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
-                        let new_data = BLEOpenID4VPInteractionData {
-                            task_id,
-                            peer,
-                            nonce: Some(hex::encode(identity_request.nonce)),
-                            presentation_definition: Some(proof_request.into()),
-                            presentation_submission: Some(submission),
+                            self.interaction_repository
+                                .delete_interaction(&interaction_id)
+                                .await
+                                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+                            Ok(())
+                        }
+                        .await;
+
+                        let _ = peripheral.stop_server().await;
+                        if result.is_err() {
+                            let now = OffsetDateTime::now_utc();
+                            let _ = proof_repository
+                                .set_proof_state(
+                                    &proof_id,
+                                    ProofState {
+                                        state: proof::ProofStateEnum::Error,
+                                        created_date: now,
+                                        last_modified: now,
+                                    },
+                                )
+                                .await;
                         };
 
-                        let new_interaction = uuid::Uuid::new_v4();
-                        add_new_interaction(
-                            new_interaction,
-                            &None,
-                            &*self.interaction_repository,
-                            serde_json::to_vec(&new_data).ok(),
-                        )
-                        .await
-                        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
-
-                        update_proof_interaction(
-                            proof_id,
-                            new_interaction,
-                            &*self.proof_repository,
-                        )
-                        .await
-                        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
-
-                        self.interaction_repository
-                            .delete_interaction(&interaction_id)
-                            .await
-                            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
-
-                        Ok(())
+                        Ok::<_, ExchangeProtocolError>(())
                     }
-                    .await;
-
-                    let _ = peripheral.stop_server().await;
-                    if result.is_err() {
-                        let now = OffsetDateTime::now_utc();
-                        let _ = proof_repository
-                            .set_proof_state(
-                                &proof_id,
-                                ProofState {
-                                    state: proof::ProofStateEnum::Error,
-                                    created_date: now,
-                                    last_modified: now,
-                                },
-                            )
-                            .await;
-                    };
-
-                    Ok::<_, ExchangeProtocolError>(())
+                    .inspect_err(|error| tracing::error!("Share proof scheduled task: {error}"))
                 },
                 |_, peripheral| async move {
                     let _ = peripheral.stop_server().await;
