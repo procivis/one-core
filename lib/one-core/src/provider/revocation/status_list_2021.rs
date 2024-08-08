@@ -1,6 +1,7 @@
 use one_providers::credential_formatter::model::CredentialStatus;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::revocation::imp::bitstring_status_list::util::extract_bitstring_index;
 use std::sync::Arc;
 
 use crate::model::did::KeyRole;
@@ -14,7 +15,6 @@ use one_providers::revocation::model::{
     CredentialRevocationState, JsonLdContext, RevocationMethodCapabilities, RevocationUpdate,
 };
 use one_providers::revocation::RevocationMethod;
-use one_providers::util::bitstring::extract_bitstring_index;
 
 pub struct StatusList2021 {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
