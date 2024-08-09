@@ -4,11 +4,13 @@ use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
 use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolError, FormatMapper, TypeToDescriptorMapper,
 };
-use shared_types::ProofId;
+use shared_types::{OrganisationId, ProofId};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use super::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
+    ProposeProofResponseDTO,
 };
 use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
@@ -36,7 +38,13 @@ use crate::model::proof::{
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
 use crate::provider::exchange_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::provider::exchange_protocol::iso_mdl::ble::{connect, start_server};
+use crate::provider::exchange_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
+use crate::provider::exchange_protocol::iso_mdl::device_engagement::{
+    BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
+};
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
@@ -456,6 +464,92 @@ impl ProofService {
             .await?;
 
         Ok(proof_id)
+    }
+
+    pub async fn propose_proof(
+        &self,
+        exchange: String,
+        _organisation_id: OrganisationId,
+    ) -> Result<ProposeProofResponseDTO, ServiceError> {
+        validate_exchange_type(&exchange, &self.config.exchange)?;
+
+        let ble = self
+            .ble
+            .as_ref()
+            .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?;
+
+        let now = OffsetDateTime::now_utc();
+        let transport = get_available_transport_type(&self.config.transport)?;
+
+        let server = start_server(ble).await?;
+        let key_pair = KeyAgreement::<EDeviceKey>::new();
+        let device_engagement = DeviceEngagement {
+            security: Security {
+                key_bytes: EmbeddedCbor(EDeviceKey::new(key_pair.device_key().0)),
+            },
+            device_retrieval_methods: vec![DeviceRetrievalMethod {
+                retrieval_options: RetrievalOptions::Ble(BleOptions {
+                    peripheral_server_uuid: server.service_id,
+                    peripheral_server_mac_address: server.mac,
+                }),
+            }],
+        };
+
+        let qr = device_engagement
+            .generate_qr_code()
+            .map_err(|err| ServiceError::Other(err.to_string()))?;
+
+        let interaction_id = Uuid::new_v4();
+        let interaction = add_new_interaction(
+            interaction_id,
+            &self.base_url,
+            &*self.interaction_repository,
+            None,
+        )
+        .await?;
+
+        let proof_id = self
+            .proof_repository
+            .create_proof(Proof {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                issuance_date: now,
+                exchange,
+                redirect_uri: None,
+                state: Some(vec![ProofState {
+                    created_date: now,
+                    last_modified: now,
+                    state: ProofStateEnum::Pending,
+                }]),
+                schema: None,
+                transport: transport.to_owned(),
+                claims: None,
+                verifier_did: None,
+                holder_did: None,
+                verifier_key: None,
+                interaction: Some(interaction.clone()),
+            })
+            .await?;
+
+        connect(
+            ble,
+            server.task_id,
+            server.service_id,
+            device_engagement.clone(),
+            key_pair,
+            self.interaction_repository.clone(),
+            interaction,
+            self.proof_repository.clone(),
+            proof_id,
+        )
+        .await?;
+
+        Ok(ProposeProofResponseDTO {
+            proof_id,
+            interaction_id,
+            url: qr.qr_code_content,
+        })
     }
 
     // ============ Private methods

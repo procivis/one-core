@@ -1013,6 +1013,12 @@ dictionary ResolveJsonLDContextResponseBindingDTO {
   string context;
 };
 
+dictionary ProposeProofResponseBindingDTO {
+  string proof_id;
+  string interaction_id;
+  string url;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
@@ -1078,7 +1084,7 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   ProofListBindingDTO get_proofs(ProofListQueryBindingDTO query);
-  
+
   [Throws=BindingError]
   string retract_proof(string proof_id);
 
@@ -1138,4 +1144,7 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   ResolveJsonLDContextResponseBindingDTO resolve_jsonld_context(string url);
+
+  [Throws=BindingError]
+  ProposeProofResponseBindingDTO propose_proof(string exchange, string organisation_id);
 };

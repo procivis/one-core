@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use dto_mapper::{convert_inner, Into};
+use dto_mapper::{convert_inner, From, Into};
+use one_core::service::proof::dto::ProposeProofResponseDTO;
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
@@ -63,4 +64,20 @@ pub struct PresentationSubmitRequestRestDTO {
 pub struct PresentationSubmitCredentialRequestRestDTO {
     pub credential_id: Uuid,
     pub submit_claims: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ProposeProofRequestRestDTO {
+    pub exchange: String,
+    pub organisation_id: OrganisationId,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(ProposeProofResponseDTO)]
+pub struct ProposeProofResponseRestDTO {
+    pub proof_id: ProofId,
+    pub interaction_id: Uuid,
+    pub url: String,
 }

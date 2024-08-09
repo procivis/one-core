@@ -1,18 +1,16 @@
+use axum::extract::State;
+use axum::Json;
+use axum_extra::extract::WithRejection;
+
 use super::dto::{
     HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceAcceptRequestRestDTO,
     IssuanceRejectRequestRestDTO, PresentationRejectRequestRestDTO,
-    PresentationSubmitRequestRestDTO,
+    PresentationSubmitRequestRestDTO, ProposeProofRequestRestDTO,
 };
-use crate::{
-    dto::{
-        error::ErrorResponseRestDTO,
-        response::{EmptyOrErrorResponse, OkOrErrorResponse},
-    },
-    router::AppState,
-};
-
-use axum::{extract::State, Json};
-use axum_extra::extract::WithRejection;
+use crate::dto::error::ErrorResponseRestDTO;
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::endpoint::interaction::dto::ProposeProofResponseRestDTO;
+use crate::router::AppState;
 
 #[utoipa::path(
     post,
@@ -137,4 +135,29 @@ pub(crate) async fn presentation_submit(
         .submit_proof(request.into())
         .await;
     EmptyOrErrorResponse::from_result(result, state, "submitting proof")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/interaction/v1/propose-proof",
+    request_body = ProposeProofRequestRestDTO,
+    responses(CreatedOrErrorResponse<ProposeProofResponseRestDTO>),
+    tag = "interaction",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn propose_proof(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<ProposeProofRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> CreatedOrErrorResponse<ProposeProofResponseRestDTO> {
+    let result = state
+        .core
+        .proof_service
+        .propose_proof(request.exchange, request.organisation_id)
+        .await;
+    CreatedOrErrorResponse::from_result(result, state, "proposing proof")
 }

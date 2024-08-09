@@ -1122,6 +1122,7 @@ dependencies = [
  "curve25519-dalek-derive",
  "fiat-crypto",
  "rustc_version",
+ "serde",
  "subtle",
  "zeroize",
 ]

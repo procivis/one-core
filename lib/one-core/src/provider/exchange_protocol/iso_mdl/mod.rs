@@ -18,7 +18,8 @@ use one_providers::exchange_protocol::openid4vc::{
 };
 use url::Url;
 
-mod common;
+pub(crate) mod ble;
+pub(crate) mod common;
 pub(crate) mod device_engagement;
 mod session;
 
