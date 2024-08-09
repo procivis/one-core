@@ -41,7 +41,8 @@ use one_core::service::history::dto::GetHistoryListResponseDTO;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, ProofClaimDTO, ProofClaimValueDTO,
-    ProofInputDTO, ProofListItemResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
+    ProofInputDTO, ProofListItemResponseDTO, ProposeProofResponseDTO, ScanToVerifyBarcodeTypeEnum,
+    ScanToVerifyRequestDTO,
 };
 use one_core::service::proof_schema::dto::{
     GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, GetProofSchemaResponseDTO,
@@ -1417,4 +1418,14 @@ pub struct ShareProofResponseBindingDTO {
 
 pub struct ResolveJsonLDContextResponseBindingDTO {
     pub context: String,
+}
+
+#[derive(Clone, Debug, From)]
+#[from(ProposeProofResponseDTO)]
+pub struct ProposeProofResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub proof_id: String,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub interaction_id: String,
+    pub url: String,
 }

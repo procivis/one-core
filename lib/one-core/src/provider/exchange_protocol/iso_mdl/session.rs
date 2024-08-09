@@ -1,9 +1,30 @@
+use anyhow::anyhow;
 use ciborium::cbor;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use super::common::EReaderKey;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, EmbeddedCbor};
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[repr(u8)]
+pub enum Command {
+    Start = 1,
+    End = 2,
+}
+
+impl TryFrom<Vec<u8>> for Command {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        match value.as_slice() {
+            [1] => Ok(Self::Start),
+            [2] => Ok(Self::End),
+            [_] => Err(anyhow!("value out of range")),
+            _ => Err(anyhow!("invalid payload size")),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +54,6 @@ pub enum StatusCode {
 //]
 // DeviceEngagementBytes and EReaderKeyBytes should come from something like `EmbeddedCbor(..).to_vec()`
 #[derive(Debug, PartialEq, Clone)]
-#[allow(dead_code)]
 pub struct SessionTranscript {
     pub(crate) device_engagement_bytes: Vec<u8>,
     pub(crate) e_reader_key_bytes: Vec<u8>,

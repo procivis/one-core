@@ -1,11 +1,14 @@
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use crate::model::common::GetListResponse;
+use crate::model::interaction::InteractionId;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ProofStateEnum, SortableProofColumn};
+use crate::provider::exchange_protocol::iso_mdl::common::{DeviceRequest, SkDevice, SkReader};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::did::dto::DidListItemResponseDTO;
@@ -109,3 +112,19 @@ pub enum ProofFilterValue {
 impl ListFilterValue for ProofFilterValue {}
 
 pub type GetProofQueryDTO = ListQuery<SortableProofColumn, ProofFilterValue>;
+
+#[derive(Clone, Debug)]
+pub struct ProposeProofResponseDTO {
+    pub proof_id: ProofId,
+    pub interaction_id: InteractionId,
+    pub url: String,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct MdocBleInteractionData {
+    pub service_id: Uuid,
+    pub task_id: Uuid,
+    pub sk_device: SkDevice,
+    pub sk_reader: SkReader,
+    pub device_request: DeviceRequest,
+}

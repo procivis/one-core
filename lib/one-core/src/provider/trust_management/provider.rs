@@ -1,16 +1,15 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde_json::json;
 
-use crate::{
-    config::{
-        core_config::{TrustManagementConfig, TrustManagementType},
-        ConfigError,
-    },
-    model::{credential::Credential, interaction::Interaction, trust_entity::TrustEntityRole},
-};
-
-use super::{simple_list::SimpleList, TrustManagement};
+use super::simple_list::SimpleList;
+use super::TrustManagement;
+use crate::config::core_config::{TrustManagementConfig, TrustManagementType};
+use crate::config::ConfigError;
+use crate::model::credential::Credential;
+use crate::model::interaction::Interaction;
+use crate::model::trust_entity::TrustEntityRole;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait TrustManagementProvider: Send + Sync {
@@ -24,7 +23,6 @@ pub trait TrustManagementProvider: Send + Sync {
 }
 
 pub struct TrustManagementProviderImpl {
-    #[allow(dead_code)]
     trust_managers: HashMap<String, Arc<dyn TrustManagement>>,
 }
 

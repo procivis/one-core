@@ -1,13 +1,13 @@
+use std::convert::TryInto;
+
 use anyhow::anyhow;
 use ciborium::cbor;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use serde::{de, ser, Deserialize, Serialize, Serializer};
-use std::convert::TryInto;
 use uuid::Uuid;
 
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
-
 use super::common::EDeviceKey;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
 
 pub type EDeviceKeyBytes = EmbeddedCbor<EDeviceKey>;
 
@@ -69,7 +69,6 @@ pub(crate) struct ParsedQRCode {
 impl DeviceEngagement {
     const QR_CODE_PREFIX: &'static str = "mdoc:";
 
-    #[allow(dead_code)]
     pub(crate) fn generate_qr_code(&self) -> anyhow::Result<GeneratedQRCode> {
         let mut data: Vec<u8> = vec![];
         ciborium::into_writer(&self, &mut data).map_err(|e| anyhow!(e))?;

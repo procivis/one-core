@@ -1,25 +1,82 @@
 // todo: remove this once the key agreement things are being used somewhere
 #![allow(dead_code)]
 
-use aes_gcm::{aead::Aead, Aes256Gcm, KeyInit};
+use std::collections::HashMap;
+
+use aes_gcm::aead::Aead;
+use aes_gcm::{Aes256Gcm, KeyInit};
 use anyhow::{anyhow, bail, Context};
-use coset::{
-    iana::{self, EnumI64},
-    AsCborValue, CoseKey, CoseKeyBuilder, KeyType, Label,
-};
+use coset::iana::{self, EnumI64};
+use coset::{AsCborValue, CoseKey, CoseKeyBuilder, KeyType, Label};
 use hkdf::Hkdf;
+use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize, Serializer};
 use sha2::{Digest, Sha256};
+use uuid::Uuid;
 use x25519_dalek::{EphemeralSecret, PublicKey};
 use zeroize::Zeroize;
 
+use super::device_engagement::DeviceEngagement;
+use super::session::SessionTranscript;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
+
+#[derive(Debug, Clone)]
+pub struct ServerInfo {
+    pub task_id: Uuid,
+    pub mac: Option<String>,
+    pub service_id: Uuid,
+}
+
+#[derive(Debug, Clone)]
+pub enum Chunk {
+    Next(Vec<u8>),
+    Last(Vec<u8>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceRequest {
+    pub version: String,
+    pub doc_request: Vec<DocRequest>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocRequest {
+    items_request: EmbeddedCbor<ItemsRequest>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ItemsRequest {
+    doc_type: String,
+    name_spaces: HashMap<NameSpace, DataElements>,
+}
+
+pub type NameSpace = String;
+pub type DataElements = HashMap<DataElementIdentifier, IntentToRetain>;
+pub type DataElementIdentifier = String;
+pub type IntentToRetain = bool;
+
+impl TryFrom<Vec<u8>> for Chunk {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        match value.as_slice() {
+            [0, ..] => Ok(Self::Last(value[1..].to_vec())),
+            [1, ..] => Ok(Self::Next(value[1..].to_vec())),
+            _ => Err(anyhow!("invalid data format")),
+        }
+    }
+}
+
 // EDeviceKey = COSE_Key
 #[derive(Clone, Debug, PartialEq)]
-pub struct EDeviceKey(x25519_dalek::PublicKey);
+pub struct EDeviceKey(pub x25519_dalek::PublicKey);
 
 impl EDeviceKey {
-    pub(super) fn new(pk: x25519_dalek::PublicKey) -> Self {
+    pub(crate) fn new(pk: x25519_dalek::PublicKey) -> Self {
         Self(pk)
     }
 
@@ -29,6 +86,10 @@ impl EDeviceKey {
 
     fn from_cose_key(key: CoseKey) -> anyhow::Result<Self> {
         x25519_from_cose_key(key).map(Self)
+    }
+
+    pub fn to_bytes(&self) -> [u8; 32] {
+        self.0.to_bytes()
     }
 }
 
@@ -106,7 +167,7 @@ pub struct KeyAgreement<PK> {
 }
 
 impl KeyAgreement<EDeviceKey> {
-    pub(super) fn new() -> Self {
+    pub fn new() -> Self {
         let sk = EphemeralSecret::random_from_rng(OsRng);
         let pk = EDeviceKey::new(PublicKey::from(&sk));
 
@@ -117,7 +178,7 @@ impl KeyAgreement<EDeviceKey> {
         &self.pk
     }
 
-    fn derive_session_keys(
+    pub fn derive_session_keys(
         self,
         pk: EReaderKey,
         session_transcript_bytes: &[u8],
@@ -147,7 +208,7 @@ impl KeyAgreement<EReaderKey> {
     }
 }
 
-#[derive(Debug, Zeroize)]
+#[derive(Debug, Clone, Zeroize, Serialize, Deserialize)]
 pub struct SkDevice {
     secret_key: [u8; 32],
 }
@@ -171,7 +232,7 @@ impl SkDevice {
     }
 }
 
-#[derive(Debug, Zeroize)]
+#[derive(Debug, Clone, Zeroize, Serialize, Deserialize)]
 pub struct SkReader {
     secret_key: [u8; 32],
 }
@@ -288,9 +349,34 @@ fn x25519_from_cose_key(key: CoseKey) -> anyhow::Result<x25519_dalek::PublicKey>
     }
 }
 
+pub fn create_session_transcript_bytes(
+    device_engagement: &DeviceEngagement,
+    e_reader_key: &EReaderKey,
+) -> Result<Vec<u8>, ExchangeProtocolError> {
+    let session_transcript = SessionTranscript {
+        device_engagement_bytes: EmbeddedCbor(device_engagement)
+            .to_vec()
+            .context("device_engagement serialization error")
+            .map_err(ExchangeProtocolError::Other)?,
+        e_reader_key_bytes: EmbeddedCbor(e_reader_key)
+            .to_vec()
+            .context("device_engagement serialization error")
+            .map_err(ExchangeProtocolError::Other)?,
+    };
+
+    to_cbor(&session_transcript)
+}
+
+fn to_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, ExchangeProtocolError> {
+    let mut buff = vec![];
+    ciborium::into_writer(value, &mut buff)
+        .context("serialization error")
+        .map_err(ExchangeProtocolError::Other)?;
+    Ok(buff)
+}
+
 #[cfg(test)]
 mod test {
-
     use super::*;
 
     #[test]

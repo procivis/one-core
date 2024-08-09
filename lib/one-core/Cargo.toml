@@ -54,7 +54,7 @@ tokio.workspace      = true
 tracing.workspace    = true
 url.workspace        = true
 uuid.workspace       = true
-x25519-dalek         = { version = "2.0.1" }
+x25519-dalek         = { version = "2.0", features = ["static_secrets", "serde"] }
 x509-parser          = { version = "0.16", features = ["verify"] }
 yasna                = { version = "0.5" }
 zeroize              = { version = "1.8", features = ["serde"] }

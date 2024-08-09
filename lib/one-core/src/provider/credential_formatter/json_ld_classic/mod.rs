@@ -21,7 +21,6 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds};
 use time::{Duration, OffsetDateTime};
 
-#[allow(dead_code)]
 pub struct JsonLdClassic {
     pub base_url: Option<String>,
     pub crypto: Arc<dyn CryptoProvider>,

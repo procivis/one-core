@@ -14,7 +14,7 @@ pub async fn add_new_interaction(
     base_url: &Option<String>,
     interaction_repository: &dyn InteractionRepository,
     data: Option<Vec<u8>>,
-) -> Result<(), ServiceError> {
+) -> Result<Interaction, ServiceError> {
     let now = OffsetDateTime::now_utc();
     let host = base_url
         .as_ref()
@@ -33,9 +33,9 @@ pub async fn add_new_interaction(
     };
 
     interaction_repository
-        .create_interaction(new_interaction)
+        .create_interaction(new_interaction.clone())
         .await?;
-    Ok(())
+    Ok(new_interaction)
 }
 
 pub async fn update_credentials_interaction(

@@ -200,6 +200,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(interaction::controller::presentation_submit),
         )
         .route(
+            "/api/interaction/v1/propose-proof",
+            post(interaction::controller::propose_proof),
+        )
+        .route(
             "/api/interaction/v1/presentation-reject",
             post(interaction::controller::presentation_reject),
         )
@@ -448,6 +452,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             interaction::controller::issuance_reject,
             interaction::controller::presentation_submit,
             interaction::controller::presentation_reject,
+            interaction::controller::propose_proof,
 
             task::controller::post_task,
 
@@ -630,6 +635,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 interaction::dto::PresentationRejectRequestRestDTO,
                 interaction::dto::PresentationSubmitRequestRestDTO,
                 interaction::dto::PresentationSubmitCredentialRequestRestDTO,
+                interaction::dto::ProposeProofRequestRestDTO,
+                interaction::dto::ProposeProofResponseRestDTO,
 
                 task::dto::TaskRequestRestDTO,
                 task::dto::TaskResponseRestDTO,
