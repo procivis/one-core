@@ -47,7 +47,7 @@ use crate::service::ssi_validator::validate_config_entity_presence;
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::oidc::{
     create_core_to_oicd_format_map, create_core_to_oicd_presentation_format_map,
-    create_oicd_to_core_format_map, detect_correct_format, map_core_to_oidc_format,
+    create_oicd_to_core_format_map, detect_format_with_crypto_suite, map_core_to_oidc_format,
 };
 
 impl SSIHolderService {
@@ -379,8 +379,8 @@ impl SSIHolderService {
                 }
             }
 
-            // Workaround credential format detection
-            let format = detect_correct_format(credential_schema, credential_content)?;
+            let format =
+                detect_format_with_crypto_suite(&credential_schema.format, credential_content)?;
 
             let formatter = self
                 .formatter_provider
@@ -626,6 +626,7 @@ impl SSIHolderService {
                     None,
                     &format,
                     &storage_access,
+                    detect_format_with_crypto_suite,
                 )
                 .await?;
 

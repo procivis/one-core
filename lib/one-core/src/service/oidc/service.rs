@@ -69,9 +69,7 @@ use crate::service::oidc::validator::{
     validate_config_entity_presence,
 };
 use crate::service::ssi_validator::validate_exchange_type;
-use crate::util::oidc::{
-    map_core_to_oidc_format, map_from_oidc_format_to_core_real, map_from_oidc_vp_format_to_core,
-};
+use crate::util::oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core_detailed};
 
 impl OIDCService {
     pub async fn oidc_get_issuer_metadata(
@@ -686,8 +684,7 @@ impl OIDCService {
             &self.formatter_provider,
             &self.key_algorithm_provider,
             &self.revocation_method_provider,
-            map_from_oidc_vp_format_to_core,
-            map_from_oidc_format_to_core_real,
+            map_from_oidc_format_to_core_detailed,
         )
         .await
         {

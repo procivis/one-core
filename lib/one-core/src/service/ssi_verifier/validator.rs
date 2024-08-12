@@ -7,7 +7,7 @@ use crate::{
         proof_schema::{ProofInputClaimSchema, ProofSchema},
     },
     service::error::{BusinessLogicError, MissingProviderError, ServiceError},
-    util::{key_verification::KeyVerification, oidc::map_from_oidc_format_to_core_real},
+    util::{key_verification::KeyVerification, oidc::map_from_oidc_format_to_core_detailed},
 };
 
 use one_providers::revocation::model::{
@@ -152,7 +152,7 @@ pub(super) async fn validate_proof(
     for credential in presentation.credentials {
         // Workaround credential format detection
         let format = if credential.starts_with('{') {
-            map_from_oidc_format_to_core_real("ldp_vc", &credential)
+            map_from_oidc_format_to_core_detailed("ldp_vc", Some(&credential))
                 .map_err(|_| ServiceError::Other("Credential format not resolved".to_owned()))?
         } else if credential.contains('~') {
             "SDJWT".to_owned()
@@ -333,7 +333,7 @@ async fn extract_lvvcs(
     for credential in presentation_credentials {
         // Workaround credential format detection
         let format = if credential.starts_with('{') {
-            map_from_oidc_format_to_core_real("ldp_vc", credential)
+            map_from_oidc_format_to_core_detailed("ldp_vc", Some(credential))
                 .map_err(|_| ServiceError::Other("Credential format not resolved".to_owned()))?
         } else if credential.contains('~') {
             "SDJWT".to_owned()

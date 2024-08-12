@@ -12,6 +12,7 @@ use one_providers::exchange_protocol::openid4vc::model::{
     DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentationDefinitionResponseDTO,
     PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
+use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
 use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
     StorageAccess, TypeToDescriptorMapper,
@@ -75,6 +76,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         _jwk_key_id: Option<String>,
         _format: &str,
         _storage_access: &StorageAccess,
+        _map_oidc_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         unimplemented!()
     }

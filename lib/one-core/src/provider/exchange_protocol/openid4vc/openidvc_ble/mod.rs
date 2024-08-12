@@ -27,6 +27,7 @@ use one_providers::exchange_protocol::openid4vc::model::{
     PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse, SubmitIssuerResponse,
     UpdateResponse,
 };
+use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
 use one_providers::exchange_protocol::openid4vc::{
     FormatMapper, HandleInvitationOperationsAccess, TypeToDescriptorMapper,
 };
@@ -545,6 +546,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         _jwk_key_id: Option<String>,
         _format: &str,
         _storage_access: &StorageAccess,
+        _map_oidc_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         Err(ExchangeProtocolError::OperationNotSupported)
     }
