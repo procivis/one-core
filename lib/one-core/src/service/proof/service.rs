@@ -9,8 +9,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
-    ProposeProofResponseDTO,
+    CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, MdocBleInteractionData,
+    ProofDetailResponseDTO, ProposeProofResponseDTO,
 };
 use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
@@ -39,6 +39,7 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
+use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::provider::exchange_protocol::iso_mdl::ble::{connect, start_server};
 use crate::provider::exchange_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
@@ -431,7 +432,7 @@ impl ProofService {
             .into());
         }
 
-        let interaction_id = proof.interaction.map(|i| i.id).ok_or_else(|| {
+        let interaction_id = proof.interaction.as_ref().map(|i| i.id).ok_or_else(|| {
             ServiceError::MappingError(format!("Missing interaction data in proof {proof_id}"))
         })?;
 
@@ -441,6 +442,14 @@ impl ProofService {
                 .as_ref()
                 .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?
                 .abort(uuid::uuid!(SERVICE_UUID).into())
+                .await;
+        } else if let Ok(interaction) = deserialize_interaction_data::<MdocBleInteractionData>(
+            proof.interaction.as_ref().and_then(|i| i.data.as_ref()),
+        ) {
+            self.ble
+                .as_ref()
+                .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?
+                .abort(Some(interaction.service_id))
                 .await;
         }
 
