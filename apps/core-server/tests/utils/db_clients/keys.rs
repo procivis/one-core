@@ -1,3 +1,4 @@
+use hex_literal::hex;
 use one_core::model::key::KeyRelations;
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::key_repository::KeyRepository;
@@ -77,19 +78,12 @@ pub fn eddsa_testing_params() -> TestingKeyParams {
         key_type: Some("EDDSA".to_string()),
         storage_type: Some("INTERNAL".to_string()),
 
-        // multibase: z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj
-        public_key: Some(vec![
-            220, 179, 138, 196, 30, 98, 147, 213, 162, 146, 4, 38, 168, 209, 109, 154, 235, 205,
-            11, 65, 76, 20, 85, 87, 175, 160, 19, 86, 130, 254, 145, 62,
-        ]),
-        key_reference: Some(vec![
-            137, 117, 80, 218, 12, 180, 214, 27, 139, 193, 39, 109, 0, 0, 0, 0, 0, 0, 0, 64, 27,
-            191, 169, 38, 174, 140, 216, 204, 199, 58, 207, 176, 104, 109, 111, 51, 113, 53, 229,
-            160, 125, 208, 198, 14, 199, 255, 116, 28, 11, 74, 4, 69, 215, 159, 141, 82, 169, 237,
-            124, 127, 162, 116, 118, 69, 243, 155, 160, 38, 198, 175, 156, 153, 77, 15, 10, 73,
-            103, 31, 60, 21, 33, 76, 209, 173, 243, 252, 126, 244, 144, 37, 80, 7, 74, 235, 155,
-            135, 54, 94, 173, 118,
-        ]),
+        public_key: Some(
+            hex!("4a0449c993ee8bc94f2d70c498230f26be8d3a1365b82554d26513f525abef5f").to_vec(),
+        ),
+        key_reference: Some(
+            hex!("8f6107bff565c52559d1c3cb0000000000000040756ccec86ddd9a982597806376ad3bb339619d0e406b68c85923dbeb0291fff60ace6c5e07eba0fbaaa3caf3c117fac446fa9418c8af1996e8cc727b793a2b787b76ef373358bf44016c3ab6c062df85").to_vec()
+        ),
         ..Default::default()
     }
 }

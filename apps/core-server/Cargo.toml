@@ -44,6 +44,7 @@ utoipa                       = { workspace = true, features = ["uuid", "axum_ext
 utoipa-swagger-ui            = { version = "7.1", features = ["axum"] }
 uuid.workspace               = true
 validator.workspace          = true
+hex-literal = "0.4.1"
 
 [build-dependencies]
 serde                = { workspace = true, features = ["derive"] }

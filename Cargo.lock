@@ -969,6 +969,7 @@ dependencies = [
  "ct-codecs",
  "dto_mapper",
  "headers",
+ "hex-literal",
  "indoc",
  "one-core",
  "one-crypto",
