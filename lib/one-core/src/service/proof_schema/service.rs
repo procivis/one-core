@@ -7,8 +7,8 @@ use uuid::Uuid;
 
 use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaListResponseDTO, GetProofSchemaQueryDTO,
-    GetProofSchemaResponseDTO, ImportProofSchemaRequestDTO, ImportProofSchemaResponseDTO,
-    ProofSchemaShareResponseDTO,
+    GetProofSchemaResponseDTO, ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO,
+    ImportProofSchemaResponseDTO, ProofSchemaShareResponseDTO,
 };
 use super::mapper::{
     credential_schema_from_proof_input_schema, proof_input_from_import_request,
@@ -23,17 +23,19 @@ use super::ProofSchemaService;
 use crate::common_mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::{
-    CredentialSchemaRelations, GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
+    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
+    UpdateCredentialSchemaRequest,
 };
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::OrganisationRelations;
+use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof_schema::{
     ProofInputSchema, ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations,
     ProofSchemaRelations,
 };
 use crate::repository::error::DataLayerError;
+use crate::service::common_mapper::regenerate_credential_schema_uuids;
 use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::proof_schema::mapper::convert_proof_schema_to_response;
@@ -284,6 +286,13 @@ impl ProofSchemaService {
         let schema = request.schema;
         validate_imported_proof_schema(&schema, &self.config)?;
 
+        proof_schema_name_already_exists(
+            &*self.proof_schema_repository,
+            &schema.name,
+            request.organisation_id,
+        )
+        .await?;
+
         let now = OffsetDateTime::now_utc();
         let input_schemas =
             schema
@@ -298,6 +307,7 @@ impl ProofSchemaService {
                             .credential_schema_repository
                             .get_by_schema_id_and_organisation(
                                 &request_input_schema.credential_schema.schema_id,
+                                request_input_schema.credential_schema.schema_type.to_owned().into(),
                                 organisation.id,
                                 &CredentialSchemaRelations {
                                     claim_schemas: Some(Default::default()),
@@ -309,69 +319,17 @@ impl ProofSchemaService {
                         let credential_schema =
                         // if already exists update only the missing claim schemas
                             if let Some(credential_schema) = maybe_credential_schema {
-                                let keys: HashSet<_> = credential_schema
-                                    .claim_schemas
-                                    .iter()
-                                    .flatten()
-                                    .map(|x| &x.schema.key)
-                                    .collect();
-
-                                let missing_claim_schemas: Vec<_> = credential_schema_from_proof_input_schema(
-                                    &request_input_schema,
-                                    organisation.clone(),
-                                    now,
-                                )
-                                .claim_schemas
-                                .into_iter()
-                                .flat_map(|claim_schemas| claim_schemas.into_iter().filter(|s| !keys.contains(&s.schema.key)))
-                                .collect();
-
-                                if !missing_claim_schemas.is_empty() {
-                                    self.credential_schema_repository
-                                        .update_credential_schema(UpdateCredentialSchemaRequest {
-                                            id: credential_schema.id,
-                                            claim_schemas: Some(missing_claim_schemas),
-                                            revocation_method: None,
-                                            format: None,
-                                        })
-                                        .await?;
-
-                                        self.credential_schema_repository.get_credential_schema(&credential_schema.id, &CredentialSchemaRelations {
-                                            claim_schemas: Some(Default::default()),
-                                            organisation: Some(Default::default()),
-                                        }).await?
-                                        .ok_or_else(|| ServiceError::Other(format!("Failed fetching updated credential schema {}", credential_schema.id)))?
-                                } else {
-                                    credential_schema
+                                if credential_schema.deleted_at.is_none() {
+                                    self.update_existing_credential_schema(credential_schema, &request_input_schema, &organisation, now).await
+                                }
+                                else {
+                                    self.create_credential_schema_from_input_schema(&request_input_schema, &organisation, now).await
                                 }
                             }
                              // if not exists create new credential schema deriving the possible claims from the input_schema
                             else {
-                                let credential_schema = credential_schema_from_proof_input_schema(
-                                    &request_input_schema,
-                                    organisation.clone(),
-                                    now,
-                                );
-
-                                self.credential_schema_repository
-                                    .create_credential_schema(credential_schema.clone())
-                                    .await?;
-
-                                let _ = self
-                                    .history_repository
-                                    .create_history(History {
-                                        id: Uuid::new_v4().into(),
-                                        created_date: now,
-                                        action: HistoryAction::Created,
-                                        entity_id: Some(credential_schema.id.into()),
-                                        entity_type: HistoryEntityType::CredentialSchema,
-                                        metadata: None,
-                                        organisation: Some(organisation),
-                                    })
-                                    .await;
-
-                                credential_schema
-                            };
+                                self.create_credential_schema_from_input_schema(&request_input_schema, &organisation, now).await
+                            }?;
 
                         let input_schema = proof_input_from_import_request(
                             &request_input_schema,
@@ -388,18 +346,20 @@ impl ProofSchemaService {
 
         let input_schemas: Vec<ProofInputSchema> = future::try_join_all(input_schemas).await?;
 
+        let proof_schema = ProofSchema {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            deleted_at: None,
+            name: schema.name,
+            expire_duration: schema.expire_duration,
+            organisation: Some(organisation.clone()),
+            input_schemas: Some(input_schemas),
+        };
+
         let proof_schema_id = self
             .proof_schema_repository
-            .create_proof_schema(ProofSchema {
-                id: schema.id,
-                created_date: now,
-                last_modified: now,
-                deleted_at: None,
-                name: schema.name,
-                expire_duration: schema.expire_duration,
-                organisation: Some(organisation.clone()),
-                input_schemas: Some(input_schemas),
-            })
+            .create_proof_schema(proof_schema)
             .await?;
 
         let _ = self
@@ -414,5 +374,96 @@ impl ProofSchemaService {
         Ok(ImportProofSchemaResponseDTO {
             id: proof_schema_id,
         })
+    }
+
+    async fn update_existing_credential_schema(
+        &self,
+        credential_schema: CredentialSchema,
+        request_input_schema: &ImportProofSchemaInputSchemaDTO,
+        organisation: &Organisation,
+        now: OffsetDateTime,
+    ) -> Result<CredentialSchema, ServiceError> {
+        let keys: HashSet<_> = credential_schema
+            .claim_schemas
+            .iter()
+            .flatten()
+            .map(|x| &x.schema.key)
+            .collect();
+
+        let missing_claim_schemas: Vec<_> = credential_schema_from_proof_input_schema(
+            request_input_schema,
+            organisation.clone(),
+            now,
+        )
+        .claim_schemas
+        .into_iter()
+        .flat_map(|claim_schemas| {
+            claim_schemas
+                .into_iter()
+                .filter(|s| !keys.contains(&s.schema.key))
+        })
+        .collect();
+
+        if !missing_claim_schemas.is_empty() {
+            self.credential_schema_repository
+                .update_credential_schema(UpdateCredentialSchemaRequest {
+                    id: credential_schema.id,
+                    claim_schemas: Some(missing_claim_schemas),
+                    revocation_method: None,
+                    format: None,
+                })
+                .await?;
+
+            self.credential_schema_repository
+                .get_credential_schema(
+                    &credential_schema.id,
+                    &CredentialSchemaRelations {
+                        claim_schemas: Some(Default::default()),
+                        organisation: Some(Default::default()),
+                    },
+                )
+                .await?
+                .ok_or_else(|| {
+                    ServiceError::Other(format!(
+                        "Failed fetching updated credential schema {}",
+                        credential_schema.id
+                    ))
+                })
+        } else {
+            Ok(credential_schema)
+        }
+    }
+
+    async fn create_credential_schema_from_input_schema(
+        &self,
+        request_input_schema: &ImportProofSchemaInputSchemaDTO,
+        organisation: &Organisation,
+        now: OffsetDateTime,
+    ) -> Result<CredentialSchema, ServiceError> {
+        let credential_schema = credential_schema_from_proof_input_schema(
+            request_input_schema,
+            organisation.clone(),
+            now,
+        );
+        let credential_schema = regenerate_credential_schema_uuids(credential_schema);
+
+        self.credential_schema_repository
+            .create_credential_schema(credential_schema.clone())
+            .await?;
+
+        let _ = self
+            .history_repository
+            .create_history(History {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                action: HistoryAction::Created,
+                entity_id: Some(credential_schema.id.into()),
+                entity_type: HistoryEntityType::CredentialSchema,
+                metadata: None,
+                organisation: Some(organisation.clone()),
+            })
+            .await;
+
+        Ok(credential_schema)
     }
 }

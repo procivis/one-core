@@ -528,6 +528,7 @@ async fn test_get_by_schema_id_and_organisation() {
     let res = repository
         .get_by_schema_id_and_organisation(
             &credential_schema.schema_id,
+            credential_schema.schema_type.clone(),
             credential_schema.organisation.as_ref().unwrap().id,
             &CredentialSchemaRelations {
                 claim_schemas: Some(Default::default()),
