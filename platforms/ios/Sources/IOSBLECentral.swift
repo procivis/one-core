@@ -23,6 +23,7 @@ class IOSBLECentral: NSObject {
     
     private let deviceDiscoveryLock = NSLock()
     private let deviceDisconnectLock = NSLock()
+    private let writeLock = NSLock()
     private let notificationsLock = NSLock()
     
     private var connectedPeripherals: Set<CBPeripheral> = []
@@ -121,42 +122,54 @@ extension IOSBLECentral: BleCentral {
     }
     
     func writeData(deviceAddress: String, serviceUuid: String, characteristicUuid: String, data: Data, writeType: CharacteristicWriteTypeBindingEnum) async throws {
-        guard let peripheralUuid = UUID(uuidString: deviceAddress) else {
-            throw BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: deviceAddress))
-        }
-        let service = CBUUID(string: serviceUuid)
-        let characteristic = CBUUID(string: characteristicUuid)
-        let characteristicKey = characteristicKey(peripheral: peripheralUuid, service: service, characteristic: characteristic)
-        guard characteristicWriteResultCallbacks[characteristicKey] == nil, characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] == nil, characteristicReadResultCallbacks[characteristicKey] == nil else {
-            throw BleErrorWrapper.Ble(error: BleError.AnotherOperationInProgress)
-        }
-        let (cbCharacteristic, cbPeripheral) = try retrieveCharacteristic(peripheral: peripheralUuid, service: service, characteristic: characteristic)
-        
-        let delayedWrite = writeType == .withoutResponse && !cbPeripheral.canSendWriteWithoutResponse
-        if (!delayedWrite) {
-            cbPeripheral.writeValue(data, for: cbCharacteristic, type: writeType.cbCharacteristicWriteType)
-            if (writeType == .withoutResponse) {
-                return
-            }
-        }
-        
         return try await withCheckedThrowingContinuation { continuation in
-            if (delayedWrite) {
-                characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] = { [weak self] result in
-                    self?.characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] = nil
-                    switch (result) {
-                    case .success:
-                        cbPeripheral.writeValue(data, for: cbCharacteristic, type: writeType.cbCharacteristicWriteType)
-                        break
-                    default:
-                        break
-                    }
-                    continuation.resume(with: result)
+            writeLock.withLock {
+                guard let peripheralUuid = UUID(uuidString: deviceAddress) else {
+                    continuation.resume(throwing: BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: deviceAddress)))
+                    return
                 }
-            } else {
-                characteristicWriteResultCallbacks[characteristicKey] = { [weak self] result in
-                    self?.characteristicWriteResultCallbacks[characteristicKey] = nil
-                    continuation.resume(with: result)
+                let service = CBUUID(string: serviceUuid)
+                let characteristic = CBUUID(string: characteristicUuid)
+                let characteristicKey = characteristicKey(peripheral: peripheralUuid, service: service, characteristic: characteristic)
+                guard characteristicWriteResultCallbacks[characteristicKey] == nil, characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] == nil, characteristicReadResultCallbacks[characteristicKey] == nil else {
+                    continuation.resume(throwing: BleErrorWrapper.Ble(error: BleError.AnotherOperationInProgress))
+                    return
+                }
+                let cbCharacteristic: CBCharacteristic
+                let cbPeripheral: CBPeripheral
+                do {
+                    (cbCharacteristic, cbPeripheral) = try retrieveCharacteristic(peripheral: peripheralUuid, service: service, characteristic: characteristic)
+                } catch let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                let delayedWrite = writeType == .withoutResponse && !cbPeripheral.canSendWriteWithoutResponse
+                if (!delayedWrite) {
+                    cbPeripheral.writeValue(data, for: cbCharacteristic, type: writeType.cbCharacteristicWriteType)
+                    if (writeType == .withoutResponse) {
+                        continuation.resume(with: Result.success(()))
+                        return
+                    }
+                }
+            
+                if (delayedWrite) {
+                    characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] = { [weak self] result in
+                        self?.characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] = nil
+                        switch (result) {
+                        case .success:
+                            cbPeripheral.writeValue(data, for: cbCharacteristic, type: writeType.cbCharacteristicWriteType)
+                            break
+                        default:
+                            break
+                        }
+                        continuation.resume(with: result)
+                    }
+                } else {
+                    characteristicWriteResultCallbacks[characteristicKey] = { [weak self] result in
+                        self?.characteristicWriteResultCallbacks[characteristicKey] = nil
+                        continuation.resume(with: result)
+                    }
                 }
             }
         }
@@ -529,22 +542,26 @@ extension IOSBLECentral: CBPeripheralDelegate {
     }
     
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: (any Error)?) {
-        guard let characteristicKey = characteristicKey(peripheral: peripheral, characteristic: characteristic) else {
-            return
-        }
-        let result = getResult(value: (), error: error)
-        characteristicWriteResultCallbacks[characteristicKey]?(result)
+        writeLock.withLock {
+            guard let characteristicKey = characteristicKey(peripheral: peripheral, characteristic: characteristic) else {
+                return
+            }
+            let result = getResult(value: (), error: error)
+            characteristicWriteResultCallbacks[characteristicKey]?(result)
 #if DEBUG
-        print("did write value for \(characteristic): \(String(describing: characteristic.value))")
+            print("did write value for \(characteristic): \(String(describing: characteristic.value))")
 #endif
+        }
     }
     
     func peripheralIsReady(toSendWriteWithoutResponse peripheral: CBPeripheral) {
+        writeLock.withLock {
 #if DEBUG
-        print("peripheralIsReady")
+            print("peripheralIsReady")
 #endif
-        let result = getResult(value: (), error: nil)
-        characteristicWriteWithoutResponseResultCallbacks[peripheral.identifier]?(result)
+            let result = getResult(value: (), error: nil)
+            characteristicWriteWithoutResponseResultCallbacks[peripheral.identifier]?(result)
+        }
     }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: (any Error)?) {
