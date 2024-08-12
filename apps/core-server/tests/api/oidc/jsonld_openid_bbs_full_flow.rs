@@ -1,11 +1,3 @@
-use axum::http::StatusCode;
-use one_core::model::{
-    credential::CredentialStateEnum,
-    proof::{ProofClaim, ProofStateEnum},
-};
-use serde_json::json;
-use uuid::Uuid;
-
 use crate::{
     api_oidc_tests::full_flow_common::{
         bbs_key_1, ecdsa_key_1, eddsa_key_1, eddsa_key_2, get_array_context,
@@ -14,6 +6,14 @@ use crate::{
     fixtures::TestingCredentialParams,
     utils::{context::TestContext, db_clients::proof_schemas::CreateProofInputSchema},
 };
+use axum::http::StatusCode;
+use one_core::model::credential::CredentialRole;
+use one_core::model::{
+    credential::CredentialStateEnum,
+    proof::{ProofClaim, ProofStateEnum},
+};
+use serde_json::json;
+use uuid::Uuid;
 
 #[tokio::test]
 async fn test_openid4vc_jsonld_bbsplus_flow_none() {
@@ -275,6 +275,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
                 holder_did: Some(holder_local_holder_did.clone()),
                 credential: Some(credentials.unwrap()),
                 random_claims: true,
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )
@@ -354,7 +355,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
                                 "const": holder_credential_schema.schema_id
                             }
                         },
-                        // Disclose the whole address
+                        // Disclose the whole address
                         {
                             "id": new_claim_schemas[1].0,
                             "path": ["$.vc.credentialSubject.Address root"],

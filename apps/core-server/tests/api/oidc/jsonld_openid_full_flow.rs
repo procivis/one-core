@@ -2,8 +2,6 @@ use axum::http::StatusCode;
 use one_core::model::{credential::CredentialStateEnum, proof::ProofStateEnum};
 use serde_json::json;
 
-use uuid::Uuid;
-
 use crate::{
     api_oidc_tests::full_flow_common::{
         ecdsa_key_1, ecdsa_key_2, eddsa_key_1, eddsa_key_2, get_array_context, get_simple_context,
@@ -12,6 +10,8 @@ use crate::{
     fixtures::TestingCredentialParams,
     utils::{context::TestContext, db_clients::proof_schemas::CreateProofInputSchema},
 };
+use one_core::model::credential::CredentialRole;
+use uuid::Uuid;
 
 use super::full_flow_common::TestKey;
 
@@ -228,6 +228,7 @@ async fn test_openid4vc_jsonld_flow(
             TestingCredentialParams {
                 holder_did: holder_did.clone(),
                 credential: Some(credentials),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )

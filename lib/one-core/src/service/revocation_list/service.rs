@@ -6,6 +6,7 @@ use one_providers::revocation::imp::lvvc::mapper::status_from_lvvc_claims;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
+use crate::model::did::Did;
 use crate::model::key::KeyRelations;
 use crate::{
     model::{
@@ -37,7 +38,10 @@ impl RevocationListService {
                         keys: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
-                    holder_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
                     key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
@@ -46,21 +50,7 @@ impl RevocationListService {
             .map_err(ServiceError::from)?
             .ok_or(EntityNotFoundError::Credential(*id))?;
 
-        // Use the stored holder did and resolve it. Then use the authentication keys to verify the jwt, and check if one is the correct one
-        let holder_did = credential
-            .holder_did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
-        let resolved_did = self
-            .did_method_provider
-            .resolve(&holder_did.did.to_owned().into())
-            .await?;
-
-        let parsed_jwk = self
-            .key_algorithm_provider
-            .parse_jwk(&resolved_did.verification_method[0].public_key_jwk)?;
-
-        // Check if bearer token is signed with key of the credential holder if not throw error.
+        // Extract input and signature from token
         let mut jwt_parts = bearer_token.splitn(3, '.');
         let (Some(header), Some(payload), Some(signature)) =
             (jwt_parts.next(), jwt_parts.next(), jwt_parts.next())
@@ -75,15 +65,17 @@ impl RevocationListService {
 
         let input = format!("{header}.{payload}");
 
-        self.crypto_provider
-            .get_signer(&parsed_jwk.signer_algorithm_id)?
-            .verify(input.as_bytes(), &signature, &parsed_jwk.public_key_bytes)
-            .map_err(|e| ServiceError::ValidationError(e.to_string()))?;
-
-        let schema = credential
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
+        // Use holder or issuer did to verify jwt
+        match self
+            .verify_signature_with_did(&credential.holder_did, input.as_bytes(), &signature)
+            .await
+        {
+            Err(_) => {
+                self.verify_signature_with_did(&credential.issuer_did, input.as_bytes(), &signature)
+                    .await
+            }
+            value => value,
+        }?;
 
         // In the next step the latest LVVC credential should be obtained from the asked for credential
         let latest_lvvc = self
@@ -96,6 +88,10 @@ impl RevocationListService {
         let credential_content = std::str::from_utf8(&latest_lvvc.credential)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
+        let schema = credential
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
         let format = schema.format.to_string();
         let formatter =
             self.formatter_provider
@@ -179,5 +175,31 @@ impl RevocationListService {
         };
 
         result.try_into()
+    }
+
+    async fn verify_signature_with_did(
+        &self,
+        did: &Option<Did>,
+        input: &[u8],
+        signature: &[u8],
+    ) -> Result<(), ServiceError> {
+        // Use the holder or issuer did and resolve it. Then use the authentication keys to verify the jwt, and check if one is the correct one
+        let did = did
+            .as_ref()
+            .ok_or(ServiceError::MappingError("did is None".to_string()))?;
+        let resolved_did = self
+            .did_method_provider
+            .resolve(&did.did.to_owned().into())
+            .await?;
+
+        let parsed_jwk = self
+            .key_algorithm_provider
+            .parse_jwk(&resolved_did.verification_method[0].public_key_jwk)?;
+
+        // Check if bearer token is signed with key of the credential holder if not throw error.
+        self.crypto_provider
+            .get_signer(&parsed_jwk.signer_algorithm_id)?
+            .verify(input, signature, &parsed_jwk.public_key_bytes)
+            .map_err(|e| ServiceError::ValidationError(e.to_string()))
     }
 }

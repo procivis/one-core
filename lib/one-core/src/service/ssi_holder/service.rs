@@ -317,7 +317,7 @@ impl SSIHolderService {
                 })
                 .collect::<Result<Vec<String>, ServiceError>>()?;
 
-            let Some(credential) = self
+            let credential = self
                 .credential_repository
                 .get_credential(
                     &credential_request.credential_id,
@@ -329,17 +329,18 @@ impl SSIHolderService {
                             keys: Some(KeyRelations::default()),
                             ..Default::default()
                         }),
-                        issuer_did: Some(DidRelations::default()),
+                        issuer_did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
                         schema: Some(CredentialSchemaRelations::default()),
                         ..Default::default()
                     },
                 )
                 .await?
-            else {
-                return Err(
-                    EntityNotFoundError::Credential(credential_request.credential_id).into(),
-                );
-            };
+                .ok_or(EntityNotFoundError::Credential(
+                    credential_request.credential_id,
+                ))?;
 
             let credential_data = credential.credential.as_slice();
             if credential_data.is_empty() {
