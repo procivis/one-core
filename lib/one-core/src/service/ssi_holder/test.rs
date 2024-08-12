@@ -704,7 +704,7 @@ async fn test_accept_credential() {
         .inner
         .expect_accept_credential()
         .once()
-        .returning(|_, _, _, _, _, _| {
+        .returning(|_, _, _, _, _, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),

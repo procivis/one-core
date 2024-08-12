@@ -26,6 +26,7 @@ use one_providers::exchange_protocol::openid4vc::model::{
     PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse, SubmitIssuerResponse,
     UpdateResponse,
 };
+use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
 use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess, StorageAccess,
     TypeToDescriptorMapper,
@@ -281,6 +282,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         _jwk_key_id: Option<String>,
         _format: &str,
         _storage_access: &StorageAccess,
+        _map_oidc_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         let mut url = super::get_base_url_from_interaction(credential.interaction.as_ref())?;
         url.set_path("/ssi/temporary-issuer/v1/submit");

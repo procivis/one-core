@@ -54,7 +54,7 @@ use crate::service::oidc::dto::OpenID4VCICredentialResponseDTO;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_credentials_interaction,
 };
-use crate::util::oidc::detect_correct_format;
+use crate::util::oidc::detect_format_with_crypto_suite;
 use crate::util::oidc::map_core_to_oidc_format;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 use one_providers::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
@@ -692,7 +692,7 @@ impl CredentialService {
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         // Workaround credential format detection
-        let format = detect_correct_format(&credential_schema, &credential_str)?;
+        let format = detect_format_with_crypto_suite(&credential_schema.format, &credential_str)?;
 
         let mut current_state = credential
             .state

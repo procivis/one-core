@@ -13,6 +13,7 @@ use one_providers::exchange_protocol::openid4vc::model::{
     DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentationDefinitionResponseDTO,
     PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
+use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
 use one_providers::exchange_protocol::openid4vc::{
     FormatMapper, HandleInvitationOperationsAccess, TypeToDescriptorMapper,
 };
@@ -138,6 +139,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         jwk_key_id: Option<String>,
         format: &str,
         storage_access: &StorageAccess,
+        map_oidc_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         self.openid_http
             .accept_credential(
@@ -147,6 +149,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 jwk_key_id,
                 format,
                 storage_access,
+                map_oidc_format_to_external,
             )
             .await
     }
