@@ -12,11 +12,11 @@ use crate::utils::context::TestContext;
 async fn test_import_proof_schema_ok() {
     let (context, organisation) = TestContext::new_with_organisation().await;
 
-    let expected_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
+    let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
 
     let proof_schema = json!({
-        "id": expected_proof_schema_id,
+        "id": old_proof_schema_id,
         "createdDate": now,
         "lastModified": now,
         "name": "test-proof-schema",
@@ -69,7 +69,7 @@ async fn test_import_proof_schema_ok() {
         .parse()
         .unwrap();
 
-    assert_eq!(expected_proof_schema_id, proof_schema_id);
+    assert_ne!(old_proof_schema_id, proof_schema_id);
 
     let proof_schema = context.db.proof_schemas.get(&proof_schema_id).await;
     assert_eq!("test-proof-schema", &proof_schema.name);
@@ -92,7 +92,7 @@ async fn test_import_proof_schema_ok() {
 async fn test_import_proof_schema_for_existing_credential_schema() {
     let (context, organisation) = TestContext::new_with_organisation().await;
 
-    let expected_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
+    let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
 
     let credential_schema = context
@@ -112,7 +112,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
     let claim_schema = claim_schema.swap_remove(0);
 
     let proof_schema = json!({
-        "id": expected_proof_schema_id,
+        "id": old_proof_schema_id,
         "createdDate": now,
         "lastModified": now,
         "name": "test-proof-schema",
@@ -172,7 +172,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         .parse()
         .unwrap();
 
-    assert_eq!(expected_proof_schema_id, proof_schema_id);
+    assert_ne!(old_proof_schema_id, proof_schema_id);
 
     let proof_schema = context.db.proof_schemas.get(&proof_schema_id).await;
     assert_eq!("test-proof-schema", &proof_schema.name);

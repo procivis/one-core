@@ -37,7 +37,10 @@ use crate::service::proof_schema::dto::{
     ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO, ProofInputSchemaRequestDTO,
 };
 use crate::service::proof_schema::ProofSchemaImportError;
-use crate::service::test_utilities::{generic_config, generic_formatter_capabilities};
+use crate::service::test_utilities::{
+    dummy_credential_schema, dummy_proof_schema, generic_config, generic_formatter_capabilities,
+    get_dummy_date,
+};
 
 fn setup_service(
     proof_schema_repository: MockProofSchemaRepository,
@@ -1202,6 +1205,15 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
 
     let mut proof_schema_repository = MockProofSchemaRepository::new();
     proof_schema_repository
+        .expect_get_proof_schema_list()
+        .returning(|_| {
+            Ok(GetProofSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+    proof_schema_repository
         .expect_create_proof_schema()
         .once()
         .returning(|_| Ok(Uuid::new_v4().into()));
@@ -1209,13 +1221,14 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, org, relations| {
+        .withf(move |schema_id, schema_type, org, relations| {
             schema_id == "iso-org-test123"
+                && *schema_type == CredentialSchemaType::Mdoc
                 && org == &organisation_id
                 && relations.claim_schemas.is_some()
         })
         .once()
-        .returning(|_, _, _| Ok(None));
+        .returning(|_, _, _, _| Ok(None));
     credential_schema_repository
         .expect_create_credential_schema()
         .once()
@@ -1288,6 +1301,529 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         })
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
+    let now = OffsetDateTime::now_utc();
+    let organisation_id: OrganisationId = Uuid::new_v4().into();
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .with(eq(organisation_id), always())
+        .return_once(move |_, _| {
+            Ok(Some(Organisation {
+                id: organisation_id,
+                created_date: now,
+                last_modified: now,
+            }))
+        });
+
+    let mut proof_schema_repository = MockProofSchemaRepository::new();
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .returning(|_| {
+            Ok(GetProofSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+    proof_schema_repository
+        .expect_create_proof_schema()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::new();
+    credential_schema_repository
+        .expect_get_by_schema_id_and_organisation()
+        .withf(move |schema_id, schema_type, org, relations| {
+            schema_id == "iso-org-test123"
+                && *schema_type == CredentialSchemaType::Mdoc
+                && org == &organisation_id
+                && relations.claim_schemas.is_some()
+        })
+        .once()
+        .returning(|_, _, _, _| {
+            Ok(Some(CredentialSchema {
+                deleted_at: Some(get_dummy_date()),
+                ..dummy_credential_schema()
+            }))
+        });
+    credential_schema_repository
+        .expect_create_credential_schema()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|h| {
+            h.entity_type == HistoryEntityType::CredentialSchema
+                && h.action == HistoryAction::Created
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|h| {
+            h.entity_type == HistoryEntityType::ProofSchema && h.action == HistoryAction::Imported
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let schema = ImportProofSchemaDTO {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        name: "test-proof-schema".to_string(),
+        organisation_id,
+        expire_duration: 1000,
+        proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
+                id: Uuid::new_v4().into(),
+                required: true,
+                key: "root/name".to_string(),
+                data_type: "STRING".to_string(),
+                claims: vec![],
+                array: false,
+            }],
+            credential_schema: ImportProofSchemaCredentialSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "test-credential-schema".to_string(),
+                format: "MDOC".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                schema_id: "iso-org-test123".to_string(),
+                schema_type: CredentialSchemaType::Mdoc.into(),
+                layout_type: None,
+                layout_properties: None,
+            },
+            validity_constraint: None,
+        }],
+    };
+
+    let service = ProofSchemaService {
+        proof_schema_repository: Arc::new(proof_schema_repository),
+        credential_schema_repository: Arc::new(credential_schema_repository),
+        organisation_repository: Arc::new(organisation_repository),
+        history_repository: Arc::new(history_repository),
+        formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
+        config: Arc::new(generic_config().core),
+        base_url: None,
+    };
+
+    service
+        .import_proof_schema(ImportProofSchemaRequestDTO {
+            schema,
+            organisation_id,
+        })
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_import_proof_ok_existing_credential_schema_but_missing_claims() {
+    let now = OffsetDateTime::now_utc();
+    let organisation_id: OrganisationId = Uuid::new_v4().into();
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .with(eq(organisation_id), always())
+        .return_once(move |_, _| {
+            Ok(Some(Organisation {
+                id: organisation_id,
+                created_date: now,
+                last_modified: now,
+            }))
+        });
+
+    let mut proof_schema_repository = MockProofSchemaRepository::new();
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .returning(|_| {
+            Ok(GetProofSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+    proof_schema_repository
+        .expect_create_proof_schema()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::new();
+
+    let existing_schema_id = Uuid::new_v4().into();
+    let existing_schema = CredentialSchema {
+        id: existing_schema_id,
+        deleted_at: None,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "test-credential-schema".to_string(),
+        format: "MDOC".to_string(),
+        revocation_method: "NONE".to_string(),
+        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+        layout_type: LayoutType::Card,
+        layout_properties: None,
+        schema_id: "iso-org-test123".to_string(),
+        schema_type: CredentialSchemaType::Mdoc,
+        claim_schemas: Some(vec![CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "root/name".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: get_dummy_date(),
+                array: false,
+                last_modified: get_dummy_date(),
+            },
+            required: true,
+        }]),
+        organisation: None,
+    };
+
+    let existing_schema_clone = existing_schema.clone();
+    credential_schema_repository
+        .expect_get_by_schema_id_and_organisation()
+        .withf(move |schema_id, schema_type, org, relations| {
+            schema_id == "iso-org-test123"
+                && *schema_type == CredentialSchemaType::Mdoc
+                && org == &organisation_id
+                && relations.claim_schemas.is_some()
+        })
+        .once()
+        .returning(move |_, _, _, _| Ok(Some(existing_schema_clone.clone())));
+    let existing_schema_clone = existing_schema.clone();
+    credential_schema_repository
+        .expect_update_credential_schema()
+        .withf(move |schema| {
+            schema.id == existing_schema_id
+                && schema
+                    .claim_schemas
+                    .as_ref()
+                    .is_some_and(|claim_schemas| claim_schemas.len() == 1)
+        })
+        .once()
+        .returning(|_| Ok(()));
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .with(eq(existing_schema_id), always())
+        .once()
+        .returning(move |_, _| {
+            let mut result = existing_schema_clone.clone();
+            result
+                .claim_schemas
+                .as_mut()
+                .unwrap()
+                .push(CredentialSchemaClaim {
+                    schema: ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "root/lastname".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: get_dummy_date(),
+                        array: false,
+                        last_modified: get_dummy_date(),
+                    },
+                    required: true,
+                });
+
+            Ok(Some(result))
+        });
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|h| {
+            h.entity_type == HistoryEntityType::ProofSchema && h.action == HistoryAction::Imported
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let schema = ImportProofSchemaDTO {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        name: "test-proof-schema".to_string(),
+        organisation_id,
+        expire_duration: 1000,
+        proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            claim_schemas: vec![
+                ImportProofSchemaClaimSchemaDTO {
+                    id: Uuid::new_v4().into(),
+                    required: true,
+                    key: "root/name".to_string(),
+                    data_type: "STRING".to_string(),
+                    claims: vec![],
+                    array: false,
+                },
+                ImportProofSchemaClaimSchemaDTO {
+                    id: Uuid::new_v4().into(),
+                    required: true,
+                    key: "root/lastname".to_string(),
+                    data_type: "STRING".to_string(),
+                    claims: vec![],
+                    array: false,
+                },
+            ],
+            credential_schema: ImportProofSchemaCredentialSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "test-credential-schema".to_string(),
+                format: "MDOC".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                schema_id: "iso-org-test123".to_string(),
+                schema_type: CredentialSchemaType::Mdoc.into(),
+                layout_type: None,
+                layout_properties: None,
+            },
+            validity_constraint: None,
+        }],
+    };
+
+    let service = ProofSchemaService {
+        proof_schema_repository: Arc::new(proof_schema_repository),
+        credential_schema_repository: Arc::new(credential_schema_repository),
+        organisation_repository: Arc::new(organisation_repository),
+        history_repository: Arc::new(history_repository),
+        formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
+        config: Arc::new(generic_config().core),
+        base_url: None,
+    };
+
+    service
+        .import_proof_schema(ImportProofSchemaRequestDTO {
+            schema,
+            organisation_id,
+        })
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
+    let now = OffsetDateTime::now_utc();
+    let organisation_id: OrganisationId = Uuid::new_v4().into();
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .with(eq(organisation_id), always())
+        .return_once(move |_, _| {
+            Ok(Some(Organisation {
+                id: organisation_id,
+                created_date: now,
+                last_modified: now,
+            }))
+        });
+
+    let mut proof_schema_repository = MockProofSchemaRepository::new();
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .returning(|_| {
+            Ok(GetProofSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+    proof_schema_repository
+        .expect_create_proof_schema()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::new();
+
+    let existing_schema_id = Uuid::new_v4().into();
+
+    credential_schema_repository
+        .expect_get_by_schema_id_and_organisation()
+        .withf(move |schema_id, schema_type, org, relations| {
+            schema_id == "iso-org-test123"
+                && *schema_type == CredentialSchemaType::Mdoc
+                && org == &organisation_id
+                && relations.claim_schemas.is_some()
+        })
+        .once()
+        .returning(move |_, _, _, _| {
+            Ok(Some(CredentialSchema {
+                id: existing_schema_id,
+                deleted_at: None,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                name: "test-credential-schema".to_string(),
+                format: "MDOC".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                layout_type: LayoutType::Card,
+                layout_properties: None,
+                schema_id: "iso-org-test123".to_string(),
+                schema_type: CredentialSchemaType::Mdoc,
+                claim_schemas: Some(vec![CredentialSchemaClaim {
+                    schema: ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "root/name".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: get_dummy_date(),
+                        array: false,
+                        last_modified: get_dummy_date(),
+                    },
+                    required: true,
+                }]),
+                organisation: None,
+            }))
+        });
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|h| {
+            h.entity_type == HistoryEntityType::ProofSchema && h.action == HistoryAction::Imported
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let schema = ImportProofSchemaDTO {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        name: "test-proof-schema".to_string(),
+        organisation_id,
+        expire_duration: 1000,
+        proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
+                id: Uuid::new_v4().into(),
+                required: true,
+                key: "root/name".to_string(),
+                data_type: "STRING".to_string(),
+                claims: vec![],
+                array: false,
+            }],
+            credential_schema: ImportProofSchemaCredentialSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "test-credential-schema".to_string(),
+                format: "MDOC".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                schema_id: "iso-org-test123".to_string(),
+                schema_type: CredentialSchemaType::Mdoc.into(),
+                layout_type: None,
+                layout_properties: None,
+            },
+            validity_constraint: None,
+        }],
+    };
+
+    let service = ProofSchemaService {
+        proof_schema_repository: Arc::new(proof_schema_repository),
+        credential_schema_repository: Arc::new(credential_schema_repository),
+        organisation_repository: Arc::new(organisation_repository),
+        history_repository: Arc::new(history_repository),
+        formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
+        config: Arc::new(generic_config().core),
+        base_url: None,
+    };
+
+    service
+        .import_proof_schema(ImportProofSchemaRequestDTO {
+            schema,
+            organisation_id,
+        })
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_import_proof_failed_existing_proof_schema() {
+    let now = OffsetDateTime::now_utc();
+    let organisation_id: OrganisationId = Uuid::new_v4().into();
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .with(eq(organisation_id), always())
+        .return_once(move |_, _| {
+            Ok(Some(Organisation {
+                id: organisation_id,
+                created_date: now,
+                last_modified: now,
+            }))
+        });
+
+    let mut proof_schema_repository = MockProofSchemaRepository::new();
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .returning(|_| {
+            Ok(GetProofSchemaList {
+                values: vec![dummy_proof_schema()],
+                total_pages: 1,
+                total_items: 1,
+            })
+        });
+
+    let schema = ImportProofSchemaDTO {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        name: "test-proof-schema".to_string(),
+        organisation_id,
+        expire_duration: 1000,
+        proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
+            claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
+                id: Uuid::new_v4().into(),
+                required: true,
+                key: "root/name".to_string(),
+                data_type: "STRING".to_string(),
+                claims: vec![],
+                array: false,
+            }],
+            credential_schema: ImportProofSchemaCredentialSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                name: "test-credential-schema".to_string(),
+                format: "MDOC".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                schema_id: "iso-org-test123".to_string(),
+                schema_type: CredentialSchemaType::Mdoc.into(),
+                layout_type: None,
+                layout_properties: None,
+            },
+            validity_constraint: None,
+        }],
+    };
+
+    let service = ProofSchemaService {
+        proof_schema_repository: Arc::new(proof_schema_repository),
+        credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
+        organisation_repository: Arc::new(organisation_repository),
+        history_repository: Arc::new(MockHistoryRepository::new()),
+        formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
+        config: Arc::new(generic_config().core),
+        base_url: None,
+    };
+
+    let result = service
+        .import_proof_schema(ImportProofSchemaRequestDTO {
+            schema,
+            organisation_id,
+        })
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::ProofSchemaAlreadyExists
+        ))
+    ));
 }
 
 #[tokio::test]

@@ -46,6 +46,7 @@ mod m20240710_091021_fix_unique_constraint_schema_id;
 mod m20240726_084216_rename_jsonldcontextprovider_to_cacheprovider;
 mod m20240802_121405_soft_delete_jsonld_classic_credentials;
 mod m20240805_124842_fix_remoteentity_key_type;
+mod m20240812_155510_fix_schema_unique_constraint;
 
 pub struct Migrator;
 
@@ -97,6 +98,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240726_084216_rename_jsonldcontextprovider_to_cacheprovider::Migration),
             Box::new(m20240802_121405_soft_delete_jsonld_classic_credentials::Migration),
             Box::new(m20240805_124842_fix_remoteentity_key_type::Migration),
+            Box::new(m20240812_155510_fix_schema_unique_constraint::Migration),
         ]
     }
 }

@@ -11,7 +11,7 @@ use one_providers::exchange_protocol::openid4vc::StorageProxy;
 
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::CredentialRelations;
-use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::credential_schema::{CredentialSchemaRelations, CredentialSchemaType};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -57,12 +57,14 @@ impl StorageProxy for StorageProxyImpl {
     async fn get_schema(
         &self,
         schema_id: &str,
+        schema_type: &str,
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Option<OpenCredentialSchema>> {
         convert_inner_of_inner(
             self.credential_schemas
                 .get_by_schema_id_and_organisation(
                     schema_id,
+                    CredentialSchemaType::from(schema_type.to_string()),
                     organisation_id.into(),
                     &CredentialSchemaRelations {
                         claim_schemas: Some(Default::default()),

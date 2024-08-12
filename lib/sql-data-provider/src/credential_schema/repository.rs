@@ -3,8 +3,8 @@ use autometrics::autometrics;
 use futures::stream::{self, StreamExt};
 use itertools::Either;
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, GetCredentialSchemaList,
-    GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
+    GetCredentialSchemaList, GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
 };
 use one_core::model::organisation::Organisation;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -349,11 +349,13 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
     async fn get_by_schema_id_and_organisation(
         &self,
         schema_id: &str,
+        schema_type: CredentialSchemaType,
         organisation_id: OrganisationId,
         relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
         let credential_schema = credential_schema::Entity::find()
             .filter(credential_schema::Column::SchemaId.eq(schema_id))
+            .filter(credential_schema::Column::SchemaType.eq(schema_type.to_string()))
             .filter(credential_schema::Column::OrganisationId.eq(organisation_id))
             .one(&self.db)
             .await

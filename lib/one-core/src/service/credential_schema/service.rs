@@ -6,6 +6,7 @@ use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
+use crate::service::common_mapper::regenerate_credential_schema_uuids;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
     CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
@@ -199,7 +200,7 @@ impl CredentialSchemaService {
             &*self.credential_schema_repository,
             &create_request.name,
             create_request.schema_id.clone(),
-            create_request.organisation_id,
+            organisation.id,
         )
         .await?;
 
@@ -220,6 +221,8 @@ impl CredentialSchemaService {
             format_type,
             Some(request.schema.schema_type.to_owned().into()),
         )?;
+
+        let credential_schema = regenerate_credential_schema_uuids(credential_schema);
 
         let result = self
             .credential_schema_repository

@@ -477,7 +477,11 @@ async fn handle_credential_invitation(
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let now = OffsetDateTime::now_utc();
     let credential_schema = match storage_access
-        .get_schema(&issuer_response.schema.schema_id, organisation.id)
+        .get_schema(
+            &issuer_response.schema.schema_id,
+            &issuer_response.schema.schema_type.to_string(),
+            organisation.id,
+        )
         .await
         .map_err(ExchangeProtocolError::StorageAccessError)?
     {
@@ -487,7 +491,11 @@ async fn handle_credential_invitation(
             }
 
             storage_access
-                .get_schema(&credential_schema.id.to_string(), organisation.id)
+                .get_schema(
+                    &credential_schema.id.to_string(),
+                    &credential_schema.schema_type,
+                    organisation.id,
+                )
                 .await
                 .map_err(ExchangeProtocolError::StorageAccessError)?
                 .ok_or(ExchangeProtocolError::Failed(
