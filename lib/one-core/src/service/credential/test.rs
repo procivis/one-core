@@ -90,6 +90,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.config),
         Arc::new(repositories.lvvc_repository),
         None,
+        reqwest::Client::new(),
     )
 }
 

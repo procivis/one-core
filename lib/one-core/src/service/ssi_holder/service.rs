@@ -431,8 +431,8 @@ impl SSIHolderService {
                     "credential_status id is None".to_string(),
                 ))?;
 
-                let client = reqwest::Client::new();
-                let response: IssuerResponseDTO = client
+                let response: IssuerResponseDTO = self
+                    .client
                     .get(lvvc_url)
                     .bearer_auth(bearer_token)
                     .send()

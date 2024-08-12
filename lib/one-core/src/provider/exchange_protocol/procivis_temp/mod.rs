@@ -73,9 +73,10 @@ impl ProcivisTemp {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<CoreConfig>,
+        client: reqwest::Client,
     ) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client,
             base_url,
             formatter_provider,
             key_provider,
