@@ -664,7 +664,10 @@ impl CredentialService {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    issuer_did: Some(DidRelations::default()),
+                    issuer_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
                     holder_did: Some(DidRelations {
                         keys: Some(KeyRelations::default()),
                         ..Default::default()
