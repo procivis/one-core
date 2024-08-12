@@ -36,6 +36,7 @@ pub struct SSIHolderService {
     protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     config: Arc<core_config::CoreConfig>,
+    client: reqwest::Client,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -53,6 +54,7 @@ impl SSIHolderService {
         protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         config: Arc<core_config::CoreConfig>,
+        client: reqwest::Client,
     ) -> Self {
         Self {
             credential_repository,
@@ -67,6 +69,7 @@ impl SSIHolderService {
             protocol_provider,
             did_method_provider,
             config,
+            client,
         }
     }
 }

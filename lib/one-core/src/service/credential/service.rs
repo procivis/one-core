@@ -721,6 +721,7 @@ impl CredentialService {
             )?;
 
             let result = update_mso_interaction_access_token(
+                &self.client,
                 &mut credential,
                 &*self.interaction_repository,
                 interaction_data.clone(),
@@ -729,6 +730,7 @@ impl CredentialService {
 
             if result.is_ok() && mso_requires_update(&detail_credential) {
                 let result = obtain_and_update_new_mso(
+                    &self.client,
                     &mut credential,
                     &*self.credential_repository,
                     &*self.key_provider,
@@ -908,6 +910,7 @@ impl CredentialService {
 }
 
 async fn obtain_and_update_new_mso(
+    client: &reqwest::Client,
     credential: &mut Credential,
     credentials: &dyn CredentialRepository,
     key_provider: &dyn KeyProvider,
@@ -952,7 +955,6 @@ async fn obtain_and_update_new_mso(
         doctype: Some(schema.schema_id.to_owned()),
     };
 
-    let client = reqwest::Client::new();
     let response = client
         .post(interaction_data.credential_endpoint)
         .bearer_auth(interaction_data.access_token)
@@ -993,6 +995,7 @@ async fn obtain_and_update_new_mso(
 }
 
 async fn update_mso_interaction_access_token(
+    client: &reqwest::Client,
     credential: &mut Credential,
     interactions: &dyn InteractionRepository,
     mut interaction_data: HolderInteractionData,
@@ -1008,7 +1011,6 @@ async fn update_mso_interaction_access_token(
 
     if access_token_expires_at <= now {
         // Fetch a new one
-        let client = reqwest::Client::new();
         let url = format!("{}/token", interaction_data.issuer_url);
         let refresh_token = interaction_data
             .refresh_token

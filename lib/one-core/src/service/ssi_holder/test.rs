@@ -795,6 +795,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         protocol_provider: Arc::new(MockExchangeProtocolProviderExtra::new()),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         config: Arc::new(generic_config().core),
+        client: reqwest::Client::new(),
     }
 }
 

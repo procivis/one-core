@@ -374,35 +374,34 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
 
     let cache_entities_config = app_config.core.cache_entities.to_owned();
     let core_base_url = app_config.app.core_base_url.to_owned();
-    let revocation_method_creator: RevocationMethodCreator = Box::new(move |config, providers| {
-        let mut revocation_methods: HashMap<String, Arc<dyn RevocationMethod>> = HashMap::new();
+    let revocation_method_creator: RevocationMethodCreator =
+        Box::new(move |config, client, providers| {
+            let mut revocation_methods: HashMap<String, Arc<dyn RevocationMethod>> = HashMap::new();
 
-        let did_method_provider = providers
-            .did_method_provider
-            .as_ref()
-            .expect("Did method provider is mandatory");
+            let did_method_provider = providers
+                .did_method_provider
+                .as_ref()
+                .expect("Did method provider is mandatory");
 
-        let key_algorithm_provider = providers
-            .key_algorithm_provider
-            .as_ref()
-            .expect("Key algorithm provider is mandatory");
+            let key_algorithm_provider = providers
+                .key_algorithm_provider
+                .as_ref()
+                .expect("Key algorithm provider is mandatory");
 
-        let key_provider = providers
-            .key_storage_provider
-            .clone()
-            .expect("Key storage provider is mandatory");
+            let key_provider = providers
+                .key_storage_provider
+                .clone()
+                .expect("Key storage provider is mandatory");
 
-        let formatter_provider = providers
-            .formatter_provider
-            .clone()
-            .expect("Credential formatter provider is mandatory");
+            let formatter_provider = providers
+                .formatter_provider
+                .clone()
+                .expect("Credential formatter provider is mandatory");
 
-        let client = reqwest::Client::new();
-
-        for (key, fields) in config.iter() {
-            if fields.disabled() {
-                continue;
-            }
+            for (key, fields) in config.iter() {
+                if fields.disabled() {
+                    continue;
+                }
 
             let revocation_method = match fields.r#type {
                 RevocationType::None => Arc::new(NoneRevocation {}) as _,
@@ -428,27 +427,27 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                 }
             };
 
-            revocation_methods.insert(key.to_string(), revocation_method);
-        }
-
-        for (key, value) in config.iter_mut() {
-            if let Some(entity) = revocation_methods.get(key) {
-                value.capabilities = Some(json!(entity.get_capabilities()));
+                revocation_methods.insert(key.to_string(), revocation_method);
             }
-        }
 
-        // we keep `STATUSLIST2021` only for validation
-        revocation_methods.insert(
-            "STATUSLIST2021".to_string(),
-            Arc::new(StatusList2021 {
-                key_algorithm_provider: key_algorithm_provider.clone(),
-                did_method_provider: did_method_provider.clone(),
-                client,
-            }) as _,
-        );
+            for (key, value) in config.iter_mut() {
+                if let Some(entity) = revocation_methods.get(key) {
+                    value.capabilities = Some(json!(entity.get_capabilities()));
+                }
+            }
 
-        Arc::new(RevocationMethodProviderImpl::new(revocation_methods))
-    });
+            // we keep `STATUSLIST2021` only for validation
+            revocation_methods.insert(
+                "STATUSLIST2021".to_string(),
+                Arc::new(StatusList2021 {
+                    key_algorithm_provider: key_algorithm_provider.clone(),
+                    did_method_provider: did_method_provider.clone(),
+                    client: client.clone(),
+                }) as _,
+            );
+
+            Arc::new(RevocationMethodProviderImpl::new(revocation_methods))
+        });
 
     OneCoreBuilder::new(app_config.core.clone())
         .with_base_url(app_config.app.core_base_url.to_owned())

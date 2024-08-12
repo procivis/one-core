@@ -45,6 +45,7 @@ use one_providers::{
         KeyStorage,
     },
 };
+use reqwest::tls::Version;
 use serde::{Deserialize, Serialize};
 use time::Duration;
 
@@ -114,6 +115,11 @@ fn initialize_core(
             .try_init();
     }
 
+    let client = reqwest::ClientBuilder::new()
+        .max_tls_version(Version::TLS_1_2)
+        .build()
+        .map_err(|err| BindingError::Unknown(err.to_string()))?;
+
     let native_key_storage: Option<
         Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>,
     > = native_key_storage.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
@@ -138,6 +144,7 @@ fn initialize_core(
     let _ = std::fs::remove_file(&backup_db_path);
 
     let core_builder = move |db_path: String| {
+        let client = client.clone();
         let core_config = placeholder_config.core.clone();
 
         let native_key_storage = native_key_storage.clone();
@@ -145,6 +152,7 @@ fn initialize_core(
         let ble_central = ble_central.clone();
 
         Box::pin(async move {
+            let client = client.clone();
             let db_url = format!("sqlite:{db_path}?mode=rwc");
             let db_conn = sql_data_provider::db_conn(db_url, true)
                 .await
@@ -458,7 +466,7 @@ fn initialize_core(
 
             let cache_entities_config = core_config.cache_entities.to_owned();
             let revocation_method_creator: RevocationMethodCreator =
-                Box::new(move |config, providers| {
+                Box::new(move |config, client, providers| {
                     let mut revocation_methods: HashMap<String, Arc<dyn RevocationMethod>> =
                         HashMap::new();
 
@@ -481,8 +489,6 @@ fn initialize_core(
                         .formatter_provider
                         .clone()
                         .expect("Credential formatter provider is mandatory");
-
-                    let client = reqwest::Client::new();
 
                     for (key, fields) in config.iter() {
                         if fields.disabled() {
@@ -534,7 +540,7 @@ fn initialize_core(
                         Arc::new(StatusList2021 {
                             key_algorithm_provider: key_algorithm_provider.clone(),
                             did_method_provider: did_method_provider.clone(),
-                            client,
+                            client: client.clone(),
                         }) as _,
                     );
 
@@ -551,6 +557,7 @@ fn initialize_core(
                 .with_formatter_provider(formatter_provider_creator)
                 .with_ble(ble_peripheral, ble_central)
                 .with_revocation_method_provider(revocation_method_creator)
+                .with_http_client(client)
                 .build()
                 .map_err(|e| BindingError::DbErr(e.to_string()))
         }) as _
