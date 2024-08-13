@@ -23,7 +23,6 @@ use mockall::predicate::*;
 use one_providers::common_models::did::DidValue;
 use one_providers::common_models::key::OpenKey;
 use one_providers::did::imp::provider::DidMethodProviderImpl;
-use one_providers::did::imp::resolver::DidResolver;
 use one_providers::did::model::DidCapabilities;
 use one_providers::did::{DidMethod, MockDidMethod};
 use serde_json::Value;
@@ -51,11 +50,7 @@ fn setup_service(
     did_methods.insert("KEY".to_string(), Arc::new(did_method));
 
     let did_repository = Arc::new(did_repository);
-    let did_resolver = DidResolver {
-        did_methods: did_methods.to_owned(),
-    };
     let did_caching_loader = CachingLoader::new(
-        Arc::new(did_resolver),
         RemoteEntityType::DidDocument,
         Arc::new(InMemoryStorage::new(HashMap::new())),
         999,
