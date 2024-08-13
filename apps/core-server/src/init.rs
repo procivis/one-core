@@ -131,7 +131,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
     let cache_entities_config = app_config.core.cache_entities.to_owned();
     let core_base_url = app_config.app.core_base_url.to_owned();
     let data_provider = data_repository.clone();
-    let did_method_creator: DidMethodCreator = Box::new(move |config, providers| {
+    let did_method_creator: DidMethodCreator = Box::new(move |config, providers, client| {
         let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
 
         let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
@@ -149,13 +149,17 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                     let params: DidWebParams = config
                         .get(name)
                         .expect("failed to deserialize did web params");
-                    let did_web = WebDidMethod::new(&Some(core_base_url.to_owned()), params.into())
-                        .map_err(|_| {
-                            ConfigError::Validation(ConfigValidationError::KeyNotFound(
-                                "Base url".to_string(),
-                            ))
-                        })
-                        .expect("failed to create did web method");
+                    let did_web = WebDidMethod::new(
+                        &Some(core_base_url.to_owned()),
+                        params.into(),
+                        client.clone(),
+                    )
+                    .map_err(|_| {
+                        ConfigError::Validation(ConfigValidationError::KeyNotFound(
+                            "Base url".to_string(),
+                        ))
+                    })
+                    .expect("failed to create did web method");
                     Arc::new(did_web) as _
                 }
                 "JWK" => {
@@ -170,7 +174,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                     let params: DidUniversalParams = config
                         .get(name)
                         .expect("failed to deserialize did universal params");
-                    Arc::new(UniversalDidMethod::new(params.into())) as _
+                    Arc::new(UniversalDidMethod::new(params.into(), client.clone())) as _
                 }
                 "MDL" => {
                     let key_algorithm_provider = providers
@@ -276,8 +280,11 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
         Arc::new(KeyProviderImpl::new(key_providers.to_owned()))
     });
 
-    let caching_loader =
-        initialize_jsonld_cache_loader(&app_config.core.cache_entities, data_repository.clone());
+    let caching_loader = initialize_jsonld_cache_loader(
+        &app_config.core.cache_entities,
+        data_repository.clone(),
+        reqwest::Client::new(),
+    );
 
     let formatter_provider_creator: FormatterProviderCreator = {
         let caching_loader = caching_loader.clone();
@@ -577,6 +584,7 @@ pub fn initialize_did_caching_loader(
 pub fn initialize_jsonld_cache_loader(
     cache_entities_config: &CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
+    client: reqwest::Client,
 ) -> JsonLdCachingLoader {
     let config = cache_entities_config
         .entities
