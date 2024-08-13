@@ -62,6 +62,7 @@ pub type DidMethodCreator = Box<
     dyn FnOnce(
         &mut DidConfig,
         &OneCoreBuilderProviders,
+        &reqwest::Client,
     ) -> (Arc<dyn DidMethodProvider>, Option<Arc<dyn DidMdlValidator>>),
 >;
 
@@ -175,8 +176,11 @@ impl OneCoreBuilder {
     }
 
     pub fn with_did_method_provider(mut self, did_met_provider: DidMethodCreator) -> Self {
-        let (did_method_provider, did_mdl_validator) =
-            did_met_provider(&mut self.core_config.did, &self.providers);
+        let (did_method_provider, did_mdl_validator) = did_met_provider(
+            &mut self.core_config.did,
+            &self.providers,
+            &self.http_client,
+        );
         self.providers.did_method_provider = Some(did_method_provider);
         self.providers.did_mdl_validator = did_mdl_validator;
         self

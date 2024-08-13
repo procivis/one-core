@@ -115,6 +115,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
                     params,
+                    client.clone(),
                 );
                 let protocol = Arc::new(OpenID4VC::new(http, ble));
                 providers.insert(name.to_string(), protocol);
