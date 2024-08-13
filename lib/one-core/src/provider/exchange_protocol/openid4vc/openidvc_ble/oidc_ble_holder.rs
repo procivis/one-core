@@ -452,7 +452,7 @@ async fn read_presentation_definition(
         tokio::select! {
            biased;
 
-           Some(chunk) = message_stream.next() => {
+           Some(chunk) = message_stream.next(), if received_chunks.len() < request_size.into() => {
                 let chunk = chunk.context("Reading presentation request chunk failed").map_err(ExchangeProtocolError::Transport)?;
                 let chunk = Chunk::from_bytes(chunk.as_slice()).map_err(ExchangeProtocolError::Transport)?;
                 if received_chunks.iter().any(|c| c.index == chunk.index) {
