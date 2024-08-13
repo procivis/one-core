@@ -78,6 +78,7 @@ impl SSIHolderService {
         let handle_operations = HandleInvitationOperationsImpl::new(
             organisation.clone().into(),
             self.credential_schema_repository.clone(),
+            self.config.clone(),
         );
 
         let response = protocol

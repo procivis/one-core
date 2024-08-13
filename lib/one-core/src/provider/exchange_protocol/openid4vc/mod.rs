@@ -29,7 +29,9 @@ pub mod handle_invitation_operations;
 pub(crate) mod mapper;
 pub mod model;
 pub(crate) mod openidvc_ble;
-//pub(crate) mod openidvc_http;
+
+#[cfg(test)]
+mod test;
 
 pub(crate) struct OpenID4VC {
     openid_http: OpenID4VCHTTP,
