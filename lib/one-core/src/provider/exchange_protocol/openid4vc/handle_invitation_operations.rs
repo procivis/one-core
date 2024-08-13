@@ -17,6 +17,8 @@ use one_providers::exchange_protocol::openid4vc::{
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::mapper::parse_procivis_schema_claim;
+use crate::config::core_config::CoreConfig;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_claims_from_credential_definition, map_offered_claims_to_credential_schema,
     parse_mdoc_schema_claims,
@@ -24,23 +26,24 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::util::oidc::map_from_oidc_format_to_core;
 
-use super::mapper::parse_procivis_schema_claim;
-
 pub const NESTED_CLAIM_MARKER: char = '/';
 
 pub struct HandleInvitationOperationsImpl {
     pub organisation: OpenOrganisation,
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
+    pub config: Arc<CoreConfig>,
 }
 
 impl HandleInvitationOperationsImpl {
     pub fn new(
         organisation: OpenOrganisation,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
+        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             organisation,
             credential_schemas,
+            config,
         }
     }
 }
@@ -175,8 +178,12 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     ..schema
                 };
 
-                let claims =
-                    map_offered_claims_to_credential_schema(&schema, *credential_id, claim_keys)?;
+                let claims = map_offered_claims_to_credential_schema(
+                    &schema,
+                    *credential_id,
+                    claim_keys,
+                    &self.config,
+                )?;
 
                 BuildCredentialSchemaResponse { claims, schema }
             }
@@ -230,6 +237,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         &credential_schema,
                         *credential_id,
                         claim_keys,
+                        &self.config,
                     )?;
 
                     BuildCredentialSchemaResponse {
