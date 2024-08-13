@@ -180,7 +180,8 @@ impl OpenID4VCBLEVerifier {
                     .await;
 
                     let _ = peripheral.stop_server().await;
-                    if result.is_err() {
+                    if let Err(err) = result {
+                        tracing::info!("BLE task failure: {err}");
                         let now = OffsetDateTime::now_utc();
                         let _ = proof_repository
                             .set_proof_state(

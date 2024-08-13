@@ -348,6 +348,12 @@ async fn connect_to_verifier(
                 .unwrap_or(false);
 
             if local_device_name_matches {
+                ble_central
+                    .stop_scan()
+                    .await
+                    .context("stop_discovery failed")
+                    .map_err(ExchangeProtocolError::Transport)?;
+
                 let mtu = ble_central
                     .connect(device.device_address.clone())
                     .await
@@ -355,12 +361,6 @@ async fn connect_to_verifier(
                     .map_err(ExchangeProtocolError::Transport)?;
 
                 tracing::debug!("Connected to `{name}`, MTU: {mtu}");
-
-                ble_central
-                    .stop_scan()
-                    .await
-                    .context("stop_discovery failed")
-                    .map_err(ExchangeProtocolError::Transport)?;
 
                 return Ok(DeviceInfo::new(device.device_address, mtu));
             }
@@ -420,6 +420,8 @@ async fn read_presentation_definition(
             .parse()
             .map_err(ExchangeProtocolError::Transport)
             .await?;
+
+    tracing::debug!("Request size {request_size}");
 
     let message_stream = read(
         PRESENTATION_REQUEST_UUID,
