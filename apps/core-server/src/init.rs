@@ -492,7 +492,7 @@ pub fn initialize_sentry(config: &ServerConfig) -> Option<sentry::ClientInitGuar
                 release: sentry::release_name!(),
                 environment: Some(environment.to_owned().into()),
                 max_breadcrumbs: 50,
-                traces_sample_rate: 1.0,
+                traces_sample_rate: 0.01,
                 ..Default::default()
             },
         ));
