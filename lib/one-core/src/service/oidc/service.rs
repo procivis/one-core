@@ -722,6 +722,7 @@ impl OIDCService {
                 Ok(response)
             }
             Err(err) => {
+                tracing::info!("Proof validation failed: {err}");
                 self.mark_proof_as_failed(&proof.id).await?;
 
                 let _ = self
