@@ -6,7 +6,7 @@ impl JsonLdService {
         serde_json::from_slice(
             &self
                 .caching_loader
-                .resolve(&url)
+                .get(&url, self.resolver.clone())
                 .await
                 .map_err(|err| ServiceError::Other(err.to_string()))?,
         )

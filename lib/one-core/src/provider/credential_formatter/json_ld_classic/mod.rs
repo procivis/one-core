@@ -5,7 +5,9 @@ use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::error::FormatterError;
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
+    ContextCache, JsonLdCachingLoader,
+};
 use one_providers::credential_formatter::imp::json_ld::model::{
     LdCredential, LdPresentation, LdProof,
 };
@@ -25,7 +27,7 @@ pub struct JsonLdClassic {
     pub base_url: Option<String>,
     pub crypto: Arc<dyn CryptoProvider>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
-    pub caching_loader: JsonLdCachingLoader,
+    pub caching_loader: ContextCache,
     params: Params,
 }
 
@@ -278,7 +280,7 @@ impl JsonLdClassic {
             crypto,
             base_url,
             did_method_provider,
-            caching_loader,
+            caching_loader: ContextCache::new(caching_loader),
         }
     }
 
@@ -379,7 +381,7 @@ pub(super) async fn verify_credential_signature(
     mut ld_credential: LdCredential,
     verification_fn: VerificationFn,
     crypto: &dyn CryptoProvider,
-    caching_loader: JsonLdCachingLoader,
+    caching_loader: ContextCache,
     extra_information: Option<&[u8]>,
 ) -> Result<(), FormatterError> {
     let mut proof = ld_credential
@@ -427,7 +429,7 @@ pub(super) async fn verify_presentation_signature(
     mut presentation: LdPresentation,
     verification_fn: VerificationFn,
     crypto: &dyn CryptoProvider,
-    caching_loader: JsonLdCachingLoader,
+    caching_loader: ContextCache,
 ) -> Result<(), FormatterError> {
     let mut proof = presentation
         .proof
@@ -519,7 +521,7 @@ pub(super) async fn prepare_proof_hash<T>(
     object: &T,
     crypto: &dyn CryptoProvider,
     proof: &LdProof,
-    caching_loader: JsonLdCachingLoader,
+    caching_loader: ContextCache,
     extra_information: Option<&[u8]>,
 ) -> Result<Vec<u8>, FormatterError>
 where

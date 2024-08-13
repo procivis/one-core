@@ -6,7 +6,9 @@ use one_crypto::CryptoProvider;
 use super::json_ld_classic::verify_credential_signature;
 use async_trait::async_trait;
 use model::OptiocalBarcodeCredential;
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
+    ContextCache, JsonLdCachingLoader,
+};
 use one_providers::{
     common_models::did::DidValue,
     credential_formatter::{
@@ -25,7 +27,7 @@ mod model;
 
 pub struct PhysicalCardFormatter {
     pub crypto: Arc<dyn CryptoProvider>,
-    pub caching_loader: JsonLdCachingLoader,
+    pub caching_loader: ContextCache,
 }
 
 #[cfg(test)]
@@ -155,7 +157,7 @@ impl PhysicalCardFormatter {
     pub fn new(crypto: Arc<dyn CryptoProvider>, caching_loader: JsonLdCachingLoader) -> Self {
         Self {
             crypto,
-            caching_loader,
+            caching_loader: ContextCache::new(caching_loader),
         }
     }
 }

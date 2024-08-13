@@ -11,16 +11,12 @@ use one_crypto::{
     Hasher, Signer,
 };
 
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
-    JsonLdCachingLoader, JsonLdResolver,
-};
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_providers::credential_formatter::imp::sdjwt_formatter::SDJWTFormatter;
-use one_providers::did::imp::resolver::{DidCachingLoader, DidResolver};
+use one_providers::did::imp::resolver::DidCachingLoader;
 use one_providers::remote_entity_storage::in_memory::InMemoryStorage;
 use one_providers::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
-use one_providers::revocation::imp::bitstring_status_list::resolver::{
-    StatusListCachingLoader, StatusListResolver,
-};
+use one_providers::revocation::imp::bitstring_status_list::resolver::StatusListCachingLoader;
 use one_providers::revocation::imp::bitstring_status_list::BitstringStatusList;
 use one_providers::revocation::imp::lvvc::LvvcProvider;
 use one_providers::revocation::imp::provider::RevocationMethodProviderImpl;
@@ -352,11 +348,8 @@ fn initialize_core(
                     }
                 }
 
-                let did_caching_loader = initialize_did_caching_loader(
-                    &cache_entities_config,
-                    data_provider,
-                    did_methods.to_owned(),
-                );
+                let did_caching_loader =
+                    initialize_did_caching_loader(&cache_entities_config, data_provider);
 
                 (
                     Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods)),
@@ -498,17 +491,18 @@ fn initialize_core(
 
                         let revocation_method = match fields.r#type {
                             RevocationType::None => Arc::new(NoneRevocation {}) as _,
-                            RevocationType::BitstringStatusList => Arc::new(BitstringStatusList {
-                                core_base_url: None,
-                                key_provider: key_provider.clone(),
-                                key_algorithm_provider: key_algorithm_provider.clone(),
-                                did_method_provider: did_method_provider.clone(),
-                                caching_loader: initialize_statuslist_resolver(
-                                    &cache_entities_config,
-                                    data_repository.clone(),
-                                ),
-                            })
-                                as _,
+                            RevocationType::BitstringStatusList => {
+                                Arc::new(BitstringStatusList::new(
+                                    None,
+                                    key_algorithm_provider.clone(),
+                                    did_method_provider.clone(),
+                                    key_provider.clone(),
+                                    initialize_statuslist_loader(
+                                        &cache_entities_config,
+                                        data_repository.clone(),
+                                    ),
+                                )) as _
+                            }
                             RevocationType::Lvvc => {
                                 ({
                                     let params =
@@ -631,7 +625,6 @@ pub fn initialize_jsonld_cache_loader(
             CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
         };
     JsonLdCachingLoader::new(
-        Arc::new(JsonLdResolver::default()),
         RemoteEntityType::JsonLdContext,
         remote_entity_storage,
         json_ld_context_config.cache_size as usize,
@@ -643,7 +636,6 @@ pub fn initialize_jsonld_cache_loader(
 pub fn initialize_did_caching_loader(
     cache_entities_config: &CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
-    did_methods: HashMap<String, Arc<dyn DidMethod>>,
 ) -> DidCachingLoader {
     let config = cache_entities_config
         .entities
@@ -663,10 +655,7 @@ pub fn initialize_did_caching_loader(
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
 
-    let resolver = DidResolver { did_methods };
-
     DidCachingLoader::new(
-        Arc::new(resolver),
         RemoteEntityType::DidDocument,
         storage,
         config.cache_size as usize,
@@ -675,7 +664,7 @@ pub fn initialize_did_caching_loader(
     )
 }
 
-pub fn initialize_statuslist_resolver(
+pub fn initialize_statuslist_loader(
     cache_entities_config: &CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
 ) -> StatusListCachingLoader {
@@ -698,7 +687,6 @@ pub fn initialize_statuslist_resolver(
     };
 
     StatusListCachingLoader::new(
-        Arc::new(StatusListResolver::default()),
         RemoteEntityType::StatusListCredential,
         storage,
         config.cache_size as usize,
