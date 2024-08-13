@@ -45,6 +45,7 @@ use one_providers::{
         KeyStorage,
     },
 };
+use reqwest::{tls::Version, Certificate};
 use serde::{Deserialize, Serialize};
 use time::Duration;
 
@@ -115,7 +116,16 @@ fn initialize_core(
     }
 
     #[allow(unused_mut)]
-    let mut client = reqwest::ClientBuilder::new();
+    let mut client = reqwest::ClientBuilder::new()
+        .max_tls_version(Version::TLS_1_2)
+        .add_root_certificate(
+            Certificate::from_pem(include_bytes!("cacert.pem"))
+                .map_err(|err| BindingError::Unknown(err.to_string()))?,
+        )
+        .add_root_certificate(
+            Certificate::from_pem(include_bytes!("intcert.pem"))
+                .map_err(|err| BindingError::Unknown(err.to_string()))?,
+        );
 
     #[cfg(target_os = "android")]
     {
