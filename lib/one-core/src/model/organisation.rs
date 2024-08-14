@@ -7,7 +7,11 @@ use time::OffsetDateTime;
 #[into(one_providers::common_models::organisation::OpenOrganisation)]
 pub struct Organisation {
     pub id: OrganisationId,
+    #[from(replace = OffsetDateTime::now_utc())]
+    #[into(skip)]
     pub created_date: OffsetDateTime,
+    #[from(replace = OffsetDateTime::now_utc())]
+    #[into(skip)]
     pub last_modified: OffsetDateTime,
 }
 

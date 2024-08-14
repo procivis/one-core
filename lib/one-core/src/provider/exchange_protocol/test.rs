@@ -66,8 +66,6 @@ async fn test_issuer_submit_succeeds() {
         key_type: key_type.to_string(),
         organisation: Some(OpenOrganisation {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
         }),
     };
 
@@ -940,14 +938,11 @@ fn dummy_credential() -> OpenCredential {
             schema_id: "CredentialSchemaId".to_owned(),
             organisation: Some(OpenOrganisation {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
             }),
         }),
         interaction: Some(OpenInteraction {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
             host: Some("https://core.dev.one-trust-solution.com".parse().unwrap()),
             data: Some(b"interaction data".to_vec()),
         }),
@@ -1006,8 +1001,6 @@ fn dummy_key() -> OpenKey {
         key_type: "EDDSA".to_string(),
         organisation: Some(OpenOrganisation {
             id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
         }),
     }
 }

@@ -11,6 +11,8 @@ pub type InteractionId = Uuid;
 pub struct Interaction {
     pub id: InteractionId,
     pub created_date: OffsetDateTime,
+    #[from(replace = OffsetDateTime::now_utc())]
+    #[into(skip)]
     pub last_modified: OffsetDateTime,
     pub host: Option<Url>, // base URL like: `https://core.dev.one-trust-solution.com`
     pub data: Option<Vec<u8>>, // empty for credential offer, json-serialized `Vec<ProofClaimSchema>` for proof request
