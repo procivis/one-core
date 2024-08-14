@@ -6,59 +6,60 @@ publish = false
 version = "0.1.0"
 
 [dependencies]
-aes-gcm              = { version = "0.10.3", features = ["std"] }
-anyhow.workspace     = true
-async-trait          = { version = "0.1" }
-bs58                 = { version = "0.5" }
-ciborium             = { version = "0.2" }
-convert_case         = { version = "0.6" }
-coset                = { version = "0.3", features = ["std"] }
-crc                  = { version = "3.2.1" }
-ct-codecs.workspace  = true
-dto_mapper.workspace = true
-figment              = { version = "0.10", default-features = false }
-futures.workspace    = true
-hex.workspace        = true
-hkdf                 = { version = "0.12.4", features = ["std"] }
-indexmap             = { version = "2.2", features = ["serde"] }
-itertools            = { version = "0.13" }
-josekit              = { version = "0.8", features = ["vendored"] }
-json-ld              = { version = "0.15" }
-jsonptr              = { version = "0.5" }
-mockall              = { workspace = true, optional = true }
-mrtd                 = { version = "0.5.2" }
-one-crypto           = { workspace = true }
-one-providers        = { workspace = true }
-ouroboros            = { version = "0.18" }
-pqc_dilithium        = { version = "0.2.0", git = "https://github.com/ihor-rud/dilithium", rev = "e02a683" }
-rand.workspace       = true
-rcgen                = { version = "0.13" }
-regex                = { version = "1.10" }
-reqwest.workspace    = true
-serde.workspace      = true
-serde_json.workspace = true
-serde_qs.workspace   = true
-serde_repr           = { version = "0.1" }
-serde_with.workspace = true
-serde_yaml           = { version = "0.9" }
-sha2                 = { version = "0.10" }
-shadow-rs.workspace  = true
-shared-types         = { version = "0.1.0", path = "../shared-types" }
-strum.workspace      = true
-strum_macros         = { version = "0.26" }
-tempfile.workspace   = true
-thiserror.workspace  = true
-time.workspace       = true
-tokio-util           = { version = "0.7", features = ["rt"] }
-tokio.workspace      = true
-tracing.workspace    = true
-url.workspace        = true
-uuid.workspace       = true
-x25519-dalek         = { version = "2.0", features = ["static_secrets", "serde"] }
-x509-parser          = { version = "0.16", features = ["verify"] }
-yasna                = { version = "0.5" }
-zeroize              = { version = "1.8", features = ["serde"] }
-zip                  = { version = "2.1" }
+aes-gcm               = { version = "0.10.3", features = ["std"] }
+anyhow.workspace      = true
+async-trait           = { version = "0.1" }
+bs58                  = { version = "0.5" }
+ciborium              = { version = "0.2" }
+convert_case          = { version = "0.6" }
+coset                 = { version = "0.3", features = ["std"] }
+crc                   = { version = "3.2.1" }
+ct-codecs.workspace   = true
+dto_mapper.workspace  = true
+figment               = { version = "0.10", default-features = false }
+futures.workspace     = true
+hex.workspace         = true
+hkdf                  = { version = "0.12.4", features = ["std"] }
+indexmap              = { version = "2.2", features = ["serde"] }
+itertools             = { version = "0.13" }
+josekit               = { version = "0.8", features = ["vendored"] }
+json-ld               = { version = "0.15" }
+jsonptr               = { version = "0.5" }
+mockall               = { workspace = true, optional = true }
+mrtd                  = { version = "0.5.2" }
+one-crypto            = { workspace = true }
+one-providers         = { workspace = true }
+ouroboros             = { version = "0.18" }
+pqc_dilithium         = { version = "0.2.0", git = "https://github.com/ihor-rud/dilithium", rev = "e02a683" }
+rand.workspace        = true
+rcgen                 = { version = "0.13" }
+regex                 = { version = "1.10" }
+reqwest.workspace     = true
+serde.workspace       = true
+serde_json.workspace  = true
+serde_qs.workspace    = true
+serde_repr            = { version = "0.1" }
+serde_with.workspace  = true
+serde_yaml            = { version = "0.9" }
+sha2                  = { version = "0.10" }
+shadow-rs.workspace   = true
+shared-types          = { version = "0.1.0", path = "../shared-types" }
+strum.workspace       = true
+strum_macros          = { version = "0.26" }
+tempfile.workspace    = true
+thiserror.workspace   = true
+time.workspace        = true
+tokio-util            = { version = "0.7", features = ["rt"] }
+tokio.workspace       = true
+tracing.workspace     = true
+url.workspace         = true
+urlencoding.workspace = true
+uuid.workspace        = true
+x25519-dalek          = { version = "2.0", features = ["static_secrets", "serde"] }
+x509-parser           = { version = "0.16", features = ["verify"] }
+yasna                 = { version = "0.5" }
+zeroize               = { version = "1.8", features = ["serde"] }
+zip                   = { version = "2.1" }
 
 [dev-dependencies]
 assert2           = { version = "0.3" }

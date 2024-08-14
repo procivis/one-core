@@ -343,6 +343,7 @@ pub(super) fn get_simple_context_bbsplus(
                         "id": "@id",
                         "type": "@type",
                         "Key 1": format!("{}/ssi/context/v1/{schema_id}#Key%201", base_url),
+                        "USCIS#": format!("{}/ssi/context/v1/{schema_id}#USCIS%23", base_url),
                         "Address root": {
                             "@context": {
                                 "Address1": format!("{}/ssi/context/v1/{schema_id}#Address1", base_url),
