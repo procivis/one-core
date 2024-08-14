@@ -113,6 +113,59 @@ impl CredentialSchemasDB {
         self.get(&id).await
     }
 
+    pub async fn create_special_chars(
+        &self,
+        name: &str,
+        organisation: &Organisation,
+        revocation_method: &str,
+        params: TestingCreateSchemaParams,
+    ) -> CredentialSchema {
+        let id = Uuid::new_v4();
+        let claim_schema = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "first name#".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: false,
+        };
+        let claim_schemas = vec![CredentialSchemaClaim {
+            schema: claim_schema.to_owned(),
+            required: true,
+        }];
+
+        let credential_schema = CredentialSchema {
+            id: id.into(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            name: name.to_owned(),
+            wallet_storage_type: Some(
+                params
+                    .wallet_storage_type
+                    .unwrap_or(OpenWalletStorageTypeEnum::Software),
+            ),
+            organisation: Some(organisation.clone()),
+            deleted_at: None,
+            format: params.format.unwrap_or("JSON_LD_BBSPLUS".to_string()),
+            revocation_method: revocation_method.to_owned(),
+            claim_schemas: Some(claim_schemas),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_type: params
+                .schema_type
+                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
+            schema_id: id.to_string(),
+        };
+
+        let id = self
+            .repository
+            .create_credential_schema(credential_schema)
+            .await
+            .unwrap();
+
+        self.get(&id).await
+    }
+
     pub async fn create_with_nested_claims(
         &self,
         name: &str,

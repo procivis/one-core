@@ -110,3 +110,36 @@ async fn test_get_json_ld_context_with_nested_claims_success() {
             core_base_url, credential_schema.id
         ));
 }
+
+#[tokio::test]
+async fn test_get_json_ld_context_special_chars_success() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let core_base_url = context.config.app.core_base_url;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_special_chars("test schema", &organisation, "NONE", Default::default())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .get_json_ld_context(credential_schema.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp["@context"]["TestSchemaCredential"]["@id"].assert_eq(&format!(
+        "{}/ssi/context/v1/{}#TestSchemaCredential",
+        core_base_url, credential_schema.id
+    ));
+    resp["@context"]["TestSchemaSubject"]["@context"]["first name#"].assert_eq(&format!(
+        "{}/ssi/context/v1/{}#first%20name%23",
+        core_base_url, credential_schema.id
+    ));
+}

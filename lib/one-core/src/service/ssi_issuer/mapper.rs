@@ -110,7 +110,8 @@ fn insert_claim(
 
 pub fn get_url_with_fragment(base_url: &str, fragment: &str) -> Result<String, ServiceError> {
     let mut url = Url::parse(base_url).map_err(|e| ServiceError::MappingError(e.to_string()))?;
-    url.set_fragment(Some(fragment));
+    // We need to url encode the fragment in case `#` is used in a claim name
+    url.set_fragment(Some(&urlencoding::encode(fragment)));
     Ok(url.to_string())
 }
 
