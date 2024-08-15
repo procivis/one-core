@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -9,8 +9,10 @@ use one_providers::common_models::credential::{OpenCredential, OpenCredentialSta
 use one_providers::common_models::did::OpenDid;
 use one_providers::common_models::key::{KeyId, OpenKey};
 use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::common_models::proof::OpenProof;
-use one_providers::credential_formatter::model::DetailCredential;
+use one_providers::common_models::proof::{OpenProof, OpenProofStateEnum};
+use one_providers::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::exchange_protocol::openid4vc::imp::create_presentation_submission;
 use one_providers::exchange_protocol::openid4vc::model::{
     DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentationDefinitionFieldDTO,
     PresentationDefinitionRequestGroupResponseDTO,
@@ -19,17 +21,24 @@ use one_providers::exchange_protocol::openid4vc::model::{
     ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
+use one_providers::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
 use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
     StorageAccess, TypeToDescriptorMapper,
 };
+use one_providers::key_storage::provider::KeyProvider;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
+use crate::provider::exchange_protocol::deserialize_interaction_data;
+use crate::provider::exchange_protocol::iso_mdl::ble_holder::IsoMdlBleHolder;
+use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::proof::dto::MdocBleInteractionData;
+use crate::util::ble_resource::BleWaiter;
 
 pub(crate) mod ble;
+mod ble_holder;
 pub(crate) mod common;
 pub(crate) mod device_engagement;
 mod session;
@@ -39,11 +48,24 @@ mod test;
 
 pub(crate) struct IsoMdl {
     config: Arc<CoreConfig>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    key_provider: Arc<dyn KeyProvider>,
+    ble: Option<BleWaiter>,
 }
 
 impl IsoMdl {
-    pub fn new(config: Arc<CoreConfig>) -> Self {
-        Self { config }
+    pub fn new(
+        config: Arc<CoreConfig>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        key_provider: Arc<dyn KeyProvider>,
+        ble: Option<BleWaiter>,
+    ) -> Self {
+        Self {
+            config,
+            formatter_provider,
+            key_provider,
+            ble,
+        }
     }
 }
 
@@ -72,15 +94,122 @@ impl ExchangeProtocolImpl for IsoMdl {
 
     async fn submit_proof(
         &self,
-        _proof: &OpenProof,
-        _credential_presentations: Vec<PresentedCredential>,
-        _holder_did: &OpenDid,
-        _key: &OpenKey,
-        _jwk_key_id: Option<String>,
+        proof: &OpenProof,
+        credential_presentations: Vec<PresentedCredential>,
+        holder_did: &OpenDid,
+        key: &OpenKey,
+        jwk_key_id: Option<String>,
         _format_map: HashMap<String, String>,
-        _presentation_format_map: HashMap<String, String>,
+        presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
-        todo!()
+        let ble = self.ble.clone().ok_or_else(|| {
+            ExchangeProtocolError::Failed("Missing BLE central for submit proof".to_string())
+        })?;
+
+        let interaction_data: BLEOpenID4VPInteractionData = deserialize_interaction_data(
+            proof
+                .interaction
+                .as_ref()
+                .and_then(|interaction| interaction.data.as_ref()),
+        )?;
+
+        let ble_holder = IsoMdlBleHolder::new(ble.clone());
+
+        if !ble_holder.enabled().await? {
+            return Err(ExchangeProtocolError::Failed(
+                "BLE adapter disabled".to_string(),
+            ));
+        }
+
+        let tokens: Vec<String> = credential_presentations
+            .iter()
+            .map(|presented_credential| presented_credential.presentation.to_owned())
+            .collect();
+
+        let formats: HashSet<&str> = credential_presentations
+            .iter()
+            .map(|presented_credential| presented_credential.credential_schema.format.as_str())
+            .collect();
+
+        let (format, oidc_format) = match () {
+            _ if formats.contains("MDOC") => {
+                if formats.len() > 1 {
+                    return Err(ExchangeProtocolError::Failed(
+                        "Currently for a proof MDOC cannot be used with other formats".to_string(),
+                    ));
+                };
+
+                ("MDOC", "mso_mdoc")
+            }
+            _ if formats.contains("JSON_LD_CLASSIC")
+                || formats.contains("JSON_LD_BBSPLUS")
+                // Workaround for missing cryptosuite information in openid4vc
+                || formats.contains("JSON_LD") =>
+            {
+                ("JSON_LD_CLASSIC", "ldp_vp")
+            }
+            _ => ("JWT", "jwt_vp_json"),
+        };
+
+        let presentation_formatter = self
+            .formatter_provider
+            .get_formatter(format)
+            .ok_or_else(|| ExchangeProtocolError::Failed("Formatter not found".to_string()))?;
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(key, jwk_key_id)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let presentation_definition_id = interaction_data
+            .presentation_definition
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "Missing presentation definition".into(),
+            ))?
+            .id;
+
+        let presentation_submission = create_presentation_submission(
+            presentation_definition_id,
+            credential_presentations,
+            oidc_format,
+            presentation_format_map,
+        )?;
+
+        if format == "MDOC" {
+            return Err(ExchangeProtocolError::Failed(
+                "Mdoc over BLE not available".to_string(),
+            ));
+        }
+
+        let nonce = interaction_data.nonce.to_owned();
+        let ctx = FormatPresentationCtx {
+            nonce,
+            ..Default::default()
+        };
+
+        let vp_token = presentation_formatter
+            .format_presentation(
+                &tokens,
+                &holder_did.did.to_string().into(),
+                &key.key_type,
+                auth_fn,
+                ctx,
+            )
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        ble_holder
+            .submit_presentation(vp_token, presentation_submission, &interaction_data)
+            .await?;
+
+        Ok(UpdateResponse {
+            result: (),
+            update_proof: None,
+            create_did: None,
+            update_credential: None,
+            update_credential_schema: None,
+        })
     }
 
     async fn accept_credential(
@@ -101,6 +230,14 @@ impl ExchangeProtocolImpl for IsoMdl {
         _credential: &OpenCredential,
     ) -> Result<(), ExchangeProtocolError> {
         unimplemented!()
+    }
+
+    async fn validate_proof_for_submission(
+        &self,
+        proof: &OpenProof,
+    ) -> Result<(), ExchangeProtocolError> {
+        throw_if_latest_proof_state_not_eq(proof, OpenProofStateEnum::Requested)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     async fn share_credential(

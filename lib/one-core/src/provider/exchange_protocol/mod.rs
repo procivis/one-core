@@ -122,7 +122,12 @@ pub(crate) fn exchange_protocol_providers_from_config(
                 providers.insert(name.to_string(), protocol);
             }
             ExchangeType::IsoMdl => {
-                let protocol = Arc::new(ExchangeProtocolWrapper::new(IsoMdl::new(config.clone())));
+                let protocol = Arc::new(ExchangeProtocolWrapper::new(IsoMdl::new(
+                    config.clone(),
+                    formatter_provider.clone(),
+                    key_provider.clone(),
+                    ble.clone(),
+                )));
 
                 providers.insert(name.to_string(), protocol);
             }

@@ -13,9 +13,11 @@ use one_providers::{
         organisation::OpenOrganisation,
         proof::OpenProof,
     },
+    credential_formatter::provider::MockCredentialFormatterProvider,
     exchange_protocol::openid4vc::{
         model::PresentationDefinitionRuleTypeEnum, ExchangeProtocolImpl, MockStorageProxy,
     },
+    key_storage::provider::MockKeyProvider,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -35,7 +37,12 @@ use super::IsoMdl;
 #[tokio::test]
 async fn test_get_presentation_definition_ok() {
     let core_config = generic_config().core;
-    let service = IsoMdl::new(Arc::new(core_config));
+    let service = IsoMdl::new(
+        Arc::new(core_config),
+        Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(MockKeyProvider::new()),
+        None,
+    );
 
     let organisation_id = Uuid::new_v4().into();
     let schema_id = "org.iso.18013.5.1".to_string();

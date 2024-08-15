@@ -208,7 +208,7 @@ pub async fn connect(
         )
         .await
     else {
-        return Err(ServiceError::Other("ble flow was interupted".into()));
+        return Err(ServiceError::Other("ble flow was interrupted".into()));
     };
 
     Ok(())
