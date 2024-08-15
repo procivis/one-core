@@ -8,7 +8,7 @@ use one_providers::common_models::credential::OpenCredential;
 use one_providers::common_models::did::{KeyRole, OpenDid};
 use one_providers::common_models::key::{KeyId, OpenKey};
 use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::common_models::proof::OpenProof;
+use one_providers::common_models::proof::{OpenProof, OpenProofStateEnum};
 use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
@@ -17,6 +17,7 @@ use one_providers::exchange_protocol::openid4vc::model::{
     PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
+use one_providers::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
 use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
     StorageAccess, TypeToDescriptorMapper,
@@ -105,6 +106,25 @@ impl ExchangeProtocolImpl for ScanToVerify {
         unimplemented!()
     }
 
+    async fn get_presentation_definition(
+        &self,
+        _proof: &OpenProof,
+        _interaction_data: Self::VPInteractionContext,
+        _storage_access: &StorageAccess,
+        _format_map: HashMap<String, String>,
+        _types: HashMap<String, DatatypeType>,
+    ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
+        unimplemented!()
+    }
+
+    async fn validate_proof_for_submission(
+        &self,
+        proof: &OpenProof,
+    ) -> Result<(), ExchangeProtocolError> {
+        throw_if_latest_proof_state_not_eq(proof, OpenProofStateEnum::Pending)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
+    }
+
     async fn share_credential(
         &self,
         _credential: &OpenCredential,
@@ -122,17 +142,6 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _vp_formats: HashMap<String, OpenID4VPFormat>,
         _type_to_descriptor: TypeToDescriptorMapper,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
-        unimplemented!()
-    }
-
-    async fn get_presentation_definition(
-        &self,
-        _proof: &OpenProof,
-        _interaction_data: Self::VPInteractionContext,
-        _storage_access: &StorageAccess,
-        _format_map: HashMap<String, String>,
-        _types: HashMap<String, DatatypeType>,
-    ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         unimplemented!()
     }
 

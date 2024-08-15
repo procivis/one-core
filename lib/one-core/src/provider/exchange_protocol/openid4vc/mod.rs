@@ -6,7 +6,7 @@ use one_providers::common_models::credential::OpenCredential;
 use one_providers::common_models::did::OpenDid;
 use one_providers::common_models::key::{KeyId, OpenKey};
 use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::common_models::proof::OpenProof;
+use one_providers::common_models::proof::{OpenProof, OpenProofStateEnum};
 use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::exchange_protocol::openid4vc::imp::OpenID4VCHTTP;
 use one_providers::exchange_protocol::openid4vc::model::{
@@ -14,6 +14,7 @@ use one_providers::exchange_protocol::openid4vc::model::{
     PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
+use one_providers::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
 use one_providers::exchange_protocol::openid4vc::{
     FormatMapper, HandleInvitationOperationsAccess, TypeToDescriptorMapper,
 };
@@ -158,6 +159,14 @@ impl ExchangeProtocolImpl for OpenID4VC {
         credential: &OpenCredential,
     ) -> Result<(), ExchangeProtocolError> {
         self.openid_http.reject_credential(credential).await
+    }
+
+    async fn validate_proof_for_submission(
+        &self,
+        proof: &OpenProof,
+    ) -> Result<(), ExchangeProtocolError> {
+        throw_if_latest_proof_state_not_eq(proof, OpenProofStateEnum::Pending)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     async fn share_credential(

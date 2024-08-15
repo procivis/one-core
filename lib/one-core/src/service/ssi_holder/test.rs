@@ -291,6 +291,11 @@ async fn test_submit_proof_succeeds() {
     let mut exchange_protocol = MockExchangeProtocol::default();
     exchange_protocol
         .inner
+        .expect_validate_proof_for_submission()
+        .once()
+        .returning(|_| Ok(()));
+    exchange_protocol
+        .inner
         .expect_get_presentation_definition()
         .withf(move |proof, _, _, _, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
@@ -486,6 +491,11 @@ async fn test_submit_proof_repeating_claims() {
         .returning(move |_| Some(formatter.clone()));
 
     let mut exchange_protocol = MockExchangeProtocol::default();
+    exchange_protocol
+        .inner
+        .expect_validate_proof_for_submission()
+        .once()
+        .returning(|_| Ok(()));
     exchange_protocol
         .inner
         .expect_get_presentation_definition()

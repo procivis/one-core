@@ -223,8 +223,6 @@ impl SSIHolderService {
             );
         };
 
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
-
         let Some(holder_did) = self
             .did_repository
             .get_did(
@@ -272,6 +270,11 @@ impl SSIHolderService {
             MissingProviderError::ExchangeProtocol(proof.exchange.clone()),
         )?;
 
+        let open_proof = proof.clone().into();
+        exchange_protocol
+            .validate_proof_for_submission(&open_proof)
+            .await?;
+
         let interaction_data = proof
             .interaction
             .as_ref()
@@ -289,7 +292,7 @@ impl SSIHolderService {
 
         let presentation_definition = exchange_protocol
             .get_presentation_definition(
-                &proof.clone().into(),
+                &open_proof,
                 interaction_data,
                 &storage_access,
                 create_oicd_to_core_format_map(),
@@ -478,7 +481,7 @@ impl SSIHolderService {
 
         let submit_result = exchange_protocol
             .submit_proof(
-                &proof.clone().into(),
+                &open_proof,
                 credential_presentations,
                 &holder_did.clone().into(),
                 selected_key,

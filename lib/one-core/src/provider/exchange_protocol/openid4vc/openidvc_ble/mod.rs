@@ -17,7 +17,7 @@ use one_providers::common_models::credential::OpenCredential;
 use one_providers::common_models::did::{DidValue, OpenDid};
 use one_providers::common_models::key::{KeyId, OpenKey};
 use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::common_models::proof::OpenProof;
+use one_providers::common_models::proof::{OpenProof, OpenProofStateEnum};
 use one_providers::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::exchange_protocol::openid4vc::imp::create_presentation_submission;
@@ -28,6 +28,7 @@ use one_providers::exchange_protocol::openid4vc::model::{
     UpdateResponse,
 };
 use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
+use one_providers::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
 use one_providers::exchange_protocol::openid4vc::{
     FormatMapper, HandleInvitationOperationsAccess, TypeToDescriptorMapper,
 };
@@ -78,7 +79,7 @@ pub static OIDC_BLE_FLOW: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
 pub type MessageSize = u16;
 
 // https://openid.bitbucket.io/connect/openid-4-verifiable-presentations-over-ble-1_0.html#name-transfer-summary-report
-type TransferSummaryReport = Vec<u16>;
+pub(crate) type TransferSummaryReport = Vec<u16>;
 
 // https://openid.bitbucket.io/connect/openid-4-verifiable-presentations-over-ble-1_0.html#section-5.3
 #[derive(Clone, Debug)]
@@ -701,6 +702,14 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             &self.config,
         )
         .map(Into::into)
+    }
+
+    async fn validate_proof_for_submission(
+        &self,
+        proof: &OpenProof,
+    ) -> std::result::Result<(), ExchangeProtocolError> {
+        throw_if_latest_proof_state_not_eq(proof, OpenProofStateEnum::Pending)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     async fn verifier_handle_proof(
