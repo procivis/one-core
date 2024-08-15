@@ -32,7 +32,7 @@ use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::config::core_config::{CoreConfig, Fields, Params};
+use crate::config::core_config::{CoreConfig, DatatypeType, Fields, Params};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::revocation_list::{RevocationList, RevocationListPurpose};
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
@@ -873,7 +873,21 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
 }
 
 fn dummy_config() -> CoreConfig {
-    CoreConfig::default()
+    let mut config = CoreConfig::default();
+
+    config.datatype.insert(
+        "STRING".to_string(),
+        Fields {
+            r#type: DatatypeType::String,
+            display: Value::String("display".to_string()),
+            order: None,
+            disabled: None,
+            capabilities: None,
+            params: None,
+        },
+    );
+
+    config
 }
 
 fn dummy_credential() -> OpenCredential {

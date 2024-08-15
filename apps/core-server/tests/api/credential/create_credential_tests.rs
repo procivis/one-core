@@ -61,6 +61,91 @@ async fn test_create_credential_success() {
 }
 
 #[tokio::test]
+async fn test_create_credential_with_array_success() {
+    // GIVEN
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_array_claims("test", &organisation, "JWT", Default::default())
+        .await;
+
+    let claim_id = credential_schema
+        .claim_schemas
+        .clone()
+        .unwrap()
+        .into_iter()
+        .find(|claim| claim.schema.key == "root_array/nested/field")
+        .unwrap()
+        .schema
+        .id;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "root_array/0/nested/0/field"
+                },
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "root_array/0/nested/1/field"
+                },
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "root_array/1/nested/0/field"
+                },
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "root_array/1/nested/1/field"
+                }
+            ]),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let resp = context
+        .api
+        .credentials
+        .get(&resp["id"].parse::<String>())
+        .await;
+
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    let root_array = &resp["claims"][0];
+    assert_eq!(root_array["path"], "root_array");
+
+    let item = &root_array["value"][0];
+    assert_eq!(item["path"], "root_array/0");
+
+    let nested = &item["value"][0];
+    assert_eq!(nested["path"], "root_array/0/nested");
+
+    let nested_item = &nested["value"][0];
+    assert_eq!(nested_item["path"], "root_array/0/nested/0");
+
+    let nested_field = &nested_item["value"][0];
+    assert_eq!(nested_field["path"], "root_array/0/nested/0/field");
+    assert_eq!(nested_field["value"], "foo");
+}
+
+#[tokio::test]
 async fn test_create_credential_success_with_nested_claims() {
     // GIVEN
     let (context, organisation, did, _) = TestContext::new_with_did().await;

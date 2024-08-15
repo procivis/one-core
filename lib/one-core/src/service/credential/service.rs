@@ -1,9 +1,9 @@
 use anyhow::Context;
 use one_providers::credential_formatter::model::DetailCredential;
-use one_providers::exchange_protocol::openid4vc::model::OpenID4VCICredential;
-use one_providers::exchange_protocol::openid4vc::model::OpenID4VCIProof;
-use one_providers::exchange_protocol::openid4vc::model::OpenID4VCITokenResponseDTO;
-use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
+use one_providers::exchange_protocol::openid4vc::model::{
+    OpenID4VCICredential, OpenID4VCIProof, OpenID4VCITokenResponseDTO, ShareResponse,
+};
+use one_providers::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::model::{
@@ -54,10 +54,8 @@ use crate::service::oidc::dto::OpenID4VCICredentialResponseDTO;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_credentials_interaction,
 };
-use crate::util::oidc::detect_format_with_crypto_suite;
-use crate::util::oidc::map_core_to_oidc_format;
+use crate::util::oidc::{detect_format_with_crypto_suite, map_core_to_oidc_format};
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
-use one_providers::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 
 impl CredentialService {
     /// Creates a credential according to request

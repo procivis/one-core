@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use dto_mapper::convert_inner;
 use one_providers::common_models::key::OpenKey;
 use one_providers::revocation::model::CredentialRevocationState;
@@ -8,7 +6,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::CredentialSchemaType;
-use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::claim::Claim;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
@@ -21,7 +19,6 @@ use crate::service::credential::dto::{
     CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
     DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
 };
-use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub fn credential_detail_response_from_model(
@@ -91,73 +88,6 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
     }
 }
 
-pub(super) fn renest_claims(
-    claims: Vec<DetailCredentialClaimResponseDTO>,
-) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
-    let mut result = vec![];
-
-    // Iterate over all and copy all unnested non-array claims to new vec
-    for claim in claims.iter() {
-        if claim.schema.key.find(NESTED_CLAIM_MARKER).is_none() {
-            result.push(claim.to_owned());
-        }
-    }
-
-    // Find all nested claims and move them to related entries in result vec
-    for mut claim in claims.into_iter() {
-        if claim.schema.key.find(NESTED_CLAIM_MARKER).is_some() {
-            let matching_entry = result
-                .iter_mut()
-                .find(|result_schema| {
-                    claim.schema.key.starts_with(&format!(
-                        "{}{NESTED_CLAIM_MARKER}",
-                        result_schema.schema.key
-                    ))
-                })
-                .ok_or(ServiceError::BusinessLogic(
-                    BusinessLogicError::MissingParentClaimSchema {
-                        claim_schema_id: claim.schema.id,
-                    },
-                ))?;
-            claim.schema.key = remove_first_nesting_layer(&claim.schema.key);
-
-            match &mut matching_entry.value {
-                DetailCredentialClaimValueResponseDTO::Nested(nested) => {
-                    nested.push(claim);
-                }
-                _ => {
-                    matching_entry.value =
-                        DetailCredentialClaimValueResponseDTO::Nested(vec![claim]);
-                }
-            }
-        }
-    }
-
-    // Repeat for all claims to nest all subclaims
-    let mut nested = result
-        .into_iter()
-        .map(|mut claim_schema| {
-            if let DetailCredentialClaimValueResponseDTO::Nested(nested) = &claim_schema.value {
-                claim_schema.value = DetailCredentialClaimValueResponseDTO::Nested(renest_claims(
-                    nested.to_owned(),
-                )?);
-            }
-
-            Ok(claim_schema)
-        })
-        .collect::<Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError>>()?;
-
-    // Remove empty non-required object claims
-    nested.retain(|element| match &element.value {
-        DetailCredentialClaimValueResponseDTO::Nested(value) => {
-            element.schema.required || !value.is_empty()
-        }
-        _ => true,
-    });
-
-    Ok(nested)
-}
-
 pub(crate) fn from_vec_claim(
     claims: Vec<Claim>,
     credential_schema: &CredentialSchema,
@@ -170,48 +100,146 @@ pub(crate) fn from_vec_claim(
             .ok_or(ServiceError::MappingError(
                 "claim_schemas is None".to_string(),
             ))?;
-    let result = claim_schemas
-        .iter()
-        .map(|claim_schema| {
-            let claims = claims
-                .iter()
-                .filter(|claim| {
-                    let schema = claim.schema.as_ref().ok_or(ServiceError::MappingError(
-                        "claim_schema is None".to_string(),
-                    ));
-                    if let Ok(schema) = schema {
-                        schema.id == claim_schema.schema.id
-                    } else {
-                        false
-                    }
-                })
-                .collect::<Vec<&Claim>>();
 
-            if claims.is_empty() {
-                Ok(vec![DetailCredentialClaimResponseDTO {
-                    path: claim_schema.schema.key.to_owned(),
-                    schema: claim_schema.to_owned().into(),
-                    value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
-                }])
-            } else {
-                claims
-                    .into_iter()
-                    .map(|claim| claim_to_dto(claim, claim_schema, config))
-                    .collect::<Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError>>()
-            }
-        })
-        .collect::<Result<Vec<Vec<DetailCredentialClaimResponseDTO>>, ServiceError>>()?
-        .into_iter()
-        .flatten()
-        .collect();
+    let mut claims = claims.into_iter().try_fold(vec![], |state, claim| {
+        insert_claim(state, claim, claim_schemas, config)
+    })?;
 
-    let nested = renest_claims(result)?;
-    let arrays_nested = renest_arrays(nested, "", claim_schemas, config)?;
-    let sorted = sort_arrays(arrays_nested);
-    Ok(sorted)
+    sort_claims(&mut claims);
+
+    Ok(claims)
 }
 
-pub fn claim_to_dto(
+fn insert_claim(
+    mut root: Vec<DetailCredentialClaimResponseDTO>,
+    claim: Claim,
+    claim_schemas: &[CredentialSchemaClaim],
+    config: &CoreConfig,
+) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
+    match claim.path.rsplit_once(NESTED_CLAIM_MARKER) {
+        Some((head, _)) => {
+            let parent_claim = get_or_insert(&mut root, head, claim_schemas)?;
+
+            match &mut parent_claim.value {
+                DetailCredentialClaimValueResponseDTO::Nested(claims) => {
+                    let claim_schema = claim
+                        .schema
+                        .as_ref()
+                        .ok_or_else(|| ServiceError::Other("claim.schema is missing".into()))?;
+
+                    let mut credential_claim_schema = claim_schemas
+                        .iter()
+                        .find(|value| value.schema.key == claim_schema.key)
+                        .ok_or_else(|| ServiceError::Other("claim.schema is unknown".into()))?
+                        .clone();
+
+                    if parent_claim.schema.array {
+                        credential_claim_schema.schema.array = false;
+                    }
+
+                    claims.push(claim_to_dto(&claim, &credential_claim_schema, config)?);
+                }
+                _ => {
+                    return Err(ServiceError::MappingError(
+                        "Parent claim should be nested".into(),
+                    ))
+                }
+            }
+        }
+        None => {
+            let claim_schema = claim
+                .schema
+                .as_ref()
+                .ok_or_else(|| ServiceError::Other("claim.schema is missing".into()))?;
+
+            let claim_schema = claim_schemas
+                .iter()
+                .find(|value| value.schema.key == claim_schema.key)
+                .ok_or_else(|| ServiceError::Other("claim.schema is unknown".into()))?;
+
+            root.push(claim_to_dto(&claim, claim_schema, config)?);
+        }
+    };
+
+    Ok(root)
+}
+
+fn get_or_insert<'a>(
+    root: &'a mut Vec<DetailCredentialClaimResponseDTO>,
+    path: &str,
+    claim_schemas: &[CredentialSchemaClaim],
+) -> Result<&'a mut DetailCredentialClaimResponseDTO, ServiceError> {
+    match path.rsplit_once(NESTED_CLAIM_MARKER) {
+        Some((head, _)) => {
+            let parent_claim = get_or_insert(root, head, claim_schemas)?;
+            let key = from_path_to_key(parent_claim, path)?;
+
+            match &mut parent_claim.value {
+                DetailCredentialClaimValueResponseDTO::Nested(claims) => {
+                    if let Some(i) = claims.iter().position(|claim| claim.path == path) {
+                        Ok(&mut claims[i])
+                    } else {
+                        let mut item_schema = claim_schemas
+                            .iter()
+                            .find(|schema| schema.schema.key == key)
+                            .ok_or_else(|| ServiceError::Other("missing claim schema".into()))?
+                            .to_owned();
+
+                        if parent_claim.schema.array {
+                            item_schema.schema.array = false;
+                        }
+
+                        claims.push(DetailCredentialClaimResponseDTO {
+                            path: path.to_owned(),
+                            schema: item_schema.into(),
+                            value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
+                        });
+                        let last = claims.len() - 1;
+                        Ok(&mut claims[last])
+                    }
+                }
+                _ => Err(ServiceError::MappingError(
+                    "Parent claim should be nested".into(),
+                )),
+            }
+        }
+        None => {
+            if let Some(i) = root.iter().position(|claim| claim.schema.key == path) {
+                Ok(&mut root[i])
+            } else {
+                root.push(DetailCredentialClaimResponseDTO {
+                    path: path.to_owned(),
+                    schema: claim_schemas
+                        .iter()
+                        .find(|schema| schema.schema.key == path)
+                        .ok_or_else(|| ServiceError::Other("missing claim schema".into()))?
+                        .to_owned()
+                        .into(),
+                    value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
+                });
+                let last = root.len() - 1;
+                Ok(&mut root[last])
+            }
+        }
+    }
+}
+
+fn from_path_to_key(
+    parent: &DetailCredentialClaimResponseDTO,
+    path: &str,
+) -> Result<String, ServiceError> {
+    if parent.schema.array {
+        return Ok(parent.schema.key.clone());
+    }
+
+    let suffix = path
+        .strip_prefix(&parent.path)
+        .ok_or_else(|| ServiceError::Other("invalid path".into()))?;
+
+    Ok(format!("{}{suffix}", parent.schema.key))
+}
+
+fn claim_to_dto(
     claim: &Claim,
     claim_schema: &CredentialSchemaClaim,
     config: &CoreConfig,
@@ -249,234 +277,13 @@ pub fn claim_to_dto(
     })
 }
 
-pub fn sort_arrays(
-    claims: Vec<DetailCredentialClaimResponseDTO>,
-) -> Vec<DetailCredentialClaimResponseDTO> {
-    claims
-        .into_iter()
-        .map(|mut claim| {
-            if claim.schema.array {
-                if let DetailCredentialClaimValueResponseDTO::Nested(values) = &mut claim.value {
-                    let prefix = format!("{}{NESTED_CLAIM_MARKER}", claim.path);
-                    values.sort_by(|v1, v2| {
-                        let v1_index = extract_index_from_path(&v1.path, &prefix).parse::<u64>();
-                        let v2_index = extract_index_from_path(&v2.path, &prefix).parse::<u64>();
-
-                        match (v1_index, v2_index) {
-                            (Ok(i1), Ok(i2)) => i1.cmp(&i2),
-                            _ => v1.path.cmp(&v2.path),
-                        }
-                    });
-
-                    *values = sort_arrays(values.to_owned());
-                }
-            }
-            claim
-        })
-        .collect()
-}
-
-pub(super) fn extract_index_from_path<'a>(path: &'a str, prefix: &'a str) -> &'a str {
-    if path.len() <= prefix.len() {
-        return path;
-    }
-
-    let path = &path[prefix.len()..];
-    match path.find(NESTED_CLAIM_MARKER) {
-        None => path,
-        Some(value) => &path[0..value],
-    }
-}
-
-pub(super) fn renest_arrays(
-    claims: Vec<DetailCredentialClaimResponseDTO>,
-    prefix: &str,
-    claim_schemas: &[CredentialSchemaClaim],
-    config: &CoreConfig,
-) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
-    let object_datatypes = config
-        .datatype
-        .iter()
-        .filter_map(|(key, fields)| {
-            if fields.r#type == DatatypeType::Object {
-                Some(key)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<&str>>();
-
-    // Copy non-arrays & array objects directly to result
-    let mut result = claims
-        .iter()
-        .filter(|claim| {
-            !claim.schema.array || object_datatypes.contains(&claim.schema.datatype.as_str())
-        })
-        .cloned()
-        .collect::<Vec<_>>();
-
-    // Collect list of array prefixes and use them to insert items to result
-    claims
-        .iter()
-        .filter_map(|claim| {
-            if claim.schema.array && !object_datatypes.contains(&claim.schema.datatype.as_str()) {
-                Some((claim.schema.key.to_owned(), claim.schema.to_owned()))
-            } else {
-                None
-            }
-        })
-        .collect::<BTreeMap<String, CredentialClaimSchemaDTO>>()
-        .into_iter()
-        .for_each(|(key, schema)| {
-            let mut values = vec![];
-
-            claims.iter().for_each(|claim| {
-                if claim.schema.id == schema.id {
-                    values.push(claim.to_owned());
-                }
-            });
-
-            match result.iter_mut().find(|item| item.schema.id == schema.id) {
-                None => {
-                    if schema.array
-                        && values.first().is_some_and(|f| match &f.value {
-                            DetailCredentialClaimValueResponseDTO::Nested(value) => {
-                                f.schema.array && value.first().is_none()
-                            }
-                            _ => f.schema.array,
-                        })
-                    {
-                        result.push(DetailCredentialClaimResponseDTO {
-                            path: format!("{prefix}{key}"),
-                            schema: schema.to_owned(),
-                            value: DetailCredentialClaimValueResponseDTO::Nested(
-                                values
-                                    .into_iter()
-                                    .map(|mut value| {
-                                        value.schema.array = false;
-                                        value
-                                    })
-                                    .collect(),
-                            ),
-                        })
-                    } else {
-                        result.extend(values);
-                    }
-                }
-                Some(item) => {
-                    if item.schema.array {
-                        item.value = DetailCredentialClaimValueResponseDTO::Nested(
-                            values
-                                .into_iter()
-                                .map(|mut value| {
-                                    value.schema.array = false;
-                                    value
-                                })
-                                .collect(),
-                        );
-                    } else {
-                        item.value = DetailCredentialClaimValueResponseDTO::Nested(values);
-                    }
-                }
-            };
-        });
-
-    // Repeat for all object claims
-    result
-        .into_iter()
-        .map(|mut claim| {
-            if object_datatypes.contains(&claim.schema.datatype.as_str()) {
-                match &mut claim.value {
-                    DetailCredentialClaimValueResponseDTO::Nested(value) => {
-                        let prefix = format!("{}{NESTED_CLAIM_MARKER}", claim.path);
-
-                        *value = group_subitems(value.to_owned(), &prefix, claim_schemas, config)?;
-                        *value = renest_arrays(value.to_owned(), &prefix, claim_schemas, config)?;
-
-                        Ok(claim)
-                    }
-                    _ => Ok(claim),
-                }
-            } else {
-                Ok(claim)
-            }
-        })
-        .collect::<Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError>>()
-}
-
-fn group_subitems(
-    items: Vec<DetailCredentialClaimResponseDTO>,
-    prefix: &str,
-    claim_schemas: &[CredentialSchemaClaim],
-    config: &CoreConfig,
-) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
-    let mut current_index = 0;
-
-    let mut result = vec![];
-
-    loop {
-        let expected_path = format!("{prefix}{current_index}");
-        let expected_prefix = format!("{expected_path}{NESTED_CLAIM_MARKER}");
-
-        let current_items: Vec<DetailCredentialClaimResponseDTO> = items
-            .iter()
-            .filter_map(|item| {
-                if item.path.starts_with(&expected_prefix) {
-                    Some(item.to_owned())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        if current_items.is_empty() {
-            break;
+fn sort_claims(claims: &mut [DetailCredentialClaimResponseDTO]) {
+    claims.sort_by(|l, r| human_sort::compare(&l.path, &r.path));
+    claims.iter_mut().for_each(|claim| {
+        if let DetailCredentialClaimValueResponseDTO::Nested(claims) = &mut claim.value {
+            sort_claims(claims)
         }
-
-        let current_items = renest_arrays(current_items, &expected_prefix, claim_schemas, config)?;
-
-        let schema = find_schema_for_path(&expected_path, claim_schemas)?;
-
-        result.push(DetailCredentialClaimResponseDTO {
-            path: expected_path,
-            schema: CredentialClaimSchemaDTO {
-                id: schema.schema.id,
-                created_date: schema.schema.created_date,
-                last_modified: schema.schema.last_modified,
-                key: schema.schema.key,
-                datatype: schema.schema.data_type,
-                required: schema.required,
-                array: false,
-                claims: vec![],
-            },
-            value: DetailCredentialClaimValueResponseDTO::Nested(current_items),
-        });
-
-        current_index += 1;
-    }
-
-    if result.is_empty() {
-        Ok(items)
-    } else {
-        Ok(result)
-    }
-}
-
-fn find_schema_for_path(
-    path: &str,
-    claim_schemas: &[CredentialSchemaClaim],
-) -> Result<CredentialSchemaClaim, ServiceError> {
-    let result = claim_schemas
-        .iter()
-        .find(|schema| schema.schema.key == path);
-
-    match result {
-        None => match path.rfind(NESTED_CLAIM_MARKER) {
-            None => Err(ServiceError::MappingError("schema not found".to_string())),
-            Some(value) => find_schema_for_path(&path[0..value], claim_schemas),
-        },
-        Some(value) => Ok(value.to_owned()),
-    }
+    });
 }
 
 impl TryFrom<Credential> for CredentialListItemResponseDTO {

@@ -2,12 +2,11 @@ pub mod error;
 
 mod common;
 
-// Implementatio
+// Implementation
 pub mod json_ld_classic;
 pub mod mapper;
 pub mod mdoc_formatter;
 pub mod physical_card;
-//pub mod sdjwt_formatter;
 pub mod status_list_jwt_formatter;
 
 #[cfg(test)]
@@ -16,9 +15,7 @@ mod test;
 use dto_mapper::{From, Into};
 use one_providers::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
 use serde::Serialize;
-use std::collections::HashMap;
 
-use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
@@ -42,41 +39,15 @@ pub struct FormatterCapabilities {
 }
 
 fn map_claims(
-    config: &CoreConfig,
     claims: &[DetailCredentialClaimResponseDTO],
-    array_order: &mut HashMap<String, usize>,
-    prefix: &str,
     array_item: bool,
-    object_item: bool,
 ) -> Vec<PublishedClaim> {
     let mut result = vec![];
 
     for claim in claims {
         let published_claim_value = match &claim.value {
             DetailCredentialClaimValueResponseDTO::Nested(value) => {
-                let key = if array_item {
-                    let array_index = array_order.entry(prefix.to_string()).or_default();
-                    let current_index = array_index.to_owned();
-                    *array_index += 1;
-                    current_index.to_string()
-                } else {
-                    claim.schema.key.clone()
-                };
-
-                let is_object = config
-                    .get_datatypes_of_type(DatatypeType::Object)
-                    .contains(&claim.schema.datatype.as_str());
-
-                let nested_claims = map_claims(
-                    config,
-                    value,
-                    array_order,
-                    &format!("{prefix}{key}/"),
-                    claim.schema.array,
-                    is_object,
-                );
-                result.extend(nested_claims);
-
+                result.extend(map_claims(value, claim.schema.array));
                 None
             }
             DetailCredentialClaimValueResponseDTO::String(value) => {
@@ -93,17 +64,13 @@ fn map_claims(
             }
         };
 
-        let key = if array_item && !object_item {
-            claim.path.clone()
-        } else {
-            format!("{prefix}{}", claim.schema.key.clone())
-        };
+        let key = claim.path.clone();
 
         if let Some(value) = published_claim_value {
             result.push(PublishedClaim {
                 key,
                 value,
-                datatype: Some(claim.clone().schema.datatype),
+                datatype: Some(claim.schema.datatype.clone()),
                 array_item,
             });
         }

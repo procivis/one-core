@@ -1,21 +1,14 @@
-use std::collections::HashMap;
-
-use one_providers::{
-    credential_formatter::model::{
-        CredentialData, CredentialSchemaData, CredentialStatus, ExtractPresentationCtx,
-        FormatPresentationCtx,
-    },
-    exchange_protocol::openid4vc::model::OpenID4VPInteractionContent,
+use one_providers::credential_formatter::model::{
+    CredentialData, CredentialSchemaData, CredentialStatus, ExtractPresentationCtx,
+    FormatPresentationCtx,
 };
+use one_providers::exchange_protocol::openid4vc::model::OpenID4VPInteractionContent;
 use time::OffsetDateTime;
 
-use crate::{
-    config::core_config::CoreConfig,
-    provider::exchange_protocol::openid4vc::dto::OpenID4VPInteractionData,
-    service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
-};
-
 use super::map_claims;
+use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPInteractionData;
+use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::error::ServiceError;
 
 pub fn extract_presentation_ctx_from_interaction_content(
     content: OpenID4VPInteractionContent,
@@ -40,7 +33,6 @@ pub fn format_presentation_ctx_from_interaction_data(
 }
 
 pub fn credential_data_from_credential_detail_response(
-    config: &CoreConfig,
     credential: CredentialDetailResponseDTO,
     core_base_url: &str,
     credential_status: Vec<CredentialStatus>,
@@ -55,20 +47,11 @@ pub fn credential_data_from_credential_detail_response(
     let issuance_date = OffsetDateTime::now_utc();
     let valid_for = time::Duration::days(365 * 2);
 
-    let mut array_order: HashMap<String, usize> = HashMap::new();
-
     Ok(CredentialData {
         id,
         issuance_date,
         valid_for,
-        claims: map_claims(
-            config,
-            &credential.claims,
-            &mut array_order,
-            "",
-            false,
-            false,
-        ),
+        claims: map_claims(&credential.claims, false),
         issuer_did: issuer_did.into(),
         status: credential_status,
         schema: CredentialSchemaData {

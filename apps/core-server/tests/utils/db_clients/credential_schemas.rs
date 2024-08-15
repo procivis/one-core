@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, CredentialSchemaClaim,
@@ -9,6 +7,7 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use shared_types::CredentialSchemaId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
@@ -155,6 +154,85 @@ impl CredentialSchemasDB {
                 .schema_type
                 .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: id.to_string(),
+        };
+
+        let id = self
+            .repository
+            .create_credential_schema(credential_schema)
+            .await
+            .unwrap();
+
+        self.get(&id).await
+    }
+
+    pub async fn create_with_array_claims(
+        &self,
+        name: &str,
+        organisation: &Organisation,
+        revocation_method: &str,
+        params: TestingCreateSchemaParams,
+    ) -> CredentialSchema {
+        let claim_schema_root_array = ClaimSchema {
+            array: true,
+            id: Uuid::new_v4().into(),
+            key: "root_array".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_nested = ClaimSchema {
+            array: true,
+            id: Uuid::new_v4().into(),
+            key: "root_array/nested".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_field = ClaimSchema {
+            array: false,
+            id: Uuid::new_v4().into(),
+            key: "root_array/nested/field".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schemas = vec![
+            CredentialSchemaClaim {
+                schema: claim_schema_root_array.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_nested.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_field.to_owned(),
+                required: true,
+            },
+        ];
+
+        let id = Uuid::new_v4();
+        let credential_schema = CredentialSchema {
+            id: id.into(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            name: name.to_owned(),
+            wallet_storage_type: Some(
+                params
+                    .wallet_storage_type
+                    .unwrap_or(OpenWalletStorageTypeEnum::Software),
+            ),
+            organisation: Some(organisation.clone()),
+            deleted_at: None,
+            format: params.format.unwrap_or("JWT".to_string()),
+            revocation_method: revocation_method.to_owned(),
+            claim_schemas: Some(claim_schemas),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_type: params
+                .schema_type
+                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
+            schema_id: format!("ssi/schema/{id}"),
         };
 
         let id = self
