@@ -1,19 +1,16 @@
-use crate::{
-    api_oidc_tests::full_flow_common::{
-        bbs_key_1, ecdsa_key_1, eddsa_key_1, eddsa_key_2, get_array_context,
-        get_simple_context_bbsplus, prepare_dids,
-    },
-    fixtures::TestingCredentialParams,
-    utils::{context::TestContext, db_clients::proof_schemas::CreateProofInputSchema},
-};
 use axum::http::StatusCode;
-use one_core::model::credential::CredentialRole;
-use one_core::model::{
-    credential::CredentialStateEnum,
-    proof::{ProofClaim, ProofStateEnum},
-};
+use one_core::model::credential::{CredentialRole, CredentialStateEnum};
+use one_core::model::proof::{ProofClaim, ProofStateEnum};
 use serde_json::json;
 use uuid::Uuid;
+
+use crate::api_oidc_tests::full_flow_common::{
+    bbs_key_1, ecdsa_key_1, eddsa_key_1, eddsa_key_2, get_array_context,
+    get_simple_context_bbsplus, prepare_dids,
+};
+use crate::fixtures::TestingCredentialParams;
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 #[tokio::test]
 async fn test_openid4vc_jsonld_bbsplus_flow_none() {

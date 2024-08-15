@@ -5,13 +5,13 @@ use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::error::FormatterError;
+use one_providers::credential_formatter::imp::json_ld;
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
 };
 use one_providers::credential_formatter::imp::json_ld::model::{
     LdCredential, LdPresentation, LdProof,
 };
-use one_providers::credential_formatter::imp::json_ld::{self};
 use one_providers::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
     DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities,

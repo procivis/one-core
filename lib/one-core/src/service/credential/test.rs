@@ -49,12 +49,9 @@ use crate::repository::validity_credential_repository::MockValidityCredentialRep
 use crate::service::credential;
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialFilterValue, CredentialRequestClaimDTO,
-    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO, GetCredentialQueryDTO,
-    SuspendCredentialRequestDTO,
+    DetailCredentialClaimValueResponseDTO, GetCredentialQueryDTO, SuspendCredentialRequestDTO,
 };
-use crate::service::credential::mapper::{extract_index_from_path, renest_claims};
 use crate::service::credential::validator::validate_create_request;
-use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
@@ -2891,148 +2888,6 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
     .unwrap();
 }
 
-#[test]
-fn test_renest_claims_success_single_claim_and_layer() {
-    let now = OffsetDateTime::now_utc();
-
-    let uuid_location = Uuid::new_v4().into();
-    let uuid_location_x = Uuid::new_v4().into();
-
-    let request = vec![
-        DetailCredentialClaimResponseDTO {
-            path: "location".to_string(),
-            schema: CredentialClaimSchemaDTO {
-                id: uuid_location,
-                created_date: now,
-                last_modified: now,
-                key: "location".to_string(),
-                datatype: "OBJECT".to_string(),
-                required: true,
-                array: false,
-                claims: vec![],
-            },
-            value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
-        },
-        DetailCredentialClaimResponseDTO {
-            path: "location/x".to_string(),
-            schema: CredentialClaimSchemaDTO {
-                id: uuid_location_x,
-                created_date: now,
-                last_modified: now,
-                key: "location/x".to_string(),
-                datatype: "STRING".to_string(),
-                required: true,
-                array: false,
-                claims: vec![],
-            },
-            value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
-        },
-    ];
-
-    let expected = vec![DetailCredentialClaimResponseDTO {
-        path: "location".to_string(),
-        schema: CredentialClaimSchemaDTO {
-            id: uuid_location,
-            created_date: now,
-            last_modified: now,
-            key: "location".to_string(),
-            datatype: "OBJECT".to_string(),
-            required: true,
-            array: false,
-            claims: vec![],
-        },
-        value: DetailCredentialClaimValueResponseDTO::Nested(vec![
-            DetailCredentialClaimResponseDTO {
-                path: "location/x".to_string(),
-                schema: CredentialClaimSchemaDTO {
-                    id: uuid_location_x,
-                    created_date: now,
-                    last_modified: now,
-                    key: "x".to_string(),
-                    datatype: "STRING".to_string(),
-                    required: true,
-                    array: false,
-                    claims: vec![],
-                },
-                value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
-            },
-        ]),
-    }];
-
-    assert_eq!(expected, renest_claims(request).unwrap());
-}
-
-#[test]
-fn test_renest_claims_success_multiple_claims_and_layers() {
-    let now = OffsetDateTime::now_utc();
-
-    let uuid_location = Uuid::new_v4().into();
-    let uuid_location_x = Uuid::new_v4().into();
-
-    let request = vec![
-        DetailCredentialClaimResponseDTO {
-            path: "location".to_string(),
-            schema: CredentialClaimSchemaDTO {
-                id: uuid_location,
-                created_date: now,
-                last_modified: now,
-                key: "location".to_string(),
-                datatype: "OBJECT".to_string(),
-                required: true,
-                array: false,
-                claims: vec![],
-            },
-            value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
-        },
-        DetailCredentialClaimResponseDTO {
-            path: "location/x".to_string(),
-            schema: CredentialClaimSchemaDTO {
-                id: uuid_location_x,
-                created_date: now,
-                last_modified: now,
-                key: "location/x".to_string(),
-                datatype: "STRING".to_string(),
-                required: true,
-                array: false,
-                claims: vec![],
-            },
-            value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
-        },
-    ];
-
-    let expected = vec![DetailCredentialClaimResponseDTO {
-        path: "location".to_string(),
-        schema: CredentialClaimSchemaDTO {
-            id: uuid_location,
-            created_date: now,
-            last_modified: now,
-            key: "location".to_string(),
-            datatype: "OBJECT".to_string(),
-            required: true,
-            array: false,
-            claims: vec![],
-        },
-        value: DetailCredentialClaimValueResponseDTO::Nested(vec![
-            DetailCredentialClaimResponseDTO {
-                path: "location/x".to_string(),
-                schema: CredentialClaimSchemaDTO {
-                    id: uuid_location_x,
-                    created_date: now,
-                    last_modified: now,
-                    key: "x".to_string(),
-                    datatype: "STRING".to_string(),
-                    required: true,
-                    array: false,
-                    claims: vec![],
-                },
-                value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
-            },
-        ]),
-    }];
-
-    assert_eq!(expected, renest_claims(request).unwrap());
-}
-
 #[tokio::test]
 async fn test_get_credential_success_with_non_required_nested_object() {
     let mut credential_repository = MockCredentialRepository::default();
@@ -3304,260 +3159,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
 
     let expected_claims = json!([
       {
-        "path": "root",
-        "schema": {
-          "id": schema_root.id,
-          "createdDate": "2005-04-02T21:37:00+01:00",
-          "lastModified": "2005-04-02T21:37:00+01:00",
-          "key": "root",
-          "datatype": "OBJECT",
-          "required": true,
-          "array": true
-        },
-        "value": [
-          {
-            "path": "root/0",
-            "schema": {
-              "id": schema_root.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "root",
-              "datatype": "OBJECT",
-              "required": true,
-              "array": false
-            },
-            "value": [
-              {
-                "path": "root/0/name",
-                "schema": {
-                  "id": schema_root_name.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "name",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": false
-                },
-                "value": "123"
-              },
-              {
-                "path": "root/0/cap",
-                "schema": {
-                  "id": schema_root_cap.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "cap",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": true
-                },
-                "value": [
-                  {
-                    "path": "root/0/cap/0",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "invoke"
-                  },
-                  {
-                    "path": "root/0/cap/1",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "revoke"
-                  },
-                  {
-                    "path": "root/0/cap/2",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "delete"
-                  }
-                ]
-              },
-              {
-                "path": "root/0/indexlist",
-                "schema": {
-                  "id": schema_root_index_list.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "indexlist",
-                  "datatype": "NUMBER",
-                  "required": true,
-                  "array": true
-                },
-                "value": [
-                  {
-                    "path": "root/0/indexlist/0",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": 123
-                  },
-                  {
-                    "path": "root/0/indexlist/1",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": 123
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "path": "root/1",
-            "schema": {
-              "id": schema_root.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "root",
-              "datatype": "OBJECT",
-              "required": true,
-              "array": false
-            },
-            "value": [
-              {
-                "path": "root/1/name",
-                "schema": {
-                  "id": schema_root_name.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "name",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": false
-                },
-                "value": "456"
-              },
-              {
-                "path": "root/1/cap",
-                "schema": {
-                  "id": schema_root_cap.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "cap",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": true
-                },
-                "value": [
-                  {
-                    "path": "root/1/cap/0",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "invoke"
-                  },
-                  {
-                    "path": "root/1/cap/1",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "revoke"
-                  },
-                  {
-                    "path": "root/1/cap/2",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "delete"
-                  }
-                ]
-              },
-              {
-                "path": "root/1/indexlist",
-                "schema": {
-                  "id": schema_root_index_list.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "indexlist",
-                  "datatype": "NUMBER",
-                  "required": true,
-                  "array": true
-                },
-                "value": [
-                  {
-                    "path": "root/1/indexlist/0",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": 456
-                  },
-                  {
-                    "path": "root/1/indexlist/1",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": 456
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      {
         "path": "other",
         "schema": {
           "id": schema_other.id,
@@ -3575,7 +3176,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
               "id": schema_other_0.id,
               "createdDate": "2005-04-02T21:37:00+01:00",
               "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "0",
+              "key": "other/0",
               "datatype": "OBJECT",
               "required": true,
               "array": true
@@ -3599,7 +3200,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "id": schema_other_0_name.id,
                       "createdDate": "2005-04-02T21:37:00+01:00",
                       "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "name",
+                      "key": "other/0/name",
                       "datatype": "STRING",
                       "required": true,
                       "array": false
@@ -3626,7 +3227,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "id": schema_other_0_name.id,
                       "createdDate": "2005-04-02T21:37:00+01:00",
                       "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "name",
+                      "key": "other/0/name",
                       "datatype": "STRING",
                       "required": true,
                       "array": false
@@ -3643,7 +3244,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
               "id": schema_other_1.id,
               "createdDate": "2005-04-02T21:37:00+01:00",
               "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "1",
+              "key": "other/1",
               "datatype": "STRING",
               "required": true,
               "array": true
@@ -3655,7 +3256,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "id": schema_other_1.id,
                   "createdDate": "2005-04-02T21:37:00+01:00",
                   "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "1",
+                  "key": "other/1",
                   "datatype": "STRING",
                   "required": true,
                   "array": false
@@ -3668,7 +3269,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "id": schema_other_1.id,
                   "createdDate": "2005-04-02T21:37:00+01:00",
                   "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "1",
+                  "key": "other/1",
                   "datatype": "STRING",
                   "required": true,
                   "array": false
@@ -3681,13 +3282,267 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "id": schema_other_1.id,
                   "createdDate": "2005-04-02T21:37:00+01:00",
                   "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "1",
+                  "key": "other/1",
                   "datatype": "STRING",
                   "required": true,
                   "array": false
                 },
                 "value": "other3"
               }
+            ]
+          }
+        ]
+      },
+      {
+        "path": "root",
+        "schema": {
+          "id": schema_root.id,
+          "createdDate": "2005-04-02T21:37:00+01:00",
+          "lastModified": "2005-04-02T21:37:00+01:00",
+          "key": "root",
+          "datatype": "OBJECT",
+          "required": true,
+          "array": true
+        },
+        "value": [
+          {
+            "path": "root/0",
+            "schema": {
+              "id": schema_root.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "root",
+              "datatype": "OBJECT",
+              "required": true,
+              "array": false
+            },
+            "value": [
+              {
+                "path": "root/0/cap",
+                "schema": {
+                  "id": schema_root_cap.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/cap",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": true
+                },
+                "value": [
+                  {
+                    "path": "root/0/cap/0",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "invoke"
+                  },
+                  {
+                    "path": "root/0/cap/1",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "revoke"
+                  },
+                  {
+                    "path": "root/0/cap/2",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "delete"
+                  }
+                ]
+              },
+              {
+                "path": "root/0/indexlist",
+                "schema": {
+                  "id": schema_root_index_list.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/indexlist",
+                  "datatype": "NUMBER",
+                  "required": true,
+                  "array": true
+                },
+                "value": [
+                  {
+                    "path": "root/0/indexlist/0",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": 123
+                  },
+                  {
+                    "path": "root/0/indexlist/1",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": 123
+                  }
+                ]
+              },
+              {
+                "path": "root/0/name",
+                "schema": {
+                  "id": schema_root_name.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/name",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": false
+                },
+                "value": "123"
+              },
+            ]
+          },
+          {
+            "path": "root/1",
+            "schema": {
+              "id": schema_root.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "root",
+              "datatype": "OBJECT",
+              "required": true,
+              "array": false
+            },
+            "value": [
+              {
+                "path": "root/1/cap",
+                "schema": {
+                  "id": schema_root_cap.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/cap",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": true
+                },
+                "value": [
+                  {
+                    "path": "root/1/cap/0",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "invoke"
+                  },
+                  {
+                    "path": "root/1/cap/1",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "revoke"
+                  },
+                  {
+                    "path": "root/1/cap/2",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "delete"
+                  }
+                ]
+              },
+              {
+                "path": "root/1/indexlist",
+                "schema": {
+                  "id": schema_root_index_list.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/indexlist",
+                  "datatype": "NUMBER",
+                  "required": true,
+                  "array": true
+                },
+                "value": [
+                  {
+                    "path": "root/1/indexlist/0",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": 456
+                  },
+                  {
+                    "path": "root/1/indexlist/1",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": 456
+                  }
+                ]
+              },
+              {
+                "path": "root/1/name",
+                "schema": {
+                  "id": schema_root_name.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/name",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": false
+                },
+                "value": "456"
+              },
             ]
           }
         ]
@@ -4219,7 +4074,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                   "id": schema_root_index_list.id,
                   "createdDate": "2005-04-02T21:37:00+01:00",
                   "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "indexlist",
+                  "key": "root/indexlist",
                   "datatype": "NUMBER",
                   "required": true,
                   "array": true
@@ -4231,7 +4086,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                       "id": schema_root_index_list.id,
                       "createdDate": "2005-04-02T21:37:00+01:00",
                       "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "indexlist",
+                      "key": "root/indexlist",
                       "datatype": "NUMBER",
                       "required": true,
                       "array": false
@@ -4244,7 +4099,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                       "id": schema_root_index_list.id,
                       "createdDate": "2005-04-02T21:37:00+01:00",
                       "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "indexlist",
+                      "key": "root/indexlist",
                       "datatype": "NUMBER",
                       "required": true,
                       "array": false
@@ -4415,7 +4270,7 @@ async fn test_get_credential_success_array_single_element() {
                   "id": schema_root_index_list.id,
                   "createdDate": "2005-04-02T21:37:00+01:00",
                   "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "indexlist",
+                  "key": "root/indexlist",
                   "datatype": "NUMBER",
                   "required": true,
                   "array": true
@@ -4427,7 +4282,7 @@ async fn test_get_credential_success_array_single_element() {
                       "id": schema_root_index_list.id,
                       "createdDate": "2005-04-02T21:37:00+01:00",
                       "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "indexlist",
+                      "key": "root/indexlist",
                       "datatype": "NUMBER",
                       "required": true,
                       "array": false
@@ -4747,20 +4602,4 @@ async fn test_create_credential_array_fail_index_incorrect_order() {
             .await
             .is_err()
     );
-}
-
-#[test]
-fn test_extract_index_from_path() {
-    assert_eq!("1", extract_index_from_path("root/1", "root/"));
-    assert_eq!("0", extract_index_from_path("root/0", "root/"));
-
-    assert_eq!("1", extract_index_from_path("root/1/somewhere", "root/"));
-
-    assert_eq!(
-        "2",
-        extract_index_from_path("root/1/somewhere/2", "root/1/somewhere/")
-    );
-
-    assert_eq!("7", extract_index_from_path("str/7", "str/"));
-    assert_eq!("3", extract_index_from_path("str/3", "str/"));
 }

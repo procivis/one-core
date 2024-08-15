@@ -21,7 +21,13 @@ pub struct TestContext {
     pub api: Client,
     pub server_mock: MockServer,
     pub config: AppConfig<ServerConfig>,
-    _handle: JoinHandle<()>,
+    handle: JoinHandle<()>,
+}
+
+impl Drop for TestContext {
+    fn drop(&mut self) {
+        self.handle.abort()
+    }
 }
 
 impl TestContext {
@@ -44,7 +50,7 @@ impl TestContext {
             }),
         );
         let db = fixtures::create_db(&config).await;
-        let _handle = run_server(listener, config.to_owned(), &db);
+        let handle = run_server(listener, config.to_owned(), &db);
 
         let filter = tracing_subscriber::EnvFilter::try_from_default_env()
             .or_else(|_| {
@@ -67,7 +73,7 @@ impl TestContext {
             api: Client::new(base_url.clone(), token.into()),
             server_mock,
             config,
-            _handle,
+            handle,
         }
     }
 

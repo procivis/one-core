@@ -1,10 +1,10 @@
 use std::str::FromStr;
+
+use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use shared_types::DidValue;
-
-use crate::config::core_config::{self, CoreConfig, DatatypeConfig, DatatypeType};
+use crate::config::core_config::{self, DatatypeConfig, DatatypeType};
 use crate::model::did::DidType;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::{PublishedClaim, PublishedClaimValue};
@@ -65,7 +65,6 @@ fn generate_credential_detail_response(
 fn test_from_credential_detail_response_nested_claim_mapping() {
     let now = OffsetDateTime::now_utc();
     let actual = credential_data_from_credential_detail_response(
-        &core_config::CoreConfig::default(),
         generate_credential_detail_response(vec![
             DetailCredentialClaimResponseDTO {
                 path: "location".to_string(),
@@ -171,10 +170,6 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
         },
     );
     let actual = credential_data_from_credential_detail_response(
-        &CoreConfig {
-            datatype: datatype_config,
-            ..Default::default()
-        },
         generate_credential_detail_response(vec![
             DetailCredentialClaimResponseDTO {
                 schema: CredentialClaimSchemaDTO {
@@ -194,13 +189,13 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
                             id: Uuid::new_v4().into(),
                             created_date: now,
                             last_modified: now,
-                            key: "0".to_string(),
+                            key: "location/x".to_string(),
                             datatype: "STRING".to_string(),
                             array: false,
                             required: false,
                             claims: vec![],
                         },
-                        path: "location/x".to_string(),
+                        path: "location/0/x".to_string(),
                         value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
                     },
                     DetailCredentialClaimResponseDTO {
@@ -208,13 +203,13 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
                             id: Uuid::new_v4().into(),
                             created_date: now,
                             last_modified: now,
-                            key: "1".to_string(),
+                            key: "location/y".to_string(),
                             array: false,
                             datatype: "STRING".to_string(),
                             required: false,
                             claims: vec![],
                         },
-                        path: "location/y".to_string(),
+                        path: "location/0/y".to_string(),
                         value: DetailCredentialClaimValueResponseDTO::String("456".to_string()),
                     },
                 ]),
@@ -242,13 +237,13 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
 
     let expected: Vec<PublishedClaim> = vec![
         PublishedClaim {
-            key: "location/0".to_string(),
+            key: "location/0/x".to_string(),
             value: PublishedClaimValue::String("123".to_string()),
             datatype: Some("STRING".to_string()),
             array_item: true,
         },
         PublishedClaim {
-            key: "location/1".to_string(),
+            key: "location/0/y".to_string(),
             value: PublishedClaimValue::String("456".to_string()),
             datatype: Some("STRING".to_string()),
             array_item: true,

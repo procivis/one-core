@@ -336,7 +336,6 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
         let credential_detail =
             credential_detail_response_from_model(credential.clone(), &self.config)?;
         let credential_data = credential_data_from_credential_detail_response(
-            &self.config,
             credential_detail,
             core_base_url,
             credential_status,

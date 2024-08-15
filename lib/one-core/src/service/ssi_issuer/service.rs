@@ -1,38 +1,34 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use convert_case::{Case, Casing};
+use shared_types::{CredentialId, CredentialSchemaId, DidValue};
+use time::OffsetDateTime;
+
 use super::dto::{
-    ConnectIssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO,
-    JsonLDInlineEntityDTO,
+    ConnectIssuerResponseDTO, IssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO,
+    JsonLDEntityDTO, JsonLDInlineEntityDTO,
 };
-use super::{dto::IssuerResponseDTO, SSIIssuerService};
+use super::SSIIssuerService;
 use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::config::core_config::{ExchangeType, Params};
 use crate::config::ConfigValidationError;
-use crate::service::error::{BusinessLogicError, EntityNotFoundError};
+use crate::model::claim::ClaimRelations;
+use crate::model::claim_schema::ClaimSchemaRelations;
+use crate::model::credential::{
+    CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
+    UpdateCredentialRequest,
+};
+use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::did::DidRelations;
+use crate::model::organisation::OrganisationRelations;
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::ssi_issuer::mapper::{
     connect_issuer_response_from_credential, credential_rejected_history_event,
     generate_jsonld_context_response, get_url_with_fragment,
 };
-use crate::service::ssi_validator::validate_exchange_type;
-use crate::{
-    model::{
-        claim::ClaimRelations,
-        claim_schema::ClaimSchemaRelations,
-        credential::{
-            CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
-            UpdateCredentialRequest,
-        },
-        credential_schema::CredentialSchemaRelations,
-        did::DidRelations,
-        organisation::OrganisationRelations,
-    },
-    service::{error::ServiceError, ssi_validator::validate_config_entity_presence},
-};
-use convert_case::{Case, Casing};
-use shared_types::{CredentialId, CredentialSchemaId, DidValue};
-use time::OffsetDateTime;
+use crate::service::ssi_validator::{validate_config_entity_presence, validate_exchange_type};
 
 impl SSIIssuerService {
     pub async fn issuer_connect(

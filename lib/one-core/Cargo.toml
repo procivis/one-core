@@ -20,6 +20,7 @@ figment               = { version = "0.10", default-features = false }
 futures.workspace     = true
 hex.workspace         = true
 hkdf                  = { version = "0.12.4", features = ["std"] }
+human-sort            = { version = "0.2" }
 indexmap              = { version = "2.2", features = ["serde"] }
 itertools             = { version = "0.13" }
 josekit               = { version = "0.8", features = ["vendored"] }

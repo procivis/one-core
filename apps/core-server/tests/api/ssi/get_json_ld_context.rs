@@ -1,12 +1,13 @@
 use uuid::Uuid;
 
-use crate::utils::{context::TestContext, field_match::FieldHelpers};
+use crate::utils::context::TestContext;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_get_json_ld_context_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
-    let core_base_url = context.config.app.core_base_url;
+    let core_base_url = &context.config.app.core_base_url;
 
     let credential_schema = context
         .db
@@ -55,7 +56,7 @@ async fn test_get_json_ld_context_not_found() {
 async fn test_get_json_ld_context_with_nested_claims_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
-    let core_base_url = context.config.app.core_base_url;
+    let core_base_url = &context.config.app.core_base_url;
 
     let credential_schema = context
         .db
@@ -115,7 +116,7 @@ async fn test_get_json_ld_context_with_nested_claims_success() {
 async fn test_get_json_ld_context_special_chars_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
-    let core_base_url = context.config.app.core_base_url;
+    let core_base_url = &context.config.app.core_base_url;
 
     let credential_schema = context
         .db
