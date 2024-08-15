@@ -21,6 +21,7 @@ use super::mapper::{
     proof_requested_history_event, proof_submit_errored_history_event,
 };
 use super::SSIHolderService;
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
@@ -372,8 +373,11 @@ impl SSIHolderService {
 
                 for key in &submitted_keys {
                     // handle nested path by checking the prefix
-                    if claim_schema.key.starts_with(key)
-                        && submitted_claims.iter().all(|c| c.id != claim.id)
+                    if claim_schema
+                        .key
+                        .starts_with(&format!("{key}{NESTED_CLAIM_MARKER}"))
+                        || claim_schema.key == *key
+                            && submitted_claims.iter().all(|c| c.id != claim.id)
                     {
                         submitted_claims.push(claim.to_owned());
                     }
