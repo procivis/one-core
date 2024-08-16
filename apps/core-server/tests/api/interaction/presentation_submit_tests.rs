@@ -625,7 +625,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     assert_eq!(resp.status(), 204);
 
     let proof = fixtures::get_proof(&db_conn, &proof.id).await;
-    // dbg!(&proof.claims);
     assert!(proof
         .state
         .as_ref()
