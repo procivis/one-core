@@ -421,30 +421,30 @@ pub(crate) fn map_offered_claims_to_credential_schema(
         .iter()
         .filter(|claim| claim.schema.data_type != DatatypeType::Object.to_string())
     {
-        let credential_value_details = &claim_keys.get(&claim_schema.schema.key);
-        match credential_value_details {
-            Some(value_details) => {
-                let claim = OpenClaim {
-                    id: Uuid::new_v4().into(),
-                    credential_id,
-                    created_date: now,
-                    last_modified: now,
-                    value: value_details.value.to_owned(),
-                    path: claim_schema.schema.key.to_owned(),
-                    schema: Some(claim_schema.schema.to_owned()),
-                };
+        let credential_value_details = &claim_keys
+            .iter()
+            .filter(|claim_key| schema_from_claim_name(claim_key.0) == claim_schema.schema.key)
+            .collect::<Vec<(_, _)>>();
 
-                claims.push(claim);
-            }
-            None if claim_schema.required => {
-                return Err(ExchangeProtocolError::Failed(format!(
-                    "Validation Error. Claim key {} missing",
-                    &claim_schema.schema.key
-                )))
-            }
-            _ => {
-                // skip non-required claims that aren't matching
-            }
+        if credential_value_details.is_empty() && claim_schema.required {
+            return Err(ExchangeProtocolError::Failed(format!(
+                "Validation Error. Claim key {} missing",
+                &claim_schema.schema.key
+            )));
+        }
+
+        for (key, value_details) in credential_value_details {
+            let claim = OpenClaim {
+                id: Uuid::new_v4().into(),
+                credential_id,
+                created_date: now,
+                last_modified: now,
+                value: value_details.value.to_owned(),
+                path: key.to_string(),
+                schema: Some(claim_schema.schema.to_owned()),
+            };
+
+            claims.push(claim);
         }
     }
 
@@ -461,7 +461,10 @@ fn adapt_required_state_based_on_claim_presence(
         .map(|(key, claim)| {
             let matching_claim_schema = claim_schemas
                 .iter()
-                .find(|claim_schema| claim_schema.schema.key == *key)
+                .find(|claim_schema| {
+                    let expected_schema = schema_from_claim_name(key);
+                    claim_schema.schema.key == expected_schema
+                })
                 .ok_or(ValidationError::CredentialSchemaMissingClaims)?;
             Ok((claim, matching_claim_schema.schema.key.to_owned()))
         })
@@ -476,12 +479,13 @@ fn adapt_required_state_based_on_claim_presence(
             .iter()
             .any(|(_, claim_name)| claim_name.starts_with(&prefix));
 
-        let is_object = config
-            .datatype
-            .get_fields(&claim_schema.schema.data_type)
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
-            .r#type
-            == DatatypeType::Object;
+        let is_object = !claim_schema.schema.array
+            && config
+                .datatype
+                .get_fields(&claim_schema.schema.data_type)
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+                .r#type
+                == DatatypeType::Object;
 
         let should_make_all_child_claims_non_required =
             !is_parent_schema_of_provided_claim && is_object && !claim_schema.required;
@@ -498,6 +502,13 @@ fn adapt_required_state_based_on_claim_presence(
     })?;
 
     Ok(result)
+}
+
+fn schema_from_claim_name(key: &str) -> String {
+    key.split('/')
+        .filter(|segment| !segment.chars().all(|c| c.is_ascii_digit()))
+        .collect::<Vec<&str>>()
+        .join("/")
 }
 
 pub(crate) fn parse_mdoc_schema_claims(
