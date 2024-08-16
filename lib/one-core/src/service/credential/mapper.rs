@@ -278,9 +278,11 @@ fn claim_to_dto(
 }
 
 fn sort_claims(claims: &mut [DetailCredentialClaimResponseDTO]) {
-    claims.sort_by(|l, r| human_sort::compare(&l.path, &r.path));
     claims.iter_mut().for_each(|claim| {
         if let DetailCredentialClaimValueResponseDTO::Nested(claims) = &mut claim.value {
+            if claim.schema.array {
+                claims.sort_by(|l, r| human_sort::compare(&l.path, &r.path));
+            }
             sort_claims(claims)
         }
     });

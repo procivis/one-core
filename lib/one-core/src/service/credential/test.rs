@@ -3157,7 +3157,253 @@ async fn test_get_credential_success_array_complex_nested_all() {
 
     let result = service.get_credential(&credential.id).await.unwrap();
 
-    let expected_claims = json!([
+    let expected_claims = json!([{
+        "path": "root",
+        "schema": {
+          "id": schema_root.id,
+          "createdDate": "2005-04-02T21:37:00+01:00",
+          "lastModified": "2005-04-02T21:37:00+01:00",
+          "key": "root",
+          "datatype": "OBJECT",
+          "required": true,
+          "array": true
+        },
+        "value": [{
+            "path": "root/0",
+            "schema": {
+              "id": schema_root.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "root",
+              "datatype": "OBJECT",
+              "required": true,
+              "array": false
+            },
+            "value": [{
+                "path": "root/0/indexlist",
+                "schema": {
+                  "id": schema_root_index_list.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/indexlist",
+                  "datatype": "NUMBER",
+                  "required": true,
+                  "array": true
+                },
+                "value": [{
+                    "path": "root/0/indexlist/0",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": 123
+                  },
+                  {
+                    "path": "root/0/indexlist/1",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": 123
+                  }
+                ]
+              },
+              {
+                "path": "root/0/name",
+                "schema": {
+                  "id": schema_root_name.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/name",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": false
+                },
+                "value": "123"
+              },
+              {
+                "path": "root/0/cap",
+                "schema": {
+                  "id": schema_root_cap.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/cap",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": true
+                },
+                "value": [{
+                    "path": "root/0/cap/0",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "invoke"
+                  },
+                  {
+                    "path": "root/0/cap/1",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "revoke"
+                  },
+                  {
+                    "path": "root/0/cap/2",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "delete"
+                  }
+                ]
+              },
+            ]
+          },
+          {
+            "path": "root/1",
+            "schema": {
+              "id": schema_root.id,
+              "createdDate": "2005-04-02T21:37:00+01:00",
+              "lastModified": "2005-04-02T21:37:00+01:00",
+              "key": "root",
+              "datatype": "OBJECT",
+              "required": true,
+              "array": false
+            },
+            "value": [{
+                "path": "root/1/indexlist",
+                "schema": {
+                  "id": schema_root_index_list.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/indexlist",
+                  "datatype": "NUMBER",
+                  "required": true,
+                  "array": true
+                },
+                "value": [{
+                    "path": "root/1/indexlist/0",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": 456
+                  },
+                  {
+                    "path": "root/1/indexlist/1",
+                    "schema": {
+                      "id": schema_root_index_list.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/indexlist",
+                      "datatype": "NUMBER",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": 456
+                  }
+                ]
+              },
+              {
+                "path": "root/1/name",
+                "schema": {
+                  "id": schema_root_name.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/name",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": false
+                },
+                "value": "456"
+              },
+              {
+                "path": "root/1/cap",
+                "schema": {
+                  "id": schema_root_cap.id,
+                  "createdDate": "2005-04-02T21:37:00+01:00",
+                  "lastModified": "2005-04-02T21:37:00+01:00",
+                  "key": "root/cap",
+                  "datatype": "STRING",
+                  "required": true,
+                  "array": true
+                },
+                "value": [{
+                    "path": "root/1/cap/0",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "invoke"
+                  },
+                  {
+                    "path": "root/1/cap/1",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "revoke"
+                  },
+                  {
+                    "path": "root/1/cap/2",
+                    "schema": {
+                      "id": schema_root_cap.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "root/cap",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                    },
+                    "value": "delete"
+                  }
+                ]
+              },
+            ]
+          }
+        ]
+      },
       {
         "path": "other",
         "schema": {
@@ -3169,8 +3415,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
           "required": true,
           "array": false
         },
-        "value": [
-          {
+        "value": [{
             "path": "other/0",
             "schema": {
               "id": schema_other_0.id,
@@ -3181,8 +3426,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
               "required": true,
               "array": true
             },
-            "value": [
-              {
+            "value": [{
                 "path": "other/0/0",
                 "schema": {
                   "id": schema_other_0.id,
@@ -3193,21 +3437,19 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "required": true,
                   "array": false
                 },
-                "value": [
-                  {
-                    "path": "other/0/0/name",
-                    "schema": {
-                      "id": schema_other_0_name.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "other/0/name",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "name1"
-                  }
-                ]
+                "value": [{
+                  "path": "other/0/0/name",
+                  "schema": {
+                    "id": schema_other_0_name.id,
+                    "createdDate": "2005-04-02T21:37:00+01:00",
+                    "lastModified": "2005-04-02T21:37:00+01:00",
+                    "key": "other/0/name",
+                    "datatype": "STRING",
+                    "required": true,
+                    "array": false
+                  },
+                  "value": "name1"
+                }]
               },
               {
                 "path": "other/0/1",
@@ -3220,21 +3462,19 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "required": true,
                   "array": false
                 },
-                "value": [
-                  {
-                    "path": "other/0/1/name",
-                    "schema": {
-                      "id": schema_other_0_name.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "other/0/name",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "name2"
-                  }
-                ]
+                "value": [{
+                  "path": "other/0/1/name",
+                  "schema": {
+                    "id": schema_other_0_name.id,
+                    "createdDate": "2005-04-02T21:37:00+01:00",
+                    "lastModified": "2005-04-02T21:37:00+01:00",
+                    "key": "other/0/name",
+                    "datatype": "STRING",
+                    "required": true,
+                    "array": false
+                  },
+                  "value": "name2"
+                }]
               }
             ]
           },
@@ -3249,8 +3489,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
               "required": true,
               "array": true
             },
-            "value": [
-              {
+            "value": [{
                 "path": "other/1/0",
                 "schema": {
                   "id": schema_other_1.id,
@@ -3294,260 +3533,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
         ]
       },
       {
-        "path": "root",
-        "schema": {
-          "id": schema_root.id,
-          "createdDate": "2005-04-02T21:37:00+01:00",
-          "lastModified": "2005-04-02T21:37:00+01:00",
-          "key": "root",
-          "datatype": "OBJECT",
-          "required": true,
-          "array": true
-        },
-        "value": [
-          {
-            "path": "root/0",
-            "schema": {
-              "id": schema_root.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "root",
-              "datatype": "OBJECT",
-              "required": true,
-              "array": false
-            },
-            "value": [
-              {
-                "path": "root/0/cap",
-                "schema": {
-                  "id": schema_root_cap.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/cap",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": true
-                },
-                "value": [
-                  {
-                    "path": "root/0/cap/0",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "invoke"
-                  },
-                  {
-                    "path": "root/0/cap/1",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "revoke"
-                  },
-                  {
-                    "path": "root/0/cap/2",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "delete"
-                  }
-                ]
-              },
-              {
-                "path": "root/0/indexlist",
-                "schema": {
-                  "id": schema_root_index_list.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/indexlist",
-                  "datatype": "NUMBER",
-                  "required": true,
-                  "array": true
-                },
-                "value": [
-                  {
-                    "path": "root/0/indexlist/0",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": 123
-                  },
-                  {
-                    "path": "root/0/indexlist/1",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": 123
-                  }
-                ]
-              },
-              {
-                "path": "root/0/name",
-                "schema": {
-                  "id": schema_root_name.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/name",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": false
-                },
-                "value": "123"
-              },
-            ]
-          },
-          {
-            "path": "root/1",
-            "schema": {
-              "id": schema_root.id,
-              "createdDate": "2005-04-02T21:37:00+01:00",
-              "lastModified": "2005-04-02T21:37:00+01:00",
-              "key": "root",
-              "datatype": "OBJECT",
-              "required": true,
-              "array": false
-            },
-            "value": [
-              {
-                "path": "root/1/cap",
-                "schema": {
-                  "id": schema_root_cap.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/cap",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": true
-                },
-                "value": [
-                  {
-                    "path": "root/1/cap/0",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "invoke"
-                  },
-                  {
-                    "path": "root/1/cap/1",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "revoke"
-                  },
-                  {
-                    "path": "root/1/cap/2",
-                    "schema": {
-                      "id": schema_root_cap.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/cap",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": "delete"
-                  }
-                ]
-              },
-              {
-                "path": "root/1/indexlist",
-                "schema": {
-                  "id": schema_root_index_list.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/indexlist",
-                  "datatype": "NUMBER",
-                  "required": true,
-                  "array": true
-                },
-                "value": [
-                  {
-                    "path": "root/1/indexlist/0",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": 456
-                  },
-                  {
-                    "path": "root/1/indexlist/1",
-                    "schema": {
-                      "id": schema_root_index_list.id,
-                      "createdDate": "2005-04-02T21:37:00+01:00",
-                      "lastModified": "2005-04-02T21:37:00+01:00",
-                      "key": "root/indexlist",
-                      "datatype": "NUMBER",
-                      "required": true,
-                      "array": false
-                    },
-                    "value": 456
-                  }
-                ]
-              },
-              {
-                "path": "root/1/name",
-                "schema": {
-                  "id": schema_root_name.id,
-                  "createdDate": "2005-04-02T21:37:00+01:00",
-                  "lastModified": "2005-04-02T21:37:00+01:00",
-                  "key": "root/name",
-                  "datatype": "STRING",
-                  "required": true,
-                  "array": false
-                },
-                "value": "456"
-              },
-            ]
-          }
-        ]
-      },
-      {
         "path": "str",
         "schema": {
           "id": schema_str.id,
@@ -3558,8 +3543,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
           "required": true,
           "array": true
         },
-        "value": [
-          {
+        "value": [{
             "path": "str/0",
             "schema": {
               "id": schema_str.id,
