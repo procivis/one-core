@@ -30,9 +30,6 @@ pub(crate) mod mapper;
 pub mod model;
 pub(crate) mod openidvc_ble;
 
-#[cfg(test)]
-mod test;
-
 pub(crate) struct OpenID4VC {
     openid_http: OpenID4VCHTTP,
     openid_ble: OpenID4VCBLE,
