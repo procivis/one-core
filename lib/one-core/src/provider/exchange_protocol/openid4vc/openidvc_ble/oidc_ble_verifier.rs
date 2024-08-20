@@ -1,3 +1,4 @@
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -8,6 +9,7 @@ use one_crypto::imp::utilities;
 use one_providers::exchange_protocol::openid4vc::model::OpenID4VPPresentationDefinition;
 use shared_types::ProofId;
 use time::OffsetDateTime;
+use tokio::select;
 use uuid::uuid;
 
 use super::{
@@ -29,11 +31,13 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     BLEOpenID4VPInteractionData, BleOpenId4VpResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEParse;
-use crate::provider::exchange_protocol::ExchangeProtocolError;
+use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
 use crate::util::interactions::{add_new_interaction, update_proof_interaction};
+
+type ConnectionEventStream = Pin<Box<dyn Stream<Item = Vec<ConnectionEvent>> + Send>>;
 
 pub struct OpenID4VCBLEVerifier {
     ble: BleWaiter,
@@ -101,6 +105,7 @@ impl OpenID4VCBLEVerifier {
             verifier_name,
             hex::encode(keypair.public_key_bytes()),
         );
+        let interaction_repository = self.interaction_repository.clone();
 
         let result = self
             .ble
@@ -110,46 +115,63 @@ impl OpenID4VCBLEVerifier {
                     start_advertisement(keypair.public_key_bytes(), verifier_name, &*peripheral)
                         .await?;
 
+                    let mut connection_event_stream =
+                        get_connection_event_stream(peripheral.clone()).await;
                     let result: Result<(), ExchangeProtocolError> = async {
-                        let (wallet, identity_request) =
-                            wait_for_wallet_identify_request(peripheral.clone()).await?;
+                        let (wallet, identity_request) = wait_for_wallet_identify_request(
+                            peripheral.clone(),
+                            &mut connection_event_stream,
+                        )
+                        .await?;
 
                         let (sender_key, receiver_key) = keypair
                             .derive_session_secrets(identity_request.key, identity_request.nonce)
                             .map_err(ExchangeProtocolError::Transport)?;
 
-                        let peer =
-                            BLEPeer::new(wallet, sender_key, receiver_key, identity_request.nonce);
+                        let peer = BLEPeer::new(
+                            wallet.clone(),
+                            sender_key,
+                            receiver_key,
+                            identity_request.nonce,
+                        );
 
-                        write_presentation_request(
-                            proof_request.clone(),
-                            &peer,
-                            peripheral.clone(),
-                        )
-                        .await?;
+                        let presentation_submission = select! {
+                            biased;
 
-                        let now = OffsetDateTime::now_utc();
-                        proof_repository
-                            .set_proof_state(
-                                &proof_id,
-                                ProofState {
-                                    created_date: now,
-                                    last_modified: now,
-                                    state: ProofStateEnum::Requested,
-                                },
-                            )
-                            .await
-                            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+                            _ = wallet_disconnect_event(&mut connection_event_stream, &wallet.address) => {
+                                Err(ExchangeProtocolError::Failed("wallet disconnected".into()))
+                            },
+                            result = async {
+                                write_presentation_request(
+                                    proof_request.clone(),
+                                    &peer,
+                                    peripheral.clone(),
+                                )
+                                .await?;
 
-                        let submission =
-                            read_presentation_submission(&peer, peripheral.clone()).await?;
+                                let now = OffsetDateTime::now_utc();
+                                proof_repository
+                                    .set_proof_state(
+                                        &proof_id,
+                                        ProofState {
+                                            created_date: now,
+                                            last_modified: now,
+                                            state: ProofStateEnum::Requested,
+                                        },
+                                    )
+                                    .await
+                                    .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+                                    read_presentation_submission(&peer, peripheral.clone()).await
+                            } => result
+                        }?;
 
                         let new_data = BLEOpenID4VPInteractionData {
                             task_id,
                             peer,
                             nonce: Some(hex::encode(identity_request.nonce)),
                             presentation_definition: Some(proof_request.into()),
-                            presentation_submission: Some(submission),
+                            presentation_submission: Some(presentation_submission),
                         };
 
                         let new_interaction = uuid::Uuid::new_v4();
@@ -175,13 +197,15 @@ impl OpenID4VCBLEVerifier {
                             .await
                             .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
-                        Ok(())
+                        let _ = wallet_disconnect_event(&mut connection_event_stream, &wallet.address).await;
+                        let _ = peripheral.stop_server().await;
+                        Ok(()) as Result<(), ExchangeProtocolError>
                     }
                     .await;
 
-                    let _ = peripheral.stop_server().await;
                     if let Err(err) = result {
-                        tracing::info!("BLE task failure: {err}");
+                        tracing::info!("BLE task failure: {err}, stopping BLE server");
+                        let _ = peripheral.stop_server().await;
                         let now = OffsetDateTime::now_utc();
                         let _ = proof_repository
                             .set_proof_state(
@@ -197,7 +221,29 @@ impl OpenID4VCBLEVerifier {
 
                     Ok::<_, ExchangeProtocolError>(())
                 },
-                |_, peripheral| async move {
+                move |_, peripheral| async move {
+                    let Ok(interaction) = interaction_repository
+                        .get_interaction(&interaction_id, &Default::default())
+                        .await
+                        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))
+                    else {
+                        return;
+                    };
+
+                    if let Ok(interaction_data) =
+                        deserialize_interaction_data::<BLEOpenID4VPInteractionData>(
+                            interaction.as_ref().and_then(|i| i.data.as_ref()),
+                        )
+                    {
+                        let _ = peripheral
+                            .notify_characteristic_data(
+                                interaction_data.peer.device_info.address,
+                                SERVICE_UUID.to_string(),
+                                DISCONNECT_UUID.to_string(),
+                                &[],
+                            )
+                            .await;
+                    };
                     let _ = peripheral.stop_server().await;
                 },
                 OnConflict::ReplaceIfSameFlow,
@@ -212,6 +258,22 @@ impl OpenID4VCBLEVerifier {
         }
 
         Ok(qr_url)
+    }
+}
+
+async fn wallet_disconnect_event(
+    connection_event_stream: &mut ConnectionEventStream,
+    wallet_address: &str,
+) {
+    loop {
+        let events = connection_event_stream.next().await;
+        if let Some(events) = events {
+            if events.iter().any(|event| {
+                matches!(event, ConnectionEvent::Disconnected { device_address } if wallet_address.eq(device_address))
+            }) {
+                return;
+            }
+        }
     }
 }
 
@@ -296,9 +358,29 @@ async fn start_advertisement(
     Ok(())
 }
 
-#[tracing::instrument(level = "debug", skip(ble_peripheral), err(Debug))]
+async fn get_connection_event_stream(
+    ble_peripheral: Arc<dyn BlePeripheral>,
+) -> ConnectionEventStream {
+    futures::stream::unfold(ble_peripheral, |peripheral| async move {
+        match peripheral.get_connection_change_events().await {
+            Ok(events) => Some((events, peripheral)),
+            Err(err) => {
+                tracing::error!("Failed to get connection events: {:?}", err);
+                None
+            }
+        }
+    })
+    .boxed()
+}
+
+#[tracing::instrument(
+    level = "debug",
+    skip(ble_peripheral, connection_event_stream),
+    err(Debug)
+)]
 async fn wait_for_wallet_identify_request(
     ble_peripheral: Arc<dyn BlePeripheral>,
+    connection_event_stream: &mut ConnectionEventStream,
 ) -> Result<(DeviceInfo, IdentityRequest), ExchangeProtocolError> {
     let mut identify_futures = FuturesUnordered::new();
 
@@ -307,7 +389,7 @@ async fn wait_for_wallet_identify_request(
             Some(wallet_info) = identify_futures.next() => {
                 break wallet_info;
             },
-            connection_events = ble_peripheral.get_connection_change_events() => {
+            connection_events = connection_event_stream.next() => {
                 for event in connection_events.context("Failed to get BLE connection events").map_err(ExchangeProtocolError::Transport)? {
                     if let ConnectionEvent::Connected { device_info } = event {
                         identify_futures.push(async {
@@ -336,17 +418,26 @@ pub fn read(
 ) -> impl Stream<Item = Result<Vec<u8>, BleError>> + Send {
     let address = device_info.address.clone();
 
-    futures::stream::unfold(
-        (address, id.to_string(), ble_peripheral),
+    let stream_of_streams = futures::stream::unfold(
+        (address, id.to_string(), ble_peripheral.clone()),
         move |(address, id, ble_peripheral)| async move {
-            let data = ble_peripheral
+            let result = ble_peripheral
                 .get_characteristic_writes(address.clone(), SERVICE_UUID.to_string(), id.clone())
-                .await
-                .map(|data| data.concat());
+                .await;
 
-            Some((data, (address, id, ble_peripheral)))
+            let vec_of_results = match result {
+                Ok(items) => items.into_iter().map(Ok).collect(),
+                Err(err) => vec![Err(err)],
+            };
+
+            Some((
+                futures::stream::iter(vec_of_results),
+                (address, id, ble_peripheral),
+            ))
         },
-    )
+    );
+
+    stream_of_streams.flatten()
 }
 
 #[tracing::instrument(level = "debug", skip(ble_peripheral), err(Debug))]

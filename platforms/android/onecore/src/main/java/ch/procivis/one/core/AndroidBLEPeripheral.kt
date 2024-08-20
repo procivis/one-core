@@ -235,10 +235,6 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     override suspend fun getConnectionChangeEvents(): List<ConnectionEventBindingEnum> {
         return asyncCallback { promise ->
             synchronized(lock) {
-                if (mAdvertisement == null) {
-                    throw BleException.BroadcastNotStarted()
-                }
-
                 if (mConnections.promise != null) {
                     throw BleException.AnotherOperationInProgress()
                 }

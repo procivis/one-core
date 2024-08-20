@@ -1,9 +1,11 @@
 use std::future::Future;
 use std::sync::Arc;
 
+use futures::FutureExt;
 use tokio::select;
 use tokio::sync::oneshot::{Receiver, Sender};
 use tokio::sync::{oneshot, Mutex, MutexGuard};
+use tokio_util::sync::{CancellationToken, DropGuard};
 use tokio_util::task::TaskTracker;
 use uuid::Uuid;
 
@@ -21,6 +23,7 @@ struct Action {
     expect_continuation: bool,
     tracker: TaskTracker,
     abort: Sender<()>,
+    _cancellation_token: DropGuard,
 }
 
 impl Action {
@@ -137,14 +140,14 @@ impl BleWaiter {
             }
             (Some(_), OnConflict::DoNothing) => ScheduleResult::Busy,
             (Some(_), OnConflict::Replace) => {
-                self.abort_inner(&mut state, None).await;
+                self.abort_inner(&mut state, None, false).await;
                 let (action, handle) = self.spawn(flow_id, flow, cancelation, expect_continuation);
                 let task_id = action.task_id;
                 state.replace(action);
                 ScheduleResult::Scheduled { handle, task_id }
             }
             (Some(running), OnConflict::ReplaceIfSameFlow) if running.flow_id == flow_id => {
-                self.abort_inner(&mut state, None).await;
+                self.abort_inner(&mut state, None, false).await;
                 let (action, handle) = self.spawn(flow_id, flow, cancelation, expect_continuation);
                 let task_id = action.task_id;
                 state.replace(action);
@@ -186,7 +189,7 @@ impl BleWaiter {
 
     pub async fn abort(&self, flow_id: Option<Uuid>) {
         let mut state = self.state.lock().await;
-        self.abort_inner(&mut state, flow_id).await
+        self.abort_inner(&mut state, flow_id, true).await
     }
 
     pub async fn is_enabled(&self) -> Result<BleStatus, BleError> {
@@ -202,7 +205,7 @@ impl BleWaiter {
         &self,
         flow_id: Uuid,
         flow: F,
-        cancelation: C,
+        cancellation: C,
         expect_continuation: bool,
     ) -> (Action, Receiver<JoinResult<FR::Output>>)
     where
@@ -214,18 +217,34 @@ impl BleWaiter {
     {
         let task_id = Uuid::new_v4();
         let tracker = TaskTracker::new();
+        let cancellation_token = CancellationToken::new();
         let (abort, on_abort) = oneshot::channel();
         let (finish, on_finish) = oneshot::channel();
         let task = flow(task_id, self.central.clone(), self.peripheral.clone());
-
         let central = self.central.clone();
         let peripheral = self.peripheral.clone();
+
+        let on_abort = on_abort.shared();
+
+        let cloned_token = cancellation_token.clone();
+        let cloned_abort = on_abort.clone();
+
+        let cancellation_handler = tokio::spawn(async move {
+            select! {
+                biased;
+
+                Ok(_) = cloned_abort => {
+                    let _ = cancellation(central.clone(), peripheral.clone()).await;
+                }
+                _ = cloned_token.cancelled() => {}
+            }
+        });
 
         tracker.spawn(async move {
             let result = select! {
                 val = task => JoinResult::Ok(val),
-                _ = on_abort => {
-                    cancelation(central, peripheral).await;
+                Ok(_) = on_abort => {
+                    let _ = cancellation_handler.await;
                     JoinResult::Aborted
                 }
             };
@@ -241,6 +260,7 @@ impl BleWaiter {
                 tracker,
                 abort,
                 expect_continuation,
+                _cancellation_token: cancellation_token.drop_guard(),
             },
             on_finish,
         )
@@ -250,10 +270,15 @@ impl BleWaiter {
         &self,
         state: &mut MutexGuard<'_, Option<Action>>,
         flow_id: Option<Uuid>,
+        abort_if_finished: bool,
     ) {
         let Some(action) = state.take() else {
             return;
         };
+
+        if action.tracker.is_empty() && !abort_if_finished {
+            return;
+        }
 
         match flow_id {
             None => action.abort().await,
