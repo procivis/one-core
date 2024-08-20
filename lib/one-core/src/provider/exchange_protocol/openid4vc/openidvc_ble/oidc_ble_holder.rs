@@ -9,12 +9,13 @@ use rand::rngs::OsRng;
 use rand::Rng;
 use shared_types::ProofId;
 use time::OffsetDateTime;
+use tokio::select;
 use uuid::{uuid, Uuid};
 
 use super::{
     BLEParse, BLEPeer, IdentityRequest, KeyAgreementKey, MessageSize, TransferSummaryReport,
-    CONTENT_SIZE_UUID, IDENTITY_UUID, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID,
-    TRANSFER_SUMMARY_REPORT_UUID,
+    CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, REQUEST_SIZE_UUID, SERVICE_UUID,
+    SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
 };
 use crate::model::interaction::Interaction;
 use crate::model::proof::{ProofState, ProofStateEnum};
@@ -110,45 +111,64 @@ impl OpenID4VCBLEHolder {
                         .context("failed to connect to verifier")
                         .map_err(ExchangeProtocolError::Transport)?;
 
-                    tracing::debug!("session_key_and_identity_request");
-                    let (identity_request, ble_peer) =
-                        session_key_and_identity_request(device_info, verifier_public_key)?;
+                    subscribe_to_notifications(&*central, &device_info.address)
+                        .await?;
 
-                    send(
-                        IDENTITY_UUID,
-                        identity_request.clone().encode().as_ref(),
-                        &ble_peer,
-                        &*central,
-                        CharacteristicWriteType::WithResponse,
-                    )
-                    .await?;
+                    let interaction = select! {
+                        biased;
 
-                    // Wait to ensure the verifier processed the identity request and updated
-                    // the relevant characteristics
-                    tokio::time::sleep(Duration::from_millis(200)).await;
+                        _ = verifier_disconnect_event(central.clone(), device_info.address.clone()) => {
+                            Err(ExchangeProtocolError::Failed("Verifier disconnected".into()))
+                        },
+                        interaction = async {
+                            tracing::debug!("session_key_and_identity_request");
+                            let (identity_request, ble_peer) =
+                                session_key_and_identity_request(device_info.clone(), verifier_public_key)?;
 
-                    tracing::debug!("read_presentation_definition");
-                    let presentation_definition =
-                        read_presentation_definition(&ble_peer, central.clone()).await?;
+                            send(
+                                IDENTITY_UUID,
+                                identity_request.clone().encode().as_ref(),
+                                &ble_peer,
+                                &*central,
+                                CharacteristicWriteType::WithResponse,
+                            )
+                            .await?;
 
-                    let now = OffsetDateTime::now_utc();
+                            // Wait to ensure the verifier processed the identity request and updated
+                            // the relevant characteristics
+                            tokio::time::sleep(Duration::from_millis(200)).await;
 
-                    Ok::<_, ExchangeProtocolError>(Interaction {
-                        id: interaction_id,
-                        created_date: now,
-                        last_modified: now,
-                        host: None,
-                        data: Some(
-                            serde_json::to_vec(&BLEOpenID4VPInteractionData {
-                                task_id,
-                                peer: ble_peer,
-                                nonce: Some(hex::encode(identity_request.nonce)),
-                                presentation_definition: Some(presentation_definition),
-                                presentation_submission: None,
+                            tracing::debug!("read_presentation_definition");
+                            let presentation_definition =
+                                read_presentation_definition(&ble_peer, central.clone()).await?;
+
+                            let now = OffsetDateTime::now_utc();
+
+                            Ok::<_, ExchangeProtocolError>(Interaction {
+                                id: interaction_id,
+                                created_date: now,
+                                last_modified: now,
+                                host: None,
+                                data: Some(
+                                    serde_json::to_vec(&BLEOpenID4VPInteractionData {
+                                        task_id,
+                                        peer: ble_peer,
+                                        nonce: Some(hex::encode(identity_request.nonce)),
+                                        presentation_definition: Some(presentation_definition),
+                                        presentation_submission: None,
+                                    })
+                                    .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
+                                ),
                             })
-                            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
-                        ),
-                    })
+                        } => interaction
+                    };
+
+                    if interaction.is_err() {
+                        let _ = unsubscribe_from_characteristic_notifications(&*central, &device_info.address).await;
+                        let _ = central.disconnect(device_info.address).await;
+                    }
+
+                    interaction
                 },
                 move |central, _| async move {
                     let Ok(interaction) = interaction_repository
@@ -166,9 +186,11 @@ impl OpenID4VCBLEHolder {
                     else {
                         return;
                     };
+                    let verifier_address = interaction_data.peer.device_info.address.clone();
 
+                    let _ = unsubscribe_from_characteristic_notifications(&*central, &verifier_address).await;
                     let _ = central
-                        .disconnect(interaction_data.peer.device_info.address.clone())
+                        .disconnect(verifier_address)
                         .await;
                 },
                 OnConflict::ReplaceIfSameFlow,
@@ -225,66 +247,89 @@ impl OpenID4VCBLEHolder {
             .schedule_continuation(
                 interaction.task_id,
                 {
-                    let peer = interaction.peer.clone();
-                    move |_, central, _| {
-                        async move {
-                            let response = BleOpenId4VpResponse {
-                                vp_token,
-                                presentation_submission,
-                            };
+                    let peer_address = interaction.peer.device_info.address.clone();
+                    let interaction = interaction.clone();
 
-                            let enc_payload = peer
-                                .encrypt(response)
-                                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+                    |_, central, _| async move {
+                        let cloned_central = central.clone();
 
-                            let chunks =
-                                Chunks::from_bytes(&enc_payload[..], peer.device_info.mtu());
+                        let result = select! {
+                            biased;
 
-                            let payload_len = (chunks.len() as u16).to_be_bytes();
-                            send(
-                                CONTENT_SIZE_UUID,
-                                &payload_len,
-                                &peer,
-                                &*central,
-                                CharacteristicWriteType::WithResponse,
-                            )
-                            .await?;
+                            _ = verifier_disconnect_event(central.clone(), interaction.peer.device_info.address.clone()) => {
+                                Err(ExchangeProtocolError::Failed("Verifier disconnected".into()))
+                            },
+                            result = async move {
+                                let response = BleOpenId4VpResponse {
+                                    vp_token,
+                                    presentation_submission,
+                                };
 
-                            for chunk in &chunks {
+                                let enc_payload = interaction.peer
+                                    .encrypt(response)
+                                    .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+                                let chunks =
+                                    Chunks::from_bytes(&enc_payload[..], interaction.peer.device_info.mtu());
+
+                                let payload_len = (chunks.len() as u16).to_be_bytes();
                                 send(
-                                    SUBMIT_VC_UUID,
-                                    &chunk.to_bytes(),
-                                    &peer,
-                                    &*central,
-                                    CharacteristicWriteType::WithoutResponse,
+                                    CONTENT_SIZE_UUID,
+                                    &payload_len,
+                                    &interaction.peer,
+                                    &*cloned_central,
+                                    CharacteristicWriteType::WithResponse,
                                 )
                                 .await?;
-                            }
 
-                            // Wait to ensure the verifier has received and processed all chunks
-                            tokio::time::sleep(Duration::from_millis(500)).await;
+                                for chunk in &chunks {
+                                    send(
+                                        SUBMIT_VC_UUID,
+                                        &chunk.to_bytes(),
+                                        &interaction.peer,
+                                        &*cloned_central,
+                                        CharacteristicWriteType::WithoutResponse,
+                                    )
+                                    .await?;
+                                }
 
-                            let missing_chunks = get_transfer_summary(&peer, &*central).await?;
+                                // Wait to ensure the verifier has received and processed all chunks
+                                tokio::time::sleep(Duration::from_millis(500)).await;
 
-                            if !missing_chunks.is_empty() {
-                                return Err(ExchangeProtocolError::Failed(
-                                    "did not send all chunks".to_string(),
-                                ));
-                            }
+                                let missing_chunks = get_transfer_summary(&interaction.peer, &*cloned_central).await?;
 
-                            // Give some to the verifier to read everything
-                            tokio::time::sleep(Duration::from_secs(1)).await;
+                                if !missing_chunks.is_empty() {
+                                    return Err(ExchangeProtocolError::Failed(
+                                        "did not send all chunks".to_string(),
+                                    ));
+                                }
+                                Ok::<_, ExchangeProtocolError>(())
+                            } => result
+                        };
 
-                            let _ = central.disconnect(peer.device_info.address.clone()).await;
+                        // Give some to the verifier to read everything
+                        tokio::time::sleep(Duration::from_secs(1)).await;
 
-                            Ok::<_, ExchangeProtocolError>(())
-                        }
+                        let _ = unsubscribe_from_characteristic_notifications(
+                            &*central,
+                            &peer_address,
+                        ).await;
+
+                        let _ = central.disconnect(peer_address).await;
+
+                        result
                     }
                 },
                 {
                     let peer = interaction.peer.clone();
                     move |central, _| async move {
-                        let _ = central.disconnect(peer.device_info.address.clone()).await;
+                        let verifier_address = peer.device_info.address.clone();
+                        let _ = unsubscribe_from_characteristic_notifications(
+                            &*central,
+                            &verifier_address,
+                        )
+                        .await;
+                        let _ = central.disconnect(verifier_address).await;
                     }
                 },
                 false,
@@ -368,6 +413,81 @@ async fn connect_to_verifier(
     }
 }
 
+async fn subscribe_to_notifications(
+    ble_central: &dyn BleCentral,
+    verifier_address: &str,
+) -> Result<(), ExchangeProtocolError> {
+    ble_central
+        .subscribe_to_characteristic_notifications(
+            verifier_address.to_string(),
+            SERVICE_UUID.to_string(),
+            DISCONNECT_UUID.to_string(),
+        )
+        .await
+        .context("failed to subscribe to disconnect notifications")
+        .map_err(ExchangeProtocolError::Transport)?;
+
+    ble_central
+        .subscribe_to_characteristic_notifications(
+            verifier_address.to_string(),
+            SERVICE_UUID.to_string(),
+            TRANSFER_SUMMARY_REPORT_UUID.to_string(),
+        )
+        .await
+        .context("failed to subscribe to summary report notifications")
+        .map_err(ExchangeProtocolError::Transport)?;
+
+    Ok(())
+}
+
+async fn unsubscribe_from_characteristic_notifications(
+    ble_central: &dyn BleCentral,
+    verifier_address: &str,
+) -> Result<(), ExchangeProtocolError> {
+    ble_central
+        .unsubscribe_from_characteristic_notifications(
+            verifier_address.to_string(),
+            SERVICE_UUID.to_string(),
+            DISCONNECT_UUID.to_string(),
+        )
+        .await
+        .context("failed to unsubscribe from disconnect notification")
+        .map_err(ExchangeProtocolError::Transport)?;
+
+    ble_central
+        .unsubscribe_from_characteristic_notifications(
+            verifier_address.to_string(),
+            SERVICE_UUID.to_string(),
+            TRANSFER_SUMMARY_REPORT_UUID.to_string(),
+        )
+        .await
+        .context("failed to unsubscribe from summary report notification")
+        .map_err(ExchangeProtocolError::Transport)?;
+
+    Ok(())
+}
+
+async fn verifier_disconnect_event(
+    ble_central: Arc<dyn BleCentral>,
+    verifier_address: String,
+) -> Result<(), ExchangeProtocolError> {
+    loop {
+        let notification = ble_central
+            .get_notifications(
+                verifier_address.clone(),
+                SERVICE_UUID.to_string(),
+                DISCONNECT_UUID.to_string(),
+            )
+            .await
+            .context("failed to get disconnect notifications")
+            .map_err(ExchangeProtocolError::Transport)?;
+
+        if !notification.is_empty() {
+            return Ok(());
+        }
+    }
+}
+
 fn session_key_and_identity_request(
     verifier_device: DeviceInfo,
     verifier_public_key: [u8; 32],
@@ -430,16 +550,6 @@ async fn read_presentation_definition(
     );
     tokio::pin!(message_stream);
 
-    ble_central
-        .subscribe_to_characteristic_notifications(
-            connected_verifier.device_info.address.clone(),
-            SERVICE_UUID.to_string(),
-            TRANSFER_SUMMARY_REPORT_UUID.to_string(),
-        )
-        .await
-        .context("subscribe_to_characteristic_notifications failed")
-        .map_err(ExchangeProtocolError::Transport)?;
-
     let mut notification = ble_central.get_notifications(
         connected_verifier.device_info.address.clone(),
         SERVICE_UUID.to_string(),
@@ -486,16 +596,6 @@ async fn read_presentation_definition(
             }
         }
     }
-
-    ble_central
-        .unsubscribe_from_characteristic_notifications(
-            connected_verifier.device_info.address.clone(),
-            SERVICE_UUID.to_string(),
-            TRANSFER_SUMMARY_REPORT_UUID.to_string(),
-        )
-        .await
-        .context("unsubscribe_from_characteristic_notifications failed")
-        .map_err(ExchangeProtocolError::Transport)?;
 
     if received_chunks.len() as u16 != request_size {
         return Err(ExchangeProtocolError::Failed(
@@ -556,16 +656,6 @@ async fn get_transfer_summary(
     connected_verifier: &BLEPeer,
     ble_central: &dyn BleCentral,
 ) -> Result<Vec<u16>, ExchangeProtocolError> {
-    ble_central
-        .subscribe_to_characteristic_notifications(
-            connected_verifier.device_info.address.clone(),
-            SERVICE_UUID.to_string(),
-            TRANSFER_SUMMARY_REPORT_UUID.to_string(),
-        )
-        .await
-        .context("subscribe_to_characteristic_notifications failed")
-        .map_err(ExchangeProtocolError::Transport)?;
-
     send(
         TRANSFER_SUMMARY_REQUEST_UUID,
         &[],

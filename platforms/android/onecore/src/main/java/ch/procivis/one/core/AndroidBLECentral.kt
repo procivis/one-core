@@ -258,7 +258,8 @@ class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, 
                 val data = mSubscriptions[subscription] ?: throw BleException.BroadcastNotStarted()
 
                 if (data.promise != null) {
-                    throw BleException.Unknown("Already awaiting this notification")
+                    data.promise!!.fail(BleException.Unknown("cancelled due to new request"))
+                    data.promise = null
                 }
 
                 if (data.messages.isEmpty()) {
