@@ -516,11 +516,11 @@ impl OneCore {
                 protocol_provider,
                 did_method_provider,
                 config.clone(),
-                http_client,
+                http_client.clone(),
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),
-            jsonld_service: JsonLdService::new(jsonld_caching_loader),
+            jsonld_service: JsonLdService::new(jsonld_caching_loader, http_client),
             config,
         })
     }

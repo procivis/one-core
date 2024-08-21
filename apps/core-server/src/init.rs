@@ -280,11 +280,8 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
         Arc::new(KeyProviderImpl::new(key_providers.to_owned()))
     });
 
-    let caching_loader = initialize_jsonld_cache_loader(
-        &app_config.core.cache_entities,
-        data_repository.clone(),
-        reqwest::Client::new(),
-    );
+    let caching_loader =
+        initialize_jsonld_cache_loader(&app_config.core.cache_entities, data_repository.clone());
 
     let formatter_provider_creator: FormatterProviderCreator = {
         let caching_loader = caching_loader.clone();
@@ -410,29 +407,33 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                     continue;
                 }
 
-            let revocation_method = match fields.r#type {
-                RevocationType::None => Arc::new(NoneRevocation {}) as _,
-                RevocationType::BitstringStatusList => Arc::new(BitstringStatusList::new(
-                    Some(core_base_url.clone()),
-                    key_algorithm_provider.clone(),
-                    did_method_provider.clone(),
-                    key_provider.clone(),
-                    initialize_statuslist_loader(&cache_entities_config, data_repository.clone()),
-                )) as _,
-                RevocationType::Lvvc => {
-                    ({
-                        let params = config.get(key).expect("failed to get LVVC params");
-                        Arc::new(LvvcProvider::new(
-                            Some(core_base_url.clone()),
-                            formatter_provider.clone(),
-                            did_method_provider.clone(),
-                            key_provider.clone(),
-                            client.clone(),
-                            params,
-                        ))
-                    }) as _
-                }
-            };
+                let revocation_method = match fields.r#type {
+                    RevocationType::None => Arc::new(NoneRevocation {}) as _,
+                    RevocationType::BitstringStatusList => Arc::new(BitstringStatusList::new(
+                        Some(core_base_url.clone()),
+                        key_algorithm_provider.clone(),
+                        did_method_provider.clone(),
+                        key_provider.clone(),
+                        initialize_statuslist_loader(
+                            &cache_entities_config,
+                            data_repository.clone(),
+                        ),
+                        client.clone(),
+                    )) as _,
+                    RevocationType::Lvvc => {
+                        ({
+                            let params = config.get(key).expect("failed to get LVVC params");
+                            Arc::new(LvvcProvider::new(
+                                Some(core_base_url.clone()),
+                                formatter_provider.clone(),
+                                did_method_provider.clone(),
+                                key_provider.clone(),
+                                client.clone(),
+                                params,
+                            ))
+                        }) as _
+                    }
+                };
 
                 revocation_methods.insert(key.to_string(), revocation_method);
             }
@@ -584,7 +585,6 @@ pub fn initialize_did_caching_loader(
 pub fn initialize_jsonld_cache_loader(
     cache_entities_config: &CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
-    client: reqwest::Client,
 ) -> JsonLdCachingLoader {
     let config = cache_entities_config
         .entities

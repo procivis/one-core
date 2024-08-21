@@ -394,8 +394,8 @@ fn initialize_core(
                         }
                     }
 
-                let did_caching_loader =
-                    initialize_did_caching_loader(&cache_entities_config, data_provider);
+                    let did_caching_loader =
+                        initialize_did_caching_loader(&cache_entities_config, data_provider);
 
                     (
                         Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods)),
@@ -406,7 +406,6 @@ fn initialize_core(
             let caching_loader = initialize_jsonld_cache_loader(
                 core_config.cache_entities.to_owned(),
                 data_repository.to_owned(),
-                client.clone(),
             );
 
             let formatter_provider_creator: FormatterProviderCreator = {
@@ -546,6 +545,7 @@ fn initialize_core(
                                         &cache_entities_config,
                                         data_repository.clone(),
                                     ),
+                                    client.clone(),
                                 )) as _
                             }
                             RevocationType::Lvvc => {
@@ -651,7 +651,6 @@ pub struct MobileConfig;
 pub fn initialize_jsonld_cache_loader(
     cache_entities_config: CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
-    client: reqwest::Client,
 ) -> JsonLdCachingLoader {
     let json_ld_context_config = cache_entities_config
         .entities
