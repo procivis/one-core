@@ -80,6 +80,7 @@ impl SSIHolderService {
             organisation.clone().into(),
             self.credential_schema_repository.clone(),
             self.config.clone(),
+            self.client.clone(),
         );
 
         let response = protocol

@@ -29,9 +29,10 @@ use crate::util::oidc::map_from_oidc_format_to_core;
 pub const NESTED_CLAIM_MARKER: char = '/';
 
 pub struct HandleInvitationOperationsImpl {
-    pub organisation: OpenOrganisation,
-    pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
-    pub config: Arc<CoreConfig>,
+    organisation: OpenOrganisation,
+    credential_schemas: Arc<dyn CredentialSchemaRepository>,
+    config: Arc<CoreConfig>,
+    client: reqwest::Client,
 }
 
 impl HandleInvitationOperationsImpl {
@@ -39,11 +40,13 @@ impl HandleInvitationOperationsImpl {
         organisation: OpenOrganisation,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         config: Arc<CoreConfig>,
+        client: reqwest::Client,
     ) -> Self {
         Self {
             organisation,
             credential_schemas,
             config,
+            client,
         }
     }
 }
@@ -146,7 +149,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
     ) -> Result<BuildCredentialSchemaResponse, ExchangeProtocolError> {
         let result = match schema_data.schema_type.as_str() {
             "ProcivisOneSchema2024" => {
-                let procivis_schema = fetch_procivis_schema(&schema_data.schema_id)
+                let procivis_schema = fetch_procivis_schema(&schema_data.schema_id, &self.client)
                     .await
                     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
