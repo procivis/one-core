@@ -112,6 +112,7 @@ impl Task for SuspendCheckProvider {
                             ..Default::default()
                         }),
                         holder_did: Some(DidRelations::default()),
+                        key: Some(KeyRelations::default()),
                         schema: Some(CredentialSchemaRelations {
                             organisation: Some(OrganisationRelations::default()),
                             ..Default::default()
