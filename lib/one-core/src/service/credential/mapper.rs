@@ -21,7 +21,7 @@ use crate::service::credential::dto::{
 };
 use crate::service::error::{BusinessLogicError, ServiceError};
 
-pub fn credential_detail_response_from_model(
+pub(crate) async fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
 ) -> Result<CredentialDetailResponseDTO, ServiceError> {
@@ -49,8 +49,8 @@ pub fn credential_detail_response_from_model(
         revocation_date: get_revocation_date(&latest_state),
         state: latest_state.state.into(),
         last_modified: value.last_modified,
-        claims: from_vec_claim(claims, &schema, config)?,
-        schema: schema.try_into()?,
+        claims: from_vec_claim(claims, &schema, config).await?,
+        schema: schema.into(),
         issuer_did: convert_inner(value.issuer_did),
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
@@ -59,18 +59,9 @@ pub fn credential_detail_response_from_model(
     })
 }
 
-impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
-    type Error = ServiceError;
-
-    fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
-        let organisation_id = match value.organisation {
-            None => Err(ServiceError::MappingError(
-                "Organisation has not been fetched".to_string(),
-            )),
-            Some(value) => Ok(value.id),
-        }?;
-
-        Ok(Self {
+impl From<CredentialSchema> for DetailCredentialSchemaResponseDTO {
+    fn from(value: CredentialSchema) -> Self {
+        Self {
             id: value.id,
             created_date: value.created_date,
             deleted_at: value.deleted_at,
@@ -79,30 +70,24 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
             format: value.format,
             revocation_method: value.revocation_method,
             wallet_storage_type: value.wallet_storage_type,
-            organisation_id,
+            organisation_id: *value.organisation.id(),
             schema_type: value.schema_type.into(),
             schema_id: value.schema_id,
             layout_type: value.layout_type.into(),
             layout_properties: convert_inner(value.layout_properties),
-        })
+        }
     }
 }
 
-pub(crate) fn from_vec_claim(
+pub(crate) async fn from_vec_claim(
     claims: Vec<Claim>,
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
 ) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
-    let claim_schemas =
-        credential_schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "claim_schemas is None".to_string(),
-            ))?;
+    let claim_schemas = credential_schema.claim_schemas.get().await?;
 
     let mut claims = claims.into_iter().try_fold(vec![], |state, claim| {
-        insert_claim(state, claim, claim_schemas, config)
+        insert_claim(state, claim, &claim_schemas, config)
     })?;
 
     sort_claims(&mut claims);
@@ -396,6 +381,15 @@ pub(super) fn claims_from_create_request(
 pub(super) fn credential_created_history_event(
     credential: Credential,
 ) -> Result<History, ServiceError> {
+    let organisation_id = credential
+        .schema
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "organisation is None".to_string(),
+        ))?
+        .organisation
+        .id();
+
     Ok(History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
@@ -403,12 +397,11 @@ pub(super) fn credential_created_history_event(
         entity_id: Some(credential.id.into()),
         entity_type: HistoryEntityType::Credential,
         metadata: None,
-        organisation: credential
-            .schema
-            .ok_or(ServiceError::MappingError(
-                "organisation is None".to_string(),
-            ))?
-            .organisation,
+        organisation: Some(Organisation {
+            id: *organisation_id,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
     })
 }
 
@@ -420,7 +413,11 @@ pub(super) fn credential_offered_history_event(credential: Credential) -> Histor
         entity_id: Some(credential.id.into()),
         entity_type: HistoryEntityType::Credential,
         metadata: None,
-        organisation: credential.schema.and_then(|c| c.organisation),
+        organisation: credential.schema.map(|schema| Organisation {
+            id: *schema.organisation.id(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
     }
 }
 

@@ -698,6 +698,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             convert_inner(credential_groups),
             &self.config,
         )
+        .await
         .map(Into::into)
     }
 

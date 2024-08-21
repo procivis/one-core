@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofSchemaService;
-use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
@@ -22,6 +22,7 @@ use crate::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
     ProofSchema, ProofSchemaRelations,
 };
+use crate::model::relation::Related;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -77,13 +78,9 @@ async fn test_get_proof_schema_exists() {
             .with(
                 eq(proof_schema.id.to_owned()),
                 eq(ProofSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(Default::default()),
-                        credential_schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(ClaimSchemaRelations::default()),
-                            ..Default::default()
-                        }),
+                        credential_schema: Some(CredentialSchemaRelations {}),
                     }),
                 }),
             )
@@ -169,7 +166,7 @@ async fn test_get_proof_schema_list_success() {
         deleted_at: None,
         name: "name".to_string(),
         expire_duration: 0,
-        organisation: None,
+        organisation: Related::from_id_only(Uuid::new_v4()),
         input_schemas: None,
     };
     {
@@ -262,7 +259,7 @@ async fn test_delete_proof_schema_success() {
                 deleted_at: None,
                 name: "name".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 input_schemas: None,
             }))
         });
@@ -304,7 +301,7 @@ async fn test_delete_proof_schema_failure() {
                 deleted_at: None,
                 name: "name".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 input_schemas: None,
             }))
         });
@@ -373,7 +370,7 @@ async fn test_create_proof_schema_success() {
     credential_schema_repository
         .expect_get_credential_schema_list()
         .times(1)
-        .returning(move |_, _| {
+        .returning(move |_| {
             let schema = CredentialSchema {
                 id: credential_schema_id,
                 deleted_at: None,
@@ -383,11 +380,12 @@ async fn test_create_proof_schema_success() {
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
-                claim_schemas: Some(vec![CredentialSchemaClaim {
+                claim_schemas: vec![CredentialSchemaClaim {
                     schema: claim_schema.clone(),
                     required: false,
-                }]),
-                organisation: None,
+                }]
+                .into(),
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -441,7 +439,7 @@ async fn test_create_proof_schema_success() {
             let claim_schemas = input_schemas[0].claim_schemas.as_ref().unwrap();
             claim_schemas.len() == 1
                 && claim_schemas[0].schema.id == claim_schema_id
-                && proof_schema.organisation.as_ref().unwrap().id == organisation_id
+                && proof_schema.organisation.id() == &organisation_id
                 && proof_schema.name == create_request_clone.name
                 && proof_schema.expire_duration == create_request_clone.expire_duration
         })
@@ -502,7 +500,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
     credential_schema_repository
         .expect_get_credential_schema_list()
         .times(1)
-        .returning(move |_, _| {
+        .returning(move |_| {
             let schema = CredentialSchema {
                 id: credential_schema_id,
                 deleted_at: None,
@@ -512,11 +510,12 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 format: "PHYSICAL_CARD".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
-                claim_schemas: Some(vec![CredentialSchemaClaim {
+                claim_schemas: vec![CredentialSchemaClaim {
                     schema: claim_schema.clone(),
                     required: false,
-                }]),
-                organisation: None,
+                }]
+                .into(),
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -532,11 +531,12 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 format: "PHYSICAL_CARD".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
-                claim_schemas: Some(vec![CredentialSchemaClaim {
+                claim_schemas: vec![CredentialSchemaClaim {
                     schema: claim_schem_2.clone(),
                     required: false,
-                }]),
-                organisation: None,
+                }]
+                .into(),
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -676,7 +676,7 @@ async fn test_create_proof_schema_array_object_fail() {
     credential_schema_repository
         .expect_get_credential_schema_list()
         .times(1)
-        .returning(move |_, _| {
+        .returning(move |_| {
             let schema = CredentialSchema {
                 id: credential_schema_id,
                 deleted_at: None,
@@ -686,7 +686,7 @@ async fn test_create_proof_schema_array_object_fail() {
                 format: "SDJWT".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
-                claim_schemas: Some(vec![
+                claim_schemas: vec![
                     CredentialSchemaClaim {
                         schema: claim_schema_root.clone(),
                         required: false,
@@ -703,8 +703,9 @@ async fn test_create_proof_schema_array_object_fail() {
                         schema: claim_schema_array_object_item.clone(),
                         required: false,
                     },
-                ]),
-                organisation: None,
+                ]
+                .into(),
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -836,7 +837,7 @@ async fn test_create_proof_schema_array_success() {
     credential_schema_repository
         .expect_get_credential_schema_list()
         .times(1)
-        .returning(move |_, _| {
+        .returning(move |_| {
             let schema = CredentialSchema {
                 id: credential_schema_id,
                 deleted_at: None,
@@ -846,7 +847,7 @@ async fn test_create_proof_schema_array_success() {
                 format: "SDJWT".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
-                claim_schemas: Some(vec![
+                claim_schemas: vec![
                     CredentialSchemaClaim {
                         schema: claim_schema_root.clone(),
                         required: false,
@@ -863,8 +864,9 @@ async fn test_create_proof_schema_array_success() {
                         schema: claim_schema_array_object_item.clone(),
                         required: false,
                     },
-                ]),
-                organisation: None,
+                ]
+                .into(),
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -918,7 +920,7 @@ async fn test_create_proof_schema_array_success() {
             let claim_schemas = input_schemas[0].claim_schemas.as_ref().unwrap();
             claim_schemas.len() == 1
                 && claim_schemas[0].schema.id == claim_id
-                && proof_schema.organisation.as_ref().unwrap().id == organisation_id
+                && proof_schema.organisation.id() == &organisation_id
                 && proof_schema.name == create_request_clone.name
                 && proof_schema.expire_duration == create_request_clone.expire_duration
         })
@@ -999,7 +1001,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
     credential_schema_repository
         .expect_get_credential_schema_list()
         .times(1)
-        .returning(move |_, _| {
+        .returning(move |_| {
             let schema = CredentialSchema {
                 id: credential_schema_id,
                 deleted_at: None,
@@ -1009,7 +1011,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
-                claim_schemas: Some(vec![CredentialSchemaClaim {
+                claim_schemas: vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
                         id: Uuid::new_v4().into(),
                         key: "key".to_string(),
@@ -1019,8 +1021,9 @@ async fn test_create_proof_schema_claims_dont_exist() {
                         array: false,
                     },
                     required: false,
-                }]),
-                organisation: None,
+                }]
+                .into(),
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -1221,14 +1224,13 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, schema_type, org, relations| {
+        .withf(move |schema_id, schema_type, org| {
             schema_id == "iso-org-test123"
                 && *schema_type == CredentialSchemaType::Mdoc
                 && org == &organisation_id
-                && relations.claim_schemas.is_some()
         })
         .once()
-        .returning(|_, _, _, _| Ok(None));
+        .returning(|_, _, _| Ok(None));
     credential_schema_repository
         .expect_create_credential_schema()
         .once()
@@ -1338,14 +1340,13 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, schema_type, org, relations| {
+        .withf(move |schema_id, schema_type, org| {
             schema_id == "iso-org-test123"
                 && *schema_type == CredentialSchemaType::Mdoc
                 && org == &organisation_id
-                && relations.claim_schemas.is_some()
         })
         .once()
-        .returning(|_, _, _, _| {
+        .returning(|_, _, _| {
             Ok(Some(CredentialSchema {
                 deleted_at: Some(get_dummy_date()),
                 ..dummy_credential_schema()
@@ -1460,6 +1461,17 @@ async fn test_import_proof_ok_existing_credential_schema_but_missing_claims() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
 
     let existing_schema_id = Uuid::new_v4().into();
+    let credential_schema_claims = vec![CredentialSchemaClaim {
+        schema: ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "root/name".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            array: false,
+            last_modified: get_dummy_date(),
+        },
+        required: true,
+    }];
     let existing_schema = CredentialSchema {
         id: existing_schema_id,
         deleted_at: None,
@@ -1473,31 +1485,20 @@ async fn test_import_proof_ok_existing_credential_schema_but_missing_claims() {
         layout_properties: None,
         schema_id: "iso-org-test123".to_string(),
         schema_type: CredentialSchemaType::Mdoc,
-        claim_schemas: Some(vec![CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "root/name".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: get_dummy_date(),
-                array: false,
-                last_modified: get_dummy_date(),
-            },
-            required: true,
-        }]),
-        organisation: None,
+        claim_schemas: credential_schema_claims.clone().into(),
+        organisation: Related::from_id_only(Uuid::new_v4()),
     };
 
     let existing_schema_clone = existing_schema.clone();
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, schema_type, org, relations| {
+        .withf(move |schema_id, schema_type, org| {
             schema_id == "iso-org-test123"
                 && *schema_type == CredentialSchemaType::Mdoc
                 && org == &organisation_id
-                && relations.claim_schemas.is_some()
         })
         .once()
-        .returning(move |_, _, _, _| Ok(Some(existing_schema_clone.clone())));
+        .returning(move |_, _, _| Ok(Some(existing_schema_clone.clone())));
     let existing_schema_clone = existing_schema.clone();
     credential_schema_repository
         .expect_update_credential_schema()
@@ -1510,29 +1511,29 @@ async fn test_import_proof_ok_existing_credential_schema_but_missing_claims() {
         })
         .once()
         .returning(|_| Ok(()));
+
     credential_schema_repository
         .expect_get_credential_schema()
-        .with(eq(existing_schema_id), always())
+        .with(eq(existing_schema_id))
         .once()
-        .returning(move |_, _| {
-            let mut result = existing_schema_clone.clone();
-            result
-                .claim_schemas
-                .as_mut()
-                .unwrap()
-                .push(CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: "root/lastname".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: get_dummy_date(),
-                        array: false,
-                        last_modified: get_dummy_date(),
-                    },
-                    required: true,
-                });
+        .returning(move |_| {
+            let mut claim_schemas = credential_schema_claims.clone();
+            claim_schemas.push(CredentialSchemaClaim {
+                schema: ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    key: "root/lastname".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: get_dummy_date(),
+                    array: false,
+                    last_modified: get_dummy_date(),
+                },
+                required: true,
+            });
 
-            Ok(Some(result))
+            Ok(Some(CredentialSchema {
+                claim_schemas: claim_schemas.into(),
+                ..existing_schema_clone.clone()
+            }))
         });
 
     let mut history_repository = MockHistoryRepository::new();
@@ -1644,14 +1645,13 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
 
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, schema_type, org, relations| {
+        .withf(move |schema_id, schema_type, org| {
             schema_id == "iso-org-test123"
                 && *schema_type == CredentialSchemaType::Mdoc
                 && org == &organisation_id
-                && relations.claim_schemas.is_some()
         })
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _| {
             Ok(Some(CredentialSchema {
                 id: existing_schema_id,
                 deleted_at: None,
@@ -1665,7 +1665,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 layout_properties: None,
                 schema_id: "iso-org-test123".to_string(),
                 schema_type: CredentialSchemaType::Mdoc,
-                claim_schemas: Some(vec![CredentialSchemaClaim {
+                claim_schemas: vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
                         id: Uuid::new_v4().into(),
                         key: "root/name".to_string(),
@@ -1675,8 +1675,9 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                         last_modified: get_dummy_date(),
                     },
                     required: true,
-                }]),
-                organisation: None,
+                }]
+                .into(),
+                organisation: Related::from_id_only(Uuid::new_v4()),
             }))
         });
 
@@ -1978,11 +1979,12 @@ fn generic_proof_schema() -> ProofSchema {
         deleted_at: None,
         name: "name".to_string(),
         expire_duration: 0,
-        organisation: Some(Organisation {
+        organisation: Organisation {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-        }),
+        }
+        .into(),
         input_schemas: Some(vec![]),
     }
 }
@@ -2030,7 +2032,7 @@ async fn test_get_proof_schema_success_nested_claims() {
             layout_properties: None,
             schema_id: "".to_string(),
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-            claim_schemas: Some(vec![
+            claim_schemas: vec![
                 CredentialSchemaClaim {
                     schema: location_claim_schema,
                     required: true,
@@ -2039,8 +2041,9 @@ async fn test_get_proof_schema_success_nested_claims() {
                     schema: location_x_claim_schema.to_owned(),
                     required: true,
                 },
-            ]),
-            organisation: None,
+            ]
+            .into(),
+            organisation: Related::from_id_only(Uuid::new_v4()),
         }),
     }]);
 
@@ -2052,13 +2055,9 @@ async fn test_get_proof_schema_success_nested_claims() {
             .with(
                 eq(proof_schema.id.to_owned()),
                 eq(ProofSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(Default::default()),
-                        credential_schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(ClaimSchemaRelations::default()),
-                            ..Default::default()
-                        }),
+                        credential_schema: Some(CredentialSchemaRelations {}),
                     }),
                 }),
             )
@@ -2215,7 +2214,7 @@ async fn test_create_proof_schema_verify_nested_generic(
     credential_schema_repository
         .expect_get_credential_schema_list()
         .once()
-        .return_once(move |_, _| {
+        .return_once(move |_| {
             let schema = CredentialSchema {
                 id: credential_schema_id,
                 deleted_at: None,
@@ -2225,16 +2224,14 @@ async fn test_create_proof_schema_verify_nested_generic(
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
-                claim_schemas: Some(
-                    claim_schemas_cloned
-                        .into_iter()
-                        .map(|schema| CredentialSchemaClaim {
-                            required: true,
-                            schema,
-                        })
-                        .collect(),
-                ),
-                organisation: None,
+                claim_schemas: claim_schemas_cloned
+                    .into_iter()
+                    .map(|schema| CredentialSchemaClaim {
+                        required: true,
+                        schema,
+                    })
+                    .collect(),
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,

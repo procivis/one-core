@@ -30,10 +30,9 @@ use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
-use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
-    Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
-    UpdateProofRequest,
+    to_open_proof, Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum,
+    ProofStateRelations, UpdateProofRequest,
 };
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -76,13 +75,9 @@ impl ProofService {
                 id,
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(Default::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                organisation: None,
-                            }),
+                            credential_schema: Some(CredentialSchemaRelations {}),
                         }),
                     }),
                     state: Some(Default::default()),
@@ -95,10 +90,7 @@ impl ProofService {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(Default::default()),
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(CredentialSchemaRelations {}),
                             issuer_did: Some(Default::default()),
                             holder_did: Some(Default::default()),
                             ..Default::default()
@@ -120,9 +112,9 @@ impl ProofService {
         };
 
         if proof.schema.is_some() {
-            get_verifier_proof_detail(proof, &self.config)
+            get_verifier_proof_detail(proof, &self.config).await
         } else {
-            get_holder_proof_detail(proof, &self.config)
+            get_holder_proof_detail(proof, &self.config).await
         }
     }
 
@@ -185,7 +177,7 @@ impl ProofService {
 
         Ok(exchange
             .get_presentation_definition(
-                &proof.clone().into(),
+                &to_open_proof(proof.clone()).await?,
                 interaction_data,
                 &storage_access,
                 create_oicd_to_core_format_map(),
@@ -226,13 +218,9 @@ impl ProofService {
             .get_proof_schema(
                 &proof_schema_id,
                 &ProofSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                        credential_schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(ClaimSchemaRelations::default()),
-                            ..Default::default()
-                        }),
+                        credential_schema: Some(CredentialSchemaRelations {}),
                     }),
                 },
             )
@@ -371,7 +359,7 @@ impl ProofService {
             context,
         } = exchange
             .share_proof(
-                &proof.clone().into(),
+                &to_open_proof(proof.clone()).await?,
                 format_type_mapper,
                 jwk.key_id.into(),
                 jwk.jwk.into(),
@@ -579,7 +567,6 @@ impl ProofService {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
-                        organisation: Some(OrganisationRelations::default()),
                     }),
                     interaction: Some(InteractionRelations::default()),
                     claims: Some(ProofClaimRelations {

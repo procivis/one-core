@@ -17,13 +17,11 @@ use crate::repository::did_repository::DidRepository;
 use crate::service::error::ServiceError;
 use crate::util::oidc::map_core_to_oidc_format;
 
-pub(super) fn credentials_supported_mdoc(
+pub(super) async fn credentials_supported_mdoc(
     base_url: &str,
     schema: CredentialSchema,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
-    let claim_schemas: Vec<CredentialSchemaClaim> = schema.claim_schemas.ok_or(
-        ServiceError::MappingError("claim_schemas is None".to_string()),
-    )?;
+    let claim_schemas = schema.claim_schemas.get().await?;
 
     // order of namespaces and elements inside MDOC schema as defined in OpenID4VCI mdoc spec: `{namespace}~{element}`
     let element_order: Vec<String> = claim_schemas
@@ -238,6 +236,8 @@ fn from_provider_schema(
     schema: one_providers::common_models::credential_schema::OpenCredentialSchema,
     organisation: Organisation,
 ) -> CredentialSchema {
+    let claim_schemas: Vec<CredentialSchemaClaim> =
+        convert_inner(schema.claim_schemas.unwrap_or_default());
     CredentialSchema {
         id: schema.id.into(),
         deleted_at: schema.deleted_at,
@@ -251,7 +251,7 @@ fn from_provider_schema(
         layout_properties: convert_inner(schema.layout_properties),
         schema_id: schema.schema_id,
         schema_type: schema.schema_type.into(),
-        claim_schemas: convert_inner_of_inner(schema.claim_schemas),
+        claim_schemas: claim_schemas.into(),
         organisation: organisation.into(),
     }
 }

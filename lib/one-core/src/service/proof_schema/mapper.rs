@@ -20,30 +20,25 @@ use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofS
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
 
-pub(super) fn convert_proof_schema_to_response(
+pub(super) async fn convert_proof_schema_to_response(
     value: ProofSchema,
     datatype_config: &DatatypeConfig,
 ) -> Result<GetProofSchemaResponseDTO, ServiceError> {
+    let mut proof_input_schemas: Vec<ProofInputSchemaResponseDTO> = vec![];
+    for value in value.input_schemas.ok_or(ServiceError::MappingError(
+        "proof_input_schemas is None".to_string(),
+    ))? {
+        proof_input_schemas.push(convert_input_schema_to_response(value, datatype_config).await?);
+    }
+
     Ok(GetProofSchemaResponseDTO {
         id: value.id,
         created_date: value.created_date,
         last_modified: value.last_modified,
         name: value.name,
-        organisation_id: value
-            .organisation
-            .ok_or(ServiceError::MappingError(
-                "organisation is None".to_string(),
-            ))?
-            .id,
+        organisation_id: *value.organisation.id(),
         expire_duration: value.expire_duration,
-        proof_input_schemas: value
-            .input_schemas
-            .ok_or(ServiceError::MappingError(
-                "proof_input_schemas is None".to_string(),
-            ))?
-            .into_iter()
-            .map(|value| convert_input_schema_to_response(value, datatype_config))
-            .collect::<Result<Vec<_>, _>>()?,
+        proof_input_schemas,
     })
 }
 
@@ -52,7 +47,7 @@ pub(super) fn credential_schema_from_proof_input_schema(
     organisation: Organisation,
     now: OffsetDateTime,
 ) -> CredentialSchema {
-    let claims = unnest_proof_claim_schemas(&input_schema.claim_schemas, "".into())
+    let claims: Vec<_> = unnest_proof_claim_schemas(&input_schema.claim_schemas, "".into())
         .into_iter()
         .map(|imported_schema| CredentialSchemaClaim {
             schema: ClaimSchema {
@@ -88,19 +83,16 @@ pub(super) fn credential_schema_from_proof_input_schema(
             .map(Into::into),
         schema_id: input_schema.credential_schema.schema_id.clone(),
         schema_type: input_schema.credential_schema.schema_type.clone().into(),
-        claim_schemas: Some(claims),
-        organisation: Some(organisation),
+        claim_schemas: claims.into(),
+        organisation: organisation.into(),
     }
 }
 
-pub(super) fn proof_input_from_import_request(
+pub(super) async fn proof_input_from_import_request(
     input_schema: &ImportProofSchemaInputSchemaDTO,
     credential_schema: CredentialSchema,
 ) -> Result<ProofInputSchema, ServiceError> {
-    let claim_schemas = credential_schema
-        .claim_schemas
-        .as_ref()
-        .ok_or_else(|| ServiceError::MappingError("claim_schemas is None".to_string()))?;
+    let claim_schemas = credential_schema.claim_schemas.get().await?;
 
     let proof_claim_schemas = input_schema
         .claim_schemas
@@ -154,7 +146,7 @@ fn unnest_proof_claim_schemas(
     result
 }
 
-fn convert_input_schema_to_response(
+async fn convert_input_schema_to_response(
     value: ProofInputSchema,
     datatype_config: &DatatypeConfig,
 ) -> Result<ProofInputSchemaResponseDTO, ServiceError> {
@@ -165,19 +157,13 @@ fn convert_input_schema_to_response(
         "credential_schema is None".to_string(),
     ))?;
 
-    let credential_schema_claims =
-        credential_schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "claim_schemas is None".to_string(),
-            ))?;
+    let credential_schema_claims = credential_schema.claim_schemas.get().await?;
 
     Ok(ProofInputSchemaResponseDTO {
         claim_schemas: nest_claim_schemas(
             append_object_claim_schemas(
                 convert_inner(claim_schemas),
-                credential_schema_claims,
+                &credential_schema_claims,
                 datatype_config,
             )?,
             datatype_config,
@@ -396,7 +382,7 @@ pub fn proof_schema_from_create_request(
         last_modified: now,
         name: request.name,
         expire_duration: request.expire_duration,
-        organisation: Some(organisation),
+        organisation: organisation.into(),
         deleted_at: None,
         input_schemas: Some(input_schemas),
     })

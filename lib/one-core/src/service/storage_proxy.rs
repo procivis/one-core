@@ -10,8 +10,10 @@ use one_providers::common_models::organisation::OrganisationId;
 use one_providers::exchange_protocol::openid4vc::StorageProxy;
 
 use crate::model::claim::ClaimRelations;
-use crate::model::credential::CredentialRelations;
-use crate::model::credential_schema::{CredentialSchemaRelations, CredentialSchemaType};
+use crate::model::credential::{to_open_credential, CredentialRelations};
+use crate::model::credential_schema::{
+    to_open_credential_schema, CredentialSchemaRelations, CredentialSchemaType,
+};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -60,46 +62,48 @@ impl StorageProxy for StorageProxyImpl {
         schema_type: &str,
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Option<OpenCredentialSchema>> {
-        convert_inner_of_inner(
-            self.credential_schemas
-                .get_by_schema_id_and_organisation(
-                    schema_id,
-                    CredentialSchemaType::from(schema_type.to_string()),
-                    organisation_id.into(),
-                    &CredentialSchemaRelations {
-                        claim_schemas: Some(Default::default()),
-                        organisation: Some(Default::default()),
-                    },
-                )
-                .await
-                .context("Error while fetching credential schema"),
-        )
+        let schema = self
+            .credential_schemas
+            .get_by_schema_id_and_organisation(
+                schema_id,
+                CredentialSchemaType::from(schema_type.to_string()),
+                organisation_id.into(),
+            )
+            .await
+            .context("Error while fetching credential schema")?;
+
+        Ok(match schema {
+            None => None,
+            Some(schema) => Some(to_open_credential_schema(schema).await?),
+        })
     }
 
     async fn get_credentials_by_credential_schema_id(
         &self,
         schema_id: &str,
     ) -> anyhow::Result<Vec<OpenCredential>> {
-        convert_inner_of_inner(
-            self.credentials
-                .get_credentials_by_credential_schema_id(
-                    schema_id.to_owned(),
-                    &CredentialRelations {
-                        state: Some(Default::default()),
-                        issuer_did: Some(Default::default()),
-                        claims: Some(ClaimRelations {
-                            schema: Some(Default::default()),
-                        }),
-                        schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(Default::default()),
-                            organisation: Some(Default::default()),
-                        }),
-                        ..Default::default()
-                    },
-                )
-                .await
-                .context("Error while fetching credential by credential schema id"),
-        )
+        let credentials = self
+            .credentials
+            .get_credentials_by_credential_schema_id(
+                schema_id.to_owned(),
+                &CredentialRelations {
+                    state: Some(Default::default()),
+                    issuer_did: Some(Default::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(Default::default()),
+                    }),
+                    schema: Some(CredentialSchemaRelations {}),
+                    ..Default::default()
+                },
+            )
+            .await
+            .context("Error while fetching credential by credential schema id")?;
+
+        let mut result: Vec<OpenCredential> = vec![];
+        for credential in credentials {
+            result.push(to_open_credential(credential).await?);
+        }
+        Ok(result)
     }
 
     async fn create_credential_schema(

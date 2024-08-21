@@ -24,36 +24,26 @@ use crate::service::credential_schema::dto::{
 };
 use crate::service::error::{BusinessLogicError, ServiceError};
 
-impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
-    type Error = ServiceError;
+pub(crate) async fn schema_detail_from_model(
+    value: CredentialSchema,
+) -> Result<CredentialSchemaDetailResponseDTO, ServiceError> {
+    let claim_schemas = renest_claim_schemas(convert_inner(value.claim_schemas.get().await?))?;
 
-    fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
-        let claim_schemas =
-            renest_claim_schemas(convert_inner(value.claim_schemas.unwrap_or_default()))?;
-
-        let organisation_id = match value.organisation {
-            None => Err(ServiceError::MappingError(
-                "Organisation has not been fetched".to_string(),
-            )),
-            Some(value) => Ok(value.id),
-        }?;
-
-        Ok(Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-            organisation_id,
-            claims: claim_schemas,
-            wallet_storage_type: value.wallet_storage_type,
-            schema_id: value.schema_id,
-            schema_type: value.schema_type.into(),
-            layout_type: Some(value.layout_type),
-            layout_properties: value.layout_properties.map(|item| item.into()),
-        })
-    }
+    Ok(CredentialSchemaDetailResponseDTO {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        name: value.name,
+        format: value.format,
+        revocation_method: value.revocation_method,
+        organisation_id: *value.organisation.id(),
+        claims: claim_schemas,
+        wallet_storage_type: value.wallet_storage_type,
+        schema_id: value.schema_id,
+        schema_type: value.schema_type.into(),
+        layout_type: Some(value.layout_type),
+        layout_properties: value.layout_properties.map(|item| item.into()),
+    })
 }
 
 impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
@@ -151,22 +141,20 @@ pub(super) fn from_create_request_with_id(
         format: request.format,
         wallet_storage_type: request.wallet_storage_type,
         revocation_method: request.revocation_method,
-        claim_schemas: Some(
-            claim_schemas
-                .into_iter()
-                .map(|claim_schema| {
-                    from_jwt_request_claim_schema(
-                        now,
-                        Uuid::new_v4().into(),
-                        claim_schema.key,
-                        claim_schema.datatype,
-                        claim_schema.required,
-                        claim_schema.array,
-                    )
-                })
-                .collect(),
-        ),
-        organisation: Some(organisation),
+        claim_schemas: claim_schemas
+            .into_iter()
+            .map(|claim_schema| {
+                from_jwt_request_claim_schema(
+                    now,
+                    Uuid::new_v4().into(),
+                    claim_schema.key,
+                    claim_schema.datatype,
+                    claim_schema.required,
+                    claim_schema.array,
+                )
+            })
+            .collect(),
+        organisation: organisation.into(),
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
         schema_type,
@@ -198,7 +186,11 @@ fn history_event(schema: CredentialSchema, action: HistoryAction) -> History {
         entity_id: Some(schema.id.into()),
         entity_type: HistoryEntityType::CredentialSchema,
         metadata: None,
-        organisation: schema.organisation,
+        organisation: Some(Organisation {
+            id: *schema.organisation.id(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
     }
 }
 

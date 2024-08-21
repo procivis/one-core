@@ -1,4 +1,6 @@
-use crate::model::credential::{Credential, CredentialRelations, CredentialStateRelations};
+use crate::model::credential::{
+    to_open_credential, Credential, CredentialRelations, CredentialStateRelations,
+};
 use crate::model::did::Did;
 use crate::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
@@ -8,7 +10,6 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
-use dto_mapper::convert_inner;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::imp::bitstring_status_list::model::RevocationUpdateData;
 use one_providers::revocation::imp::bitstring_status_list::{
@@ -53,17 +54,19 @@ pub(crate) async fn generate_credential_additional_data(
         .as_ref()
         .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
-    let credentials_by_issuer_did = convert_inner(
-        credential_repository
-            .get_credentials_by_issuer_did_id(
-                &issuer_did.id,
-                &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await?,
-    );
+    let mut credentials_by_issuer_did = vec![];
+    for credential in credential_repository
+        .get_credentials_by_issuer_did_id(
+            &issuer_did.id,
+            &CredentialRelations {
+                state: Some(CredentialStateRelations::default()),
+                ..Default::default()
+            },
+        )
+        .await?
+    {
+        credentials_by_issuer_did.push(to_open_credential(credential).await?);
+    }
 
     let revocation_list_id = get_revocation_list_id(
         &credentials_by_issuer_did,

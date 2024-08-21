@@ -31,6 +31,7 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, La
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::relation::Related;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -836,8 +837,8 @@ fn dummy_credential() -> Credential {
             wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            claim_schemas: None,
-            organisation: Some(dummy_organisation()),
+            claim_schemas: Related::default(),
+            organisation: dummy_organisation().into(),
             deleted_at: None,
             layout_type: LayoutType::Card,
             layout_properties: None,

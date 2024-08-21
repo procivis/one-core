@@ -20,7 +20,8 @@ async fn test_create_proof_success_without_related_key() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -82,7 +83,8 @@ async fn test_create_proof_success_with_related_key() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -153,7 +155,8 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
     let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -232,7 +235,8 @@ async fn test_create_proof_scan_to_verify_invalid_credential() {
     .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()

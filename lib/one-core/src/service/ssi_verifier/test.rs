@@ -32,6 +32,7 @@ use crate::model::history::HistoryAction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
+use crate::model::relation::Related;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -68,11 +69,12 @@ async fn test_connect_to_holder_succeeds() {
                     state: ProofStateEnum::Pending,
                 }]),
                 schema: Some(ProofSchema {
-                    organisation: Some(Organisation {
+                    organisation: Organisation {
                         id: Uuid::new_v4().into(),
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
-                    }),
+                    }
+                    .into(),
                     input_schemas: Some(vec![ProofInputSchema {
                         validity_constraint: None,
                         claim_schemas: Some(vec![ProofInputClaimSchema {
@@ -96,8 +98,8 @@ async fn test_connect_to_holder_succeeds() {
                             name: "name".to_string(),
                             format: "format".to_string(),
                             revocation_method: "format".to_string(),
-                            claim_schemas: None,
-                            organisation: None,
+                            claim_schemas: Related::default(),
+                            organisation: Related::from_id_only(Uuid::new_v4()),
                             layout_type: LayoutType::Card,
                             layout_properties: None,
                             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -186,11 +188,12 @@ async fn test_connect_to_holder_succeeds_new_did() {
                     state: ProofStateEnum::Pending,
                 }]),
                 schema: Some(ProofSchema {
-                    organisation: Some(Organisation {
+                    organisation: Organisation {
                         id: Uuid::new_v4().into(),
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
-                    }),
+                    }
+                    .into(),
                     input_schemas: Some(vec![ProofInputSchema {
                         validity_constraint: None,
                         claim_schemas: Some(vec![ProofInputClaimSchema {
@@ -214,8 +217,8 @@ async fn test_connect_to_holder_succeeds_new_did() {
                             name: "name".to_string(),
                             format: "format".to_string(),
                             revocation_method: "format".to_string(),
-                            claim_schemas: None,
-                            organisation: None,
+                            claim_schemas: Related::default(),
+                            organisation: Related::from_id_only(Uuid::new_v4()),
                             layout_type: LayoutType::Card,
                             layout_properties: None,
                             schema_type: CredentialSchemaType::ProcivisOneSchema2024,

@@ -6,6 +6,7 @@ use one_providers::revocation::imp::lvvc::mapper::status_from_lvvc_claims;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
+use crate::model::credential::to_open_credential;
 use crate::model::did::Did;
 use crate::model::key::KeyRelations;
 use crate::{
@@ -134,7 +135,7 @@ impl RevocationListService {
                 .ok_or(MissingProviderError::RevocationMethod(revocation_method))?;
 
             let lvvc = create_lvvc_with_status(
-                &credential.to_owned().into(),
+                &to_open_credential(credential.to_owned()).await?,
                 status,
                 &self.core_base_url,
                 expiry,

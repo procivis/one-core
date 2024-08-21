@@ -1,22 +1,23 @@
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use one_providers::common_models::key::OpenKey;
+use one_providers::common_models::proof::{OpenProof, OpenProofClaim};
 use shared_types::{DidId, ProofId};
 use strum_macros::Display;
 use time::OffsetDateTime;
 
 use super::claim::{Claim, ClaimRelations};
 use super::common::GetListResponse;
-use super::credential::{Credential, CredentialRelations};
+use super::credential::{to_open_credential, Credential, CredentialRelations};
 use super::did::{Did, DidRelations};
 use super::interaction::{Interaction, InteractionId, InteractionRelations};
 use super::list_query::ListQuery;
-use super::proof_schema::{ProofSchema, ProofSchemaRelations};
+use super::proof_schema::{to_open_proof_schema, ProofSchema, ProofSchemaRelations};
 use crate::model::key::KeyRelations;
+use crate::service::error::ServiceError;
 use crate::service::proof::dto::ProofFilterValue;
 
-#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::proof::OpenProof)]
-#[from(one_providers::common_models::proof::OpenProof)]
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(OpenProof)]
 pub struct Proof {
     pub id: ProofId,
     pub created_date: OffsetDateTime,
@@ -27,25 +28,18 @@ pub struct Proof {
     pub redirect_uri: Option<String>,
 
     // Relations
-    #[into(with_fn = "convert_inner_of_inner")]
     #[from(with_fn = "convert_inner_of_inner")]
     pub state: Option<Vec<ProofState>>,
-    #[into(with_fn = "convert_inner")]
     #[from(with_fn = "convert_inner")]
     pub schema: Option<ProofSchema>,
-    #[into(with_fn = "convert_inner_of_inner")]
     #[from(with_fn = "convert_inner_of_inner")]
     pub claims: Option<Vec<ProofClaim>>,
-    #[into(with_fn = "convert_inner")]
     #[from(with_fn = "convert_inner")]
     pub verifier_did: Option<Did>,
-    #[into(with_fn = "convert_inner")]
     #[from(with_fn = "convert_inner")]
     pub holder_did: Option<Did>, // empty either because relation not specified or not set in database
-    #[into(with_fn = "convert_inner")]
     #[from(with_fn = "convert_inner")]
     pub verifier_key: Option<OpenKey>,
-    #[into(with_fn = "convert_inner")]
     #[from(with_fn = "convert_inner")]
     pub interaction: Option<Interaction>,
 }
@@ -71,14 +65,12 @@ pub struct ProofState {
     pub state: ProofStateEnum,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::proof::OpenProofClaim)]
-#[from(one_providers::common_models::proof::OpenProofClaim)]
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(OpenProofClaim)]
 pub struct ProofClaim {
     pub claim: Claim,
 
     // Relations
-    #[into(with_fn = "convert_inner")]
     #[from(with_fn = "convert_inner")]
     pub credential: Option<Credential>,
 }
@@ -128,4 +120,51 @@ pub struct UpdateProofRequest {
     #[from(with_fn = convert_inner_of_inner)]
     pub interaction: Option<Option<InteractionId>>,
     pub redirect_uri: Option<Option<String>>,
+}
+
+pub(crate) async fn to_open_proof(value: Proof) -> Result<OpenProof, ServiceError> {
+    let schema = if let Some(schema) = value.schema {
+        Some(to_open_proof_schema(schema).await?)
+    } else {
+        None
+    };
+
+    let claims = if let Some(claims) = value.claims {
+        let mut result: Vec<OpenProofClaim> = vec![];
+        for claim in claims {
+            result.push(to_open_proof_claim(claim).await?);
+        }
+        Some(result)
+    } else {
+        None
+    };
+
+    Ok(OpenProof {
+        id: value.id.into(),
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        issuance_date: value.issuance_date,
+        exchange: value.exchange,
+        transport: value.transport,
+        redirect_uri: value.redirect_uri,
+        state: convert_inner_of_inner(value.state),
+        schema,
+        claims,
+        verifier_did: convert_inner(value.verifier_did),
+        holder_did: convert_inner(value.holder_did),
+        verifier_key: convert_inner(value.verifier_key),
+        interaction: convert_inner(value.interaction),
+    })
+}
+
+pub(crate) async fn to_open_proof_claim(value: ProofClaim) -> Result<OpenProofClaim, ServiceError> {
+    let credential = if let Some(credential) = value.credential {
+        Some(to_open_credential(credential).await?)
+    } else {
+        None
+    };
+    Ok(OpenProofClaim {
+        claim: value.claim.into(),
+        credential,
+    })
 }

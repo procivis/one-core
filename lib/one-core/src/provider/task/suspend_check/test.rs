@@ -2,7 +2,9 @@ use mockall::predicate::{always, eq};
 use uuid::Uuid;
 
 use super::SuspendCheckProvider;
-use crate::model::credential::{Credential, CredentialStateEnum, GetCredentialList};
+use crate::model::credential::{
+    to_open_credential, Credential, CredentialStateEnum, GetCredentialList,
+};
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::provider::task::suspend_check::dto::SuspendCheckResultDTO;
 use crate::provider::task::Task;
@@ -116,8 +118,7 @@ async fn test_run_one_update() {
         })
         .return_once(|_| Ok(()));
 
-    let credential_model =
-        one_providers::common_models::credential::OpenCredential::from(credential.clone());
+    let credential_model = to_open_credential(credential.clone()).await.unwrap();
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
         .expect_mark_credential_as()

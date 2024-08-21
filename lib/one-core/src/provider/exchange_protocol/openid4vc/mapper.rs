@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-use dto_mapper::convert_inner;
 use one_providers::common_models::claim::OpenClaim;
 use one_providers::common_models::claim_schema::{ClaimSchemaId, OpenClaimSchema};
-use one_providers::common_models::credential::CredentialId;
+use one_providers::common_models::credential::{CredentialId, OpenCredential};
 use one_providers::common_models::credential_schema::{
     CredentialSchemaId, OpenCredentialSchema, OpenCredentialSchemaClaim,
 };
@@ -22,10 +21,10 @@ use uuid::Uuid;
 
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{CoreConfig, DatatypeType};
-use crate::model::credential::Credential;
+use crate::model::credential::{to_open_credential, Credential};
 use crate::model::organisation::Organisation;
 use crate::provider::exchange_protocol::dto::{
-    CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
+    CredentialGroup, PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
@@ -35,12 +34,54 @@ use crate::provider::exchange_protocol::mapper::{
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::util::oidc::map_core_to_oidc_format;
 
-pub(super) fn presentation_definition_from_interaction_data(
+pub(super) async fn presentation_definition_from_interaction_data(
     proof_id: ProofId,
     credentials: Vec<Credential>,
     credential_groups: Vec<CredentialGroup>,
     config: &CoreConfig,
 ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
+    let mut open_credentials: Vec<OpenCredential> = vec![];
+    for credential in credentials {
+        open_credentials.push(
+            to_open_credential(credential)
+                .await
+                .map_err(|e| ExchangeProtocolError::Other(anyhow::anyhow!(e.to_string())))?,
+        );
+    }
+
+    let mut requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseDTO> =
+        vec![];
+    for group in credential_groups {
+        let mut applicable_credentials: Vec<OpenCredential> = vec![];
+        for credential in group.applicable_credentials.clone() {
+            applicable_credentials.push(
+                to_open_credential(credential)
+                    .await
+                    .map_err(|e| ExchangeProtocolError::Other(anyhow::anyhow!(e.to_string())))?,
+            );
+        }
+
+        let mut fields: Vec<PresentationDefinitionFieldDTO> = vec![];
+        for field in group.claims {
+            fields.push(
+                create_presentation_definition_field(field.into(), &applicable_credentials)?.into(),
+            );
+        }
+
+        requested_credentials.push(PresentationDefinitionRequestedCredentialResponseDTO {
+            id: group.id,
+            name: group.name,
+            purpose: group.purpose,
+            fields,
+            applicable_credentials: group
+                .applicable_credentials
+                .into_iter()
+                .map(|credential| credential.id.to_string())
+                .collect(),
+            validity_credential_nbf: group.validity_credential_nbf,
+        });
+    }
+
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
             id: proof_id.to_string(),
@@ -52,40 +93,14 @@ pub(super) fn presentation_definition_from_interaction_data(
                 max: None,
                 count: None,
             },
-            requested_credentials: credential_groups
-                .into_iter()
-                .map(|group| {
-                    Ok(PresentationDefinitionRequestedCredentialResponseDTO {
-                        id: group.id,
-                        name: group.name,
-                        purpose: group.purpose,
-                        fields: convert_inner(
-                            group
-                                .claims
-                                .into_iter()
-                                .map(|field| {
-                                    create_presentation_definition_field(
-                                        field.into(),
-                                        &convert_inner(group.applicable_credentials.clone()),
-                                    )
-                                })
-                                .collect::<Result<Vec<_>, _>>()?,
-                        ),
-                        applicable_credentials: group
-                            .applicable_credentials
-                            .into_iter()
-                            .map(|credential| credential.id.to_string())
-                            .collect(),
-                        validity_credential_nbf: group.validity_credential_nbf,
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()?,
+            requested_credentials,
         }],
         credentials: credential_model_to_credential_dto(
-            convert_inner(credentials),
+            open_credentials,
             config,
             // organisation,
-        )?,
+        )
+        .await?,
     })
 }
 

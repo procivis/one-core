@@ -1,11 +1,14 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use migration::IntoCondition;
 use one_core::model::claim::Claim;
 use one_core::model::did::Did;
 use one_core::model::proof::{GetProofList, Proof, ProofState, SortableProofColumn};
 use one_core::model::proof_schema::ProofSchema;
+use one_core::model::relation::Related;
 use one_core::repository::error::DataLayerError;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::service::proof::dto::ProofFilterValue;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
@@ -49,63 +52,65 @@ impl IntoFilterCondition for ProofFilterValue {
     }
 }
 
-impl TryFrom<ProofListItemModel> for Proof {
-    type Error = DataLayerError;
+fn into_proof(
+    value: ProofListItemModel,
+    organisation_repository: Arc<dyn OrganisationRepository>,
+) -> Result<Proof, DataLayerError> {
+    let verifier_did = match value.verifier_did_id {
+        None => None,
+        Some(verifier_did_id) => Some(Did {
+            id: verifier_did_id,
+            created_date: value
+                .verifier_did_created_date
+                .ok_or(DataLayerError::MappingError)?,
+            last_modified: value
+                .verifier_did_last_modified
+                .ok_or(DataLayerError::MappingError)?,
+            name: value
+                .verifier_did_name
+                .ok_or(DataLayerError::MappingError)?,
+            did: value.verifier_did.ok_or(DataLayerError::MappingError)?,
+            did_type: value
+                .verifier_did_type
+                .ok_or(DataLayerError::MappingError)?
+                .into(),
+            did_method: value
+                .verifier_did_method
+                .ok_or(DataLayerError::MappingError)?,
+            organisation: None,
+            keys: None,
+            deactivated: false,
+        }),
+    };
 
-    fn try_from(value: ProofListItemModel) -> Result<Self, Self::Error> {
-        let verifier_did = match value.verifier_did_id {
-            None => None,
-            Some(verifier_did_id) => Some(Did {
-                id: verifier_did_id,
-                created_date: value
-                    .verifier_did_created_date
-                    .ok_or(DataLayerError::MappingError)?,
-                last_modified: value
-                    .verifier_did_last_modified
-                    .ok_or(DataLayerError::MappingError)?,
-                name: value
-                    .verifier_did_name
-                    .ok_or(DataLayerError::MappingError)?,
-                did: value.verifier_did.ok_or(DataLayerError::MappingError)?,
-                did_type: value
-                    .verifier_did_type
-                    .ok_or(DataLayerError::MappingError)?
-                    .into(),
-                did_method: value
-                    .verifier_did_method
-                    .ok_or(DataLayerError::MappingError)?,
-                organisation: None,
-                keys: None,
-                deactivated: false,
-            }),
-        };
-
-        Ok(Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            issuance_date: value.issuance_date,
-            exchange: value.exchange,
-            transport: value.transport,
-            redirect_uri: value.redirect_uri,
-            state: None,
-            schema: Some(ProofSchema {
-                id: value.schema_id,
-                created_date: value.schema_created_date,
-                last_modified: value.schema_last_modified,
-                deleted_at: None,
-                name: value.schema_name,
-                expire_duration: value.expire_duration,
-                organisation: None,
-                input_schemas: None,
-            }),
-            claims: None,
-            verifier_did,
-            holder_did: None,
-            verifier_key: None,
-            interaction: None,
-        })
-    }
+    Ok(Proof {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        issuance_date: value.issuance_date,
+        exchange: value.exchange,
+        transport: value.transport,
+        redirect_uri: value.redirect_uri,
+        state: None,
+        schema: Some(ProofSchema {
+            id: value.schema_id,
+            created_date: value.schema_created_date,
+            last_modified: value.schema_last_modified,
+            deleted_at: None,
+            name: value.schema_name,
+            expire_duration: value.expire_duration,
+            organisation: Related::from_organisation_id(
+                value.schema_organisation_id,
+                organisation_repository,
+            ),
+            input_schemas: None,
+        }),
+        claims: None,
+        verifier_did,
+        holder_did: None,
+        verifier_key: None,
+        interaction: None,
+    })
 }
 
 impl From<proof::Model> for Proof {
@@ -168,11 +173,12 @@ pub(super) fn create_list_response(
     proof_states_map: HashMap<ProofId, Vec<ProofState>>,
     limit: u64,
     items_count: u64,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
 ) -> Result<GetProofList, DataLayerError> {
     let values = proofs
         .into_iter()
         .map(move |proof| {
-            let mut proof = Proof::try_from(proof)?;
+            let mut proof = into_proof(proof, organisation_repository.to_owned())?;
             if let Some(states) = proof_states_map.get(&proof.id) {
                 proof.state = Some(states.to_owned());
             } else {

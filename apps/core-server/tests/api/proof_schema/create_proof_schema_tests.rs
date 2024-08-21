@@ -20,9 +20,10 @@ async fn test_create_proof_schema_success() {
 
     let claims = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
+        .into_iter()
         .map(|v| (v.schema.id, v.required));
 
     // WHEN
@@ -66,9 +67,10 @@ async fn test_create_nested_proof_schema_success() {
     //Get only root element
     let claims = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
+        .into_iter()
         .take(1)
         .map(|v| (v.schema.id, v.required));
 
@@ -120,9 +122,10 @@ async fn test_succeed_to_create_nested_proof_schema_without_object_claim() {
 
     let claims = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
+        .into_iter()
         .filter(|v| v.schema.data_type != "OBJECT")
         .map(|v| (v.schema.id, v.required));
 
@@ -156,9 +159,10 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
 
     let claims = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
+        .into_iter()
         .map(|v| (v.schema.id, v.required));
 
     let resp = context
@@ -183,9 +187,10 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
 
     let claims = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
+        .into_iter()
         .map(|v| (v.schema.id, v.required));
 
     let resp1 = context
@@ -216,9 +221,10 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
 
     let claims = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
+        .into_iter()
         .map(|v| (v.schema.id, v.required));
 
     // WHEN
@@ -237,9 +243,10 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
 
     let claims = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
+        .into_iter()
         .map(|v| (v.schema.id, v.required));
 
     let resp = context
@@ -271,12 +278,13 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
 
     let claims = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
+        .into_iter()
         .map(|v| (v.schema.id, v.required));
 
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0].schema;
 
     let proof_schema = context
         .db
@@ -336,9 +344,10 @@ async fn test_fail_to_create_proof_schema_from_deleted_credential_schema() {
 
     let claims = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
+        .into_iter()
         .map(|v| (v.schema.id, v.required));
 
     // WHEN
@@ -377,9 +386,10 @@ async fn test_fail_to_create_proof_schema_with_claims_not_related_to_credential_
 
     let claims2 = credential_schema2
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
+        .into_iter()
         .map(|v| (v.schema.id, v.required));
 
     // WHEN
@@ -413,9 +423,10 @@ async fn test_fail_missing_validity_constraint_for_lvvc() {
 
     let claims2 = credential_schema2
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
+        .into_iter()
         .map(|v| (v.schema.id, v.required));
 
     // WHEN

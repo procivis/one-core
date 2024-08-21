@@ -29,7 +29,8 @@ async fn test_share_proof_success() {
     let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()

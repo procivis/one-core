@@ -1,25 +1,28 @@
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
+use one_providers::common_models::credential_schema::{
+    OpenCredentialSchema, OpenWalletStorageTypeEnum,
+};
+use one_providers::common_models::organisation::OpenOrganisation;
 use serde::{Deserialize, Serialize};
 use shared_types::CredentialSchemaId;
 use strum::Display;
 use time::OffsetDateTime;
 
-use super::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use super::claim_schema::ClaimSchema;
 use super::common::GetListResponse;
 use super::list_query::ListQuery;
-use super::organisation::{Organisation, OrganisationRelations};
+use super::organisation::Organisation;
+use super::relation::{FailingRelationLoader, Related};
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
+use crate::service::error::ServiceError;
 
 pub type CredentialSchemaName = String;
 pub type CredentialFormat = String;
 pub type RevocationMethod = String;
 
-#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::credential_schema::OpenCredentialSchema)]
-#[from(one_providers::common_models::credential_schema::OpenCredentialSchema)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CredentialSchema {
     pub id: CredentialSchemaId,
     pub deleted_at: Option<OffsetDateTime>,
@@ -28,24 +31,15 @@ pub struct CredentialSchema {
     pub name: CredentialSchemaName,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
-    #[into(with_fn = "convert_inner")]
-    #[from(with_fn = "convert_inner")]
     pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
     pub layout_type: LayoutType,
-    #[into(with_fn = "convert_inner")]
-    #[from(with_fn = "convert_inner")]
     pub layout_properties: Option<LayoutProperties>,
     pub schema_id: String,
-    #[into(with_fn_ref = "ToString::to_string")]
     pub schema_type: CredentialSchemaType,
 
     // Relations
-    #[into(with_fn = "convert_inner_of_inner")]
-    #[from(with_fn = "convert_inner_of_inner")]
-    pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
-    #[into(with_fn = "convert_inner")]
-    #[from(with_fn = "convert_inner")]
-    pub organisation: Option<Organisation>,
+    pub claim_schemas: Related<Vec<CredentialSchemaClaim>>,
+    pub organisation: Related<Organisation>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Display)]
@@ -81,10 +75,7 @@ pub struct CredentialSchemaClaim {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct CredentialSchemaRelations {
-    pub claim_schemas: Option<ClaimSchemaRelations>,
-    pub organisation: Option<OrganisationRelations>,
-}
+pub struct CredentialSchemaRelations {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableCredentialSchemaColumn {
@@ -175,4 +166,55 @@ pub struct UpdateCredentialSchemaRequest {
     pub format: Option<String>,
     #[from(with_fn = convert_inner_of_inner)]
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
+}
+
+impl From<OpenCredentialSchema> for CredentialSchema {
+    fn from(value: OpenCredentialSchema) -> Self {
+        let claim_schemas: Vec<CredentialSchemaClaim> =
+            convert_inner(value.claim_schemas.unwrap_or_default());
+
+        Self {
+            id: value.id.into(),
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            deleted_at: value.deleted_at,
+            name: value.name,
+            organisation: Related::from_loader(
+                value.organisation.unwrap().id.into(),
+                Box::new(FailingRelationLoader),
+            ),
+            format: value.format,
+            revocation_method: value.revocation_method,
+            wallet_storage_type: convert_inner(value.wallet_storage_type),
+            layout_type: value.layout_type.into(),
+            layout_properties: convert_inner(value.layout_properties),
+            schema_id: value.schema_id,
+            schema_type: value.schema_type.into(),
+            claim_schemas: claim_schemas.into(),
+        }
+    }
+}
+
+pub(crate) async fn to_open_credential_schema(
+    value: CredentialSchema,
+) -> Result<OpenCredentialSchema, ServiceError> {
+    let claim_schemas = value.claim_schemas.get().await?;
+    Ok(OpenCredentialSchema {
+        id: value.id.into(),
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        deleted_at: value.deleted_at,
+        name: value.name,
+        organisation: Some(OpenOrganisation {
+            id: (*value.organisation.id()).into(),
+        }),
+        format: value.format,
+        revocation_method: value.revocation_method,
+        wallet_storage_type: convert_inner(value.wallet_storage_type),
+        layout_type: value.layout_type.into(),
+        layout_properties: convert_inner(value.layout_properties),
+        schema_id: value.schema_id,
+        schema_type: value.schema_type.to_string(),
+        claim_schemas: Some(convert_inner(claim_schemas)),
+    })
 }

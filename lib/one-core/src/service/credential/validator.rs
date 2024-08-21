@@ -9,7 +9,7 @@ use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use itertools::Itertools;
 
-pub(crate) fn validate_create_request(
+pub(crate) async fn validate_create_request(
     did_method: &str,
     exchange: &str,
     claims: &[CredentialRequestClaimDTO],
@@ -26,12 +26,7 @@ pub(crate) fn validate_create_request(
         return Err(BusinessLogicError::MissingCredentialSchema.into());
     }
 
-    let claim_schemas = &schema
-        .claim_schemas
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "claim_schemas is None".to_string(),
-        ))?;
+    let claim_schemas = &schema.claim_schemas.get().await?;
 
     // check all claims have valid content
     for claim in claims {

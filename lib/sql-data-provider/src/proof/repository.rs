@@ -154,6 +154,7 @@ impl ProofRepository for ProofProvider {
             proof_states_map,
             limit.unwrap_or(items_count),
             items_count,
+            &self.organisation_repository,
         )
     }
 
@@ -303,6 +304,10 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
         .column_as(proof_schema::Column::Name, "schema_name")
         .column_as(proof_schema::Column::CreatedDate, "schema_created_date")
         .column_as(proof_schema::Column::LastModified, "schema_last_modified")
+        .column_as(
+            proof_schema::Column::OrganisationId,
+            "schema_organisation_id",
+        )
         .column_as(proof_schema::Column::ExpireDuration, "expire_duration")
         // find most recent state (to enable sorting)
         .join(

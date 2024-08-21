@@ -1,4 +1,5 @@
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
+use one_providers::common_models::credential::OpenCredential;
 use one_providers::common_models::key::OpenKey;
 use shared_types::{CredentialId, DidId, KeyId};
 use strum_macros::Display;
@@ -6,17 +7,19 @@ use time::OffsetDateTime;
 
 use super::claim::{Claim, ClaimRelations};
 use super::common::GetListResponse;
-use super::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use super::credential_schema::{
+    to_open_credential_schema, CredentialSchema, CredentialSchemaRelations,
+};
 use super::did::{Did, DidRelations};
 use super::interaction::{Interaction, InteractionId, InteractionRelations};
 use super::list_query::ListQuery;
 use super::revocation_list::{RevocationList, RevocationListRelations};
 use crate::model::key::KeyRelations;
 use crate::service::credential::dto::{CredentialFilterValue, CredentialListIncludeEntityTypeEnum};
+use crate::service::error::ServiceError;
 
-#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::credential::OpenCredential)]
-#[from(one_providers::common_models::credential::OpenCredential)]
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(OpenCredential)]
 pub struct Credential {
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
@@ -29,28 +32,27 @@ pub struct Credential {
     pub role: CredentialRole,
 
     // Relations:
-    #[into(with_fn = "convert_inner_of_inner")]
     #[from(with_fn = "convert_inner_of_inner")]
     pub state: Option<Vec<CredentialState>>,
-    #[into(with_fn = "convert_inner_of_inner")]
+
     #[from(with_fn = "convert_inner_of_inner")]
     pub claims: Option<Vec<Claim>>,
-    #[into(with_fn = "convert_inner")]
+
     #[from(with_fn = "convert_inner")]
     pub issuer_did: Option<Did>,
-    #[into(with_fn = "convert_inner")]
+
     #[from(with_fn = "convert_inner")]
     pub holder_did: Option<Did>,
-    #[into(with_fn = "convert_inner")]
+
     #[from(with_fn = "convert_inner")]
     pub schema: Option<CredentialSchema>,
-    #[into(with_fn = "convert_inner")]
+
     #[from(with_fn = "convert_inner")]
     pub interaction: Option<Interaction>,
-    #[into(skip)]
+
     #[from(replace = None)]
     pub revocation_list: Option<RevocationList>,
-    #[into(with_fn = "convert_inner")]
+
     #[from(with_fn = "convert_inner")]
     pub key: Option<OpenKey>,
 }
@@ -130,4 +132,30 @@ pub enum CredentialRole {
     Holder,
     Issuer,
     Verifier,
+}
+
+pub(crate) async fn to_open_credential(value: Credential) -> Result<OpenCredential, ServiceError> {
+    let schema = if let Some(schema) = value.schema {
+        Some(to_open_credential_schema(schema).await?)
+    } else {
+        None
+    };
+    Ok(OpenCredential {
+        id: value.id.into(),
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        deleted_at: value.deleted_at,
+        issuance_date: value.issuance_date,
+        credential: value.credential,
+        exchange: value.exchange,
+        redirect_uri: value.redirect_uri,
+        role: value.role.into(),
+        state: convert_inner_of_inner(value.state),
+        claims: convert_inner_of_inner(value.claims),
+        issuer_did: convert_inner(value.issuer_did),
+        holder_did: convert_inner(value.holder_did),
+        schema,
+        key: convert_inner(value.key),
+        interaction: convert_inner(value.interaction),
+    })
 }

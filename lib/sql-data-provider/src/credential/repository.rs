@@ -46,14 +46,13 @@ async fn get_credential_schema(
 ) -> Result<Option<CredentialSchema>, DataLayerError> {
     match relations {
         None => Ok(None),
-        Some(schema_relations) => Ok(Some(
-            repository
-                .get_credential_schema(schema_id, schema_relations)
-                .await?
-                .ok_or(DataLayerError::MissingRequiredRelation {
+        Some(_) => Ok(Some(
+            repository.get_credential_schema(schema_id).await?.ok_or(
+                DataLayerError::MissingRequiredRelation {
                     relation: "credential-credential_schema",
                     id: schema_id.to_string(),
-                })?,
+                },
+            )?,
         )),
     }
 }
@@ -280,6 +279,10 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         .column_as(
             credential_schema::Column::SchemaId,
             "credential_schema_schema_id",
+        )
+        .column_as(
+            credential_schema::Column::OrganisationId,
+            "credential_schema_organisation_id",
         )
         .column_as(
             credential_schema::Column::SchemaType,

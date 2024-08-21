@@ -106,7 +106,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         )
         .await;
 
-    let mut claim_schema = credential_schema.claim_schemas.unwrap();
+    let mut claim_schema = credential_schema.claim_schemas.get().await.unwrap();
     assert_eq!(2, claim_schema.len());
 
     let claim_schema = claim_schema.swap_remove(0);
@@ -187,10 +187,11 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
 
     let claim_schemas: HashSet<_> = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
-        .iter()
-        .map(|c| c.schema.key.as_str())
+        .into_iter()
+        .map(|c| c.schema.key)
         .collect();
     assert_eq!(4, claim_schemas.len());
     assert!(claim_schemas.contains("root/name"));

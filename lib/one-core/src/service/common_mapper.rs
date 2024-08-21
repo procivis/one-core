@@ -1,5 +1,6 @@
 use crate::config::core_config::ConfigBlock;
 use crate::model::credential_schema::CredentialSchema;
+use crate::repository::error::DataLayerError;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -37,15 +38,15 @@ pub fn core_type_to_open_core_type(
         .collect()
 }
 
-pub(crate) fn regenerate_credential_schema_uuids(
+pub(crate) async fn regenerate_credential_schema_uuids(
     mut credential_schema: CredentialSchema,
-) -> CredentialSchema {
+) -> Result<CredentialSchema, DataLayerError> {
     credential_schema.id = Uuid::new_v4().into();
-    if let Some(claim_schemas) = credential_schema.claim_schemas.as_mut() {
-        claim_schemas.iter_mut().for_each(|schema| {
-            schema.schema.id = Uuid::new_v4().into();
-        })
-    }
+    let mut claim_schemas = credential_schema.claim_schemas.get().await?;
+    claim_schemas.iter_mut().for_each(|schema| {
+        schema.schema.id = Uuid::new_v4().into();
+    });
+    credential_schema.claim_schemas = claim_schemas.into();
 
-    credential_schema
+    Ok(credential_schema)
 }

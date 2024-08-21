@@ -18,10 +18,12 @@ async fn test_create_credential_success() {
         .credential_schemas
         .create("test", &organisation, "NONE", Default::default())
         .await;
-    let claim_id = credential_schema.claim_schemas.clone().unwrap()[0]
+    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0]
         .schema
         .id;
-    let claim_id1 = credential_schema.claim_schemas.unwrap()[1].schema.id;
+    let claim_id1 = credential_schema.claim_schemas.get().await.unwrap()[1]
+        .schema
+        .id;
 
     // WHEN
     let resp = context
@@ -73,7 +75,8 @@ async fn test_create_credential_with_array_success() {
 
     let claim_id = credential_schema
         .claim_schemas
-        .clone()
+        .get()
+        .await
         .unwrap()
         .into_iter()
         .find(|claim| claim.schema.key == "root_array/nested/field")
@@ -155,7 +158,7 @@ async fn test_create_credential_success_with_nested_claims() {
         .create_with_nested_claims("test schema", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schemas = credential_schema.claim_schemas.unwrap();
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
 
     let street_claim_id = claim_schemas[1].schema.id.to_owned();
     let coordinate_x_claim_id = claim_schemas[3].schema.id.to_owned();
@@ -257,7 +260,9 @@ async fn test_create_credential_with_issuer_key() {
         )
         .await;
 
-    let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
+    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0]
+        .schema
+        .id;
 
     // WHEN
     let resp = context
@@ -318,7 +323,9 @@ async fn test_fail_to_create_credential_invalid_key_role() {
         )
         .await;
 
-    let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
+    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0]
+        .schema
+        .id;
 
     // WHEN
     let resp = context
@@ -353,7 +360,9 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .credential_schemas
         .create("test", &organisation, "NONE", Default::default())
         .await;
-    let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
+    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0]
+        .schema
+        .id;
 
     // WHEN
     let resp = context
@@ -389,7 +398,9 @@ async fn test_create_credential_with_big_picture_success() {
         .create_with_picture_claim("test", &organisation)
         .await;
 
-    let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
+    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0]
+        .schema
+        .id;
 
     let data = Base64UrlSafeNoPadding::encode_to_string(vec![0; 4 * 1024 * 1024]).unwrap();
 
@@ -435,7 +446,7 @@ async fn test_create_credential_failed_specified_object_claim() {
         .create_with_nested_claims("test schema", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schemas = credential_schema.claim_schemas.unwrap();
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
 
     let object_claim_id = claim_schemas[0].schema.id.to_owned();
 
@@ -472,10 +483,12 @@ async fn test_create_credential_boolean_value_wrong() {
         .credential_schemas
         .create("test", &organisation, "NONE", Default::default())
         .await;
-    let claim_id = credential_schema.claim_schemas.clone().unwrap()[0]
+    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0]
         .schema
         .id;
-    let claim_id1 = credential_schema.claim_schemas.unwrap()[1].schema.id;
+    let claim_id1 = credential_schema.claim_schemas.get().await.unwrap()[1]
+        .schema
+        .id;
 
     // WHEN
     let resp = context

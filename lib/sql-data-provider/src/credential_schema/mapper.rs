@@ -3,7 +3,7 @@ use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, SortableCredentialSchemaColumn,
 };
 use one_core::model::organisation::Organisation;
-use one_core::repository::error::DataLayerError;
+use one_core::model::relation::Related;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::SimpleExpr;
@@ -50,13 +50,9 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
     }
 }
 
-impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
-    type Error = DataLayerError;
-
-    fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
-        let organisation_id = value.organisation.ok_or(DataLayerError::MappingError)?.id;
-
-        Ok(Self {
+impl From<CredentialSchema> for credential_schema::ActiveModel {
+    fn from(value: CredentialSchema) -> Self {
+        Self {
             id: Set(value.id),
             deleted_at: Set(value.deleted_at),
             created_date: Set(value.created_date),
@@ -64,13 +60,13 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             name: Set(value.name),
             format: Set(value.format),
             revocation_method: Set(value.revocation_method),
-            organisation_id: Set(organisation_id),
+            organisation_id: Set(*value.organisation.id()),
             wallet_storage_type: Set(convert_inner(value.wallet_storage_type)),
             layout_type: Set(value.layout_type.into()),
             layout_properties: Set(convert_inner(value.layout_properties)),
             schema_type: Set(value.schema_type.into()),
             schema_id: Set(value.schema_id),
-        })
+        }
     }
 }
 
@@ -126,8 +122,8 @@ pub(super) fn claim_schemas_to_relations(
 
 pub(super) fn credential_schema_from_models(
     credential_schema: credential_schema::Model,
-    claim_schemas: Option<Vec<CredentialSchemaClaim>>,
-    organisation: Option<Organisation>,
+    claim_schemas: Related<Vec<CredentialSchemaClaim>>,
+    organisation: Related<Organisation>,
     skip_layout_properties: bool,
 ) -> CredentialSchema {
     CredentialSchema {

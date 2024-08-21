@@ -7,7 +7,9 @@ use time::OffsetDateTime;
 
 use self::dto::SuspendCheckResultDTO;
 use super::Task;
+use crate::model::credential::to_open_credential;
 use crate::model::key::KeyRelations;
+use crate::model::organisation::Organisation;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
@@ -20,7 +22,6 @@ use crate::{
         credential_schema::CredentialSchemaRelations,
         did::DidRelations,
         list_filter::{ComparisonType, ListFilterValue, ValueComparison},
-        organisation::OrganisationRelations,
     },
     repository::{
         credential_repository::CredentialRepository, history_repository::HistoryRepository,
@@ -113,10 +114,7 @@ impl Task for SuspendCheckProvider {
                         }),
                         holder_did: Some(DidRelations::default()),
                         key: Some(KeyRelations::default()),
-                        schema: Some(CredentialSchemaRelations {
-                            organisation: Some(OrganisationRelations::default()),
-                            ..Default::default()
-                        }),
+                        schema: Some(CredentialSchemaRelations {}),
                         ..Default::default()
                     },
                 )
@@ -128,7 +126,7 @@ impl Task for SuspendCheckProvider {
 
             let update = revocation_method
                 .mark_credential_as(
-                    &credential.to_owned().into(),
+                    &to_open_credential(credential.to_owned()).await?,
                     CredentialRevocationState::Valid,
                     generate_credential_additional_data(
                         &credential,
@@ -170,7 +168,11 @@ impl Task for SuspendCheckProvider {
                 .create_history(credential_revocation_history_event(
                     credential_id,
                     CredentialRevocationState::Valid,
-                    credential.schema.and_then(|c| c.organisation),
+                    credential.schema.map(|schema| Organisation {
+                        id: *schema.organisation.id(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    }),
                 ))
                 .await;
         }

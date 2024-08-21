@@ -161,6 +161,7 @@ impl DataLayer {
             did_repository: did_repository.clone(),
             interaction_repository: interaction_repository.clone(),
             key_repository: key_repository.clone(),
+            organisation_repository: organisation_repository.clone(),
         });
 
         let lvvc_repository = Arc::new(ValidityCredentialProvider::new(db.clone()));

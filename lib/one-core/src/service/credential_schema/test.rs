@@ -2,7 +2,7 @@ use mockall::predicate::*;
 use one_providers::credential_formatter::model::FormatterCapabilities;
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialSchemaId, OrganisationId};
 use std::sync::Arc;
 use std::vec;
 
@@ -24,11 +24,8 @@ use crate::service::credential_schema::dto::{
 use crate::service::test_utilities::generic_formatter_capabilities;
 use crate::{
     model::{
-        claim_schema::{ClaimSchema, ClaimSchemaRelations},
-        credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-            GetCredentialSchemaList,
-        },
+        claim_schema::ClaimSchema,
+        credential_schema::{CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList},
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
@@ -85,7 +82,7 @@ fn generic_credential_schema() -> CredentialSchema {
         name: "".to_string(),
         format: "".to_string(),
         revocation_method: "".to_string(),
-        claim_schemas: Some(vec![CredentialSchemaClaim {
+        claim_schemas: vec![CredentialSchemaClaim {
             schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "".to_string(),
@@ -95,12 +92,14 @@ fn generic_credential_schema() -> CredentialSchema {
                 array: false,
             },
             required: true,
-        }]),
-        organisation: Some(Organisation {
+        }]
+        .into(),
+        organisation: Organisation {
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
-        }),
+        }
+        .into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -114,19 +113,14 @@ async fn test_get_credential_schema_success() {
     let history_repository = MockHistoryRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
 
-    let relations = CredentialSchemaRelations {
-        claim_schemas: Some(ClaimSchemaRelations::default()),
-        organisation: Some(OrganisationRelations::default()),
-    };
-
     let schema = generic_credential_schema();
     {
         let clone = schema.clone();
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), eq(relations))
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
     }
 
     let service = setup_service(
@@ -157,7 +151,7 @@ async fn test_get_credential_schema_deleted() {
         let clone = schema.clone();
         repository
             .expect_get_credential_schema()
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .returning(move |_| Ok(Some(clone.clone())));
     }
 
     let service = setup_service(
@@ -174,39 +168,6 @@ async fn test_get_credential_schema_deleted() {
         e,
         ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))
     )));
-}
-
-#[tokio::test]
-async fn test_get_credential_schema_fail() {
-    let mut repository = MockCredentialSchemaRepository::default();
-    let history_repository = MockHistoryRepository::default();
-    let organisation_repository = MockOrganisationRepository::default();
-    let relations = CredentialSchemaRelations {
-        claim_schemas: Some(ClaimSchemaRelations::default()),
-        organisation: Some(OrganisationRelations::default()),
-    };
-
-    let mut schema = generic_credential_schema();
-    schema.organisation = None;
-    {
-        let clone = schema.clone();
-        repository
-            .expect_get_credential_schema()
-            .times(1)
-            .with(eq(schema.id.to_owned()), eq(relations))
-            .returning(move |_, _| Ok(Some(clone.clone())));
-    }
-
-    let service = setup_service(
-        repository,
-        history_repository,
-        organisation_repository,
-        MockCredentialFormatterProvider::default(),
-        generic_config().core,
-    );
-
-    let organisation_is_none = service.get_credential_schema(&schema.id).await;
-    assert!(organisation_is_none.is_err_and(|e| matches!(e, ServiceError::MappingError(_))));
 }
 
 #[tokio::test]
@@ -230,7 +191,7 @@ async fn test_get_credential_schema_list_success() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_| Ok(clone.clone()));
     }
 
     let service = setup_service(
@@ -273,7 +234,7 @@ async fn test_delete_credential_schema() {
 
     repository
         .expect_get_credential_schema()
-        .returning(|_, _| Ok(Some(generic_credential_schema())));
+        .returning(|_| Ok(Some(generic_credential_schema())));
 
     repository
         .expect_delete_credential_schema()
@@ -352,7 +313,7 @@ async fn test_create_credential_schema_success() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_| Ok(clone.clone()));
     }
 
     formatter
@@ -451,7 +412,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_| Ok(clone.clone()));
     }
 
     formatter
@@ -565,7 +526,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_| Ok(clone.clone()));
     }
 
     formatter
@@ -822,7 +783,7 @@ async fn test_create_credential_schema_unique_name_error() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_, _| Ok(response.clone()));
+            .returning(move |_| Ok(response.clone()));
     }
 
     formatter
@@ -1078,7 +1039,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_| Ok(clone.clone()));
     }
 
     formatter
@@ -2393,7 +2354,7 @@ async fn test_share_credential_schema_success() {
 
     repository
         .expect_get_credential_schema()
-        .returning(|_, _| Ok(Some(generic_credential_schema())));
+        .returning(|_| Ok(Some(generic_credential_schema())));
 
     history_repository
         .expect_create_history()
@@ -2420,9 +2381,9 @@ async fn test_import_credential_schema_success() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     let now = OffsetDateTime::now_utc();
-    let own_organisation_id = Uuid::new_v4();
+    let own_organisation_id: OrganisationId = Uuid::new_v4().into();
     let organisation = Organisation {
-        id: own_organisation_id.to_owned().into(),
+        id: own_organisation_id,
         created_date: now,
         last_modified: now,
     };
@@ -2444,7 +2405,7 @@ async fn test_import_credential_schema_success() {
     repository
         .expect_get_credential_schema_list()
         .times(1)
-        .returning(move |_, _| {
+        .returning(move |_| {
             Ok(GetCredentialSchemaList {
                 values: vec![],
                 total_pages: 0,
@@ -2455,10 +2416,7 @@ async fn test_import_credential_schema_success() {
     repository
         .expect_create_credential_schema()
         .return_once(move |new_schema| {
-            assert_eq!(
-                own_organisation_id,
-                new_schema.organisation.unwrap().id.into()
-            );
+            assert_eq!(own_organisation_id, *new_schema.organisation.id());
             Ok(new_schema.id)
         });
     history_repository
@@ -2476,7 +2434,7 @@ async fn test_import_credential_schema_success() {
     let external_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let result = service
         .import_credential_schema(ImportCredentialSchemaRequestDTO {
-            organisation_id: own_organisation_id.into(),
+            organisation_id: own_organisation_id,
             schema: ImportCredentialSchemaRequestSchemaDTO {
                 id: external_schema_id.into(),
                 created_date: now,

@@ -18,7 +18,7 @@ use one_core::model::did::{Did, DidRelations};
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use one_core::model::list_query::ListPagination;
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::Organisation;
 use one_core::repository::claim_repository::MockClaimRepository;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -89,27 +89,26 @@ async fn setup_empty() -> TestSetup {
         format: "JWT".to_string(),
         wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
         revocation_method: "NONE".to_string(),
-        claim_schemas: Some(
-            new_claim_schemas
-                .into_iter()
-                .map(|schema| CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: schema.id,
-                        key: schema.key.to_string(),
-                        data_type: schema.datatype.to_string(),
-                        created_date: get_dummy_date(),
-                        last_modified: get_dummy_date(),
-                        array: false,
-                    },
-                    required: true,
-                })
-                .collect(),
-        ),
-        organisation: Some(Organisation {
+        claim_schemas: new_claim_schemas
+            .into_iter()
+            .map(|schema| CredentialSchemaClaim {
+                schema: ClaimSchema {
+                    id: schema.id,
+                    key: schema.key.to_string(),
+                    data_type: schema.datatype.to_string(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    array: false,
+                },
+                required: true,
+            })
+            .collect(),
+        organisation: Organisation {
             id: organisation_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-        }),
+        }
+        .into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -212,7 +211,7 @@ async fn test_create_credential_success() {
     };
 
     let credential_id = Uuid::new_v4().into();
-    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
+    let claim_schema = credential_schema.claim_schemas.get().await.unwrap()[0]
         .to_owned()
         .schema;
     let claims = vec![
@@ -345,7 +344,7 @@ async fn test_create_credential_already_exists() {
         key_repository: Arc::new(MockKeyRepository::default()),
     };
 
-    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
+    let claim_schema = credential_schema.claim_schemas.get().await.unwrap()[0]
         .to_owned()
         .schema;
     let claims = vec![Claim {
@@ -502,7 +501,7 @@ async fn test_get_credential_list_success() {
             }),
             sorting: None,
             filtering: Some(
-                CredentialFilterValue::OrganisationId(credential_schema.organisation.unwrap().id)
+                CredentialFilterValue::OrganisationId(*credential_schema.organisation.id())
                     .condition(),
             ),
             include: None,
@@ -562,7 +561,7 @@ async fn test_get_credential_list_success_verify_state_sorting() {
             }),
             sorting: None,
             filtering: Some(
-                CredentialFilterValue::OrganisationId(credential_schema.organisation.unwrap().id)
+                CredentialFilterValue::OrganisationId(*credential_schema.organisation.id())
                     .condition(),
             ),
             include: None,
@@ -790,10 +789,10 @@ async fn test_get_credential_success() {
     .await
     .unwrap();
 
-    let claim_schema1 = credential_schema.claim_schemas.as_ref().unwrap()[1]
+    let claim_schema1 = credential_schema.claim_schemas.get().await.unwrap()[1]
         .to_owned()
         .schema;
-    let claim_schema2 = credential_schema.claim_schemas.as_ref().unwrap()[0]
+    let claim_schema2 = credential_schema.claim_schemas.get().await.unwrap()[0]
         .to_owned()
         .schema;
     let claims = vec![
@@ -847,7 +846,7 @@ async fn test_get_credential_success() {
     credential_schema_repository
         .expect_get_credential_schema()
         .times(1)
-        .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
+        .returning(move |_| Ok(Some(credential_schema_clone.clone())));
 
     let claims_clone = claims.clone();
     claim_repository
@@ -886,10 +885,7 @@ async fn test_get_credential_success() {
                 claims: Some(ClaimRelations {
                     schema: Some(ClaimSchemaRelations::default()),
                 }),
-                schema: Some(CredentialSchemaRelations {
-                    claim_schemas: None,
-                    organisation: Some(OrganisationRelations::default()),
-                }),
+                schema: Some(CredentialSchemaRelations {}),
                 issuer_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
                 interaction: Some(InteractionRelations::default()),
@@ -1067,7 +1063,7 @@ async fn test_get_credential_by_claim_id_success() {
     .await
     .unwrap();
 
-    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
+    let claim_schema = credential_schema.claim_schemas.get().await.unwrap()[0]
         .to_owned()
         .schema;
     let claim = Claim {

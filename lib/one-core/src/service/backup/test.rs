@@ -83,7 +83,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 name: "name".into(),
                 format: "format".into(),
                 revocation_method: "revocation_method".into(),
-                claim_schemas: Some(vec![CredentialSchemaClaim {
+                claim_schemas: vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
                         id: claim_schema_id,
                         key: "key".into(),
@@ -93,12 +93,14 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                         array: false,
                     },
                     required: false,
-                }]),
-                organisation: Some(Organisation {
+                }]
+                .into(),
+                organisation: Organisation {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
-                }),
+                }
+                .into(),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,

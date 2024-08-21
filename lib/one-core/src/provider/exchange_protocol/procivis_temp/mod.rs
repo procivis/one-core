@@ -458,6 +458,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         .await?;
 
         presentation_definition_from_proof(proof, credentials, credential_groups, &self.config)
+            .await
     }
 
     async fn verifier_handle_proof(

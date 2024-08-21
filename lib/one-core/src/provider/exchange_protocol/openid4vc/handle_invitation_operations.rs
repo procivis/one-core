@@ -284,9 +284,11 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
             }
         };
 
+        let organisation: crate::model::organisation::Organisation =
+            self.organisation.to_owned().into();
         let mut schema: crate::model::credential_schema::CredentialSchema =
             result.schema.clone().into();
-        schema.organisation = Some(self.organisation.to_owned().into());
+        schema.organisation = organisation.into();
 
         self.credential_schemas
             .create_credential_schema(schema)

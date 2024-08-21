@@ -18,6 +18,7 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
+use crate::model::relation::Related;
 use one_providers::common_models::key::OpenKey;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -194,7 +195,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
             format: "format".to_string(),
             revocation_method: "revocation method".to_string(),
-            claim_schemas: Some(vec![CredentialSchemaClaim {
+            claim_schemas: vec![CredentialSchemaClaim {
                 schema: ClaimSchema {
                     id: claim_schema_id,
                     key: "key".to_string(),
@@ -204,12 +205,14 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                     array: false,
                 },
                 required: true,
-            }]),
-            organisation: Some(Organisation {
+            }]
+            .into(),
+            organisation: Organisation {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-            }),
+            }
+            .into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -263,11 +266,12 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
             deleted_at: None,
             name: "dummy".to_string(),
             expire_duration: 0,
-            organisation: Some(Organisation {
+            organisation: Organisation {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-            }),
+            }
+            .into(),
             input_schemas: None,
         }),
         claims: None,
@@ -308,7 +312,7 @@ pub fn dummy_proof_schema() -> ProofSchema {
         deleted_at: None,
         name: "Proof schema".to_string(),
         expire_duration: 100,
-        organisation: None,
+        organisation: Related::from_id_only(Uuid::new_v4()),
         input_schemas: None,
     }
 }
@@ -323,8 +327,8 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
         format: "format".to_string(),
         revocation_method: "format".to_string(),
-        claim_schemas: None,
-        organisation: None,
+        claim_schemas: Related::default(),
+        organisation: Related::from_id_only(Uuid::new_v4()),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,

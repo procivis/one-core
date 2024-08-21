@@ -207,6 +207,8 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
     );
     let schema_keys: Vec<String> = schema
         .claim_schemas
+        .get()
+        .await
         .unwrap()
         .into_iter()
         .map(|schema| schema.schema.key)
@@ -818,6 +820,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .schema
         .unwrap()
         .claim_schemas
+        .get()
+        .await
         .unwrap()
         .iter()
         .map(|claim_schema| claim_schema.schema.key.to_owned())
@@ -1440,6 +1444,8 @@ async fn test_handle_invitation_mdoc() {
         .schema
         .unwrap()
         .claim_schemas
+        .get()
+        .await
         .unwrap()
         .into_iter()
         .map(|claim_schema| claim_schema.schema.key)

@@ -21,7 +21,7 @@ use uuid::Uuid;
 use super::ProofService;
 use crate::config::core_config::{CoreConfig, Fields, TransportType};
 use crate::model::claim::{Claim, ClaimRelations};
-use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
 };
@@ -42,6 +42,7 @@ use crate::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::model::relation::Related;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
@@ -174,8 +175,8 @@ fn generic_proof_input_schema() -> ProofInputSchema {
             layout_properties: None,
             schema_id: "".to_string(),
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-            claim_schemas: None,
-            organisation: None,
+            claim_schemas: Related::default(),
+            organisation: Related::from_id_only(Uuid::new_v4()),
         }),
     }
 }
@@ -204,11 +205,12 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             last_modified: OffsetDateTime::now_utc(),
             name: "proof schema".to_string(),
             expire_duration: 0,
-            organisation: Some(Organisation {
+            organisation: Organisation {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-            }),
+            }
+            .into(),
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
@@ -232,8 +234,8 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),
                     revocation_method: "NONE".to_string(),
-                    claim_schemas: None,
-                    organisation: None,
+                    claim_schemas: Related::default(),
+                    organisation: Related::from_id_only(Uuid::new_v4()),
                     layout_type: LayoutType::Card,
                     layout_properties: None,
                     schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -318,11 +320,12 @@ async fn test_get_proof_exists() {
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
-            organisation: Some(Organisation {
+            organisation: Organisation {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-            }),
+            }
+            .into(),
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
@@ -346,7 +349,7 @@ async fn test_get_proof_exists() {
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),
                     revocation_method: "NONE".to_string(),
-                    claim_schemas: Some(vec![CredentialSchemaClaim {
+                    claim_schemas: vec![CredentialSchemaClaim {
                         schema: ClaimSchema {
                             id: Uuid::new_v4().into(),
                             key: "ClaimKey".to_owned(),
@@ -356,8 +359,9 @@ async fn test_get_proof_exists() {
                             array: false,
                         },
                         required: true,
-                    }]),
-                    organisation: None,
+                    }]
+                    .into(),
+                    organisation: Related::from_id_only(Uuid::new_v4()),
                     layout_type: LayoutType::Card,
                     layout_properties: None,
                     schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -390,13 +394,9 @@ async fn test_get_proof_exists() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                organisation: None,
-                            }),
+                            credential_schema: Some(CredentialSchemaRelations {}),
                         }),
                     }),
                     state: Some(ProofStateRelations::default()),
@@ -409,10 +409,7 @@ async fn test_get_proof_exists() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(Default::default()),
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(CredentialSchemaRelations {}),
                             issuer_did: Some(Default::default()),
                             holder_did: Some(Default::default()),
                             ..Default::default()
@@ -472,11 +469,12 @@ async fn test_get_proof_with_array_holder() {
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
         revocation_method: "NONE".to_string(),
-        claim_schemas: Some(vec![CredentialSchemaClaim {
+        claim_schemas: vec![CredentialSchemaClaim {
             schema: claim_schema.clone(),
             required: true,
-        }]),
-        organisation: Some(organisation.clone()),
+        }]
+        .into(),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -575,13 +573,9 @@ async fn test_get_proof_with_array_holder() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                organisation: None,
-                            }),
+                            credential_schema: Some(CredentialSchemaRelations {}),
                         }),
                     }),
                     state: Some(ProofStateRelations::default()),
@@ -594,10 +588,7 @@ async fn test_get_proof_with_array_holder() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(Default::default()),
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(CredentialSchemaRelations {}),
                             issuer_did: Some(Default::default()),
                             holder_did: Some(Default::default()),
                             ..Default::default()
@@ -687,8 +678,8 @@ async fn test_get_proof_with_array_in_object_holder() {
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
         revocation_method: "NONE".to_string(),
-        claim_schemas: Some(claim_schemas.clone()),
-        organisation: Some(organisation.clone()),
+        claim_schemas: claim_schemas.clone().into(),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -787,13 +778,9 @@ async fn test_get_proof_with_array_in_object_holder() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                organisation: None,
-                            }),
+                            credential_schema: Some(CredentialSchemaRelations {}),
                         }),
                     }),
                     state: Some(ProofStateRelations::default()),
@@ -806,10 +793,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(Default::default()),
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(CredentialSchemaRelations {}),
                             issuer_did: Some(Default::default()),
                             holder_did: Some(Default::default()),
                             ..Default::default()
@@ -904,8 +888,8 @@ async fn test_get_proof_with_object_array_holder() {
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
         revocation_method: "NONE".to_string(),
-        claim_schemas: Some(claim_schemas.clone()),
-        organisation: Some(organisation.clone()),
+        claim_schemas: claim_schemas.clone().into(),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -1004,13 +988,9 @@ async fn test_get_proof_with_object_array_holder() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                organisation: None,
-                            }),
+                            credential_schema: Some(CredentialSchemaRelations {}),
                         }),
                     }),
                     state: Some(ProofStateRelations::default()),
@@ -1023,10 +1003,7 @@ async fn test_get_proof_with_object_array_holder() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(Default::default()),
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(CredentialSchemaRelations {}),
                             issuer_did: Some(Default::default()),
                             holder_did: Some(Default::default()),
                             ..Default::default()
@@ -1100,11 +1077,12 @@ async fn test_get_proof_with_array() {
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
         revocation_method: "NONE".to_string(),
-        claim_schemas: Some(vec![CredentialSchemaClaim {
+        claim_schemas: vec![CredentialSchemaClaim {
             schema: claim_schema.clone(),
             required: true,
-        }]),
-        organisation: Some(organisation.clone()),
+        }]
+        .into(),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -1174,7 +1152,7 @@ async fn test_get_proof_with_array() {
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
@@ -1220,13 +1198,9 @@ async fn test_get_proof_with_array() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                organisation: None,
-                            }),
+                            credential_schema: Some(CredentialSchemaRelations {}),
                         }),
                     }),
                     state: Some(ProofStateRelations::default()),
@@ -1239,10 +1213,7 @@ async fn test_get_proof_with_array() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(Default::default()),
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(CredentialSchemaRelations {}),
                             issuer_did: Some(Default::default()),
                             holder_did: Some(Default::default()),
                             ..Default::default()
@@ -1332,8 +1303,8 @@ async fn test_get_proof_with_array_in_object() {
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
         revocation_method: "NONE".to_string(),
-        claim_schemas: Some(claim_schemas.clone()),
-        organisation: Some(organisation.clone()),
+        claim_schemas: claim_schemas.clone().into(),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -1403,7 +1374,7 @@ async fn test_get_proof_with_array_in_object() {
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
@@ -1449,13 +1420,9 @@ async fn test_get_proof_with_array_in_object() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                organisation: None,
-                            }),
+                            credential_schema: Some(CredentialSchemaRelations {}),
                         }),
                     }),
                     state: Some(ProofStateRelations::default()),
@@ -1468,10 +1435,7 @@ async fn test_get_proof_with_array_in_object() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(Default::default()),
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(CredentialSchemaRelations {}),
                             issuer_did: Some(Default::default()),
                             holder_did: Some(Default::default()),
                             ..Default::default()
@@ -1567,8 +1531,8 @@ async fn test_get_proof_with_object_array() {
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
         revocation_method: "NONE".to_string(),
-        claim_schemas: Some(claim_schemas.clone()),
-        organisation: Some(organisation.clone()),
+        claim_schemas: claim_schemas.clone().into(),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -1638,7 +1602,7 @@ async fn test_get_proof_with_object_array() {
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
@@ -1684,13 +1648,9 @@ async fn test_get_proof_with_object_array() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                organisation: None,
-                            }),
+                            credential_schema: Some(CredentialSchemaRelations {}),
                         }),
                     }),
                     state: Some(ProofStateRelations::default()),
@@ -1703,10 +1663,7 @@ async fn test_get_proof_with_object_array() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(Default::default()),
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(CredentialSchemaRelations {}),
                             issuer_did: Some(Default::default()),
                             holder_did: Some(Default::default()),
                             ..Default::default()
@@ -1797,7 +1754,7 @@ async fn test_get_proof_list_success() {
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
-            organisation: None,
+            organisation: Related::from_id_only(Uuid::new_v4()),
             input_schemas: None,
         }),
         claims: None,
@@ -1884,7 +1841,7 @@ async fn test_create_proof_without_related_key() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -1987,7 +1944,7 @@ async fn test_create_proof_with_related_key() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -2087,7 +2044,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -2167,7 +2124,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -2222,7 +2179,7 @@ async fn test_create_proof_did_deactivated_error() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -2294,7 +2251,7 @@ async fn test_create_proof_schema_deleted() {
                 deleted_at: Some(OffsetDateTime::now_utc()),
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 input_schemas: None,
             }))
         });
@@ -2334,7 +2291,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Related::from_id_only(Uuid::new_v4()),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });

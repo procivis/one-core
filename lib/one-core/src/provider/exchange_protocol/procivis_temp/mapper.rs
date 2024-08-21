@@ -77,7 +77,7 @@ fn create_requested_credential(
     })
 }
 
-pub(super) fn presentation_definition_from_proof(
+pub(super) async fn presentation_definition_from_proof(
     proof: &OpenProof,
     credentials: Vec<OpenCredential>,
     credential_groups: Vec<CredentialGroup>,
@@ -109,7 +109,7 @@ pub(super) fn presentation_definition_from_proof(
                 })
                 .collect::<Result<Vec<_>, ExchangeProtocolError>>()?,
         }],
-        credentials: convert_inner(credential_model_to_credential_dto(credentials, config)?),
+        credentials: convert_inner(credential_model_to_credential_dto(credentials, config).await?),
     })
 }
 

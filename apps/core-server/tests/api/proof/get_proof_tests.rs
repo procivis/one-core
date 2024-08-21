@@ -26,7 +26,7 @@ async fn test_get_proof_success() {
         .await;
 
     // Select a root claim.
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0].schema;
 
     let proof_schema = context
         .db
@@ -118,7 +118,7 @@ async fn test_get_proof_detached_success() {
         .await;
 
     //Select 2nd claim - a nested object
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[2].schema;
+    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[2].schema;
 
     let proof_schema = context
         .db
@@ -221,7 +221,8 @@ async fn test_get_proof_with_nested_claims() {
             CreateProofInputSchema {
                 claims: credential_schema
                     .claim_schemas
-                    .as_ref()
+                    .get()
+                    .await
                     .unwrap()
                     .iter()
                     .map(|item| CreateProofClaim {
@@ -317,7 +318,8 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
             CreateProofInputSchema {
                 claims: credential_schema
                     .claim_schemas
-                    .as_ref()
+                    .get()
+                    .await
                     .unwrap()
                     .iter()
                     .map(|item| CreateProofClaim {
@@ -407,7 +409,7 @@ async fn test_get_proof_with_credentials() {
         .create("test", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0].schema;
 
     let proof_schema = context
         .db

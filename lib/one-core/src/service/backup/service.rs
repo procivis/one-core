@@ -35,7 +35,8 @@ impl BackupService {
                 .fetch_unexportable(Some(db_copy.path()))
                 .await?,
             &self.config,
-        )?;
+        )
+        .await?;
         self.backup_repository
             .delete_unexportable(db_copy.path())
             .await?;
@@ -158,5 +159,6 @@ impl BackupService {
             self.backup_repository.fetch_unexportable(None).await?,
             &self.config,
         )
+        .await
     }
 }

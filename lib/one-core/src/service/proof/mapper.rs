@@ -17,6 +17,7 @@ use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::interaction::Interaction;
+use crate::model::organisation::Organisation;
 use crate::model::proof::{self, Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
@@ -139,7 +140,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
     }
 }
 
-pub fn get_verifier_proof_detail(
+pub async fn get_verifier_proof_detail(
     proof: Proof,
     config: &CoreConfig,
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
@@ -155,36 +156,29 @@ pub fn get_verifier_proof_detail(
         .as_ref()
         .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
 
-    let organisation = schema
-        .organisation
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "organisation is None".to_string(),
-        ))?;
+    let organisation_id = *schema.organisation.id();
 
-    let organisation_id = organisation.id;
+    let mut credential_for_credential_schema: HashMap<
+        CredentialSchemaId,
+        CredentialDetailResponseDTO,
+    > = HashMap::new();
+    for proof_claim in claims {
+        let credential = proof_claim.credential.clone().ok_or_else(|| {
+            ServiceError::MappingError(format!(
+                "Missing credential for proof claim {}",
+                proof_claim.claim.id
+            ))
+        })?;
+        let credential_schema = credential.schema.clone().ok_or_else(|| {
+            ServiceError::MappingError(format!(
+                "Missing credential schema for credential {}",
+                credential.id
+            ))
+        })?;
+        let credential = credential_detail_response_from_model(credential, config).await?;
 
-    let credential_for_credential_schema: HashMap<CredentialSchemaId, CredentialDetailResponseDTO> =
-        claims
-            .iter()
-            .map(|proof_claim| {
-                let credential = proof_claim.credential.clone().ok_or_else(|| {
-                    ServiceError::MappingError(format!(
-                        "Missing credential for proof claim {}",
-                        proof_claim.claim.id
-                    ))
-                })?;
-                let credential_schema = credential.schema.clone().ok_or_else(|| {
-                    ServiceError::MappingError(format!(
-                        "Missing credential schema for credential {}",
-                        credential.id
-                    ))
-                })?;
-                let credential = credential_detail_response_from_model(credential, config)?;
-
-                Ok((credential_schema.id, credential))
-            })
-            .collect::<Result<_, ServiceError>>()?;
+        credential_for_credential_schema.insert(credential_schema.id, credential);
+    }
 
     let proof_input_schemas = match schema.input_schemas.as_ref() {
         Some(proof_input_schemas) if !proof_input_schemas.is_empty() => proof_input_schemas,
@@ -214,13 +208,7 @@ pub fn get_verifier_proof_detail(
                     "Missing credential schema in input_schema".to_string(),
                 ))?;
 
-        let credential_claim_schemas =
-            credential_schema
-                .claim_schemas
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "Missing claim schema in credential_schema".to_string(),
-                ))?;
+        let credential_claim_schemas = credential_schema.claim_schemas.get().await?;
 
         let object_nested_claims = input_claim_schemas
             .iter()
@@ -318,7 +306,7 @@ pub fn get_verifier_proof_detail(
                 let parent_proof_claim = get_or_create_proof_claim(
                     &mut proof_input_claims,
                     parent_path,
-                    credential_claim_schemas,
+                    &credential_claim_schemas,
                 )?;
 
                 let mut claim_schema = claim_schema.clone();
@@ -497,7 +485,7 @@ fn renest_proof_claims(claims: Vec<ProofClaimDTO>, prefix: &str) -> Vec<ProofCla
     result
 }
 
-pub fn get_holder_proof_detail(
+pub async fn get_holder_proof_detail(
     value: Proof,
     config: &CoreConfig,
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
@@ -567,7 +555,7 @@ pub fn get_holder_proof_detail(
             Entry::Vacant(entry) => {
                 entry.insert((
                     vec![claim],
-                    credential_detail_response_from_model(credential.clone(), config)?,
+                    credential_detail_response_from_model(credential.clone(), config).await?,
                     credential_schema.clone().into(),
                 ));
             }
@@ -678,6 +666,10 @@ pub(super) fn proof_requested_history_event(proof: Proof) -> History {
         entity_id: Some(proof.id.into()),
         entity_type: HistoryEntityType::Proof,
         metadata: None,
-        organisation: proof.schema.and_then(|s| s.organisation),
+        organisation: proof.schema.map(|s| Organisation {
+            id: *s.organisation.id(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
     }
 }

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::model::claim_schema::ClaimSchemaRelations;
-use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::proof_schema::{
     GetProofSchemaList, GetProofSchemaQuery, ProofInputClaimSchema, ProofInputSchema,
     ProofInputSchemaRelations, ProofSchema, ProofSchemaRelations,
@@ -18,7 +18,7 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::mapper::create_list_response;
+use super::mapper::{create_list_response, into_proof_schema};
 use super::ProofSchemaProvider;
 use crate::entity::{proof_input_claim_schema, proof_input_schema, proof_schema};
 use crate::list_query::SelectWithListQuery;
@@ -31,12 +31,8 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         &self,
         request: ProofSchema,
     ) -> Result<ProofSchemaId, DataLayerError> {
-        if request.organisation.is_none() {
-            return Err(DataLayerError::IncorrectParameters);
-        }
-
         let proof_schema_id = request.id;
-        let proof_schema = proof_schema::ActiveModel::try_from(&request)?;
+        let proof_schema = proof_schema::ActiveModel::from(&request);
 
         let proof_input_schemas = request
             .input_schemas
@@ -172,24 +168,12 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             return Ok(None);
         };
 
-        let organisation_id = proof_schema_model.organisation_id.to_owned();
-        let mut proof_schema = ProofSchema::from(proof_schema_model);
+        let mut proof_schema =
+            into_proof_schema(proof_schema_model, self.organisation_repository.to_owned());
 
         if let Some(input_relations) = &relations.proof_inputs {
             proof_schema.input_schemas =
                 Some(self.get_related_input_schemas(id, input_relations).await?);
-        }
-
-        if let Some(organisation_relations) = &relations.organisation {
-            proof_schema.organisation = Some(
-                self.organisation_repository
-                    .get_organisation(&organisation_id, organisation_relations)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "proof_schema-organisation",
-                        id: organisation_id.to_string(),
-                    })?,
-            );
         }
 
         Ok(Some(proof_schema))
@@ -220,7 +204,12 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        create_list_response(proof_schemas, limit, items_count)
+        create_list_response(
+            proof_schemas,
+            limit,
+            items_count,
+            &self.organisation_repository,
+        )
     }
 
     async fn delete_proof_schema(
@@ -251,12 +240,11 @@ impl ProofSchemaProvider {
     async fn get_related_credential_schema(
         &self,
         credential_schema_id: String,
-        credential_schema_relations: &CredentialSchemaRelations,
     ) -> Result<CredentialSchema, DataLayerError> {
         let credential_schema_id = CredentialSchemaId::from_str(&credential_schema_id)?;
 
         self.credential_schema_repository
-            .get_credential_schema(&credential_schema_id, credential_schema_relations)
+            .get_credential_schema(&credential_schema_id)
             .await?
             .ok_or(DataLayerError::MissingRequiredRelation {
                 relation: "proof_schema-credential_schema",
@@ -320,12 +308,9 @@ impl ProofSchemaProvider {
                 new_input.claim_schemas = Some(input_schema_claims);
             }
 
-            if let Some(credential_schema_relations) = &relations.credential_schema {
+            if relations.credential_schema.is_some() {
                 let credential_schema = self
-                    .get_related_credential_schema(
-                        input_schema.credential_schema,
-                        credential_schema_relations,
-                    )
+                    .get_related_credential_schema(input_schema.credential_schema)
                     .await?;
 
                 new_input.credential_schema = Some(credential_schema);

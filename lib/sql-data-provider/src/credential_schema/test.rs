@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 
-use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    GetCredentialSchemaQuery, LayoutType, UpdateCredentialSchemaRequest,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, GetCredentialSchemaQuery,
+    LayoutType, UpdateCredentialSchemaRequest,
 };
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::Organisation;
 use one_core::repository::claim_schema_repository::MockClaimSchemaRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
@@ -112,23 +112,21 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             name: "credential schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            claim_schemas: Some(
-                new_claim_schemas
-                    .into_iter()
-                    .map(|claim| CredentialSchemaClaim {
-                        schema: ClaimSchema {
-                            id: claim.id,
-                            created_date: get_dummy_date(),
-                            last_modified: get_dummy_date(),
-                            key: claim.key.to_owned(),
-                            data_type: claim.datatype.to_owned(),
-                            array: false,
-                        },
-                        required: claim.required,
-                    })
-                    .collect(),
-            ),
-            organisation: Some(organisation.clone()),
+            claim_schemas: new_claim_schemas
+                .into_iter()
+                .map(|claim| CredentialSchemaClaim {
+                    schema: ClaimSchema {
+                        id: claim.id,
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        key: claim.key.to_owned(),
+                        data_type: claim.datatype.to_owned(),
+                        array: false,
+                    },
+                    required: claim.required,
+                })
+                .collect(),
+            organisation: organisation.clone().into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -185,8 +183,8 @@ async fn test_create_credential_schema_success() {
             name: "schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            claim_schemas: Some(claim_schemas),
-            organisation: Some(organisation),
+            claim_schemas: claim_schemas.into(),
+            organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -244,19 +242,16 @@ async fn test_get_credential_schema_list_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let result = repository
-        .get_credential_schema_list(
-            GetCredentialSchemaQuery {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: 5,
-                }),
-                filtering: Some(
-                    CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
-                ),
-                ..Default::default()
-            },
-            &Default::default(),
-        )
+        .get_credential_schema_list(GetCredentialSchemaQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
+            ),
+            ..Default::default()
+        })
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -285,19 +280,16 @@ async fn test_get_credential_schema_list_deleted_schema() {
     .unwrap();
 
     let result = repository
-        .get_credential_schema_list(
-            GetCredentialSchemaQuery {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: 1,
-                }),
-                filtering: Some(
-                    CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
-                ),
-                ..Default::default()
-            },
-            &Default::default(),
-        )
+        .get_credential_schema_list(GetCredentialSchemaQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
+            ),
+            ..Default::default()
+        })
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -327,18 +319,6 @@ async fn test_get_credential_schema_success() {
                 .collect())
         });
 
-    let mut organisation_repository = MockOrganisationRepository::default();
-    organisation_repository
-        .expect_get_organisation()
-        .times(1)
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            }))
-        });
-
     let TestSetupWithCredentialSchema {
         credential_schema,
         repository,
@@ -346,73 +326,36 @@ async fn test_get_credential_schema_success() {
         ..
     } = setup_with_schema(Repositories {
         claim_schema_repository,
-        organisation_repository,
+        ..Default::default()
     })
     .await;
 
     let result = repository
-        .get_credential_schema(
-            &credential_schema.id,
-            &CredentialSchemaRelations {
-                claim_schemas: Some(ClaimSchemaRelations::default()),
-                organisation: Some(OrganisationRelations::default()),
-            },
-        )
+        .get_credential_schema(&credential_schema.id)
         .await;
 
     assert!(result.is_ok());
     let result = result.unwrap().unwrap();
     assert_eq!(credential_schema.id, result.id);
-    let claim_schemas = result.claim_schemas.unwrap();
+    let claim_schemas = result.claim_schemas.get().await.unwrap();
     assert_eq!(claim_schemas.len(), 2);
-    assert_eq!(organisation.id, result.organisation.unwrap().id);
+    assert_eq!(organisation.id, *result.organisation.id());
 
     let empty_relations_mean_no_other_repository_calls = repository
-        .get_credential_schema(&credential_schema.id, &CredentialSchemaRelations::default())
+        .get_credential_schema(&credential_schema.id)
         .await;
     assert!(empty_relations_mean_no_other_repository_calls.is_ok());
 }
 
 #[tokio::test]
 async fn test_get_credential_schema_deleted() {
-    let mut claim_schema_repository = MockClaimSchemaRepository::default();
-    claim_schema_repository
-        .expect_get_claim_schema_list()
-        .times(1)
-        .returning(|ids, _| {
-            Ok(ids
-                .into_iter()
-                .map(|id| ClaimSchema {
-                    id,
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    key: format!("key{id}"),
-                    data_type: "STRING".to_string(),
-                    array: false,
-                })
-                .collect())
-        });
-
-    let mut organisation_repository = MockOrganisationRepository::default();
-    organisation_repository
-        .expect_get_organisation()
-        .times(1)
-        .returning(|id, _| {
-            Ok(Some(Organisation {
-                id: id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            }))
-        });
-
     let TestSetupWithCredentialSchema {
         credential_schema,
         repository,
         db,
         ..
     } = setup_with_schema(Repositories {
-        claim_schema_repository,
-        organisation_repository,
+        ..Default::default()
     })
     .await;
 
@@ -427,13 +370,7 @@ async fn test_get_credential_schema_deleted() {
     .unwrap();
 
     let result = repository
-        .get_credential_schema(
-            &credential_schema.id,
-            &CredentialSchemaRelations {
-                claim_schemas: Some(ClaimSchemaRelations::default()),
-                organisation: Some(OrganisationRelations::default()),
-            },
-        )
+        .get_credential_schema(&credential_schema.id)
         .await;
 
     assert!(result.is_ok());
@@ -447,10 +384,7 @@ async fn test_get_credential_schema_not_found() {
     let TestSetup { repository, .. } = setup_empty(Repositories::default()).await;
 
     let result = repository
-        .get_credential_schema(
-            &Uuid::new_v4().into(),
-            &CredentialSchemaRelations::default(),
-        )
+        .get_credential_schema(&Uuid::new_v4().into())
         .await;
     assert!(matches!(result, Ok(None)));
 }
@@ -529,18 +463,15 @@ async fn test_get_by_schema_id_and_organisation() {
         .get_by_schema_id_and_organisation(
             &credential_schema.schema_id,
             credential_schema.schema_type.clone(),
-            credential_schema.organisation.as_ref().unwrap().id,
-            &CredentialSchemaRelations {
-                claim_schemas: Some(Default::default()),
-                organisation: Some(Default::default()),
-            },
+            *credential_schema.organisation.id(),
         )
         .await
         .unwrap()
         .unwrap();
 
-    assert!(&res.claim_schemas.is_some());
-    assert!(&res.organisation.is_some());
-
-    assert_eq!(res, credential_schema);
+    assert_eq!(res.id, credential_schema.id);
+    assert_eq!(res.name, credential_schema.name);
+    assert_eq!(res.schema_id, credential_schema.schema_id);
+    assert_eq!(res.schema_type, credential_schema.schema_type);
+    assert_eq!(res.organisation.id(), credential_schema.organisation.id());
 }

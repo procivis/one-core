@@ -129,17 +129,14 @@ pub struct PresentationDefinitionRuleDTO {
     pub count: Option<u32>,
 }
 
-#[derive(Clone, Debug, Into, From)]
-#[into(one_providers::exchange_protocol::openid4vc::model::CredentialGroup)]
+#[derive(Clone, Debug, From)]
 #[from(one_providers::exchange_protocol::openid4vc::model::CredentialGroup)]
 pub struct CredentialGroup {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
-    #[into(with_fn = convert_inner)]
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialGroupItem>,
-    #[into(with_fn = convert_inner)]
     #[from(with_fn = convert_inner)]
     pub applicable_credentials: Vec<Credential>,
     pub validity_credential_nbf: Option<OffsetDateTime>,

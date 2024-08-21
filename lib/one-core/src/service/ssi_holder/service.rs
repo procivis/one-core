@@ -29,15 +29,17 @@ use crate::config::core_config::{Fields, RevocationType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
-    UpdateCredentialRequest,
+    to_open_credential, CredentialRelations, CredentialState, CredentialStateEnum,
+    CredentialStateRelations, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::credential_schema::{to_open_credential_schema, CredentialSchemaRelations};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
+use crate::model::proof::{
+    to_open_proof, Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
+};
 use crate::provider::exchange_protocol::openid4vc::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
@@ -165,7 +167,7 @@ impl SSIHolderService {
             .ok_or(MissingProviderError::ExchangeProtocol(
                 proof.exchange.clone(),
             ))?
-            .reject_proof(&proof.clone().into())
+            .reject_proof(&to_open_proof(proof.clone()).await?)
             .await?;
 
         let now = OffsetDateTime::now_utc();
@@ -277,7 +279,7 @@ impl SSIHolderService {
 
         let presentation_definition = exchange_protocol
             .get_presentation_definition(
-                &proof.clone().into(),
+                &to_open_proof(proof.clone()).await?,
                 interaction_data,
                 &storage_access,
                 create_oicd_to_core_format_map(),
@@ -403,7 +405,7 @@ impl SSIHolderService {
 
             credential_presentations.push(PresentedCredential {
                 presentation: formatted_credential_presentation.to_owned(),
-                credential_schema: credential_schema.to_owned().into(),
+                credential_schema: to_open_credential_schema(credential_schema.to_owned()).await?,
                 request: requested_credential.to_owned(),
             });
 
@@ -423,9 +425,11 @@ impl SSIHolderService {
                     ))?
                     .to_owned();
 
-                let bearer_token =
-                    prepare_bearer_token(&credential.to_owned().into(), self.key_provider.clone())
-                        .await?;
+                let bearer_token = prepare_bearer_token(
+                    &to_open_credential(credential.to_owned()).await?,
+                    self.key_provider.clone(),
+                )
+                .await?;
 
                 let lvvc_url = credential_status.id.ok_or(ServiceError::MappingError(
                     "credential_status id is None".to_string(),
@@ -459,7 +463,8 @@ impl SSIHolderService {
 
                 credential_presentations.push(PresentedCredential {
                     presentation: formatted_lvvc_presentation,
-                    credential_schema: credential_schema.to_owned().into(),
+                    credential_schema: to_open_credential_schema(credential_schema.to_owned())
+                        .await?,
                     request: requested_credential.to_owned(),
                 });
             }
@@ -467,7 +472,7 @@ impl SSIHolderService {
 
         let submit_result = exchange_protocol
             .submit_proof(
-                &proof.clone().into(),
+                &to_open_proof(proof.clone()).await?,
                 credential_presentations,
                 &holder_did.clone().into(),
                 selected_key,
@@ -535,10 +540,7 @@ impl SSIHolderService {
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
                     interaction: Some(InteractionRelations::default()),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     issuer_did: Some(DidRelations::default()),
                     ..Default::default()
                 },
@@ -625,7 +627,7 @@ impl SSIHolderService {
                     credential.exchange.clone(),
                 ))?
                 .accept_credential(
-                    &credential.clone().into(),
+                    &to_open_credential(credential.to_owned()).await?,
                     &did.clone().into(),
                     selected_key,
                     None,
@@ -680,10 +682,7 @@ impl SSIHolderService {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     ..Default::default()
                 },
             )
@@ -704,7 +703,7 @@ impl SSIHolderService {
                 .ok_or(MissingProviderError::ExchangeProtocol(
                     credential.exchange.clone(),
                 ))?
-                .reject_credential(&credential.clone().into())
+                .reject_credential(&to_open_credential(credential.to_owned()).await?)
                 .await?;
 
             self.credential_repository

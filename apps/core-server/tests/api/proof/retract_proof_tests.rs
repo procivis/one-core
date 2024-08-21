@@ -18,7 +18,8 @@ async fn test_retract_existing_proof_for_http_transport() {
 
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()

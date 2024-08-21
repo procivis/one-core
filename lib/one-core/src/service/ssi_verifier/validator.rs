@@ -4,7 +4,7 @@ use crate::{
     model::{
         credential_schema::CredentialSchema,
         did::{Did, KeyRole},
-        proof_schema::{ProofInputClaimSchema, ProofSchema},
+        proof_schema::{to_open_proof_input_schema, ProofInputClaimSchema, ProofSchema},
     },
     service::error::{BusinessLogicError, MissingProviderError, ServiceError},
     util::{key_verification::KeyVerification, oidc::map_from_oidc_format_to_core_detailed},
@@ -215,7 +215,7 @@ pub(super) async fn validate_proof(
                         VerifierCredentialData {
                             credential: credential.to_owned(),
                             extracted_lvvcs: extracted_lvvcs.to_owned(),
-                            proof_input: proof_input.into(),
+                            proof_input: to_open_proof_input_schema(proof_input).await?,
                         },
                     ))),
                 )

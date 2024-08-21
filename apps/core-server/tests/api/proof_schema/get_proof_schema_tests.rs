@@ -17,7 +17,8 @@ async fn test_get_proof_schema_success() {
 
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -77,11 +78,13 @@ async fn test_succeed_to_fetch_claims_just_root_object() {
 
     let root_claim = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         // We only put a root component in proof schema
         .first()
-        .unwrap();
+        .unwrap()
+        .to_owned();
 
     let proof_schema = context
         .db
@@ -137,11 +140,13 @@ async fn test_succeed_to_fetch_claims_nested_root_object() {
 
     let root_claim = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         // We only put a nested (coordinates) root component in proof schema
         .get(2)
-        .unwrap();
+        .unwrap()
+        .to_owned();
 
     let proof_schema = context
         .db

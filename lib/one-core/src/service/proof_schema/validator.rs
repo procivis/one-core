@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use itertools::Itertools;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::credential_formatter::CredentialFormatter;
 use shared_types::OrganisationId;
@@ -105,32 +104,32 @@ pub fn validate_create_request(
     Ok(())
 }
 
-pub fn extract_claims_from_credential_schema(
+pub async fn extract_claims_from_credential_schema(
     proof_input: &[ProofInputSchemaRequestDTO],
     schemas: &[CredentialSchema],
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<Vec<ClaimSchema>, ServiceError> {
-    proof_input
-        .iter()
-        .map(|proof_input| {
-            let credential_schema = schemas
-                .iter()
-                .find(|schema| schema.id == proof_input.credential_schema_id)
-                .ok_or_else(|| ServiceError::MappingError("Missing credential schema".into()))?;
+    let mut result: Vec<ClaimSchema> = vec![];
+    for proof_input in proof_input {
+        let credential_schema = schemas
+            .iter()
+            .find(|schema| schema.id == proof_input.credential_schema_id)
+            .ok_or_else(|| ServiceError::MappingError("Missing credential schema".into()))?;
 
-            let formatter = formatter_provider
-                .get_formatter(&credential_schema.format.to_string())
-                .ok_or(MissingProviderError::Formatter(
-                    credential_schema.format.to_string(),
-                ))?;
+        let formatter = formatter_provider
+            .get_formatter(&credential_schema.format.to_string())
+            .ok_or(MissingProviderError::Formatter(
+                credential_schema.format.to_string(),
+            ))?;
 
-            let claims = credential_schema.claim_schemas.as_ref().ok_or_else(|| {
-                ServiceError::MappingError("Missing credential schema claims".into())
-            })?;
+        let claims = credential_schema.claim_schemas.get().await?;
 
-            let arrays = collect_lists(claims);
+        let arrays = collect_lists(&claims);
 
-            Ok::<_, ServiceError>(proof_input.claim_schemas.iter().map(move |proof_claim| {
+        let entries = proof_input
+            .claim_schemas
+            .iter()
+            .map(move |proof_claim| {
                 claims
                     .iter()
                     .find(|schema_claim| schema_claim.schema.id == proof_claim.id)
@@ -145,11 +144,13 @@ pub fn extract_claims_from_credential_schema(
                         validate_proof_schema_claim_not_in_array(&claim_schema.key, &arrays)?;
                         Ok(claim_schema)
                     })
-            }))
-        })
-        .flatten_ok()
-        .map(|r| r.and_then(std::convert::identity))
-        .collect()
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        result.extend(entries);
+    }
+
+    Ok(result)
 }
 
 fn validate_proof_schema_claim_not_in_array(

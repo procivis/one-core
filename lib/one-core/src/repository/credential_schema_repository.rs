@@ -1,8 +1,8 @@
 use shared_types::{CredentialSchemaId, OrganisationId};
 
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, GetCredentialSchemaList,
-    GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
+    CredentialSchema, CredentialSchemaType, GetCredentialSchemaList, GetCredentialSchemaQuery,
+    UpdateCredentialSchemaRequest,
 };
 
 use super::error::DataLayerError;
@@ -21,13 +21,11 @@ pub trait CredentialSchemaRepository: Send + Sync {
     async fn get_credential_schema(
         &self,
         id: &CredentialSchemaId,
-        relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError>;
 
     async fn get_credential_schema_list(
         &self,
         query_params: GetCredentialSchemaQuery,
-        relations: &CredentialSchemaRelations,
     ) -> Result<GetCredentialSchemaList, DataLayerError>;
 
     async fn update_credential_schema(
@@ -40,6 +38,5 @@ pub trait CredentialSchemaRepository: Send + Sync {
         schema_id: &str,
         schema_type: CredentialSchemaType,
         organisation_id: OrganisationId,
-        relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError>;
 }

@@ -21,7 +21,6 @@ use super::validator::{
 };
 use super::ProofSchemaService;
 use crate::common_mapper::list_response_into;
-use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
     UpdateCredentialSchemaRequest,
@@ -59,13 +58,9 @@ impl ProofSchemaService {
             .get_proof_schema(
                 id,
                 &ProofSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                        credential_schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(ClaimSchemaRelations::default()),
-                            ..Default::default()
-                        }),
+                        credential_schema: Some(CredentialSchemaRelations {}),
                     }),
                 },
             )
@@ -76,7 +71,7 @@ impl ProofSchemaService {
             return Err(EntityNotFoundError::ProofSchema(*id).into());
         }
 
-        convert_proof_schema_to_response(result, &self.config.datatype)
+        convert_proof_schema_to_response(result, &self.config.datatype).await
     }
 
     /// Returns list of proof schemas according to query
@@ -131,26 +126,18 @@ impl ProofSchemaService {
         let expected_credential_schemas = credential_schema_ids.len();
         let credential_schemas = self
             .credential_schema_repository
-            .get_credential_schema_list(
-                GetCredentialSchemaQuery {
-                    pagination: Some(ListPagination {
-                        page: 0,
-                        page_size: expected_credential_schemas as u32,
-                    }),
-                    filtering: Some(
-                        CredentialSchemaFilterValue::OrganisationId(request.organisation_id)
-                            .condition()
-                            & CredentialSchemaFilterValue::CredentialSchemaIds(
-                                credential_schema_ids,
-                            ),
-                    ),
-                    ..Default::default()
-                },
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
+            .get_credential_schema_list(GetCredentialSchemaQuery {
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: expected_credential_schemas as u32,
+                }),
+                filtering: Some(
+                    CredentialSchemaFilterValue::OrganisationId(request.organisation_id)
+                        .condition()
+                        & CredentialSchemaFilterValue::CredentialSchemaIds(credential_schema_ids),
+                ),
+                ..Default::default()
+            })
             .await?
             .values;
 
@@ -168,7 +155,8 @@ impl ProofSchemaService {
             &request.proof_input_schemas,
             &credential_schemas,
             &*self.formatter_provider,
-        )?;
+        )
+        .await?;
 
         let now = OffsetDateTime::now_utc();
         let proof_schema = proof_schema_from_create_request(
@@ -203,7 +191,6 @@ impl ProofSchemaService {
             .get_proof_schema(
                 id,
                 &ProofSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
                     ..Default::default()
                 },
             )
@@ -229,7 +216,11 @@ impl ProofSchemaService {
             .history_repository
             .create_history(proof_schema_history_event(
                 proof_schema.id,
-                proof_schema.organisation,
+                Some(Organisation {
+                    id: *proof_schema.organisation.id(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                }),
                 HistoryAction::Deleted,
             ))
             .await;
@@ -250,7 +241,6 @@ impl ProofSchemaService {
             .get_proof_schema(
                 &id,
                 &ProofSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
                     ..Default::default()
                 },
             )
@@ -261,7 +251,11 @@ impl ProofSchemaService {
             .history_repository
             .create_history(proof_schema_history_event(
                 proof_schema.id,
-                proof_schema.organisation,
+                Some(Organisation {
+                    id: *proof_schema.organisation.id(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                }),
                 HistoryAction::Shared,
             ))
             .await;
@@ -309,10 +303,6 @@ impl ProofSchemaService {
                                 &request_input_schema.credential_schema.schema_id,
                                 request_input_schema.credential_schema.schema_type.to_owned().into(),
                                 organisation.id,
-                                &CredentialSchemaRelations {
-                                    claim_schemas: Some(Default::default()),
-                                    ..Default::default()
-                                },
                             )
                             .await?;
 
@@ -334,7 +324,7 @@ impl ProofSchemaService {
                         let input_schema = proof_input_from_import_request(
                             &request_input_schema,
                             credential_schema.to_owned()
-                        )?;
+                        ).await?;
 
                         Ok::<_, ServiceError>(ProofInputSchema {
                             claim_schemas: input_schema.claim_schemas,
@@ -353,7 +343,7 @@ impl ProofSchemaService {
             deleted_at: None,
             name: schema.name,
             expire_duration: schema.expire_duration,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             input_schemas: Some(input_schemas),
         };
 
@@ -385,9 +375,10 @@ impl ProofSchemaService {
     ) -> Result<CredentialSchema, ServiceError> {
         let keys: HashSet<_> = credential_schema
             .claim_schemas
+            .get()
+            .await?
             .iter()
-            .flatten()
-            .map(|x| &x.schema.key)
+            .map(|x| x.schema.key.to_owned())
             .collect();
 
         let missing_claim_schemas: Vec<_> = credential_schema_from_proof_input_schema(
@@ -396,12 +387,10 @@ impl ProofSchemaService {
             now,
         )
         .claim_schemas
+        .get()
+        .await?
         .into_iter()
-        .flat_map(|claim_schemas| {
-            claim_schemas
-                .into_iter()
-                .filter(|s| !keys.contains(&s.schema.key))
-        })
+        .filter(|s| !keys.contains(&s.schema.key))
         .collect();
 
         if !missing_claim_schemas.is_empty() {
@@ -415,13 +404,7 @@ impl ProofSchemaService {
                 .await?;
 
             self.credential_schema_repository
-                .get_credential_schema(
-                    &credential_schema.id,
-                    &CredentialSchemaRelations {
-                        claim_schemas: Some(Default::default()),
-                        organisation: Some(Default::default()),
-                    },
-                )
+                .get_credential_schema(&credential_schema.id)
                 .await?
                 .ok_or_else(|| {
                     ServiceError::Other(format!(
@@ -445,7 +428,7 @@ impl ProofSchemaService {
             organisation.clone(),
             now,
         );
-        let credential_schema = regenerate_credential_schema_uuids(credential_schema);
+        let credential_schema = regenerate_credential_schema_uuids(credential_schema).await?;
 
         self.credential_schema_repository
             .create_credential_schema(credential_schema.clone())

@@ -4,7 +4,6 @@ use one_core::model::credential_schema::CredentialSchemaRelations;
 use one_core::model::did::{Did, DidRelations};
 use one_core::model::interaction::Interaction;
 use one_core::model::key::KeyRelations;
-use one_core::model::organisation::OrganisationRelations;
 use one_core::model::proof::{
     Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
 };
@@ -82,7 +81,6 @@ impl ProofsDB {
                         ..Default::default()
                     }),
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations {}),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
                             credential_schema: Some(CredentialSchemaRelations::default()),

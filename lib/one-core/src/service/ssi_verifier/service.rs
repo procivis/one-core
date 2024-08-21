@@ -18,7 +18,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::{Did, DidRelations};
 use crate::model::interaction::InteractionRelations;
-use crate::model::organisation::OrganisationRelations;
+use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
 use crate::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchemaRelations, ProofSchemaClaimRelations,
@@ -50,7 +50,6 @@ impl SSIVerifierService {
                 proof_id,
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
                             credential_schema: Some(CredentialSchemaRelations::default()),
@@ -114,7 +113,6 @@ impl SSIVerifierService {
                 &proof_id,
                 ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
                             credential_schema: Some(CredentialSchemaRelations::default()),
@@ -134,10 +132,11 @@ impl SSIVerifierService {
 
         let holder_did = get_or_create_did(
             self.did_repository.as_ref(),
-            &proof
-                .schema
-                .as_ref()
-                .and_then(|schema| schema.organisation.clone()),
+            &proof.schema.as_ref().map(|schema| Organisation {
+                id: *schema.organisation.id(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
             &did_value,
         )
         .await?;
@@ -373,7 +372,11 @@ impl SSIVerifierService {
                     ))?;
             let issuer_did = get_or_create_did(
                 &*self.did_repository,
-                &proof_schema.organisation,
+                &Some(Organisation {
+                    id: *proof_schema.organisation.id(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                }),
                 &issuer_did.clone().into(),
             )
             .await?;

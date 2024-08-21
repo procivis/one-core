@@ -5,6 +5,7 @@ use dto_mapper::convert_inner;
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
 use one_crypto::imp::utilities;
+use one_providers::common_models::credential::OpenCredential;
 use one_providers::common_models::key::OpenKey;
 use one_providers::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use one_providers::exchange_protocol::openid4vc::model::{
@@ -41,16 +42,18 @@ use crate::config::core_config::{ExchangeType, TransportType};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
-    UpdateCredentialRequest,
+    to_open_credential, CredentialRelations, CredentialState, CredentialStateEnum,
+    CredentialStateRelations, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::credential_schema::{to_open_credential_schema, CredentialSchemaRelations};
 use crate::model::did::DidRelations;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
-use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
+use crate::model::organisation::Organisation;
+use crate::model::proof::{
+    to_open_proof, Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
+};
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
@@ -90,13 +93,7 @@ impl OIDCService {
 
         let schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await?;
 
         let Some(schema) = schema else {
@@ -109,7 +106,7 @@ impl OIDCService {
         let schema_type = schema.schema_type.to_string();
 
         match format.r#type.as_str() {
-            "MDOC" => credentials_supported_mdoc(&base_url, schema),
+            "MDOC" => credentials_supported_mdoc(&base_url, schema).await,
             _ => create_issuer_metadata_response(
                 &base_url,
                 &oidc_format,
@@ -173,13 +170,7 @@ impl OIDCService {
 
         let schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await?;
 
         let Some(schema) = schema else {
@@ -207,10 +198,7 @@ impl OIDCService {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
                     state: Some(CredentialStateRelations::default()),
-                    schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
-                        ..Default::default()
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 },
@@ -272,9 +260,11 @@ impl OIDCService {
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         let credentials = match format_type.as_str() {
-            "MDOC" => {
-                credentials_format_mdoc(&credential_schema.clone().into(), &claims, &self.config)
-            }
+            "MDOC" => credentials_format_mdoc(
+                &to_open_credential_schema(credential_schema.clone()).await?,
+                &claims,
+                &self.config,
+            ),
             _ => credentials_format(wallet_storage_type, &oidc_format, &claims),
         }?;
 
@@ -298,13 +288,7 @@ impl OIDCService {
 
         let Some(schema) = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await?
         else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
@@ -360,7 +344,11 @@ impl OIDCService {
 
             get_or_create_did(
                 &*self.did_repository,
-                &schema.organisation,
+                &Some(Organisation {
+                    id: *schema.organisation.id(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                }),
                 &holder_did_value,
             )
             .await
@@ -404,7 +392,7 @@ impl OIDCService {
 
         let Some(credential_schema) = self
             .credential_schema_repository
-            .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
+            .get_credential_schema(credential_schema_id)
             .await?
         else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
@@ -464,10 +452,15 @@ impl OIDCService {
         let refresh_token_expires_in =
             get_exchange_param_refresh_token_expires_in(&self.config, &credential.exchange)?;
 
+        let mut open_credentials: Vec<OpenCredential> = vec![];
+        for credential in credentials.iter().cloned() {
+            open_credentials.push(to_open_credential(credential).await?);
+        }
+
         let mut interaction_data =
             one_providers::exchange_protocol::openid4vc::service::oidc_create_token(
                 interaction_data_to_dto(&interaction)?,
-                &convert_inner(credentials.to_owned()),
+                &open_credentials,
                 &interaction.to_owned().into(),
                 &request,
                 pre_authorization_expires_in,
@@ -529,13 +522,9 @@ impl OIDCService {
                     proof_id,
                     &ProofRelations {
                         schema: Some(ProofSchemaRelations {
-                            organisation: Some(OrganisationRelations::default()),
                             proof_inputs: Some(ProofInputSchemaRelations {
                                 claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                                credential_schema: Some(CredentialSchemaRelations {
-                                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                                    ..Default::default()
-                                }),
+                                credential_schema: Some(CredentialSchemaRelations {}),
                             }),
                         }),
                         interaction: Some(InteractionRelations::default()),
@@ -620,13 +609,9 @@ impl OIDCService {
                 &interaction_id,
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                ..Default::default()
-                            }),
+                            credential_schema: Some(CredentialSchemaRelations {}),
                         }),
                     }),
                     interaction: Some(InteractionRelations::default()),
@@ -655,10 +640,9 @@ impl OIDCService {
                 OpenID4VCIError::InvalidRequest,
             ))?
             .organisation
-            .as_ref()
-            .ok_or(ServiceError::OpenID4VCIError(
-                OpenID4VCIError::InvalidRequest,
-            ))?;
+            .get()
+            .await
+            .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
 
         validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &proof.exchange)?;
 
@@ -678,7 +662,7 @@ impl OIDCService {
 
         match one_providers::exchange_protocol::openid4vc::service::oidc_verifier_direct_post(
             unpacked_request,
-            proof.to_owned().into(),
+            to_open_proof(proof.to_owned()).await?,
             interaction_data,
             &self.did_method_provider,
             &self.formatter_provider,
@@ -692,7 +676,7 @@ impl OIDCService {
                 for proved_credential in accept_proof_result.proved_credentials {
                     let credential = credential_from_proved(
                         proved_credential,
-                        organisation,
+                        &organisation,
                         &*self.did_repository,
                     )
                     .await?;
@@ -734,7 +718,7 @@ impl OIDCService {
                         entity_id: Some(proof.id.into()),
                         entity_type: HistoryEntityType::Proof,
                         metadata: None,
-                        organisation: proof.schema.and_then(|schema| schema.organisation),
+                        organisation: Some(organisation),
                     })
                     .await;
 
@@ -759,7 +743,6 @@ impl OIDCService {
                         proof_inputs: Some(ProofInputSchemaRelations {
                             ..Default::default()
                         }),
-                        ..Default::default()
                     }),
                     state: Some(ProofStateRelations::default()),
                     ..Default::default()
@@ -780,7 +763,7 @@ impl OIDCService {
 
         let interaction_data = parse_interaction_content(interaction.data.as_ref())?;
 
-        Ok(one_providers::exchange_protocol::openid4vc::service::oidc_verifier_presentation_definition(proof.into(), interaction_data)?)
+        Ok(one_providers::exchange_protocol::openid4vc::service::oidc_verifier_presentation_definition(to_open_proof(proof).await?, interaction_data)?)
     }
 
     async fn mark_proof_as_failed(&self, id: &ProofId) -> Result<(), ServiceError> {

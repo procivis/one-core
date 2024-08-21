@@ -14,7 +14,7 @@ async fn test_delete_proof_schema_success() {
         .create("test", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0].schema;
 
     let proof_schema = context
         .db

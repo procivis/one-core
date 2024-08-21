@@ -42,7 +42,7 @@ async fn test_list_proof_success() {
         .create("test", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0].schema;
 
     let proof_schema = context
         .db
@@ -133,7 +133,7 @@ async fn test_list_proofs_by_ids() {
         .create("test", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0].schema;
 
     let proof_schema = context
         .db
@@ -240,7 +240,7 @@ async fn test_list_proofs_by_name() {
         .create("test", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0].schema;
 
     let proof_schema1 = context
         .db
@@ -382,7 +382,7 @@ async fn test_list_proofs_by_schema_ids() {
         .create("test", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0].schema;
 
     let proof_schema1 = context
         .db
@@ -524,7 +524,7 @@ async fn test_list_proofs_by_state() {
         .create("test", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0].schema;
 
     let proof_schema = context
         .db

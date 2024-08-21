@@ -31,10 +31,7 @@ impl CredentialsDB {
                     claims: Some(ClaimRelations {
                         schema: Some(Default::default()),
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(Default::default()),
-                        organisation: Some(Default::default()),
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     holder_did: Some(Default::default()),
                     interaction: Some(Default::default()),
                     revocation_list: None,
@@ -56,7 +53,7 @@ impl CredentialsDB {
         params: TestingCredentialParams<'_>,
     ) -> Credential {
         let credential_id = Uuid::new_v4().into();
-        let claim_schemas = credential_schema.claim_schemas.as_ref().unwrap();
+        let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
 
         let claims = if let Some(claims_data) = params.claims_data {
             claims_data

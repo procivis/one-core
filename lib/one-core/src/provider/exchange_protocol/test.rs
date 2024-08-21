@@ -102,7 +102,7 @@ async fn test_issuer_submit_succeeds() {
         .return_once(move |_, _| {
             let mut credential: crate::model::credential::Credential = credential_copy.into();
             credential.schema = Some(crate::model::credential_schema::CredentialSchema {
-                organisation: Some(dummy_organisation()),
+                organisation: dummy_organisation().into(),
                 ..credential.schema.unwrap()
             });
             Ok(Some(credential))
@@ -525,7 +525,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .return_once(move |_, _| {
             let mut credential: crate::model::credential::Credential = credential_copy.into();
             credential.schema = Some(crate::model::credential_schema::CredentialSchema {
-                organisation: Some(dummy_organisation()),
+                organisation: dummy_organisation().into(),
                 ..credential.schema.unwrap()
             });
             Ok(Some(credential))
@@ -655,7 +655,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         .return_once(move |_, _| {
             let mut credential: crate::model::credential::Credential = credential_copy.into();
             credential.schema = Some(crate::model::credential_schema::CredentialSchema {
-                organisation: Some(dummy_organisation()),
+                organisation: dummy_organisation().into(),
                 ..credential.schema.unwrap()
             });
             Ok(Some(credential))

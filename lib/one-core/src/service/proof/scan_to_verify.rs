@@ -15,8 +15,9 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::proof::{Proof, ProofState, ProofStateEnum};
-use crate::model::proof_schema::ProofSchema;
+use crate::model::organisation::Organisation;
+use crate::model::proof::{to_open_proof, Proof, ProofState, ProofStateEnum};
+use crate::model::proof_schema::{to_open_proof_input_schema, ProofSchema};
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 impl ProofService {
@@ -31,7 +32,7 @@ impl ProofService {
             .get_protocol(exchange)
             .ok_or(MissingProviderError::ExchangeProtocol(exchange.to_owned()))?;
 
-        let organisation_id = proof_schema.organisation.to_owned();
+        let organisation_id = *proof_schema.organisation.id();
 
         let submission_data = serde_json::to_vec(submission)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
@@ -65,7 +66,11 @@ impl ProofService {
                     Err(_) => HistoryAction::Rejected,
                 },
                 created_date: now,
-                organisation: organisation_id,
+                organisation: Some(Organisation {
+                    id: organisation_id,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                }),
                 metadata: None,
             })
             .await?;
@@ -126,7 +131,7 @@ impl ProofService {
             ))?;
 
         let credentials = exchange_protocol
-            .verifier_handle_proof(&proof.clone().into(), submission)
+            .verifier_handle_proof(&to_open_proof(proof.clone()).await?, submission)
             .await?;
 
         let credential = credentials.first().ok_or(ServiceError::MappingError(
@@ -136,7 +141,7 @@ impl ProofService {
         let additional_data = CredentialDataByRole::Verifier(Box::new(VerifierCredentialData {
             credential: credential.to_owned(),
             extracted_lvvcs: vec![],
-            proof_input: input_schema.to_owned().into(),
+            proof_input: to_open_proof_input_schema(input_schema.to_owned()).await?,
         }));
 
         let issuer_did = credential
@@ -183,13 +188,7 @@ impl ProofService {
                     "credential_schema is None".to_string(),
                 ))?;
 
-        let credential_schema_claims =
-            credential_schema
-                .claim_schemas
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "claim_schemas is None".to_string(),
-                ))?;
+        let credential_schema_claims = credential_schema.claim_schemas.get().await?;
 
         let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
         let mut claims: Vec<(serde_json::Value, ClaimSchema)> = vec![];
@@ -220,7 +219,11 @@ impl ProofService {
 
         let issuer_did = get_or_create_did(
             &*self.did_repository,
-            &proof_schema.organisation,
+            &Some(Organisation {
+                id: *proof_schema.organisation.id(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
             &issuer_did.to_owned().into(),
         )
         .await?;

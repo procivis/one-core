@@ -5,6 +5,7 @@ use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::service::credential::mapper::from_vec_claim;
+use crate::service::credential_schema::mapper::schema_detail_from_model;
 use crate::service::error::ServiceError;
 use crate::service::ssi_issuer::dto::{
     JsonLDEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
@@ -115,7 +116,7 @@ pub fn get_url_with_fragment(base_url: &str, fragment: &str) -> Result<String, S
     Ok(url.to_string())
 }
 
-pub(super) fn connect_issuer_response_from_credential(
+pub(super) async fn connect_issuer_response_from_credential(
     value: Credential,
     config: &CoreConfig,
 ) -> Result<ConnectIssuerResponseDTO, ServiceError> {
@@ -131,8 +132,8 @@ pub(super) fn connect_issuer_response_from_credential(
     Ok(ConnectIssuerResponseDTO {
         id: value.id,
         issuer_did: issuer_did.into(),
-        claims: from_vec_claim(claims, &schema, config)?,
-        schema: schema.try_into()?,
+        claims: from_vec_claim(claims, &schema, config).await?,
+        schema: schema_detail_from_model(schema).await?,
         redirect_uri: value.redirect_uri,
     })
 }

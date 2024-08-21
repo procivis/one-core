@@ -38,6 +38,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -170,11 +171,12 @@ fn generic_credential() -> Credential {
             wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            claim_schemas: Some(vec![CredentialSchemaClaim {
+            claim_schemas: vec![CredentialSchemaClaim {
                 schema: claim_schema,
                 required: true,
-            }]),
-            organisation: Some(organisation),
+            }]
+            .into(),
+            organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -227,8 +229,8 @@ fn generic_credential_list_entity() -> Credential {
             wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            claim_schemas: None,
-            organisation: None,
+            claim_schemas: Related::default(),
+            organisation: Related::from_id_only(Uuid::new_v4()),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -727,7 +729,7 @@ async fn test_create_credential_success() {
         credential_schema_repository
             .expect_get_credential_schema()
             .times(1)
-            .returning(move |_, _| Ok(Some(credential_schema.clone())));
+            .returning(move |_| Ok(Some(credential_schema.clone())));
 
         credential_repository
             .expect_create_credential()
@@ -799,7 +801,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
         credential_schema_repository
             .expect_get_credential_schema()
             .times(1)
-            .returning(move |_, _| Ok(Some(credential_schema.clone())));
+            .returning(move |_| Ok(Some(credential_schema.clone())));
     }
 
     let mut formatter_capabilities = generic_formatter_capabilities();
@@ -914,7 +916,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
 
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
-        claim_schemas: Some(vec![
+        claim_schemas: vec![
             CredentialSchemaClaim {
                 schema: ClaimSchema {
                     array: false,
@@ -937,7 +939,8 @@ async fn test_create_credential_one_required_claim_missing_success() {
                 },
                 required: false,
             },
-        ]),
+        ]
+        .into(),
         ..credential.schema.clone().unwrap()
     };
 
@@ -951,7 +954,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
 
         credential_schema_repository
             .expect_get_credential_schema()
-            .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
+            .returning(move |_| Ok(Some(credential_schema_clone.clone())));
 
         credential_repository
             .expect_create_credential()
@@ -980,7 +983,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         ..Default::default()
     });
 
-    let required_claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[0]
+    let required_claim_schema_id = credential_schema.claim_schemas.get().await.unwrap()[0]
         .schema
         .id
         .to_owned();
@@ -999,7 +1002,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: required_claim_schema_id,
                 value: "value".to_string(),
-                path: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                path: credential_schema.claim_schemas.get().await.unwrap()[0]
                     .schema
                     .key
                     .to_owned(),
@@ -1017,7 +1020,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
 
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
-        claim_schemas: Some(vec![
+        claim_schemas: vec![
             CredentialSchemaClaim {
                 schema: ClaimSchema {
                     array: false,
@@ -1040,7 +1043,8 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
                 },
                 required: false,
             },
-        ]),
+        ]
+        .into(),
         ..credential.schema.clone().unwrap()
     };
 
@@ -1053,7 +1057,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
 
         credential_schema_repository
             .expect_get_credential_schema()
-            .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
+            .returning(move |_| Ok(Some(credential_schema_clone.clone())));
     }
 
     let mut formatter = MockCredentialFormatter::default();
@@ -1075,7 +1079,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         ..Default::default()
     });
 
-    let optional_claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[1]
+    let optional_claim_schema_id = credential_schema.claim_schemas.get().await.unwrap()[1]
         .schema
         .id
         .to_owned();
@@ -1094,7 +1098,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: optional_claim_schema_id,
                 value: "value".to_string(),
-                path: credential_schema.claim_schemas.as_ref().unwrap()[1]
+                path: credential_schema.claim_schemas.get().await.unwrap()[1]
                     .schema
                     .key
                     .to_owned(),
@@ -1131,7 +1135,7 @@ async fn test_create_credential_schema_deleted() {
 
         credential_schema_repository
             .expect_get_credential_schema()
-            .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
+            .returning(move |_| Ok(Some(credential_schema_clone.clone())));
     }
 
     let mut formatter = MockCredentialFormatter::default();
@@ -1154,7 +1158,7 @@ async fn test_create_credential_schema_deleted() {
         ..Default::default()
     });
 
-    let claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[0]
+    let claim_schema_id = credential_schema.claim_schemas.get().await.unwrap()[0]
         .schema
         .id
         .to_owned();
@@ -1168,7 +1172,7 @@ async fn test_create_credential_schema_deleted() {
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id,
                 value: "value".to_string(),
-                path: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                path: credential_schema.claim_schemas.get().await.unwrap()[0]
                     .schema
                     .key
                     .to_owned(),
@@ -1591,7 +1595,7 @@ async fn test_create_credential_key_with_issuer_key() {
     credential_schema_repository
         .expect_get_credential_schema()
         .times(1)
-        .returning(move |_, _| Ok(Some(credential_schema.clone())));
+        .returning(move |_| Ok(Some(credential_schema.clone())));
 
     credential_repository
         .expect_create_credential()
@@ -1703,7 +1707,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
     credential_schema_repository
         .expect_get_credential_schema()
         .times(1)
-        .returning(move |_, _| Ok(Some(credential_schema.clone())));
+        .returning(move |_| Ok(Some(credential_schema.clone())));
 
     credential_repository
         .expect_create_credential()
@@ -1793,7 +1797,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
     credential_schema_repository
         .expect_get_credential_schema()
         .times(1)
-        .returning(move |_, _| Ok(Some(credential_schema.clone())));
+        .returning(move |_| Ok(Some(credential_schema.clone())));
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -1859,7 +1863,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
     credential_schema_repository
         .expect_get_credential_schema()
         .times(1)
-        .returning(move |_, _| Ok(Some(credential_schema.clone())));
+        .returning(move |_| Ok(Some(credential_schema.clone())));
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -1942,7 +1946,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
     credential_schema_repository
         .expect_get_credential_schema()
         .times(1)
-        .returning(move |_, _| Ok(Some(credential_schema.clone())));
+        .returning(move |_| Ok(Some(credential_schema.clone())));
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -2025,7 +2029,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
     credential_schema_repository
         .expect_get_credential_schema()
         .times(1)
-        .returning(move |_, _| Ok(Some(credential_schema.clone())));
+        .returning(move |_| Ok(Some(credential_schema.clone())));
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -2092,7 +2096,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
         credential_schema_repository
             .expect_get_credential_schema()
             .times(1)
-            .returning(move |_, _| Ok(Some(credential_schema.clone())));
+            .returning(move |_| Ok(Some(credential_schema.clone())));
     }
 
     let mut formatter_capabilities = generic_formatter_capabilities();
@@ -2557,13 +2561,13 @@ fn generate_credential_schema_with_claim_schemas(
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "".to_string(),
-        claim_schemas: Some(claim_schemas),
-        organisation: None,
+        claim_schemas: claim_schemas.into(),
+        organisation: Related::from_id_only(Uuid::new_v4()),
     }
 }
 
-#[test]
-fn test_validate_create_request_all_nested_claims_are_required() {
+#[tokio::test]
+async fn test_validate_create_request_all_nested_claims_are_required() {
     let address_claim_id = Uuid::new_v4().into();
     let location_claim_id = Uuid::new_v4().into();
     let location_x_claim_id = Uuid::new_v4().into();
@@ -2641,11 +2645,12 @@ fn test_validate_create_request_all_nested_claims_are_required() {
         &generic_formatter_capabilities().into(),
         &generic_config().core,
     )
+    .await
     .unwrap();
 }
 
-#[test]
-fn test_validate_create_request_all_optional_nested_object_with_required_claims() {
+#[tokio::test]
+async fn test_validate_create_request_all_optional_nested_object_with_required_claims() {
     let address_claim_id = Uuid::new_v4().into();
     let location_claim_id = Uuid::new_v4().into();
     let location_x_claim_id = Uuid::new_v4().into();
@@ -2723,6 +2728,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
         &generic_formatter_capabilities().into(),
         &generic_config().core,
     )
+    .await
     .unwrap();
 
     validate_create_request(
@@ -2737,6 +2743,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
         &generic_formatter_capabilities().into(),
         &generic_config().core,
     )
+    .await
     .unwrap();
 
     let result = validate_create_request(
@@ -2757,7 +2764,8 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
         &schema,
         &generic_formatter_capabilities().into(),
         &generic_config().core,
-    );
+    )
+    .await;
     assert!(matches!(
         result,
         Err(ServiceError::Validation(
@@ -2766,8 +2774,8 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
     ));
 }
 
-#[test]
-fn test_validate_create_request_all_required_nested_object_with_optional_claims() {
+#[tokio::test]
+async fn test_validate_create_request_all_required_nested_object_with_optional_claims() {
     let address_claim_id = Uuid::new_v4().into();
     let location_claim_id = Uuid::new_v4().into();
     let location_x_claim_id = Uuid::new_v4().into();
@@ -2845,6 +2853,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         &generic_formatter_capabilities().into(),
         &generic_config().core,
     )
+    .await
     .unwrap();
 
     let result = validate_create_request(
@@ -2858,7 +2867,8 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         &schema,
         &generic_formatter_capabilities().into(),
         &generic_config().core,
-    );
+    )
+    .await;
     assert!(matches!(
         result,
         Err(ServiceError::Validation(
@@ -2885,6 +2895,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         &generic_formatter_capabilities().into(),
         &generic_config().core,
     )
+    .await
     .unwrap();
 }
 
@@ -2914,34 +2925,33 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         last_modified: now,
     };
 
-    let mut credential = generic_credential();
-
-    *credential
-        .schema
-        .as_mut()
-        .unwrap()
-        .claim_schemas
-        .as_mut()
-        .unwrap() = vec![
-        CredentialSchemaClaim {
-            schema: location_claim_schema,
-            required: false,
-        },
-        CredentialSchemaClaim {
-            schema: location_x_claim_schema.to_owned(),
-            required: false,
-        },
-    ];
-
-    *credential.claims.as_mut().unwrap() = vec![Claim {
-        id: Uuid::new_v4(),
-        credential_id: credential.id,
-        created_date: now,
-        last_modified: now,
-        value: "123".to_string(),
-        path: location_x_claim_schema.key.clone(),
-        schema: Some(location_x_claim_schema.clone()),
-    }];
+    let credential = generic_credential();
+    let credential = Credential {
+        schema: Some(CredentialSchema {
+            claim_schemas: vec![
+                CredentialSchemaClaim {
+                    schema: location_claim_schema,
+                    required: false,
+                },
+                CredentialSchemaClaim {
+                    schema: location_x_claim_schema.to_owned(),
+                    required: false,
+                },
+            ]
+            .into(),
+            ..credential.schema.unwrap()
+        }),
+        claims: Some(vec![Claim {
+            id: Uuid::new_v4(),
+            credential_id: credential.id,
+            created_date: now,
+            last_modified: now,
+            value: "123".to_string(),
+            path: location_x_claim_schema.key.clone(),
+            schema: Some(location_x_claim_schema.clone()),
+        }]),
+        ..credential
+    };
 
     {
         let clone = credential.clone();
@@ -3117,16 +3127,14 @@ async fn test_get_credential_success_array_complex_nested_all() {
             wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            claim_schemas: Some(
-                claim_schemas
-                    .into_iter()
-                    .map(|schema| CredentialSchemaClaim {
-                        required: true,
-                        schema,
-                    })
-                    .collect(),
-            ),
-            organisation: Some(organisation),
+            claim_schemas: claim_schemas
+                .into_iter()
+                .map(|schema| CredentialSchemaClaim {
+                    required: true,
+                    schema,
+                })
+                .collect(),
+            organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -3678,16 +3686,14 @@ async fn test_get_credential_success_array_index_sorting() {
             wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            claim_schemas: Some(
-                claim_schemas
-                    .into_iter()
-                    .map(|schema| CredentialSchemaClaim {
-                        required: true,
-                        schema,
-                    })
-                    .collect(),
-            ),
-            organisation: Some(organisation),
+            claim_schemas: claim_schemas
+                .into_iter()
+                .map(|schema| CredentialSchemaClaim {
+                    required: true,
+                    schema,
+                })
+                .collect(),
+            organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -3987,16 +3993,14 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            claim_schemas: Some(
-                claim_schemas
-                    .into_iter()
-                    .map(|schema| CredentialSchemaClaim {
-                        required: true,
-                        schema,
-                    })
-                    .collect(),
-            ),
-            organisation: Some(organisation),
+            claim_schemas: claim_schemas
+                .into_iter()
+                .map(|schema| CredentialSchemaClaim {
+                    required: true,
+                    schema,
+                })
+                .collect(),
+            organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -4183,16 +4187,14 @@ async fn test_get_credential_success_array_single_element() {
             wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            claim_schemas: Some(
-                claim_schemas
-                    .into_iter()
-                    .map(|schema| CredentialSchemaClaim {
-                        required: true,
-                        schema,
-                    })
-                    .collect(),
-            ),
-            organisation: Some(organisation),
+            claim_schemas: claim_schemas
+                .into_iter()
+                .map(|schema| CredentialSchemaClaim {
+                    required: true,
+                    schema,
+                })
+                .collect(),
+            organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -4319,16 +4321,14 @@ async fn test_create_credential_array(
         layout_properties: None,
         schema_id: "".to_string(),
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-        claim_schemas: Some(
-            claim_schemas
-                .iter()
-                .map(|schema| CredentialSchemaClaim {
-                    schema: schema.to_owned(),
-                    required: true,
-                })
-                .collect(),
-        ),
-        organisation: Some(organisation.to_owned()),
+        claim_schemas: claim_schemas
+            .iter()
+            .map(|schema| CredentialSchemaClaim {
+                schema: schema.to_owned(),
+                required: true,
+            })
+            .collect(),
+        organisation: organisation.to_owned().into(),
     };
 
     let mut formatter = MockCredentialFormatter::default();
@@ -4347,7 +4347,7 @@ async fn test_create_credential_array(
             .return_once(move |_, _| Ok(Some(credential.issuer_did.unwrap())));
         credential_schema_repository
             .expect_get_credential_schema()
-            .return_once(move |_, _| Ok(Some(credential_schema)));
+            .return_once(move |_| Ok(Some(credential_schema)));
         formatter_provider
             .expect_get_formatter()
             .once()

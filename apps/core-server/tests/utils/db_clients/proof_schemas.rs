@@ -4,7 +4,7 @@ use one_core::{
     model::{
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        organisation::{Organisation, OrganisationRelations},
+        organisation::Organisation,
         proof_schema::{
             ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
             ProofSchemaRelations,
@@ -75,7 +75,7 @@ impl ProofSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            organisation: Some(organisation.to_owned()),
+            organisation: organisation.to_owned().into(),
             deleted_at: None,
             expire_duration: 0,
             input_schemas: Some(input_schemas),
@@ -95,13 +95,9 @@ impl ProofSchemasDB {
             .get_proof_schema(
                 id,
                 &ProofSchemaRelations {
-                    organisation: Some(OrganisationRelations {}),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(Default::default()),
-                        credential_schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(Default::default()),
-                            ..Default::default()
-                        }),
+                        credential_schema: Some(CredentialSchemaRelations {}),
                     }),
                 },
             )

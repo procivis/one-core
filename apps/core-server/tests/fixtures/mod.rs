@@ -346,11 +346,11 @@ pub async fn create_credential_schema(
         wallet_storage_type: params
             .wallet_storage_type
             .unwrap_or(Some(OpenWalletStorageTypeEnum::Software)),
-        organisation: Some(organisation.to_owned()),
+        organisation: organisation.to_owned().into(),
         deleted_at: params.deleted_at,
         format: params.format.unwrap_or("JWT".to_string()),
         revocation_method: params.revocation_method.unwrap_or("NONE".to_string()),
-        claim_schemas: Some(claim_schemas),
+        claim_schemas: claim_schemas.into(),
         layout_type: params.layout_type.unwrap_or(LayoutType::Card),
         layout_properties: params.layout_properties,
         schema_type: params
@@ -377,7 +377,7 @@ pub async fn create_credential_schema_with_claims(
 ) -> CredentialSchema {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
-    let claim_schemas = claims
+    let claim_schemas: Vec<CredentialSchemaClaim> = claims
         .iter()
         .map(
             |(id, key, required, data_type, array)| CredentialSchemaClaim {
@@ -400,11 +400,11 @@ pub async fn create_credential_schema_with_claims(
         last_modified: get_dummy_date(),
         wallet_storage_type: None,
         name: name.to_owned(),
-        organisation: Some(organisation.to_owned()),
+        organisation: organisation.to_owned().into(),
         deleted_at: None,
         format: "JWT".to_string(),
         revocation_method: revocation_method.to_owned(),
-        claim_schemas: Some(claim_schemas),
+        claim_schemas: claim_schemas.into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -462,7 +462,7 @@ pub async fn create_proof_schema(
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: name.to_owned(),
-        organisation: Some(organisation.to_owned()),
+        organisation: organisation.to_owned().into(),
         deleted_at: None,
         expire_duration: 0,
         input_schemas: Some(input_schemas),
@@ -580,7 +580,8 @@ pub async fn create_credential(
     let credential_id = Uuid::new_v4().into();
     let claims: Vec<Claim> = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .iter()
         .map(move |claim_schema| Claim {
@@ -680,10 +681,7 @@ pub async fn get_credential(db_conn: &DbConn, credential_id: &CredentialId) -> C
                 claims: Some(ClaimRelations {
                     schema: Some(ClaimSchemaRelations {}),
                 }),
-                schema: Some(CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    organisation: Some(OrganisationRelations::default()),
-                }),
+                schema: Some(CredentialSchemaRelations {}),
                 holder_did: Some(DidRelations::default()),
                 interaction: Some(InteractionRelations {}),
                 revocation_list: None,
@@ -711,7 +709,6 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                     ..Default::default()
                 }),
                 schema: Some(ProofSchemaRelations {
-                    organisation: Some(OrganisationRelations {}),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(ProofSchemaClaimRelations::default()),
                         credential_schema: Some(CredentialSchemaRelations::default()),

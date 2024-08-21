@@ -41,6 +41,8 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             serde_json::from_str(&value.credential_schema_claim_schemas)
                 .map_err(|_| Self::Error::MappingError)?;
 
+        let claim_schemas: Vec<CredentialSchemaClaim> =
+            convert_inner(credential_schema_claim_schemas);
         Ok(Self {
             id: value.id,
             created_date: value.created_date,
@@ -64,12 +66,13 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 format: value.credential_schema_format,
                 wallet_storage_type: convert_inner(value.credential_schema_wallet_storage_type),
                 revocation_method: value.credential_schema_revocation_method,
-                claim_schemas: Some(convert_inner(credential_schema_claim_schemas)),
-                organisation: Some(Organisation {
+                claim_schemas: claim_schemas.into(),
+                organisation: Organisation {
                     id: value.organisation_id,
                     created_date: value.organisation_created_date,
                     last_modified: value.organisation_last_modified,
-                }),
+                }
+                .into(),
                 // todo: this should be fixed in another ticket
                 layout_type: LayoutType::Card,
                 layout_properties: None,

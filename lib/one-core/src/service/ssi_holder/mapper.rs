@@ -8,7 +8,9 @@ use crate::{
         credential::Credential,
         credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType},
         history::{History, HistoryAction, HistoryEntityType},
+        organisation::Organisation,
         proof::Proof,
+        relation::{FailingRelationLoader, Related},
     },
     service::{
         credential::dto::DetailCredentialSchemaResponseDTO,
@@ -27,8 +29,12 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
             wallet_storage_type: value.wallet_storage_type,
             revocation_method: value.revocation_method,
             deleted_at: value.deleted_at,
-            claim_schemas: None,
-            organisation: None, // response organisation is intentionally ignored (holder sets its local organisation)
+            claim_schemas: vec![].into(),
+            // response organisation is intentionally ignored (holder sets its local organisation)
+            organisation: Related::from_loader(
+                Uuid::new_v4().into(),
+                Box::new(FailingRelationLoader),
+            ),
             layout_type: value.layout_type.unwrap_or(LayoutType::Card),
             layout_properties: convert_inner(value.layout_properties),
             schema_id: value.schema_id,
@@ -97,10 +103,11 @@ fn credential_history_event(credential: &Credential, action: HistoryAction) -> H
         entity_id: Some(credential.id.into()),
         entity_type: HistoryEntityType::Credential,
         metadata: None,
-        organisation: credential
-            .schema
-            .as_ref()
-            .and_then(|schema| schema.organisation.to_owned()),
+        organisation: credential.schema.as_ref().map(|schema| Organisation {
+            id: *schema.organisation.id(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
     }
 }
 

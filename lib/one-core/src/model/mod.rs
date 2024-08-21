@@ -13,6 +13,7 @@ pub mod list_query;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
+pub mod relation;
 pub mod remote_entity_cache;
 pub mod revocation_list;
 pub mod trust_anchor;

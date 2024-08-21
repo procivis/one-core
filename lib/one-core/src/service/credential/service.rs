@@ -23,14 +23,14 @@ use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::{
-    self, Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
-    CredentialStateRelations, UpdateCredentialRequest,
+    self, to_open_credential, Credential, CredentialRelations, CredentialRole, CredentialState,
+    CredentialStateEnum, CredentialStateRelations, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
-use crate::model::organisation::OrganisationRelations;
+use crate::model::organisation::Organisation;
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
@@ -95,24 +95,13 @@ impl CredentialService {
 
         let Some(schema) = self
             .credential_schema_repository
-            .get_credential_schema(
-                &request.credential_schema_id,
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(Default::default()),
-                    organisation: Some(Default::default()),
-                },
-            )
+            .get_credential_schema(&request.credential_schema_id)
             .await?
         else {
             return Err(EntityNotFoundError::CredentialSchema(request.credential_schema_id).into());
         };
 
-        let claim_schemas = schema
-            .claim_schemas
-            .to_owned()
-            .ok_or(ServiceError::MappingError(
-                "claim_schemas is None".to_string(),
-            ))?;
+        let claim_schemas = schema.claim_schemas.get().await?;
 
         let formatter_capabilities = self
             .formatter_provider
@@ -127,7 +116,8 @@ impl CredentialService {
             &schema,
             &formatter_capabilities.clone().into(),
             &self.config,
-        )?;
+        )
+        .await?;
 
         let credential_id = Uuid::new_v4().into();
         let claims = claims_from_create_request(
@@ -265,10 +255,7 @@ impl CredentialService {
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     issuer_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations::default()),
                     ..Default::default()
@@ -283,6 +270,7 @@ impl CredentialService {
         }
 
         let mut response = credential_detail_response_from_model(credential, &self.config)
+            .await
             .map_err(|err| ServiceError::ResponseMapping(err.to_string()))?;
 
         if response.schema.revocation_method == "LVVC" {
@@ -453,7 +441,7 @@ impl CredentialService {
             id: interaction_id,
             context,
         } = exchange
-            .share_credential(&credential.clone().into(), &format)
+            .share_credential(&to_open_credential(credential.clone()).await?, &format)
             .await?;
 
         add_new_interaction(
@@ -491,10 +479,7 @@ impl CredentialService {
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     issuer_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations::default()),
                     interaction: Some(InteractionRelations::default()),
@@ -532,10 +517,7 @@ impl CredentialService {
                         ..Default::default()
                     }),
                     holder_did: Some(DidRelations::default()),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
@@ -592,7 +574,7 @@ impl CredentialService {
 
         let update = revocation_method
             .mark_credential_as(
-                &credential.to_owned().into(),
+                &to_open_credential(credential.to_owned()).await?,
                 revocation_state.to_owned(),
                 generate_credential_additional_data(
                     &credential,
@@ -641,7 +623,11 @@ impl CredentialService {
             .create_history(credential_revocation_history_event(
                 *credential_id,
                 revocation_state,
-                credential.schema.and_then(|c| c.organisation),
+                credential.schema.map(|schema| Organisation {
+                    id: *schema.organisation.id(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                }),
             ))
             .await;
 
@@ -658,10 +644,7 @@ impl CredentialService {
                 &credential_id,
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     issuer_did: Some(DidRelations {
                         keys: Some(KeyRelations::default()),
                         ..Default::default()
@@ -821,12 +804,12 @@ impl CredentialService {
             .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
         let credential_data_by_role = match credential.role {
-            CredentialRole::Holder => {
-                Some(CredentialDataByRole::Holder(credential.to_owned().into()))
-            }
-            CredentialRole::Issuer => {
-                Some(CredentialDataByRole::Issuer(credential.to_owned().into()))
-            }
+            CredentialRole::Holder => Some(CredentialDataByRole::Holder(
+                to_open_credential(credential.to_owned()).await?,
+            )),
+            CredentialRole::Issuer => Some(CredentialDataByRole::Issuer(
+                to_open_credential(credential.to_owned()).await?,
+            )),
             CredentialRole::Verifier => None,
         };
 
@@ -893,7 +876,11 @@ impl CredentialService {
                 .create_history(credential_revocation_history_event(
                     credential_id,
                     worst_revocation_state,
-                    credential_schema.organisation.clone(),
+                    Some(Organisation {
+                        id: *credential_schema.organisation.id(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    }),
                 ))
                 .await;
         }

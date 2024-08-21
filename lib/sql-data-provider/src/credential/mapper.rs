@@ -3,6 +3,7 @@ use one_core::model::credential::{Credential, CredentialState, SortableCredentia
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::did::Did;
 use one_core::model::interaction::InteractionId;
+use one_core::model::relation::{FailingRelationLoader, Related};
 use one_core::model::revocation_list::RevocationListId;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential::dto::CredentialFilterValue;
@@ -136,8 +137,11 @@ pub(super) fn credential_list_model_to_repository_model(
         revocation_method: credential.credential_schema_revocation_method,
         schema_type: credential.credential_schema_schema_type.into(),
         schema_id: credential.credential_schema_schema_id,
-        claim_schemas: None,
-        organisation: None,
+        claim_schemas: vec![].into(),
+        organisation: Related::from_loader(
+            credential.credential_schema_organisation_id,
+            Box::new(FailingRelationLoader),
+        ),
         // todo: this should be fixed in another ticket
         layout_type: LayoutType::Card,
         layout_properties: credential

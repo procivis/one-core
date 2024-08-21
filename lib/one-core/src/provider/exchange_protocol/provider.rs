@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use dto_mapper::convert_inner;
+use one_providers::common_models::credential::OpenCredential;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::exchange_protocol::openid4vc::error::OpenID4VCIError;
@@ -22,12 +23,11 @@ use crate::config::ConfigValidationError;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    CredentialRelations, CredentialStateEnum, CredentialStateRelations,
+    to_open_credential, CredentialRelations, CredentialStateEnum, CredentialStateRelations,
 };
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::{Did, DidRelations};
 use crate::model::key::KeyRelations;
-use crate::model::organisation::OrganisationRelations;
 use crate::model::revocation_list::RevocationListPurpose;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
@@ -192,10 +192,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     issuer_did: Some(DidRelations {
                         keys: Some(KeyRelations::default()),
                         ..Default::default()
@@ -214,17 +211,20 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             .as_ref()
             .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
-        let credentials_by_issuer_did = convert_inner(
-            self.credential_repository
-                .get_credentials_by_issuer_did_id(
-                    &issuer_did.id,
-                    &CredentialRelations {
-                        state: Some(CredentialStateRelations::default()),
-                        ..Default::default()
-                    },
-                )
-                .await?,
-        );
+        let mut credentials_by_issuer_did: Vec<OpenCredential> = vec![];
+        for credential in self
+            .credential_repository
+            .get_credentials_by_issuer_did_id(
+                &issuer_did.id,
+                &CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+        {
+            credentials_by_issuer_did.push(to_open_credential(credential).await?);
+        }
 
         credential.holder_did = Some(holder_did.clone());
 
@@ -249,7 +249,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
 
         let (update, status) = revocation_method
             .add_issued_credential(
-                &credential.to_owned().into(),
+                &to_open_credential(credential.to_owned()).await?,
                 Some(CredentialAdditionalData {
                     credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
                     revocation_list_id: get_revocation_list_id(
@@ -334,7 +334,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
 
         // TODO - remove organisation usage from here when moved to open core
         let credential_detail =
-            credential_detail_response_from_model(credential.clone(), &self.config)?;
+            credential_detail_response_from_model(credential.clone(), &self.config).await?;
         let credential_data = credential_data_from_credential_detail_response(
             credential_detail,
             core_base_url,

@@ -22,7 +22,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
-use crate::model::organisation::OrganisationRelations;
+use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::ssi_issuer::mapper::{
     connect_issuer_response_from_credential, credential_rejected_history_event,
@@ -44,10 +44,7 @@ impl SSIIssuerService {
                 credential_id,
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
@@ -98,7 +95,7 @@ impl SSIIssuerService {
             });
         }
 
-        connect_issuer_response_from_credential(credential, &self.config)
+        connect_issuer_response_from_credential(credential, &self.config).await
     }
 
     pub async fn issuer_submit(
@@ -113,10 +110,7 @@ impl SSIIssuerService {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     ..Default::default()
                 },
             )
@@ -133,7 +127,11 @@ impl SSIIssuerService {
 
         let did = get_or_create_did(
             self.did_repository.as_ref(),
-            &credential.schema.and_then(|schema| schema.organisation),
+            &credential.schema.map(|schema| Organisation {
+                id: *schema.organisation.id(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
             &did_value,
         )
         .await?;
@@ -162,10 +160,7 @@ impl SSIIssuerService {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
-                    }),
+                    schema: Some(CredentialSchemaRelations {}),
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
@@ -316,26 +311,14 @@ impl SSIIssuerService {
     ) -> Result<JsonLDContextResponseDTO, ServiceError> {
         let credential_schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                &credential_schema_id,
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get_credential_schema(&credential_schema_id)
             .await?;
 
         let Some(credential_schema) = credential_schema else {
             return Err(EntityNotFoundError::CredentialSchema(credential_schema_id).into());
         };
 
-        let claim_schemas =
-            credential_schema
-                .claim_schemas
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "claim schemas missing".to_string(),
-                ))?;
+        let claim_schemas = credential_schema.claim_schemas.get().await?;
 
         let base_url = format!(
             "{}/ssi/context/v1/{credential_schema_id}",
@@ -349,7 +332,7 @@ impl SSIIssuerService {
         let schema_name = credential_schema.name.to_case(Case::Pascal);
         let credential_name = format!("{schema_name}Credential");
         let subject_name = format!("{schema_name}Subject");
-        let claims = generate_jsonld_context_response(claim_schemas, &base_url)?;
+        let claims = generate_jsonld_context_response(&claim_schemas, &base_url)?;
 
         Ok(JsonLDContextResponseDTO {
             context: JsonLDContextDTO {

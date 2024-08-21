@@ -1,9 +1,7 @@
 use shared_types::CredentialSchemaId;
 
-use super::mapper::from_create_request_with_id;
+use super::mapper::{from_create_request_with_id, schema_detail_from_model};
 use crate::common_mapper::list_response_into;
-use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::common_mapper::regenerate_credential_schema_uuids;
@@ -91,13 +89,7 @@ impl CredentialSchemaService {
     ) -> Result<(), ServiceError> {
         let schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await?;
 
         let Some(credential_schema) = schema else {
@@ -133,13 +125,7 @@ impl CredentialSchemaService {
     ) -> Result<CredentialSchemaDetailResponseDTO, ServiceError> {
         let schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await?;
 
         let Some(schema) = schema else {
@@ -150,7 +136,7 @@ impl CredentialSchemaService {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         }
 
-        schema.try_into()
+        schema_detail_from_model(schema).await
     }
 
     /// Returns list of credential schemas according to query
@@ -164,7 +150,7 @@ impl CredentialSchemaService {
     ) -> Result<GetCredentialSchemaListResponseDTO, ServiceError> {
         let result = self
             .credential_schema_repository
-            .get_credential_schema_list(query, &Default::default())
+            .get_credential_schema_list(query)
             .await?;
         Ok(list_response_into(result))
     }
@@ -222,7 +208,7 @@ impl CredentialSchemaService {
             Some(request.schema.schema_type.to_owned().into()),
         )?;
 
-        let credential_schema = regenerate_credential_schema_uuids(credential_schema);
+        let credential_schema = regenerate_credential_schema_uuids(credential_schema).await?;
 
         let result = self
             .credential_schema_repository
@@ -254,13 +240,7 @@ impl CredentialSchemaService {
 
         let credential_schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await?
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::CredentialSchema(*credential_schema_id),

@@ -17,6 +17,7 @@ use super::{ExchangeProtocolError, StorageAccess};
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::{CredentialState, UpdateCredentialRequest};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::organisation::Organisation;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
@@ -87,16 +88,20 @@ pub fn proof_from_handle_invitation(
     }
 }
 
-pub fn credential_model_to_credential_dto(
+pub async fn credential_model_to_credential_dto(
     credentials: Vec<OpenCredential>,
     config: &CoreConfig,
 ) -> Result<Vec<CredentialDetailResponseDTO>, ExchangeProtocolError> {
-    // Missing organisation here.
-    credentials
-        .into_iter()
-        .map(|credential| credential_detail_response_from_model(credential.into(), config))
-        .collect::<Result<Vec<CredentialDetailResponseDTO>, _>>()
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
+    let mut result: Vec<CredentialDetailResponseDTO> = vec![];
+    for credential in credentials {
+        // Missing organisation here.
+        result.push(
+            credential_detail_response_from_model(credential.into(), config)
+                .await
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
+        );
+    }
+    Ok(result)
 }
 
 pub async fn get_relevant_credentials_to_credential_schemas(
@@ -236,6 +241,10 @@ pub(super) fn credential_accepted_history_event(
         entity_id: Some(credential.id.into()),
         entity_type: HistoryEntityType::Credential,
         metadata: None,
-        organisation: credential.schema.and_then(|s| s.organisation),
+        organisation: credential.schema.map(|s| Organisation {
+            id: *s.organisation.id(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
     }
 }
