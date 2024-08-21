@@ -50,7 +50,6 @@ use crate::provider::exchange_protocol::iso_mdl::device_engagement::{
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_ble::OIDC_BLE_FLOW;
 use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -59,7 +58,6 @@ use crate::service::proof::validator::{
     validate_format_and_exchange_protocol_compatibility, validate_scan_to_verify_compatibility,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::ble_resource::Abort;
 use crate::util::history::log_history_event_proof;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_proof_interaction,
@@ -452,22 +450,19 @@ impl ProofService {
             ServiceError::MappingError(format!("Missing interaction data in proof {proof_id}"))
         })?;
 
-        if proof.exchange == "OPENID4VC" && self.config.transport.ble_enabled_for(&proof.transport)
-        {
-            self.ble
-                .as_ref()
-                .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?
-                .abort(Abort::Flow(*OIDC_BLE_FLOW))
-                .await;
-        } else if let Ok(interaction) = deserialize_interaction_data::<MdocBleInteractionData>(
+        let exchange_protocol = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
+            ServiceError::MissingExchangeProtocol(proof.exchange.clone()),
+        )?;
+
+        let task_id = deserialize_interaction_data::<MdocBleInteractionData>(
             proof.interaction.as_ref().and_then(|i| i.data.as_ref()),
-        ) {
-            self.ble
-                .as_ref()
-                .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?
-                .abort(Abort::Task(interaction.task_id))
-                .await;
-        }
+        )
+        .ok()
+        .map(|data| data.task_id);
+
+        exchange_protocol
+            .retract_proof(&proof.clone().into(), task_id)
+            .await?;
 
         self.proof_repository
             .update_proof(UpdateProofRequest {

@@ -469,6 +469,14 @@ impl ExchangeProtocolImpl for ProcivisTemp {
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
         unimplemented!()
     }
+
+    async fn retract_proof(
+        &self,
+        _proof: &OpenProof,
+        _id: Option<Uuid>,
+    ) -> Result<(), ExchangeProtocolError> {
+        Ok(())
+    }
 }
 
 async fn handle_credential_invitation(

@@ -11,6 +11,7 @@ use crate::provider::exchange_protocol::iso_mdl::session::SessionData;
 use crate::provider::exchange_protocol::iso_mdl::session::StatusCode;
 use async_trait::async_trait;
 use url::Url;
+use uuid::Uuid;
 
 use one_providers::common_dto::PublicKeyJwkDTO;
 use one_providers::common_models::credential::{OpenCredential, OpenCredentialStateEnum};
@@ -44,7 +45,7 @@ use crate::provider::exchange_protocol::iso_mdl::ble_holder::IsoMdlBleHolder;
 use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::proof::dto::MdocBleInteractionData;
-use crate::util::ble_resource::BleWaiter;
+use crate::util::ble_resource::{Abort, BleWaiter};
 
 pub(crate) mod ble;
 mod ble_holder;
@@ -356,6 +357,21 @@ impl ExchangeProtocolImpl for IsoMdl {
         _credential_format: &str,
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         unimplemented!()
+    }
+
+    async fn retract_proof(
+        &self,
+        _proof: &OpenProof,
+        id: Option<Uuid>,
+    ) -> Result<(), ExchangeProtocolError> {
+        let task_id = id.ok_or(ExchangeProtocolError::Failed("Missing task_id".to_string()))?;
+
+        let ble = self.ble.clone().ok_or_else(|| {
+            ExchangeProtocolError::Failed("Missing BLE central for submit proof".to_string())
+        })?;
+
+        ble.abort(Abort::Task(task_id)).await;
+        Ok(())
     }
 
     async fn share_proof(

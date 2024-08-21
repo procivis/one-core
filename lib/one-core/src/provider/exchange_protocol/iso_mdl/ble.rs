@@ -22,8 +22,8 @@ use super::common::{
 };
 use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment};
-use crate::model::interaction::Interaction;
-use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::interaction::{Interaction, InteractionRelations};
+use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
@@ -32,6 +32,8 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
     CreateCharacteristicOptions, DeviceInfo, PeripheralDiscoveryData, ServiceDescription,
 };
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, EmbeddedCbor};
+use crate::provider::exchange_protocol::deserialize_interaction_data;
+use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
@@ -186,27 +188,15 @@ pub async fn connect(
                 .await;
 
                 if result.is_err() {
-                    abort_and_set_proof_error(
-                        &*peripheral,
-                        &*proof_repository,
-                        &proof_id,
-                        Some(&info),
-                        service_id,
-                    )
-                    .await;
+                    set_proof_error(&*proof_repository, &proof_id).await;
+                    abort(&*peripheral, Some(&info), service_id).await;
                 }
 
                 result
             },
             move |_, peripheral| async move {
-                abort_and_set_proof_error(
-                    &*peripheral,
-                    &*proof_repository_clone,
-                    &proof_id,
-                    rx.await.ok().as_ref(),
-                    service_id,
-                )
-                .await;
+                set_proof_error(&*proof_repository_clone, &proof_id).await;
+                abort(&*peripheral, rx.await.ok().as_ref(), service_id).await;
             },
             true,
         )
@@ -234,6 +224,9 @@ pub async fn start_client(
     did_method_provider: Arc<dyn DidMethodProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 ) -> Result<(), ServiceError> {
+    let proof_id = proof.id;
+    let repository = proof_repository.clone();
+
     ble.schedule(
         *ISO_MDL_FLOW,
         move |_, central, _| async move {
@@ -311,9 +304,45 @@ pub async fn start_client(
 
             Ok::<_, anyhow::Error>(())
         },
-        |_, _| async {},
+        move |_, peripheral| async move {
+            let _ = connection_cancel(&*peripheral, &proof_id, repository.clone()).await;
+        },
         OnConflict::ReplaceIfSameFlow,
         false,
+    )
+    .await;
+
+    Ok(())
+}
+
+async fn connection_cancel(
+    peripheral: &dyn BlePeripheral,
+    proof_id: &ProofId,
+    proof_repository: Arc<dyn ProofRepository>,
+) -> Result<(), ExchangeProtocolError> {
+    let proof = proof_repository
+        .get_proof(
+            proof_id,
+            &ProofRelations {
+                interaction: Some(InteractionRelations::default()),
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+        .ok_or(ExchangeProtocolError::Failed("Proof not found".to_string()))?;
+
+    let interaction_data: BLEOpenID4VPInteractionData = deserialize_interaction_data(
+        proof
+            .interaction
+            .as_ref()
+            .and_then(|interaction| interaction.data.as_ref()),
+    )?;
+
+    abort(
+        peripheral,
+        Some(&interaction_data.peer.device_info),
+        interaction_data.task_id,
     )
     .await;
 
@@ -534,25 +563,11 @@ where
     }
 }
 
-pub async fn abort_and_set_proof_error(
+pub async fn abort(
     peripheral: &dyn BlePeripheral,
-    proof_repository: &dyn ProofRepository,
-    proof_id: &ProofId,
     device_info: Option<&DeviceInfo>,
     service_id: Uuid,
 ) {
-    let now = OffsetDateTime::now_utc();
-    let _ = proof_repository
-        .set_proof_state(
-            proof_id,
-            ProofState {
-                created_date: now,
-                last_modified: now,
-                state: ProofStateEnum::Error,
-            },
-        )
-        .await;
-
     if let Some(device_info) = device_info {
         let _ = peripheral
             .notify_characteristic_data(
@@ -564,6 +579,20 @@ pub async fn abort_and_set_proof_error(
             .await;
     }
     let _ = peripheral.stop_server().await;
+}
+
+pub async fn set_proof_error(proof_repository: &dyn ProofRepository, proof_id: &ProofId) {
+    let now = OffsetDateTime::now_utc();
+    let _ = proof_repository
+        .set_proof_state(
+            proof_id,
+            ProofState {
+                created_date: now,
+                last_modified: now,
+                state: ProofStateEnum::Error,
+            },
+        )
+        .await;
 }
 
 fn schema_to_doc_request(input: ProofInputSchema) -> anyhow::Result<DocRequest> {

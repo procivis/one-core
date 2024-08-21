@@ -61,7 +61,7 @@ async fn test_retract_existing_proof_for_http_transport() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VP",
+            "OPENID4VC",
             Some(&interaction),
             verifier_key,
         )
