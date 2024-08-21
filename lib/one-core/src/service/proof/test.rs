@@ -2634,8 +2634,19 @@ async fn test_retract_proof_ok_for_allowed_state(
         data: Some(vec![]),
     });
 
-    let mut proof_repository = MockProofRepository::default();
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockExchangeProtocol::default();
+        protocol
+            .inner
+            .expect_retract_proof()
+            .times(1)
+            .returning(|_, _| Ok(()));
 
+        Some(Arc::new(protocol))
+    });
+
+    let mut proof_repository = MockProofRepository::default();
     proof_repository
         .expect_get_proof()
         .once()
@@ -2673,6 +2684,7 @@ async fn test_retract_proof_ok_for_allowed_state(
     let service = setup_service(Repositories {
         proof_repository,
         interaction_repository,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2776,8 +2788,19 @@ async fn test_retract_proof_with_bluetooth_ok() {
         }),
     });
 
-    let mut proof_repository = MockProofRepository::default();
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockExchangeProtocol::default();
+        protocol
+            .inner
+            .expect_retract_proof()
+            .times(1)
+            .returning(|_, _| Ok(()));
 
+        Some(Arc::new(protocol))
+    });
+
+    let mut proof_repository = MockProofRepository::default();
     proof_repository
         .expect_get_proof()
         .once()
@@ -2827,6 +2850,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
     let service = setup_service(Repositories {
         proof_repository,
         interaction_repository,
+        protocol_provider,
         ble_peripheral: Some(Default::default()),
         config,
         ..Default::default()

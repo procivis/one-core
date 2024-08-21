@@ -57,7 +57,7 @@ use crate::provider::exchange_protocol::{
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
-use crate::util::ble_resource::BleWaiter;
+use crate::util::ble_resource::{Abort, BleWaiter};
 use crate::util::oidc::{create_core_to_oicd_format_map, map_from_oidc_format_to_core};
 
 pub mod oidc_ble_holder;
@@ -722,5 +722,19 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         _submission: &[u8],
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
         unimplemented!()
+    }
+
+    async fn retract_proof(
+        &self,
+        _proof: &OpenProof,
+        _id: Option<Uuid>,
+    ) -> Result<(), ExchangeProtocolError> {
+        self.ble
+            .as_ref()
+            .ok_or_else(|| ExchangeProtocolError::Failed("BLE is missing in service".to_string()))?
+            .abort(Abort::Task(uuid::uuid!(SERVICE_UUID)))
+            .await;
+
+        Ok(())
     }
 }
