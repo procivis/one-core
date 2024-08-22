@@ -4,11 +4,15 @@ use one_providers::credential_formatter::model::{
 };
 use one_providers::exchange_protocol::openid4vc::model::OpenID4VPInteractionContent;
 use time::OffsetDateTime;
+use uuid::fmt::Urn;
+
+use crate::{
+    config::core_config::RevocationType,
+    provider::exchange_protocol::openid4vc::dto::OpenID4VPInteractionData,
+    service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
+};
 
 use super::map_claims;
-use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPInteractionData;
-use crate::service::credential::dto::CredentialDetailResponseDTO;
-use crate::service::error::ServiceError;
 
 pub fn extract_presentation_ctx_from_interaction_content(
     content: OpenID4VPInteractionContent,
@@ -37,15 +41,27 @@ pub fn credential_data_from_credential_detail_response(
     core_base_url: &str,
     credential_status: Vec<CredentialStatus>,
 ) -> Result<CredentialData, ServiceError> {
-    let id = format!("{core_base_url}/ssi/credential/v1/{}", credential.id);
     let issuer_did = credential.issuer_did.map(|did| did.did).ok_or_else(|| {
         ServiceError::MappingError(format!(
-            "Missing issuer DID in CredentialDetailResponseDTO for credential {id}"
+            "Missing issuer DID in CredentialDetailResponseDTO for credential {}",
+            credential.id
         ))
     })?;
 
     let issuance_date = OffsetDateTime::now_utc();
     let valid_for = time::Duration::days(365 * 2);
+
+    // The ID property is optional according to the VCDM. We need to include it for BBS+ due to ONE-3193
+    // We also include it if LLVC credentials are used for revocation
+    let id = if credential.schema.format.eq("JSON_LD_BBSPLUS")
+        || credential_status
+            .iter()
+            .any(|status| status.r#type == RevocationType::Lvvc.to_string())
+    {
+        Some(Urn::from_uuid(credential.id.into()).to_string())
+    } else {
+        None
+    };
 
     Ok(CredentialData {
         id,
