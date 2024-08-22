@@ -10,7 +10,7 @@ use one_providers::credential_formatter::imp::json_ld::context::caching_loader::
     ContextCache, JsonLdCachingLoader,
 };
 use one_providers::credential_formatter::imp::json_ld::model::{
-    LdCredential, LdPresentation, LdProof,
+    LdCredential, LdPresentation, LdProof, VerifiableCredential,
 };
 use one_providers::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
@@ -85,8 +85,8 @@ impl CredentialFormatter for JsonLdClassic {
         let mut proof = json_ld::prepare_proof_config(
             "assertionMethod",
             cryptosuite,
-            vec![Context::DataIntegrityV2.to_string()],
             key_id,
+            vec![Context::CredentialsV2.to_string()],
         )
         .await?;
 
@@ -102,6 +102,8 @@ impl CredentialFormatter for JsonLdClassic {
         let signed_proof = sign_proof_hash(&proof_hash, auth_fn).await?;
 
         proof.proof_value = Some(signed_proof);
+        // we remove the context proof since the same context is already present in the VC
+        proof.context = None;
         credential.proof = Some(proof);
 
         let resp = serde_json::to_string(&credential)
@@ -134,29 +136,22 @@ impl CredentialFormatter for JsonLdClassic {
         auth_fn: AuthenticationFn,
         FormatPresentationCtx { nonce, .. }: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
-        let issuance_date = OffsetDateTime::now_utc();
-
         let context = json_ld::prepare_context(vec![]);
 
-        // To support object or an array
-        let verifiable_credential = if tokens.len() == 1 {
-            tokens[0].to_owned()
-        } else {
-            serde_json::to_string(tokens).map_err(|e| {
-                FormatterError::CouldNotFormat(format!(
-                    "Credential array serialization error: `{e}`"
-                ))
-            })?
-        };
+        let verifiable_credential: VerifiableCredential = tokens
+            .iter()
+            .map(|token| serde_json::from_str(token))
+            .collect::<Result<_, _>>()
+            .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?;
 
         let mut presentation = LdPresentation {
-            context,
+            context: context.clone(),
             r#type: "VerifiablePresentation".to_string(),
             verifiable_credential,
-            issuance_date,
             holder: holder_did.to_owned(),
             nonce,
             proof: None,
+            issuance_date: OffsetDateTime::now_utc(),
         };
 
         let cryptosuite = match algorithm {
@@ -173,13 +168,8 @@ impl CredentialFormatter for JsonLdClassic {
             "Missing jwk key id".to_string(),
         ))?;
 
-        let mut proof = json_ld::prepare_proof_config(
-            "authentication",
-            cryptosuite,
-            vec![Context::DataIntegrityV2.to_string()],
-            key_id,
-        )
-        .await?;
+        let mut proof =
+            json_ld::prepare_proof_config("authentication", cryptosuite, key_id, context).await?;
 
         let proof_hash = prepare_proof_hash(
             &presentation,
@@ -193,6 +183,7 @@ impl CredentialFormatter for JsonLdClassic {
         let signed_proof = sign_proof_hash(&proof_hash, auth_fn).await?;
 
         proof.proof_value = Some(signed_proof);
+        proof.context = None;
         presentation.proof = Some(proof);
 
         let resp = serde_json::to_string(&presentation)
@@ -326,8 +317,8 @@ impl JsonLdClassic {
 
         Ok(DetailCredential {
             id: credential.id,
-            issued_at: credential.issuance_date,
-            expires_at: None,
+            valid_from: credential.valid_from.or(credential.issuance_date),
+            valid_until: credential.valid_until,
             update_at: None,
             invalid_before: None,
             issuer_did: Some(credential.issuer),
@@ -356,15 +347,12 @@ impl JsonLdClassic {
             .await?;
         }
 
-        let credentials: Vec<String> = if presentation.verifiable_credential.starts_with('[') {
-            serde_json::from_str(&presentation.verifiable_credential).map_err(|_| {
-                FormatterError::CouldNotExtractPresentation(
-                    "Invalid credential collection".to_string(),
-                )
-            })?
-        } else {
-            vec![presentation.verifiable_credential]
-        };
+        let credentials: Vec<String> = presentation
+            .verifiable_credential
+            .iter()
+            .map(serde_json::to_string)
+            .collect::<Result<_, _>>()
+            .map_err(|err| FormatterError::CouldNotExtractCredentials(err.to_string()))?;
 
         Ok(Presentation {
             id: None,
@@ -431,20 +419,23 @@ pub(super) async fn verify_presentation_signature(
     crypto: &dyn CryptoProvider,
     caching_loader: ContextCache,
 ) -> Result<(), FormatterError> {
+    // Remove proof for canonicalization
     let mut proof = presentation
         .proof
-        .as_ref()
-        .ok_or(FormatterError::CouldNotVerify("Missing proof".to_owned()))?
-        .clone();
+        .take()
+        .ok_or(FormatterError::CouldNotVerify("Missing proof".to_owned()))?;
     let proof_value = proof.proof_value.ok_or(FormatterError::CouldNotVerify(
         "Missing proof_value".to_owned(),
     ))?;
     let key_id = proof.verification_method.as_str();
     let issuer_did = &presentation.holder;
 
-    // Remove proof value and proof for canonicalization
+    if proof.context.is_none() {
+        proof.context = Some(presentation.context.clone());
+    }
+
+    // Remove proof value for canonicalization
     proof.proof_value = None;
-    presentation.proof = None;
 
     let proof_hash =
         prepare_proof_hash(&presentation, crypto, &proof, caching_loader, None).await?;

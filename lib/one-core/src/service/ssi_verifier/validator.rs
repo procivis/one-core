@@ -173,7 +173,7 @@ pub(super) async fn validate_proof(
             &credential.invalid_before,
             credential_formatter.get_leeway(),
         )?;
-        validate_expiration_time(&credential.expires_at, credential_formatter.get_leeway())?;
+        validate_expiration_time(&credential.valid_until, credential_formatter.get_leeway())?;
 
         if is_lvvc(&credential) {
             continue;

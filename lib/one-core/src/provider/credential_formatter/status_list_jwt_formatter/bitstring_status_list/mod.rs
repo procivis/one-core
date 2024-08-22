@@ -35,7 +35,7 @@ impl BitstringStatusListJwtFormatter {
                     ContentType::BitstringStatusListCredential,
                 ],
                 issuer: issuer_did.did.to_owned(),
-                issued: OffsetDateTime::now_utc(),
+                valid_from: OffsetDateTime::now_utc(),
                 credential_subject: CredentialSubject {
                     id: subject.to_owned(),
                     r#type: SubjectType::BitstringStatusList,

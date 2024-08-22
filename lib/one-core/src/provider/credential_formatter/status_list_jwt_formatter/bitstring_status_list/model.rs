@@ -22,7 +22,7 @@ pub struct VCContent {
     pub r#type: Vec<ContentType>,
     pub issuer: DidValue,
     #[serde(serialize_with = "into_timestamp", deserialize_with = "from_timestamp")]
-    pub issued: OffsetDateTime,
+    pub valid_from: OffsetDateTime,
     pub credential_subject: CredentialSubject,
 }
 

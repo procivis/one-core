@@ -1065,7 +1065,7 @@ async fn update_mso_interaction_access_token(
 fn is_mso_up_to_date(detail_credential: &DetailCredential) -> bool {
     let now = OffsetDateTime::now_utc();
 
-    if let Some(expires_at) = detail_credential.expires_at {
+    if let Some(expires_at) = detail_credential.valid_until {
         return expires_at > now;
     }
 

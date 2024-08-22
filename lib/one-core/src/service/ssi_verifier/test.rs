@@ -338,8 +338,8 @@ async fn test_submit_proof_succeeds() {
         .returning(move |_| {
             Ok(DetailCredential {
                 id: None,
-                issued_at: Some(OffsetDateTime::now_utc()),
-                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                valid_from: Some(OffsetDateTime::now_utc()),
+                valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned().into()),
@@ -378,8 +378,8 @@ async fn test_submit_proof_succeeds() {
         .returning(move |_, _| {
             Ok(DetailCredential {
                 id: None,
-                issued_at: Some(OffsetDateTime::now_utc()),
-                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                valid_from: Some(OffsetDateTime::now_utc()),
+                valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned().into()),
@@ -593,8 +593,8 @@ async fn test_submit_proof_failed_credential_revoked() {
         .returning(move |_| {
             Ok(DetailCredential {
                 id: None,
-                issued_at: Some(OffsetDateTime::now_utc()),
-                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                valid_from: Some(OffsetDateTime::now_utc()),
+                valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned().into()),
@@ -634,8 +634,8 @@ async fn test_submit_proof_failed_credential_revoked() {
         .returning(move |_, _| {
             Ok(DetailCredential {
                 id: None,
-                issued_at: Some(OffsetDateTime::now_utc()),
-                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                valid_from: Some(OffsetDateTime::now_utc()),
+                valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned().into()),
@@ -789,8 +789,8 @@ async fn test_submit_proof_failed_credential_suspended() {
         .returning(move |_| {
             Ok(DetailCredential {
                 id: None,
-                issued_at: Some(OffsetDateTime::now_utc()),
-                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                valid_from: Some(OffsetDateTime::now_utc()),
+                valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned().into()),
@@ -830,8 +830,8 @@ async fn test_submit_proof_failed_credential_suspended() {
         .returning(move |_, _| {
             Ok(DetailCredential {
                 id: None,
-                issued_at: Some(OffsetDateTime::now_utc()),
-                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                valid_from: Some(OffsetDateTime::now_utc()),
+                valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned().into()),
