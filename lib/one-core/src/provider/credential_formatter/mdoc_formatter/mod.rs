@@ -688,8 +688,8 @@ fn extract_credentials_internal(
 
     Ok(DetailCredential {
         id: None,
-        issued_at: Some(mso.validity_info.valid_from.into()),
-        expires_at: Some(mso.validity_info.valid_until.into()),
+        valid_from: Some(mso.validity_info.valid_from.into()),
+        valid_until: Some(mso.validity_info.valid_until.into()),
         update_at: mso
             .validity_info
             .expected_update

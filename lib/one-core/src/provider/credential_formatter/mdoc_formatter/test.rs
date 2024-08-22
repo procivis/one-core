@@ -484,12 +484,12 @@ async fn test_unverified_credential_extraction() {
 
     assert_eq!(
         issuance_date.replace_microsecond(0).unwrap(),
-        credential.issued_at.unwrap()
+        credential.valid_from.unwrap()
     );
 
     assert_eq!(
         (issuance_date + valid_for).replace_microsecond(0).unwrap(),
-        credential.expires_at.unwrap()
+        credential.valid_until.unwrap()
     );
 
     assert_eq!(

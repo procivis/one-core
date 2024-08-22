@@ -117,8 +117,8 @@ impl TryInto<DetailCredential> for OptiocalBarcodeCredential {
 
         Ok(DetailCredential {
             id: self.credential.id,
-            issued_at: self.credential.issuance_date,
-            expires_at: None,
+            valid_from: self.credential.valid_from.or(self.credential.issuance_date),
+            valid_until: None,
             update_at: None,
             invalid_before: None,
             issuer_did: Some(self.credential.issuer),

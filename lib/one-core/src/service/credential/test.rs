@@ -1211,8 +1211,8 @@ async fn test_check_revocation_invalid_state() {
             .returning(move |_| {
                 Ok(DetailCredential {
                     id: Some(credential_clone.id.to_string()),
-                    issued_at: Some(credential_clone.issuance_date),
-                    expires_at: None,
+                    valid_from: Some(credential_clone.issuance_date),
+                    valid_until: None,
                     update_at: None,
                     invalid_before: None,
                     issuer_did: Some(
@@ -1283,8 +1283,8 @@ async fn test_check_revocation_non_revocable() {
         .returning(|_| {
             Ok(DetailCredential {
                 id: None,
-                issued_at: None,
-                expires_at: None,
+                valid_from: None,
+                valid_until: None,
                 update_at: None,
                 invalid_before: None,
                 issuer_did: None,
@@ -1380,8 +1380,8 @@ async fn test_check_revocation_already_revoked() {
             .returning(move |_| {
                 Ok(DetailCredential {
                     id: Some(credential_clone.id.to_string()),
-                    issued_at: Some(credential_clone.issuance_date),
-                    expires_at: None,
+                    valid_from: Some(credential_clone.issuance_date),
+                    valid_until: None,
                     update_at: None,
                     invalid_before: None,
                     issuer_did: Some(
@@ -1475,8 +1475,8 @@ async fn test_check_revocation_being_revoked() {
         .returning(|_| {
             Ok(DetailCredential {
                 id: None,
-                issued_at: None,
-                expires_at: None,
+                valid_from: None,
+                valid_until: None,
                 update_at: None,
                 invalid_before: None,
                 issuer_did: None,

@@ -124,7 +124,7 @@ impl RevocationListService {
         let expiry = revocation_params.credential_expiry;
 
         let issuance_date = extracted_credential
-            .issued_at
+            .valid_from
             .ok_or(ServiceError::MappingError("issued_at is None".to_string()))?;
 
         if OffsetDateTime::now_utc() > issuance_date + expiry {
