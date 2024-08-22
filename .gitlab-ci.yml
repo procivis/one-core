@@ -311,6 +311,7 @@ deploy:dev:
   stage: deploy
   extends:
     - .deploy_k8s:sops
+  resource_group: core-dev
   variables:
     VALUES_PATH: values/dev
     K8S_NAMESPACE: default
