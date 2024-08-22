@@ -91,6 +91,27 @@ before_script:
     paths:
       - target/release/core-server
 
+.cargo_tests:
+  stage: test
+  variables:
+    # The default amount of codegen-units (256 for dev builds) vastly increases
+    # the RAM usage during compilation, hence we limit it in CI
+    RUSTFLAGS: "-C codegen-units=4"
+  script:
+    - cargo llvm-cov --no-clean --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$" --output-path lcov.info
+    - cargo llvm-cov report --cobertura --output-path cobertura.xml
+    - cargo llvm-cov report
+  coverage: '/^TOTAL\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(\d+\.\d+)%/'
+  artifacts:
+    expire_in: 1 day
+    when: always
+    paths:
+      - lcov.info
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura.xml
+
 .docker_publish:
   image: docker:latest
   services:
@@ -124,23 +145,32 @@ build:
     - .cargo_build
     - .only_main_or_tag
 
-tests:
-  stage: test
-  script:
-    # The default amount of codegen-units (256 for dev builds) vastly increases
-    # the RAM usage during compilation, hence we limit it in CI
-    - RUSTFLAGS="-C codegen-units=4" cargo llvm-cov --no-clean --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$" --output-path lcov.info
-    - cargo llvm-cov report --cobertura --output-path cobertura.xml
-    - cargo llvm-cov report
-  coverage: '/^TOTAL\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(\d+\.\d+)%/'
-  artifacts:
-    expire_in: 1 day
-    paths:
-      - lcov.info
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: cobertura.xml
+tests:mariadb:
+  extends:
+    - .cargo_tests
+  variables:
+    MYSQL_PASSWORD: core_test
+    MYSQL_USER: core_user
+    MYSQL_DATABASE: core_db
+    ONE_app__databaseUrl: "mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mariadb:3306/${MYSQL_DATABASE}"
+  services:
+    - alias: mariadb
+      name: mariadb:10.9
+      pull_policy: always
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
+      when: always
+    - if: $CI_COMMIT_BRANCH != "main"
+      when: manual
+
+tests:sqlite:
+  extends:
+    - .cargo_tests
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
+      when: always
+    - if: $CI_COMMIT_BRANCH != "main"
+      when: always
 
 linter:clippy:
   stage: test
@@ -170,12 +200,11 @@ linter:dependencies:
 
 sonarqube-check:
   stage: test
-  dependencies:
-    - linter:clippy
-    - tests
   needs:
-    - linter:clippy
-    - tests
+    - job: linter:clippy
+      artifacts: true
+    - job: tests:mariadb
+      artifacts: true
   image:
     name: sonarsource/sonar-scanner-cli:latest
     entrypoint: [""]
@@ -286,7 +315,7 @@ generate_binding_files:
   stage: sdk_build
   needs:
     - build
-    - tests
+    - tests:mariadb
   script:
     - makers generateuniffi_android
     - makers generateuniffi_ios
@@ -347,13 +376,11 @@ deploy:demo:
 run_e2e_tests:
   stage: manual_e2e_tests
   when: manual
-  needs: [tests]
+  needs: [tests:sqlite]
   script:
     - echo "Job for trigger manual e2e tests"
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: never
-    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/'
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: never
     - when: manual
 

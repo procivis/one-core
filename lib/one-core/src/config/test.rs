@@ -181,7 +181,11 @@ rusty_fork_test! {
         ])
         .unwrap();
 
-        assert_eq!(config.app.database_url, "test2"); // via config2
+        if let Ok(db_url) = std::env::var("ONE_app__databaseUrl") {
+            assert_eq!(config.app.database_url, db_url); // via env_var
+        } else {
+            assert_eq!(config.app.database_url, "test2"); // via config2
+        }
 
         let jwt = config.core.format.get_fields("JWT").unwrap();
 
