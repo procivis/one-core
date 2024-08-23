@@ -1,10 +1,11 @@
+use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context};
 use futures::stream::FuturesUnordered;
-use futures::{Stream, StreamExt, TryFutureExt};
+use futures::{Stream, StreamExt, TryFutureExt, TryStreamExt};
 use one_crypto::imp::utilities;
 use one_providers::exchange_protocol::openid4vc::model::OpenID4VPPresentationDefinition;
 use shared_types::ProofId;
@@ -30,7 +31,9 @@ use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks
 use crate::provider::exchange_protocol::openid4vc::model::{
     BLEOpenID4VPInteractionData, BleOpenId4VpResponse,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEParse;
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
+    parse_identity_request, BLEParse,
+};
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -58,24 +61,8 @@ impl OpenID4VCBLEVerifier {
         })
     }
 
-    // The native implementation is loaded lazily. It sometimes happens that
-    // on the first call to this method, the native implementation is not loaded yet.
-    // This causes the method to return false even though the adapter is enabled.
-    // To work around this, we retry the call after a short delay.
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     pub async fn enabled(&self) -> Result<bool, ExchangeProtocolError> {
-        let enabled = self
-            .ble
-            .is_enabled()
-            .await
-            .map(|s| s.peripheral)
-            .unwrap_or(false);
-
-        if enabled {
-            return Ok(true);
-        }
-
-        tokio::time::sleep(Duration::from_secs(1)).await;
         self.ble
             .is_enabled()
             .await
@@ -382,33 +369,56 @@ async fn wait_for_wallet_identify_request(
     ble_peripheral: Arc<dyn BlePeripheral>,
     connection_event_stream: &mut ConnectionEventStream,
 ) -> Result<(DeviceInfo, IdentityRequest), ExchangeProtocolError> {
+    let mut connected_devices: HashMap<String, DeviceInfo> = HashMap::new();
     let mut identify_futures = FuturesUnordered::new();
 
-    let holder_wallet = loop {
+    let identified_wallet = loop {
         tokio::select! {
             Some(wallet_info) = identify_futures.next() => {
-                break wallet_info;
+                let wallet_info: Result<(String, Vec<u8>), ExchangeProtocolError> = wallet_info;
+                if let Ok((address, data)) = wallet_info {
+                    let identity_request = parse_identity_request(data).map_err(ExchangeProtocolError::Transport)?;
+                    break Ok((address, identity_request));
+                }
             },
             connection_events = connection_event_stream.next() => {
                 for event in connection_events.context("Failed to get BLE connection events").map_err(ExchangeProtocolError::Transport)? {
-                    if let ConnectionEvent::Connected { device_info } = event {
-                        identify_futures.push(async {
-                                let stream = read(IDENTITY_UUID, &device_info, ble_peripheral.clone());
-                                let identity_request = stream.parse().map_err(ExchangeProtocolError::Transport).await?;
-                                Ok((device_info, identity_request))
-                        });
+                    match event {
+                        ConnectionEvent::Connected { device_info } => {
+                            if connected_devices.insert(device_info.address.to_owned(), device_info.to_owned()).is_none() {
+                                identify_futures.push(async {
+                                    let stream = read(IDENTITY_UUID, &device_info, ble_peripheral.clone());
+                                    tokio::pin!(stream);
+                                    let data = stream.try_next().await
+                                        .map_err(|e| ExchangeProtocolError::Transport(anyhow::anyhow!(e)))?
+                                        .ok_or(ExchangeProtocolError::Transport(anyhow::anyhow!("BLE identity request: No data read")))?;
+                                    Ok((device_info.address, data))
+                                });
+                            }
+                        },
+                        ConnectionEvent::Disconnected { device_address } => {
+                            connected_devices.remove(&device_address);
+                        }
                     }
                 }
             },
         };
     };
+
     ble_peripheral
         .stop_advertisement()
         .await
         .context("Failed to stop advertisement")
         .map_err(ExchangeProtocolError::Transport)?;
 
-    holder_wallet
+    let (address, identity_request) = identified_wallet?;
+    let device_info = connected_devices
+        .remove(&address)
+        .ok_or(ExchangeProtocolError::Failed(
+            "Could not find connected device info".to_string(),
+        ))?;
+
+    Ok((device_info, identity_request))
 }
 
 pub fn read(

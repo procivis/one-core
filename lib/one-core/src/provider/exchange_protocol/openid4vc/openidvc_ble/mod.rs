@@ -122,33 +122,21 @@ where
     }
 }
 
-#[async_trait::async_trait]
-impl<T> BLEParse<IdentityRequest, anyhow::Error> for T
-where
-    T: Stream<Item = Result<Vec<u8>, BleError>> + Send,
-{
-    async fn parse(self) -> Result<IdentityRequest> {
-        tokio::pin!(self);
-        let data = self
-            .try_next()
-            .await?
-            .ok_or(anyhow!("Failed to read identity request"))?;
+pub(super) fn parse_identity_request(data: Vec<u8>) -> Result<IdentityRequest> {
+    let arr: [u8; 44] = data
+        .try_into()
+        .map_err(|_| anyhow!("Failed to convert vec to [u8; 44]"))?;
 
-        let arr: [u8; 44] = data
+    let (key, nonce) = arr.split_at(32);
+
+    Ok(IdentityRequest {
+        key: key
             .try_into()
-            .map_err(|_| anyhow!("Failed to convert vec to [u8; 44]"))?;
-
-        let (key, nonce) = arr.split_at(32);
-
-        Ok(IdentityRequest {
-            key: key
-                .try_into()
-                .context("Failed to parse key from identity request")?,
-            nonce: nonce
-                .try_into()
-                .context("Failed to parse nonce from identity request")?,
-        })
-    }
+            .context("Failed to parse key from identity request")?,
+        nonce: nonce
+            .try_into()
+            .context("Failed to parse nonce from identity request")?,
+    })
 }
 
 #[async_trait::async_trait]
