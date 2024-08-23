@@ -285,7 +285,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
 
     let formatter_provider_creator: FormatterProviderCreator = {
         let caching_loader = caching_loader.clone();
-        Box::new(move |format_config, datatype_config, providers| {
+        Box::new(move |format_config, datatype_config, providers, client| {
             let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
 
             let did_method_provider = providers
@@ -314,6 +314,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                     "PHYSICAL_CARD" => Arc::new(PhysicalCardFormatter::new(
                         crypto.clone(),
                         caching_loader.clone(),
+                        client.clone(),
                     )) as _,
                     "SDJWT" => {
                         let params = format_config
@@ -331,6 +332,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                             providers.core_base_url.clone(),
                             did_method_provider.clone(),
                             caching_loader.clone(),
+                            client.clone(),
                         )) as _
                     }
                     "JSON_LD_BBSPLUS" => {
@@ -344,6 +346,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                             did_method_provider.clone(),
                             key_algorithm_provider.clone(),
                             caching_loader.clone(),
+                            client.clone(),
                         )) as _
                     }
                     "MDOC" => {
