@@ -14,6 +14,7 @@ class IOSBLEPeripheral: NSObject {
         }
     }
     
+    private var adapterStateCallback: BLEResultCallback<CBManagerState>?
     private var startAdvertisementResultCallback: BLEThrowingResultCallback<String?>?
     private var getConnectionChangeEventsResultCallback: BLEResultCallback<[ConnectionEventBindingEnum]>?
     private var readyToUpdateSubscribersCallback: [UUID: () async throws -> Void] = [:]
@@ -38,7 +39,19 @@ class IOSBLEPeripheral: NSObject {
 extension IOSBLEPeripheral: BlePeripheral {
     
     func isAdapterEnabled() async throws -> Bool {
-        return peripheralManager.state == .poweredOn
+        var state = peripheralManager.state
+        if (state == .unknown) {
+            state = await withCheckedContinuation { continuation in
+                adapterStateCallback = { [weak self] result in
+                    self?.adapterStateCallback = nil
+                    continuation.resume(with: result)
+                }
+            }
+        }
+#if DEBUG
+        print("peripheralManager state \(state)")
+#endif
+        return state == .poweredOn
     }
     
     private func setupServicesAndCharacteristics(servicesWithCharacteristics: [ServiceDescriptionBindingDto]) {
@@ -284,6 +297,7 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
 #if DEBUG
         print("peripheral manager did update state \(peripheral.state)")
 #endif
+        adapterStateCallback?(Result.success(peripheral.state))
     }
     
     func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: (any Error)?) {

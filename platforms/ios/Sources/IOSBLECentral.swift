@@ -8,7 +8,9 @@ class IOSBLECentral: NSObject {
                                 queue: nil)
     }()
     
-    private var peripheralConnectResultCallback: BLEThrowingResultCallback<UInt16>?
+    
+    private var adapterStateCallback: BLEResultCallback<CBManagerState>?
+    private var peripheralConnectResultCallback: BLEThrowingResultCallback<Void>?
     private var peripheralDisconnectResultCallback: BLEThrowingResultCallback<Void>?
     private var getDiscoveredDevicesCallback: BLEResultCallback<[PeripheralDiscoveryDataBindingDto]>?
     private var characteristicWriteResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Void>] = [:]
@@ -37,7 +39,19 @@ class IOSBLECentral: NSObject {
 extension IOSBLECentral: BleCentral {
     
     func isAdapterEnabled() async throws -> Bool {
-        return centralManager.state == .poweredOn
+        var state = centralManager.state
+        if (state == .unknown) {
+            state = await withCheckedContinuation { continuation in
+                adapterStateCallback = { [weak self] result in
+                    self?.adapterStateCallback = nil
+                    continuation.resume(with: result)
+                }
+            }
+        }
+#if DEBUG
+        print("centralManager state \(state)")
+#endif
+        return state == .poweredOn
     }
     
     func startScan(filterServices: [String]?) async throws {
@@ -63,7 +77,7 @@ extension IOSBLECentral: BleCentral {
         guard let peripheralUuid = UUID(uuidString: deviceAddress) else {
             throw BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: deviceAddress))
         }
-        let mtu = try await connectWithoutDiscovery(peripheral: peripheralUuid)
+        try await connectWithoutDiscovery(peripheral: peripheralUuid)
         let discoveredServices = try await discoverServices(peripheral: peripheralUuid, services: nil)
         let servicesWithCharacteristics = try await withThrowingTaskGroup(of: ServiceDescriptionBindingDto.self) { group in
             var services = [ServiceDescriptionBindingDto]()
@@ -84,6 +98,10 @@ extension IOSBLECentral: BleCentral {
         }
 #if DEBUG
         print("conected and discovered characteristics \(servicesWithCharacteristics)")
+#endif
+        let mtu = try getMtu(peripheral: peripheralUuid)
+#if DEBUG
+        print("MTU \(mtu)")
 #endif
         return mtu
     }
@@ -152,7 +170,7 @@ extension IOSBLECentral: BleCentral {
                         return
                     }
                 }
-            
+                
                 if (delayedWrite) {
                     characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] = { [weak self] result in
                         self?.characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] = nil
@@ -278,7 +296,7 @@ extension IOSBLECentral: BleCentral {
 
 private extension IOSBLECentral {
     
-    private func connectWithoutDiscovery(peripheral: UUID) async throws -> UInt16 {
+    private func connectWithoutDiscovery(peripheral: UUID) async throws {
         guard peripheralConnectResultCallback == nil else {
             throw BleErrorWrapper.Ble(error: BleError.Unknown(reason: "Already connecting"))
         }
@@ -306,6 +324,15 @@ private extension IOSBLECentral {
                 continuation.resume(with: result)
             }
         }
+    }
+    
+    private func getMtu(peripheral: UUID) throws -> UInt16 {
+        let cbPeripheral = try retrievePeripheral(peripheral: peripheral)
+        // for safety select the smaller MTU
+        let mtuWithResponse = cbPeripheral.maximumWriteValueLength(for: .withResponse)
+        let mtuWithoutResponse = cbPeripheral.maximumWriteValueLength(for: .withoutResponse)
+        let mtu = min(mtuWithResponse, mtuWithoutResponse)
+        return UInt16(mtu)
     }
     
     @MainActor
@@ -395,6 +422,7 @@ extension IOSBLECentral: CBCentralManagerDelegate {
 #if DEBUG
         print("central manager did update state \(central.state)")
 #endif
+        adapterStateCallback?(Result.success(central.state))
     }
     
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
@@ -416,10 +444,9 @@ extension IOSBLECentral: CBCentralManagerDelegate {
 #if DEBUG
         print("connected to \(peripheral.name ?? "unnamed") \(peripheral.identifier)")
 #endif
-        let mtu = peripheral.maximumWriteValueLength(for: .withResponse)
         peripheral.delegate = self
         connectedPeripherals.insert(peripheral)
-        peripheralConnectResultCallback?(Result.success(UInt16(mtu)))
+        peripheralConnectResultCallback?(Result.success(()))
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: (any Error)?) {

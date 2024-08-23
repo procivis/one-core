@@ -3,6 +3,7 @@ package ch.procivis.one.core
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
@@ -19,7 +20,6 @@ import android.os.Build
 import android.os.ParcelUuid
 import android.util.Log
 import java.util.UUID
-import kotlin.math.min
 
 class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     AndroidBLEBase(context, "BLE_PERIPHERAL") {
@@ -466,9 +466,6 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
 
     private fun getServerCallback(): BluetoothGattServerCallback {
         return object : BluetoothGattServerCallback() {
-            // negotiated MTU's
-            private val mMTU: MutableMap<String, UShort> = HashMap()
-
             @SuppressLint("MissingPermission")
             override fun onCharacteristicWriteRequest(
                 device: BluetoothDevice, requestId: Int,
@@ -544,7 +541,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                         )
                         return
                     }
-         
+
                     mServer?.sendResponse(
                         device,
                         requestId,
@@ -588,26 +585,10 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                 super.onMtuChanged(device, mtu)
                 val deviceAddress = device.address
                 Log.d(TAG, "New MTU: $mtu for device: $deviceAddress")
-                val calculatedMtu = min(mtu, MAX_MTU).toUShort()
-
-                synchronized(lock) {
-                    mMTU[deviceAddress] = calculatedMtu
-
-                    // try to update a pending connected event, if not yet read
-                    val pendingEvent = mConnections.events.find {
-                        when (val event = it) {
-                            is ConnectionEventBindingEnum.Connected ->
-                                event.deviceInfo.address == deviceAddress
-
-                            else -> false
-                        }
-                    } as ConnectionEventBindingEnum.Connected?
-                    if (pendingEvent != null) {
-                        pendingEvent.deviceInfo.mtu = calculatedMtu
-                    }
-                }
+                onMtuNegotiated(deviceAddress, mtu)
             }
 
+            @SuppressLint("MissingPermission")
             override fun onConnectionStateChange(
                 device: BluetoothDevice,
                 status: Int,
@@ -617,51 +598,44 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                 val deviceAddress = device.address
                 Log.d(TAG, "New connection state: $newState for device: $deviceAddress")
                 when (newState) {
-                    BluetoothProfile.STATE_CONNECTED, BluetoothProfile.STATE_DISCONNECTED -> {
+                    BluetoothProfile.STATE_DISCONNECTED -> {
                         synchronized(lock) {
-                            val newEvent = when (newState) {
-                                BluetoothProfile.STATE_CONNECTED -> {
-                                    val mtu = mMTU[deviceAddress] ?:  MAX_MTU.toUShort()
-                                    ConnectionEventBindingEnum.Connected(
-                                        DeviceInfoBindingDto(
-                                            deviceAddress,
-                                            mtu
-                                        )
-                                    )
-                                }
-
-                                BluetoothProfile.STATE_DISCONNECTED -> ConnectionEventBindingEnum.Disconnected(
-                                    deviceAddress
-                                )
-
-                                else -> return // cannot happen
-                            }
-
-                            // replace outdated events
-                            mConnections.events.removeAll {
-                                when (val event = it) {
-                                    is ConnectionEventBindingEnum.Connected ->
-                                        event.deviceInfo.address == deviceAddress
-
-                                    is ConnectionEventBindingEnum.Disconnected ->
-                                        event.deviceAddress == deviceAddress
-                                }
-                            }
-                            mConnections.events.add(newEvent)
-                            val promise = mConnections.promise
-                            if (promise != null) {
-                                promise.succeed(mConnections.events.toList())
-                                mConnections.promise = null
-                                mConnections.events.clear()
-                            }
-
-                            if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                                onDeviceDisconnected(deviceAddress)
-                            }
+                            val event = ConnectionEventBindingEnum.Disconnected(deviceAddress)
+                            onConnectionEvent(event)
+                            onDeviceDisconnected(deviceAddress)
                         }
+                    }
+
+                    BluetoothProfile.STATE_CONNECTED -> {
+                        // workaround to trigger MTU negotiation from BLE peripheral
+                        Log.d(TAG, "Forceful MTU negotiation: $deviceAddress")
+                        device.connectGatt(context, false, object : BluetoothGattCallback() {
+                            override fun onConnectionStateChange(
+                                gatt: BluetoothGatt, status: Int,
+                                newState: Int
+                            ) {
+                                Log.d(TAG, "Gatt connection state: $newState, status: $status")
+                                if (status == BluetoothGatt.GATT_SUCCESS) {
+                                    val result = gatt.requestMtu(MAX_MTU)
+                                    Log.d(TAG, "MTU request result: $result")
+                                }
+                            }
+
+                            override fun onMtuChanged(
+                                gatt: BluetoothGatt?,
+                                mtu: Int,
+                                status: Int
+                            ) {
+                                Log.d(TAG, "Gatt MTU CHANGED: $mtu, status: $status")
+                                if (status == BluetoothGatt.GATT_SUCCESS) {
+                                    onMtuNegotiated(deviceAddress, mtu)
+                                }
+                            }
+                        })
                     }
                 }
             }
+
 
             @SuppressLint("MissingPermission")
             override fun onDescriptorReadRequest(
@@ -688,7 +662,15 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                 preparedWrite: Boolean, responseNeeded: Boolean,
                 offset: Int, value: ByteArray
             ) {
-                super.onDescriptorWriteRequest(device, requestId, descriptor, preparedWrite, responseNeeded, offset, value)
+                super.onDescriptorWriteRequest(
+                    device,
+                    requestId,
+                    descriptor,
+                    preparedWrite,
+                    responseNeeded,
+                    offset,
+                    value
+                )
                 Log.d(TAG, "onDescriptorWriteRequest: " + descriptor.characteristic.uuid)
                 descriptor.setValue(value)
                 if (responseNeeded) {
@@ -701,6 +683,51 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                     )
                 }
             }
+        }
+    }
+
+    private fun onMtuNegotiated(deviceAddress: String, mtu: Int) {
+        synchronized(lock) {
+            onConnectionEvent(
+                ConnectionEventBindingEnum.Connected(
+                    DeviceInfoBindingDto(
+                        deviceAddress, mtu.coerceAtMost(
+                            MAX_MTU
+                        ).toUShort()
+                    )
+                )
+            )
+        }
+    }
+
+    private fun onConnectionEvent(
+        event: ConnectionEventBindingEnum
+    ) {
+        val deviceAddress = when (event) {
+            is ConnectionEventBindingEnum.Connected ->
+                event.deviceInfo.address
+
+            is ConnectionEventBindingEnum.Disconnected ->
+                event.deviceAddress
+        }
+
+        // replace outdated events
+        mConnections.events.removeAll {
+            when (val oldEvent = it) {
+                is ConnectionEventBindingEnum.Connected ->
+                    oldEvent.deviceInfo.address == deviceAddress
+
+                is ConnectionEventBindingEnum.Disconnected ->
+                    oldEvent.deviceAddress == deviceAddress
+            }
+        }
+
+        mConnections.events.add(event)
+        val promise = mConnections.promise
+        if (promise != null) {
+            promise.succeed(mConnections.events.toList())
+            mConnections.promise = null
+            mConnections.events.clear()
         }
     }
 
