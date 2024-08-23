@@ -274,13 +274,14 @@ impl JsonLdClassic {
         base_url: Option<String>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         caching_loader: JsonLdCachingLoader,
+        client: reqwest::Client,
     ) -> Self {
         Self {
             params,
             crypto,
             base_url,
             did_method_provider,
-            caching_loader: ContextCache::new(caching_loader),
+            caching_loader: ContextCache::new(caching_loader, client),
         }
     }
 

@@ -78,6 +78,7 @@ pub type FormatterProviderCreator = Box<
         &mut FormatConfig,
         &DatatypeConfig,
         &OneCoreBuilderProviders,
+        &reqwest::Client,
     ) -> Arc<dyn CredentialFormatterProvider>,
 >;
 
@@ -207,6 +208,7 @@ impl OneCoreBuilder {
             &mut self.core_config.format,
             &self.core_config.datatype,
             &self.providers,
+            &self.http_client,
         );
         self.providers.formatter_provider = Some(formatter_provider);
         self

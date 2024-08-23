@@ -154,10 +154,14 @@ impl CredentialFormatter for PhysicalCardFormatter {
 
 #[allow(clippy::new_without_default)]
 impl PhysicalCardFormatter {
-    pub fn new(crypto: Arc<dyn CryptoProvider>, caching_loader: JsonLdCachingLoader) -> Self {
+    pub fn new(
+        crypto: Arc<dyn CryptoProvider>,
+        caching_loader: JsonLdCachingLoader,
+        client: reqwest::Client,
+    ) -> Self {
         Self {
             crypto,
-            caching_loader: ContextCache::new(caching_loader),
+            caching_loader: ContextCache::new(caching_loader, client),
         }
     }
 }
