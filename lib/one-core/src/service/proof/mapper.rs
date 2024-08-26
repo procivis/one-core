@@ -15,7 +15,6 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{self, Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
@@ -667,17 +666,5 @@ pub fn proof_for_scan_to_verify(
             host: None,
             data: Some(interaction_data),
         }),
-    }
-}
-
-pub(super) fn proof_requested_history_event(proof: Proof) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action: HistoryAction::Requested,
-        entity_id: Some(proof.id.into()),
-        entity_type: HistoryEntityType::Proof,
-        metadata: None,
-        organisation: proof.schema.and_then(|s| s.organisation),
     }
 }

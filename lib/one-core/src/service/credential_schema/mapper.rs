@@ -14,7 +14,6 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
 };
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
@@ -172,34 +171,6 @@ pub(super) fn from_create_request_with_id(
         schema_type,
         schema_id,
     })
-}
-
-pub(super) fn schema_create_history_event(schema: CredentialSchema) -> History {
-    history_event(schema, HistoryAction::Created)
-}
-
-pub(super) fn schema_delete_history_event(schema: CredentialSchema) -> History {
-    history_event(schema, HistoryAction::Deleted)
-}
-
-pub(super) fn schema_import_history_event(schema: CredentialSchema) -> History {
-    history_event(schema, HistoryAction::Imported)
-}
-
-pub(super) fn schema_share_history_event(schema: CredentialSchema) -> History {
-    history_event(schema, HistoryAction::Shared)
-}
-
-fn history_event(schema: CredentialSchema, action: HistoryAction) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action,
-        entity_id: Some(schema.id.into()),
-        entity_type: HistoryEntityType::CredentialSchema,
-        metadata: None,
-        organisation: schema.organisation,
-    }
 }
 
 fn from_jwt_request_claim_schema(

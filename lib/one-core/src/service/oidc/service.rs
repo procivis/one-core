@@ -46,7 +46,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::HistoryAction;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -69,6 +69,7 @@ use crate::service::oidc::validator::{
     validate_config_entity_presence,
 };
 use crate::service::ssi_validator::validate_exchange_type;
+use crate::util::history::log_history_event_proof;
 use crate::util::oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core_detailed};
 
 impl OIDCService {
@@ -725,18 +726,12 @@ impl OIDCService {
                 tracing::info!("Proof validation failed: {err}");
                 self.mark_proof_as_failed(&proof.id).await?;
 
-                let _ = self
-                    .history_repository
-                    .create_history(History {
-                        id: Uuid::new_v4().into(),
-                        created_date: OffsetDateTime::now_utc(),
-                        action: HistoryAction::Errored,
-                        entity_id: Some(proof.id.into()),
-                        entity_type: HistoryEntityType::Proof,
-                        metadata: None,
-                        organisation: proof.schema.and_then(|schema| schema.organisation),
-                    })
-                    .await;
+                let _ = log_history_event_proof(
+                    &self.history_repository,
+                    &proof,
+                    HistoryAction::Errored,
+                )
+                .await;
 
                 Err(err.into())
             }

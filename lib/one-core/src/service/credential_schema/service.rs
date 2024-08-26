@@ -4,6 +4,7 @@ use super::mapper::from_create_request_with_id;
 use crate::common_mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::history::HistoryAction;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::common_mapper::regenerate_credential_schema_uuids;
@@ -12,12 +13,10 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
     GetCredentialSchemaQueryDTO, ImportCredentialSchemaRequestDTO,
 };
-use crate::service::credential_schema::mapper::{
-    from_create_request, schema_create_history_event, schema_delete_history_event,
-    schema_import_history_event, schema_share_history_event,
-};
+use crate::service::credential_schema::mapper::from_create_request;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::util::history::log_history_event_credential_schema;
 
 impl CredentialSchemaService {
     /// Creates a credential schema according to request
@@ -72,10 +71,12 @@ impl CredentialSchemaService {
             .await
             .map_err(ServiceError::from)?;
 
-        let _ = self
-            .history_repository
-            .create_history(schema_create_history_event(credential_schema))
-            .await;
+        let _ = log_history_event_credential_schema(
+            &self.history_repository,
+            &credential_schema,
+            HistoryAction::Created,
+        )
+        .await;
 
         Ok(result)
     }
@@ -114,10 +115,12 @@ impl CredentialSchemaService {
                 error => ServiceError::from(error),
             })?;
 
-        let _ = self
-            .history_repository
-            .create_history(schema_delete_history_event(credential_schema))
-            .await;
+        let _ = log_history_event_credential_schema(
+            &self.history_repository,
+            &credential_schema,
+            HistoryAction::Deleted,
+        )
+        .await;
 
         Ok(())
     }
@@ -230,10 +233,12 @@ impl CredentialSchemaService {
             .await
             .map_err(ServiceError::from)?;
 
-        let _ = self
-            .history_repository
-            .create_history(schema_import_history_event(credential_schema))
-            .await;
+        let _ = log_history_event_credential_schema(
+            &self.history_repository,
+            &credential_schema,
+            HistoryAction::Imported,
+        )
+        .await;
 
         Ok(result)
     }
@@ -266,10 +271,12 @@ impl CredentialSchemaService {
                 EntityNotFoundError::CredentialSchema(*credential_schema_id),
             ))?;
 
-        let _ = self
-            .history_repository
-            .create_history(schema_share_history_event(credential_schema))
-            .await;
+        let _ = log_history_event_credential_schema(
+            &self.history_repository,
+            &credential_schema,
+            HistoryAction::Shared,
+        )
+        .await;
 
         Ok(CredentialSchemaShareResponseDTO {
             url: format!("{core_base_url}/ssi/schema/v1/{credential_schema_id}"),

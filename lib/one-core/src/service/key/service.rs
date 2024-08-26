@@ -8,10 +8,17 @@ use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
 use shared_types::KeyId;
 use uuid::Uuid;
 
+use super::mapper::request_to_certificate_params;
+use super::{
+    dto::{GetKeyListResponseDTO, GetKeyQueryDTO},
+    KeyService,
+};
+use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::key::KeyRelations;
 use crate::service::error::MissingProviderError;
 use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO};
 use crate::service::key::validator::validate_generate_csr_request;
+use crate::util::history::history_event;
 use crate::{
     model::organisation::OrganisationRelations,
     repository::error::DataLayerError,
@@ -19,16 +26,10 @@ use crate::{
         error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
         key::{
             dto::{KeyRequestDTO, KeyResponseDTO},
-            mapper::{from_create_request, key_create_history_event},
+            mapper::from_create_request,
             validator::validate_generate_request,
         },
     },
-};
-
-use super::mapper::request_to_certificate_params;
-use super::{
-    dto::{GetKeyListResponseDTO, GetKeyQueryDTO},
-    KeyService,
 };
 
 impl KeyService {
@@ -71,6 +72,7 @@ impl KeyService {
         let Some(organisation) = organisation else {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
+        let organisation_id = organisation.id;
 
         let provider = self
             .key_provider
@@ -97,7 +99,12 @@ impl KeyService {
 
         let _ = self
             .history_repository
-            .create_history(key_create_history_event(key_entity))
+            .create_history(history_event(
+                uuid,
+                organisation_id,
+                HistoryEntityType::Key,
+                HistoryAction::Created,
+            ))
             .await;
 
         Ok(uuid.into())

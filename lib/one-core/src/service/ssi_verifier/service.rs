@@ -2,9 +2,7 @@ use shared_types::{DidValue, ProofId};
 use time::OffsetDateTime;
 
 use super::dto::ConnectVerifierResponseDTO;
-use super::mapper::{
-    proof_accept_errored_history_event, proof_verifier_to_connect_verifier_response,
-};
+use super::mapper::proof_verifier_to_connect_verifier_response;
 use super::utils::accept_proof;
 use super::validator::validate_proof;
 use super::SSIVerifierService;
@@ -13,6 +11,7 @@ use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::ExchangeType;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
+use crate::model::history::HistoryAction;
 use crate::model::interaction::InteractionRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
@@ -21,9 +20,7 @@ use crate::model::proof_schema::{
 };
 use crate::service::error::{EntityNotFoundError, ServiceError};
 use crate::service::ssi_validator::{validate_config_entity_presence, validate_exchange_type};
-use crate::service::ssi_verifier::mapper::{
-    proof_accepted_history_event, proof_rejected_history_event,
-};
+use crate::util::history::log_history_event_proof;
 
 impl SSIVerifierService {
     /// Holder connect to pick the proof request
@@ -157,10 +154,13 @@ impl SSIVerifierService {
             Ok(claims) => claims,
             Err(e) => {
                 self.fail_proof(&proof_id).await?;
-                let _ = self
-                    .history_repository
-                    .create_history(proof_accept_errored_history_event(&proof))
-                    .await;
+
+                let _ = log_history_event_proof(
+                    &self.history_repository,
+                    &proof,
+                    HistoryAction::Errored,
+                )
+                .await;
 
                 return Err(e);
             }
@@ -176,9 +176,7 @@ impl SSIVerifierService {
         )
         .await?;
 
-        let _ = self
-            .history_repository
-            .create_history(proof_accepted_history_event(&proof))
+        let _ = log_history_event_proof(&self.history_repository, &proof, HistoryAction::Accepted)
             .await;
         Ok(())
     }
@@ -195,7 +193,10 @@ impl SSIVerifierService {
             .get_proof_with_state(
                 proof_id,
                 ProofRelations {
-                    verifier_did: Some(DidRelations::default()),
+                    verifier_did: Some(DidRelations {
+                        keys: None,
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 },
@@ -222,9 +223,7 @@ impl SSIVerifierService {
             )
             .await?;
 
-        let _ = self
-            .history_repository
-            .create_history(proof_rejected_history_event(&proof))
+        let _ = log_history_event_proof(&self.history_repository, &proof, HistoryAction::Rejected)
             .await;
 
         Ok(())

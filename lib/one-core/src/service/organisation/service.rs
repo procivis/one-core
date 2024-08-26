@@ -1,14 +1,14 @@
+use super::dto::GetOrganisationDetailsResponseDTO;
+use super::validator::organisation_already_exists;
+use super::OrganisationService;
+use crate::model::history::{HistoryAction, HistoryEntityType};
+use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::util::history::history_event;
 use dto_mapper::convert_inner;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use super::dto::GetOrganisationDetailsResponseDTO;
-use super::validator::organisation_already_exists;
-use super::OrganisationService;
-use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use crate::service::organisation::mapper::create_organisation_history_event;
 
 impl OrganisationService {
     /// Returns all existing organisations
@@ -73,7 +73,12 @@ impl OrganisationService {
 
         let _ = self
             .history_repository
-            .create_history(create_organisation_history_event(request))
+            .create_history(history_event(
+                request.id,
+                request.id,
+                HistoryEntityType::Organisation,
+                HistoryAction::Created,
+            ))
             .await;
 
         Ok(uuid)

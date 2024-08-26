@@ -40,3 +40,4 @@ impl_from_other_type!(ProofId);
 
 impl_from_other_type!(one_providers::common_models::key::KeyId);
 impl_from_other_type!(one_providers::common_models::organisation::OrganisationId);
+impl_from_other_type!(one_providers::common_models::proof::ProofId);

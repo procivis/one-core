@@ -5,7 +5,6 @@ use crate::repository::{
 };
 
 pub mod dto;
-pub mod mapper;
 pub mod service;
 pub mod validator;
 

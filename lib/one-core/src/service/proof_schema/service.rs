@@ -12,8 +12,7 @@ use super::dto::{
 };
 use super::mapper::{
     credential_schema_from_proof_input_schema, proof_input_from_import_request,
-    proof_schema_created_history_event, proof_schema_from_create_request,
-    proof_schema_history_event,
+    proof_schema_from_create_request,
 };
 use super::validator::{
     extract_claims_from_credential_schema, proof_schema_name_already_exists,
@@ -26,7 +25,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
     UpdateCredentialSchemaRequest,
 };
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -43,6 +42,7 @@ use crate::service::proof_schema::validator::{
     throw_if_proof_schema_contains_physical_card_schema_with_other_schemas,
     throw_if_validity_constraint_missing_for_lvvc,
 };
+use crate::util::history::{history_event, log_history_event_proof_schema};
 
 impl ProofSchemaService {
     /// Returns details of a proof schema
@@ -186,7 +186,12 @@ impl ProofSchemaService {
 
         let _ = self
             .history_repository
-            .create_history(proof_schema_created_history_event(id, organisation))
+            .create_history(history_event(
+                id,
+                organisation.id,
+                HistoryEntityType::ProofSchema,
+                HistoryAction::Created,
+            ))
             .await;
 
         Ok(id)
@@ -225,14 +230,12 @@ impl ProofSchemaService {
                 error => ServiceError::from(error),
             })?;
 
-        let _ = self
-            .history_repository
-            .create_history(proof_schema_history_event(
-                proof_schema.id,
-                proof_schema.organisation,
-                HistoryAction::Deleted,
-            ))
-            .await;
+        let _ = log_history_event_proof_schema(
+            &self.history_repository,
+            &proof_schema,
+            HistoryAction::Deleted,
+        )
+        .await;
 
         Ok(())
     }
@@ -257,14 +260,12 @@ impl ProofSchemaService {
             .await?
             .ok_or(EntityNotFoundError::ProofSchema(id))?;
 
-        let _ = self
-            .history_repository
-            .create_history(proof_schema_history_event(
-                proof_schema.id,
-                proof_schema.organisation,
-                HistoryAction::Shared,
-            ))
-            .await;
+        let _ = log_history_event_proof_schema(
+            &self.history_repository,
+            &proof_schema,
+            HistoryAction::Shared,
+        )
+        .await;
 
         Ok(ProofSchemaShareResponseDTO {
             url: format!("{base_url}/ssi/proof-schema/v1/{id}"),
@@ -364,9 +365,10 @@ impl ProofSchemaService {
 
         let _ = self
             .history_repository
-            .create_history(proof_schema_history_event(
+            .create_history(history_event(
                 proof_schema_id,
-                Some(organisation),
+                organisation.id,
+                HistoryEntityType::ProofSchema,
                 HistoryAction::Imported,
             ))
             .await;
@@ -453,15 +455,12 @@ impl ProofSchemaService {
 
         let _ = self
             .history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                action: HistoryAction::Created,
-                entity_id: Some(credential_schema.id.into()),
-                entity_type: HistoryEntityType::CredentialSchema,
-                metadata: None,
-                organisation: Some(organisation.clone()),
-            })
+            .create_history(history_event(
+                credential_schema.id,
+                organisation.id,
+                HistoryEntityType::CredentialSchema,
+                HistoryAction::Created,
+            ))
             .await;
 
         Ok(credential_schema)

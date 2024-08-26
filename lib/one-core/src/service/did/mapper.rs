@@ -13,7 +13,6 @@ use super::dto::{
     GetDidListResponseDTO,
 };
 use crate::model::did::{Did, GetDidList, KeyRole, RelatedKey};
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::organisation::Organisation;
 use crate::service::error::{EntityNotFoundError, ServiceError};
 use crate::service::key::dto::KeyListItemResponseDTO;
@@ -174,26 +173,6 @@ pub(super) fn map_key_to_verification_method(
         controller: did_value.to_string(),
         public_key_jwk,
     })
-}
-
-pub(super) fn did_create_history_event(did: Did) -> History {
-    history_event(did, HistoryAction::Created)
-}
-
-pub(super) fn did_deactivated_history_event(did: Did) -> History {
-    history_event(did, HistoryAction::Deactivated)
-}
-
-fn history_event(did: Did, action: HistoryAction) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action,
-        entity_id: Some(did.id.into()),
-        entity_type: HistoryEntityType::Did,
-        metadata: None,
-        organisation: did.organisation,
-    }
 }
 
 impl From<one_providers::exchange_protocol::openid4vc::model::DidListItemResponseDTO>
