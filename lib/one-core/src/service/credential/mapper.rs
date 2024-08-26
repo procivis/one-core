@@ -12,8 +12,6 @@ use crate::model::claim::Claim;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::did::Did;
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::organisation::Organisation;
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
     CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
@@ -391,59 +389,6 @@ pub(super) fn claims_from_create_request(
             })
         })
         .collect::<Result<Vec<_>, _>>()
-}
-
-pub(super) fn credential_created_history_event(
-    credential: Credential,
-) -> Result<History, ServiceError> {
-    Ok(History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action: HistoryAction::Issued,
-        entity_id: Some(credential.id.into()),
-        entity_type: HistoryEntityType::Credential,
-        metadata: None,
-        organisation: credential
-            .schema
-            .ok_or(ServiceError::MappingError(
-                "organisation is None".to_string(),
-            ))?
-            .organisation,
-    })
-}
-
-pub(super) fn credential_offered_history_event(credential: Credential) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action: HistoryAction::Offered,
-        entity_id: Some(credential.id.into()),
-        entity_type: HistoryEntityType::Credential,
-        metadata: None,
-        organisation: credential.schema.and_then(|c| c.organisation),
-    }
-}
-
-pub(crate) fn credential_revocation_history_event(
-    id: CredentialId,
-    new_state: CredentialRevocationState,
-    organisation: Option<Organisation>,
-) -> History {
-    let action = match new_state {
-        CredentialRevocationState::Revoked => HistoryAction::Revoked,
-        CredentialRevocationState::Valid => HistoryAction::Reactivated,
-        CredentialRevocationState::Suspended { .. } => HistoryAction::Suspended,
-    };
-
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action,
-        entity_id: Some(id.into()),
-        entity_type: HistoryEntityType::Credential,
-        metadata: None,
-        organisation,
-    }
 }
 
 pub(super) fn credential_revocation_state_to_model_state(

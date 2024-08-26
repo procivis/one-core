@@ -1,6 +1,4 @@
-use shared_types::{OrganisationId, TrustEntityId};
-use time::OffsetDateTime;
-use uuid::Uuid;
+use shared_types::TrustEntityId;
 
 use super::dto::{
     CreateTrustEntityRequestDTO, GetTrustEntitiesResponseDTO, GetTrustEntityResponseDTO,
@@ -8,14 +6,16 @@ use super::dto::{
 };
 use super::mapper::trust_entity_from_request;
 use super::TrustEntityService;
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::history::{HistoryAction, HistoryEntityType};
+use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_anchor::{TrustAnchorRelations, TrustAnchorRole};
 use crate::model::trust_entity::TrustEntityRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
+use crate::util::history::history_event;
+
 impl TrustEntityService {
     pub async fn create_trust_entity(
         &self,
@@ -58,6 +58,7 @@ impl TrustEntityService {
                     .create_history(history_event(
                         entity_id,
                         organisation.id,
+                        HistoryEntityType::TrustEntity,
                         HistoryAction::Created,
                     ))
                     .await;
@@ -120,7 +121,12 @@ impl TrustEntityService {
 
         let _ = self
             .history_repository
-            .create_history(history_event(id, organisation.id, HistoryAction::Deleted))
+            .create_history(history_event(
+                id,
+                organisation.id,
+                HistoryEntityType::TrustEntity,
+                HistoryAction::Deleted,
+            ))
             .await;
 
         Ok(())
@@ -134,25 +140,5 @@ impl TrustEntityService {
             .list(filters)
             .await
             .map_err(Into::into)
-    }
-}
-
-fn history_event(
-    entity_id: TrustEntityId,
-    organisation_id: OrganisationId,
-    action: HistoryAction,
-) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action,
-        entity_id: Some(entity_id.into()),
-        entity_type: HistoryEntityType::TrustEntity,
-        metadata: None,
-        organisation: Some(Organisation {
-            id: organisation_id,
-            created_date: OffsetDateTime::UNIX_EPOCH,
-            last_modified: OffsetDateTime::UNIX_EPOCH,
-        }),
     }
 }

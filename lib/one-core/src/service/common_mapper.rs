@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
+use uuid::Uuid;
+
 use crate::config::core_config::ConfigBlock;
 use crate::model::credential_schema::CredentialSchema;
-use std::collections::HashMap;
-use uuid::Uuid;
 
 pub fn core_type_to_open_core_type(
     value: &ConfigBlock<crate::config::core_config::DatatypeType>,

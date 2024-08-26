@@ -51,14 +51,14 @@ impl BackupService {
                     .ok_or(DataLayerError::MappingError)
             })?;
 
-        let histroy_event = create_backup_history_event(
+        let history_event = create_backup_history_event(
             organisation,
             HistoryAction::Created,
             Some(unexportable.clone().into()),
         );
 
         self.backup_repository
-            .add_history_event(db_copy.path(), histroy_event.clone())
+            .add_history_event(db_copy.path(), history_event.clone())
             .await?;
 
         let metadata_file = build_metadata_file_content(&mut db_copy, db_metadata.version)?;
@@ -73,7 +73,7 @@ impl BackupService {
 
         let history_id = self
             .history_repository
-            .create_history(histroy_event)
+            .create_history(history_event)
             .await?;
 
         Ok(BackupCreateResponseDTO {

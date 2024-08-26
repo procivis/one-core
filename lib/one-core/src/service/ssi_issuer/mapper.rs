@@ -2,19 +2,14 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchemaClaim;
-use crate::model::did::Did;
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::service::credential::mapper::from_vec_claim;
 use crate::service::error::ServiceError;
 use crate::service::ssi_issuer::dto::{
     JsonLDEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
 };
-use shared_types::EntityId;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use time::OffsetDateTime;
 use url::Url;
-use uuid::Uuid;
 
 use super::dto::{ConnectIssuerResponseDTO, JsonLDContextDTO};
 
@@ -27,34 +22,6 @@ impl Default for JsonLDContextDTO {
             r#type: "@type".to_string(),
             entities: HashMap::default(),
         }
-    }
-}
-
-pub(super) fn credential_rejected_history_event(credential: &Credential) -> History {
-    history_event(
-        credential.id.into(),
-        credential.issuer_did.as_ref(),
-        HistoryEntityType::Credential,
-        HistoryAction::Rejected,
-    )
-}
-
-fn history_event(
-    entity_id: EntityId,
-    issuer_did: Option<&Did>,
-    entity_type: HistoryEntityType,
-    action: HistoryAction,
-) -> History {
-    let organisation = issuer_did.and_then(|did| did.organisation.clone());
-
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action,
-        entity_id: entity_id.into(),
-        entity_type,
-        metadata: None,
-        organisation,
     }
 }
 

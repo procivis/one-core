@@ -14,12 +14,6 @@ use time::OffsetDateTime;
 use url::Url;
 
 use super::dto::PresentationSubmitRequestDTO;
-use super::mapper::{
-    credential_accepted_history_event, credential_offered_history_event,
-    credential_pending_history_event, credential_rejected_history_event,
-    proof_accepted_history_event, proof_pending_history_event, proof_rejected_history_event,
-    proof_requested_history_event, proof_submit_errored_history_event,
-};
 use super::SSIHolderService;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::common_validator::{
@@ -34,10 +28,11 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
+use crate::model::history::HistoryAction;
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
+use crate::model::proof::{ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
 use crate::provider::exchange_protocol::openid4vc::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
@@ -46,6 +41,7 @@ use crate::service::error::{
 use crate::service::ssi_issuer::dto::IssuerResponseDTO;
 use crate::service::ssi_validator::validate_config_entity_presence;
 use crate::service::storage_proxy::StorageProxyImpl;
+use crate::util::history::{log_history_event_credential, log_history_event_proof};
 use crate::util::oidc::{
     create_core_to_oicd_format_map, create_core_to_oicd_presentation_format_map,
     create_oicd_to_core_format_map, detect_format_with_crypto_suite, map_core_to_oidc_format,
@@ -93,39 +89,45 @@ impl SSIHolderService {
         match &response {
             InvitationResponseDTO::Credential { credentials, .. } => {
                 for credential in credentials {
-                    let _ = self
-                        .history_repository
-                        .create_history(credential_offered_history_event(
-                            &credential.to_owned().into(),
-                        ))
-                        .await;
+                    let credential = credential.to_owned().into();
+
+                    let _ = log_history_event_credential(
+                        &self.history_repository,
+                        &credential,
+                        HistoryAction::Offered,
+                    )
+                    .await;
 
                     self.credential_repository
-                        .create_credential(credential.to_owned().into())
+                        .create_credential(credential.to_owned())
                         .await?;
 
-                    let _ = self
-                        .history_repository
-                        .create_history(credential_pending_history_event(
-                            &credential.to_owned().into(),
-                        ))
-                        .await;
+                    let _ = log_history_event_credential(
+                        &self.history_repository,
+                        &credential,
+                        HistoryAction::Pending,
+                    )
+                    .await;
                 }
             }
             InvitationResponseDTO::ProofRequest { proof, .. } => {
-                let _ = self
-                    .history_repository
-                    .create_history(proof_requested_history_event(&(**proof).to_owned().into()))
-                    .await;
+                let proof = (**proof).to_owned().into();
 
-                self.proof_repository
-                    .create_proof((**proof).to_owned().into())
-                    .await?;
+                let _ = log_history_event_proof(
+                    &self.history_repository,
+                    &proof,
+                    HistoryAction::Requested,
+                )
+                .await;
 
-                let _ = self
-                    .history_repository
-                    .create_history(proof_pending_history_event(&(**proof).to_owned().into()))
-                    .await;
+                self.proof_repository.create_proof(proof.to_owned()).await?;
+
+                let _ = log_history_event_proof(
+                    &self.history_repository,
+                    &proof,
+                    HistoryAction::Pending,
+                )
+                .await;
             }
         }
 
@@ -180,9 +182,7 @@ impl SSIHolderService {
             )
             .await?;
 
-        let _ = self
-            .history_repository
-            .create_history(proof_rejected_history_event(&proof))
+        let _ = log_history_event_proof(&self.history_repository, &proof, HistoryAction::Rejected)
             .await;
 
         Ok(())
@@ -503,19 +503,12 @@ impl SSIHolderService {
             )
             .await?;
 
-        let history_event = if submit_result.is_ok() {
-            proof_accepted_history_event(&Proof {
-                holder_did: Some(holder_did),
-                ..proof
-            })
+        let action = if submit_result.is_ok() {
+            HistoryAction::Accepted
         } else {
-            proof_submit_errored_history_event(&Proof {
-                holder_did: Some(holder_did),
-                ..proof
-            })
+            HistoryAction::Errored
         };
-
-        let _ = self.history_repository.create_history(history_event).await;
+        let _ = log_history_event_proof(&self.history_repository, &proof, action).await;
 
         submit_result
     }
@@ -654,10 +647,12 @@ impl SSIHolderService {
                 })
                 .await?;
 
-            let _ = self
-                .history_repository
-                .create_history(credential_accepted_history_event(&credential))
-                .await;
+            let _ = log_history_event_credential(
+                &self.history_repository,
+                &credential,
+                HistoryAction::Accepted,
+            )
+            .await;
         }
 
         Ok(())
@@ -724,10 +719,12 @@ impl SSIHolderService {
                 })
                 .await?;
 
-            let _ = self
-                .history_repository
-                .create_history(credential_rejected_history_event(&credential))
-                .await;
+            let _ = log_history_event_credential(
+                &self.history_repository,
+                &credential,
+                HistoryAction::Rejected,
+            )
+            .await;
         }
 
         Ok(())

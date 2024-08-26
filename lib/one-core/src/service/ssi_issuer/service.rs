@@ -22,13 +22,15 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
+use crate::model::history::HistoryAction;
 use crate::model::organisation::OrganisationRelations;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::ssi_issuer::mapper::{
-    connect_issuer_response_from_credential, credential_rejected_history_event,
-    generate_jsonld_context_response, get_url_with_fragment,
+    connect_issuer_response_from_credential, generate_jsonld_context_response,
+    get_url_with_fragment,
 };
 use crate::service::ssi_validator::{validate_config_entity_presence, validate_exchange_type};
+use crate::util::history::log_history_event_credential;
 
 impl SSIIssuerService {
     pub async fn issuer_connect(
@@ -203,10 +205,12 @@ impl SSIIssuerService {
             })
             .await?;
 
-        let _ = self
-            .history_repository
-            .create_history(credential_rejected_history_event(&credential))
-            .await;
+        let _ = log_history_event_credential(
+            &self.history_repository,
+            &credential,
+            HistoryAction::Rejected,
+        )
+        .await;
 
         Ok(())
     }

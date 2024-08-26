@@ -4,17 +4,13 @@ use one_providers::common_models::organisation::OpenOrganisation;
 use one_providers::key_storage::model::StorageGeneratedKey;
 use rcgen::{CertificateParams, CustomExtension, DistinguishedName, DnType};
 use time::OffsetDateTime;
-use uuid::Uuid;
 use yasna::models::ObjectIdentifier;
 
 use super::dto::{GetKeyListResponseDTO, KeyGenerateCSRRequestProfile};
 use crate::model::key::GetKeyList;
-use crate::{
-    model::history::{History, HistoryAction, HistoryEntityType},
-    service::{
-        error::ServiceError,
-        key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO, KeyResponseDTO},
-    },
+use crate::service::{
+    error::ServiceError,
+    key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO, KeyResponseDTO},
 };
 
 pub(super) fn from_create_request(
@@ -69,18 +65,6 @@ impl From<GetKeyList> for GetKeyListResponseDTO {
             total_pages: value.total_pages,
             total_items: value.total_items,
         }
-    }
-}
-
-pub(super) fn key_create_history_event(key: OpenKey) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action: HistoryAction::Created,
-        entity_id: Some(key.id.into()),
-        entity_type: HistoryEntityType::Key,
-        metadata: None,
-        organisation: convert_inner(key.organisation),
     }
 }
 

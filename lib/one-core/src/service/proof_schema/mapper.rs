@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use dto_mapper::convert_inner;
-use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -14,7 +14,6 @@ use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::ExactColumn;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::organisation::Organisation;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -400,35 +399,4 @@ pub fn proof_schema_from_create_request(
         deleted_at: None,
         input_schemas: Some(input_schemas),
     })
-}
-
-pub(super) fn proof_schema_created_history_event(
-    id: ProofSchemaId,
-    organisation: Organisation,
-) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action: HistoryAction::Created,
-        entity_id: Some(id.into()),
-        entity_type: HistoryEntityType::ProofSchema,
-        metadata: None,
-        organisation: Some(organisation),
-    }
-}
-
-pub(super) fn proof_schema_history_event(
-    proof_schema_id: ProofSchemaId,
-    organisation: Option<Organisation>,
-    action: HistoryAction,
-) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action,
-        entity_id: Some(proof_schema_id.into()),
-        entity_type: HistoryEntityType::ProofSchema,
-        metadata: None,
-        organisation,
-    }
 }

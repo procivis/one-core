@@ -10,14 +10,15 @@ use uuid::Uuid;
 
 use super::{
     dto::{CreateDidRequestDTO, DidPatchRequestDTO, DidResponseDTO, GetDidListResponseDTO},
-    mapper::{did_deactivated_history_event, did_from_did_request},
+    mapper::did_from_did_request,
     validator::validate_deactivation_request,
     DidService,
 };
+use crate::model::history::HistoryAction;
 use crate::model::key::KeyRelations;
-use crate::service::did::mapper::did_create_history_event;
 use crate::service::error::EntityNotFoundError;
 use crate::service::{did::mapper::map_key_to_verification_method, error::MissingProviderError};
+use crate::util::history::log_history_event_did;
 use crate::{
     config::validator::did::validate_did_method,
     model::{
@@ -219,10 +220,7 @@ impl DidService {
                 err => ServiceError::from(err),
             })?;
 
-        let _ = self
-            .history_repository
-            .create_history(did_create_history_event(did))
-            .await;
+        let _ = log_history_event_did(&self.history_repository, &did, HistoryAction::Created).await;
 
         Ok(did_id)
     }
@@ -263,10 +261,8 @@ impl DidService {
         };
         self.did_repository.update_did(update_did).await?;
 
-        let _ = self
-            .history_repository
-            .create_history(did_deactivated_history_event(did))
-            .await;
+        let _ =
+            log_history_event_did(&self.history_repository, &did, HistoryAction::Deactivated).await;
 
         Ok(())
     }

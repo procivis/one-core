@@ -13,7 +13,7 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::mapper::{credential_detail_response_from_model, credential_offered_history_event};
+use super::mapper::credential_detail_response_from_model;
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::{
     get_latest_state, throw_if_latest_credential_state_eq, throw_if_state_not_in,
@@ -28,6 +28,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, DidType, KeyRole, RelatedKey};
+use crate::model::history::HistoryAction;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -42,15 +43,14 @@ use crate::service::credential::dto::{
     GetCredentialListResponseDTO, GetCredentialQueryDTO, SuspendCredentialRequestDTO,
 };
 use crate::service::credential::mapper::{
-    claims_from_create_request, credential_created_history_event,
-    credential_revocation_history_event, credential_revocation_state_to_model_state,
-    from_create_request,
+    claims_from_create_request, credential_revocation_state_to_model_state, from_create_request,
 };
 use crate::service::credential::CredentialService;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::oidc::dto::OpenID4VCICredentialResponseDTO;
+use crate::util::history::{log_history_event_credential, log_history_event_credential_revocation};
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_credentials_interaction,
 };
@@ -174,10 +174,12 @@ impl CredentialService {
             .create_credential(credential.to_owned())
             .await?;
 
-        let _ = self
-            .history_repository
-            .create_history(credential_created_history_event(credential)?)
-            .await;
+        let _ = log_history_event_credential(
+            &self.history_repository,
+            &credential,
+            HistoryAction::Created,
+        )
+        .await;
 
         Ok(result)
     }
@@ -467,10 +469,12 @@ impl CredentialService {
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
 
-        let _ = self
-            .history_repository
-            .create_history(credential_offered_history_event(credential))
-            .await;
+        let _ = log_history_event_credential(
+            &self.history_repository,
+            &credential,
+            HistoryAction::Offered,
+        )
+        .await;
 
         Ok(EntityShareResponseDTO { url })
     }
@@ -636,14 +640,12 @@ impl CredentialService {
             })
             .await?;
 
-        let _ = self
-            .history_repository
-            .create_history(credential_revocation_history_event(
-                *credential_id,
-                revocation_state,
-                credential.schema.and_then(|c| c.organisation),
-            ))
-            .await;
+        let _ = log_history_event_credential_revocation(
+            &self.history_repository,
+            &credential,
+            revocation_state,
+        )
+        .await;
 
         Ok(())
     }
@@ -888,14 +890,12 @@ impl CredentialService {
                 })
                 .await?;
 
-            let _ = self
-                .history_repository
-                .create_history(credential_revocation_history_event(
-                    credential_id,
-                    worst_revocation_state,
-                    credential_schema.organisation.clone(),
-                ))
-                .await;
+            let _ = log_history_event_credential_revocation(
+                &self.history_repository,
+                &credential,
+                worst_revocation_state,
+            )
+            .await;
         }
 
         Ok(CredentialRevocationCheckResponseDTO {

@@ -1,14 +1,9 @@
 use dto_mapper::convert_inner;
-use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::{
     model::{
         claim_schema::ClaimSchema,
-        credential::Credential,
         credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType},
-        history::{History, HistoryAction, HistoryEntityType},
-        proof::Proof,
     },
     service::{
         credential::dto::DetailCredentialSchemaResponseDTO,
@@ -50,71 +45,5 @@ impl From<CredentialClaimSchemaDTO> for CredentialSchemaClaim {
             },
             required: value.required,
         }
-    }
-}
-
-pub(super) fn credential_offered_history_event(credential: &Credential) -> History {
-    credential_history_event(credential, HistoryAction::Offered)
-}
-
-pub(super) fn credential_pending_history_event(credential: &Credential) -> History {
-    credential_history_event(credential, HistoryAction::Pending)
-}
-
-pub(super) fn credential_accepted_history_event(credential: &Credential) -> History {
-    credential_history_event(credential, HistoryAction::Accepted)
-}
-
-pub(super) fn credential_rejected_history_event(credential: &Credential) -> History {
-    credential_history_event(credential, HistoryAction::Rejected)
-}
-
-pub(super) fn proof_requested_history_event(proof: &Proof) -> History {
-    proof_history_event(proof, HistoryAction::Requested)
-}
-
-pub(super) fn proof_pending_history_event(proof: &Proof) -> History {
-    proof_history_event(proof, HistoryAction::Pending)
-}
-
-pub(crate) fn proof_rejected_history_event(proof: &Proof) -> History {
-    proof_history_event(proof, HistoryAction::Rejected)
-}
-
-pub(crate) fn proof_accepted_history_event(proof: &Proof) -> History {
-    proof_history_event(proof, HistoryAction::Accepted)
-}
-
-pub(crate) fn proof_submit_errored_history_event(proof: &Proof) -> History {
-    proof_history_event(proof, HistoryAction::Errored)
-}
-
-fn credential_history_event(credential: &Credential, action: HistoryAction) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action,
-        entity_id: Some(credential.id.into()),
-        entity_type: HistoryEntityType::Credential,
-        metadata: None,
-        organisation: credential
-            .schema
-            .as_ref()
-            .and_then(|schema| schema.organisation.to_owned()),
-    }
-}
-
-fn proof_history_event(proof: &Proof, action: HistoryAction) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action,
-        entity_id: Some(proof.id.into()),
-        entity_type: HistoryEntityType::Proof,
-        metadata: None,
-        organisation: proof
-            .holder_did
-            .as_ref()
-            .and_then(|did| did.organisation.to_owned()),
     }
 }

@@ -1,6 +1,4 @@
-use shared_types::{OrganisationId, TrustAnchorId};
-use time::OffsetDateTime;
-use uuid::Uuid;
+use shared_types::TrustAnchorId;
 
 use super::dto::{
     CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO,
@@ -10,12 +8,13 @@ use super::mapper::trust_anchor_from_request;
 use super::TrustAnchorService;
 use crate::config::core_config::TrustManagementType;
 use crate::config::validator::trust_management::validate_trust_management;
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::history::{HistoryAction, HistoryEntityType};
+use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_anchor::TrustAnchorRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
+use crate::util::history::history_event;
 
 impl TrustAnchorService {
     pub async fn create_trust_anchor(
@@ -46,9 +45,10 @@ impl TrustAnchorService {
             Ok(id) => {
                 let _ = self
                     .history_repository
-                    .create_history(create_history_event(
+                    .create_history(history_event(
                         id,
                         organisation.id,
+                        HistoryEntityType::TrustAnchor,
                         HistoryAction::Created,
                     ))
                     .await;
@@ -156,33 +156,14 @@ impl TrustAnchorService {
 
         let _ = self
             .history_repository
-            .create_history(create_history_event(
+            .create_history(history_event(
                 anchor.id,
                 organisation.id,
+                HistoryEntityType::TrustAnchor,
                 HistoryAction::Deleted,
             ))
             .await;
 
         Ok(())
-    }
-}
-
-fn create_history_event(
-    trust_id: TrustAnchorId,
-    organisation_id: OrganisationId,
-    action: HistoryAction,
-) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action,
-        entity_id: Some(trust_id.into()),
-        entity_type: HistoryEntityType::TrustAnchor,
-        metadata: None,
-        organisation: Some(Organisation {
-            id: organisation_id,
-            created_date: OffsetDateTime::UNIX_EPOCH,
-            last_modified: OffsetDateTime::UNIX_EPOCH,
-        }),
     }
 }

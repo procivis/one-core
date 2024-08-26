@@ -14,7 +14,6 @@ use super::dto::{
 };
 use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
-    proof_requested_history_event,
 };
 use super::validator::validate_mdl_exchange;
 use super::ProofService;
@@ -29,6 +28,7 @@ use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
+use crate::model::history::HistoryAction;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -60,6 +60,7 @@ use crate::service::proof::validator::{
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::ble_resource::Abort;
+use crate::util::history::log_history_event_proof;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_proof_interaction,
 };
@@ -407,9 +408,7 @@ impl ProofService {
         update_proof_interaction(proof.id, interaction_id, &*self.proof_repository).await?;
         clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
 
-        let _ = self
-            .history_repository
-            .create_history(proof_requested_history_event(proof))
+        let _ = log_history_event_proof(&self.history_repository, &proof, HistoryAction::Requested)
             .await;
 
         Ok(EntityShareResponseDTO { url })

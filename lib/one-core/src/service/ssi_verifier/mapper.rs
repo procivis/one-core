@@ -1,9 +1,3 @@
-use shared_types::EntityId;
-use time::OffsetDateTime;
-use uuid::Uuid;
-
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::proof::Proof;
 use crate::{
     model::{
         credential_schema::CredentialSchema,
@@ -66,51 +60,5 @@ impl From<(ProofInputClaimSchema, CredentialSchema)> for ProofRequestClaimDTO {
             required: claim_schema.required,
             credential_schema: credential_schema.into(),
         }
-    }
-}
-
-pub(crate) fn proof_rejected_history_event(proof: &Proof) -> History {
-    history_event(
-        proof.id.into(),
-        proof.verifier_did.as_ref(),
-        HistoryEntityType::Proof,
-        HistoryAction::Rejected,
-    )
-}
-
-pub(crate) fn proof_accepted_history_event(proof: &Proof) -> History {
-    history_event(
-        proof.id.into(),
-        proof.verifier_did.as_ref(),
-        HistoryEntityType::Proof,
-        HistoryAction::Accepted,
-    )
-}
-
-pub(crate) fn proof_accept_errored_history_event(proof: &Proof) -> History {
-    history_event(
-        proof.id.into(),
-        proof.verifier_did.as_ref(),
-        HistoryEntityType::Proof,
-        HistoryAction::Errored,
-    )
-}
-
-fn history_event(
-    entity_id: EntityId,
-    verifier_did: Option<&Did>,
-    entity_type: HistoryEntityType,
-    action: HistoryAction,
-) -> History {
-    let organisation = verifier_did.and_then(|did| did.organisation.clone());
-
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action,
-        entity_id: entity_id.into(),
-        entity_type,
-        metadata: None,
-        organisation,
     }
 }

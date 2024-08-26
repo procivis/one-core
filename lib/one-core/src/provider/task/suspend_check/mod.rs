@@ -10,6 +10,7 @@ use super::Task;
 use crate::model::key::KeyRelations;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::util::history::log_history_event_credential_revocation;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 use crate::{
     model::{
@@ -26,7 +27,7 @@ use crate::{
         credential_repository::CredentialRepository, history_repository::HistoryRepository,
     },
     service::{
-        credential::{dto::CredentialFilterValue, mapper::credential_revocation_history_event},
+        credential::dto::CredentialFilterValue,
         error::{EntityNotFoundError, MissingProviderError, ServiceError},
     },
 };
@@ -165,14 +166,12 @@ impl Task for SuspendCheckProvider {
                 })
                 .await?;
 
-            let _ = self
-                .history_repository
-                .create_history(credential_revocation_history_event(
-                    credential_id,
-                    CredentialRevocationState::Valid,
-                    credential.schema.and_then(|c| c.organisation),
-                ))
-                .await;
+            let _ = log_history_event_credential_revocation(
+                &self.history_repository,
+                &credential,
+                CredentialRevocationState::Valid,
+            )
+            .await;
         }
 
         let result = SuspendCheckResultDTO {
