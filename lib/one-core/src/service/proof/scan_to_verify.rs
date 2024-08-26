@@ -23,23 +23,23 @@ impl ProofService {
     pub(super) async fn handle_scan_to_verify(
         &self,
         proof_schema: ProofSchema,
-        exchange: &str,
-        submission: &ScanToVerifyRequestDTO,
+        exchange: String,
+        submission: ScanToVerifyRequestDTO,
     ) -> Result<ProofId, ServiceError> {
         let exchange_protocol = self
             .protocol_provider
-            .get_protocol(exchange)
+            .get_protocol(&exchange)
             .ok_or(MissingProviderError::ExchangeProtocol(exchange.to_owned()))?;
 
         let organisation_id = proof_schema.organisation.to_owned();
 
-        let submission_data = serde_json::to_vec(submission)
+        let submission_data = serde_json::to_vec(&submission)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         let transport = get_available_transport_type(&self.config.transport)?;
 
         let proof =
-            proof_for_scan_to_verify(exchange, proof_schema, transport, submission_data.clone());
+            proof_for_scan_to_verify(&exchange, proof_schema, transport, submission_data.clone());
 
         self.interaction_repository
             .create_interaction(proof.interaction.clone().ok_or(ServiceError::MappingError(

@@ -1,12 +1,10 @@
 use std::future::Future;
 use std::sync::Arc;
 
+use futures::future::BoxFuture;
 use futures::FutureExt;
-use tokio::select;
-use tokio::sync::oneshot::{Receiver, Sender};
-use tokio::sync::{oneshot, Mutex, MutexGuard};
-use tokio_util::sync::{CancellationToken, DropGuard};
-use tokio_util::task::TaskTracker;
+use tokio::sync::{mpsc, Mutex};
+use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
@@ -21,19 +19,18 @@ struct Action {
     flow_id: Uuid,
     /// Indicates if flow has multiple steps
     expect_continuation: bool,
-    tracker: TaskTracker,
-    abort: Sender<()>,
-    _cancellation_token: DropGuard,
+    handle: JoinHandle<()>,
+    cancellation: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static>,
 }
 
 impl Action {
     fn finished(&self) -> bool {
-        !self.expect_continuation && self.tracker.is_empty()
+        !self.expect_continuation && self.handle.is_finished()
     }
 
     async fn abort(self) {
-        let _ = self.abort.send(());
-        self.tracker.wait().await;
+        self.handle.abort();
+        (self.cancellation)().await;
     }
 }
 
@@ -45,6 +42,12 @@ pub enum OnConflict {
     Replace,
     /// Abort active task if [`Action::flow_id`] matches given flow_id
     ReplaceIfSameFlow,
+}
+
+pub enum Abort {
+    Always,
+    Flow(Uuid),
+    Task(Uuid),
 }
 
 pub enum JoinResult<T> {
@@ -64,7 +67,7 @@ impl<T> JoinResult<T> {
 pub enum ScheduleResult<T> {
     Scheduled {
         /// Handle to async computation
-        handle: Receiver<JoinResult<T>>,
+        handle: BoxFuture<'static, JoinResult<T>>,
         task_id: Uuid,
     },
     Busy,
@@ -73,10 +76,7 @@ pub enum ScheduleResult<T> {
 impl<T> ScheduleResult<T> {
     pub async fn value_or<E>(self, err: E) -> Result<(Uuid, JoinResult<T>), E> {
         match self {
-            Self::Scheduled { handle, task_id } => {
-                let result = handle.await.map_err(|_| err)?;
-                Ok((task_id, result))
-            }
+            Self::Scheduled { handle, task_id } => Ok((task_id, handle.await)),
             Self::Busy => Err(err),
         }
     }
@@ -113,7 +113,7 @@ impl BleWaiter {
         &self,
         flow_id: Uuid,
         flow: F,
-        cancelation: C,
+        cancellation: C,
         on_conflict: OnConflict,
         expect_continuation: bool,
     ) -> ScheduleResult<FR::Output>
@@ -125,36 +125,24 @@ impl BleWaiter {
         CR: Future + Send,
     {
         let mut state = self.state.lock().await;
-        match (state.as_ref(), on_conflict) {
-            (None, _) => {
-                let (action, handle) = self.spawn(flow_id, flow, cancelation, expect_continuation);
-                let task_id = action.task_id;
-                state.replace(action);
-                ScheduleResult::Scheduled { handle, task_id }
-            }
-            (Some(action), _) if action.finished() => {
-                let (action, handle) = self.spawn(flow_id, flow, cancelation, expect_continuation);
-                let task_id = action.task_id;
-                state.replace(action);
-                ScheduleResult::Scheduled { handle, task_id }
-            }
-            (Some(_), OnConflict::DoNothing) => ScheduleResult::Busy,
-            (Some(_), OnConflict::Replace) => {
-                self.abort_inner(&mut state, None, false).await;
-                let (action, handle) = self.spawn(flow_id, flow, cancelation, expect_continuation);
-                let task_id = action.task_id;
-                state.replace(action);
-                ScheduleResult::Scheduled { handle, task_id }
-            }
-            (Some(running), OnConflict::ReplaceIfSameFlow) if running.flow_id == flow_id => {
-                self.abort_inner(&mut state, None, false).await;
-                let (action, handle) = self.spawn(flow_id, flow, cancelation, expect_continuation);
-                let task_id = action.task_id;
-                state.replace(action);
-                ScheduleResult::Scheduled { handle, task_id }
-            }
-            (Some(_), OnConflict::ReplaceIfSameFlow) => ScheduleResult::Busy,
+        let should_replace = match (state.as_ref(), on_conflict) {
+            (None, _) => true,
+            (Some(action), _) if action.finished() => true,
+            (Some(_), OnConflict::DoNothing) => false,
+            (Some(_), OnConflict::Replace) => true,
+            (Some(running), OnConflict::ReplaceIfSameFlow) if running.flow_id == flow_id => true,
+            (Some(_), OnConflict::ReplaceIfSameFlow) => false,
+        };
+
+        if !should_replace {
+            return ScheduleResult::Busy;
         }
+
+        self.abort_inner(&mut state, Abort::Always).await;
+        let (action, handle) = self.spawn(flow_id, flow, cancellation, expect_continuation);
+        let task_id = action.task_id;
+        state.replace(action);
+        ScheduleResult::Scheduled { handle, task_id }
     }
 
     /// Schedule next step of flow
@@ -162,7 +150,7 @@ impl BleWaiter {
         &self,
         task_id: Uuid,
         flow: F,
-        cancelation: C,
+        cancellation: C,
         expect_continuation: bool,
     ) -> ScheduleResult<FR::Output>
     where
@@ -173,23 +161,22 @@ impl BleWaiter {
         CR: Future + Send,
     {
         let mut state = self.state.lock().await;
-        match state.as_ref() {
+        match state.take_if(|action| action.task_id == task_id && action.expect_continuation) {
             None => ScheduleResult::Busy,
-            Some(action) if action.task_id == task_id && action.expect_continuation => {
-                action.tracker.wait().await;
+            Some(action) => {
+                let _ = action.handle.await;
                 let (action, handle) =
-                    self.spawn(action.flow_id, flow, cancelation, expect_continuation);
+                    self.spawn(action.flow_id, flow, cancellation, expect_continuation);
                 let task_id = action.task_id;
                 state.replace(action);
                 ScheduleResult::Scheduled { handle, task_id }
             }
-            Some(_) => ScheduleResult::Busy,
         }
     }
 
-    pub async fn abort(&self, flow_id: Option<Uuid>) {
+    pub async fn abort(&self, abort: Abort) {
         let mut state = self.state.lock().await;
-        self.abort_inner(&mut state, flow_id, true).await
+        self.abort_inner(&mut state, abort).await
     }
 
     pub async fn is_enabled(&self) -> Result<BleStatus, BleError> {
@@ -207,7 +194,7 @@ impl BleWaiter {
         flow: F,
         cancellation: C,
         expect_continuation: bool,
-    ) -> (Action, Receiver<JoinResult<FR::Output>>)
+    ) -> (Action, BoxFuture<'static, JoinResult<FR::Output>>)
     where
         F: FnOnce(Uuid, Arc<dyn BleCentral>, Arc<dyn BlePeripheral>) -> FR,
         FR: Future + Send + 'static,
@@ -216,74 +203,55 @@ impl BleWaiter {
         CR: Future + Send,
     {
         let task_id = Uuid::new_v4();
-        let tracker = TaskTracker::new();
-        let cancellation_token = CancellationToken::new();
-        let (abort, on_abort) = oneshot::channel();
-        let (finish, on_finish) = oneshot::channel();
         let task = flow(task_id, self.central.clone(), self.peripheral.clone());
+        let (finish, mut on_finish) = mpsc::channel(2);
+        let finish_clone = finish.clone();
+
+        let handle = tokio::spawn(async move {
+            let val = task.await;
+            let _ = finish.send(JoinResult::Ok(val)).await;
+        });
+
         let central = self.central.clone();
         let peripheral = self.peripheral.clone();
 
-        let on_abort = on_abort.shared();
-
-        let cloned_token = cancellation_token.clone();
-        let cloned_abort = on_abort.clone();
-
-        let cancellation_handler = tokio::spawn(async move {
-            select! {
-                biased;
-
-                Ok(_) = cloned_abort => {
-                    let _ = cancellation(central.clone(), peripheral.clone()).await;
-                }
-                _ = cloned_token.cancelled() => {}
+        let cancellation = Box::new(move || {
+            async move {
+                cancellation(central, peripheral).await;
+                let _ = finish_clone.send(JoinResult::Aborted).await;
             }
+            .boxed()
         });
 
-        tracker.spawn(async move {
-            let result = select! {
-                val = task => JoinResult::Ok(val),
-                Ok(_) = on_abort => {
-                    let _ = cancellation_handler.await;
-                    JoinResult::Aborted
-                }
-            };
-            let _ = finish.send(result);
-        });
-
-        tracker.close();
+        let on_finish =
+            async move { on_finish.recv().await.unwrap_or(JoinResult::Aborted) }.boxed();
 
         (
             Action {
                 task_id,
                 flow_id,
-                tracker,
-                abort,
                 expect_continuation,
-                _cancellation_token: cancellation_token.drop_guard(),
+                handle,
+                cancellation,
             },
             on_finish,
         )
     }
 
-    async fn abort_inner<'a>(
-        &self,
-        state: &mut MutexGuard<'_, Option<Action>>,
-        flow_id: Option<Uuid>,
-        abort_if_finished: bool,
-    ) {
+    async fn abort_inner(&self, state: &mut Option<Action>, abort: Abort) {
         let Some(action) = state.take() else {
             return;
         };
 
-        if action.tracker.is_empty() && !abort_if_finished {
+        if action.finished() {
             return;
         }
 
-        match flow_id {
-            None => action.abort().await,
-            Some(flow_id) if action.flow_id == flow_id => action.abort().await,
-            Some(_) => (),
+        match abort {
+            Abort::Always => action.abort().await,
+            Abort::Flow(flow_id) if action.flow_id == flow_id => action.abort().await,
+            Abort::Task(task_id) if action.task_id == task_id => action.abort().await,
+            _ => (),
         }
     }
 }

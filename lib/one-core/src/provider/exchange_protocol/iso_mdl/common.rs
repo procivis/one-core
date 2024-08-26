@@ -44,14 +44,14 @@ pub struct DeviceRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocRequest {
-    items_request: EmbeddedCbor<ItemsRequest>,
+    pub items_request: EmbeddedCbor<ItemsRequest>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ItemsRequest {
-    doc_type: String,
-    name_spaces: HashMap<NameSpace, DataElements>,
+    pub doc_type: String,
+    pub name_spaces: HashMap<NameSpace, DataElements>,
 }
 
 pub type NameSpace = String;
@@ -67,6 +67,15 @@ impl TryFrom<Vec<u8>> for Chunk {
             [0, ..] => Ok(Self::Last(value[1..].to_vec())),
             [1, ..] => Ok(Self::Next(value[1..].to_vec())),
             _ => Err(anyhow!("invalid data format")),
+        }
+    }
+}
+
+impl From<Chunk> for Vec<u8> {
+    fn from(value: Chunk) -> Self {
+        match value {
+            Chunk::Last(v) => std::iter::once(0).chain(v).collect(),
+            Chunk::Next(v) => std::iter::once(1).chain(v).collect(),
         }
     }
 }
@@ -199,7 +208,7 @@ impl KeyAgreement<EReaderKey> {
         &self.pk
     }
 
-    fn derive_session_keys(
+    pub fn derive_session_keys(
         self,
         pk: EDeviceKey,
         session_transcript_bytes: &[u8],
@@ -367,7 +376,7 @@ pub fn create_session_transcript_bytes(
     to_cbor(&session_transcript)
 }
 
-fn to_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, ExchangeProtocolError> {
+pub fn to_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, ExchangeProtocolError> {
     let mut buff = vec![];
     ciborium::into_writer(value, &mut buff)
         .context("serialization error")

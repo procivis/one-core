@@ -1,9 +1,11 @@
-use super::dto::CreateProofRequestDTO;
-use crate::config::core_config::{CoreConfig, ExchangeType};
-use crate::model::proof_schema::ProofSchema;
-use crate::service::error::ValidationError;
-use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+
+use super::dto::CreateProofRequestDTO;
+use crate::config::core_config::{CoreConfig, ExchangeConfig, ExchangeType};
+use crate::model::proof_schema::ProofSchema;
+use crate::service::error::{
+    BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
+};
 
 pub(super) fn validate_format_and_exchange_protocol_compatibility(
     exchange: &str,
@@ -74,4 +76,23 @@ pub(super) fn validate_scan_to_verify_compatibility(
     };
 
     Ok(())
+}
+
+pub(super) fn validate_mdl_exchange(
+    exchange: &str,
+    engagement: Option<&str>,
+    redirect_uri: Option<&str>,
+    config: &ExchangeConfig,
+) -> Result<(), ServiceError> {
+    let exchange_type = config.get_fields(exchange)?.r#type;
+    match exchange_type {
+        ExchangeType::IsoMdl if redirect_uri.is_some() => Err(ServiceError::Validation(
+            ValidationError::InvalidMdlParameters,
+        )),
+        ExchangeType::IsoMdl if engagement.is_some() => Ok(()),
+        _ if engagement.is_some() => Err(ServiceError::Validation(
+            ValidationError::InvalidMdlParameters,
+        )),
+        _ => Ok(()),
+    }
 }

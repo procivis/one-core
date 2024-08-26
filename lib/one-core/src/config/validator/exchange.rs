@@ -1,4 +1,5 @@
-use crate::{config::core_config::ExchangeConfig, service::error::ValidationError};
+use crate::config::core_config::ExchangeConfig;
+use crate::service::error::ValidationError;
 
 pub fn validate_exchange_type(value: &str, config: &ExchangeConfig) -> Result<(), ValidationError> {
     config

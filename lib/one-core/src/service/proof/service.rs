@@ -16,6 +16,7 @@ use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
     proof_requested_history_event,
 };
+use super::validator::validate_mdl_exchange;
 use super::ProofService;
 use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
@@ -49,7 +50,7 @@ use crate::provider::exchange_protocol::iso_mdl::device_engagement::{
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_ble::SERVICE_UUID;
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::OIDC_BLE_FLOW;
 use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -58,6 +59,7 @@ use crate::service::proof::validator::{
     validate_format_and_exchange_protocol_compatibility, validate_scan_to_verify_compatibility,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
+use crate::util::ble_resource::Abort;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_proof_interaction,
 };
@@ -218,6 +220,12 @@ impl ProofService {
         request: CreateProofRequestDTO,
     ) -> Result<ProofId, ServiceError> {
         validate_exchange_type(&request.exchange, &self.config.exchange)?;
+        validate_mdl_exchange(
+            &request.exchange,
+            request.iso_mdl_engagement.as_deref(),
+            request.redirect_uri.as_deref(),
+            &self.config.exchange,
+        )?;
 
         let now = OffsetDateTime::now_utc();
         let proof_schema_id = request.proof_schema_id;
@@ -258,11 +266,20 @@ impl ProofService {
             return self
                 .handle_scan_to_verify(
                     proof_schema,
-                    &request.exchange,
+                    request.exchange,
                     request
                         .scan_to_verify
-                        .as_ref()
                         .ok_or(ValidationError::InvalidScanToVerifyParameters)?,
+                )
+                .await;
+        } else if exchange_type == ExchangeType::IsoMdl {
+            return self
+                .handle_iso_mdl(
+                    proof_schema,
+                    request.exchange,
+                    request
+                        .iso_mdl_engagement
+                        .ok_or(ValidationError::InvalidMdlParameters)?,
                 )
                 .await;
         }
@@ -441,7 +458,7 @@ impl ProofService {
             self.ble
                 .as_ref()
                 .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?
-                .abort(uuid::uuid!(SERVICE_UUID).into())
+                .abort(Abort::Flow(*OIDC_BLE_FLOW))
                 .await;
         } else if let Ok(interaction) = deserialize_interaction_data::<MdocBleInteractionData>(
             proof.interaction.as_ref().and_then(|i| i.data.as_ref()),
@@ -449,7 +466,7 @@ impl ProofService {
             self.ble
                 .as_ref()
                 .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?
-                .abort(Some(interaction.service_id))
+                .abort(Abort::Task(interaction.task_id))
                 .await;
         }
 
