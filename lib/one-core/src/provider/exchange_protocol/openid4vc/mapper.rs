@@ -455,8 +455,11 @@ fn from_jwt_request_claim_schema(
 
 pub(crate) async fn fetch_procivis_schema(
     schema_id: &str,
+    client: &reqwest::Client,
 ) -> Result<CredentialSchemaDetailResponseDTO, reqwest::Error> {
-    reqwest::get(schema_id)
+    client
+        .get(schema_id)
+        .send()
         .await?
         .error_for_status()?
         .json()

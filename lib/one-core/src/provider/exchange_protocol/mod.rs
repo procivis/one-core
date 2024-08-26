@@ -63,6 +63,7 @@ pub fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn exchange_protocol_providers_from_config(
+    client: reqwest::Client,
     config: Arc<CoreConfig>,
     core_base_url: Option<String>,
     data_provider: Arc<dyn DataRepository>,
@@ -83,6 +84,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     formatter_provider.clone(),
                     key_provider.clone(),
                     config.clone(),
+                    client.clone(),
                 )));
 
                 providers.insert(name.to_string(), protocol);
@@ -113,6 +115,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
                     params,
+                    client.clone(),
                 );
                 let protocol = Arc::new(OpenID4VC::new(http, ble));
                 providers.insert(name.to_string(), protocol);

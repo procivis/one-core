@@ -62,6 +62,7 @@ pub type DidMethodCreator = Box<
     dyn FnOnce(
         &mut DidConfig,
         &OneCoreBuilderProviders,
+        &reqwest::Client,
     ) -> (Arc<dyn DidMethodProvider>, Option<Arc<dyn DidMdlValidator>>),
 >;
 
@@ -77,6 +78,7 @@ pub type FormatterProviderCreator = Box<
         &mut FormatConfig,
         &DatatypeConfig,
         &OneCoreBuilderProviders,
+        &reqwest::Client,
     ) -> Arc<dyn CredentialFormatterProvider>,
 >;
 
@@ -85,6 +87,7 @@ pub type DataProviderCreator = Box<dyn FnOnce() -> Arc<dyn DataRepository>>;
 pub type RevocationMethodCreator = Box<
     dyn FnOnce(
         &mut RevocationConfig,
+        &reqwest::Client,
         &OneCoreBuilderProviders,
     ) -> Arc<dyn RevocationMethodProvider>,
 >;
@@ -134,12 +137,14 @@ pub struct OneCoreBuilder {
     ble_central: Option<Arc<dyn BleCentral>>,
     data_provider_creator: Option<DataProviderCreator>,
     jsonld_caching_loader: Option<JsonLdCachingLoader>,
+    http_client: reqwest::Client,
 }
 
 impl OneCoreBuilder {
     pub fn new(core_config: CoreConfig) -> Self {
         OneCoreBuilder {
             core_config,
+            http_client: reqwest::Client::new(),
             ..Default::default()
         }
     }
@@ -172,8 +177,11 @@ impl OneCoreBuilder {
     }
 
     pub fn with_did_method_provider(mut self, did_met_provider: DidMethodCreator) -> Self {
-        let (did_method_provider, did_mdl_validator) =
-            did_met_provider(&mut self.core_config.did, &self.providers);
+        let (did_method_provider, did_mdl_validator) = did_met_provider(
+            &mut self.core_config.did,
+            &self.providers,
+            &self.http_client,
+        );
         self.providers.did_method_provider = Some(did_method_provider);
         self.providers.did_mdl_validator = did_mdl_validator;
         self
@@ -183,8 +191,11 @@ impl OneCoreBuilder {
         mut self,
         revocation_met_provider: RevocationMethodCreator,
     ) -> Self {
-        let revocation_method_provider =
-            revocation_met_provider(&mut self.core_config.revocation, &self.providers);
+        let revocation_method_provider = revocation_met_provider(
+            &mut self.core_config.revocation,
+            &self.http_client,
+            &self.providers,
+        );
         self.providers.revocation_method_provider = Some(revocation_method_provider);
         self
     }
@@ -197,6 +208,7 @@ impl OneCoreBuilder {
             &mut self.core_config.format,
             &self.core_config.datatype,
             &self.providers,
+            &self.http_client,
         );
         self.providers.formatter_provider = Some(formatter_provider);
         self
@@ -223,6 +235,11 @@ impl OneCoreBuilder {
         self
     }
 
+    pub fn with_http_client(mut self, client: reqwest::Client) -> Self {
+        self.http_client = client;
+        self
+    }
+
     pub fn build(self) -> Result<OneCore, ConfigError> {
         OneCore::new(
             self.data_provider_creator
@@ -232,6 +249,7 @@ impl OneCoreBuilder {
             self.ble_central,
             self.providers,
             self.jsonld_caching_loader,
+            self.http_client,
         )
     }
 }
@@ -245,6 +263,7 @@ impl OneCore {
         ble_central: Option<Arc<dyn BleCentral>>,
         providers: OneCoreBuilderProviders,
         jsonld_caching_loader: Option<JsonLdCachingLoader>,
+        http_client: reqwest::Client,
     ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
@@ -316,6 +335,7 @@ impl OneCore {
         let config = Arc::new(core_config);
 
         let exchange_protocols = exchange_protocol_providers_from_config(
+            http_client.clone(),
             config.clone(),
             providers.core_base_url.clone(),
             data_provider.clone(),
@@ -383,6 +403,7 @@ impl OneCore {
                 config.clone(),
                 data_provider.get_validity_credential_repository(),
                 providers.core_base_url.clone(),
+                http_client.clone(),
             ),
             did_service: DidService::new(
                 data_provider.get_did_repository(),
@@ -497,10 +518,11 @@ impl OneCore {
                 protocol_provider,
                 did_method_provider,
                 config.clone(),
+                http_client.clone(),
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),
-            jsonld_service: JsonLdService::new(jsonld_caching_loader),
+            jsonld_service: JsonLdService::new(jsonld_caching_loader, http_client),
             config,
         })
     }

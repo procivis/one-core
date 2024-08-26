@@ -79,7 +79,7 @@ impl SSIHolderService {
         let handle_operations = HandleInvitationOperationsImpl::new(
             organisation.clone().into(),
             self.credential_schema_repository.clone(),
-            self.config.clone(),
+            self.client.clone(),
         );
 
         let response = protocol
@@ -431,8 +431,8 @@ impl SSIHolderService {
                     "credential_status id is None".to_string(),
                 ))?;
 
-                let client = reqwest::Client::new();
-                let response: IssuerResponseDTO = client
+                let response: IssuerResponseDTO = self
+                    .client
                     .get(lvvc_url)
                     .bearer_auth(bearer_token)
                     .send()

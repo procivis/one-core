@@ -12,12 +12,10 @@ pub struct JsonLdService {
 }
 
 impl JsonLdService {
-    pub fn new(caching_loader: JsonLdCachingLoader) -> Self {
+    pub fn new(caching_loader: JsonLdCachingLoader, client: reqwest::Client) -> Self {
         Self {
             caching_loader,
-            resolver: Arc::new(JsonLdResolver {
-                client: reqwest::Client::new(),
-            }),
+            resolver: Arc::new(JsonLdResolver::new(client)),
         }
     }
 }

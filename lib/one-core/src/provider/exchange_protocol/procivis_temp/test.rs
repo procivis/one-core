@@ -33,6 +33,7 @@ fn setup_protocol(base_url: Option<String>, repositories: Repositories) -> Proci
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.key_provider),
         Arc::new(generic_config().core),
+        reqwest::Client::new(),
     )
 }
 

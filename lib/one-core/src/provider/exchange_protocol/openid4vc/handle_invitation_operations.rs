@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::mapper::{fetch_procivis_schema, from_create_request};
 use one_providers::common_models::credential::CredentialId;
 use one_providers::common_models::credential_schema::{OpenCredentialSchema, OpenLayoutType};
 use one_providers::common_models::organisation::OpenOrganisation;
@@ -18,32 +17,33 @@ use one_providers::exchange_protocol::openid4vc::{
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::mapper::parse_procivis_schema_claim;
-use crate::config::core_config::CoreConfig;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_claims_from_credential_definition, parse_mdoc_schema_claims,
 };
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::util::oidc::map_from_oidc_format_to_core;
 
+use super::mapper::parse_procivis_schema_claim;
+use super::mapper::{fetch_procivis_schema, from_create_request};
+
 pub const NESTED_CLAIM_MARKER: char = '/';
 
 pub struct HandleInvitationOperationsImpl {
-    pub organisation: OpenOrganisation,
-    pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
-    pub config: Arc<CoreConfig>,
+    organisation: OpenOrganisation,
+    credential_schemas: Arc<dyn CredentialSchemaRepository>,
+    client: reqwest::Client,
 }
 
 impl HandleInvitationOperationsImpl {
     pub fn new(
         organisation: OpenOrganisation,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
-        config: Arc<CoreConfig>,
+        client: reqwest::Client,
     ) -> Self {
         Self {
             organisation,
             credential_schemas,
-            config,
+            client,
         }
     }
 }
@@ -146,7 +146,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
     ) -> Result<BuildCredentialSchemaResponse, ExchangeProtocolError> {
         let result = match schema_data.schema_type.as_str() {
             "ProcivisOneSchema2024" => {
-                let procivis_schema = fetch_procivis_schema(&schema_data.schema_id)
+                let procivis_schema = fetch_procivis_schema(&schema_data.schema_id, &self.client)
                     .await
                     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 

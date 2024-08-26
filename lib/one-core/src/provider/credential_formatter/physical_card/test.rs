@@ -165,7 +165,8 @@ async fn test_mrz_proof_process() {
         },
     );
 
-    let formatter = PhysicalCardFormatter::new(Arc::new(crypto), caching_loader);
+    let formatter =
+        PhysicalCardFormatter::new(Arc::new(crypto), caching_loader, reqwest::Client::new());
 
     formatter
         .extract_credentials(&token, Box::new(token_verifier))
@@ -181,6 +182,7 @@ async fn test_employment_document_mrz_claim_extraction() {
     let formatter = PhysicalCardFormatter::new(
         Arc::new(MockCryptoProvider::default()),
         prepare_caching_loader(),
+        reqwest::Client::new(),
     );
 
     let token = serde_json::to_string(&ScanToVerifyCredentialDTO {

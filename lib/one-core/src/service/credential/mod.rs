@@ -35,6 +35,7 @@ pub struct CredentialService {
     config: Arc<core_config::CoreConfig>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     base_url: Option<String>,
+    client: reqwest::Client,
 }
 
 impl CredentialService {
@@ -53,6 +54,7 @@ impl CredentialService {
         config: Arc<core_config::CoreConfig>,
         lvvc_repository: Arc<dyn ValidityCredentialRepository>,
         base_url: Option<String>,
+        client: reqwest::Client,
     ) -> Self {
         Self {
             credential_repository: repository,
@@ -68,6 +70,7 @@ impl CredentialService {
             config,
             validity_credential_repository: lvvc_repository,
             base_url,
+            client,
         }
     }
 }
