@@ -10,12 +10,12 @@ use rand::Rng;
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::select;
-use uuid::{uuid, Uuid};
+use uuid::Uuid;
 
 use super::{
     BLEParse, BLEPeer, IdentityRequest, KeyAgreementKey, MessageSize, TransferSummaryReport,
-    CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, REQUEST_SIZE_UUID, SERVICE_UUID,
-    SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
+    CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, OIDC_BLE_FLOW, REQUEST_SIZE_UUID,
+    SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
 };
 use crate::model::interaction::Interaction;
 use crate::model::proof::{ProofState, ProofStateEnum};
@@ -34,7 +34,7 @@ use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::util::ble_resource::{BleWaiter, OnConflict};
+use crate::util::ble_resource::{Abort, BleWaiter, OnConflict};
 
 pub struct OpenID4VCBLEHolder {
     pub proof_repository: Arc<dyn ProofRepository>,
@@ -72,14 +72,12 @@ impl OpenID4VCBLEHolder {
         proof_id: ProofId,
         interaction_id: Uuid,
     ) -> Result<(), ExchangeProtocolError> {
-        let flow_id = uuid!(SERVICE_UUID);
-
         let interaction_repository = self.interaction_repository.clone();
 
         let result = self
             .ble
             .schedule(
-                flow_id,
+                *OIDC_BLE_FLOW,
                 |task_id, central, _| async move {
                     let verifier_public_key: [u8; 32] = hex::decode(&x25519_public_key_hex)
                         .context("Failed to decode verifier public key")
@@ -217,7 +215,7 @@ impl OpenID4VCBLEHolder {
     }
 
     pub async fn disconnect_from_verifier(&self) {
-        self.ble.abort(Some(uuid!(SERVICE_UUID))).await;
+        self.ble.abort(Abort::Flow(*OIDC_BLE_FLOW)).await;
     }
 
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]

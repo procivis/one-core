@@ -1,38 +1,31 @@
-use super::dto::ValidatedProofClaimDTO;
-use crate::{
-    common_validator::{is_lvvc, validate_expiration_time, validate_issuance_time},
-    model::{
-        credential_schema::CredentialSchema,
-        did::{Did, KeyRole},
-        proof_schema::{ProofInputClaimSchema, ProofSchema},
-    },
-    service::error::{BusinessLogicError, MissingProviderError, ServiceError},
-    util::{key_verification::KeyVerification, oidc::map_from_oidc_format_to_core_detailed},
-};
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
+use one_providers::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::did::provider::DidMethodProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
 use one_providers::revocation::provider::RevocationMethodProvider;
-use one_providers::{
-    credential_formatter::model::{DetailCredential, ExtractPresentationCtx},
-    key_algorithm::provider::KeyAlgorithmProvider,
-};
-use one_providers::{
-    credential_formatter::provider::CredentialFormatterProvider, did::provider::DidMethodProvider,
-};
 use shared_types::CredentialSchemaId;
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+
+use super::dto::ValidatedProofClaimDTO;
+use crate::common_validator::{is_lvvc, validate_expiration_time, validate_issuance_time};
+use crate::model::credential_schema::CredentialSchema;
+use crate::model::did::{Did, KeyRole};
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
+use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
+use crate::util::key_verification::KeyVerification;
+use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 
 #[allow(clippy::too_many_arguments)]
-pub(super) async fn validate_proof(
+pub async fn validate_proof(
     proof_schema: &ProofSchema,
     holder_did: &Did,
     presentation: &str,
-    formatter_provider: &(dyn CredentialFormatterProvider),
+    formatter_provider: &dyn CredentialFormatterProvider,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -326,7 +319,7 @@ fn extract_matching_requested_schema(
 
 async fn extract_lvvcs(
     presentation_credentials: &[String],
-    formatter_provider: &(dyn CredentialFormatterProvider),
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<Vec<DetailCredential>, ServiceError> {
     let mut result = vec![];
 

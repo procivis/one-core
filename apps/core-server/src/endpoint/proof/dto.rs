@@ -53,6 +53,8 @@ pub struct CreateProofRequestRestDTO {
     pub verifier_key: Option<KeyId>,
     #[into(with_fn = convert_inner)]
     pub scan_to_verify: Option<ScanToVerifyRequestRestDTO>,
+    #[into(with_fn = convert_inner)]
+    pub iso_mdl_engagement: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]

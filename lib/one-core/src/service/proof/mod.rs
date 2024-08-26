@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
 
@@ -16,6 +17,7 @@ use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::util::ble_resource::BleWaiter;
 
 pub mod dto;
+mod iso_mdl;
 mod mapper;
 mod scan_to_verify;
 pub mod service;
@@ -33,6 +35,7 @@ pub struct ProofService {
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     ble: Option<BleWaiter>,
     config: Arc<core_config::CoreConfig>,
     base_url: Option<String>,
@@ -52,6 +55,7 @@ impl ProofService {
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         ble: Option<BleWaiter>,
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
@@ -68,6 +72,7 @@ impl ProofService {
             credential_formatter_provider,
             revocation_method_provider,
             protocol_provider,
+            did_method_provider,
             ble,
             config,
             base_url,

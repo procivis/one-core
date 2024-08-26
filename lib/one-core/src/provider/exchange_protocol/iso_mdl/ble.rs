@@ -1,7 +1,15 @@
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::iter;
+use std::sync::{Arc, LazyLock};
 
 use anyhow::{anyhow, Context};
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use one_providers::common_models::NESTED_CLAIM_MARKER;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::revocation::provider::RevocationMethodProvider;
 use serde::de::DeserializeOwned;
 use shared_types::ProofId;
 use time::OffsetDateTime;
@@ -9,22 +17,32 @@ use tokio::sync::oneshot;
 use uuid::Uuid;
 
 use super::common::{
-    create_session_transcript_bytes, Chunk, DeviceRequest, EDeviceKey, KeyAgreement, ServerInfo,
+    create_session_transcript_bytes, to_cbor, Chunk, DeviceRequest, DocRequest, EDeviceKey,
+    EReaderKey, ItemsRequest, KeyAgreement, ServerInfo,
 };
-use super::device_engagement::DeviceEngagement;
-use super::session::{Command, SessionEstablishment};
+use super::device_engagement::{BleOptions, DeviceEngagement};
+use super::session::{Command, SessionData, SessionEstablishment};
 use crate::model::interaction::Interaction;
-use crate::model::proof::{ProofState, ProofStateEnum};
+use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
+use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
-    CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
-    CreateCharacteristicOptions, DeviceInfo, ServiceDescription,
+    CharacteristicPermissions, CharacteristicProperties, CharacteristicWriteType, ConnectionEvent,
+    CreateCharacteristicOptions, DeviceInfo, PeripheralDiscoveryData, ServiceDescription,
 };
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, EmbeddedCbor};
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
 use crate::service::proof::dto::MdocBleInteractionData;
+use crate::service::ssi_verifier::utils::accept_proof;
+use crate::service::ssi_verifier::validator::validate_proof;
 use crate::util::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
+
+pub static ISO_MDL_FLOW: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
 
 const STATE: &str = "00000001-A123-48CE-896B-4C76973373E6";
 const CLIENT_2_SERVER: &str = "00000002-A123-48CE-896B-4C76973373E6";
@@ -35,7 +53,7 @@ pub async fn start_server(ble: &BleWaiter) -> Result<ServerInfo, ServiceError> {
 
     let (task_id, result) = ble
         .schedule(
-            service_id,
+            *ISO_MDL_FLOW,
             |_, _, peripheral| async move {
                 peripheral
                     .start_advertisement(
@@ -101,7 +119,7 @@ pub async fn connect(
 
                 let result = async {
                     let data: SessionEstablishment =
-                        read_request(&*peripheral, &info, service_id).await?;
+                        read_request_peripheral(&*peripheral, &info, service_id).await?;
 
                     let transcript =
                         create_session_transcript_bytes(&device_engagement, &data.e_reader_key.0)?;
@@ -194,6 +212,190 @@ pub async fn connect(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
+pub async fn start_client(
+    ble: &BleWaiter,
+    ble_options: BleOptions,
+    device_engagement: DeviceEngagement,
+    schema: ProofSchema,
+    proof: Proof,
+    proof_repository: Arc<dyn ProofRepository>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    did_repository: Arc<dyn DidRepository>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+) -> Result<(), ServiceError> {
+    ble.schedule(
+        *ISO_MDL_FLOW,
+        move |_, central, _| async move {
+            let (device, mtu_size) =
+                connect_to_server(&*central, ble_options.peripheral_server_uuid.to_string())
+                    .await?;
+
+            let key_pair = KeyAgreement::<EReaderKey>::new();
+            let reader_key = key_pair.reader_key().clone();
+
+            let transcript = create_session_transcript_bytes(&device_engagement, &reader_key)?;
+
+            let (sk_device, sk_reader) = key_pair
+                .derive_session_keys(device_engagement.security.key_bytes.0, &transcript)
+                .context("failed to derive key")
+                .map_err(ExchangeProtocolError::Other)?;
+
+            let device_request = to_cbor(&DeviceRequest {
+                version: "1.0".into(),
+                doc_request: schema
+                    .input_schemas
+                    .clone()
+                    .context("missing input_schemas")?
+                    .into_iter()
+                    .map(schema_to_doc_request)
+                    .collect::<anyhow::Result<_>>()?,
+            })?;
+
+            let device_request = sk_device.encrypt(&device_request)?;
+
+            send_session_establishment(
+                &*central,
+                &device,
+                ble_options.peripheral_server_uuid.to_string(),
+                mtu_size,
+                reader_key,
+                device_request,
+            )
+            .await?;
+
+            let session_data = read_request_central::<SessionData>(
+                &*central,
+                &device,
+                ble_options.peripheral_server_uuid.to_string(),
+            )
+            .await?
+            .data
+            .context("data is missing")?
+            .0;
+
+            let decrypted = sk_reader.decrypt(&session_data)?;
+            let presentation_content = Base64UrlSafeNoPadding::encode_to_string(decrypted)?;
+            let holder_did = proof.holder_did.clone().context("holder did is missing")?;
+
+            let proved_claims = validate_proof(
+                &schema,
+                &holder_did,
+                &presentation_content,
+                &*formatter_provider,
+                key_algorithm_provider,
+                did_method_provider,
+                revocation_method_provider,
+            )
+            .await?;
+
+            accept_proof(
+                proof.clone(),
+                proved_claims,
+                holder_did,
+                &*did_repository,
+                &*credential_repository,
+                &*proof_repository,
+            )
+            .await?;
+
+            Ok::<_, anyhow::Error>(())
+        },
+        |_, _| async {},
+        OnConflict::ReplaceIfSameFlow,
+        false,
+    )
+    .await;
+
+    Ok(())
+}
+
+async fn connect_to_server(
+    central: &dyn BleCentral,
+    server_id: String,
+) -> anyhow::Result<(PeripheralDiscoveryData, usize)> {
+    central.start_scan(Some(vec![server_id.clone()])).await?;
+
+    let device = central
+        .get_discovered_devices()
+        .await?
+        .pop()
+        .context("no discovered devices")?;
+
+    central.stop_scan().await?;
+
+    let mtu_size = central.connect(device.device_address.clone()).await?;
+
+    central
+        .subscribe_to_characteristic_notifications(
+            device.device_address.clone(),
+            server_id.clone(),
+            STATE.into(),
+        )
+        .await?;
+
+    central
+        .subscribe_to_characteristic_notifications(
+            device.device_address.clone(),
+            server_id.clone(),
+            SERVER_2_CLIENT.into(),
+        )
+        .await?;
+
+    central
+        .write_data(
+            device.device_address.clone(),
+            server_id,
+            STATE.into(),
+            &[Command::Start as _],
+            CharacteristicWriteType::WithoutResponse,
+        )
+        .await?;
+
+    Ok((device, mtu_size as _))
+}
+
+async fn send_session_establishment(
+    central: &dyn BleCentral,
+    device: &PeripheralDiscoveryData,
+    server_id: String,
+    mtu_size: usize,
+    key: EReaderKey,
+    device_request: Vec<u8>,
+) -> anyhow::Result<()> {
+    let session_establishment = to_cbor(&SessionEstablishment {
+        e_reader_key: EmbeddedCbor(key),
+        data: Bstr(device_request),
+    })?;
+
+    let mut chunks = session_establishment.chunks(mtu_size - 3);
+
+    let last = Chunk::Last(chunks.next_back().context("no chunks")?.to_vec());
+
+    let chunks: Vec<Vec<u8>> = chunks
+        .map(|slice| Chunk::Next(slice.to_vec()))
+        .chain(iter::once(last))
+        .map(Into::into)
+        .collect();
+
+    for chunk in chunks {
+        central
+            .write_data(
+                device.device_address.clone(),
+                server_id.clone(),
+                CLIENT_2_SERVER.into(),
+                &chunk,
+                CharacteristicWriteType::WithoutResponse,
+            )
+            .await?
+    }
+
+    Ok(())
+}
+
 async fn wait_for_device(
     peripheral: &dyn BlePeripheral,
     service_id: Uuid,
@@ -251,7 +453,7 @@ async fn wait_for_start(
     }
 }
 
-async fn read_request<T>(
+async fn read_request_peripheral<T>(
     peripheral: &dyn BlePeripheral,
     info: &DeviceInfo,
     service_id: Uuid,
@@ -261,7 +463,7 @@ where
 {
     let mut result = vec![];
 
-    'outer: loop {
+    loop {
         let data = peripheral
             .get_characteristic_writes(
                 info.address.clone(),
@@ -279,7 +481,44 @@ where
                 Chunk::Last(payload) => {
                     result.extend(payload);
 
-                    break 'outer ciborium::from_reader(result.as_slice())
+                    return ciborium::from_reader(result.as_slice())
+                        .context("deserialization error")
+                        .map_err(ExchangeProtocolError::Other);
+                }
+            }
+        }
+    }
+}
+
+async fn read_request_central<T>(
+    central: &dyn BleCentral,
+    info: &PeripheralDiscoveryData,
+    service_id: String,
+) -> Result<T, ExchangeProtocolError>
+where
+    T: DeserializeOwned,
+{
+    let mut result = vec![];
+
+    loop {
+        let data = central
+            .get_notifications(
+                info.device_address.clone(),
+                service_id.clone(),
+                SERVER_2_CLIENT.into(),
+            )
+            .await
+            .context("failed to read request")
+            .map_err(ExchangeProtocolError::Transport)?;
+
+        for msg in data {
+            let chunk: Chunk = msg.try_into().map_err(ExchangeProtocolError::Transport)?;
+            match chunk {
+                Chunk::Next(payload) => result.extend(payload),
+                Chunk::Last(payload) => {
+                    result.extend(payload);
+
+                    return ciborium::from_reader(result.as_slice())
                         .context("deserialization error")
                         .map_err(ExchangeProtocolError::Other);
                 }
@@ -318,6 +557,39 @@ pub async fn abort_and_set_proof_error(
             .await;
     }
     let _ = peripheral.stop_server().await;
+}
+
+fn schema_to_doc_request(input: ProofInputSchema) -> anyhow::Result<DocRequest> {
+    let credential = input
+        .credential_schema
+        .context("credential_schema is missing")?;
+    let claim_schemas = input.claim_schemas.context("claim_schemas is missing")?;
+
+    let mut name_spaces = HashMap::new();
+
+    for claim_schema in claim_schemas {
+        let (namespace, element_identifier) = claim_schema
+            .schema
+            .key
+            .split_once(NESTED_CLAIM_MARKER)
+            .context("missing root object")?;
+
+        let element_identifier: String = element_identifier
+            .chars()
+            .take_while(|c| *c != NESTED_CLAIM_MARKER)
+            .collect();
+        name_spaces
+            .entry(namespace.to_string())
+            .or_insert_with(HashMap::new)
+            .insert(element_identifier, true);
+    }
+
+    Ok(DocRequest {
+        items_request: EmbeddedCbor(ItemsRequest {
+            doc_type: credential.schema_id,
+            name_spaces,
+        }),
+    })
 }
 
 fn get_characteristic_options() -> Vec<CreateCharacteristicOptions> {

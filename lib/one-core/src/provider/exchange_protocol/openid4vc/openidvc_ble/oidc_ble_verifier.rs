@@ -11,11 +11,10 @@ use one_providers::exchange_protocol::openid4vc::model::OpenID4VPPresentationDef
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::select;
-use uuid::uuid;
 
 use super::{
     BLEPeer, IdentityRequest, KeyAgreementKey, MessageSize, TransferSummaryReport,
-    CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, PRESENTATION_REQUEST_UUID,
+    CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, OIDC_BLE_FLOW, PRESENTATION_REQUEST_UUID,
     REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
     TRANSFER_SUMMARY_REQUEST_UUID,
 };
@@ -97,7 +96,7 @@ impl OpenID4VCBLEVerifier {
         let result = self
             .ble
             .schedule(
-                uuid!(SERVICE_UUID),
+                *OIDC_BLE_FLOW,
                 |task_id, _, peripheral| async move {
                     start_advertisement(keypair.public_key_bytes(), verifier_name, &*peripheral)
                         .await?;

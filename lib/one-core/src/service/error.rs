@@ -69,8 +69,6 @@ pub enum ServiceError {
     #[error(transparent)]
     KeyAlgorithmProviderError(#[from] KeyAlgorithmProviderError),
 
-    // #[error("Key storage error `{0}`")]
-    // KeyStorageError(KeyStorageError),
     #[error("Did method error `{0}`")]
     DidMethodError(#[from] DidMethodError),
 
@@ -400,6 +398,9 @@ pub enum ValidationError {
 
     #[error("Forbidden claim name")]
     ForbiddenClaimName,
+
+    #[error("Invalid mdl parameters")]
+    InvalidMdlParameters,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -449,16 +450,16 @@ pub enum MissingProviderError {
 impl MissingProviderError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            MissingProviderError::Formatter(_) => ErrorCode::BR_0038,
-            MissingProviderError::KeyStorage(_) => ErrorCode::BR_0040,
-            MissingProviderError::DidMethod(_) => ErrorCode::BR_0031,
-            MissingProviderError::KeyAlgorithm(_) => ErrorCode::BR_0042,
-            MissingProviderError::KeyAlgorithmProvider(_) => ErrorCode::BR_0042,
-            MissingProviderError::RevocationMethod(_) => ErrorCode::BR_0044,
-            MissingProviderError::RevocationMethodByCredentialStatusType(_) => ErrorCode::BR_0045,
-            MissingProviderError::ExchangeProtocol(_) => ErrorCode::BR_0046,
-            MissingProviderError::Task(_) => ErrorCode::BR_0103,
-            MissingProviderError::TrustManager(_) => ErrorCode::BR_0132,
+            Self::Formatter(_) => ErrorCode::BR_0038,
+            Self::KeyStorage(_) => ErrorCode::BR_0040,
+            Self::DidMethod(_) => ErrorCode::BR_0031,
+            Self::KeyAlgorithm(_) => ErrorCode::BR_0042,
+            Self::KeyAlgorithmProvider(_) => ErrorCode::BR_0042,
+            Self::RevocationMethod(_) => ErrorCode::BR_0044,
+            Self::RevocationMethodByCredentialStatusType(_) => ErrorCode::BR_0045,
+            Self::ExchangeProtocol(_) => ErrorCode::BR_0046,
+            Self::Task(_) => ErrorCode::BR_0103,
+            Self::TrustManager(_) => ErrorCode::BR_0132,
         }
     }
 }
@@ -822,19 +823,22 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Schema id not allowed for credential schema")]
     BR_0146,
+
+    #[strum(to_string = "Invalid mdl request")]
+    BR_0147,
 }
 
 impl From<FormatError> for ServiceError {
     fn from(value: FormatError) -> Self {
         match value {
-            FormatError::MappingError(value) => ServiceError::MappingError(value),
+            FormatError::MappingError(value) => Self::MappingError(value),
         }
     }
 }
 
 impl From<uuid::Error> for ServiceError {
     fn from(value: uuid::Error) -> Self {
-        ServiceError::MappingError(value.to_string())
+        Self::MappingError(value.to_string())
     }
 }
 
@@ -845,33 +849,29 @@ pub trait ErrorCodeMixin {
 impl ErrorCodeMixin for ServiceError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            ServiceError::EntityNotFound(error) => error.error_code(),
-            ServiceError::BusinessLogic(error) => error.error_code(),
-            ServiceError::Validation(error) => error.error_code(),
-            ServiceError::Repository(error) => error.error_code(),
-            ServiceError::MissingProvider(error) => error.error_code(),
-            ServiceError::ResponseMapping(_) => ErrorCode::BR_0055,
-            ServiceError::ExchangeProtocolError(error) => error.error_code(),
-            ServiceError::CryptoError(_) => ErrorCode::BR_0050,
-            ServiceError::FormatterError(error) => error_code_formatter(error),
-            ServiceError::KeyStorageError(_) | ServiceError::KeyStorageProvider(_) => {
-                ErrorCode::BR_0039
-            }
-            ServiceError::MappingError(_) => ErrorCode::BR_0047,
-            ServiceError::OpenID4VCError(_) | ServiceError::OpenID4VCIError(_) => {
-                ErrorCode::BR_0048
-            }
-            ServiceError::ConfigValidationError(error) => error.error_code(),
-            ServiceError::BitstringError(_) => ErrorCode::BR_0049,
-            ServiceError::MissingSigner(_) => ErrorCode::BR_0060,
-            ServiceError::MissingAlgorithm(_) => ErrorCode::BR_0061,
-            ServiceError::MissingExchangeProtocol(_) => ErrorCode::BR_0046,
-            ServiceError::KeyAlgorithmError(_) => ErrorCode::BR_0063,
-            ServiceError::KeyAlgorithmProviderError(_) => ErrorCode::BR_0063,
-            ServiceError::DidMethodError(_) => ErrorCode::BR_0064,
-            ServiceError::DidMethodProviderError(error) => did_method_provider_error_code(error),
-            ServiceError::ValidationError(_) | ServiceError::Other(_) => ErrorCode::BR_0000,
-            ServiceError::Revocation(_) => ErrorCode::BR_0101,
+            Self::EntityNotFound(error) => error.error_code(),
+            Self::BusinessLogic(error) => error.error_code(),
+            Self::Validation(error) => error.error_code(),
+            Self::Repository(error) => error.error_code(),
+            Self::MissingProvider(error) => error.error_code(),
+            Self::ResponseMapping(_) => ErrorCode::BR_0055,
+            Self::ExchangeProtocolError(error) => error.error_code(),
+            Self::CryptoError(_) => ErrorCode::BR_0050,
+            Self::FormatterError(error) => error_code_formatter(error),
+            Self::KeyStorageError(_) | Self::KeyStorageProvider(_) => ErrorCode::BR_0039,
+            Self::MappingError(_) => ErrorCode::BR_0047,
+            Self::OpenID4VCError(_) | Self::OpenID4VCIError(_) => ErrorCode::BR_0048,
+            Self::ConfigValidationError(error) => error.error_code(),
+            Self::BitstringError(_) => ErrorCode::BR_0049,
+            Self::MissingSigner(_) => ErrorCode::BR_0060,
+            Self::MissingAlgorithm(_) => ErrorCode::BR_0061,
+            Self::MissingExchangeProtocol(_) => ErrorCode::BR_0046,
+            Self::KeyAlgorithmError(_) => ErrorCode::BR_0063,
+            Self::KeyAlgorithmProviderError(_) => ErrorCode::BR_0063,
+            Self::DidMethodError(_) => ErrorCode::BR_0064,
+            Self::DidMethodProviderError(error) => did_method_provider_error_code(error),
+            Self::ValidationError(_) | Self::Other(_) => ErrorCode::BR_0000,
+            Self::Revocation(_) => ErrorCode::BR_0101,
         }
     }
 }
@@ -879,13 +879,13 @@ impl ErrorCodeMixin for ServiceError {
 impl ErrorCodeMixin for ConfigValidationError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            ConfigValidationError::TypeNotFound(_) => ErrorCode::BR_0089,
-            ConfigValidationError::InvalidKey(_)
-            | ConfigValidationError::KeyDisabled(_)
-            | ConfigValidationError::KeyNotFound(_)
-            | ConfigValidationError::FieldsDeserialization { .. }
-            | ConfigValidationError::InvalidType(_, _)
-            | ConfigValidationError::DatatypeValidation(_) => ErrorCode::BR_0051,
+            Self::TypeNotFound(_) => ErrorCode::BR_0089,
+            Self::InvalidKey(_)
+            | Self::KeyDisabled(_)
+            | Self::KeyNotFound(_)
+            | Self::FieldsDeserialization { .. }
+            | Self::InvalidType(_, _)
+            | Self::DatatypeValidation(_) => ErrorCode::BR_0051,
         }
     }
 }
@@ -893,18 +893,18 @@ impl ErrorCodeMixin for ConfigValidationError {
 impl ErrorCodeMixin for EntityNotFoundError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            EntityNotFoundError::Credential(_) => ErrorCode::BR_0001,
-            EntityNotFoundError::Did(_) => ErrorCode::BR_0024,
-            EntityNotFoundError::RevocationList(_) => ErrorCode::BR_0034,
-            EntityNotFoundError::ProofSchema(_) => ErrorCode::BR_0014,
-            EntityNotFoundError::Proof(_) => ErrorCode::BR_0012,
-            EntityNotFoundError::Organisation(_) => ErrorCode::BR_0022,
-            EntityNotFoundError::Key(_) => ErrorCode::BR_0037,
-            EntityNotFoundError::CredentialSchema(_) => ErrorCode::BR_0006,
-            EntityNotFoundError::Lvvc(_) => ErrorCode::BR_0000,
-            EntityNotFoundError::History(_) => ErrorCode::BR_0100,
-            EntityNotFoundError::TrustAnchor(_) => ErrorCode::BR_0115,
-            EntityNotFoundError::TrustEntity(_) => ErrorCode::BR_0121,
+            Self::Credential(_) => ErrorCode::BR_0001,
+            Self::Did(_) => ErrorCode::BR_0024,
+            Self::RevocationList(_) => ErrorCode::BR_0034,
+            Self::ProofSchema(_) => ErrorCode::BR_0014,
+            Self::Proof(_) => ErrorCode::BR_0012,
+            Self::Organisation(_) => ErrorCode::BR_0022,
+            Self::Key(_) => ErrorCode::BR_0037,
+            Self::CredentialSchema(_) => ErrorCode::BR_0006,
+            Self::Lvvc(_) => ErrorCode::BR_0000,
+            Self::History(_) => ErrorCode::BR_0100,
+            Self::TrustAnchor(_) => ErrorCode::BR_0115,
+            Self::TrustEntity(_) => ErrorCode::BR_0121,
         }
     }
 }
@@ -912,59 +912,53 @@ impl ErrorCodeMixin for EntityNotFoundError {
 impl ErrorCodeMixin for BusinessLogicError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            BusinessLogicError::OrganisationAlreadyExists => ErrorCode::BR_0023,
-            BusinessLogicError::IncompatibleDidType { .. } => ErrorCode::BR_0025,
-            BusinessLogicError::DidMethodIncapableKeyAlgorithm { .. } => ErrorCode::BR_0065,
-            BusinessLogicError::InvalidDidMethod { .. } => ErrorCode::BR_0026,
-            BusinessLogicError::DidIsDeactivated(_) => ErrorCode::BR_0027,
-            BusinessLogicError::DidValueAlreadyExists(_) => ErrorCode::BR_0028,
-            BusinessLogicError::CredentialSchemaAlreadyExists => ErrorCode::BR_0007,
-            BusinessLogicError::InvalidCredentialState { .. } => ErrorCode::BR_0002,
-            BusinessLogicError::ProofSchemaAlreadyExists => ErrorCode::BR_0015,
-            BusinessLogicError::InvalidProofState { .. } => ErrorCode::BR_0013,
-            BusinessLogicError::MissingCredentialsForInteraction { .. } => ErrorCode::BR_0004,
-            BusinessLogicError::ProofSchemaDeleted { .. } => ErrorCode::BR_0019,
-            BusinessLogicError::MissingCredentialData { .. } => ErrorCode::BR_0005,
-            BusinessLogicError::MissingCredentialSchema => ErrorCode::BR_0009,
-            BusinessLogicError::MissingClaimSchema { .. } => ErrorCode::BR_0010,
-            BusinessLogicError::MissingParentClaimSchema { .. } => ErrorCode::BR_0109,
-            BusinessLogicError::MissingRevocationListForDid { .. } => ErrorCode::BR_0035,
-            BusinessLogicError::MissingProofSchema { .. } => ErrorCode::BR_0020,
-            BusinessLogicError::MissingInteractionForAccessToken { .. } => ErrorCode::BR_0033,
-            BusinessLogicError::MissingCredentialIndexOnRevocationList { .. } => ErrorCode::BR_0036,
-            BusinessLogicError::MissingClaimSchemas => ErrorCode::BR_0011,
-            BusinessLogicError::DidDeactivation(error) => error.error_code(),
-            BusinessLogicError::KeyAlreadyExists => ErrorCode::BR_0066,
-            BusinessLogicError::GeneralInputValidationError => ErrorCode::BR_0084,
-            BusinessLogicError::MissingOrganisation(_) => ErrorCode::BR_0088,
-            BusinessLogicError::MissingProofForInteraction(_) => ErrorCode::BR_0094,
-            BusinessLogicError::StatusList2021NotSupported => ErrorCode::BR_0095,
-            BusinessLogicError::CredentialAlreadyRevoked => ErrorCode::BR_0092,
-            BusinessLogicError::UnfulfilledWalletStorageType => ErrorCode::BR_0097,
-            BusinessLogicError::OperationNotSupportedByRevocationMethod { .. } => {
-                ErrorCode::BR_0098
-            }
-            BusinessLogicError::CredentialIsRevokedOrSuspended => ErrorCode::BR_0099,
-            BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat => {
-                ErrorCode::BR_0110
-            }
-            BusinessLogicError::IncompatibleIssuanceDidMethod => ErrorCode::BR_0127,
-            BusinessLogicError::IncompatibleIssuanceExchangeProtocol => ErrorCode::BR_0111,
-            BusinessLogicError::IncompatibleProofExchangeProtocol => ErrorCode::BR_0112,
-            BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed => {
-                ErrorCode::BR_0117
-            }
-            BusinessLogicError::ClaimSchemaKeyTooLong => ErrorCode::BR_0126,
-            BusinessLogicError::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,
-            BusinessLogicError::IncorrectDisclosureLevel => ErrorCode::BR_0130,
-            BusinessLogicError::TrustAnchorNameTaken => ErrorCode::BR_0113,
-            BusinessLogicError::UnknownTrustAnchorType => ErrorCode::BR_0114,
-            BusinessLogicError::TrustAnchorMustBePublish => ErrorCode::BR_0123,
-            BusinessLogicError::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
-            BusinessLogicError::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,
-            BusinessLogicError::ProofSchemaImport(_) => ErrorCode::BR_0135,
-            BusinessLogicError::MissingMdocDoctype => ErrorCode::BR_0138,
-            BusinessLogicError::SchemaIdNotAllowed => ErrorCode::BR_0139,
+            Self::OrganisationAlreadyExists => ErrorCode::BR_0023,
+            Self::IncompatibleDidType { .. } => ErrorCode::BR_0025,
+            Self::DidMethodIncapableKeyAlgorithm { .. } => ErrorCode::BR_0065,
+            Self::InvalidDidMethod { .. } => ErrorCode::BR_0026,
+            Self::DidIsDeactivated(_) => ErrorCode::BR_0027,
+            Self::DidValueAlreadyExists(_) => ErrorCode::BR_0028,
+            Self::CredentialSchemaAlreadyExists => ErrorCode::BR_0007,
+            Self::InvalidCredentialState { .. } => ErrorCode::BR_0002,
+            Self::ProofSchemaAlreadyExists => ErrorCode::BR_0015,
+            Self::InvalidProofState { .. } => ErrorCode::BR_0013,
+            Self::MissingCredentialsForInteraction { .. } => ErrorCode::BR_0004,
+            Self::ProofSchemaDeleted { .. } => ErrorCode::BR_0019,
+            Self::MissingCredentialData { .. } => ErrorCode::BR_0005,
+            Self::MissingCredentialSchema => ErrorCode::BR_0009,
+            Self::MissingClaimSchema { .. } => ErrorCode::BR_0010,
+            Self::MissingParentClaimSchema { .. } => ErrorCode::BR_0109,
+            Self::MissingRevocationListForDid { .. } => ErrorCode::BR_0035,
+            Self::MissingProofSchema { .. } => ErrorCode::BR_0020,
+            Self::MissingInteractionForAccessToken { .. } => ErrorCode::BR_0033,
+            Self::MissingCredentialIndexOnRevocationList { .. } => ErrorCode::BR_0036,
+            Self::MissingClaimSchemas => ErrorCode::BR_0011,
+            Self::DidDeactivation(error) => error.error_code(),
+            Self::KeyAlreadyExists => ErrorCode::BR_0066,
+            Self::GeneralInputValidationError => ErrorCode::BR_0084,
+            Self::MissingOrganisation(_) => ErrorCode::BR_0088,
+            Self::MissingProofForInteraction(_) => ErrorCode::BR_0094,
+            Self::StatusList2021NotSupported => ErrorCode::BR_0095,
+            Self::CredentialAlreadyRevoked => ErrorCode::BR_0092,
+            Self::UnfulfilledWalletStorageType => ErrorCode::BR_0097,
+            Self::OperationNotSupportedByRevocationMethod { .. } => ErrorCode::BR_0098,
+            Self::CredentialIsRevokedOrSuspended => ErrorCode::BR_0099,
+            Self::RevocationMethodNotCompatibleWithSelectedFormat => ErrorCode::BR_0110,
+            Self::IncompatibleIssuanceDidMethod => ErrorCode::BR_0127,
+            Self::IncompatibleIssuanceExchangeProtocol => ErrorCode::BR_0111,
+            Self::IncompatibleProofExchangeProtocol => ErrorCode::BR_0112,
+            Self::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed => ErrorCode::BR_0117,
+            Self::ClaimSchemaKeyTooLong => ErrorCode::BR_0126,
+            Self::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,
+            Self::IncorrectDisclosureLevel => ErrorCode::BR_0130,
+            Self::TrustAnchorNameTaken => ErrorCode::BR_0113,
+            Self::UnknownTrustAnchorType => ErrorCode::BR_0114,
+            Self::TrustAnchorMustBePublish => ErrorCode::BR_0123,
+            Self::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
+            Self::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,
+            Self::ProofSchemaImport(_) => ErrorCode::BR_0135,
+            Self::MissingMdocDoctype => ErrorCode::BR_0138,
+            Self::SchemaIdNotAllowed => ErrorCode::BR_0139,
         }
     }
 }
@@ -972,38 +966,39 @@ impl ErrorCodeMixin for BusinessLogicError {
 impl ErrorCodeMixin for ValidationError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            ValidationError::InvalidExchangeType { .. } => ErrorCode::BR_0052,
-            ValidationError::MissingDefaultTransport => ErrorCode::BR_0142,
-            ValidationError::SchemaIdNotAllowedForFormat => ErrorCode::BR_0146,
-            ValidationError::UnsupportedKeyType { .. } => ErrorCode::BR_0053,
-            ValidationError::DidInvalidKeyNumber => ErrorCode::BR_0030,
-            ValidationError::CredentialSchemaMissingClaims => ErrorCode::BR_0008,
-            ValidationError::CredentialMissingClaim { .. } => ErrorCode::BR_0003,
-            ValidationError::CredentialSchemaDuplicitClaim => ErrorCode::BR_0133,
-            ValidationError::ProofSchemaMissingClaims => ErrorCode::BR_0016,
-            ValidationError::ProofSchemaNoRequiredClaim => ErrorCode::BR_0017,
-            ValidationError::ProofSchemaDuplicitClaim => ErrorCode::BR_0018,
-            ValidationError::InvalidFormatter(_) => ErrorCode::BR_0056,
-            ValidationError::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
-            ValidationError::InvalidKey(_) => ErrorCode::BR_0096,
-            ValidationError::BBSNotSupported => ErrorCode::BR_0091,
-            ValidationError::InvalidKeyStorage(_) => ErrorCode::BR_0041,
-            ValidationError::UnsupportedKeyOperation => ErrorCode::BR_0041,
-            ValidationError::InvalidDatatype { .. } => ErrorCode::BR_0061,
-            ValidationError::DidNotFound => ErrorCode::BR_0024,
-            ValidationError::KeyNotFound => ErrorCode::BR_0037,
-            ValidationError::ProofSchemaMissingProofInputSchemas => ErrorCode::BR_0104,
-            ValidationError::CredentialSchemaMissingNestedClaims(_) => ErrorCode::BR_0106,
-            ValidationError::CredentialSchemaNestedClaimsShouldBeEmpty(_) => ErrorCode::BR_0107,
-            ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
-            ValidationError::MissingLayoutAttribute(_) => ErrorCode::BR_0105,
-            ValidationError::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
-            ValidationError::ValidityConstraintMissingForLvvc => ErrorCode::BR_0140,
-            ValidationError::InvalidScanToVerifyParameters => ErrorCode::BR_0144,
-            ValidationError::CertificateRequestedForMoreThan457Days => ErrorCode::BR_0084,
-            ValidationError::NestedClaimInArrayRequested => ErrorCode::BR_0125,
-            ValidationError::OnlyOnePhysicalCardSchemaAllowedPerProof => ErrorCode::BR_0137,
-            ValidationError::ForbiddenClaimName => ErrorCode::BR_0145,
+            Self::InvalidExchangeType { .. } => ErrorCode::BR_0052,
+            Self::MissingDefaultTransport => ErrorCode::BR_0142,
+            Self::SchemaIdNotAllowedForFormat => ErrorCode::BR_0146,
+            Self::UnsupportedKeyType { .. } => ErrorCode::BR_0053,
+            Self::DidInvalidKeyNumber => ErrorCode::BR_0030,
+            Self::CredentialSchemaMissingClaims => ErrorCode::BR_0008,
+            Self::CredentialMissingClaim { .. } => ErrorCode::BR_0003,
+            Self::CredentialSchemaDuplicitClaim => ErrorCode::BR_0133,
+            Self::ProofSchemaMissingClaims => ErrorCode::BR_0016,
+            Self::ProofSchemaNoRequiredClaim => ErrorCode::BR_0017,
+            Self::ProofSchemaDuplicitClaim => ErrorCode::BR_0018,
+            Self::InvalidFormatter(_) => ErrorCode::BR_0056,
+            Self::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
+            Self::InvalidKey(_) => ErrorCode::BR_0096,
+            Self::BBSNotSupported => ErrorCode::BR_0091,
+            Self::InvalidKeyStorage(_) => ErrorCode::BR_0041,
+            Self::UnsupportedKeyOperation => ErrorCode::BR_0041,
+            Self::InvalidDatatype { .. } => ErrorCode::BR_0061,
+            Self::DidNotFound => ErrorCode::BR_0024,
+            Self::KeyNotFound => ErrorCode::BR_0037,
+            Self::ProofSchemaMissingProofInputSchemas => ErrorCode::BR_0104,
+            Self::CredentialSchemaMissingNestedClaims(_) => ErrorCode::BR_0106,
+            Self::CredentialSchemaNestedClaimsShouldBeEmpty(_) => ErrorCode::BR_0107,
+            Self::CredentialSchemaClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
+            Self::MissingLayoutAttribute(_) => ErrorCode::BR_0105,
+            Self::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
+            Self::ValidityConstraintMissingForLvvc => ErrorCode::BR_0140,
+            Self::InvalidScanToVerifyParameters => ErrorCode::BR_0144,
+            Self::CertificateRequestedForMoreThan457Days => ErrorCode::BR_0084,
+            Self::NestedClaimInArrayRequested => ErrorCode::BR_0125,
+            Self::OnlyOnePhysicalCardSchemaAllowedPerProof => ErrorCode::BR_0137,
+            Self::ForbiddenClaimName => ErrorCode::BR_0145,
+            Self::InvalidMdlParameters => ErrorCode::BR_0147,
         }
     }
 }
@@ -1011,16 +1006,16 @@ impl ErrorCodeMixin for ValidationError {
 impl ErrorCodeMixin for ExchangeProtocolError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            ExchangeProtocolError::Failed(_) => ErrorCode::BR_0062,
-            ExchangeProtocolError::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
-            ExchangeProtocolError::Transport(_) => ErrorCode::BR_0086,
-            ExchangeProtocolError::JsonError(_) => ErrorCode::BR_0062,
-            ExchangeProtocolError::OperationNotSupported => ErrorCode::BR_0062,
-            ExchangeProtocolError::MissingBaseUrl => ErrorCode::BR_0062,
-            ExchangeProtocolError::InvalidRequest(_) => ErrorCode::BR_0085,
-            ExchangeProtocolError::Disabled(_) => ErrorCode::BR_0085,
-            ExchangeProtocolError::Other(_) => ErrorCode::BR_0062,
-            ExchangeProtocolError::StorageAccessError(_) => ErrorCode::BR_0062,
+            Self::Failed(_) => ErrorCode::BR_0062,
+            Self::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
+            Self::Transport(_) => ErrorCode::BR_0086,
+            Self::JsonError(_) => ErrorCode::BR_0062,
+            Self::OperationNotSupported => ErrorCode::BR_0062,
+            Self::MissingBaseUrl => ErrorCode::BR_0062,
+            Self::InvalidRequest(_) => ErrorCode::BR_0085,
+            Self::Disabled(_) => ErrorCode::BR_0085,
+            Self::Other(_) => ErrorCode::BR_0062,
+            Self::StorageAccessError(_) => ErrorCode::BR_0062,
         }
     }
 }

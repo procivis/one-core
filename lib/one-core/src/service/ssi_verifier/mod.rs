@@ -1,22 +1,22 @@
-use crate::{
-    config::core_config,
-    repository::{
-        credential_repository::CredentialRepository, did_repository::DidRepository,
-        history_repository::HistoryRepository, proof_repository::ProofRepository,
-    },
-};
+use std::sync::Arc;
+
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
-use one_providers::{
-    credential_formatter::provider::CredentialFormatterProvider, did::provider::DidMethodProvider,
-};
-use std::sync::Arc;
+
+use crate::config::core_config;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::did_repository::DidRepository;
+use crate::repository::history_repository::HistoryRepository;
+use crate::repository::proof_repository::ProofRepository;
 
 pub mod dto;
 pub mod service;
+pub mod utils;
 
 mod mapper;
-mod validator;
+pub mod validator;
 
 #[cfg(test)]
 mod test;

@@ -1,5 +1,6 @@
 use indoc::indoc;
 use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
+use one_providers::common_models::key::OpenKey;
 use one_providers::credential_formatter::model::FormatterCapabilities;
 use serde::{Deserialize, Serialize};
 use time::macros::datetime;
@@ -18,7 +19,6 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
-use one_providers::common_models::key::OpenKey;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -80,6 +80,10 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                         preAuthorizedCodeExpiresIn: 300
                         tokenExpiresIn: 86400
                         refreshExpiresIn: 886400
+            ISO_MDL:
+                type: 'ISO_MDL'
+                display: 'exchange.isoMdl'
+                order: 3
         revocation:
             NONE:
                 display: 'revocation.none'

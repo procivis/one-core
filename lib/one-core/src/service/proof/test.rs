@@ -8,6 +8,7 @@ use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticDat
 use one_providers::credential_formatter::model::FormatterCapabilities;
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::credential_formatter::MockCredentialFormatter;
+use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::exchange_protocol::imp::provider::MockExchangeProtocol;
 use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -63,6 +64,7 @@ use crate::service::proof::dto::{
     CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
     ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
 };
+use crate::service::proof::validator::validate_mdl_exchange;
 use crate::service::test_utilities::{dummy_did, generic_config, get_dummy_date};
 use crate::util::ble_resource::BleWaiter;
 
@@ -79,6 +81,7 @@ struct Repositories {
     pub credential_formatter_provider: MockCredentialFormatterProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub protocol_provider: MockExchangeProtocolProviderExtra,
+    pub did_method_provider: MockDidMethodProvider,
     pub ble_peripheral: Option<MockBlePeripheral>,
     pub config: CoreConfig,
 }
@@ -96,6 +99,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.credential_formatter_provider),
         Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.protocol_provider),
+        Arc::new(repositories.did_method_provider),
         repositories
             .ble_peripheral
             .map(|p| BleWaiter::new(Arc::new(MockBleCentral::new()), Arc::new(p))),
@@ -1869,6 +1873,7 @@ async fn test_create_proof_without_related_key() {
         redirect_uri: None,
         verifier_key: None,
         scan_to_verify: None,
+        iso_mdl_engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -1972,6 +1977,7 @@ async fn test_create_proof_with_related_key() {
         redirect_uri: None,
         verifier_key: Some(verifier_key_id),
         scan_to_verify: None,
+        iso_mdl_engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2072,6 +2078,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
         redirect_uri: None,
         verifier_key: None,
         scan_to_verify: None,
+        iso_mdl_engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2152,6 +2159,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         redirect_uri: None,
         verifier_key: None,
         scan_to_verify: None,
+        iso_mdl_engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2207,6 +2215,7 @@ async fn test_create_proof_did_deactivated_error() {
         redirect_uri: None,
         verifier_key: None,
         scan_to_verify: None,
+        iso_mdl_engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2313,6 +2322,7 @@ async fn test_create_proof_schema_deleted() {
             redirect_uri: None,
             verifier_key: None,
             scan_to_verify: None,
+            iso_mdl_engagement: None,
         })
         .await;
     assert2::assert!(
@@ -2372,6 +2382,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
                 barcode: "barcode".to_string(),
                 barcode_type: ScanToVerifyBarcodeTypeEnum::MRZ,
             }),
+            iso_mdl_engagement: None,
         })
         .await;
     assert2::assert!(
@@ -2824,4 +2835,19 @@ async fn test_retract_proof_with_bluetooth_ok() {
     let result = service.retract_proof(proof_id).await.unwrap();
 
     assert_eq!(proof_id, result);
+}
+
+#[test]
+fn test_validate_mdl_exchange() {
+    let config = generic_config().core.exchange;
+    let engagement = Some("engagement");
+    let uri = Some("uri");
+
+    assert!(validate_mdl_exchange("ISO_MDL", engagement, None, &config).is_ok());
+    assert!(validate_mdl_exchange("ISO_MDL", engagement, uri, &config).is_err());
+    assert!(validate_mdl_exchange("ISO_MDL", None, uri, &config).is_err());
+
+    assert!(validate_mdl_exchange("OPENID4VC", None, uri, &config).is_ok());
+    assert!(validate_mdl_exchange("OPENID4VC", engagement, uri, &config).is_err());
+    assert!(validate_mdl_exchange("OPENID4VC", engagement, None, &config).is_err());
 }

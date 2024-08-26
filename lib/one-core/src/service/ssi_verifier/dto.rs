@@ -1,7 +1,8 @@
-use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use one_providers::credential_formatter::model::DetailCredential;
 use shared_types::{ClaimSchemaId, DidValue};
 use time::OffsetDateTime;
+
+use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 
 #[derive(Clone, Debug)]
 pub struct ConnectVerifierResponseDTO {
@@ -22,7 +23,7 @@ pub struct ProofRequestClaimDTO {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct ValidatedProofClaimDTO {
+pub struct ValidatedProofClaimDTO {
     pub claim_schema_id: ClaimSchemaId,
     pub credential: DetailCredential,
     pub value: (String, serde_json::Value),

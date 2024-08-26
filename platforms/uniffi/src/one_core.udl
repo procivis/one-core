@@ -994,6 +994,7 @@ dictionary CreateProofRequestBindingDTO {
   string? redirect_uri;
   string? verifier_key;
   ScanToVerifyRequestBindingDTO? scan_to_verify;
+  string? iso_mdl_engagement;
 };
 
 dictionary ScanToVerifyRequestBindingDTO {

@@ -460,6 +460,7 @@ impl OneCore {
                 formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 protocol_provider.clone(),
+                did_method_provider.clone(),
                 ble_waiter,
                 config.clone(),
                 providers.core_base_url.clone(),

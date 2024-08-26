@@ -6,7 +6,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use super::common::EReaderKey;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, EmbeddedCbor};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum Command {
     Start = 1,
@@ -34,7 +34,7 @@ pub struct SessionEstablishment {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct SessionData {
+pub struct SessionData {
     pub(crate) data: Option<Bstr>,
     pub(crate) status: Option<StatusCode>,
 }
