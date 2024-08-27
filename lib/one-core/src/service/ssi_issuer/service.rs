@@ -125,6 +125,8 @@ impl SSIIssuerService {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
 
+        let format = credential.schema.as_ref().unwrap().format.clone();
+
         validate_exchange_type(
             ExchangeType::ProcivisTemporary,
             &self.config,
@@ -145,7 +147,7 @@ impl SSIIssuerService {
 
         Ok(IssuerResponseDTO {
             credential: token.credential,
-            format: token.format,
+            format,
         })
     }
 

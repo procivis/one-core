@@ -112,6 +112,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     revocation_method_provider.clone(),
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
+                    did_method_provider.clone(),
                     params,
                 );
                 let protocol = Arc::new(OpenID4VC::new(http, ble));

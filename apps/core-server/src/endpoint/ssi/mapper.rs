@@ -60,6 +60,7 @@ impl TryFrom<OpenID4VCITokenRequestRestDTO> for OpenID4VCITokenRequestDTO {
                 None,
             ) => Ok(Self::PreAuthorizedCode {
                 pre_authorized_code,
+                tx_code: None,
             }),
             ("refresh_token", None, Some(refresh_token)) => {
                 Ok(Self::RefreshToken { refresh_token })

@@ -41,31 +41,42 @@ pub(super) fn credentials_supported_mdoc(
         .collect();
 
     let claim_schema_values = schemas_to_mdoc_values(claim_schemas)?;
-    let claims = claim_schema_values
-        .into_iter()
-        .map(|(namespace, elements)| (namespace, elements.value))
-        .collect();
+    // let claims = claim_schema_values
+    //     .into_iter()
+    //     .map(|(namespace, elements)| {
+    //         (
+    //             namespace,
+    //             HashMap::<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>::new(),
+    //         )
+    //     })
+    //     .collect();
 
-    let credentials_supported = vec![OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
-        wallet_storage_type: schema.wallet_storage_type.map(Into::into),
-        format: map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?,
-        claims: Some(claims),
-        order: if element_order.len() > 1 {
-            Some(element_order)
-        } else {
-            None
+    let credential_configurations_supported: HashMap<
+        String,
+        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
+    > = HashMap::from([(
+        "Credential1".to_string(),
+        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
+            wallet_storage_type: schema.wallet_storage_type.map(Into::into),
+            format: map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?,
+            claims: serde_json::Value::Null, //TODO!
+            order: if element_order.len() > 1 {
+                Some(element_order)
+            } else {
+                None
+            },
+            credential_definition: None,
+            doctype: Some(schema.schema_id),
+            display: Some(vec![
+                OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema.name },
+            ]),
         },
-        credential_definition: None,
-        doctype: Some(schema.schema_id),
-        display: Some(vec![
-            OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema.name },
-        ]),
-    }];
+    )]);
 
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer: base_url.to_owned(),
         credential_endpoint: format!("{base_url}/credential"),
-        credentials_supported,
+        credential_configurations_supported,
     })
 }
 
@@ -137,25 +148,26 @@ fn order_mdoc_claims(
     schemas
         .into_iter()
         .map(|claim| {
-            let order = if claim.claims.len() > 1 {
-                Some(
-                    claim
-                        .claims
-                        .iter()
-                        .map(|claim| claim.key.to_owned())
-                        .collect(),
-                )
-            } else {
-                None
-            };
+            // let order = if claim.claims.len() > 1 {
+            //     Some(
+            //         claim
+            //             .claims
+            //             .iter()
+            //             .map(|claim| claim.key.to_owned())
+            //             .collect(),
+            //     )
+            // } else {
+            //     None
+            // };
 
             (
                 claim.key,
                 OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
-                    value: order_mdoc_claims(claim.claims),
-                    value_type: claim.schema.schema.data_type,
+                    //value: order_mdoc_claims(claim.claims),
+                    // display: None,
+                    value_type: Some(claim.schema.schema.data_type),
                     mandatory: Some(claim.schema.required),
-                    order,
+                    // order,
                 },
             )
         })

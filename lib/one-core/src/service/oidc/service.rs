@@ -390,7 +390,7 @@ impl OIDCService {
 
         Ok(OpenID4VCICredentialResponseDTO {
             credential: issued_credential.credential,
-            format: request.format,
+            // format: request.format,
             redirect_uri: credential.redirect_uri,
         })
     }
@@ -413,6 +413,7 @@ impl OIDCService {
         let interaction_id = match &request {
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code,
+                tx_code,
             } => Uuid::from_str(pre_authorized_code).map_err(|_| {
                 ServiceError::OpenID4VCError(OpenID4VCError::OpenID4VCI(
                     OpenID4VCIError::InvalidRequest,

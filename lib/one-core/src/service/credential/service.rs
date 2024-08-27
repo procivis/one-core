@@ -928,68 +928,71 @@ async fn obtain_and_update_new_mso(
         .get_signature_provider(&key.to_owned(), None)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-    let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
-        interaction_data.issuer_url,
-        &holder_did.clone().into(),
-        key.key_type.to_owned(),
-        auth_fn,
-    )
-    .await
-    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+    unimplemented!()
 
-    let schema = credential
-        .schema
-        .as_ref()
-        .ok_or(ExchangeProtocolError::Failed("schema is None".to_string()))?;
+    // let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
+    //     interaction_data.issuer_url,
+    //     &holder_did.clone().into(),
+    //     key.key_type.to_owned(),
+    //     auth_fn,
+    // )
+    // .await
+    // .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-    let body = OpenID4VCICredential {
-        proof: OpenID4VCIProof {
-            proof_type: "jwt".to_string(),
-            jwt: proof_jwt,
-        },
-        format: "mso_mdoc".to_owned(),
-        credential_definition: None,
-        doctype: Some(schema.schema_id.to_owned()),
-    };
+    // let schema = credential
+    //     .schema
+    //     .as_ref()
+    //     .ok_or(ExchangeProtocolError::Failed("schema is None".to_string()))?;
 
-    let client = reqwest::Client::new();
-    let response = client
-        .post(interaction_data.credential_endpoint)
-        .bearer_auth(interaction_data.access_token)
-        .json(&body)
-        .send()
-        .await
-        .context("send error")
-        .map_err(ExchangeProtocolError::Transport)?;
-    let response = response
-        .error_for_status()
-        .context("status error")
-        .map_err(ExchangeProtocolError::Transport)?;
-    let response_value = response
-        .text()
-        .await
-        .context("parsing error")
-        .map_err(ExchangeProtocolError::Transport)?;
+    // let body = OpenID4VCICredential {
+    //     proof: OpenID4VCIProof {
+    //         proof_type: "jwt".to_string(),
+    //         jwt: proof_jwt,
+    //     },
+    //     credential_identifier: "123".into(),
+    //     format: "mso_mdoc".to_owned(),
+    //     credential_definition: None,
+    //     doctype: Some(schema.schema_id.to_owned()),
+    // };
 
-    let result: OpenID4VCICredentialResponseDTO =
-        serde_json::from_str(&response_value).map_err(ExchangeProtocolError::JsonError)?;
+    // let client = reqwest::Client::new();
+    // let response = client
+    //     .post(interaction_data.credential_endpoint)
+    //     .bearer_auth(interaction_data.access_token)
+    //     .json(&body)
+    //     .send()
+    //     .await
+    //     .context("send error")
+    //     .map_err(ExchangeProtocolError::Transport)?;
+    // let response = response
+    //     .error_for_status()
+    //     .context("status error")
+    //     .map_err(ExchangeProtocolError::Transport)?;
+    // let response_value = response
+    //     .text()
+    //     .await
+    //     .context("parsing error")
+    //     .map_err(ExchangeProtocolError::Transport)?;
 
-    // Update credential value
-    credential.credential = result.credential.as_bytes().to_vec();
+    // let result: OpenID4VCICredentialResponseDTO =
+    //     serde_json::from_str(&response_value).map_err(ExchangeProtocolError::JsonError)?;
 
-    let update_request = UpdateCredentialRequest {
-        id: credential.id,
-        credential: Some(credential.credential.clone()),
-        holder_did_id: None,
-        issuer_did_id: None,
-        state: None,
-        interaction: None,
-        key: None,
-        redirect_uri: None,
-    };
+    // // Update credential value
+    // credential.credential = result.credential.as_bytes().to_vec();
 
-    credentials.update_credential(update_request).await?;
-    Ok(())
+    // let update_request = UpdateCredentialRequest {
+    //     id: credential.id,
+    //     credential: Some(credential.credential.clone()),
+    //     holder_did_id: None,
+    //     issuer_did_id: None,
+    //     state: None,
+    //     interaction: None,
+    //     key: None,
+    //     redirect_uri: None,
+    // };
+
+    // credentials.update_credential(update_request).await?;
+    // Ok(())
 }
 
 async fn update_mso_interaction_access_token(

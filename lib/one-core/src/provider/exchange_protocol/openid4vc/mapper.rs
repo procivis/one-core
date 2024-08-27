@@ -374,21 +374,21 @@ fn parse_mdoc_schema_elements(
     values
         .into_iter()
         .map(|(key, claim)| {
-            let mut claims = parse_mdoc_schema_elements(claim.value);
+            let mut claims = parse_mdoc_schema_elements(HashMap::new());
 
-            if let Some(order) = claim.order {
-                claims.sort_by_key(|claim| {
-                    order
-                        .iter()
-                        .position(|item| item == &claim.key)
-                        .unwrap_or_default()
-                });
-            }
+            // if let Some(order) = claim.order {
+            //     claims.sort_by_key(|claim| {
+            //         order
+            //             .iter()
+            //             .position(|item| item == &claim.key)
+            //             .unwrap_or_default()
+            //     });
+            // }
 
             CredentialClaimSchemaRequestDTO {
                 key,
-                datatype: claim.value_type,
-                required: claim.mandatory.unwrap_or(false),
+                datatype: claim.value_type.unwrap_or("MISSING".to_string()),
+                required: false,
                 array: Some(false), // TODO: Needs to be covered with ONE-2261
                 claims,
             }

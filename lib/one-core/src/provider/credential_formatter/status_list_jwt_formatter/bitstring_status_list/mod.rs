@@ -56,7 +56,7 @@ impl BitstringStatusListJwtFormatter {
             nonce: None,
         };
 
-        let jwt = Jwt::new("JWT".to_owned(), algorithm, None, payload);
+        let jwt = Jwt::new("JWT".to_owned(), algorithm, None, None, payload);
 
         jwt.tokenize(auth_fn).await
     }

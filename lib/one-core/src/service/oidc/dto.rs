@@ -7,6 +7,6 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub struct OpenID4VCICredentialResponseDTO {
     pub credential: String,
-    pub format: String,
+    // pub format: String,
     pub redirect_uri: Option<String>,
 }

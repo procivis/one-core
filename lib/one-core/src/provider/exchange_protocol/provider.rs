@@ -417,7 +417,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
 
         Ok(SubmitIssuerResponse {
             credential: token,
-            format,
+            // format,
             redirect_uri,
         })
     }
