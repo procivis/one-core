@@ -20,6 +20,7 @@ use one_providers::credential_formatter::imp::jwt_formatter::JWTFormatter;
 use one_providers::credential_formatter::imp::provider::CredentialFormatterProviderImpl;
 use one_providers::credential_formatter::imp::sdjwt_formatter::SDJWTFormatter;
 use one_providers::credential_formatter::CredentialFormatter;
+use reqwest::Certificate;
 use time::Duration;
 
 use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
@@ -460,7 +461,18 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
             Arc::new(RevocationMethodProviderImpl::new(revocation_methods))
         });
 
+    let mut client = reqwest::ClientBuilder::new();
+
+    if let Ok(cert) = std::env::var("CUSTOM_CERT") {
+        client = client.add_root_certificate(
+            Certificate::from_pem(cert.as_bytes()).expect("Invalid PEM certificate"),
+        );
+        tracing::debug!("Added custom certificate");
+    }
+    let client = client.build().expect("Cannot build reqwest client");
+
     OneCoreBuilder::new(app_config.core.clone())
+        .with_http_client(client)
         .with_base_url(app_config.app.core_base_url.to_owned())
         .with_crypto(crypto)
         .with_jsonld_caching_loader(caching_loader)
