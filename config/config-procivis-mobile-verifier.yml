@@ -1,3 +1,5 @@
+app:
+  allowInsecureHttpTransport: false
 transport:
   BLE:
     type: "BLE"

@@ -14,6 +14,8 @@ use one_crypto::{
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_providers::credential_formatter::imp::sdjwt_formatter::SDJWTFormatter;
 use one_providers::did::imp::resolver::DidCachingLoader;
+use one_providers::http_client::imp::reqwest_client::ReqwestClient;
+use one_providers::http_client::HttpClient;
 use one_providers::remote_entity_storage::in_memory::InMemoryStorage;
 use one_providers::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 use one_providers::revocation::imp::bitstring_status_list::resolver::StatusListCachingLoader;
@@ -254,108 +256,123 @@ fn initialize_core(
             };
 
             let cache_entities_config = core_config.cache_entities.to_owned();
+            let reqwest_client = reqwest::Client::builder()
+                .https_only(!placeholder_config.app.allow_insecure_http_transport)
+                .build()
+                .expect("Failed to create reqwest::Client");
+
+            let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new(reqwest_client));
             let data_provider = data_repository.clone();
-            let did_method_creator: DidMethodCreator = Box::new(move |config, providers| {
-                let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
+            let did_method_creator: DidMethodCreator = {
+                let client = client.clone();
+                Box::new(move |config, providers| {
+                    let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
 
-                let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
+                    let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
 
-                for (name, field) in config.iter() {
-                    let did_method: Arc<dyn DidMethod> = match field.r#type.to_string().as_str() {
-                        "KEY" => {
-                            let key_algorithm_provider = providers
-                                .key_algorithm_provider
-                                .to_owned()
-                                .expect("key algorithm provider is required");
-                            Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as _
-                        }
-                        "WEB" => {
-                            let params: DidWebParams = config
-                                .get(name)
-                                .expect("failed to deserialize did web params");
-                            let did_web =
-                                WebDidMethod::new(&providers.core_base_url, params.into())
-                                    .map_err(|_| {
-                                        ConfigError::Validation(ConfigValidationError::KeyNotFound(
-                                            "Base url".to_string(),
-                                        ))
-                                    })
-                                    .expect("failed to create did web method");
-                            Arc::new(did_web) as _
-                        }
-                        "JWK" => {
-                            let key_algorithm_provider = providers
-                                .key_algorithm_provider
-                                .to_owned()
-                                .expect("key algorithm provider is required");
-                            Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as _
-                        }
-                        "X509" => Arc::new(X509Method::new()) as _,
-                        "UNIVERSAL_RESOLVER" => {
-                            let params: DidUniversalParams = config
-                                .get(name)
-                                .expect("failed to deserialize did universal params");
-                            Arc::new(UniversalDidMethod::new(params.into())) as _
-                        }
-                        "MDL" => {
-                            let key_algorithm_provider = providers
-                                .key_algorithm_provider
-                                .to_owned()
-                                .expect("key algorithm provider is required");
-
-                            let params: DidMdlParams = config
-                                .get(name)
-                                .expect("failed to deserialize did mdl params");
-
-                            let did_mdl =
-                                DidMdl::new(params.into(), key_algorithm_provider.clone())
-                                    .map_err(|err| {
-                                        ConfigParsingError::GeneralParsingError(format!(
-                                            "Invalid DID MDL config: {err}"
-                                        ))
-                                    })
-                                    .expect("failed to create did mdl method");
-                            let did_mdl = Arc::new(did_mdl);
-
-                            did_mdl_validator = Some(did_mdl.clone() as Arc<dyn DidMdlValidator>);
-
-                            did_mdl as _
-                        }
-                        other => panic!("Unexpected did method: {other}"),
-                    };
-                    did_methods.insert(name.to_owned(), did_method);
-                }
-
-                for (key, value) in config.iter_mut() {
-                    if let Some(entity) = did_methods.get(key) {
-                        let params = entity.get_keys().map(|keys| {
-                            let serializable_keys = did_config::Keys::from(keys);
-                            core_config::Params {
-                                public: Some(json!({
-                                    "keys": serializable_keys,
-                                })),
-                                private: None,
+                    for (name, field) in config.iter() {
+                        let did_method: Arc<dyn DidMethod> = match field.r#type.to_string().as_str()
+                        {
+                            "KEY" => {
+                                let key_algorithm_provider = providers
+                                    .key_algorithm_provider
+                                    .to_owned()
+                                    .expect("key algorithm provider is required");
+                                Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as _
                             }
-                        });
-                        let capabilities: did_config::DidCapabilities =
-                            entity.get_capabilities().into();
+                            "WEB" => {
+                                let params: DidWebParams = config
+                                    .get(name)
+                                    .expect("failed to deserialize did web params");
+                                let did_web = WebDidMethod::new(
+                                    &providers.core_base_url,
+                                    client.clone(),
+                                    params.into(),
+                                )
+                                .map_err(|_| {
+                                    ConfigError::Validation(ConfigValidationError::KeyNotFound(
+                                        "Base url".to_string(),
+                                    ))
+                                })
+                                .expect("failed to create did web method");
+                                Arc::new(did_web) as _
+                            }
+                            "JWK" => {
+                                let key_algorithm_provider = providers
+                                    .key_algorithm_provider
+                                    .to_owned()
+                                    .expect("key algorithm provider is required");
+                                Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as _
+                            }
+                            "X509" => Arc::new(X509Method::new()) as _,
+                            "UNIVERSAL_RESOLVER" => {
+                                let params: DidUniversalParams = config
+                                    .get(name)
+                                    .expect("failed to deserialize did universal params");
+                                Arc::new(UniversalDidMethod::new(params.into(), client.clone()))
+                                    as _
+                            }
+                            "MDL" => {
+                                let key_algorithm_provider = providers
+                                    .key_algorithm_provider
+                                    .to_owned()
+                                    .expect("key algorithm provider is required");
 
-                        *value = core_config::Fields {
-                            capabilities: Some(json!(capabilities)),
-                            params,
-                            ..value.clone()
+                                let params: DidMdlParams = config
+                                    .get(name)
+                                    .expect("failed to deserialize did mdl params");
+
+                                let did_mdl =
+                                    DidMdl::new(params.into(), key_algorithm_provider.clone())
+                                        .map_err(|err| {
+                                            ConfigParsingError::GeneralParsingError(format!(
+                                                "Invalid DID MDL config: {err}"
+                                            ))
+                                        })
+                                        .expect("failed to create did mdl method");
+                                let did_mdl = Arc::new(did_mdl);
+
+                                did_mdl_validator =
+                                    Some(did_mdl.clone() as Arc<dyn DidMdlValidator>);
+
+                                did_mdl as _
+                            }
+                            other => panic!("Unexpected did method: {other}"),
+                        };
+                        did_methods.insert(name.to_owned(), did_method);
+                    }
+
+                    for (key, value) in config.iter_mut() {
+                        if let Some(entity) = did_methods.get(key) {
+                            let params = entity.get_keys().map(|keys| {
+                                let serializable_keys = did_config::Keys::from(keys);
+                                core_config::Params {
+                                    public: Some(json!({
+                                        "keys": serializable_keys,
+                                    })),
+                                    private: None,
+                                }
+                            });
+                            let capabilities: did_config::DidCapabilities =
+                                entity.get_capabilities().into();
+
+                            *value = core_config::Fields {
+                                capabilities: Some(json!(capabilities)),
+                                params,
+                                ..value.clone()
+                            }
                         }
                     }
-                }
 
-                let did_caching_loader =
-                    initialize_did_caching_loader(&cache_entities_config, data_provider);
+                    let did_caching_loader =
+                        initialize_did_caching_loader(&cache_entities_config, data_provider);
 
-                (
-                    Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods)),
-                    did_mdl_validator,
-                )
-            });
+                    (
+                        Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods)),
+                        did_mdl_validator,
+                    )
+                })
+            };
 
             let caching_loader = initialize_jsonld_cache_loader(
                 core_config.cache_entities.to_owned(),
@@ -364,6 +381,7 @@ fn initialize_core(
 
             let formatter_provider_creator: FormatterProviderCreator = {
                 let caching_loader = caching_loader.clone();
+                let client = client.clone();
                 Box::new(move |format_config, datatype_config, providers| {
                     let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> =
                         HashMap::new();
@@ -394,6 +412,7 @@ fn initialize_core(
                             "PHYSICAL_CARD" => Arc::new(PhysicalCardFormatter::new(
                                 crypto.clone(),
                                 caching_loader.clone(),
+                                client.clone(),
                             )) as _,
                             "SDJWT" => {
                                 let params = format_config
@@ -411,6 +430,7 @@ fn initialize_core(
                                     providers.core_base_url.clone(),
                                     did_method_provider.clone(),
                                     caching_loader.clone(),
+                                    client.clone(),
                                 )) as _
                             }
                             "JSON_LD_BBSPLUS" => {
@@ -424,6 +444,7 @@ fn initialize_core(
                                     did_method_provider.clone(),
                                     key_algorithm_provider.clone(),
                                     caching_loader.clone(),
+                                    client.clone(),
                                 )) as _
                             }
                             "MDOC" => {
@@ -457,7 +478,8 @@ fn initialize_core(
             };
 
             let cache_entities_config = core_config.cache_entities.to_owned();
-            let revocation_method_creator: RevocationMethodCreator =
+            let revocation_method_creator: RevocationMethodCreator = {
+                let client = client.clone();
                 Box::new(move |config, providers| {
                     let mut revocation_methods: HashMap<String, Arc<dyn RevocationMethod>> =
                         HashMap::new();
@@ -482,8 +504,6 @@ fn initialize_core(
                         .clone()
                         .expect("Credential formatter provider is mandatory");
 
-                    let client = reqwest::Client::new();
-
                     for (key, fields) in config.iter() {
                         if fields.disabled() {
                             continue;
@@ -501,6 +521,7 @@ fn initialize_core(
                                         &cache_entities_config,
                                         data_repository.clone(),
                                     ),
+                                    client.clone(),
                                 )) as _
                             }
                             RevocationType::Lvvc => {
@@ -539,7 +560,8 @@ fn initialize_core(
                     );
 
                     Arc::new(RevocationMethodProviderImpl::new(revocation_methods))
-                });
+                })
+            };
 
             OneCoreBuilder::new(core_config.clone())
                 .with_crypto(crypto)
@@ -551,6 +573,7 @@ fn initialize_core(
                 .with_formatter_provider(formatter_provider_creator)
                 .with_ble(ble_peripheral, ble_central)
                 .with_revocation_method_provider(revocation_method_creator)
+                .with_client(client)
                 .build()
                 .map_err(|e| BindingError::DbErr(e.to_string()))
         }) as _
@@ -600,7 +623,9 @@ fn initialize_holder_core(
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct MobileConfig;
+pub struct MobileConfig {
+    pub allow_insecure_http_transport: bool,
+}
 
 pub fn initialize_jsonld_cache_loader(
     cache_entities_config: CacheEntitiesConfig,

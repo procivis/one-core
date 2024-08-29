@@ -8,6 +8,7 @@ use one_providers::credential_formatter::provider::MockCredentialFormatterProvid
 use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, TypeToDescriptorMapper,
 };
+use one_providers::http_client::imp::reqwest_client::ReqwestClient;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
 use one_providers::key_storage::provider::MockKeyProvider;
@@ -33,6 +34,7 @@ fn setup_protocol(base_url: Option<String>, repositories: Repositories) -> Proci
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.key_provider),
         Arc::new(generic_config().core),
+        Arc::new(ReqwestClient::default()),
     )
 }
 

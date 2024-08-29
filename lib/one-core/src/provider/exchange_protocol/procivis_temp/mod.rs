@@ -31,6 +31,7 @@ use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess, StorageAccess,
     TypeToDescriptorMapper,
 };
+use one_providers::http_client::HttpClient;
 use one_providers::key_storage::provider::KeyProvider;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
@@ -59,7 +60,7 @@ use crate::service::ssi_issuer::dto::ConnectIssuerResponseDTO;
 const REDIRECT_URI_QUERY_PARAM_KEY: &str = "redirect_uri";
 
 pub(crate) struct ProcivisTemp {
-    client: reqwest::Client,
+    client: Arc<dyn HttpClient>,
     base_url: Option<String>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
@@ -73,9 +74,10 @@ impl ProcivisTemp {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<CoreConfig>,
+        client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client,
             base_url,
             formatter_provider,
             key_provider,
@@ -141,7 +143,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
         let response = self
             .client
-            .post(url)
+            .post(url.as_str())
             .send()
             .await
             .context("send error")
@@ -156,7 +158,6 @@ impl ExchangeProtocolImpl for ProcivisTemp {
             InvitationType::CredentialIssuance { .. } => {
                 let issuer_response = response
                     .json()
-                    .await
                     .context("parsing error")
                     .map_err(ExchangeProtocolError::Transport)?;
 
@@ -171,7 +172,6 @@ impl ExchangeProtocolImpl for ProcivisTemp {
             InvitationType::ProofRequest { proof_id, protocol } => {
                 let proof_request = response
                     .json()
-                    .await
                     .context("parsing error")
                     .map_err(ExchangeProtocolError::Transport)?;
 
@@ -194,14 +194,12 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         url.set_path("/ssi/temporary-verifier/v1/reject");
         url.set_query(Some(&format!("proof={}", proof.id)));
 
-        let response = self
-            .client
-            .post(url)
+        self.client
+            .post(url.as_str())
             .send()
             .await
             .context("send error")
-            .map_err(ExchangeProtocolError::Transport)?;
-        response
+            .map_err(ExchangeProtocolError::Transport)?
             .error_for_status()
             .context("status error")
             .map_err(ExchangeProtocolError::Transport)?;
@@ -254,8 +252,8 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
         let response = self
             .client
-            .post(url)
-            .body(presentation)
+            .post(url.as_str())
+            .body(presentation.into_bytes())
             .send()
             .await
             .context("send error")
@@ -293,7 +291,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
         let response = self
             .client
-            .post(url)
+            .post(url.as_str())
             .send()
             .await
             .context("send error")
@@ -302,14 +300,9 @@ impl ExchangeProtocolImpl for ProcivisTemp {
             .error_for_status()
             .context("status error")
             .map_err(ExchangeProtocolError::Transport)?;
-        let response_value = response
-            .text()
-            .await
-            .context("parsing error")
-            .map_err(ExchangeProtocolError::Transport)?;
 
         let result =
-            serde_json::from_str(&response_value).map_err(ExchangeProtocolError::JsonError)?;
+            serde_json::from_slice(&response.body).map_err(ExchangeProtocolError::JsonError)?;
 
         Ok(UpdateResponse {
             result,
@@ -330,7 +323,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
         let response = self
             .client
-            .post(url)
+            .post(url.as_str())
             .send()
             .await
             .context("send error")

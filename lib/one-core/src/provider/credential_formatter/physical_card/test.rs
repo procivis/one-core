@@ -5,6 +5,7 @@ use one_crypto::{MockCryptoProvider, MockHasher};
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_providers::credential_formatter::model::MockTokenVerifier;
 use one_providers::credential_formatter::CredentialFormatter;
+use one_providers::http_client::imp::reqwest_client::ReqwestClient;
 use one_providers::remote_entity_storage::{
     MockRemoteEntityStorage, RemoteEntity, RemoteEntityType,
 };
@@ -165,7 +166,11 @@ async fn test_mrz_proof_process() {
         },
     );
 
-    let formatter = PhysicalCardFormatter::new(Arc::new(crypto), caching_loader);
+    let formatter = PhysicalCardFormatter::new(
+        Arc::new(crypto),
+        caching_loader,
+        Arc::new(ReqwestClient::default()),
+    );
 
     formatter
         .extract_credentials(&token, Box::new(token_verifier))
@@ -181,6 +186,7 @@ async fn test_employment_document_mrz_claim_extraction() {
     let formatter = PhysicalCardFormatter::new(
         Arc::new(MockCryptoProvider::default()),
         prepare_caching_loader(),
+        Arc::new(ReqwestClient::default()),
     );
 
     let token = serde_json::to_string(&ScanToVerifyCredentialDTO {

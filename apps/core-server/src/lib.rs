@@ -35,4 +35,5 @@ pub struct ServerConfig {
     pub trace_level: Option<String>,
     // when set to true hides the `cause` field in the error response
     pub hide_error_response_cause: bool,
+    pub allow_insecure_http_transport: bool,
 }

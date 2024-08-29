@@ -19,6 +19,7 @@ use one_providers::credential_formatter::model::{
 };
 use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::did::provider::DidMethodProvider;
+use one_providers::http_client::HttpClient;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds};
 use time::{Duration, OffsetDateTime};
@@ -269,13 +270,14 @@ impl JsonLdClassic {
         base_url: Option<String>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         caching_loader: JsonLdCachingLoader,
+        client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
             params,
             crypto,
             base_url,
             did_method_provider,
-            caching_loader: ContextCache::new(caching_loader),
+            caching_loader: ContextCache::new(caching_loader, client),
         }
     }
 

@@ -12,6 +12,7 @@ use one_providers::credential_formatter::provider::MockCredentialFormatterProvid
 use one_providers::credential_formatter::MockCredentialFormatter;
 use one_providers::exchange_protocol::imp::provider::MockExchangeProtocol;
 use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
+use one_providers::http_client::imp::reqwest_client::ReqwestClient;
 use one_providers::key_storage::provider::MockKeyProvider;
 use one_providers::revocation::model::{
     CredentialRevocationState, RevocationMethodCapabilities, RevocationUpdate,
@@ -90,6 +91,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.config),
         Arc::new(repositories.lvvc_repository),
         None,
+        Arc::new(ReqwestClient::default()),
     )
 }
 

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::http_client::HttpClient;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
 
@@ -35,6 +36,7 @@ pub struct CredentialService {
     config: Arc<core_config::CoreConfig>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     base_url: Option<String>,
+    client: Arc<dyn HttpClient>,
 }
 
 impl CredentialService {
@@ -53,6 +55,7 @@ impl CredentialService {
         config: Arc<core_config::CoreConfig>,
         lvvc_repository: Arc<dyn ValidityCredentialRepository>,
         base_url: Option<String>,
+        client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
             credential_repository: repository,
@@ -68,6 +71,7 @@ impl CredentialService {
             config,
             validity_credential_repository: lvvc_repository,
             base_url,
+            client,
         }
     }
 }

@@ -431,10 +431,10 @@ impl SSIHolderService {
                     "credential_status id is None".to_string(),
                 ))?;
 
-                let client = reqwest::Client::new();
-                let response: IssuerResponseDTO = client
-                    .get(lvvc_url)
-                    .bearer_auth(bearer_token)
+                let response: IssuerResponseDTO = self
+                    .client
+                    .get(&lvvc_url)
+                    .bearer_auth(&bearer_token)
                     .send()
                     .await
                     .context("send error")
@@ -443,7 +443,6 @@ impl SSIHolderService {
                     .context("status error")
                     .map_err(ExchangeProtocolError::Transport)?
                     .json()
-                    .await
                     .context("parsing error")
                     .map_err(ExchangeProtocolError::Transport)?;
 

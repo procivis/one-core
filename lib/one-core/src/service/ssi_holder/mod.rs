@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
+use one_providers::http_client::HttpClient;
 use one_providers::key_storage::provider::KeyProvider;
 
 use crate::config::core_config;
@@ -36,6 +37,7 @@ pub struct SSIHolderService {
     protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     config: Arc<core_config::CoreConfig>,
+    client: Arc<dyn HttpClient>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -53,6 +55,7 @@ impl SSIHolderService {
         protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         config: Arc<core_config::CoreConfig>,
+        client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
             credential_repository,
@@ -67,6 +70,7 @@ impl SSIHolderService {
             protocol_provider,
             did_method_provider,
             config,
+            client,
         }
     }
 }
