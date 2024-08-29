@@ -17,6 +17,7 @@ use one_providers::exchange_protocol::openid4vc::model::{
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, SubmitIssuerResponse,
     UpdateResponse,
 };
+use one_providers::http_client::imp::reqwest_client::ReqwestClient;
 use one_providers::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use one_providers::key_storage::provider::MockKeyProvider;
 use one_providers::key_storage::MockKeyStorage;
@@ -795,6 +796,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         protocol_provider: Arc::new(MockExchangeProtocolProviderExtra::new()),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         config: Arc::new(generic_config().core),
+        client: Arc::new(ReqwestClient::default()),
     }
 }
 

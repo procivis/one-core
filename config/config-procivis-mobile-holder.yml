@@ -1,3 +1,5 @@
+app:
+  allowInsecureHttpTransport: false
 cacheEntities:
   STATUS_LIST_CREDENTIAL:
     cacheSize: 100

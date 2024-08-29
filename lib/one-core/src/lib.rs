@@ -11,6 +11,8 @@ use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::exchange_protocol::imp::provider::ExchangeProtocolProviderImpl;
 use one_providers::exchange_protocol::provider::ExchangeProtocol;
+use one_providers::http_client::imp::reqwest_client::ReqwestClient;
+use one_providers::http_client::HttpClient;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
@@ -134,6 +136,7 @@ pub struct OneCoreBuilder {
     ble_central: Option<Arc<dyn BleCentral>>,
     data_provider_creator: Option<DataProviderCreator>,
     jsonld_caching_loader: Option<JsonLdCachingLoader>,
+    client: Option<Arc<dyn HttpClient>>,
 }
 
 impl OneCoreBuilder {
@@ -223,6 +226,11 @@ impl OneCoreBuilder {
         self
     }
 
+    pub fn with_client(mut self, client: Arc<dyn HttpClient>) -> Self {
+        self.client = Some(client);
+        self
+    }
+
     pub fn build(self) -> Result<OneCore, ConfigError> {
         OneCore::new(
             self.data_provider_creator
@@ -232,6 +240,7 @@ impl OneCoreBuilder {
             self.ble_central,
             self.providers,
             self.jsonld_caching_loader,
+            self.client.unwrap_or(Arc::new(ReqwestClient::default())),
         )
     }
 }
@@ -245,6 +254,7 @@ impl OneCore {
         ble_central: Option<Arc<dyn BleCentral>>,
         providers: OneCoreBuilderProviders,
         jsonld_caching_loader: Option<JsonLdCachingLoader>,
+        client: Arc<dyn HttpClient>,
     ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
@@ -325,6 +335,7 @@ impl OneCore {
             revocation_method_provider.clone(),
             did_method_provider.clone(),
             ble_waiter.clone(),
+            client.clone(),
         )?;
 
         let protocol_provider = Arc::new(ExchangeProtocolProviderCoreImpl::new(
@@ -383,6 +394,7 @@ impl OneCore {
                 config.clone(),
                 data_provider.get_validity_credential_repository(),
                 providers.core_base_url.clone(),
+                client.clone(),
             ),
             did_service: DidService::new(
                 data_provider.get_did_repository(),
@@ -498,10 +510,11 @@ impl OneCore {
                 protocol_provider,
                 did_method_provider,
                 config.clone(),
+                client.clone(),
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),
-            jsonld_service: JsonLdService::new(jsonld_caching_loader),
+            jsonld_service: JsonLdService::new(jsonld_caching_loader, client),
             config,
         })
     }

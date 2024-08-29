@@ -10,6 +10,7 @@ use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolError, ExchangeProtocolImpl, StorageAccess,
 };
 use one_providers::exchange_protocol::provider::ExchangeProtocol;
+use one_providers::http_client::HttpClient;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
@@ -72,6 +73,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     ble: Option<BleWaiter>,
+    client: Arc<dyn HttpClient>,
 ) -> Result<HashMap<String, Arc<dyn ExchangeProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn ExchangeProtocol>> = HashMap::new();
 
@@ -83,6 +85,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     formatter_provider.clone(),
                     key_provider.clone(),
                     config.clone(),
+                    client.clone(),
                 )));
 
                 providers.insert(name.to_string(), protocol);
@@ -112,6 +115,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     revocation_method_provider.clone(),
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
+                    client.clone(),
                     params,
                 );
                 let protocol = Arc::new(OpenID4VC::new(http, ble));

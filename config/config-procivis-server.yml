@@ -8,6 +8,7 @@ app:
   sentryDsn: "https://2deca538f2c80d91bf6fd718fde96db6@o153694.ingest.sentry.io/4505940972142592"
   sentryEnvironment: ""
   hideErrorResponseCause: false
+  allowInsecureHttpTransport: false
 keyStorage:
   AZURE_VAULT:
     display: "keyStorage.azureKeyVault"

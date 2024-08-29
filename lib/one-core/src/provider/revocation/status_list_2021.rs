@@ -9,6 +9,7 @@ use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList
 use crate::util::key_verification::KeyVerification;
 use one_providers::common_models::credential::OpenCredential;
 use one_providers::common_models::did::DidValue;
+use one_providers::http_client::HttpClient;
 use one_providers::revocation::error::RevocationError;
 use one_providers::revocation::model::{
     CredentialAdditionalData, CredentialDataByRole, CredentialRevocationInfo,
@@ -19,7 +20,7 @@ use one_providers::revocation::RevocationMethod;
 pub struct StatusList2021 {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
-    pub client: reqwest::Client,
+    pub client: Arc<dyn HttpClient>,
 }
 
 const CREDENTIAL_STATUS_TYPE: &str = "StatusList2021Entry";
@@ -83,14 +84,10 @@ impl RevocationMethod for StatusList2021 {
             .parse()
             .map_err(|_| RevocationError::ValidationError("Invalid list index".to_string()))?;
 
-        let response = self
-            .client
-            .get(list_url)
-            .send()
-            .await?
-            .error_for_status()?
-            .text()
-            .await?;
+        let response = self.client.get(list_url).send().await?.error_for_status()?;
+
+        let token = String::from_utf8(response.body)
+            .map_err(|e| RevocationError::ValidationError(e.to_string()))?;
 
         let key_verification = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -99,7 +96,7 @@ impl RevocationMethod for StatusList2021 {
         });
 
         let encoded_list =
-            StatusList2021JWTFormatter::parse_status_list(&response, issuer_did, key_verification)
+            StatusList2021JWTFormatter::parse_status_list(&token, issuer_did, key_verification)
                 .await?;
 
         if extract_bitstring_index(encoded_list, list_index)? {

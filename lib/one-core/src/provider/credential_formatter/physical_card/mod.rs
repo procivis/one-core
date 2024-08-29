@@ -9,6 +9,7 @@ use model::OptiocalBarcodeCredential;
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
 };
+use one_providers::http_client::HttpClient;
 use one_providers::{
     common_models::did::DidValue,
     credential_formatter::{
@@ -154,10 +155,14 @@ impl CredentialFormatter for PhysicalCardFormatter {
 
 #[allow(clippy::new_without_default)]
 impl PhysicalCardFormatter {
-    pub fn new(crypto: Arc<dyn CryptoProvider>, caching_loader: JsonLdCachingLoader) -> Self {
+    pub fn new(
+        crypto: Arc<dyn CryptoProvider>,
+        caching_loader: JsonLdCachingLoader,
+        client: Arc<dyn HttpClient>,
+    ) -> Self {
         Self {
             crypto,
-            caching_loader: ContextCache::new(caching_loader),
+            caching_loader: ContextCache::new(caching_loader, client),
         }
     }
 }

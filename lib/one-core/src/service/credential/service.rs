@@ -5,11 +5,13 @@ use one_providers::exchange_protocol::openid4vc::model::{
 };
 use one_providers::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
+use one_providers::http_client::HttpClient;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, RevocationMethodCapabilities,
 };
 use shared_types::CredentialId;
+use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -726,6 +728,7 @@ impl CredentialService {
                 &mut credential,
                 &*self.interaction_repository,
                 interaction_data.clone(),
+                &self.client,
             )
             .await;
 
@@ -735,6 +738,7 @@ impl CredentialService {
                     &*self.credential_repository,
                     &*self.key_provider,
                     interaction_data,
+                    &self.client,
                 )
                 .await;
 
@@ -912,6 +916,7 @@ async fn obtain_and_update_new_mso(
     credentials: &dyn CredentialRepository,
     key_provider: &dyn KeyProvider,
     interaction_data: HolderInteractionData,
+    client: &Arc<dyn HttpClient>,
 ) -> Result<(), ServiceError> {
     let key = credential
         .key
@@ -952,11 +957,12 @@ async fn obtain_and_update_new_mso(
         doctype: Some(schema.schema_id.to_owned()),
     };
 
-    let client = reqwest::Client::new();
     let response = client
-        .post(interaction_data.credential_endpoint)
-        .bearer_auth(interaction_data.access_token)
+        .post(&interaction_data.credential_endpoint)
+        .bearer_auth(&interaction_data.access_token)
         .json(&body)
+        .context("json error")
+        .map_err(ExchangeProtocolError::Transport)?
         .send()
         .await
         .context("send error")
@@ -965,14 +971,9 @@ async fn obtain_and_update_new_mso(
         .error_for_status()
         .context("status error")
         .map_err(ExchangeProtocolError::Transport)?;
-    let response_value = response
-        .text()
-        .await
-        .context("parsing error")
-        .map_err(ExchangeProtocolError::Transport)?;
 
     let result: OpenID4VCICredentialResponseDTO =
-        serde_json::from_str(&response_value).map_err(ExchangeProtocolError::JsonError)?;
+        serde_json::from_slice(&response.body).map_err(ExchangeProtocolError::JsonError)?;
 
     // Update credential value
     credential.credential = result.credential.as_bytes().to_vec();
@@ -996,6 +997,7 @@ async fn update_mso_interaction_access_token(
     credential: &mut Credential,
     interactions: &dyn InteractionRepository,
     mut interaction_data: HolderInteractionData,
+    client: &Arc<dyn HttpClient>,
 ) -> Result<(), ServiceError> {
     let now = OffsetDateTime::now_utc();
 
@@ -1008,7 +1010,6 @@ async fn update_mso_interaction_access_token(
 
     if access_token_expires_at <= now {
         // Fetch a new one
-        let client = reqwest::Client::new();
         let url = format!("{}/token", interaction_data.issuer_url);
         let refresh_token = interaction_data
             .refresh_token
@@ -1020,6 +1021,8 @@ async fn update_mso_interaction_access_token(
                 ("refresh_token", refresh_token),
                 ("grant_type", "refresh_token".to_string()),
             ])
+            .context("form error")
+            .map_err(ExchangeProtocolError::Transport)?
             .send()
             .await
             .context("send error")
@@ -1028,7 +1031,6 @@ async fn update_mso_interaction_access_token(
             .context("status error")
             .map_err(ExchangeProtocolError::Transport)?
             .json()
-            .await
             .context("parsing error")
             .map_err(ExchangeProtocolError::Transport)?;
 
