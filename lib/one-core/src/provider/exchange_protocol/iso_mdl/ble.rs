@@ -11,7 +11,7 @@ use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
 use serde::de::DeserializeOwned;
-use shared_types::ProofId;
+use shared_types::{OrganisationId, ProofId};
 use time::OffsetDateTime;
 use tokio::sync::oneshot;
 use uuid::Uuid;
@@ -99,6 +99,7 @@ pub async fn connect(
     mut interaction: Interaction,
     proof_repository: Arc<dyn ProofRepository>,
     proof_id: ProofId,
+    organisation_id: OrganisationId,
 ) -> Result<(), ServiceError> {
     let (tx, rx) = oneshot::channel();
     let proof_repository_clone = proof_repository.clone();
@@ -149,7 +150,8 @@ pub async fn connect(
                             task_id,
                             sk_device,
                             sk_reader,
-                            device_request,
+                            device_request: device_request.into(),
+                            organisation_id,
                         })
                         .context("interaction serialization error")
                         .map_err(ExchangeProtocolError::Other)?,

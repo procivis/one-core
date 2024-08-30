@@ -494,7 +494,7 @@ impl ProofService {
     pub async fn propose_proof(
         &self,
         exchange: String,
-        _organisation_id: OrganisationId,
+        organisation_id: OrganisationId,
     ) -> Result<ProposeProofResponseDTO, ServiceError> {
         validate_exchange_type(&exchange, &self.config.exchange)?;
 
@@ -567,6 +567,7 @@ impl ProofService {
             interaction,
             self.proof_repository.clone(),
             proof_id,
+            organisation_id,
         )
         .await?;
 
