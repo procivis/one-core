@@ -2,7 +2,9 @@ image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.80.0-
 
 include:
   - project: 'procivis/one/one-operations'
-    file: 'gitlab/aks-deploy.gitlab-ci.yml'
+    file:
+      - 'gitlab/aks-deploy.gitlab-ci.yml'
+      - 'gitlab/docker.gitlab-ci.yml'
 
 
 variables:
@@ -111,25 +113,6 @@ before_script:
       coverage_report:
         coverage_format: cobertura
         path: cobertura.xml
-
-.docker_publish:
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
-    - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN
-    - docker build -t $IMAGE_TAG -f docker/Dockerfile .
-    - >
-      if [ "$CI_COMMIT_REF_NAME" == "main" ] ; then
-        docker image tag $IMAGE_TAG $IMAGE_NAME:latest
-        docker push $IMAGE_NAME:latest
-      fi
-    - docker push $IMAGE_TAG
-    - docker logout
-    - echo "APP_VERSION=${APP_VERSION}" >> build.env
-  artifacts:
-    reports:
-      dotenv: build.env
 
 .run_e2e_tests:
   variables:
