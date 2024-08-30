@@ -699,6 +699,7 @@ pub enum OID4VPAuthorizationEncryptedResponseAlgorithm {
 #[from(AuthorizationEncryptedResponseContentEncryptionAlgorithm)]
 pub enum OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm {
     A256GCM,
+    A128CBCHS256,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, ToSchema, From)]

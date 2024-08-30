@@ -7,9 +7,10 @@ use one_providers::common_models::credential_schema::{OpenCredentialSchema, Open
 use one_providers::common_models::organisation::OpenOrganisation;
 use one_providers::exchange_protocol::openid4vc::imp::mappers::map_offered_claims_to_credential_schema;
 use one_providers::exchange_protocol::openid4vc::model::{
-    CreateCredentialSchemaRequestDTO, OpenID4VCICredentialOfferCredentialDTO,
+    CreateCredentialSchemaRequestDTO, OpenID4VCICredentialOfferClaim,
+    OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialOfferCredentialDTO,
     OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
-    OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
 };
 use one_providers::exchange_protocol::openid4vc::{
     BasicSchemaData, BuildCredentialSchemaResponse, ExchangeProtocolError,
@@ -194,11 +195,41 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                             .is_some_and(|doctype| doctype == &schema_data.schema_id)
                     });
 
+                // Claims for mdoc are even more nested so we have to fix them here
+                let credential = metadata_credential.as_ref().unwrap().1.clone();
+
+                let claim_schemas: Option<
+                    HashMap<String, HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>>,
+                > = if let serde_json::Value::Object(docs) = &credential.claims {
+                    let mut namespaces: HashMap<
+                        String,
+                        HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>,
+                    > = HashMap::new();
+                    for (nk, nv) in docs {
+                        let mut claims: Vec<(String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO)> =
+                            vec![];
+                        if let serde_json::Value::Object(value) = &nv {
+                            for (k, v) in value {
+                                claims.push((
+                                    k.clone(),
+                                    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
+                                        value_type: Some("STRING".into()),
+                                        mandatory: Some(true),
+                                    },
+                                ))
+                            }
+                        }
+                        namespaces.insert(nk.to_owned(), HashMap::from_iter(claims));
+                    }
+                    Some(namespaces)
+                } else {
+                    None
+                };
+
                 let element_order = metadata_credential
                     .as_ref()
                     .and_then(|credential| credential.1.order.to_owned());
 
-                let claim_schemas = None;
                 let claims_specified = claim_schemas.is_some();
 
                 let credential_schema = from_create_request(

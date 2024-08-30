@@ -333,13 +333,12 @@ pub struct OID4VPHandover {
 
 impl OID4VPHandover {
     pub(crate) fn compute(
-        client_id: &Url,
+        client_id: &str,
         response_uri: &Url,
         nonce: &str,
         mdoc_generated_nonce: &str,
     ) -> Self {
-        let client_id_hash =
-            Sha256::digest([client_id.as_str(), mdoc_generated_nonce].concat()).to_vec();
+        let client_id_hash = Sha256::digest([client_id, mdoc_generated_nonce].concat()).to_vec();
         let response_uri_hash =
             Sha256::digest([response_uri.as_str(), mdoc_generated_nonce].concat()).to_vec();
 

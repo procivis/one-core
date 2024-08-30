@@ -314,12 +314,13 @@ impl CredentialFormatter for MdocFormatter {
                         "Missing base_url".to_owned(),
                     ))?;
 
-            let client_id = Url::parse(&format!("{}/ssi/oidc-verifier/v1/response", base_url))
-                .map_err(|_| {
-                    FormatterError::CouldNotExtractPresentation(
-                        "Could not create client_id for validation".to_owned(),
-                    )
-                })?;
+            let client_id = format!("{}/ssi/oidc-verifier/v1/response", base_url);
+
+            let response_url = Url::parse(&client_id).map_err(|_| {
+                FormatterError::CouldNotExtractPresentation(
+                    "Could not create client_id for validation".to_owned(),
+                )
+            })?;
 
             let mdoc_generated_nonce = context.format_nonce.as_ref().ok_or(
                 FormatterError::CouldNotExtractPresentation(
@@ -332,7 +333,7 @@ impl CredentialFormatter for MdocFormatter {
                 mdoc_generated_nonce,
                 &doc_type,
                 &client_id,
-                &client_id,
+                &response_url,
                 &signature,
                 &holder_did,
                 &verification,
@@ -712,7 +713,7 @@ async fn try_build_device_signed(
     nonce: &str,
     mdoc_generated_nonce: &str,
     doctype: &str,
-    client_id: &Url,
+    client_id: &str,
     response_uri: &Url,
 ) -> Result<DeviceSigned, FormatterError> {
     let session_transcript = SessionTranscript {
@@ -756,7 +757,7 @@ async fn try_verify_device_signed(
     nonce: &str,
     mdoc_generated_nonce: &str,
     doctype: &str,
-    client_id: &Url,
+    client_id: &str,
     response_uri: &Url,
     signature: &coset::CoseSign1,
     holder_did: &DidValue,

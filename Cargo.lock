@@ -3121,7 +3121,7 @@ dependencies = [
 [[package]]
 name = "one-crypto"
 version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=1ee4059b22f93da0827601d50ae69652f0931e1f#1ee4059b22f93da0827601d50ae69652f0931e1f"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=2827f182f7264a452a1439517d49829e89973cd9#2827f182f7264a452a1439517d49829e89973cd9"
 dependencies = [
  "chacha20poly1305",
  "ct-codecs",
@@ -3143,7 +3143,7 @@ dependencies = [
 [[package]]
 name = "one-providers"
 version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=1ee4059b22f93da0827601d50ae69652f0931e1f#1ee4059b22f93da0827601d50ae69652f0931e1f"
+source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=2827f182f7264a452a1439517d49829e89973cd9#2827f182f7264a452a1439517d49829e89973cd9"
 dependencies = [
  "anyhow",
  "async-trait",

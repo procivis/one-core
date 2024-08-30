@@ -100,7 +100,7 @@ pub struct OpenID4VPInteractionData {
     pub state: Option<String>,
     pub nonce: String,
     pub client_id_scheme: String,
-    pub client_id: Url,
+    pub client_id: String,
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub client_metadata: Option<OpenID4VPClientMetadata>,

@@ -1,0 +1,13 @@
+{
+    "didId": "81421eeb-fc86-4178-b92c-b6dced345089",
+    "interactionId": "ae031a25-af87-4a60-9635-41c091bcf1e6",
+    "submitCredentials": {
+        "eu.europa.ec.eudi.pid.1": {
+            "credentialId": "483a0ed0-b5db-471d-9e5a-03c5df2292b4",
+            "submitClaims": [
+                "eu.europa.ec.eudi.pid.1/family_name",
+                "eu.europa.ec.eudi.pid.1/given_name"
+            ]
+        }
+    }
+}
