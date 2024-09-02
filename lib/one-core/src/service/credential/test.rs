@@ -4587,3 +4587,30 @@ async fn test_create_credential_array_fail_index_incorrect_order() {
             .is_err()
     );
 }
+
+#[tokio::test]
+async fn test_create_credential_number_named_claims() {
+    let id = Uuid::new_v4().into();
+
+    let schema_root = generate_claim_schema("root", "OBJECT", true);
+    let schema_00 = generate_claim_schema("root/00", "STRING", false);
+    let schema_1 = generate_claim_schema("root/1", "STRING", false);
+    let schema_2array = generate_claim_schema("root/2-array", "STRING", true);
+
+    let claim_schemas = vec![
+        schema_root.to_owned(),
+        schema_1.to_owned(),
+        schema_00.to_owned(),
+        schema_2array.to_owned(),
+    ];
+
+    let claims = vec![
+        generate_claim(id, &schema_00, "zero", "root/0/00"),
+        generate_claim(id, &schema_1, "1first", "root/0/1"),
+        generate_claim(id, &schema_1, "1second", "root/1/1"),
+        generate_claim(id, &schema_2array, "2first", "root/0/2-array/0"),
+    ];
+    test_create_credential_array(claim_schemas.to_owned(), claims)
+        .await
+        .unwrap();
+}
