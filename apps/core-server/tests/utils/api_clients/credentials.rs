@@ -11,6 +11,13 @@ pub struct CredentialsApi {
     client: HttpClient,
 }
 
+#[derive(Debug, Default)]
+pub struct Filters {
+    pub name: Option<String>,
+    pub search_text: Option<String>,
+    pub search_type: Option<Vec<String>>,
+}
+
 impl CredentialsApi {
     pub fn new(client: HttpClient) -> Self {
         Self { client }
@@ -34,6 +41,7 @@ impl CredentialsApi {
 
         self.client.post("/api/credential/v1", body).await
     }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn list(
         &self,
@@ -41,7 +49,7 @@ impl CredentialsApi {
         size: u64,
         organisation_id: &impl Display,
         role: Option<&str>,
-        name: Option<&str>,
+        filters: Option<Filters>,
         ids: Option<&[CredentialId]>,
         include: Option<Vec<CredentialListIncludeEntityTypeEnum>>,
     ) -> Response {
@@ -51,8 +59,20 @@ impl CredentialsApi {
         if let Some(role) = role {
             url += &format!("&role={role}")
         }
-        if let Some(name) = name {
-            url += &format!("&name={name}")
+        if let Some(filters) = filters {
+            if let Some(name) = filters.name {
+                url += &format!("&name={name}")
+            }
+            if let Some(search_text) = filters.search_text {
+                url += &format!("&searchText={search_text}")
+            }
+            url += &filters
+                .search_type
+                .into_iter()
+                .flatten()
+                .fold(String::new(), |url, search_type| {
+                    url + &format!("&searchType[]={search_type}")
+                });
         }
         if let Some(ids) = ids {
             for id in ids {
@@ -89,18 +109,15 @@ impl CredentialsApi {
 
     pub async fn suspend(&self, id: &impl Display, suspend_end_date: Option<String>) -> Response {
         let url = format!("/api/credential/v1/{id}/suspend");
-        if let Some(suspend_end_date) = suspend_end_date {
-            self.client
-                .post(
-                    &url,
-                    json!({
-                      "suspendEndDate": suspend_end_date,
-                    }),
-                )
-                .await
-        } else {
-            self.client.post(&url, json!({})).await
-        }
+        let body = suspend_end_date
+            .map(|suspend_end_date| {
+                json!({
+                  "suspendEndDate": suspend_end_date,
+                })
+            })
+            .unwrap_or(json!({}));
+
+        self.client.post(&url, body).await
     }
 
     pub async fn revocation_check(&self, credential_id: impl Into<Uuid>) -> Response {

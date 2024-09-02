@@ -1,15 +1,18 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-use dto_mapper::convert_inner;
-use one_providers::{
-    credential_formatter::error::FormatterError, did::error::DidMethodProviderError,
-};
-use serde::Serialize;
 use std::collections::BTreeMap;
+
+use axum::extract::State;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::Json;
+use dto_mapper::convert_inner;
+use one_core::service::error::{self, MissingProviderError, ServiceError};
+use one_providers::credential_formatter::error::FormatterError;
+use one_providers::did::error::DidMethodProviderError;
+use serde::Serialize;
 use utoipa::ToSchema;
 
 use super::error::{Cause, ErrorCode, ErrorResponseRestDTO};
 use crate::router::AppState;
-use one_core::service::error::{self, MissingProviderError, ServiceError};
 
 #[derive(utoipa::IntoResponses)]
 pub enum ErrorResponse {

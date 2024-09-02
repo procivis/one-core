@@ -158,6 +158,14 @@ pub enum CredentialStateRestEnum {
     Error,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SearchType {
+    ClaimName,
+    ClaimValue,
+    CredentialSchemaName,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialsFilterQueryParamsRest {
@@ -170,6 +178,9 @@ pub struct CredentialsFilterQueryParamsRest {
     pub ids: Option<Vec<CredentialId>>,
     #[param(inline, rename = "status[]")]
     pub status: Option<Vec<CredentialStateRestEnum>>,
+    pub search_text: Option<String>,
+    #[param(inline, rename = "searchType[]")]
+    pub search_type: Option<Vec<SearchType>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

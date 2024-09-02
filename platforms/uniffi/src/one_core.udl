@@ -548,6 +548,12 @@ enum CredentialListIncludeEntityTypeBindingEnum {
   "LayoutProperties", "Credential"
 };
 
+enum SearchTypeBindingEnum {
+  "ClaimName",
+  "ClaimValue",
+  "CredentialSchemaName",
+};
+
 dictionary CredentialListQueryBindingDTO {
   u32 page;
   u32 page_size;
@@ -555,6 +561,8 @@ dictionary CredentialListQueryBindingDTO {
   SortDirection? sort_direction;
   string organisation_id;
   string? name;
+  string? search_text;
+  sequence<SearchTypeBindingEnum>? search_type;
   sequence<CredentialListQueryExactColumnBindingEnum>? exact;
   CredentialRoleBindingDTO? role;
   sequence<string>? ids;

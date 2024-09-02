@@ -1,7 +1,8 @@
-use super::dto::ConfigRestDTO;
-use crate::{dto::response::OkOrErrorResponse, router::AppState};
-
 use axum::extract::State;
+
+use super::dto::ConfigRestDTO;
+use crate::dto::response::OkOrErrorResponse;
+use crate::router::AppState;
 
 #[utoipa::path(
     get,

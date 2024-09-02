@@ -12,10 +12,10 @@ use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
 use shared_types::{CredentialId, DidId, KeyId};
 
 use crate::credential::entity_model::CredentialListEntityModel;
-use crate::entity::{self, credential, credential_schema, credential_state, did};
+use crate::entity::{self, claim, credential, credential_schema, credential_state, did};
 use crate::list_query_generic::{
-    get_comparison_condition, get_equals_condition, get_string_match_condition,
-    IntoFilterCondition, IntoSortingColumn,
+    get_blob_match_condition, get_comparison_condition, get_equals_condition,
+    get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
 };
 
 impl IntoSortingColumn for SortableCredentialColumn {
@@ -32,8 +32,14 @@ impl IntoSortingColumn for SortableCredentialColumn {
 impl IntoFilterCondition for CredentialFilterValue {
     fn get_condition(self) -> sea_orm::Condition {
         match self {
-            Self::Name(string_match) => {
+            Self::CredentialSchemaName(string_match) => {
                 get_string_match_condition(credential_schema::Column::Name, string_match)
+            }
+            Self::ClaimName(string_match) => {
+                get_string_match_condition(claim::Column::Path, string_match)
+            }
+            Self::ClaimValue(string_match) => {
+                get_blob_match_condition(claim::Column::Value, string_match, 255)
             }
             Self::OrganisationId(organisation_id) => get_equals_condition(
                 credential_schema::Column::OrganisationId,

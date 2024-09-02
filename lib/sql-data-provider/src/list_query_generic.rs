@@ -1,17 +1,17 @@
+use std::fmt::Write;
+
+use migration::{Expr, Func};
+use one_core::model::common::SortDirection;
+use one_core::model::list_filter::{
+    ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ValueComparison,
+};
+use one_core::model::list_query::ListQuery;
+use sea_orm::query::*;
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::{ColumnTrait, EntityTrait, RelationDef};
+
 use crate::mapper::order_from_sort_direction;
-use one_core::model::{
-    common::SortDirection,
-    list_filter::{
-        ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
-        ValueComparison,
-    },
-    list_query::ListQuery,
-};
-use sea_orm::{
-    query::*,
-    sea_query::{IntoCondition, SimpleExpr},
-    ColumnTrait, EntityTrait, RelationDef,
-};
 
 pub trait IntoSortingColumn {
     /// converts declared sorting column into a sea-orm column
@@ -214,4 +214,49 @@ pub(crate) fn get_comparison_condition<T: Into<Value>>(
 /// helper function to construct an `eq` `sea_query::Condition` with a specific value
 pub(crate) fn get_equals_condition(column: impl ColumnTrait, value: impl Into<Value>) -> Condition {
     column.eq(value).into_condition()
+}
+
+pub struct SubStr;
+
+impl sea_orm::Iden for SubStr {
+    fn unquoted(&self, s: &mut dyn Write) {
+        write!(s, "substr").unwrap();
+    }
+}
+
+pub struct Hex;
+
+impl sea_orm::Iden for Hex {
+    fn unquoted(&self, s: &mut dyn Write) {
+        write!(s, "hex").unwrap();
+    }
+}
+
+pub(crate) fn get_blob_match_condition(
+    column: impl ColumnTrait,
+    value: StringMatch,
+    limit: u64,
+) -> Condition {
+    let StringMatch { r#match, value } = value;
+    let slice = Expr::expr(
+        Func::cust(Hex).arg(Func::cust(SubStr).arg(column.into_expr()).arg(0).arg(limit)),
+    );
+    let value = hex::encode(value);
+
+    match r#match {
+        StringMatchType::Equals => slice.eq(value),
+        StringMatchType::StartsWith => {
+            let pattern = format!("{value}%");
+            slice.like(pattern)
+        }
+        StringMatchType::EndsWith => {
+            let pattern = format!("%{value}");
+            slice.like(pattern)
+        }
+        StringMatchType::Contains => {
+            let pattern = format!("%{value}%");
+            slice.like(pattern)
+        }
+    }
+    .into_condition()
 }
