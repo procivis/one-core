@@ -1,1 +1,1 @@
--keep class ch.procivis.one.core.** { public *; }
+-keep class ch.procivis.one.core.** { *; }
