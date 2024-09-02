@@ -309,6 +309,10 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         )
         // add related issuer did (to enable sorting)
         .join(JoinType::LeftJoin, credential::Relation::IssuerDid.def())
+        .join(
+            sea_orm::JoinType::LeftJoin,
+            credential::Relation::Claim.def(),
+        )
         // find most recent state (to enable sorting)
         .join(
             sea_orm::JoinType::InnerJoin,
@@ -363,7 +367,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         }
     }
 
-    query
+    query.distinct()
 }
 
 #[autometrics]

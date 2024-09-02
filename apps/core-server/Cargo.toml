@@ -20,6 +20,7 @@ clap                         = { version = "4.5", features = ["derive"] }
 ct-codecs.workspace          = true
 dto_mapper.workspace         = true
 headers                      = { version = "0.4" }
+hex-literal                  = { version = "0.4" }
 one-core                     = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json", "config_yaml", "config_env"] }
 one-crypto                   = { workspace = true }
 one-providers                = { workspace = true }
@@ -44,7 +45,6 @@ utoipa                       = { workspace = true, features = ["uuid", "axum_ext
 utoipa-swagger-ui            = { version = "7.1", features = ["axum"] }
 uuid.workspace               = true
 validator.workspace          = true
-hex-literal = "0.4.1"
 
 [build-dependencies]
 serde                = { workspace = true, features = ["derive"] }

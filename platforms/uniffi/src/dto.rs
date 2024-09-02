@@ -184,6 +184,14 @@ pub enum SortableCredentialColumnBindingEnum {
     State,
 }
 
+#[derive(Clone, Debug)]
+pub enum SearchTypeBindingEnum {
+    ClaimName,
+    ClaimValue,
+    CredentialSchemaName,
+}
+
+#[derive(Clone, Debug)]
 pub struct CredentialListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
@@ -193,6 +201,8 @@ pub struct CredentialListQueryBindingDTO {
 
     pub organisation_id: String,
     pub name: Option<String>,
+    pub search_text: Option<String>,
+    pub search_type: Option<Vec<SearchTypeBindingEnum>>,
     pub exact: Option<Vec<CredentialListQueryExactColumnBindingEnum>>,
     pub role: Option<CredentialRoleBindingDTO>,
     pub ids: Option<Vec<String>>,

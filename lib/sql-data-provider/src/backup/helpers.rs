@@ -5,19 +5,13 @@ use migration::{Func, QueryStatementBuilder, SimpleExpr, Write};
 use one_core::repository::error::DataLayerError;
 use sea_orm::{ColumnTrait, Database, DatabaseConnection, Iden};
 
+use crate::list_query_generic::Hex;
+
 pub async fn open_sqlite_on_path(path: &Path) -> Result<DatabaseConnection, DataLayerError> {
     Database::connect(format!("sqlite:{}?mode=rw", path.to_string_lossy()))
         .await
         .context("failed to open sql from path")
         .map_err(Into::into)
-}
-
-pub struct Hex;
-
-impl sea_orm::Iden for Hex {
-    fn unquoted(&self, s: &mut dyn Write) {
-        write!(s, "hex").unwrap();
-    }
 }
 
 pub struct JsonObject;

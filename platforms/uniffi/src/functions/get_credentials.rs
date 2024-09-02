@@ -1,13 +1,16 @@
 use dto_mapper::convert_inner;
-use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
+use one_core::model::list_filter::{
+    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO};
+use one_core::service::error::{BusinessLogicError, ServiceError};
 
 use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::{
     CredentialListBindingDTO, CredentialListQueryBindingDTO,
-    CredentialListQueryExactColumnBindingEnum, OneCoreBinding,
+    CredentialListQueryExactColumnBindingEnum, OneCoreBinding, SearchTypeBindingEnum,
 };
 
 impl OneCoreBinding {
@@ -19,6 +22,16 @@ impl OneCoreBinding {
             let core = self.use_core().await?;
 
             let condition = {
+                if query.name.is_some()
+                    && query.search_type.is_some()
+                    && query.search_text.is_some()
+                {
+                    return Err(ServiceError::BusinessLogic(
+                        BusinessLogicError::GeneralInputValidationError,
+                    )
+                    .into());
+                }
+
                 let exact = query.exact.unwrap_or_default();
                 let get_string_match_type = |column| {
                     if exact.contains(&column) {
@@ -33,13 +46,50 @@ impl OneCoreBinding {
                         .condition();
 
                 let name = query.name.map(|name| {
-                    CredentialFilterValue::Name(StringMatch {
+                    CredentialFilterValue::CredentialSchemaName(StringMatch {
                         r#match: get_string_match_type(
                             CredentialListQueryExactColumnBindingEnum::Name,
                         ),
                         value: name,
                     })
                 });
+
+                let search_filters = match (query.search_text, query.search_type) {
+                    (Some(search_test), Some(search_type)) => {
+                        organisation
+                            & ListFilterCondition::Or(
+                                search_type
+                                    .into_iter()
+                                    .map(|filter| {
+                                        match filter {
+                                            SearchTypeBindingEnum::ClaimName => {
+                                                CredentialFilterValue::ClaimName(StringMatch {
+                                                    r#match: StringMatchType::Contains,
+                                                    value: search_test.clone(),
+                                                })
+                                            }
+                                            SearchTypeBindingEnum::ClaimValue => {
+                                                CredentialFilterValue::ClaimValue(StringMatch {
+                                                    r#match: StringMatchType::Contains,
+                                                    value: search_test.clone(),
+                                                })
+                                            }
+                                            SearchTypeBindingEnum::CredentialSchemaName => {
+                                                CredentialFilterValue::CredentialSchemaName(
+                                                    StringMatch {
+                                                        r#match: StringMatchType::Contains,
+                                                        value: search_test.clone(),
+                                                    },
+                                                )
+                                            }
+                                        }
+                                        .condition()
+                                    })
+                                    .collect(),
+                            )
+                    }
+                    _ => organisation,
+                };
 
                 let role = query
                     .role
@@ -62,7 +112,7 @@ impl OneCoreBinding {
                     )
                 });
 
-                organisation & name & role & ids & states
+                search_filters & name & role & ids & states
             };
 
             Ok(core

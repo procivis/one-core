@@ -18,7 +18,7 @@ resolver = "2"
 
 [workspace.dependencies]
 anyhow             = { version = "1.0" }
-autometrics        = { version = "1.0", features = ["prometheus-0_13"] }
+autometrics        = { version = "2.0", features = ["prometheus-0_13"] }
 axum               = { version = "0.7", features = ["macros"] }
 ct-codecs          = { version = "1.1" }
 dto_mapper         = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git", tag = "0.1.6" }
@@ -36,7 +36,7 @@ serde_json         = { version = "1.0" }
 serde_qs           = { version = "0.13" }
 serde_urlencoded   = { version = "0.7" }
 serde_with         = { version = "3.8", features = ["json", "time_0_3"] }
-shadow-rs          = { version = "0.31" }
+shadow-rs          = { version = "0.33" }
 strum              = { version = "0.26", features = ["derive"] }
 tempfile           = { version = "3.10" }
 thiserror          = { version = "1.0" }

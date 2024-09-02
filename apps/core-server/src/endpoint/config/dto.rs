@@ -1,8 +1,9 @@
+use std::collections::HashMap;
+
 use dto_mapper::From;
 use one_core::service::config::dto::ConfigDTO;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use utoipa::ToSchema;
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

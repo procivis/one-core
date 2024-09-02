@@ -1,6 +1,9 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
+use dto_mapper::convert_inner;
+use one_core::model::list_query::{ListPagination, ListSorting};
+use one_core::service::credential::dto::GetCredentialQueryDTO;
 use shared_types::CredentialId;
 
 use super::dto::{
@@ -79,10 +82,34 @@ pub(crate) async fn get_credential_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetCredentialsResponseDTO> {
+    let filtering = match query.filter.try_into() {
+        Ok(v) => v,
+        Err(err) => {
+            return OkOrErrorResponse::from_result(
+                Err::<GetCredentialsResponseDTO, _>(err),
+                state,
+                "getting credential list",
+            )
+        }
+    };
+
+    let filters = GetCredentialQueryDTO {
+        pagination: Some(ListPagination {
+            page: query.page,
+            page_size: query.page_size,
+        }),
+        sorting: query.sort.map(|column| ListSorting {
+            column: column.into(),
+            direction: convert_inner(query.sort_direction),
+        }),
+        filtering: Some(filtering),
+        include: query.include.map(convert_inner),
+    };
+
     let result = state
         .core
         .credential_service
-        .get_credential_list(query.into())
+        .get_credential_list(filters)
         .await;
 
     OkOrErrorResponse::from_result(result, state, "getting credential list")
