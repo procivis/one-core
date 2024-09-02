@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::config::validator::datatype::{validate_datatype_value, DatatypeValidationError};
@@ -8,6 +10,7 @@ use crate::provider::credential_formatter::FormatterCapabilities;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use itertools::Itertools;
+use regex::Regex;
 
 pub(crate) fn validate_create_request(
     did_method: &str,
@@ -33,6 +36,8 @@ pub(crate) fn validate_create_request(
             "claim_schemas is None".to_string(),
         ))?;
 
+    let mut paths: Vec<&str> = vec![];
+
     // check all claims have valid content
     for claim in claims {
         let claim_schema_id = claim.claim_schema_id;
@@ -51,15 +56,13 @@ pub(crate) fn validate_create_request(
                     datatype: schema.schema.data_type.clone(),
                     source: err,
                 })?;
+
+                paths.push(claim.path.as_str());
             }
         }
     }
 
-    let paths = claims
-        .iter()
-        .map(|claim| claim.path.as_str())
-        .collect::<Vec<&str>>();
-    validate_continuity(&paths)?;
+    validate_continuity(&paths, claim_schemas)?;
 
     let claim_schemas =
         adapt_required_state_based_on_claim_presence(claim_schemas, claims, config)?;
@@ -87,7 +90,7 @@ pub(crate) fn validate_create_request(
 }
 
 struct PathNode {
-    pub key: String,
+    pub key: Option<String>,
     pub subnodes: Vec<PathNode>,
 }
 
@@ -97,18 +100,18 @@ impl PathNode {
 
         if rest.is_empty() {
             self.subnodes.push(PathNode {
-                key: first.to_string(),
+                key: Some(first.to_string()),
                 subnodes: vec![],
             });
         } else {
             match self
                 .subnodes
                 .iter_mut()
-                .find(|subnode| subnode.key == first)
+                .find(|subnode| subnode.key.as_ref().is_some_and(|key| key == first))
             {
                 None => {
                     self.subnodes.push(PathNode {
-                        key: first.to_string(),
+                        key: Some(first.to_string()),
                         subnodes: vec![],
                     });
                     let last = self
@@ -126,61 +129,67 @@ impl PathNode {
         Ok(())
     }
 
-    fn check_continuity(&self) -> Result<(), ServiceError> {
-        let keys = self
+    fn check_continuity(
+        &self,
+        array_claim_paths: &Option<Regex>,
+        parent_path: Option<&String>,
+    ) -> Result<(), ServiceError> {
+        let subkeys = self
             .subnodes
             .iter()
-            .map(|subnode| subnode.key.as_str())
-            .collect::<Vec<&str>>();
-        if keys.is_empty() {
+            .filter_map(|subnode| subnode.key.as_ref())
+            .collect::<Vec<_>>();
+        if subkeys.is_empty() {
             return Ok(());
         }
 
-        let first = keys
-            .first()
-            .map(|index| {
-                index.parse::<u64>().map_err(|e| {
-                    ServiceError::ConfigValidationError(ConfigValidationError::DatatypeValidation(
-                        DatatypeValidationError::IndexParseFailure(e),
-                    ))
-                })
-            })
-            .transpose();
-
-        if let Ok(Some(value)) = first {
-            if value != 0 {
-                return Err(ServiceError::MappingError(
-                    "indexes need to start at 0".to_string(),
-                ));
+        let key_path = match parent_path {
+            None => self.key.to_owned(),
+            Some(parent) => {
+                let key = self.key.as_ref().ok_or(ServiceError::MappingError(format!(
+                    "Missing subclaim key under {parent}"
+                )))?;
+                Some(format!("{parent}{NESTED_CLAIM_MARKER}{key}"))
             }
+        };
 
-            let indexes = keys
-                .iter()
-                .map(|index| {
-                    index.parse::<u64>().map_err(|e| {
-                        ServiceError::ConfigValidationError(
-                            ConfigValidationError::DatatypeValidation(
-                                DatatypeValidationError::IndexParseFailure(e),
-                            ),
-                        )
+        if let (Some(key), Some(array_claim_paths)) = (&key_path, &array_claim_paths) {
+            let is_array = array_claim_paths.is_match(key);
+            if is_array {
+                if subkeys.first().is_some_and(|key| *key != "0") {
+                    return Err(ServiceError::MappingError(
+                        "Array indexes need to start at 0".to_string(),
+                    ));
+                }
+
+                let indexes = subkeys
+                    .iter()
+                    .map(|index| {
+                        index.parse::<u64>().map_err(|e| {
+                            ServiceError::ConfigValidationError(
+                                ConfigValidationError::DatatypeValidation(
+                                    DatatypeValidationError::IndexParseFailure(e),
+                                ),
+                            )
+                        })
                     })
-                })
-                .collect::<Result<Vec<_>, _>>()?;
+                    .collect::<Result<Vec<_>, _>>()?;
 
-            let continuous = indexes
-                .iter()
-                .tuple_windows()
-                .all(|(i1, i2)| i1 < i2 && i2 - i1 == 1);
-            if !continuous {
-                return Err(ServiceError::MappingError(
-                    "indexes are not continuous".to_string(),
-                ));
+                let continuous = indexes
+                    .iter()
+                    .tuple_windows()
+                    .all(|(i1, i2)| i1 < i2 && i2 - i1 == 1);
+                if !continuous {
+                    return Err(ServiceError::MappingError(
+                        "indexes are not continuous".to_string(),
+                    ));
+                }
             }
         }
 
-        self.subnodes
-            .iter()
-            .try_for_each(|subnode| subnode.check_continuity())?;
+        self.subnodes.iter().try_for_each(|subnode| {
+            subnode.check_continuity(array_claim_paths, key_path.as_ref())
+        })?;
 
         Ok(())
     }
@@ -193,17 +202,64 @@ fn get_first_path_element(path: &str) -> (&str, &str) {
     }
 }
 
-fn validate_continuity(paths: &[&str]) -> Result<(), ServiceError> {
+fn validate_continuity(
+    paths: &[&str],
+    claim_schemas: &[CredentialSchemaClaim],
+) -> Result<(), ServiceError> {
     let mut tree = PathNode {
-        key: "tree_root".to_string(),
+        key: None,
         subnodes: vec![],
     };
 
     paths.iter().try_for_each(|path| tree.insert(path))?;
 
-    tree.check_continuity()?;
+    let array_paths = claim_schemas
+        .iter()
+        .filter_map(|schema| {
+            if schema.schema.array {
+                Some(schema.schema.key.as_str())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    let array_claim_paths = array_paths_to_claim_paths_regex(&array_paths)?;
+
+    tree.check_continuity(&array_claim_paths, None)?;
 
     Ok(())
+}
+
+/// Converts set of array claim schema keys into a regex matching claim path
+fn array_paths_to_claim_paths_regex(array_paths: &[&str]) -> Result<Option<Regex>, ServiceError> {
+    let mut patterns = vec![];
+
+    let mut to_be_processed = array_paths
+        .iter()
+        .sorted()
+        .map(|s| regex::escape(s))
+        .collect::<VecDeque<_>>();
+    while let Some(first) = to_be_processed.pop_front() {
+        let prefix = format!("{first}{NESTED_CLAIM_MARKER}");
+        patterns.push(first);
+        to_be_processed.iter_mut().for_each(|item| {
+            if item.starts_with(&prefix) {
+                *item = format!(
+                    "{prefix}\\d+{NESTED_CLAIM_MARKER}{}",
+                    item.split_at(prefix.len()).1
+                );
+            }
+        })
+    }
+
+    if patterns.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(Some(
+        Regex::new(&format!("^({})$", patterns.join("|")))
+            .map_err(|e| ServiceError::Other(e.to_string()))?,
+    ))
 }
 
 fn get_nth_segment_of_key(key: &str, index: usize) -> Result<&str, ServiceError> {
@@ -229,7 +285,7 @@ fn validate_path(
 
     if segments.len() != expected_segments {
         return Err(ServiceError::MappingError(format!(
-            "invalid segments [{} vs {expected_segments})",
+            "invalid segments [{} vs {expected_segments}]",
             segments.len()
         )));
     }

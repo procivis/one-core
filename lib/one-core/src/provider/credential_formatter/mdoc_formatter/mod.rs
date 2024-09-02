@@ -443,7 +443,7 @@ impl CredentialFormatter for MdocFormatter {
                 "ARRAY".to_string(),
                 "MDL_PICTURE".to_string(),
             ],
-            forbidden_claim_names: vec![],
+            forbidden_claim_names: vec!["0".to_string()],
         }
     }
 
