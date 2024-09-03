@@ -547,7 +547,17 @@ impl CredentialSchemasDB {
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
-            layout_properties: None,
+            layout_properties: Some(LayoutProperties {
+                background: Some(BackgroundProperties {
+                    color: Some("color".to_string()),
+                    image: None,
+                }),
+                logo: None,
+                primary_attribute: None,
+                secondary_attribute: None,
+                picture_attribute: None,
+                code: None,
+            }),
             schema_id: schema_id.to_owned(),
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         };

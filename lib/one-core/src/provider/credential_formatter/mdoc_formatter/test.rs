@@ -190,6 +190,7 @@ async fn test_credential_formatting_ok_for_es256() {
             r#type: None,
             context: None,
             name: "credential-schema-name".to_string(),
+            metadata: None,
         },
     };
 
@@ -371,6 +372,7 @@ async fn test_unverified_credential_extraction() {
             r#type: None,
             context: None,
             name: "credential-schema-name".to_string(),
+            metadata: None,
         },
     };
 
@@ -477,6 +479,7 @@ async fn test_unverified_credential_extraction() {
         CredentialSchema {
             id: "doctype".to_owned(),
             r#type: CredentialSchemaType::Mdoc.to_string(),
+            metadata: None,
         },
         credential.credential_schema.unwrap()
     );
