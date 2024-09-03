@@ -23,16 +23,16 @@ use crate::config::core_config::{Fields, RevocationType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
-    UpdateCredentialRequest,
+    Credential, CredentialRelations, CredentialState, CredentialStateEnum,
+    CredentialStateRelations, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::history::HistoryAction;
+use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
+use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
 use crate::provider::exchange_protocol::openid4vc::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
@@ -41,7 +41,7 @@ use crate::service::error::{
 use crate::service::ssi_issuer::dto::IssuerResponseDTO;
 use crate::service::ssi_validator::validate_config_entity_presence;
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::history::{log_history_event_credential, log_history_event_proof};
+use crate::util::history::{history_event, log_history_event_credential, log_history_event_proof};
 use crate::util::oidc::{
     create_core_to_oicd_format_map, create_core_to_oicd_presentation_format_map,
     create_oicd_to_core_format_map, detect_format_with_crypto_suite, map_core_to_oidc_format,
@@ -89,45 +89,57 @@ impl SSIHolderService {
         match &response {
             InvitationResponseDTO::Credential { credentials, .. } => {
                 for credential in credentials {
-                    let credential = credential.to_owned().into();
+                    let credential: Credential = credential.to_owned().into();
 
-                    let _ = log_history_event_credential(
-                        &self.history_repository,
-                        &credential,
-                        HistoryAction::Offered,
-                    )
-                    .await;
+                    let _ = self
+                        .history_repository
+                        .create_history(history_event(
+                            credential.id,
+                            organisation_id,
+                            HistoryEntityType::Credential,
+                            HistoryAction::Offered,
+                        ))
+                        .await;
 
                     self.credential_repository
                         .create_credential(credential.to_owned())
                         .await?;
 
-                    let _ = log_history_event_credential(
-                        &self.history_repository,
-                        &credential,
-                        HistoryAction::Pending,
-                    )
-                    .await;
+                    let _ = self
+                        .history_repository
+                        .create_history(history_event(
+                            credential.id,
+                            organisation_id,
+                            HistoryEntityType::Credential,
+                            HistoryAction::Pending,
+                        ))
+                        .await;
                 }
             }
             InvitationResponseDTO::ProofRequest { proof, .. } => {
-                let proof = (**proof).to_owned().into();
+                let proof: Proof = (**proof).to_owned().into();
 
-                let _ = log_history_event_proof(
-                    &self.history_repository,
-                    &proof,
-                    HistoryAction::Requested,
-                )
-                .await;
+                let _ = self
+                    .history_repository
+                    .create_history(history_event(
+                        proof.id,
+                        organisation_id,
+                        HistoryEntityType::Proof,
+                        HistoryAction::Requested,
+                    ))
+                    .await;
 
                 self.proof_repository.create_proof(proof.to_owned()).await?;
 
-                let _ = log_history_event_proof(
-                    &self.history_repository,
-                    &proof,
-                    HistoryAction::Pending,
-                )
-                .await;
+                let _ = self
+                    .history_repository
+                    .create_history(history_event(
+                        proof.id,
+                        organisation_id,
+                        HistoryEntityType::Proof,
+                        HistoryAction::Pending,
+                    ))
+                    .await;
             }
         }
 
