@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 use time::Duration;
 
 use one_providers::{
@@ -15,7 +15,6 @@ use one_providers::{
     key_storage::provider::KeyProvider,
     util::key_verification::KeyVerification,
 };
-use shared_types::DidId;
 use time::OffsetDateTime;
 
 use crate::{
@@ -55,15 +54,14 @@ impl VCAPIService {
         &self,
         create_request: CredentialIssueRequest,
     ) -> Result<CredentialIssueResponse, ServiceError> {
-        let CredentialIssueOptions { issuer_id, r#type } = create_request
+        let CredentialIssueOptions { signature_algorithm, credential_format } = create_request
             .options
             .ok_or(ServiceError::Other("Options are missing".to_string()))?;
 
-        let issuer = issuer_id.ok_or(ServiceError::Other("Issuer id is missing".to_string()))?;
         let issuer = self
             .did_repository
-            .get_did(
-                &DidId::from(uuid::Uuid::from_str(&issuer).unwrap()),
+            .get_did_by_value(
+                &create_request.credential.issuer.clone().into(),
                 &DidRelations {
                     keys: Some(KeyRelations::default()),
                     organisation: None,
@@ -75,19 +73,28 @@ impl VCAPIService {
         let key = issuer
             .keys
             .as_ref()
-            .ok_or(ServiceError::Other("Issuer DID has no keys".to_string()))?;
-
-        let key = &key
+            .ok_or(ServiceError::Other(
+                "No local keys found for issuer DID".to_string(),
+            ))?
             .first()
-            .ok_or(ServiceError::Other("Issuer DID has no keys".to_string()))?
-            .key;
+            .ok_or(ServiceError::Other("Issuer DID has empty keys".to_string()))?;
 
-        // TODO
-        let key_id = "did:key:z6MkrfxC1rBNcxhAhgnNF4CxTgo2gQVXxvgJEp7enGBtKxBR#z6MkrfxC1rBNcxhAhgnNF4CxTgo2gQVXxvgJEp7enGBtKxBR";
+        let assertion_methods = self
+            .did_method_provider
+            .resolve(&create_request.credential.issuer)
+            .await?
+            .assertion_method
+            .ok_or(ServiceError::MappingError(
+                "Missing assertion_method".to_owned(),
+            ))?;
+
+        let key_id = assertion_methods.first().ok_or(ServiceError::Other(
+            "Could not find key in assertion method".to_string(),
+        ))?;
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, Some(key_id.to_string()))?;
+            .get_signature_provider(&key.key, Some(key_id.to_owned()))?;
 
         let mut claims: Vec<PublishedClaim> = create_request
             .credential
@@ -114,26 +121,26 @@ impl VCAPIService {
                 .unwrap_or(OffsetDateTime::now_utc()), // TODO
             valid_for: Duration::minutes(60), // TODO
             claims,
-            issuer_did: issuer.did.into(),
+            issuer_did: create_request.credential.issuer,
             status: create_request.credential.credential_status,
             schema: CredentialSchemaData {
                 id: None,
                 r#type: None,
                 context: None,
-                name: "test".to_string(),
+                name: "vc_interop_test_no_schema_data".to_string(),
             },
         };
 
         let formatter = self
             .credential_formatter
-            .get_formatter("JSON_LD_CLASSIC")
+            .get_formatter(&credential_format)
             .unwrap();
 
         let test = formatter
             .format_credentials(
                 credential_data,
                 &None,
-                &r#type.ok_or(ServiceError::Other("Type is missing".to_string()))?,
+                &signature_algorithm,
                 create_request.credential.context,
                 create_request.credential.r#type,
                 auth_fn,
