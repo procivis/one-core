@@ -22,6 +22,7 @@ impl OptiocalBarcodeCredential {
             "IdentityCard" | "UtopiaEmploymentDocument" => Ok(CredentialSchema {
                 id: input.schema_id,
                 r#type: "OpticalBarcodeCredential".to_string(),
+                metadata: None,
             }),
             _ => Err(FormatterError::Failed(format!(
                 "Unsupported schema, {}",

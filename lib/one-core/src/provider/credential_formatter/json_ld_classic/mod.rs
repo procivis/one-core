@@ -24,6 +24,9 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds};
 use time::{Duration, OffsetDateTime};
 
+#[cfg(test)]
+mod test;
+
 pub struct JsonLdClassic {
     pub base_url: Option<String>,
     pub crypto: Arc<dyn CryptoProvider>,
@@ -38,6 +41,7 @@ pub struct JsonLdClassic {
 pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     leeway: Duration,
+    embed_layout_properties: Option<bool>,
 }
 
 #[async_trait]
@@ -67,6 +71,7 @@ impl CredentialFormatter for JsonLdClassic {
             additional_types,
             json_ld_context_url,
             custom_subject_name,
+            self.params.embed_layout_properties.unwrap_or_default(),
         )?;
 
         let cryptosuite = match algorithm {

@@ -1,6 +1,6 @@
 use one_providers::credential_formatter::model::{
-    CredentialData, CredentialSchemaData, CredentialStatus, ExtractPresentationCtx,
-    FormatPresentationCtx,
+    CredentialData, CredentialSchemaData, CredentialSchemaMetadata, CredentialStatus,
+    ExtractPresentationCtx, FormatPresentationCtx,
 };
 use one_providers::exchange_protocol::openid4vc::model::OpenID4VPInteractionContent;
 use time::OffsetDateTime;
@@ -78,6 +78,16 @@ pub fn credential_data_from_credential_detail_response(
                 credential.schema.id
             )),
             name: credential.schema.name,
+            metadata: match (
+                credential.schema.layout_properties,
+                credential.schema.layout_type,
+            ) {
+                (Some(l), Some(t)) => Some(CredentialSchemaMetadata {
+                    layout_properties: l.into(),
+                    layout_type: t.into(),
+                }),
+                _ => None,
+            },
         },
     })
 }

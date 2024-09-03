@@ -703,6 +703,7 @@ fn extract_credentials_internal(
         credential_schema: Some(CredentialSchema {
             id: mso.doc_type,
             r#type: CredentialSchemaType::Mdoc.to_string(),
+            metadata: None,
         }),
     })
 }

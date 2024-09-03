@@ -25,8 +25,8 @@ dto_mapper         = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6Udo
 futures            = { version = "0.3" }
 hex                = { version = "0.4", features = ["serde"] }
 mockall            = { version = "0.13" }
-one-crypto         = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "9d95b4c8f29918c836e09f088b87a3826e0cdb8f" }
-one-providers      = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "9d95b4c8f29918c836e09f088b87a3826e0cdb8f" }
+one-crypto         = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "39a3183f33e54b1c392f6525bb77e1583b88e1d1" }
+one-providers      = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "39a3183f33e54b1c392f6525bb77e1583b88e1d1" }
 p256               = { version = "0.13", features = ["arithmetic", "jwk"] }
 rand               = { version = "0.8" }
 reqwest            = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
