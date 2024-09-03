@@ -12,7 +12,6 @@ use super::dto::{
 };
 
 #[tracing::instrument(level = "debug", skip(state))]
-#[tracing::instrument(level = "debug", skip(state))]
 #[utoipa::path(
     post,
     path = "/vc-api/credentials/issue",

@@ -8,8 +8,8 @@ pub struct CredentialIssueRequest {
 
 #[derive(Debug)]
 pub struct CredentialIssueOptions {
-    pub issuer_id: Option<String>,
-    pub r#type: Option<String>,
+    pub signature_algorithm: String,
+    pub credential_format: String,
 }
 
 pub struct CredentialIssueResponse {
