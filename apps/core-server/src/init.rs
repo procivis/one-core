@@ -1,38 +1,28 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
+use one_core::config::core_config::{
+    AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, Fields, Params,
+    RevocationType,
+};
+use one_core::config::{core_config, ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::credential_formatter::json_ld_classic::JsonLdClassic;
 use one_core::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use one_core::provider::credential_formatter::physical_card::PhysicalCardFormatter;
 use one_core::provider::credential_formatter::FormatterCapabilities;
+use one_core::provider::did_method::mdl::{DidMdl, DidMdlValidator};
+use one_core::provider::did_method::x509::X509Method;
 use one_core::provider::key_algorithm::ml_dsa::MlDsa;
 use one_core::provider::key_storage::pkcs11::PKCS11KeyProvider;
 use one_core::provider::key_storage::KeyStorageCapabilities;
-use one_core::repository::DataRepository;
-use one_core::{
-    config::core_config::AppConfig, DidMethodCreator, OneCoreBuilder, RevocationMethodCreator,
-};
-use one_core::{
-    DataProviderCreator, FormatterProviderCreator, KeyAlgorithmCreator, KeyStorageCreator, OneCore,
-};
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
-use one_providers::credential_formatter::imp::json_ld_bbsplus::JsonLdBbsplus;
-use one_providers::credential_formatter::imp::jwt_formatter::JWTFormatter;
-use one_providers::credential_formatter::imp::provider::CredentialFormatterProviderImpl;
-use one_providers::credential_formatter::imp::sdjwt_formatter::SDJWTFormatter;
-use one_providers::credential_formatter::CredentialFormatter;
-use time::Duration;
-
-use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
-use crate::{build_info, did_config, ServerConfig};
-use one_core::config::core_config::{
-    CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, Fields, RevocationType,
-};
-use one_core::config::{core_config, ConfigError, ConfigParsingError, ConfigValidationError};
-use one_core::provider::did_method::mdl::{DidMdl, DidMdlValidator};
-use one_core::provider::did_method::x509::X509Method;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::revocation::none::NoneRevocation;
 use one_core::provider::revocation::status_list_2021::StatusList2021;
+use one_core::repository::DataRepository;
+use one_core::{
+    DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyAlgorithmCreator,
+    KeyStorageCreator, OneCore, OneCoreBuilder, RevocationMethodCreator,
+};
 use one_crypto::imp::hasher::sha256::SHA256;
 use one_crypto::imp::signer::bbs::BBSSigner;
 use one_crypto::imp::signer::crydi3::CRYDI3Signer;
@@ -40,6 +30,12 @@ use one_crypto::imp::signer::eddsa::EDDSASigner;
 use one_crypto::imp::signer::es256::ES256Signer;
 use one_crypto::imp::CryptoProviderImpl;
 use one_crypto::{Hasher, Signer};
+use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
+use one_providers::credential_formatter::imp::json_ld_bbsplus::JsonLdBbsplus;
+use one_providers::credential_formatter::imp::jwt_formatter::JWTFormatter;
+use one_providers::credential_formatter::imp::provider::CredentialFormatterProviderImpl;
+use one_providers::credential_formatter::imp::sdjwt_formatter::SDJWTFormatter;
+use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::did::imp::jwk::JWKDidMethod;
 use one_providers::did::imp::key::KeyDidMethod;
 use one_providers::did::imp::provider::DidMethodProviderImpl;
@@ -68,7 +64,11 @@ use one_providers::revocation::RevocationMethod;
 use sentry::integrations::tracing::EventFilter;
 use serde_json::json;
 use sql_data_provider::{DataLayer, DbConn};
+use time::Duration;
 use tracing_subscriber::prelude::*;
+
+use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
+use crate::{build_info, did_config, ServerConfig};
 
 pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) -> OneCore {
     let reqwest_client = reqwest::Client::builder()
@@ -390,6 +390,24 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                     value.capabilities = Some(json!(Into::<FormatterCapabilities>::into(
                         entity.get_capabilities()
                     )));
+                    if let Some(params) = &mut value.params {
+                        if let Some(public) = &mut params.public {
+                            if public["embedLayoutProperties"].is_null() {
+                                public["embedLayoutProperties"] = false.into();
+                            }
+                        } else {
+                            params.public = Some(json!({
+                                "embedLayoutProperties": false
+                            }));
+                        }
+                    } else {
+                        value.params = Some(Params {
+                            private: None,
+                            public: Some(json!({
+                                "embedLayoutProperties": false
+                            })),
+                        });
+                    };
                 }
             }
 

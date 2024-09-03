@@ -3,6 +3,9 @@ format:
     type: "PHYSICAL_CARD"
     display: "format.physicalCard"
     order: 5
+    params:
+      public:
+        embedLayoutProperties: false
   JWT:
     type: "JWT"
     display: "format.jwt"
@@ -10,6 +13,7 @@ format:
     params:
       public:
         leeway: 60
+        embedLayoutProperties: false
   SDJWT:
     type: "SDJWT"
     display: "format.sdjwt"
@@ -17,6 +21,7 @@ format:
     params:
       public:
         leeway: 60
+        embedLayoutProperties: false
   JSON_LD_CLASSIC:
     type: "JSON_LD_CLASSIC"
     display: "format.jsonld_classic"
@@ -24,6 +29,7 @@ format:
     params:
       public:
         leeway: 60
+        embedLayoutProperties: false
   JSON_LD_BBSPLUS:
     type: "JSON_LD_BBSPLUS"
     display: "format.jsonld_bbsplus"
@@ -31,6 +37,7 @@ format:
     params:
       public:
         leeway: 60
+        embedLayoutProperties: false
   MDOC:
     type: "MDOC"
     display: "format.mdoc"
@@ -40,6 +47,7 @@ format:
         msoExpiresIn: 259200 # 72h in seconds
         msoExpectedUpdateIn: 86400 # 24h in seconds
         leeway: 60
+        embedLayoutProperties: false
 exchange:
   PROCIVIS_TEMPORARY:
     display: "exchange.procivis"
