@@ -420,6 +420,7 @@ impl CredentialFormatter for MdocFormatter {
             features: vec![
                 "SELECTIVE_DISCLOSURE".to_string(),
                 "REQUIRES_SCHEMA_ID".to_string(),
+                "SUPPORTS_CREDENTIAL_DESIGN".to_string(),
             ],
             allowed_schema_ids: vec![],
             selective_disclosure: vec!["SECOND_LEVEL".to_string()],
