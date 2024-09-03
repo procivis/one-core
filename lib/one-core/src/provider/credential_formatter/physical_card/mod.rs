@@ -35,7 +35,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
     async fn format_credentials(
         &self,
         _credential: CredentialData,
-        _holder_did: &DidValue,
+        _holder_did: &Option<DidValue>,
         _algorithm: &str,
         _additional_context: Vec<String>,
         _additional_types: Vec<String>,

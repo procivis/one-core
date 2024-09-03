@@ -349,7 +349,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             .ok_or(ValidationError::InvalidFormatter(format.to_string()))?
             .format_credentials(
                 credential_data,
-                &holder_did.did.clone().into(),
+                &Some(holder_did.did.into()),
                 &key.key_type,
                 vec![],
                 vec![],
