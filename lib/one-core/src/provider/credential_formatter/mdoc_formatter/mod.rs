@@ -172,7 +172,7 @@ impl CredentialFormatter for MdocFormatter {
     async fn format_credentials(
         &self,
         credential: CredentialData,
-        holder_did: &DidValue,
+        holder_did: &Option<DidValue>,
         algorithm: &str,
         _additional_context: Vec<String>,
         _additional_types: Vec<String>,
@@ -184,6 +184,10 @@ impl CredentialFormatter for MdocFormatter {
             FormatterError::Failed(
                 "Cannot format credential, missing credential schema id".to_string(),
             )
+        })?;
+
+        let holder_did = holder_did.as_ref().ok_or_else(|| {
+            FormatterError::Failed("Cannot format credential, missing holder did".to_string())
         })?;
 
         let additional_namespaces: IndexMap<Namespace, serde_json::Value> =

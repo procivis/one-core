@@ -60,7 +60,7 @@ impl CredentialFormatter for JsonLdClassic {
     async fn format_credentials(
         &self,
         credential: CredentialData,
-        holder_did: &DidValue,
+        holder_did: &Option<DidValue>,
         algorithm: &str,
         additional_context: Vec<String>,
         additional_types: Vec<String>,
@@ -70,7 +70,7 @@ impl CredentialFormatter for JsonLdClassic {
     ) -> Result<String, FormatterError> {
         let mut credential = json_ld::prepare_credential(
             credential,
-            holder_did,
+            holder_did.as_ref(),
             additional_context,
             additional_types,
             json_ld_context_url,

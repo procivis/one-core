@@ -279,7 +279,7 @@ async fn test_credential_formatting_ok_for_es256() {
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
-            &holder_did.to_owned(),
+            &Some(holder_did),
             algorithm,
             vec![],
             vec![],
@@ -476,7 +476,7 @@ async fn test_unverified_credential_extraction() {
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
-            &holder_did.to_owned(),
+            &Some(holder_did),
             algorithm,
             vec![],
             vec![],
