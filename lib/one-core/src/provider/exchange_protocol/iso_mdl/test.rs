@@ -1,7 +1,21 @@
 use std::{collections::HashSet, sync::Arc};
 
+use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
+use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
+use crate::util::ble_resource::BleWaiter;
+use crate::{
+    provider::{
+        credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor,
+        exchange_protocol::iso_mdl::common::{
+            DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
+        },
+    },
+    service::{proof::dto::MdocBleInteractionData, test_utilities::generic_config},
+};
 use maplit::{hashmap, hashset};
 use mockall::predicate::eq;
+use one_providers::common_models::interaction::OpenInteraction;
+use one_providers::common_models::proof_schema::{OpenProofInputSchema, OpenProofSchema};
 use one_providers::{
     common_models::{
         claim::OpenClaim,
@@ -22,17 +36,114 @@ use one_providers::{
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    provider::{
-        credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor,
-        exchange_protocol::iso_mdl::common::{
-            DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
-        },
-    },
-    service::{proof::dto::MdocBleInteractionData, test_utilities::generic_config},
-};
-
 use super::IsoMdl;
+
+#[tokio::test]
+async fn test_presentation_reject_ok() {
+    let core_config = generic_config().core;
+    let mut ble_peripheral = MockBlePeripheral::new();
+    ble_peripheral
+        .expect_notify_characteristic_data()
+        .times(1)
+        .returning(move |_, _, _, _| Ok(()));
+
+    ble_peripheral
+        .expect_stop_server()
+        .times(1)
+        .returning(move || Ok(()));
+
+    let provider = IsoMdl::new(
+        Arc::new(core_config),
+        Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(MockKeyProvider::new()),
+        Some(BleWaiter::new(
+            Arc::new(MockBleCentral::new()),
+            Arc::new(ble_peripheral),
+        )),
+    );
+
+    let schema_id = "org.iso.18013.5.1".to_string();
+    let organisation_id = Uuid::new_v4().into();
+    let interaction_data = serde_json::to_vec(&MdocBleInteractionData {
+        service_id: Uuid::new_v4(),
+        task_id: Uuid::new_v4(),
+        sk_device: SkDevice::new([0; 32]),
+        sk_reader: SkReader::new([0; 32]),
+        device_request: DeviceRequest {
+            version: "1.0".to_string(),
+            doc_request: vec![DocRequest {
+                items_request: EmbeddedCbor(ItemsRequest {
+                    doc_type: schema_id.clone(),
+                    name_spaces: hashmap! {
+                        "org.iso.18013.5.1.mDL".to_string() => hashmap! {
+                            "name".to_string() => true,
+                            "age".to_string() => true,
+                            "country".to_string() => true,
+                            "info".to_string() => true,
+                        }
+                    },
+                }),
+            }],
+        }
+        .into(),
+        device_address: Some("test address".to_string()),
+        organisation_id,
+        mtu: Some(512),
+    })
+    .unwrap();
+    let proof = OpenProof {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        issuance_date: OffsetDateTime::now_utc(),
+        exchange: "ISO_MDL".to_string(),
+        transport: "BLE".to_string(),
+        redirect_uri: None,
+        state: None,
+        schema: Some(OpenProofSchema {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
+            name: "".to_string(),
+            expire_duration: 0,
+            input_schemas: Some(vec![OpenProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: None,
+                credential_schema: Some(OpenCredentialSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    deleted_at: None,
+                    name: "".to_string(),
+                    format: "".to_string(),
+                    revocation_method: "".to_string(),
+                    wallet_storage_type: None,
+                    layout_type: OpenLayoutType::Card,
+                    layout_properties: None,
+                    schema_id,
+                    schema_type: "".to_string(),
+                    claim_schemas: None,
+                    organisation: None,
+                }),
+            }]),
+            organisation: None,
+        }),
+        claims: None,
+        verifier_did: None,
+        holder_did: None,
+        verifier_key: None,
+        interaction: Some(OpenInteraction {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            host: None,
+            data: Some(interaction_data),
+        }),
+    };
+
+    let result = provider.reject_proof(&proof).await;
+    assert!(result.is_ok(), "Reject proof should succeed");
+}
 
 #[tokio::test]
 async fn test_get_presentation_definition_ok() {
@@ -68,7 +179,9 @@ async fn test_get_presentation_definition_ok() {
             }],
         }
         .into(),
+        device_address: None,
         organisation_id,
+        mtu: None,
     })
     .unwrap();
 

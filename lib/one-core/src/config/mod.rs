@@ -29,6 +29,8 @@ pub enum ConfigValidationError {
     InvalidKey(String),
     #[error("configuration key `{0}` is disabled")]
     KeyDisabled(String),
+    #[error("Failed `{0}`")]
+    Failed(String),
     #[error("configuration key `{0}` not found")]
     KeyNotFound(String),
     #[error("configuration type `{0}` not found")]

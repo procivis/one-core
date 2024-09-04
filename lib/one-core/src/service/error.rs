@@ -891,6 +891,7 @@ impl ErrorCodeMixin for ConfigValidationError {
             | Self::KeyNotFound(_)
             | Self::FieldsDeserialization { .. }
             | Self::InvalidType(_, _)
+            | Self::Failed(_)
             | Self::DatatypeValidation(_) => ErrorCode::BR_0051,
         }
     }

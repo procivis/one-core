@@ -11,6 +11,7 @@ use crate::model::interaction::InteractionId;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ProofStateEnum, SortableProofColumn};
+use crate::provider::bluetooth_low_energy::low_level::dto::DeviceAddress;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
 use crate::provider::exchange_protocol::iso_mdl::{
     self,
@@ -135,7 +136,9 @@ pub struct MdocBleInteractionData {
     pub sk_device: SkDevice,
     pub sk_reader: SkReader,
     pub device_request: DeviceRequest,
+    pub device_address: Option<DeviceAddress>,
     pub organisation_id: OrganisationId,
+    pub mtu: Option<u16>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, From, Into)]

@@ -108,6 +108,10 @@ impl BleWaiter {
         }
     }
 
+    pub fn get_peripheral(self) -> Arc<dyn BlePeripheral> {
+        self.peripheral
+    }
+
     /// Schedule flow
     pub async fn schedule<F, C, FR, CR>(
         &self,

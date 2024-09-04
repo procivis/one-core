@@ -1,6 +1,14 @@
+use anyhow::Context;
 use std::collections::{HashMap, HashSet};
+use std::iter;
 use std::sync::Arc;
 
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
+    Bstr, DeviceResponse, DeviceResponseVersion, DocumentError,
+};
+use crate::provider::exchange_protocol::iso_mdl::ble::SERVER_2_CLIENT;
+use crate::provider::exchange_protocol::iso_mdl::session::SessionData;
+use crate::provider::exchange_protocol::iso_mdl::session::StatusCode;
 use async_trait::async_trait;
 use url::Url;
 
@@ -26,6 +34,7 @@ use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
     StorageAccess, TypeToDescriptorMapper,
 };
+
 use one_providers::key_storage::provider::KeyProvider;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
@@ -40,9 +49,10 @@ use crate::util::ble_resource::BleWaiter;
 pub(crate) mod ble;
 mod ble_holder;
 pub(crate) mod common;
+
+use common::Chunk;
 pub(crate) mod device_engagement;
 mod session;
-
 #[cfg(test)]
 mod test;
 
@@ -88,8 +98,108 @@ impl ExchangeProtocolImpl for IsoMdl {
         unimplemented!()
     }
 
-    async fn reject_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
-        todo!()
+    async fn reject_proof(&self, proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+        let mut bytes = vec![];
+        let mut doc_types = DocumentError::new();
+        let input_schemas = proof
+            .schema
+            .clone()
+            .ok_or(ExchangeProtocolError::Failed(
+                "Proof schema missing".to_string(),
+            ))?
+            .input_schemas
+            .ok_or(ExchangeProtocolError::Failed(
+                "Input schemas missing".to_string(),
+            ))?;
+
+        for input_schema in input_schemas {
+            let schema_id = input_schema
+                .credential_schema
+                .ok_or(ExchangeProtocolError::Failed(
+                    "Credential schema missing".to_string(),
+                ))?
+                .schema_id;
+            doc_types.insert(schema_id, 0);
+        }
+        let response = DeviceResponse {
+            version: DeviceResponseVersion::V1_0,
+            documents: None,
+            document_errors: vec![doc_types].into(),
+            status: 0,
+        };
+        ciborium::ser::into_writer(&response, &mut bytes).map_err(|_err| {
+            ExchangeProtocolError::Failed("CBOR serialization error".to_string())
+        })?;
+
+        let session_data = SessionData {
+            data: Some(Bstr(bytes)),
+            status: Some(StatusCode::SessionTermination),
+        };
+
+        let mut writer = vec![];
+        ciborium::into_writer(&session_data, &mut writer).unwrap();
+
+        let interaction_data: MdocBleInteractionData = deserialize_interaction_data(
+            proof
+                .interaction
+                .as_ref()
+                .and_then(|interaction| interaction.data.as_ref()),
+        )?;
+
+        let device_address =
+            interaction_data
+                .device_address
+                .ok_or(ExchangeProtocolError::Failed(
+                    "Device address missing".to_string(),
+                ))?;
+
+        let mtu = interaction_data
+            .mtu
+            .ok_or(ExchangeProtocolError::Failed("Mtu missing".to_string()))?;
+
+        let mut chunks = writer.chunks(mtu.into());
+
+        let last = Chunk::Last(
+            chunks
+                .next_back()
+                .context("no chunks")
+                .map_err(|_| ExchangeProtocolError::Failed("No chunks available".to_string()))?
+                .to_vec(),
+        );
+
+        let chunks: Vec<Vec<u8>> = chunks
+            .map(|slice| Chunk::Next(slice.to_vec()))
+            .chain(iter::once(last))
+            .map(Into::into)
+            .collect();
+
+        let ble_peripheral = self
+            .ble
+            .clone()
+            .ok_or(ExchangeProtocolError::Failed(
+                "Missing BLE waiter".to_string(),
+            ))?
+            .get_peripheral();
+
+        for chunk in chunks {
+            ble_peripheral
+                .notify_characteristic_data(
+                    device_address.clone(),
+                    interaction_data.service_id.to_string(),
+                    SERVER_2_CLIENT.into(),
+                    &chunk,
+                )
+                .await
+                .map_err(|_err| {
+                    ExchangeProtocolError::Failed("Unable to send end event to central".to_string())
+                })?;
+        }
+
+        ble_peripheral.stop_server().await.map_err(|_err| {
+            ExchangeProtocolError::Failed("Server could not be stopped".to_string())
+        })?;
+
+        Ok(())
     }
 
     async fn submit_proof(

@@ -54,7 +54,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
 ) {
     let interaction_id = Uuid::new_v4();
     let proof_id = Uuid::new_v4().into();
-    let protocol = "exchange-protocol";
+    let protocol = "OPENID4VC";
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository
@@ -138,7 +138,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
     let reject_proof_for_state = |state| async {
         let interaction_id = Uuid::new_v4();
         let proof_id = Uuid::new_v4().into();
-        let protocol = "exchange-protocol";
+        let protocol = "OPENID4VC";
         let mut proof_repository = MockProofRepository::new();
         proof_repository
             .expect_get_proof_by_interaction_id()
