@@ -30,7 +30,7 @@ async fn test_share_proof_schema() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -40,7 +40,7 @@ async fn test_share_proof_schema() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: Some(10),
-            },
+            }],
         )
         .await;
 

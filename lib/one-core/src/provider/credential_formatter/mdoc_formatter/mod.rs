@@ -207,6 +207,8 @@ impl CredentialFormatter for MdocFormatter {
             format_nonce: Some(mdoc_generated_nonce),
             client_id: Some(client_id),
             response_uri: Some(response_uri),
+            token_formats: None,
+            ..
         } = context
         else {
             return Err(FormatterError::Failed(format!(

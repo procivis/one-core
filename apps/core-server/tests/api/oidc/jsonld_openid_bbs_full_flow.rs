@@ -9,6 +9,7 @@ use crate::api_oidc_tests::full_flow_common::{
     get_simple_context_bbsplus, prepare_dids,
 };
 use crate::fixtures::TestingCredentialParams;
+use crate::utils::api_clients::interactions::SubmittedCredential;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
@@ -134,7 +135,10 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
         .create(
             "Test",
             &server_organisation,
-            CreateProofInputSchema::from((&proof_claim_schemas[..], &credential_schema)),
+            vec![CreateProofInputSchema::from((
+                &proof_claim_schemas[..],
+                &credential_schema,
+            ))],
         )
         .await;
 
@@ -407,8 +411,11 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
         .presentation_submit(
             holder_interaction.id,
             holder_local_holder_did.id,
-            holder_credential.id,
-            vec![new_claim_schemas[1].0, new_claim_schemas[2].0],
+            vec![SubmittedCredential {
+                proof_input_id: "input_0".to_string(),
+                credential_id: holder_credential.id,
+                claims_ids: vec![new_claim_schemas[1].0, new_claim_schemas[2].0],
+            }],
         )
         .await;
 
@@ -562,7 +569,10 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
         .create(
             "Test",
             &server_organisation,
-            CreateProofInputSchema::from((&new_claim_schemas[1..=2], &credential_schema)),
+            vec![CreateProofInputSchema::from((
+                &new_claim_schemas[1..=2],
+                &credential_schema,
+            ))],
         )
         .await;
 
@@ -841,8 +851,11 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
         .presentation_submit(
             holder_interaction.id,
             holder_local_holder_did.id,
-            holder_credential.id,
-            vec![new_claim_schemas[1].0, new_claim_schemas[2].0],
+            vec![SubmittedCredential {
+                proof_input_id: "input_0".to_string(),
+                credential_id: holder_credential.id,
+                claims_ids: vec![new_claim_schemas[1].0, new_claim_schemas[2].0],
+            }],
         )
         .await;
 

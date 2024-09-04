@@ -15,7 +15,10 @@ use crate::{
         prepare_dids_for_mdoc,
     },
     fixtures::TestingCredentialParams,
-    utils::{context::TestContext, db_clients::proof_schemas::CreateProofInputSchema},
+    utils::{
+        api_clients::interactions::SubmittedCredential, context::TestContext,
+        db_clients::proof_schemas::CreateProofInputSchema,
+    },
 };
 
 use p256::elliptic_curve::sec1::ToEncodedPoint;
@@ -160,7 +163,10 @@ async fn test_openid4vc_mdoc_flow(
         .create(
             "Test",
             &server_organisation,
-            CreateProofInputSchema::from((&new_claim_schemas[1..2], &credential_schema)),
+            vec![CreateProofInputSchema::from((
+                &new_claim_schemas[1..2],
+                &credential_schema,
+            ))],
         )
         .await;
 
@@ -434,8 +440,11 @@ async fn test_openid4vc_mdoc_flow(
         .presentation_submit(
             holder_interaction.id,
             holder_did.id,
-            holder_credential.id,
-            vec![new_claim_schemas[1].0],
+            vec![SubmittedCredential {
+                proof_input_id: "input_0".to_string(),
+                credential_id: holder_credential.id,
+                claims_ids: vec![new_claim_schemas[1].0],
+            }],
         )
         .await;
 
@@ -526,7 +535,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
         .create(
             "Test",
             &server_organisation,
-            CreateProofInputSchema::from((
+            vec![CreateProofInputSchema::from((
                 vec![
                     new_claim_schemas[1],
                     new_claim_schemas[2],
@@ -535,7 +544,7 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
                 ]
                 .as_slice(),
                 &credential_schema,
-            )),
+            ))],
         )
         .await;
 
@@ -839,12 +848,15 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
         .presentation_submit(
             holder_interaction.id,
             holder_did.id,
-            holder_credential.id,
-            vec![
-                new_claim_schemas[1].0,
-                new_claim_schemas[3].0,
-                new_claim_schemas[7].0,
-            ],
+            vec![SubmittedCredential {
+                proof_input_id: "input_0".to_string(),
+                credential_id: holder_credential.id,
+                claims_ids: vec![
+                    new_claim_schemas[1].0,
+                    new_claim_schemas[3].0,
+                    new_claim_schemas[7].0,
+                ],
+            }],
         )
         .await;
 
@@ -943,7 +955,10 @@ async fn test_openid4vc_mdoc_flow_array(
         .create(
             "Test",
             &server_organisation,
-            CreateProofInputSchema::from((&new_claim_schemas[1..=2], &credential_schema)),
+            vec![CreateProofInputSchema::from((
+                &new_claim_schemas[1..=2],
+                &credential_schema,
+            ))],
         )
         .await;
 
@@ -1251,8 +1266,11 @@ async fn test_openid4vc_mdoc_flow_array(
         .presentation_submit(
             holder_interaction.id,
             holder_did.id,
-            holder_credential.id,
-            vec![new_claim_schemas[1].0, new_claim_schemas[2].0],
+            vec![SubmittedCredential {
+                proof_input_id: "input_0".to_string(),
+                credential_id: holder_credential.id,
+                claims_ids: vec![new_claim_schemas[1].0, new_claim_schemas[2].0],
+            }],
         )
         .await;
 

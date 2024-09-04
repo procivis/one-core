@@ -8,7 +8,10 @@ use uuid::Uuid;
 use crate::{
     api_oidc_tests::full_flow_common::{ecdsa_key_1, eddsa_key_2, prepare_dids},
     fixtures::TestingCredentialParams,
-    utils::{context::TestContext, db_clients::proof_schemas::CreateProofInputSchema},
+    utils::{
+        api_clients::interactions::SubmittedCredential, context::TestContext,
+        db_clients::proof_schemas::CreateProofInputSchema,
+    },
 };
 
 use time::{macros::format_description, OffsetDateTime};
@@ -71,7 +74,10 @@ async fn test_openid4vc_jwt_flow(server_key: TestKey, holder_key: TestKey) {
         .create(
             "Test",
             &server_organisation,
-            CreateProofInputSchema::from((&new_claim_schemas[..1], &credential_schema)),
+            vec![CreateProofInputSchema::from((
+                &new_claim_schemas[..1],
+                &credential_schema,
+            ))],
         )
         .await;
 
@@ -339,8 +345,11 @@ async fn test_openid4vc_jwt_flow(server_key: TestKey, holder_key: TestKey) {
         .presentation_submit(
             holder_interaction.id,
             holder_did.id,
-            holder_credential.id,
-            vec![new_claim_schemas[0].0],
+            vec![SubmittedCredential {
+                proof_input_id: "input_0".to_string(),
+                credential_id: holder_credential.id,
+                claims_ids: vec![new_claim_schemas[0].0],
+            }],
         )
         .await;
 
@@ -421,7 +430,10 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
         .create(
             "Test",
             &server_organisation,
-            CreateProofInputSchema::from((&new_claim_schemas[..1], &credential_schema)),
+            vec![CreateProofInputSchema::from((
+                &new_claim_schemas[..1],
+                &credential_schema,
+            ))],
         )
         .await;
 
@@ -714,8 +726,11 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
         .presentation_submit(
             holder_interaction.id,
             holder_did.id,
-            holder_credential.id,
-            vec![new_claim_schemas[0].0],
+            vec![SubmittedCredential {
+                proof_input_id: "input_0".to_string(),
+                credential_id: holder_credential.id,
+                claims_ids: vec![new_claim_schemas[0].0],
+            }],
         )
         .await;
 

@@ -1,5 +1,6 @@
 pub(super) mod full_flow_common;
 
+mod combined_openid_full_flow;
 mod configuration;
 mod create_credential;
 mod create_token;

@@ -33,7 +33,7 @@ async fn test_create_proof_success_without_related_key() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -43,7 +43,7 @@ async fn test_create_proof_success_without_related_key() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -95,7 +95,7 @@ async fn test_create_proof_success_with_related_key() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -105,7 +105,7 @@ async fn test_create_proof_success_with_related_key() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 

@@ -160,7 +160,10 @@ async fn test_share_proof_success_mdoc() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema::from((&claim_schemas[..], &credential_schema)),
+            vec![CreateProofInputSchema::from((
+                &claim_schemas[..],
+                &credential_schema,
+            ))],
         )
         .await;
 
@@ -298,7 +301,10 @@ async fn test_share_proof_success_jsonld() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema::from((&claim_schemas[..], &credential_schema)),
+            vec![CreateProofInputSchema::from((
+                &claim_schemas[..],
+                &credential_schema,
+            ))],
         )
         .await;
 

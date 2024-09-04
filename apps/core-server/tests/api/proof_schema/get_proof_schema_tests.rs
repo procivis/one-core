@@ -30,7 +30,7 @@ async fn test_get_proof_schema_success() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -40,7 +40,7 @@ async fn test_get_proof_schema_success() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: Some(10),
-            },
+            }],
         )
         .await;
 
@@ -89,7 +89,7 @@ async fn test_succeed_to_fetch_claims_just_root_object() {
         .create(
             "Test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: root_claim.schema.id,
                     key: &root_claim.schema.key,
@@ -99,7 +99,7 @@ async fn test_succeed_to_fetch_claims_just_root_object() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: Some(10),
-            },
+            }],
         )
         .await;
 
@@ -149,7 +149,7 @@ async fn test_succeed_to_fetch_claims_nested_root_object() {
         .create(
             "Test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: root_claim.schema.id,
                     key: &root_claim.schema.key,
@@ -159,7 +159,7 @@ async fn test_succeed_to_fetch_claims_nested_root_object() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: Some(10),
-            },
+            }],
         )
         .await;
 

@@ -50,7 +50,7 @@ async fn test_list_proof_success() {
         .create(
             "proof-schema-name",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -60,7 +60,7 @@ async fn test_list_proof_success() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -141,7 +141,7 @@ async fn test_list_proofs_by_ids() {
         .create(
             "proof-schema-name",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -151,7 +151,7 @@ async fn test_list_proofs_by_ids() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -248,7 +248,7 @@ async fn test_list_proofs_by_name() {
         .create(
             "proof-schema-name",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -258,7 +258,7 @@ async fn test_list_proofs_by_name() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -268,7 +268,7 @@ async fn test_list_proofs_by_name() {
         .create(
             "other-schema",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -278,7 +278,7 @@ async fn test_list_proofs_by_name() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -390,7 +390,7 @@ async fn test_list_proofs_by_schema_ids() {
         .create(
             "proof-schema-name",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -400,7 +400,7 @@ async fn test_list_proofs_by_schema_ids() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -410,7 +410,7 @@ async fn test_list_proofs_by_schema_ids() {
         .create(
             "other-schema",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -420,7 +420,7 @@ async fn test_list_proofs_by_schema_ids() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -532,7 +532,7 @@ async fn test_list_proofs_by_state() {
         .create(
             "proof-schema-name",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -542,7 +542,7 @@ async fn test_list_proofs_by_state() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 

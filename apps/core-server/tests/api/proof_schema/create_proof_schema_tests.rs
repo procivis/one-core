@@ -284,7 +284,7 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
         .create(
             "proof-schema-name",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -294,7 +294,7 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 

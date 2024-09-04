@@ -76,7 +76,7 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
     let proof_schema = context
         .db
         .proof_schemas
-        .create("Schema1", &organisation, proof_input_schema)
+        .create("Schema1", &organisation, vec![proof_input_schema])
         .await;
     let verifier_key = context
         .db

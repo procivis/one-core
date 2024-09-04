@@ -8,6 +8,12 @@ pub struct InteractionsApi {
     client: HttpClient,
 }
 
+pub struct SubmittedCredential {
+    pub proof_input_id: String,
+    pub credential_id: CredentialId,
+    pub claims_ids: Vec<Uuid>,
+}
+
 impl InteractionsApi {
     pub fn new(client: HttpClient) -> Self {
         Self { client }
@@ -59,18 +65,23 @@ impl InteractionsApi {
         &self,
         interaction_id: Uuid,
         did_id: DidId,
-        credential_id: CredentialId,
-        claims_ids: Vec<Uuid>,
+        credentials: Vec<SubmittedCredential>,
     ) -> Response {
+        let mut submit_credentials: serde_json::Map<String, serde_json::Value> = Default::default();
+        for credential in credentials {
+            submit_credentials.insert(
+                credential.proof_input_id,
+                json!({
+                    "credentialId": credential.credential_id,
+                    "submitClaims": credential.claims_ids,
+                }),
+            );
+        }
+
         let body = json!({
           "interactionId": interaction_id,
           "didId": did_id,
-          "submitCredentials": {
-            "input_0": {
-              "credentialId": credential_id,
-              "submitClaims": claims_ids,
-            }
-          }
+          "submitCredentials": serde_json::Value::Object(submit_credentials)
         });
 
         self.client
