@@ -59,6 +59,7 @@ pub(crate) fn validate_create_request(
 
     validate_cliam_names(request, &*formatter)?;
     validate_revocation_method_is_compatible_with_format(request, config, &*formatter)?;
+    validate_credential_design(request, &*formatter)?;
     validate_mdoc_claim_types(request, config)?;
     validate_schema_id(request, config, during_import)?;
 
@@ -326,6 +327,21 @@ fn validate_revocation_method_is_compatible_with_format(
         return Err(BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat.into());
     }
 
+    Ok(())
+}
+
+fn validate_credential_design(
+    request: &CreateCredentialSchemaRequestDTO,
+    formatter: &dyn CredentialFormatter,
+) -> Result<(), ServiceError> {
+    if request.layout_properties.is_some()
+        && !formatter
+            .get_capabilities()
+            .features
+            .contains(&"SUPPORTS_CREDENTIAL_DESIGN".into())
+    {
+        return Err(BusinessLogicError::LayoutPropertiesNotSupported.into());
+    }
     Ok(())
 }
 
