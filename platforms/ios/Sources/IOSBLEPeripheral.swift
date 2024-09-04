@@ -64,6 +64,9 @@ extension IOSBLEPeripheral: BlePeripheral {
     
     @discardableResult
     func startAdvertisement(deviceName: String?, services: [ServiceDescriptionBindingDto]) async throws -> String? {
+        guard try await isAdapterEnabled() else {
+            throw BleErrorWrapper.Ble(error: BleError.AdapterNotEnabled)
+        }
         guard !peripheralManager.isAdvertising else {
             throw BleErrorWrapper.Ble(error: BleError.BroadcastAlreadyStarted)
         }

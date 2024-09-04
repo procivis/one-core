@@ -55,6 +55,9 @@ extension IOSBLECentral: BleCentral {
     }
     
     func startScan(filterServices: [String]?) async throws {
+        guard try await isAdapterEnabled() else {
+            throw BleErrorWrapper.Ble(error: BleError.AdapterNotEnabled)
+        }
         guard !centralManager.isScanning else {
             throw BleErrorWrapper.Ble(error: BleError.ScanAlreadyStarted)
         }
