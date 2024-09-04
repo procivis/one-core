@@ -33,6 +33,7 @@ pub fn format_presentation_ctx_from_interaction_data(
         client_id: Some(data.client_id),
         response_uri: Some(data.response_uri),
         format_nonce: None,
+        ..Default::default()
     }
 }
 

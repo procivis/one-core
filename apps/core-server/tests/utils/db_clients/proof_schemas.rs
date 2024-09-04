@@ -44,31 +44,34 @@ impl ProofSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        proof_input_schema: CreateProofInputSchema<'_>,
+        proof_input_schemas: Vec<CreateProofInputSchema<'_>>,
     ) -> ProofSchema {
-        let claim_schemas = proof_input_schema
-            .claims
-            .iter()
-            .enumerate()
-            .map(|(order, claim)| ProofInputClaimSchema {
-                schema: ClaimSchema {
-                    id: claim.id,
-                    key: claim.key.to_owned(),
-                    data_type: claim.data_type.to_owned(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: claim.array,
-                },
-                required: claim.required,
-                order: order as _,
-            })
-            .collect();
+        let mut input_schemas: Vec<ProofInputSchema> = vec![];
+        for proof_input_schema in proof_input_schemas {
+            let claim_schemas = proof_input_schema
+                .claims
+                .iter()
+                .enumerate()
+                .map(|(order, claim)| ProofInputClaimSchema {
+                    schema: ClaimSchema {
+                        id: claim.id,
+                        key: claim.key.to_owned(),
+                        data_type: claim.data_type.to_owned(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        array: claim.array,
+                    },
+                    required: claim.required,
+                    order: order as _,
+                })
+                .collect();
 
-        let input_schemas = vec![ProofInputSchema {
-            validity_constraint: proof_input_schema.validity_constraint,
-            claim_schemas: Some(claim_schemas),
-            credential_schema: Some(proof_input_schema.credential_schema.to_owned()),
-        }];
+            input_schemas.push(ProofInputSchema {
+                validity_constraint: proof_input_schema.validity_constraint,
+                claim_schemas: Some(claim_schemas),
+                credential_schema: Some(proof_input_schema.credential_schema.to_owned()),
+            });
+        }
 
         let proof_schema = ProofSchema {
             id: Uuid::new_v4().into(),

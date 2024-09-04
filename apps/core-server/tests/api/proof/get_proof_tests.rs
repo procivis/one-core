@@ -34,7 +34,7 @@ async fn test_get_proof_success() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -44,7 +44,7 @@ async fn test_get_proof_success() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -126,7 +126,7 @@ async fn test_get_proof_detached_success() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -136,7 +136,7 @@ async fn test_get_proof_detached_success() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -218,7 +218,7 @@ async fn test_get_proof_with_nested_claims() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: credential_schema
                     .claim_schemas
                     .as_ref()
@@ -234,7 +234,7 @@ async fn test_get_proof_with_nested_claims() {
                     .collect(),
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -314,7 +314,7 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: credential_schema
                     .claim_schemas
                     .as_ref()
@@ -330,7 +330,7 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
                     .collect(),
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -415,7 +415,7 @@ async fn test_get_proof_with_credentials() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -425,7 +425,7 @@ async fn test_get_proof_with_credentials() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 

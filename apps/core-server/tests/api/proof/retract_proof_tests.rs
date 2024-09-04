@@ -31,7 +31,7 @@ async fn test_retract_existing_proof_for_http_transport() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -41,7 +41,7 @@ async fn test_retract_existing_proof_for_http_transport() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 

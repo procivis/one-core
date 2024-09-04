@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::vec;
 
 use async_trait::async_trait;
+use model::CredentialEnvelope;
 use one_crypto::CryptoProvider;
 use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::error::FormatterError;
@@ -20,12 +21,15 @@ use one_providers::credential_formatter::model::{
 use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::http_client::HttpClient;
+use serde::ser::Error;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds};
 use time::{Duration, OffsetDateTime};
 
 #[cfg(test)]
 mod test;
+
+mod model;
 
 pub struct JsonLdClassic {
     pub base_url: Option<String>,
@@ -140,22 +144,54 @@ impl CredentialFormatter for JsonLdClassic {
         holder_did: &DidValue,
         algorithm: &str,
         auth_fn: AuthenticationFn,
-        FormatPresentationCtx { nonce, .. }: FormatPresentationCtx,
+        ctx: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
         let context = json_ld::prepare_context(vec![]);
 
-        let verifiable_credential: VerifiableCredential = tokens
-            .iter()
-            .map(|token| serde_json::from_str(token))
-            .collect::<Result<_, _>>()
-            .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?;
+        let formats = ctx.token_formats.map(|formats| {
+            formats
+                .into_iter()
+                .filter_map(|format| {
+                    ctx.vc_format_map
+                        .get(&format)
+                        .map(|format: &String| format.to_owned())
+                })
+                .collect::<Vec<String>>()
+        });
+
+        let verifiable_credential: VerifiableCredential = match formats {
+            // Envelope if we know we should
+            Some(formats) => tokens
+                .iter()
+                .zip(formats)
+                .map(|(token, format)| match format.as_str() {
+                    "ldp_vc" => serde_json::from_str(token),
+                    _ => {
+                        let enveloped = CredentialEnvelope::new(&format, token);
+                        let json_value = serde_json::to_value(enveloped)?;
+                        let map = json_value
+                            .as_object()
+                            .ok_or(serde_json::Error::custom("Credential must be an object"))?
+                            .to_owned();
+                        Ok(map)
+                    }
+                })
+                .collect::<Result<_, _>>()
+                .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?,
+            // Assume json inside
+            None => tokens
+                .iter()
+                .map(|token| serde_json::from_str(token))
+                .collect::<Result<_, _>>()
+                .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?,
+        };
 
         let mut presentation = LdPresentation {
             context: context.clone(),
             r#type: "VerifiablePresentation".to_string(),
             verifiable_credential,
             holder: holder_did.to_owned(),
-            nonce,
+            nonce: ctx.nonce,
             proof: None,
             issuance_date: OffsetDateTime::now_utc(),
         };
@@ -361,7 +397,16 @@ impl JsonLdClassic {
         let credentials: Vec<String> = presentation
             .verifiable_credential
             .iter()
-            .map(serde_json::to_string)
+            .map(|token| {
+                if token.contains_key("type") && token["type"] == "EnvelopedVerifiableCredential" {
+                    let enveloped: CredentialEnvelope =
+                        serde_json::from_value(serde_json::Value::Object(token.to_owned()))?;
+
+                    Ok(enveloped.get_token())
+                } else {
+                    serde_json::to_string(token)
+                }
+            })
             .collect::<Result<_, _>>()
             .map_err(|err| FormatterError::CouldNotExtractCredentials(err.to_string()))?;
 

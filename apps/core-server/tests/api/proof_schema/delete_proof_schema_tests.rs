@@ -22,7 +22,7 @@ async fn test_delete_proof_schema_success() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -32,7 +32,7 @@ async fn test_delete_proof_schema_success() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 

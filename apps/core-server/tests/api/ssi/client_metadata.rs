@@ -23,7 +23,7 @@ async fn test_get_client_metadata() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -33,7 +33,7 @@ async fn test_get_client_metadata() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -129,7 +129,7 @@ async fn test_fail_to_get_client_metadata_wrong_exchange_protocol() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -139,7 +139,7 @@ async fn test_fail_to_get_client_metadata_wrong_exchange_protocol() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
@@ -184,7 +184,7 @@ async fn test_fail_to_get_client_metadata_wrong_proof_state() {
         .create(
             "test",
             &organisation,
-            CreateProofInputSchema {
+            vec![CreateProofInputSchema {
                 claims: vec![CreateProofClaim {
                     id: claim_schema.id,
                     key: &claim_schema.key,
@@ -194,7 +194,7 @@ async fn test_fail_to_get_client_metadata_wrong_proof_state() {
                 }],
                 credential_schema: &credential_schema,
                 validity_constraint: None,
-            },
+            }],
         )
         .await;
 
