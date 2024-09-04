@@ -46,8 +46,9 @@ pub static ISO_MDL_FLOW: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
 
 const STATE: &str = "00000001-A123-48CE-896B-4C76973373E6";
 const CLIENT_2_SERVER: &str = "00000002-A123-48CE-896B-4C76973373E6";
-const SERVER_2_CLIENT: &str = "00000003-A123-48CE-896B-4C76973373E6";
+pub const SERVER_2_CLIENT: &str = "00000003-A123-48CE-896B-4C76973373E6";
 
+// This is the HOLDER functionality to start advertisment to get information BLE interface
 pub async fn start_server(ble: &BleWaiter) -> Result<ServerInfo, ServiceError> {
     let service_id = Uuid::new_v4();
 
@@ -88,6 +89,7 @@ pub async fn start_server(ble: &BleWaiter) -> Result<ServerInfo, ServiceError> {
     })
 }
 
+// This functionality is used by the HOLDER after he starts the server or holder flow.
 #[allow(clippy::too_many_arguments)]
 pub async fn connect(
     ble: &BleWaiter,
@@ -150,8 +152,10 @@ pub async fn connect(
                             task_id,
                             sk_device,
                             sk_reader,
+                            device_address: Some(info.address.clone()),
                             device_request: device_request.into(),
                             organisation_id,
+                            mtu: Some(info.mtu()),
                         })
                         .context("interaction serialization error")
                         .map_err(ExchangeProtocolError::Other)?,
@@ -214,6 +218,7 @@ pub async fn connect(
     Ok(())
 }
 
+// This is the VERIFIER functionality to initiate BLE Connection for MDL
 #[allow(clippy::too_many_arguments)]
 pub async fn start_client(
     ble: &BleWaiter,

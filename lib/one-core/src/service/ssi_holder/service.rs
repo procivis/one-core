@@ -19,7 +19,7 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
-use crate::config::core_config::{Fields, RevocationType};
+use crate::config::core_config::{ExchangeType, Fields, RevocationType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -172,16 +172,37 @@ impl SSIHolderService {
             return Err(BusinessLogicError::MissingProofForInteraction(*interaction_id).into());
         };
 
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+        let exchange = self
+            .config
+            .exchange
+            .get_if_enabled(proof.exchange.as_str())
+            .map_err(|_| {
+                ServiceError::MissingExchangeProtocol("Exchange not found in config".to_string())
+            })?;
 
-        self.protocol_provider
+        match exchange.r#type {
+            ExchangeType::IsoMdl => {
+                throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?
+            }
+            _ => throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?,
+        }
+        let state = if (self
+            .protocol_provider
             .get_protocol(&proof.exchange)
             .ok_or(MissingProviderError::ExchangeProtocol(
                 proof.exchange.clone(),
             ))?
             .reject_proof(&proof.clone().into())
-            .await?;
-
+            .await)
+            .is_ok()
+        {
+            let _ =
+                log_history_event_proof(&self.history_repository, &proof, HistoryAction::Rejected)
+                    .await;
+            ProofStateEnum::Rejected
+        } else {
+            ProofStateEnum::Error
+        };
         let now = OffsetDateTime::now_utc();
         self.proof_repository
             .set_proof_state(
@@ -189,13 +210,10 @@ impl SSIHolderService {
                 ProofState {
                     created_date: now,
                     last_modified: now,
-                    state: ProofStateEnum::Rejected,
+                    state,
                 },
             )
             .await?;
-
-        let _ = log_history_event_proof(&self.history_repository, &proof, HistoryAction::Rejected)
-            .await;
 
         Ok(())
     }

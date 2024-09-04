@@ -128,7 +128,6 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     key_provider.clone(),
                     ble.clone(),
                 )));
-
                 providers.insert(name.to_string(), protocol);
             }
         }
