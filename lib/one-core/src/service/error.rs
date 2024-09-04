@@ -292,6 +292,9 @@ pub enum BusinessLogicError {
 
     #[error("Error while importing proof request schema: {0}")]
     ProofSchemaImport(#[from] ProofSchemaImportError),
+
+    #[error("Layout properties are not supported")]
+    LayoutPropertiesNotSupported,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -791,6 +794,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Incorrect disclosure level")]
     BR_0130,
 
+    #[strum(to_string = "Layout properties are not supported")]
+    BR_0131,
+
     #[strum(to_string = "Trust management provider not found")]
     BR_0132,
 
@@ -959,6 +965,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::ProofSchemaImport(_) => ErrorCode::BR_0135,
             Self::MissingMdocDoctype => ErrorCode::BR_0138,
             Self::SchemaIdNotAllowed => ErrorCode::BR_0139,
+            Self::LayoutPropertiesNotSupported => ErrorCode::BR_0131,
         }
     }
 }

@@ -202,3 +202,26 @@ async fn test_fail_create_credential_schema_with_firbidden_claim_name() {
     let err = resp.error_code().await;
     assert_eq!(err, "BR_0145");
 }
+
+#[tokio::test]
+async fn test_fail_to_create_credential_schema_with_layout_properties_when_its_unsupported() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create(
+            "some credential schema",
+            organisation.id,
+            "PHYSICAL_CARD",
+            "firstName",
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0131", resp.error_code().await);
+}
