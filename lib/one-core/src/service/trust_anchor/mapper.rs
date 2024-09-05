@@ -1,12 +1,10 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    model::{organisation::Organisation, trust_anchor::TrustAnchor},
-    service::error::ServiceError,
-};
-
 use super::dto::{CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO};
+use crate::model::organisation::Organisation;
+use crate::model::trust_anchor::TrustAnchor;
+use crate::service::error::ServiceError;
 
 pub(super) fn trust_anchor_from_request(
     request: CreateTrustAnchorRequestDTO,

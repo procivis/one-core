@@ -1,20 +1,18 @@
 use std::str::FromStr;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use one_core::model::{
-    credential::CredentialStateEnum,
-    did::{KeyRole, RelatedKey},
-    validity_credential::ValidityCredentialType,
-};
+use one_core::model::credential::CredentialStateEnum;
+use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::validity_credential::ValidityCredentialType;
 use serde_json::json;
 use shared_types::{CredentialId, DidValue};
-use time::{macros::format_description, OffsetDateTime};
+use time::macros::format_description;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    fixtures::{TestingCredentialParams, TestingDidParams},
-    utils::{context::TestContext, db_clients::keys::eddsa_testing_params},
-};
+use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::keys::eddsa_testing_params;
 
 #[tokio::test]
 async fn test_post_issuer_credential() {

@@ -1,11 +1,10 @@
 use one_core::model::credential::CredentialStateEnum;
 use uuid::Uuid;
 
+use crate::fixtures::TestingCredentialParams;
+use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
-use crate::{
-    fixtures::TestingCredentialParams,
-    utils::{context::TestContext, field_match::FieldHelpers},
-};
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_get_credential_offer_success_jwt() {

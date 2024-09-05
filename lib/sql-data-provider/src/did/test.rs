@@ -1,25 +1,28 @@
-use one_core::model::did::{DidFilterValue, DidListQuery};
-use one_core::model::did::{KeyRole, RelatedKey};
+use std::sync::Arc;
+
+use one_core::model::common::SortDirection;
+use one_core::model::did::{
+    Did, DidFilterValue, DidListQuery, DidRelations, DidType, KeyRole, RelatedKey,
+    SortableDidColumn,
+};
 use one_core::model::key::KeyRelations;
 use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
-use one_core::model::{
-    common::SortDirection,
-    did::{Did, DidRelations, DidType, SortableDidColumn},
-};
+use one_core::repository::did_repository::DidRepository;
+use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
-use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
 use one_providers::common_models::key::OpenKey;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use shared_types::{DidId, DidValue};
-use std::sync::Arc;
 use time::macros::datetime;
 use uuid::Uuid;
 
-use crate::{did::DidProvider, entity::did, test_utilities::*};
+use crate::did::DidProvider;
+use crate::entity::did;
+use crate::test_utilities::*;
 
 struct TestSetup {
     pub provider: DidProvider,

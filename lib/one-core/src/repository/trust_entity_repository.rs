@@ -1,9 +1,8 @@
-use crate::service::trust_entity::dto::{GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO};
-use crate::{
-    model::trust_entity::{TrustEntity, TrustEntityRelations},
-    repository::error::DataLayerError,
-};
 use shared_types::{TrustAnchorId, TrustEntityId};
+
+use crate::model::trust_entity::{TrustEntity, TrustEntityRelations};
+use crate::repository::error::DataLayerError;
+use crate::service::trust_entity::dto::{GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

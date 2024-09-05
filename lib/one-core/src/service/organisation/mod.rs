@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use crate::repository::{
-    history_repository::HistoryRepository, organisation_repository::OrganisationRepository,
-};
+use crate::repository::history_repository::HistoryRepository;
+use crate::repository::organisation_repository::OrganisationRepository;
 
 pub mod dto;
 pub mod service;

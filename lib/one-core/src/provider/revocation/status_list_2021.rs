@@ -1,21 +1,22 @@
-use one_providers::credential_formatter::model::CredentialStatus;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::revocation::imp::bitstring_status_list::util::extract_bitstring_index;
 use std::sync::Arc;
 
-use crate::model::did::KeyRole;
-use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList2021JWTFormatter;
-use crate::util::key_verification::KeyVerification;
 use one_providers::common_models::credential::OpenCredential;
 use one_providers::common_models::did::DidValue;
+use one_providers::credential_formatter::model::CredentialStatus;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::http_client::HttpClient;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::revocation::error::RevocationError;
+use one_providers::revocation::imp::bitstring_status_list::util::extract_bitstring_index;
 use one_providers::revocation::model::{
     CredentialAdditionalData, CredentialDataByRole, CredentialRevocationInfo,
     CredentialRevocationState, JsonLdContext, RevocationMethodCapabilities, RevocationUpdate,
 };
 use one_providers::revocation::RevocationMethod;
+
+use crate::model::did::KeyRole;
+use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList2021JWTFormatter;
+use crate::util::key_verification::KeyVerification;
 
 pub struct StatusList2021 {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,

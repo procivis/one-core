@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
-use crate::provider::exchange_protocol::scan_to_verify::dto::ScanToVerifyCredentialDTO;
-use one_providers::credential_formatter::{
-    error::FormatterError,
-    imp::json_ld::model::{LdCredential, LdCredentialSubject},
-    model::{CredentialSchema, CredentialStatus, CredentialSubject, DetailCredential},
+use one_providers::credential_formatter::error::FormatterError;
+use one_providers::credential_formatter::imp::json_ld::model::{LdCredential, LdCredentialSubject};
+use one_providers::credential_formatter::model::{
+    CredentialSchema, CredentialStatus, CredentialSubject, DetailCredential,
 };
 
 use super::model::{
     IdentityCard, OptiocalBarcodeCredential, TerseBitstringStatusListEntry,
     MRZ_CREDENTIAL_SUBJECT_TYPE,
 };
+use crate::provider::exchange_protocol::scan_to_verify::dto::ScanToVerifyCredentialDTO;
 
 impl OptiocalBarcodeCredential {
     pub fn from_token(token: &str) -> Result<Self, FormatterError> {

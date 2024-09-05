@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
@@ -15,6 +13,7 @@ use one_core::repository::credential_schema_repository::CredentialSchemaReposito
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
 use shared_types::CredentialSchemaId;
 use uuid::Uuid;

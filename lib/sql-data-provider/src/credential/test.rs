@@ -1,8 +1,6 @@
 use std::ops::Add;
 use std::sync::Arc;
 
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-
 use mockall::predicate::{always, eq};
 use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -28,6 +26,7 @@ use one_core::repository::interaction_repository::MockInteractionRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::revocation_list_repository::MockRevocationListRepository;
 use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO};
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};

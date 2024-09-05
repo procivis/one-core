@@ -1,16 +1,12 @@
 use dto_mapper::try_convert_inner;
+use one_core::model::history::{GetHistoryList, History};
+use one_core::model::organisation::Organisation;
+use one_core::repository::error::DataLayerError;
 use sea_orm::ActiveValue::Set;
 use time::OffsetDateTime;
 
-use one_core::{
-    model::{
-        history::{GetHistoryList, History},
-        organisation::Organisation,
-    },
-    repository::error::DataLayerError,
-};
-
-use crate::{common::calculate_pages_count, entity::history};
+use crate::common::calculate_pages_count;
+use crate::entity::history;
 
 impl TryFrom<history::Model> for History {
     type Error = DataLayerError;

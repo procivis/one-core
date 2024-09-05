@@ -4,7 +4,8 @@ use autometrics::autometrics;
 use one_core::model::did::{
     Did, DidListQuery, DidRelations, GetDidList, RelatedKey, UpdateDidRequest,
 };
-use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
+use one_core::repository::did_repository::DidRepository;
+use one_core::repository::error::DataLayerError;
 use one_providers::common_models::key::OpenKey;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
@@ -12,13 +13,11 @@ use sea_orm::{
 };
 use shared_types::{DidId, DidValue, KeyId};
 
-use super::{mapper::create_list_response, DidProvider};
-use crate::list_query_generic::SelectWithFilterJoin;
-use crate::{
-    entity::{did, key_did},
-    list_query_generic::SelectWithListQuery,
-    mapper::to_data_layer_error,
-};
+use super::mapper::create_list_response;
+use super::DidProvider;
+use crate::entity::{did, key_did};
+use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
+use crate::mapper::to_data_layer_error;
 impl DidProvider {
     async fn resolve_relations(
         &self,

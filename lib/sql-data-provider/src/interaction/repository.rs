@@ -1,14 +1,15 @@
-use autometrics::autometrics;
-use one_core::{
-    model::interaction::{Interaction, InteractionId, InteractionRelations},
-    repository::{error::DataLayerError, interaction_repository::InteractionRepository},
-};
-use sea_orm::{ActiveModelTrait, DbErr, EntityTrait};
 use std::str::FromStr;
+
+use autometrics::autometrics;
+use one_core::model::interaction::{Interaction, InteractionId, InteractionRelations};
+use one_core::repository::error::DataLayerError;
+use one_core::repository::interaction_repository::InteractionRepository;
+use sea_orm::{ActiveModelTrait, DbErr, EntityTrait};
 use uuid::Uuid;
 
 use super::InteractionProvider;
-use crate::{entity::interaction, mapper::to_data_layer_error};
+use crate::entity::interaction;
+use crate::mapper::to_data_layer_error;
 
 #[autometrics]
 #[async_trait::async_trait]

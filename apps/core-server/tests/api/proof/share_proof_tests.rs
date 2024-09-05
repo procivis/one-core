@@ -1,20 +1,17 @@
+use std::str::FromStr;
+
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::proof::ProofStateEnum;
 use serde_json::Value;
 use shared_types::DidValue;
-use std::str::FromStr;
 use uuid::Uuid;
 
+use crate::fixtures;
 use crate::fixtures::TestingDidParams;
 use crate::utils::context::TestContext;
-use crate::{
-    fixtures,
-    utils::{
-        self,
-        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
-        server::run_server,
-    },
-};
+use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::server::run_server;
+use crate::utils::{self};
 
 #[tokio::test]
 async fn test_share_proof_success() {

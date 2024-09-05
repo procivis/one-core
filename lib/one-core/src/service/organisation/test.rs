@@ -1,16 +1,16 @@
-use super::OrganisationService;
-use crate::{
-    model::organisation::{Organisation, OrganisationRelations},
-    repository::{
-        error::DataLayerError, history_repository::MockHistoryRepository,
-        organisation_repository::MockOrganisationRepository,
-    },
-    service::error::{BusinessLogicError, EntityNotFoundError, ServiceError},
-};
-use mockall::{predicate::eq, Sequence};
 use std::sync::Arc;
+
+use mockall::predicate::eq;
+use mockall::Sequence;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::OrganisationService;
+use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::repository::error::DataLayerError;
+use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 
 fn setup_service(
     organisation_repository: MockOrganisationRepository,

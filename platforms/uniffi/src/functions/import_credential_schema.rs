@@ -1,6 +1,6 @@
-use crate::{
-    binding::OneCoreBinding, dto::ImportCredentialSchemaRequestBindingDTO, error::BindingError,
-};
+use crate::binding::OneCoreBinding;
+use crate::dto::ImportCredentialSchemaRequestBindingDTO;
+use crate::error::BindingError;
 
 impl OneCoreBinding {
     pub fn import_credential_schema(

@@ -1,12 +1,14 @@
-use crate::model::did::KeyRole;
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use one_crypto::SignerError;
 use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::model::TokenVerifier;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use std::sync::Arc;
 use tracing::info;
+
+use crate::model::did::KeyRole;
 
 #[derive(Clone)]
 pub(crate) struct KeyVerification {
@@ -81,7 +83,6 @@ impl TokenVerifier for KeyVerification {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use mockall::predicate::*;
     use one_crypto::MockSigner;
     use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
@@ -91,6 +92,8 @@ mod test {
     use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
     use one_providers::key_algorithm::MockKeyAlgorithm;
     use serde_json::json;
+
+    use super::*;
 
     fn get_dummy_did_document() -> DidDocument {
         DidDocument {

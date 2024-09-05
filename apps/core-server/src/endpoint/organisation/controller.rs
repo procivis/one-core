@@ -1,15 +1,14 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use shared_types::OrganisationId;
-
-use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse, VecResponse};
-use crate::router::AppState;
 use uuid::Uuid;
 
 use super::dto::{
     CreateOrganisationRequestRestDTO, CreateOrganisationResponseRestDTO,
     GetOrganisationDetailsResponseRestDTO,
 };
+use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse, VecResponse};
+use crate::router::AppState;
 
 #[utoipa::path(
     get,

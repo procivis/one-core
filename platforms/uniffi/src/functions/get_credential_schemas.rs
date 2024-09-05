@@ -1,14 +1,14 @@
-use crate::{
-    error::BindingError, utils::into_id, CredentialSchemaListBindingDTO,
-    CredentialSchemaListQueryBindingDTO, CredentialSchemaListQueryExactColumnBindingEnum,
-    OneCoreBinding,
+use one_core::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
+use one_core::model::list_query::{ListPagination, ListSorting};
+use one_core::service::credential_schema::dto::{
+    CredentialSchemaFilterValue, GetCredentialSchemaQueryDTO,
 };
-use one_core::{
-    model::{
-        list_filter::{ListFilterCondition, ListFilterValue, StringMatch},
-        list_query::{ListPagination, ListSorting},
-    },
-    service::credential_schema::dto::{CredentialSchemaFilterValue, GetCredentialSchemaQueryDTO},
+
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::{
+    CredentialSchemaListBindingDTO, CredentialSchemaListQueryBindingDTO,
+    CredentialSchemaListQueryExactColumnBindingEnum, OneCoreBinding,
 };
 
 impl OneCoreBinding {

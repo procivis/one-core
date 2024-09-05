@@ -5,11 +5,9 @@ use one_core::model::did::{KeyRole, RelatedKey};
 use serde_json::Value;
 use shared_types::DidValue;
 
+use crate::fixtures::{self, TestingCredentialParams, TestingDidParams};
+use crate::utils;
 use crate::utils::server::run_server;
-use crate::{
-    fixtures::{self, TestingCredentialParams, TestingDidParams},
-    utils,
-};
 
 #[tokio::test]
 async fn test_temporary_issuer_submit_success() {

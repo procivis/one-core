@@ -1,11 +1,9 @@
-use dto_mapper::From;
-use dto_mapper::TryFrom;
+use dto_mapper::{From, TryFrom};
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::imp::json_ld::model::LdCredential;
 use one_providers::credential_formatter::model::CredentialSchema;
 use serde::{Deserialize, Serialize};
-use time::format_description::well_known::Iso8601;
-use time::format_description::well_known::Rfc3339;
+use time::format_description::well_known::{Iso8601, Rfc3339};
 use time::OffsetDateTime;
 
 use super::mappers::ProtectedOpticalData;

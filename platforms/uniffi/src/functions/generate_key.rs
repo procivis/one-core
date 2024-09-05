@@ -1,4 +1,6 @@
-use crate::{dto::KeyRequestBindingDTO, error::BindingError, OneCoreBinding};
+use crate::dto::KeyRequestBindingDTO;
+use crate::error::BindingError;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn generate_key(&self, request: KeyRequestBindingDTO) -> Result<String, BindingError> {

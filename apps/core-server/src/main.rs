@@ -1,20 +1,14 @@
+use std::env;
+use std::io::Write;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
+use std::path::PathBuf;
+
 use clap::Parser;
-use core_server::{
-    init::{initialize_core, initialize_sentry, initialize_tracing},
-    metrics,
-    router::start_server,
-    ServerConfig,
-};
-use one_core::{
-    config::core_config::{self, AppConfig},
-    OneCore,
-};
-use std::{
-    env,
-    io::Write,
-    net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener},
-    path::PathBuf,
-};
+use core_server::init::{initialize_core, initialize_sentry, initialize_tracing};
+use core_server::router::start_server;
+use core_server::{metrics, ServerConfig};
+use one_core::config::core_config::{self, AppConfig};
+use one_core::OneCore;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

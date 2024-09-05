@@ -1,4 +1,5 @@
-use crate::{error::BindingError, OneCoreBinding, ProofListBindingDTO, ProofListQueryBindingDTO};
+use crate::error::BindingError;
+use crate::{OneCoreBinding, ProofListBindingDTO, ProofListQueryBindingDTO};
 
 impl OneCoreBinding {
     pub fn get_proofs(

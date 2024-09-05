@@ -1,6 +1,7 @@
+use shared_types::RemoteEntityCacheId;
+
 use super::error::DataLayerError;
 use crate::model::remote_entity_cache::{CacheType, RemoteEntityCache, RemoteEntityCacheRelations};
-use shared_types::RemoteEntityCacheId;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

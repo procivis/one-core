@@ -1,8 +1,8 @@
 use shared_types::DidValue;
 
-use crate::model::{trust_anchor::TrustAnchor, trust_entity::TrustEntity};
-
 use super::{TrustCapabilities, TrustManagement, TrustOperations};
+use crate::model::trust_anchor::TrustAnchor;
+use crate::model::trust_entity::TrustEntity;
 
 pub struct SimpleList {}
 

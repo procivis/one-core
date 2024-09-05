@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::mapper::{fetch_procivis_schema, from_create_request};
 use one_providers::common_models::credential::CredentialId;
 use one_providers::common_models::credential_schema::{OpenCredentialSchema, OpenLayoutType};
 use one_providers::common_models::organisation::OpenOrganisation;
@@ -18,7 +17,7 @@ use one_providers::exchange_protocol::openid4vc::{
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::mapper::parse_procivis_schema_claim;
+use super::mapper::{fetch_procivis_schema, from_create_request, parse_procivis_schema_claim};
 use crate::config::core_config::CoreConfig;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_claims_from_credential_definition, parse_mdoc_schema_claims,

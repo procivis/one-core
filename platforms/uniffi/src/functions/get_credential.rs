@@ -1,4 +1,6 @@
-use crate::{error::BindingError, utils::into_id, CredentialDetailBindingDTO, OneCoreBinding};
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::{CredentialDetailBindingDTO, OneCoreBinding};
 
 impl OneCoreBinding {
     pub fn get_credential(

@@ -7,19 +7,23 @@ use did::DidProvider;
 use interaction::InteractionProvider;
 use migration::{Migrator, MigratorTrait};
 use one_core::repository::backup_repository::BackupRepository;
+use one_core::repository::claim_repository::ClaimRepository;
+use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
+use one_core::repository::credential_repository::CredentialRepository;
+use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
+use one_core::repository::did_repository::DidRepository;
+use one_core::repository::history_repository::HistoryRepository;
+use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
+use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::organisation_repository::OrganisationRepository;
+use one_core::repository::proof_repository::ProofRepository;
+use one_core::repository::proof_schema_repository::ProofSchemaRepository;
+use one_core::repository::revocation_list_repository::RevocationListRepository;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
-use one_core::repository::{
-    claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
-    credential_repository::CredentialRepository,
-    credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
-    history_repository::HistoryRepository, interaction_repository::InteractionRepository,
-    key_repository::KeyRepository, organisation_repository::OrganisationRepository,
-    proof_repository::ProofRepository, proof_schema_repository::ProofSchemaRepository,
-    revocation_list_repository::RevocationListRepository, DataRepository,
-};
+use one_core::repository::DataRepository;
 use organisation::OrganisationProvider;
 use proof::ProofProvider;
 use proof_schema::ProofSchemaProvider;

@@ -1,15 +1,9 @@
 use dto_mapper::convert_inner;
 
-use crate::{
-    model::{
-        claim_schema::ClaimSchema,
-        credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType},
-    },
-    service::{
-        credential::dto::DetailCredentialSchemaResponseDTO,
-        credential_schema::dto::CredentialClaimSchemaDTO,
-    },
-};
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};
+use crate::service::credential::dto::DetailCredentialSchemaResponseDTO;
+use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 
 impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
     fn from(value: DetailCredentialSchemaResponseDTO) -> Self {

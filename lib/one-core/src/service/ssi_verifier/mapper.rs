@@ -1,13 +1,8 @@
-use crate::{
-    model::{
-        credential_schema::CredentialSchema,
-        did::Did,
-        proof_schema::{ProofInputClaimSchema, ProofSchema},
-    },
-    service::error::ServiceError,
-};
-
 use super::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO};
+use crate::model::credential_schema::CredentialSchema;
+use crate::model::did::Did;
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
+use crate::service::error::ServiceError;
 
 pub fn proof_verifier_to_connect_verifier_response(
     proof_schema: ProofSchema,

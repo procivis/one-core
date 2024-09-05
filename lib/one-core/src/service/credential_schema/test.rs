@@ -1,54 +1,15 @@
-use mockall::predicate::*;
-use one_providers::credential_formatter::model::FormatterCapabilities;
-use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::credential_formatter::MockCredentialFormatter;
-use shared_types::CredentialSchemaId;
 use std::sync::Arc;
 use std::vec;
 
+use mockall::predicate::*;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
+use one_providers::credential_formatter::model::FormatterCapabilities;
+use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
+use one_providers::credential_formatter::MockCredentialFormatter;
 use serde_json::json;
+use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-
-use crate::model::credential_schema::{CredentialSchemaType, LayoutType};
-use crate::model::list_filter::ListFilterValue;
-use crate::model::list_query::ListPagination;
-use crate::service::credential_schema::dto::{
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
-    CredentialSchemaCodeTypeEnum, CredentialSchemaFilterValue,
-    CredentialSchemaLogoPropertiesRequestDTO, ImportCredentialSchemaClaimSchemaDTO,
-    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
-};
-use crate::service::test_utilities::generic_formatter_capabilities;
-use crate::{
-    model::{
-        claim_schema::{ClaimSchema, ClaimSchemaRelations},
-        credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-            GetCredentialSchemaList,
-        },
-        organisation::{Organisation, OrganisationRelations},
-    },
-    repository::{
-        credential_schema_repository::MockCredentialSchemaRepository,
-        history_repository::MockHistoryRepository,
-        organisation_repository::MockOrganisationRepository,
-    },
-    service::{
-        credential_schema::{
-            dto::{
-                CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO,
-                CredentialClaimSchemaRequestDTO, GetCredentialSchemaQueryDTO,
-            },
-            mapper::{renest_claim_schemas, unnest_claim_schemas},
-            CredentialSchemaService,
-        },
-        error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
-        test_utilities::generic_config,
-    },
-};
 
 use super::dto::CredentialSchemaLayoutPropertiesRequestDTO;
 use super::validator::{
@@ -56,6 +17,31 @@ use super::validator::{
 };
 use crate::config::core_config::{CoreConfig, Fields};
 use crate::config::ConfigValidationError;
+use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
+    GetCredentialSchemaList, LayoutType,
+};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListPagination;
+use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
+use crate::service::credential_schema::dto::{
+    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
+    CredentialSchemaCodeTypeEnum, CredentialSchemaFilterValue,
+    CredentialSchemaLogoPropertiesRequestDTO, GetCredentialSchemaQueryDTO,
+    ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
+    ImportCredentialSchemaRequestSchemaDTO,
+};
+use crate::service::credential_schema::mapper::{renest_claim_schemas, unnest_claim_schemas};
+use crate::service::credential_schema::CredentialSchemaService;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
+};
+use crate::service::test_utilities::{generic_config, generic_formatter_capabilities};
 
 fn setup_service(
     credential_schema_repository: MockCredentialSchemaRepository,

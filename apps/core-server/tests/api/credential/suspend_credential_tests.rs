@@ -1,13 +1,14 @@
 use std::str::FromStr;
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams};
-use crate::utils::context::TestContext;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::DidType;
 use one_core::model::revocation_list::RevocationListPurpose;
 use shared_types::DidValue;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+
+use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::utils::context::TestContext;
 
 #[tokio::test]
 async fn test_suspend_credential_with_bitstring_status_list_success() {

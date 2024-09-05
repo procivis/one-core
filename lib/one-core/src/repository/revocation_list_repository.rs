@@ -1,10 +1,9 @@
 use shared_types::DidId;
 
+use super::error::DataLayerError;
 use crate::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
 };
-
-use super::error::DataLayerError;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

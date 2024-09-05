@@ -7,7 +7,6 @@ use one_providers::common_models::credential::CredentialId;
 use one_providers::common_models::credential_schema::{
     CredentialSchemaId, OpenCredentialSchema, OpenCredentialSchemaClaim,
 };
-
 use one_providers::exchange_protocol::openid4vc::error::OpenID4VCError;
 use one_providers::exchange_protocol::openid4vc::model::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,

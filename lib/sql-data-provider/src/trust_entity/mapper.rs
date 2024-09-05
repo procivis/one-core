@@ -1,20 +1,15 @@
-use one_core::service::trust_entity::dto::TrustEntitiesResponseItemDTO;
-use one_core::{
-    model::trust_entity::TrustEntity,
-    service::trust_entity::dto::{SortableTrustEntityColumnEnum, TrustEntityFilterValue},
+use one_core::model::trust_entity::TrustEntity;
+use one_core::service::trust_entity::dto::{
+    SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO, TrustEntityFilterValue,
 };
 use sea_orm::IntoSimpleExpr;
 
-use crate::trust_entity::model::TrustEntityListItemEntityModel;
-use crate::{
-    entity::{
-        trust_anchor,
-        trust_entity::{self, TrustEntityRole},
-    },
-    list_query_generic::{
-        get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
-    },
+use crate::entity::trust_anchor;
+use crate::entity::trust_entity::{self, TrustEntityRole};
+use crate::list_query_generic::{
+    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
 };
+use crate::trust_entity::model::TrustEntityListItemEntityModel;
 
 impl From<TrustEntityListItemEntityModel> for TrustEntitiesResponseItemDTO {
     fn from(val: TrustEntityListItemEntityModel) -> Self {

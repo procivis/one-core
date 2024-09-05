@@ -1,4 +1,6 @@
-use crate::{dto::DidRequestBindingDTO, error::BindingError, OneCoreBinding};
+use crate::dto::DidRequestBindingDTO;
+use crate::error::BindingError;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn create_did(&self, request: DidRequestBindingDTO) -> Result<String, BindingError> {

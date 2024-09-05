@@ -1,6 +1,8 @@
 use shared_types::ProofSchemaId;
 
-use crate::{error::BindingError, utils::into_id, OneCoreBinding};
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn delete_proof_schema(&self, proof_schema_id: String) -> Result<(), BindingError> {

@@ -1,5 +1,8 @@
 use std::collections::VecDeque;
 
+use itertools::Itertools;
+use regex::Regex;
+
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::config::validator::datatype::{validate_datatype_value, DatatypeValidationError};
@@ -9,8 +12,6 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::FormatterCapabilities;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
-use itertools::Itertools;
-use regex::Regex;
 
 pub(crate) fn validate_create_request(
     did_method: &str,

@@ -1,9 +1,8 @@
 use one_core::model::credential::CredentialStateEnum;
 
-use crate::{
-    fixtures::TestingCredentialParams,
-    utils::{context::TestContext, field_match::FieldHelpers},
-};
+use crate::fixtures::TestingCredentialParams;
+use crate::utils::context::TestContext;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_temporary_issuer_connect_success() {

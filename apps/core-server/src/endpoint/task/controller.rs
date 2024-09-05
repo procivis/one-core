@@ -2,12 +2,10 @@ use axum::extract::State;
 use axum::Json;
 use axum_extra::extract::WithRejection;
 
+use super::dto::{TaskRequestRestDTO, TaskResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
-
 use crate::router::AppState;
-
-use super::dto::{TaskRequestRestDTO, TaskResponseRestDTO};
 
 #[utoipa::path(
     post,

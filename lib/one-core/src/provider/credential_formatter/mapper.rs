@@ -6,13 +6,11 @@ use one_providers::exchange_protocol::openid4vc::model::OpenID4VPInteractionCont
 use time::OffsetDateTime;
 use uuid::fmt::Urn;
 
-use crate::{
-    config::core_config::RevocationType,
-    provider::exchange_protocol::openid4vc::dto::OpenID4VPInteractionData,
-    service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
-};
-
 use super::map_claims;
+use crate::config::core_config::RevocationType;
+use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPInteractionData;
+use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::error::ServiceError;
 
 pub fn extract_presentation_ctx_from_interaction_content(
     content: OpenID4VPInteractionContent,

@@ -1,4 +1,6 @@
-use crate::{error::BindingError, utils::into_id, OneCoreBinding};
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn holder_reject_proof(&self, interaction_id: String) -> Result<(), BindingError> {

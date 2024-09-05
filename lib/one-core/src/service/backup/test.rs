@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use tempfile::NamedTempFile;
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 
 use super::BackupService;
 use crate::model::backup::{Metadata, UnexportableEntities};

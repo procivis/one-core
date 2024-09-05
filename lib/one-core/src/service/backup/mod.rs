@@ -1,6 +1,6 @@
-use crate::config::core_config::CoreConfig;
 use std::sync::Arc;
 
+use crate::config::core_config::CoreConfig;
 use crate::repository::backup_repository::BackupRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::organisation_repository::OrganisationRepository;

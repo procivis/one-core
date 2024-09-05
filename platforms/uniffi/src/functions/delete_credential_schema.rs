@@ -1,6 +1,8 @@
 use shared_types::CredentialSchemaId;
 
-use crate::{error::BindingError, utils::into_id, OneCoreBinding};
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn delete_credential_schema(

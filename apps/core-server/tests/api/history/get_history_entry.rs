@@ -1,11 +1,10 @@
-use one_core::{
-    model::history::HistoryMetadata, service::backup::dto::UnexportableEntitiesResponseDTO,
-};
+use one_core::model::history::HistoryMetadata;
+use one_core::service::backup::dto::UnexportableEntitiesResponseDTO;
 use uuid::Uuid;
 
-use crate::utils::{
-    context::TestContext, db_clients::histories::TestingHistoryParams, field_match::FieldHelpers,
-};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::histories::TestingHistoryParams;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_get_history_entry_without_metadata() {

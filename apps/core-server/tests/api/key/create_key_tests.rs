@@ -1,9 +1,9 @@
 use reqwest::StatusCode;
 use uuid::Uuid;
 
-use crate::utils::{
-    context::TestContext, db_clients::keys::eddsa_testing_params, field_match::FieldHelpers,
-};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::keys::eddsa_testing_params;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_create_key_es256() {

@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, LayoutType,
@@ -22,6 +20,7 @@ use one_core::repository::organisation_repository::{
     self, MockOrganisationRepository, OrganisationRepository,
 };
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use sea_orm::{ActiveModelTrait, Set, Unchanged};
 use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;

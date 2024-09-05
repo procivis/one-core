@@ -1,36 +1,32 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::collections::HashMap;
+use std::str::FromStr;
+use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
 use one_crypto::{MockCryptoProvider, MockHasher};
-use one_providers::{
-    common_models::{
-        credential_schema::{OpenBackgroundProperties, OpenLayoutProperties, OpenLayoutType},
-        did::DidValue,
-        OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData,
-    },
-    credential_formatter::{
-        model::{
-            CredentialData, CredentialSchemaData, CredentialSchemaMetadata, ExtractPresentationCtx,
-            FormatPresentationCtx, MockSignatureProvider, MockTokenVerifier, PublishedClaim,
-            PublishedClaimValue,
-        },
-        CredentialFormatter,
-    },
-    did::{
-        model::{DidDocument, DidVerificationMethod},
-        provider::MockDidMethodProvider,
-    },
-    http_client::{imp::reqwest_client::ReqwestClient, HttpClient},
-    key_algorithm::{provider::MockKeyAlgorithmProvider, MockKeyAlgorithm},
+use one_providers::common_models::credential_schema::{
+    OpenBackgroundProperties, OpenLayoutProperties, OpenLayoutType,
 };
+use one_providers::common_models::did::DidValue;
+use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
+use one_providers::credential_formatter::model::{
+    CredentialData, CredentialSchemaData, CredentialSchemaMetadata, ExtractPresentationCtx,
+    FormatPresentationCtx, MockSignatureProvider, MockTokenVerifier, PublishedClaim,
+    PublishedClaimValue,
+};
+use one_providers::credential_formatter::CredentialFormatter;
+use one_providers::did::model::{DidDocument, DidVerificationMethod};
+use one_providers::did::provider::MockDidMethodProvider;
+use one_providers::http_client::imp::reqwest_client::ReqwestClient;
+use one_providers::http_client::HttpClient;
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::key_algorithm::MockKeyAlgorithm;
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
 
-use crate::{
-    provider::credential_formatter::json_ld_classic::{JsonLdClassic, Params},
-    service::test_utilities::prepare_caching_loader,
-};
+use crate::provider::credential_formatter::json_ld_classic::{JsonLdClassic, Params};
+use crate::service::test_utilities::prepare_caching_loader;
 
 #[tokio::test]
 async fn test_format_with_layout() {

@@ -1,17 +1,14 @@
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use std::sync::Arc;
 
-use crate::repository::history_repository::HistoryRepository;
-use crate::{
-    config::core_config,
-    repository::{
-        did_repository::DidRepository, key_repository::KeyRepository,
-        organisation_repository::OrganisationRepository,
-    },
-};
+use one_providers::did::provider::DidMethodProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
 use super::error::ErrorCode;
+use crate::config::core_config;
+use crate::repository::did_repository::DidRepository;
+use crate::repository::history_repository::HistoryRepository;
+use crate::repository::key_repository::KeyRepository;
+use crate::repository::organisation_repository::OrganisationRepository;
 
 pub mod service;
 

@@ -4,13 +4,9 @@ use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, OrganisationId};
 use time::OffsetDateTime;
 
-use crate::{
-    model::{
-        common::{GetListQueryParams, GetListResponse},
-        did::{Did, DidType, SortableDidColumn},
-    },
-    service::key::dto::KeyListItemResponseDTO,
-};
+use crate::model::common::{GetListQueryParams, GetListResponse};
+use crate::model::did::{Did, DidType, SortableDidColumn};
+use crate::service::key::dto::KeyListItemResponseDTO;
 
 #[derive(Clone, Debug)]
 pub struct DidResponseDTO {

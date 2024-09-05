@@ -2,10 +2,9 @@ use serde::{Deserialize, Serialize};
 use shared_types::HistoryId;
 use time::OffsetDateTime;
 
-use crate::service::{
-    credential::dto::CredentialDetailResponseDTO, did::dto::DidListItemResponseDTO,
-    key::dto::KeyListItemResponseDTO,
-};
+use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::did::dto::DidListItemResponseDTO;
+use crate::service::key::dto::KeyListItemResponseDTO;
 
 #[derive(Debug, Clone)]
 pub struct BackupCreateResponseDTO {

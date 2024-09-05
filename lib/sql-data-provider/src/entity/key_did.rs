@@ -1,7 +1,6 @@
 use dto_mapper::{From, Into};
-use sea_orm::entity::prelude::*;
-
 use one_core::model::did::KeyRole as ModelKeyRole;
+use sea_orm::entity::prelude::*;
 use shared_types::{DidId, KeyId};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]

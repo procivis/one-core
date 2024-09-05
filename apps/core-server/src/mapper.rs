@@ -1,10 +1,12 @@
-use crate::dto::common::{GetListQueryParams, GetListResponseRestDTO};
+use std::fmt;
+
 use dto_mapper::{convert_inner, try_convert_inner};
 use one_core::model::common::GetListResponse;
 use serde::Serialize;
-use std::fmt;
 use thiserror::Error;
 use utoipa::ToSchema;
+
+use crate::dto::common::{GetListQueryParams, GetListResponseRestDTO};
 
 #[derive(Debug, Error)]
 pub enum MapperError {

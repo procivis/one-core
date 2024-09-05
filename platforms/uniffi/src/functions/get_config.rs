@@ -1,4 +1,6 @@
-use crate::{dto::ConfigBindingDTO, error::BindingError, OneCoreBinding};
+use crate::dto::ConfigBindingDTO;
+use crate::error::BindingError;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn get_config(&self) -> Result<ConfigBindingDTO, BindingError> {

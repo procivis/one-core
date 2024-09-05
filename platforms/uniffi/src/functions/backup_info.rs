@@ -1,4 +1,5 @@
-use crate::{error::BindingError, OneCoreBinding, UnexportableEntitiesBindingDTO};
+use crate::error::BindingError;
+use crate::{OneCoreBinding, UnexportableEntitiesBindingDTO};
 
 impl OneCoreBinding {
     pub fn backup_info(&self) -> Result<UnexportableEntitiesBindingDTO, BindingError> {

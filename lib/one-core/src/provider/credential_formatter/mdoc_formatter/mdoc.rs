@@ -1,13 +1,13 @@
 use anyhow::anyhow;
-use ciborium::{cbor, tag::Required, Value};
+use ciborium::tag::Required;
+use ciborium::{cbor, Value};
 use coset::AsCborValue;
 use indexmap::IndexMap;
-use serde::{
-    de::{self, DeserializeOwned},
-    ser, Deserialize, Serialize, Serializer,
-};
+use serde::de::{self, DeserializeOwned};
+use serde::{ser, Deserialize, Serialize, Serializer};
 use sha2::{Digest, Sha256};
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 use url::Url;
 
 pub type Namespace = String;

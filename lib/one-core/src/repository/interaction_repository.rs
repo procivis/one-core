@@ -1,6 +1,5 @@
-use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
-
 use super::error::DataLayerError;
+use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

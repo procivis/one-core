@@ -2,10 +2,10 @@ use reqwest::StatusCode;
 use serde_json::Value;
 use shared_types::KeyId;
 
-use crate::{
-    fixtures::{self, TestingKeyParams},
-    utils::{self, field_match::FieldHelpers, server::run_server},
-};
+use crate::fixtures::{self, TestingKeyParams};
+use crate::utils::field_match::FieldHelpers;
+use crate::utils::server::run_server;
+use crate::utils::{self};
 
 #[tokio::test]
 async fn test_get_keys_ok() {

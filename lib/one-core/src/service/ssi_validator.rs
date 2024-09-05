@@ -1,7 +1,5 @@
-use crate::config::{
-    core_config::{CoreConfig, ExchangeType},
-    ConfigValidationError,
-};
+use crate::config::core_config::{CoreConfig, ExchangeType};
+use crate::config::ConfigValidationError;
 
 pub(super) fn validate_config_entity_presence(
     config: &CoreConfig,

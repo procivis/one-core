@@ -1,6 +1,8 @@
-use crate::entity::claim;
-use one_core::{model::claim::Claim, repository::error::DataLayerError};
+use one_core::model::claim::Claim;
+use one_core::repository::error::DataLayerError;
 use sea_orm::Set;
+
+use crate::entity::claim;
 
 impl TryFrom<Claim> for claim::ActiveModel {
     type Error = DataLayerError;

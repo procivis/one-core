@@ -1,11 +1,12 @@
 use std::str::FromStr;
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams};
-use crate::utils::context::TestContext;
-use crate::utils::db_clients::keys::eddsa_testing_params;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
 use shared_types::DidValue;
+
+use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::keys::eddsa_testing_params;
 
 #[tokio::test]
 async fn test_reactivate_credential_with_bitstring_status_list_success() {

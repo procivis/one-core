@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Context;
 use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::exchange_protocol::openid4vc::model::{
@@ -11,7 +13,6 @@ use one_providers::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, RevocationMethodCapabilities,
 };
 use shared_types::CredentialId;
-use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

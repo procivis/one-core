@@ -7,10 +7,8 @@ use time::error::{ComponentRange, Parse, TryFromParsed};
 use time::macros::format_description;
 use time::{Date, Month, OffsetDateTime, PrimitiveDateTime};
 
-use crate::config::{
-    core_config::{DatatypeConfig, DatatypeType},
-    ConfigValidationError,
-};
+use crate::config::core_config::{DatatypeConfig, DatatypeType};
+use crate::config::ConfigValidationError;
 
 #[derive(Debug, Error)]
 pub enum DatatypeValidationError {

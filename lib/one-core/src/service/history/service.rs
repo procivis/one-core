@@ -1,14 +1,10 @@
 use shared_types::HistoryId;
 
-use crate::{
-    model::history::HistoryListQuery,
-    service::{
-        error::{EntityNotFoundError, ServiceError},
-        history::{dto::GetHistoryListResponseDTO, HistoryService},
-    },
-};
-
 use super::dto::HistoryResponseDTO;
+use crate::model::history::HistoryListQuery;
+use crate::service::error::{EntityNotFoundError, ServiceError};
+use crate::service::history::dto::GetHistoryListResponseDTO;
+use crate::service::history::HistoryService;
 
 impl HistoryService {
     /// Returns history list filtered by query

@@ -1,10 +1,9 @@
 use one_core::model::did::{KeyRole, RelatedKey};
 use serde_json::Value;
 
-use crate::{
-    fixtures::{self, TestingDidParams},
-    utils::{self, server::run_server},
-};
+use crate::fixtures::{self, TestingDidParams};
+use crate::utils::server::run_server;
+use crate::utils::{self};
 
 #[tokio::test]
 async fn test_get_did_web_document_es256_success() {

@@ -1,11 +1,10 @@
 use shared_types::{CredentialSchemaId, OrganisationId};
 
+use super::error::DataLayerError;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, GetCredentialSchemaList,
     GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
 };
-
-use super::error::DataLayerError;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

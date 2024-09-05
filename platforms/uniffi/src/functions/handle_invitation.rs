@@ -1,7 +1,9 @@
-use crate::{
-    dto::HandleInvitationResponseBindingEnum, error::BindingError, utils::into_id, OneCoreBinding,
-};
 use url::Url;
+
+use crate::dto::HandleInvitationResponseBindingEnum;
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn handle_invitation(

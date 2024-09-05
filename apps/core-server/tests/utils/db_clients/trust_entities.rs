@@ -1,13 +1,9 @@
 use std::sync::Arc;
 
-use one_core::{
-    model::{
-        organisation::OrganisationRelations,
-        trust_anchor::{TrustAnchor, TrustAnchorRelations},
-        trust_entity::{TrustEntity, TrustEntityRelations, TrustEntityRole},
-    },
-    repository::trust_entity_repository::TrustEntityRepository,
-};
+use one_core::model::organisation::OrganisationRelations;
+use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
+use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations, TrustEntityRole};
+use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use shared_types::TrustEntityId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;

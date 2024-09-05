@@ -1,12 +1,11 @@
-use super::OrganisationProvider;
-use crate::test_utilities::*;
-use one_core::{
-    model::organisation::{Organisation, OrganisationRelations},
-    repository::organisation_repository::OrganisationRepository,
-};
+use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::{DatabaseConnection, EntityTrait};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::OrganisationProvider;
+use crate::test_utilities::*;
 
 struct TestSetup {
     pub db: DatabaseConnection,

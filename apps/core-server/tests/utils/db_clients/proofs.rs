@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::ClaimSchemaRelations;
 use one_core::model::credential_schema::CredentialSchemaRelations;
@@ -15,7 +17,6 @@ use one_core::repository::proof_repository::ProofRepository;
 use one_providers::common_models::key::OpenKey;
 use shared_types::ProofId;
 use sql_data_provider::test_utilities::get_dummy_date;
-use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct ProofsDB {

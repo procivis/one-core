@@ -1,4 +1,7 @@
 use one_providers::exchange_protocol::openid4vc::error::OpenID4VCIError;
+use one_providers::exchange_protocol::openid4vc::model::{
+    OpenID4VCICredentialRequestDTO, OpenID4VCIInteractionDataDTO,
+};
 use time::OffsetDateTime;
 
 use crate::config::core_config::{CoreConfig, ExchangeType};
@@ -6,9 +9,6 @@ use crate::config::ConfigValidationError;
 use crate::model::credential_schema::CredentialSchema;
 use crate::service::error::ServiceError;
 use crate::util::oidc::map_from_oidc_format_to_core;
-use one_providers::exchange_protocol::openid4vc::model::{
-    OpenID4VCICredentialRequestDTO, OpenID4VCIInteractionDataDTO,
-};
 
 pub(crate) fn throw_if_credential_request_invalid(
     schema: &CredentialSchema,

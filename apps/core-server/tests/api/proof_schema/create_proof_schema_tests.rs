@@ -1,11 +1,7 @@
-use crate::utils::{
-    context::TestContext,
-    db_clients::{
-        credential_schemas::TestingCreateSchemaParams,
-        proof_schemas::{CreateProofClaim, CreateProofInputSchema},
-    },
-    field_match::FieldHelpers,
-};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_create_proof_schema_success() {

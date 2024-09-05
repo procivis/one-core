@@ -1,12 +1,12 @@
 use one_core::model::credential::CredentialStateEnum;
 use serde_json::json;
-use time::{macros::format_description, OffsetDateTime};
+use time::macros::format_description;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    fixtures::TestingCredentialParams,
-    utils::{context::TestContext, db_clients::credential_schemas::TestingCreateSchemaParams},
-};
+use crate::fixtures::TestingCredentialParams;
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 
 #[tokio::test]
 async fn test_oidc_create_token() {

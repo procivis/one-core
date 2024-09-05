@@ -1,7 +1,6 @@
-use sea_orm::Set;
-
 use one_core::model::remote_entity_cache::RemoteEntityCache;
 use one_core::repository::error::DataLayerError;
+use sea_orm::Set;
 
 use crate::entity::remote_entity_cache;
 

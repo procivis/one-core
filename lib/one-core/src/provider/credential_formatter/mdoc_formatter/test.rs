@@ -12,11 +12,10 @@ use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_algorithm::MockKeyAlgorithm;
 use serde_json::json;
 
-use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
-use crate::service::test_utilities::generic_config;
-
 use super::mdoc::*;
 use super::*;
+use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
+use crate::service::test_utilities::generic_config;
 
 #[test]
 fn test_issuer_auth_serialize_deserialize() {

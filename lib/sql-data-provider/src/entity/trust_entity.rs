@@ -1,7 +1,6 @@
 use dto_mapper::{From, Into};
 use one_core::model::trust_entity::TrustEntity;
 use sea_orm::entity::prelude::*;
-
 use shared_types::{DidId, OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 

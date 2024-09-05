@@ -1,36 +1,30 @@
+use std::sync::Arc;
+
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::model::CredentialRevocationState;
 use one_providers::revocation::provider::RevocationMethodProvider;
 use serde_json::Value;
-use std::sync::Arc;
 use time::OffsetDateTime;
 
 use self::dto::SuspendCheckResultDTO;
 use super::Task;
+use crate::model::credential::{
+    CredentialRelations, CredentialState, CredentialStateEnum, GetCredentialQuery,
+    UpdateCredentialRequest,
+};
+use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::did::DidRelations;
 use crate::model::key::KeyRelations;
+use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
+use crate::model::organisation::OrganisationRelations;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::credential::dto::CredentialFilterValue;
+use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 use crate::util::history::log_history_event_credential_revocation;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
-use crate::{
-    model::{
-        credential::{
-            CredentialRelations, CredentialState, CredentialStateEnum, GetCredentialQuery,
-            UpdateCredentialRequest,
-        },
-        credential_schema::CredentialSchemaRelations,
-        did::DidRelations,
-        list_filter::{ComparisonType, ListFilterValue, ValueComparison},
-        organisation::OrganisationRelations,
-    },
-    repository::{
-        credential_repository::CredentialRepository, history_repository::HistoryRepository,
-    },
-    service::{
-        credential::dto::CredentialFilterValue,
-        error::{EntityNotFoundError, MissingProviderError, ServiceError},
-    },
-};
 
 pub mod dto;
 

@@ -1,4 +1,5 @@
-use crate::{error::BindingError, BackupCreateBindingDTO, OneCoreBinding};
+use crate::error::BindingError;
+use crate::{BackupCreateBindingDTO, OneCoreBinding};
 
 impl OneCoreBinding {
     pub fn create_backup(

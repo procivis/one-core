@@ -1,3 +1,9 @@
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+
+use url::Url;
+
+use super::dto::{ConnectIssuerResponseDTO, JsonLDContextDTO};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::Credential;
@@ -7,11 +13,6 @@ use crate::service::error::ServiceError;
 use crate::service::ssi_issuer::dto::{
     JsonLDEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
 };
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
-use url::Url;
-
-use super::dto::{ConnectIssuerResponseDTO, JsonLDContextDTO};
 
 impl Default for JsonLDContextDTO {
     fn default() -> Self {

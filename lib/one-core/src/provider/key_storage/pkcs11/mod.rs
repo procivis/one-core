@@ -1,14 +1,9 @@
-use one_providers::{
-    common_models::key::{KeyId, OpenKey},
-    key_storage::{
-        error::KeyStorageError,
-        model::{KeyStorageCapabilities, StorageGeneratedKey},
-        KeyStorage,
-    },
-};
-use zeroize::Zeroizing;
-
 use one_crypto::SignerError;
+use one_providers::common_models::key::{KeyId, OpenKey};
+use one_providers::key_storage::error::KeyStorageError;
+use one_providers::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
+use one_providers::key_storage::KeyStorage;
+use zeroize::Zeroizing;
 
 #[derive(Default)]
 pub struct PKCS11KeyProvider {}

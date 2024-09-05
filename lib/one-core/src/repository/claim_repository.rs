@@ -1,5 +1,4 @@
 use super::error::DataLayerError;
-
 use crate::model::claim::{Claim, ClaimId, ClaimRelations};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]

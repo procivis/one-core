@@ -1,6 +1,6 @@
-use crate::m20240319_105859_typed_credential_schema::SCHEMA_ID_IN_ORGANISATION_INDEX;
-
 use sea_orm_migration::prelude::*;
+
+use crate::m20240319_105859_typed_credential_schema::SCHEMA_ID_IN_ORGANISATION_INDEX;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

@@ -1,9 +1,4 @@
-use crate::{
-    dto::common::ListQueryParamsRest, endpoint::key::dto::KeyListItemResponseRestDTO,
-    mapper::MapperError, serialize::front_time,
-};
-use dto_mapper::{convert_inner, try_convert_inner};
-use dto_mapper::{From, Into, TryFrom};
+use dto_mapper::{convert_inner, try_convert_inner, From, Into, TryFrom};
 use one_core::service::did::dto::{
     CreateDidRequestKeysDTO, DidListItemResponseDTO, DidPatchRequestDTO, DidResponseDTO,
     DidResponseKeysDTO,
@@ -13,6 +8,11 @@ use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
+
+use crate::dto::common::ListQueryParamsRest;
+use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
+use crate::mapper::MapperError;
+use crate::serialize::front_time;
 
 pub type GetDidQuery = ListQueryParamsRest<DidFilterQueryParamsRest, SortableDidColumnRestDTO>;
 

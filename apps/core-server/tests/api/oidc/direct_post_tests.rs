@@ -4,16 +4,12 @@ use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::{
-    fixtures::{
-        self, create_credential_schema_with_claims, create_proof, create_proof_schema, get_proof,
-    },
-    utils::{
-        self,
-        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
-        server::run_server,
-    },
+use crate::fixtures::{
+    self, create_credential_schema_with_claims, create_proof, create_proof_schema, get_proof,
 };
+use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::server::run_server;
+use crate::utils::{self};
 
 static TOKEN1: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDAxMzgwNTcsImV4cCI6MzMyMzYxMzgwNTcsIm5iZiI6MTcwMDEz\
 Nzk5NywiaXNzIjoiZGlkOmtleTp6Nk1rdHRpSlZaQjRkd1drRjlBTHdhRUxVRHE1Smo5ajFCaFpITnpOY0xWTmFtNm4iLCJzdWIiOiJkaWQ6a2V5Ono2TWt0\

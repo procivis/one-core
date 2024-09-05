@@ -1,3 +1,10 @@
+use std::sync::Arc;
+
+use one_providers::revocation::model::CredentialRevocationState;
+use shared_types::{EntityId, OrganisationId};
+use time::OffsetDateTime;
+use uuid::Uuid;
+
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
@@ -7,11 +14,6 @@ use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
 use crate::repository::history_repository::HistoryRepository;
 use crate::service::error::ServiceError;
-use one_providers::revocation::model::CredentialRevocationState;
-use shared_types::{EntityId, OrganisationId};
-use std::sync::Arc;
-use time::OffsetDateTime;
-use uuid::Uuid;
 
 pub(crate) fn history_event(
     entity_id: impl Into<EntityId>,

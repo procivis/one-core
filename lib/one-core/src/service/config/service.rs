@@ -1,4 +1,5 @@
-use super::{dto::ConfigDTO, ConfigService};
+use super::dto::ConfigDTO;
+use super::ConfigService;
 use crate::service::error::ServiceError;
 
 impl ConfigService {

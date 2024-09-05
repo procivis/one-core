@@ -1,21 +1,16 @@
 use std::sync::Arc;
 
+use one_core::model::history::{
+    GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
+    HistoryListQuery, HistoryMetadata,
+};
+use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::list_query::ListPagination;
+use one_core::model::organisation::Organisation;
+use one_core::repository::history_repository::HistoryRepository;
 use shared_types::{EntityId, HistoryId};
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use one_core::{
-    model::{
-        history::{
-            GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
-            HistoryListQuery, HistoryMetadata,
-        },
-        list_filter::ListFilterCondition,
-        list_query::ListPagination,
-        organisation::Organisation,
-    },
-    repository::history_repository::HistoryRepository,
-};
 
 #[derive(Debug, Default)]
 pub struct TestingHistoryParams {

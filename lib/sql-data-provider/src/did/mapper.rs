@@ -1,25 +1,15 @@
 use dto_mapper::convert_inner;
-use one_core::{
-    model::did::{Did, DidFilterValue, GetDidList, SortableDidColumn},
-    repository::error::DataLayerError,
-};
-use sea_orm::{
-    sea_query::{IntoCondition, SimpleExpr},
-    ActiveValue::NotSet,
-    ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set,
-};
+use one_core::model::did::{Did, DidFilterValue, GetDidList, SortableDidColumn};
+use one_core::repository::error::DataLayerError;
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::ActiveValue::NotSet;
+use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
 
-use crate::list_query_generic::IntoJoinCondition;
-use crate::{
-    common::calculate_pages_count,
-    entity::{self, did},
-    list_query_generic::{
-        get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
-    },
-};
-use crate::{
-    entity::{key, key_did},
-    list_query_generic::JoinRelation,
+use crate::common::calculate_pages_count;
+use crate::entity::{self, did, key, key_did};
+use crate::list_query_generic::{
+    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoJoinCondition,
+    IntoSortingColumn, JoinRelation,
 };
 
 impl From<entity::did::Model> for Did {

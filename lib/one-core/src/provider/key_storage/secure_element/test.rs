@@ -1,12 +1,14 @@
-use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
-use mockall::predicate::eq;
-use one_providers::{
-    common_models::key::OpenKey,
-    key_storage::{error::KeyStorageError, model::StorageGeneratedKey, KeyStorage},
-};
 use std::sync::Arc;
+
+use mockall::predicate::eq;
+use one_providers::common_models::key::OpenKey;
+use one_providers::key_storage::error::KeyStorageError;
+use one_providers::key_storage::model::StorageGeneratedKey;
+use one_providers::key_storage::KeyStorage;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
 
 fn get_params() -> Params {
     Params {

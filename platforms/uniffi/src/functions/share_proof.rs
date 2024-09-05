@@ -1,6 +1,8 @@
 use one_core::config::core_config::TransportType;
 
-use crate::{error::BindingError, utils::into_id, OneCoreBinding, ShareProofResponseBindingDTO};
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::{OneCoreBinding, ShareProofResponseBindingDTO};
 
 impl OneCoreBinding {
     pub fn share_proof(

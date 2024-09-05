@@ -1,6 +1,7 @@
 use dto_mapper::{convert_inner, From, Into};
 use one_crypto::imp::utilities::deserialize_base64;
-use serde::{de::Error, Deserialize, Serialize};
+use serde::de::Error;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Into)]
 #[into(one_core::provider::did_method::mdl::Params)]

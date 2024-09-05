@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use sea_orm::DatabaseConnection;
-use std::sync::Arc;
 
 pub mod mapper;
 pub mod repository;

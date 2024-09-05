@@ -1,7 +1,7 @@
-use crate::model::organisation::OrganisationRelations;
+use one_providers::common_models::key::OpenKey;
 
 use crate::model::common::{GetListQueryParams, GetListResponse};
-use one_providers::common_models::key::OpenKey;
+use crate::model::organisation::OrganisationRelations;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct KeyRelations {

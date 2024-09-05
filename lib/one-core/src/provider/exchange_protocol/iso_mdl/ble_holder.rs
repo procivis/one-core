@@ -13,10 +13,9 @@ use crate::provider::exchange_protocol::openid4vc::dto::{ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::model::{
     BLEOpenID4VPInteractionData, BleOpenId4VpResponse,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_ble::TRANSFER_SUMMARY_REQUEST_UUID;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
     BLEParse, BLEPeer, TransferSummaryReport, CONTENT_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID,
-    TRANSFER_SUMMARY_REPORT_UUID,
+    TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
 use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::util::ble_resource::BleWaiter;

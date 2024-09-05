@@ -1,4 +1,5 @@
-use std::{convert::Infallible, str::FromStr};
+use std::convert::Infallible;
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 

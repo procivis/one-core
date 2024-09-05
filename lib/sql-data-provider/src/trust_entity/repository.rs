@@ -1,9 +1,10 @@
 use autometrics::autometrics;
 use dto_mapper::convert_inner;
-use one_core::{
-    model::trust_entity::{TrustEntity, TrustEntityRelations},
-    repository::{error::DataLayerError, trust_entity_repository::TrustEntityRepository},
-    service::trust_entity::dto::{GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO},
+use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations};
+use one_core::repository::error::DataLayerError;
+use one_core::repository::trust_entity_repository::TrustEntityRepository;
+use one_core::service::trust_entity::dto::{
+    GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO,
 };
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
@@ -11,15 +12,12 @@ use sea_orm::{
 };
 use shared_types::{TrustAnchorId, TrustEntityId};
 
-use crate::{
-    common::calculate_pages_count,
-    entity::{trust_anchor, trust_entity},
-    list_query_generic::SelectWithListQuery,
-    mapper::to_data_layer_error,
-    trust_entity::model::TrustEntityListItemEntityModel,
-};
-
 use super::TrustEntityProvider;
+use crate::common::calculate_pages_count;
+use crate::entity::{trust_anchor, trust_entity};
+use crate::list_query_generic::SelectWithListQuery;
+use crate::mapper::to_data_layer_error;
+use crate::trust_entity::model::TrustEntityListItemEntityModel;
 
 #[autometrics]
 #[async_trait::async_trait]

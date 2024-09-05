@@ -1,7 +1,8 @@
-use shadow_rs::SdResult;
 use std::env;
 use std::fs::File;
 use std::io::Write;
+
+use shadow_rs::SdResult;
 
 fn main() -> SdResult<()> {
     shadow_rs::new_hook(hook)

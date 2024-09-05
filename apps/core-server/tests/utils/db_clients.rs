@@ -1,5 +1,3 @@
-use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
-use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
 use one_core::repository::DataRepository;
 use sql_data_provider::{DataLayer, DbConn};
 
@@ -15,6 +13,8 @@ use self::proofs::ProofsDB;
 use self::revocation_lists::RevocationListsDB;
 use self::trust_anchors::TrustAnchorDB;
 use self::trust_entities::TrustEntityDB;
+use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
+use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
 
 pub mod credential_schemas;
 pub mod credentials;

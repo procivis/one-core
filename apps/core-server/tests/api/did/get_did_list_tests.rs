@@ -1,7 +1,8 @@
+use one_core::model::did::{KeyRole, RelatedKey};
+
 use crate::fixtures::{TestingDidParams, TestingKeyParams};
 use crate::utils::context::TestContext;
 use crate::utils::field_match::FieldHelpers;
-use one_core::model::did::{KeyRole, RelatedKey};
 
 #[tokio::test]
 async fn test_get_did_list_filters_deactivated_dids() {

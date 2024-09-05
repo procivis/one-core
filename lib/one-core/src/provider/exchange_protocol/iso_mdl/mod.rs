@@ -1,18 +1,9 @@
-use anyhow::Context;
 use std::collections::{HashMap, HashSet};
 use std::iter;
 use std::sync::Arc;
 
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    Bstr, DeviceResponse, DeviceResponseVersion, DocumentError,
-};
-use crate::provider::exchange_protocol::iso_mdl::ble::SERVER_2_CLIENT;
-use crate::provider::exchange_protocol::iso_mdl::session::SessionData;
-use crate::provider::exchange_protocol::iso_mdl::session::StatusCode;
+use anyhow::Context;
 use async_trait::async_trait;
-use url::Url;
-use uuid::Uuid;
-
 use one_providers::common_dto::PublicKeyJwkDTO;
 use one_providers::common_models::credential::{OpenCredential, OpenCredentialStateEnum};
 use one_providers::common_models::did::OpenDid;
@@ -35,13 +26,19 @@ use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
     StorageAccess, TypeToDescriptorMapper,
 };
-
 use one_providers::key_storage::provider::KeyProvider;
+use url::Url;
+use uuid::Uuid;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
+    Bstr, DeviceResponse, DeviceResponseVersion, DocumentError,
+};
 use crate::provider::exchange_protocol::deserialize_interaction_data;
+use crate::provider::exchange_protocol::iso_mdl::ble::SERVER_2_CLIENT;
 use crate::provider::exchange_protocol::iso_mdl::ble_holder::IsoMdlBleHolder;
+use crate::provider::exchange_protocol::iso_mdl::session::{SessionData, StatusCode};
 use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::proof::dto::MdocBleInteractionData;

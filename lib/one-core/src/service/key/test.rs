@@ -1,30 +1,25 @@
-use super::KeyService;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use one_providers::common_models::key::OpenKey;
 use one_providers::key_storage::imp::provider::KeyProviderImpl;
 use one_providers::key_storage::model::StorageGeneratedKey;
 use one_providers::key_storage::{KeyStorage, MockKeyStorage};
-use std::collections::HashMap;
-use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use super::KeyService;
 use crate::model::key::GetKeyList;
+use crate::model::organisation::Organisation;
+use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::key_repository::MockKeyRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::key::dto::{
-    KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
+    GetKeyQueryDTO, KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile,
+    KeyGenerateCSRRequestSubjectDTO, KeyRequestDTO,
 };
-use crate::{
-    model::organisation::Organisation,
-    repository::{
-        history_repository::MockHistoryRepository, key_repository::MockKeyRepository,
-        organisation_repository::MockOrganisationRepository,
-    },
-    service::{
-        key::dto::{GetKeyQueryDTO, KeyRequestDTO},
-        test_utilities::generic_config,
-    },
-};
+use crate::service::test_utilities::generic_config;
 
 fn setup_service(
     repository: MockKeyRepository,
