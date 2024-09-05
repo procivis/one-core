@@ -10,6 +10,7 @@ use one_providers::{
 
 pub mod dto;
 pub mod mapper;
+mod validation;
 
 pub struct VCAPIService {
     credential_formatter: Arc<dyn CredentialFormatterProvider>,

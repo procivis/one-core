@@ -338,7 +338,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
 
     // TODO clean this up a bit, cfg / move(?)
     let router = {
-        if env::var("VC_API_ENABLED").unwrap_or("false".to_owned()) == "true" {
+        if env::var("VC_API_ENABLED").is_ok() {
             let interop_test_endpoints = Router::new()
                 .route(
                     "/vc-api/credentials/issue",

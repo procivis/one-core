@@ -12,6 +12,7 @@ pub struct CredentialIssueOptions {
     pub credential_format: String,
 }
 
+#[derive(Debug)]
 pub struct CredentialIssueResponse {
     pub verifiable_credential: LdCredential,
 }

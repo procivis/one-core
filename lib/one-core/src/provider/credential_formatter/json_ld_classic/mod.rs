@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::vec;
 
 use async_trait::async_trait;
+use indexmap::indexset;
 use model::CredentialEnvelope;
 use one_crypto::CryptoProvider;
 use one_providers::common_models::did::DidValue;
@@ -11,7 +12,7 @@ use one_providers::credential_formatter::imp::json_ld::context::caching_loader::
     ContextCache, JsonLdCachingLoader,
 };
 use one_providers::credential_formatter::imp::json_ld::model::{
-    LdCredential, LdPresentation, LdProof, VerifiableCredential,
+    ContextType, LdCredential, LdPresentation, LdProof, ManyOrOne,
 };
 use one_providers::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
@@ -62,7 +63,7 @@ impl CredentialFormatter for JsonLdClassic {
         credential: CredentialData,
         holder_did: &Option<DidValue>,
         algorithm: &str,
-        additional_context: Vec<String>,
+        additional_context: Vec<ContextType>,
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
         json_ld_context_url: Option<String>,
@@ -73,7 +74,7 @@ impl CredentialFormatter for JsonLdClassic {
             holder_did.as_ref(),
             additional_context,
             additional_types,
-            json_ld_context_url,
+            json_ld_context_url.map(|u| u.parse().unwrap()),
             custom_subject_name,
             self.params.embed_layout_properties.unwrap_or_default(),
         )?;
@@ -96,7 +97,9 @@ impl CredentialFormatter for JsonLdClassic {
             "assertionMethod",
             cryptosuite,
             key_id,
-            vec![Context::CredentialsV2.to_string()],
+            indexset![ContextType::Url(
+                Context::CredentialsV2.to_string().parse().unwrap()
+            )],
         )
         .await?;
 
@@ -188,7 +191,7 @@ impl CredentialFormatter for JsonLdClassic {
 
         let mut presentation = LdPresentation {
             context: context.clone(),
-            r#type: "VerifiablePresentation".to_string(),
+            r#type: ManyOrOne::One("VerifiablePresentation".to_string()),
             verifiable_credential,
             holder: holder_did.to_owned(),
             nonce: ctx.nonce,
@@ -533,7 +536,8 @@ pub(super) async fn verify_proof_signature(
         .map_err(|_| FormatterError::CouldNotVerify("Hash decoding error".to_owned()))?;
 
     let algorithm = match cryptosuite {
-        "eddsa-rdfc-2022" => "EDDSA",
+        // todo: check if `eddsa-2022` is correct as the VCDM test suite is sending this
+        "eddsa-rdfc-2022" | "eddsa-2022" => "EDDSA",
         "ecdsa-rdfc-2019" => "ES256",
         "ecdsa-xi-2023" => "ES256",
         _ => {

@@ -16,6 +16,7 @@ use one_crypto::SignerError;
 use one_providers::common_models::did::DidValue;
 use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::error::FormatterError;
+use one_providers::credential_formatter::imp::json_ld::model::ContextType;
 use one_providers::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema,
     CredentialSchemaMetadata, CredentialSubject, DetailCredential, ExtractPresentationCtx,
@@ -174,7 +175,7 @@ impl CredentialFormatter for MdocFormatter {
         credential: CredentialData,
         holder_did: &Option<DidValue>,
         algorithm: &str,
-        _additional_context: Vec<String>,
+        _additional_context: Vec<ContextType>,
         _additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
         _json_ld_context_url: Option<String>,

@@ -30,6 +30,7 @@ use super::{
         PresentationVerifyResponse,
     },
     mapper::value_to_published_claim,
+    validation::{validate_verifiable_credential, validate_verifiable_presentation},
     VCAPIService,
 };
 
@@ -54,9 +55,14 @@ impl VCAPIService {
         &self,
         create_request: CredentialIssueRequest,
     ) -> Result<CredentialIssueResponse, ServiceError> {
-        let CredentialIssueOptions { signature_algorithm, credential_format } = create_request
+        let CredentialIssueOptions {
+            signature_algorithm,
+            credential_format,
+        } = create_request
             .options
             .ok_or(ServiceError::Other("Options are missing".to_string()))?;
+
+        validate_verifiable_credential(&create_request.credential)?;
 
         let issuer = self
             .did_repository
@@ -108,7 +114,7 @@ impl VCAPIService {
             claims.push(PublishedClaim {
                 key: "id".to_string(),
                 value: PublishedClaimValue::String(credential_subject.into()),
-                datatype: Some("string".to_string()),
+                datatype: Some("STRING".to_string()),
                 array_item: false,
             });
         }
@@ -141,7 +147,7 @@ impl VCAPIService {
                 credential_data,
                 &None,
                 &signature_algorithm,
-                create_request.credential.context,
+                create_request.credential.context.into_iter().collect(),
                 create_request.credential.r#type,
                 auth_fn,
                 None,
@@ -158,6 +164,8 @@ impl VCAPIService {
         &self,
         verify_request: CredentialVerifiyRequest,
     ) -> Result<CredentialVerifyResponse, ServiceError> {
+        validate_verifiable_credential(&verify_request.verifiable_credential)?;
+
         let formatter = self
             .credential_formatter
             .get_formatter("JSON_LD_CLASSIC")
@@ -190,6 +198,9 @@ impl VCAPIService {
         &self,
         verify_request: PresentationVerifyRequest,
     ) -> Result<PresentationVerifyResponse, ServiceError> {
+        dbg!(&verify_request.verifiable_presentation);
+        validate_verifiable_presentation(&verify_request.verifiable_presentation)?;
+
         let formatter = self
             .credential_formatter
             .get_formatter("JSON_LD_CLASSIC")
