@@ -120,7 +120,7 @@ impl VCAPIService {
         }
 
         let credential_data = CredentialData {
-            id: create_request.credential.id,
+            id: create_request.credential.id.map(|url| url.to_string()),
             issuance_date: create_request
                 .credential
                 .valid_from
