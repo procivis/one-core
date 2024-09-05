@@ -371,7 +371,7 @@ impl JsonLdClassic {
         };
 
         Ok(DetailCredential {
-            id: credential.id,
+            id: credential.id.map(|url| url.to_string()),
             valid_from: credential.valid_from.or(credential.issuance_date),
             valid_until: credential.valid_until,
             update_at: None,
