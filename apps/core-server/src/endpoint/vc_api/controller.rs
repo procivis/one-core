@@ -26,6 +26,7 @@ pub(crate) async fn issue_credential(
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<CredentialIssueResponseDto> {
+    // println!("{request}");
     let issued = dbg!(
         state
             .core

@@ -88,5 +88,6 @@ pub fn credential_data_from_credential_detail_response(
                 _ => None,
             },
         },
+        name: None,
     })
 }

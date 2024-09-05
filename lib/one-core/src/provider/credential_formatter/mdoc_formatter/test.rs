@@ -207,6 +207,7 @@ async fn test_credential_formatting_ok_for_es256() {
                 },
             }),
         },
+        name: None,
     };
 
     let holder_did = DidValue::from("holder-did".to_string());
@@ -394,6 +395,7 @@ async fn test_unverified_credential_extraction() {
             name: "credential-schema-name".to_string(),
             metadata: None,
         },
+        name: None,
     };
 
     let holder_did = DidValue::from("holder-did".to_string());
