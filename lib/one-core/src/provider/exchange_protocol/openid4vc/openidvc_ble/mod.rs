@@ -417,7 +417,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         holder_did: &OpenDid,
         key: &OpenKey,
         jwk_key_id: Option<String>,
-        _format_map: HashMap<String, String>,
+        format_map: HashMap<String, String>,
         _presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         let ble = self.ble.clone().ok_or_else(|| {
@@ -448,10 +448,12 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             .map(|presented_credential| presented_credential.presentation.to_owned())
             .collect();
 
-        let formats: HashSet<&str> = credential_presentations
+        let token_formats: Vec<String> = credential_presentations
             .iter()
-            .map(|presented_credential| presented_credential.credential_schema.format.as_str())
+            .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
             .collect();
+
+        let formats: HashSet<_> = token_formats.iter().map(|f| f.as_str()).collect();
 
         let (format, oidc_format) = match () {
             _ if formats.contains("MDOC") => {
@@ -507,6 +509,8 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         let nonce = interaction_data.nonce.to_owned();
         let ctx = FormatPresentationCtx {
             nonce,
+            token_formats: Some(token_formats),
+            vc_format_map: format_map,
             ..Default::default()
         };
 
