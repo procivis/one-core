@@ -3128,7 +3128,6 @@ dependencies = [
 [[package]]
 name = "one-crypto"
 version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=6d3b305b718fa3df19c45284aeaad519e405dc25#6d3b305b718fa3df19c45284aeaad519e405dc25"
 dependencies = [
  "chacha20poly1305",
  "ct-codecs",
@@ -3150,7 +3149,6 @@ dependencies = [
 [[package]]
 name = "one-providers"
 version = "0.1.0"
-source = "git+https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git?rev=6d3b305b718fa3df19c45284aeaad519e405dc25#6d3b305b718fa3df19c45284aeaad519e405dc25"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3164,6 +3162,7 @@ dependencies = [
  "ed25519-compact",
  "flate2",
  "futures",
+ "indexmap 2.5.0",
  "itertools 0.13.0",
  "josekit",
  "json-ld",

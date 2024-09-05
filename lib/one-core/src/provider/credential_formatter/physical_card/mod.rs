@@ -1,6 +1,10 @@
 use std::sync::Arc;
 use std::vec;
 
+use one_crypto::CryptoProvider;
+use one_providers::credential_formatter::imp::json_ld::model::ContextType;
+
+use super::json_ld_classic::verify_credential_signature;
 use async_trait::async_trait;
 use model::OptiocalBarcodeCredential;
 use one_crypto::CryptoProvider;
@@ -37,7 +41,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
         _credential: CredentialData,
         _holder_did: &Option<DidValue>,
         _algorithm: &str,
-        _additional_context: Vec<String>,
+        _additional_context: Vec<ContextType>,
         _additional_types: Vec<String>,
         _auth_fn: AuthenticationFn,
         _json_ld_context_url: Option<String>,
