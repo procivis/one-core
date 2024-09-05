@@ -110,3 +110,33 @@ impl From<VpValidationError> for ServiceError {
         ServiceError::ValidationError(value.to_string())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use one_providers::credential_formatter::imp::json_ld::model::LdCredential;
+
+    #[test]
+    fn test_x() {
+        let x: LdCredential = serde_json::from_str(
+            r#"{
+  
+        "@context": [
+            "https://www.w3.org/ns/credentials/v2"
+        ],
+        "type": [
+            "VerifiableCredential"
+        ],
+        "issuer": {
+            "name": "ExampleIssuer",
+            "id": "did:key:z6MkorouVyS1LSZPyEaq7juWLUqWQqwu9xgZzLduf8TypMHg"
+        },
+        "credentialSubject": {
+            "id": "did:example:subject"
+        }
+
+}
+    "#,
+        )
+        .unwrap();
+    }
+}

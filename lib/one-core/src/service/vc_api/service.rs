@@ -55,6 +55,8 @@ impl VCAPIService {
         &self,
         create_request: CredentialIssueRequest,
     ) -> Result<CredentialIssueResponse, ServiceError> {
+        dbg!(&create_request);
+
         let CredentialIssueOptions {
             signature_algorithm,
             credential_format,
@@ -64,10 +66,11 @@ impl VCAPIService {
 
         validate_verifiable_credential(&create_request.credential)?;
 
+        let issuer_did = create_request.credential.issuer.to_did_value().into();
         let issuer = self
             .did_repository
             .get_did_by_value(
-                &create_request.credential.issuer.clone().into(),
+                &issuer_did,
                 &DidRelations {
                     keys: Some(KeyRelations::default()),
                     organisation: None,
@@ -87,7 +90,7 @@ impl VCAPIService {
 
         let assertion_methods = self
             .did_method_provider
-            .resolve(&create_request.credential.issuer)
+            .resolve(&create_request.credential.issuer.to_did_value())
             .await?
             .assertion_method
             .ok_or(ServiceError::MappingError(
@@ -127,7 +130,7 @@ impl VCAPIService {
                 .unwrap_or(OffsetDateTime::now_utc()), // TODO
             valid_for: Duration::minutes(60), // TODO
             claims,
-            issuer_did: create_request.credential.issuer,
+            issuer_did: create_request.credential.issuer.to_did_value(),
             status: create_request.credential.credential_status,
             schema: CredentialSchemaData {
                 id: None,
@@ -135,6 +138,7 @@ impl VCAPIService {
                 context: None,
                 name: "vc_interop_test_no_schema_data".to_string(),
             },
+            name: create_request.credential.name,
         };
 
         let formatter = self

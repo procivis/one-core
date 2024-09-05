@@ -16,7 +16,7 @@ use one_providers::credential_formatter::imp::json_ld::model::{
 };
 use one_providers::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
-    DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities,
+    DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Issuer,
     Presentation, VerificationFn,
 };
 use one_providers::credential_formatter::CredentialFormatter;
@@ -193,8 +193,8 @@ impl CredentialFormatter for JsonLdClassic {
             context: context.clone(),
             r#type: ManyOrOne::One("VerifiablePresentation".to_string()),
             verifiable_credential,
-            holder: holder_did.to_owned(),
-            nonce: ctx.nonce,
+            holder: Issuer::Url(holder_did.as_str().parse().unwrap()),
+            nonce,
             proof: None,
             issuance_date: OffsetDateTime::now_utc(),
         };
@@ -376,7 +376,7 @@ impl JsonLdClassic {
             valid_until: credential.valid_until,
             update_at: None,
             invalid_before: None,
-            issuer_did: Some(credential.issuer),
+            issuer_did: Some(credential.issuer.to_did_value()),
             subject: credential.credential_subject.id,
             claims,
             status: credential.credential_status,
@@ -422,7 +422,7 @@ impl JsonLdClassic {
             id: None,
             issued_at: Some(presentation.issuance_date),
             expires_at: None,
-            issuer_did: Some(presentation.holder),
+            issuer_did: Some(presentation.holder.to_did_value()),
             nonce: presentation.nonce,
             credentials,
         })
@@ -467,7 +467,7 @@ pub(super) async fn verify_credential_signature(
     verify_proof_signature(
         &proof_hash,
         &proof_value,
-        issuer_did,
+        &issuer_did.to_did_value(),
         key_id,
         &proof.cryptosuite,
         verification_fn,
@@ -506,7 +506,7 @@ pub(super) async fn verify_presentation_signature(
     verify_proof_signature(
         &proof_hash,
         &proof_value,
-        issuer_did,
+        &issuer_did.to_did_value(),
         key_id,
         &proof.cryptosuite,
         verification_fn,
