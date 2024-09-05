@@ -1,9 +1,10 @@
+use shared_types::ProofSchemaId;
+use time::OffsetDateTime;
+
 use super::error::DataLayerError;
 use crate::model::proof_schema::{
     GetProofSchemaList, GetProofSchemaQuery, ProofSchema, ProofSchemaRelations,
 };
-use shared_types::ProofSchemaId;
-use time::OffsetDateTime;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

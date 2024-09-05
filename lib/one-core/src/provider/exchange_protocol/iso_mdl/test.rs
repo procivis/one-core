@@ -1,42 +1,37 @@
-use std::{collections::HashSet, sync::Arc};
+use std::collections::HashSet;
+use std::sync::Arc;
 
-use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
-use crate::util::ble_resource::BleWaiter;
-use crate::{
-    provider::{
-        credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor,
-        exchange_protocol::iso_mdl::common::{
-            DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
-        },
-    },
-    service::{proof::dto::MdocBleInteractionData, test_utilities::generic_config},
-};
 use maplit::{hashmap, hashset};
 use mockall::predicate::eq;
-use one_providers::common_models::interaction::OpenInteraction;
-use one_providers::common_models::proof_schema::{OpenProofInputSchema, OpenProofSchema};
-use one_providers::{
-    common_models::{
-        claim::OpenClaim,
-        claim_schema::OpenClaimSchema,
-        credential::{
-            OpenCredential, OpenCredentialRole, OpenCredentialState, OpenCredentialStateEnum,
-        },
-        credential_schema::{OpenCredentialSchema, OpenCredentialSchemaClaim, OpenLayoutType},
-        organisation::OpenOrganisation,
-        proof::OpenProof,
-    },
-    credential_formatter::provider::MockCredentialFormatterProvider,
-    exchange_protocol::openid4vc::{
-        model::PresentationDefinitionRuleTypeEnum, ExchangeProtocolImpl, MockStorageProxy,
-    },
-    key_storage::provider::MockKeyProvider,
+use one_providers::common_models::claim::OpenClaim;
+use one_providers::common_models::claim_schema::OpenClaimSchema;
+use one_providers::common_models::credential::{
+    OpenCredential, OpenCredentialRole, OpenCredentialState, OpenCredentialStateEnum,
 };
+use one_providers::common_models::credential_schema::{
+    OpenCredentialSchema, OpenCredentialSchemaClaim, OpenLayoutType,
+};
+use one_providers::common_models::interaction::OpenInteraction;
+use one_providers::common_models::organisation::OpenOrganisation;
+use one_providers::common_models::proof::OpenProof;
+use one_providers::common_models::proof_schema::{OpenProofInputSchema, OpenProofSchema};
+use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
+use one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionRuleTypeEnum;
+use one_providers::exchange_protocol::openid4vc::{ExchangeProtocolImpl, MockStorageProxy};
+use one_providers::key_storage::provider::MockKeyProvider;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::IsoMdl;
+use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
+use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
+use crate::provider::exchange_protocol::iso_mdl::common::{
+    DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
+};
+use crate::service::proof::dto::MdocBleInteractionData;
+use crate::service::test_utilities::generic_config;
+use crate::util::ble_resource::BleWaiter;
 
 #[tokio::test]
 async fn test_presentation_reject_ok() {

@@ -1,9 +1,10 @@
+use std::net::TcpListener;
+
 use core_server::init::initialize_core;
 use core_server::router::start_server;
 use core_server::ServerConfig;
 use one_core::config::core_config::AppConfig;
 use sql_data_provider::DbConn;
-use std::net::TcpListener;
 use tokio::task::JoinHandle;
 
 pub fn run_server(

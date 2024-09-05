@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
 use dto_mapper::Into;
-use one_core::{model::organisation::Organisation, repository::error::DataLayerError};
+use one_core::model::organisation::Organisation;
+use one_core::repository::error::DataLayerError;
 use sea_orm::entity::prelude::*;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;

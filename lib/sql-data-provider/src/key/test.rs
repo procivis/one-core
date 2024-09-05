@@ -1,21 +1,18 @@
-use super::KeyProvider;
+use std::sync::Arc;
+
+use one_core::model::key::{GetKeyQuery, KeyRelations};
+use one_core::model::organisation::Organisation;
+use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_providers::common_models::key::OpenKey;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, Set};
 use shared_types::KeyId;
-use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::KeyProvider;
 use crate::entity::key;
-use one_core::model::key::{GetKeyQuery, KeyRelations};
-use one_core::{
-    model::organisation::Organisation,
-    repository::{
-        key_repository::KeyRepository, organisation_repository::MockOrganisationRepository,
-    },
-};
-
 use crate::test_utilities::{
     insert_organisation_to_database, setup_test_data_layer_and_connection,
 };

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use one_providers::credential_formatter::{error::FormatterError, model::PublishedClaim};
+use one_providers::credential_formatter::error::FormatterError;
+use one_providers::credential_formatter::model::PublishedClaim;
 
 pub(super) fn nest_claims(
     claims: impl IntoIterator<Item = PublishedClaim>,
@@ -29,8 +30,9 @@ pub(super) fn nest_claims(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_format_nested_vc_jwt() {

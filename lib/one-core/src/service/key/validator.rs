@@ -1,11 +1,8 @@
-use crate::config::core_config::KeyAlgorithmConfig;
-use crate::service::error::{BusinessLogicError, ServiceError};
-use crate::service::key::dto::KeyGenerateCSRRequestDTO;
-use crate::{
-    config::core_config::CoreConfig,
-    service::{error::ValidationError, key::dto::KeyRequestDTO},
-};
 use time::Duration;
+
+use crate::config::core_config::{CoreConfig, KeyAlgorithmConfig};
+use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
+use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO};
 
 pub(super) fn validate_generate_request(
     request: &KeyRequestDTO,

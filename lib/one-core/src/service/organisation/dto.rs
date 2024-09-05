@@ -1,7 +1,6 @@
+use dto_mapper::From;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
-
-use dto_mapper::From;
 
 use crate::model::organisation::Organisation;
 

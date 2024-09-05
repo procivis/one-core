@@ -4,7 +4,8 @@ pub mod simple_list;
 use serde::Serialize;
 use shared_types::DidValue;
 
-use crate::model::{trust_anchor::TrustAnchor, trust_entity::TrustEntity};
+use crate::model::trust_anchor::TrustAnchor;
+use crate::model::trust_entity::TrustEntity;
 
 #[async_trait::async_trait]
 pub trait TrustManagement: Send + Sync {

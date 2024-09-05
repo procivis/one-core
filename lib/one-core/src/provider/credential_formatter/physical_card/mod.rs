@@ -1,27 +1,23 @@
 use std::sync::Arc;
 use std::vec;
 
-use one_crypto::CryptoProvider;
-
-use super::json_ld_classic::verify_credential_signature;
 use async_trait::async_trait;
 use model::OptiocalBarcodeCredential;
+use one_crypto::CryptoProvider;
+use one_providers::common_models::did::DidValue;
+use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
 };
-use one_providers::http_client::HttpClient;
-use one_providers::{
-    common_models::did::DidValue,
-    credential_formatter::{
-        error::FormatterError,
-        model::{
-            AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
-            ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
-            VerificationFn,
-        },
-        CredentialFormatter,
-    },
+use one_providers::credential_formatter::model::{
+    AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
+    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
+    VerificationFn,
 };
+use one_providers::credential_formatter::CredentialFormatter;
+use one_providers::http_client::HttpClient;
+
+use super::json_ld_classic::verify_credential_signature;
 
 mod mappers;
 mod model;

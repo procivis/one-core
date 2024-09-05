@@ -1,4 +1,7 @@
-use crate::{dto::HistoryListItemBindingDTO, error::BindingError, utils::into_id, OneCoreBinding};
+use crate::dto::HistoryListItemBindingDTO;
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn get_history_entry(

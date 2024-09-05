@@ -1,20 +1,13 @@
+use one_core::model::credential::CredentialStateEnum;
+use one_core::model::did::{DidType, KeyRole, RelatedKey};
+use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use serde_json::json;
 use uuid::Uuid;
 
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-
-use one_core::model::{
-    credential::CredentialStateEnum,
-    did::{DidType, KeyRole, RelatedKey},
-};
-
-use crate::{
-    fixtures::{TestingCredentialParams, TestingDidParams},
-    utils::{
-        context::TestContext,
-        db_clients::{credential_schemas::TestingCreateSchemaParams, keys::es256_testing_params},
-    },
-};
+use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::keys::es256_testing_params;
 
 #[tokio::test]
 async fn test_issuance_accept_procivis_temp() {

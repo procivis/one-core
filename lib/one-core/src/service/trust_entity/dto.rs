@@ -1,14 +1,11 @@
-use crate::{
-    model::{
-        common::GetListResponse,
-        list_filter::{ListFilterValue, StringMatch},
-        list_query::ListQuery,
-        trust_entity::TrustEntityRole,
-    },
-    service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO,
-};
 use shared_types::{OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
+
+use crate::model::common::GetListResponse;
+use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_query::ListQuery;
+use crate::model::trust_entity::TrustEntityRole;
+use crate::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
 
 #[derive(Clone, Debug)]
 pub struct CreateTrustEntityRequestDTO {

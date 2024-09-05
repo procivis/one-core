@@ -1,4 +1,5 @@
-use crate::{error::BindingError, CreateProofSchemaRequestDTO, OneCoreBinding};
+use crate::error::BindingError;
+use crate::{CreateProofSchemaRequestDTO, OneCoreBinding};
 
 impl OneCoreBinding {
     pub fn create_proof_schema(

@@ -1,14 +1,11 @@
-use one_core::{
-    model::{
-        history::{HistoryFilterValue, HistorySearchEnum},
-        list_filter::{ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison},
-    },
-    service::history::dto::HistoryMetadataResponse,
+use one_core::model::history::{HistoryFilterValue, HistorySearchEnum};
+use one_core::model::list_filter::{
+    ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison,
 };
-
-use crate::endpoint::history::dto::{HistoryFilterQueryParamsRest, HistorySearchEnumRest};
+use one_core::service::history::dto::HistoryMetadataResponse;
 
 use super::dto::HistoryMetadataRest;
+use crate::endpoint::history::dto::{HistoryFilterQueryParamsRest, HistorySearchEnumRest};
 
 pub fn convert_history_metadata(
     value: Option<HistoryMetadataResponse>,

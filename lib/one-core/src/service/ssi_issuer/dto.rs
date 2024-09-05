@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use serde::Deserialize;
 use shared_types::CredentialId;
 
-use crate::service::{
-    credential::dto::DetailCredentialClaimResponseDTO,
-    credential_schema::dto::CredentialSchemaDetailResponseDTO, did::dto::DidListItemResponseDTO,
-};
+use crate::service::credential::dto::DetailCredentialClaimResponseDTO;
+use crate::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
+use crate::service::did::dto::DidListItemResponseDTO;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct IssuerResponseDTO {

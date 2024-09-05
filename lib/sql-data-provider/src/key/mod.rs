@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use sea_orm::DatabaseConnection;
-
 use one_core::repository::organisation_repository::OrganisationRepository;
+use sea_orm::DatabaseConnection;
 
 mod mapper;
 mod repository;

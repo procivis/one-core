@@ -1,10 +1,12 @@
-use crate::{
-    dto::PresentationSubmitCredentialRequestBindingDTO, error::BindingError, utils::into_id,
-    OneCoreBinding,
-};
+use std::collections::HashMap;
+
 use dto_mapper::try_convert_inner;
 use one_core::service::ssi_holder::dto::PresentationSubmitRequestDTO;
-use std::collections::HashMap;
+
+use crate::dto::PresentationSubmitCredentialRequestBindingDTO;
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn holder_submit_proof(

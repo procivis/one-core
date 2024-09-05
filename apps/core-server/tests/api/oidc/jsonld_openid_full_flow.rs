@@ -1,22 +1,18 @@
 use axum::http::StatusCode;
-use one_core::model::{credential::CredentialStateEnum, proof::ProofStateEnum};
+use one_core::model::credential::{CredentialRole, CredentialStateEnum};
+use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
-
-use crate::{
-    api_oidc_tests::full_flow_common::{
-        ecdsa_key_1, ecdsa_key_2, eddsa_key_1, eddsa_key_2, get_array_context, get_simple_context,
-        prepare_dids,
-    },
-    fixtures::TestingCredentialParams,
-    utils::{
-        api_clients::interactions::SubmittedCredential, context::TestContext,
-        db_clients::proof_schemas::CreateProofInputSchema,
-    },
-};
-use one_core::model::credential::CredentialRole;
 use uuid::Uuid;
 
 use super::full_flow_common::TestKey;
+use crate::api_oidc_tests::full_flow_common::{
+    ecdsa_key_1, ecdsa_key_2, eddsa_key_1, eddsa_key_2, get_array_context, get_simple_context,
+    prepare_dids,
+};
+use crate::fixtures::TestingCredentialParams;
+use crate::utils::api_clients::interactions::SubmittedCredential;
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 #[tokio::test]
 async fn test_openid4vc_jsonld_flow_eddsa_eddsa() {

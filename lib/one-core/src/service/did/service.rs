@@ -1,38 +1,32 @@
+use std::collections::{HashMap, HashSet};
+use std::ops::Deref;
+
+use one_providers::common_models::key::{KeyId, OpenKey};
+use one_providers::did::error::DidMethodProviderError;
 use one_providers::did::model::DidDocument;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
 use shared_types::{DidId, DidValue};
-use std::{
-    collections::{HashMap, HashSet},
-    ops::Deref,
-};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::{
-    dto::{CreateDidRequestDTO, DidPatchRequestDTO, DidResponseDTO, GetDidListResponseDTO},
-    mapper::did_from_did_request,
-    validator::validate_deactivation_request,
-    DidService,
-};
+use super::dto::{CreateDidRequestDTO, DidPatchRequestDTO, DidResponseDTO, GetDidListResponseDTO};
+use super::mapper::did_from_did_request;
+use super::validator::validate_deactivation_request;
+use super::DidService;
+use crate::config::validator::did::validate_did_method;
+use crate::model::did::{DidListQuery, DidRelations, UpdateDidRequest};
 use crate::model::history::HistoryAction;
 use crate::model::key::KeyRelations;
-use crate::service::error::EntityNotFoundError;
-use crate::service::{did::mapper::map_key_to_verification_method, error::MissingProviderError};
+use crate::model::organisation::OrganisationRelations;
+use crate::repository::error::DataLayerError;
+use crate::service::did::mapper::{
+    map_did_model_to_did_web_response, map_key_to_verification_method,
+};
+use crate::service::did::validator::validate_request_amount_of_keys;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
+};
 use crate::util::history::log_history_event_did;
-use crate::{
-    config::validator::did::validate_did_method,
-    model::{
-        did::{DidListQuery, DidRelations, UpdateDidRequest},
-        organisation::OrganisationRelations,
-    },
-    service::{did::validator::validate_request_amount_of_keys, error::ServiceError},
-};
-use crate::{
-    repository::error::DataLayerError,
-    service::{did::mapper::map_did_model_to_did_web_response, error::BusinessLogicError},
-};
-use one_providers::common_models::key::{KeyId, OpenKey};
-use one_providers::did::error::DidMethodProviderError;
 
 impl DidService {
     /// Returns did document for did:web

@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
-use one_core::{model::interaction::Interaction, repository::error::DataLayerError};
+use one_core::model::interaction::Interaction;
+use one_core::repository::error::DataLayerError;
 use sea_orm::Set;
 use url::Url;
 use uuid::Uuid;

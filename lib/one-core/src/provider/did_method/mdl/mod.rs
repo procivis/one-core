@@ -12,13 +12,12 @@ use one_providers::did::model::{
     AmountOfKeys, DidCapabilities, DidDocument, DidVerificationMethod, Operation,
 };
 use one_providers::did::DidMethod;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use ouroboros::self_referencing;
 pub use validator::{DidMdlValidationError, DidMdlValidator};
 use x509_parser::certificate::X509Certificate;
 use x509_parser::oid_registry::{OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG_ED25519};
 use x509_parser::pem::Pem;
-
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[cfg(test)]
 mod test;

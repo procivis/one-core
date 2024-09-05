@@ -1,6 +1,7 @@
+use one_providers::common_models::key::{KeyId, OpenKey};
+
 use super::error::DataLayerError;
 use crate::model::key::{GetKeyList, GetKeyQuery, KeyRelations};
-use one_providers::common_models::key::{KeyId, OpenKey};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

@@ -1,4 +1,10 @@
+use std::sync::Arc;
+
 use mockall::predicate::{always, eq};
+use one_providers::key_storage::provider::MockKeyProvider;
+use one_providers::revocation::model::{CredentialRevocationState, RevocationUpdate};
+use one_providers::revocation::provider::MockRevocationMethodProvider;
+use one_providers::revocation::MockRevocationMethod;
 use uuid::Uuid;
 
 use super::SuspendCheckProvider;
@@ -11,11 +17,6 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::test_utilities::dummy_credential;
-use one_providers::key_storage::provider::MockKeyProvider;
-use one_providers::revocation::model::{CredentialRevocationState, RevocationUpdate};
-use one_providers::revocation::provider::MockRevocationMethodProvider;
-use one_providers::revocation::MockRevocationMethod;
-use std::sync::Arc;
 
 #[derive(Default)]
 struct TestDependencies {

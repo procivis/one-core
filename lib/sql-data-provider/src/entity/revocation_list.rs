@@ -1,6 +1,5 @@
 use dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
-
 use shared_types::DidId;
 use time::OffsetDateTime;
 

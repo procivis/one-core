@@ -1,21 +1,56 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
-use one_crypto::{
-    imp::{
-        hasher::sha256::SHA256,
-        signer::{bbs::BBSSigner, crydi3::CRYDI3Signer, eddsa::EDDSASigner, es256::ES256Signer},
-        CryptoProviderImpl,
-    },
-    Hasher, Signer,
+use error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
+use one_core::config::core_config::{self, AppConfig, CacheEntityCacheType, CacheEntityConfig};
+use one_core::config::{ConfigError, ConfigParsingError, ConfigValidationError};
+use one_core::provider::bluetooth_low_energy::BleError;
+use one_core::provider::credential_formatter::json_ld_classic::JsonLdClassic;
+use one_core::provider::credential_formatter::mdoc_formatter::MdocFormatter;
+use one_core::provider::credential_formatter::physical_card::PhysicalCardFormatter;
+use one_core::provider::credential_formatter::FormatterCapabilities;
+use one_core::provider::did_method::mdl::{DidMdl, DidMdlValidator};
+use one_core::provider::did_method::x509::X509Method;
+use one_core::provider::key_algorithm::ml_dsa::MlDsa;
+use one_core::provider::key_storage::secure_element::SecureElementKeyProvider;
+use one_core::provider::key_storage::KeyStorageCapabilities;
+use one_core::repository::DataRepository;
+use one_core::{
+    DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyAlgorithmCreator,
+    KeyStorageCreator, OneCoreBuilder, RevocationMethodCreator,
 };
-
+use one_crypto::imp::hasher::sha256::SHA256;
+use one_crypto::imp::signer::bbs::BBSSigner;
+use one_crypto::imp::signer::crydi3::CRYDI3Signer;
+use one_crypto::imp::signer::eddsa::EDDSASigner;
+use one_crypto::imp::signer::es256::ES256Signer;
+use one_crypto::imp::CryptoProviderImpl;
+use one_crypto::{Hasher, Signer};
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
+use one_providers::credential_formatter::imp::json_ld_bbsplus::JsonLdBbsplus;
+use one_providers::credential_formatter::imp::jwt_formatter::JWTFormatter;
+use one_providers::credential_formatter::imp::provider::CredentialFormatterProviderImpl;
 use one_providers::credential_formatter::imp::sdjwt_formatter::SDJWTFormatter;
+use one_providers::credential_formatter::CredentialFormatter;
+use one_providers::did::imp::jwk::JWKDidMethod;
+use one_providers::did::imp::key::KeyDidMethod;
+use one_providers::did::imp::provider::DidMethodProviderImpl;
 use one_providers::did::imp::resolver::DidCachingLoader;
+use one_providers::did::imp::universal::UniversalDidMethod;
+use one_providers::did::imp::web::WebDidMethod;
+use one_providers::did::DidMethod;
 use one_providers::http_client::imp::reqwest_client::ReqwestClient;
 use one_providers::http_client::HttpClient;
+use one_providers::key_algorithm::imp::bbs::BBS;
+use one_providers::key_algorithm::imp::eddsa::Eddsa;
+use one_providers::key_algorithm::imp::es256::Es256;
+use one_providers::key_algorithm::imp::provider::KeyAlgorithmProviderImpl;
+use one_providers::key_algorithm::KeyAlgorithm;
+use one_providers::key_storage::imp::internal::InternalKeyProvider;
+use one_providers::key_storage::imp::provider::KeyProviderImpl;
+use one_providers::key_storage::KeyStorage;
 use one_providers::remote_entity_storage::in_memory::InMemoryStorage;
 use one_providers::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 use one_providers::revocation::imp::bitstring_status_list::resolver::StatusListCachingLoader;
@@ -23,62 +58,15 @@ use one_providers::revocation::imp::bitstring_status_list::BitstringStatusList;
 use one_providers::revocation::imp::lvvc::LvvcProvider;
 use one_providers::revocation::imp::provider::RevocationMethodProviderImpl;
 use one_providers::revocation::RevocationMethod;
-use one_providers::{
-    credential_formatter::{
-        imp::{
-            json_ld_bbsplus::JsonLdBbsplus, jwt_formatter::JWTFormatter,
-            provider::CredentialFormatterProviderImpl,
-        },
-        CredentialFormatter,
-    },
-    did::{
-        imp::{
-            jwk::JWKDidMethod, key::KeyDidMethod, provider::DidMethodProviderImpl,
-            universal::UniversalDidMethod, web::WebDidMethod,
-        },
-        DidMethod,
-    },
-    key_algorithm::{
-        imp::{bbs::BBS, eddsa::Eddsa, es256::Es256, provider::KeyAlgorithmProviderImpl},
-        KeyAlgorithm,
-    },
-    key_storage::{
-        imp::{internal::InternalKeyProvider, provider::KeyProviderImpl},
-        KeyStorage,
-    },
-};
 use serde::{Deserialize, Serialize};
-use time::Duration;
-
-use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
-use error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
-use one_core::{
-    config::{
-        core_config::{self, AppConfig, CacheEntityCacheType, CacheEntityConfig},
-        ConfigError, ConfigParsingError, ConfigValidationError,
-    },
-    provider::{
-        credential_formatter::{
-            json_ld_classic::JsonLdClassic, mdoc_formatter::MdocFormatter,
-            physical_card::PhysicalCardFormatter, FormatterCapabilities,
-        },
-        did_method::{
-            mdl::{DidMdl, DidMdlValidator},
-            x509::X509Method,
-        },
-        key_algorithm::ml_dsa::MlDsa,
-        key_storage::{secure_element::SecureElementKeyProvider, KeyStorageCapabilities},
-    },
-    repository::DataRepository,
-    DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyStorageCreator,
-    OneCoreBuilder, RevocationMethodCreator,
-};
-use one_core::{provider::bluetooth_low_energy::BleError, KeyAlgorithmCreator};
 use serde_json::json;
 use sql_data_provider::DataLayer;
+use time::Duration;
 use utils::native_ble_central::BleCentralWrapper;
 use utils::native_ble_peripheral::BlePeripheralWrapper;
 use utils::native_key_storage::NativeKeyStorageWrapper;
+
+use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
 
 mod binding;
 mod did_config;
@@ -106,7 +94,8 @@ fn initialize_core(
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
     #[cfg(target_os = "android")]
     {
-        use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+        use tracing_subscriber::layer::SubscriberExt;
+        use tracing_subscriber::util::SubscriberInitExt;
 
         _ = tracing_subscriber::registry()
             .with(tracing_subscriber::EnvFilter::new(

@@ -1,7 +1,6 @@
-use crate::{
-    fixtures,
-    utils::{self, server::run_server},
-};
+use crate::fixtures;
+use crate::utils::server::run_server;
+use crate::utils::{self};
 
 #[tokio::test]
 async fn test_get_revocation_list_success() {

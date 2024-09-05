@@ -1,18 +1,12 @@
-use one_providers::common_models::key::OpenKey;
-use serde::Deserialize;
 use std::sync::Arc;
-use zeroize::Zeroizing;
 
 use one_crypto::SignerError;
-
-use one_providers::{
-    common_models::key::KeyId,
-    key_storage::{
-        error::KeyStorageError,
-        model::{KeySecurity, KeyStorageCapabilities, StorageGeneratedKey},
-        KeyStorage,
-    },
-};
+use one_providers::common_models::key::{KeyId, OpenKey};
+use one_providers::key_storage::error::KeyStorageError;
+use one_providers::key_storage::model::{KeySecurity, KeyStorageCapabilities, StorageGeneratedKey};
+use one_providers::key_storage::KeyStorage;
+use serde::Deserialize;
+use zeroize::Zeroizing;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait NativeKeyStorage: Send + Sync {

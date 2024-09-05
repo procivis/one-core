@@ -1,10 +1,11 @@
+use std::sync::Arc;
+
 use hex_literal::hex;
 use one_core::model::key::KeyRelations;
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::key_repository::KeyRepository;
 use one_providers::common_models::key::OpenKey;
 use shared_types::KeyId;
-use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

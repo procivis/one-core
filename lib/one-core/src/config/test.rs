@@ -1,9 +1,10 @@
+use std::env;
+
 use rusty_fork::rusty_fork_test;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use super::core_config::*;
-use serde_json::json;
-use std::env;
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

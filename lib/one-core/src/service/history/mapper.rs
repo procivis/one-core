@@ -1,11 +1,8 @@
-use crate::{
-    model::history::{GetHistoryList, History},
-    service::{
-        error::ServiceError,
-        history::dto::{GetHistoryListResponseDTO, HistoryResponseDTO},
-    },
-};
 use dto_mapper::{convert_inner, try_convert_inner};
+
+use crate::model::history::{GetHistoryList, History};
+use crate::service::error::ServiceError;
+use crate::service::history::dto::{GetHistoryListResponseDTO, HistoryResponseDTO};
 
 impl TryFrom<History> for HistoryResponseDTO {
     type Error = ServiceError;

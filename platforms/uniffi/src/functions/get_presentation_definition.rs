@@ -1,6 +1,7 @@
-use crate::{
-    dto::PresentationDefinitionBindingDTO, error::BindingError, utils::into_id, OneCoreBinding,
-};
+use crate::dto::PresentationDefinitionBindingDTO;
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn get_presentation_definition(

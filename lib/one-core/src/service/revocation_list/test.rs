@@ -1,24 +1,23 @@
+use std::sync::Arc;
+
 use mockall::predicate::eq;
+use one_crypto::MockCryptoProvider;
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
+use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::key_storage::provider::MockKeyProvider;
-use std::sync::Arc;
+use one_providers::revocation::provider::MockRevocationMethodProvider;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::revocation_list::RevocationListPurpose;
-use crate::{
-    model::revocation_list::{RevocationList, RevocationListRelations},
-    repository::{
-        credential_repository::MockCredentialRepository,
-        revocation_list_repository::MockRevocationListRepository,
-        validity_credential_repository::MockValidityCredentialRepository,
-    },
-    service::{revocation_list::RevocationListService, test_utilities::generic_config},
+use crate::model::revocation_list::{
+    RevocationList, RevocationListPurpose, RevocationListRelations,
 };
-use one_crypto::MockCryptoProvider;
-use one_providers::did::provider::MockDidMethodProvider;
-use one_providers::revocation::provider::MockRevocationMethodProvider;
+use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::revocation_list_repository::MockRevocationListRepository;
+use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
+use crate::service::revocation_list::RevocationListService;
+use crate::service::test_utilities::generic_config;
 
 #[derive(Default)]
 struct Repositories {

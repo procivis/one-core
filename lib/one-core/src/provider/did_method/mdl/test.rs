@@ -4,8 +4,10 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_providers::common_models::key::OpenKey;
 use one_providers::did::keys::Keys;
 use one_providers::did::DidMethod;
-use one_providers::key_algorithm::imp::{eddsa::Eddsa, es256::Es256};
-use one_providers::key_algorithm::{provider::MockKeyAlgorithmProvider, KeyAlgorithm};
+use one_providers::key_algorithm::imp::eddsa::Eddsa;
+use one_providers::key_algorithm::imp::es256::Es256;
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::key_algorithm::KeyAlgorithm;
 use rcgen::{
     CertificateParams, CertifiedKey, SignatureAlgorithm, PKCS_ECDSA_P256_SHA256, PKCS_ED25519,
 };

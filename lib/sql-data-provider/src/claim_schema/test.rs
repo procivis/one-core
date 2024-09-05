@@ -1,11 +1,11 @@
-use super::ClaimSchemaProvider;
-use crate::test_utilities::*;
-use one_core::{
-    model::claim_schema::{ClaimSchema, ClaimSchemaRelations},
-    repository::{claim_schema_repository::ClaimSchemaRepository, error::DataLayerError},
-};
+use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
+use one_core::repository::error::DataLayerError;
 use sea_orm::{DatabaseConnection, EntityTrait};
 use uuid::Uuid;
+
+use super::ClaimSchemaProvider;
+use crate::test_utilities::*;
 
 struct TestSetup {
     pub db: DatabaseConnection,

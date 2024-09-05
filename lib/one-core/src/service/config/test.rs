@@ -1,9 +1,7 @@
 use serde_json::{json, Value};
 
-use crate::{
-    config::core_config::{CoreConfig, DatatypeType, Fields, Params},
-    service::config::dto::ConfigDTO,
-};
+use crate::config::core_config::{CoreConfig, DatatypeType, Fields, Params};
+use crate::service::config::dto::ConfigDTO;
 
 #[test]
 fn convert_internal_structure_to_dto() {

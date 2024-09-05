@@ -1,6 +1,7 @@
-use one_providers::credential_formatter::model::DetailCredential;
 use std::ops::{Add, Sub};
 use std::time::Duration;
+
+use one_providers::credential_formatter::model::DetailCredential;
 use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};

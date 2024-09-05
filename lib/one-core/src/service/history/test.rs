@@ -1,10 +1,8 @@
-use super::HistoryService;
-
 use std::sync::Arc;
 
-use crate::{
-    model::history::GetHistoryList, repository::history_repository::MockHistoryRepository,
-};
+use super::HistoryService;
+use crate::model::history::GetHistoryList;
+use crate::repository::history_repository::MockHistoryRepository;
 
 fn setup_service(history_repository: MockHistoryRepository) -> HistoryService {
     HistoryService::new(Arc::new(history_repository))

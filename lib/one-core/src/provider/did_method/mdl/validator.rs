@@ -1,6 +1,7 @@
 use one_providers::common_models::key::OpenKey;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
-use x509_parser::{certificate::X509Certificate, error::X509Error};
+use x509_parser::certificate::X509Certificate;
+use x509_parser::error::X509Error;
 
 use super::DidMdl;
 

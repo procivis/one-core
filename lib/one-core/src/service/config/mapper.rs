@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
+use serde_json::Value;
+
 use super::dto::ConfigDTO;
 use crate::config::core_config::CoreConfig;
-use serde_json::Value;
-use std::collections::HashMap;
 
 impl TryFrom<&CoreConfig> for ConfigDTO {
     type Error = serde_json::Error;

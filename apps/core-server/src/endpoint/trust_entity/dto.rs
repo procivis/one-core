@@ -1,21 +1,17 @@
 use dto_mapper::{convert_inner, From, Into};
-use one_core::{
-    model::trust_entity::TrustEntityRole,
-    service::trust_entity::dto::{
-        CreateTrustEntityRequestDTO, GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
-        TrustEntitiesResponseItemDTO,
-    },
+use one_core::model::trust_entity::TrustEntityRole;
+use one_core::service::trust_entity::dto::{
+    CreateTrustEntityRequestDTO, GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
+    TrustEntitiesResponseItemDTO,
 };
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
-use crate::{
-    dto::common::{ExactColumn, ListQueryParamsRest},
-    endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO,
-    serialize::front_time,
-};
+use crate::dto::common::{ExactColumn, ListQueryParamsRest};
+use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
+use crate::serialize::front_time;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateTrustEntityRequestDTO)]

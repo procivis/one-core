@@ -1,8 +1,7 @@
 use shared_types::OrganisationId;
 
-use crate::model::organisation::{Organisation, OrganisationRelations};
-
 use super::error::DataLayerError;
+use crate::model::organisation::{Organisation, OrganisationRelations};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

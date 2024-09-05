@@ -6,20 +6,16 @@ use one_providers::revocation::imp::lvvc::mapper::status_from_lvvc_claims;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
-use crate::model::did::Did;
+use crate::model::credential::CredentialRelations;
+use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::did::{Did, DidRelations};
 use crate::model::key::KeyRelations;
-use crate::{
-    model::{
-        credential::CredentialRelations, credential_schema::CredentialSchemaRelations,
-        did::DidRelations, revocation_list::RevocationListRelations,
-        validity_credential::ValidityCredentialType,
-    },
-    service::{
-        error::{EntityNotFoundError, MissingProviderError, ServiceError},
-        revocation_list::{dto::RevocationListId, RevocationListService},
-        ssi_issuer::dto::IssuerResponseDTO,
-    },
-};
+use crate::model::revocation_list::RevocationListRelations;
+use crate::model::validity_credential::ValidityCredentialType;
+use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
+use crate::service::revocation_list::dto::RevocationListId;
+use crate::service::revocation_list::RevocationListService;
+use crate::service::ssi_issuer::dto::IssuerResponseDTO;
 
 impl RevocationListService {
     pub async fn get_lvvc_by_credential_id(

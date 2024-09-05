@@ -1,10 +1,9 @@
 use reqwest::StatusCode;
 use uuid::Uuid;
 
-use crate::{
-    fixtures,
-    utils::{self, server::run_server},
-};
+use crate::fixtures;
+use crate::utils::server::run_server;
+use crate::utils::{self};
 
 #[tokio::test]
 async fn test_get_key_ok() {

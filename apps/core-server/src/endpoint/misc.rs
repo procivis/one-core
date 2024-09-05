@@ -1,6 +1,6 @@
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::{http::StatusCode, Json};
-
+use axum::Json;
 use serde_json::{json, Value};
 
 use crate::metrics::encode_metrics;

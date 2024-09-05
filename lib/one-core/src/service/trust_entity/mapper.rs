@@ -1,12 +1,10 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    model::{trust_anchor::TrustAnchor, trust_entity::TrustEntity},
-    service::error::ServiceError,
-};
-
 use super::dto::{CreateTrustEntityRequestDTO, GetTrustEntityResponseDTO};
+use crate::model::trust_anchor::TrustAnchor;
+use crate::model::trust_entity::TrustEntity;
+use crate::service::error::ServiceError;
 
 pub(super) fn trust_entity_from_request(
     request: CreateTrustEntityRequestDTO,

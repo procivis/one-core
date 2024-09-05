@@ -1,16 +1,13 @@
-use one_providers::credential_formatter::{
-    error::FormatterError,
-    imp::jwt::{model::JWTPayload, Jwt},
-    model::{AuthenticationFn, Context, VerificationFn},
-};
+use one_providers::credential_formatter::error::FormatterError;
+use one_providers::credential_formatter::imp::jwt::model::JWTPayload;
+use one_providers::credential_formatter::imp::jwt::Jwt;
+use one_providers::credential_formatter::model::{AuthenticationFn, Context, VerificationFn};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
-use crate::model::did::Did;
-
 use self::model::{ContentType, CredentialSubject, SubjectType, VCContent, VC};
-
 use super::common::StatusPurpose;
+use crate::model::did::Did;
 
 mod model;
 

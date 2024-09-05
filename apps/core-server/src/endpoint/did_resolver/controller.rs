@@ -5,7 +5,6 @@ use shared_types::DidValue;
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
-
 use crate::endpoint::ssi::dto::DidDocumentRestDTO;
 use crate::router::AppState;
 

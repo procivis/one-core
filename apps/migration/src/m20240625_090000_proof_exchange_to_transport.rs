@@ -1,5 +1,6 @@
-use sea_orm_migration::prelude::*;
 use std::fmt;
+
+use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

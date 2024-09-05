@@ -8,10 +8,8 @@ use yasna::models::ObjectIdentifier;
 
 use super::dto::{GetKeyListResponseDTO, KeyGenerateCSRRequestProfile};
 use crate::model::key::GetKeyList;
-use crate::service::{
-    error::ServiceError,
-    key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO, KeyResponseDTO},
-};
+use crate::service::error::ServiceError;
+use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO, KeyResponseDTO};
 
 pub(super) fn from_create_request(
     key_id: KeyId,

@@ -1,13 +1,10 @@
-use one_core::model::{
-    credential::CredentialStateEnum,
-    history::{HistoryAction, HistoryEntityType},
-};
+use one_core::model::credential::CredentialStateEnum;
+use one_core::model::history::{HistoryAction, HistoryEntityType};
 use uuid::Uuid;
 
-use crate::{
-    fixtures::{TestingCredentialParams, TestingDidParams},
-    utils::{context::TestContext, db_clients::histories::TestingHistoryParams},
-};
+use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::histories::TestingHistoryParams;
 
 #[tokio::test]
 async fn test_get_history_list_simple() {

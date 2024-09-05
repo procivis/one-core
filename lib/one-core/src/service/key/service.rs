@@ -8,29 +8,22 @@ use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
 use shared_types::KeyId;
 use uuid::Uuid;
 
+use super::dto::{GetKeyListResponseDTO, GetKeyQueryDTO};
 use super::mapper::request_to_certificate_params;
-use super::{
-    dto::{GetKeyListResponseDTO, GetKeyQueryDTO},
-    KeyService,
-};
+use super::KeyService;
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::key::KeyRelations;
-use crate::service::error::MissingProviderError;
-use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO};
-use crate::service::key::validator::validate_generate_csr_request;
-use crate::util::history::history_event;
-use crate::{
-    model::organisation::OrganisationRelations,
-    repository::error::DataLayerError,
-    service::{
-        error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
-        key::{
-            dto::{KeyRequestDTO, KeyResponseDTO},
-            mapper::from_create_request,
-            validator::validate_generate_request,
-        },
-    },
+use crate::model::organisation::OrganisationRelations;
+use crate::repository::error::DataLayerError;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
+use crate::service::key::dto::{
+    KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO, KeyRequestDTO, KeyResponseDTO,
+};
+use crate::service::key::mapper::from_create_request;
+use crate::service::key::validator::{validate_generate_csr_request, validate_generate_request};
+use crate::util::history::history_event;
 
 impl KeyService {
     /// Returns details of a key

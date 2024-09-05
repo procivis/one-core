@@ -1,13 +1,14 @@
-use super::OrganisationProvider;
-use crate::{entity::organisation, mapper::to_data_layer_error};
 use autometrics::autometrics;
 use dto_mapper::convert_inner;
-use one_core::{
-    model::organisation::{Organisation, OrganisationRelations},
-    repository::{error::DataLayerError, organisation_repository::OrganisationRepository},
-};
+use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::repository::error::DataLayerError;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::EntityTrait;
 use shared_types::OrganisationId;
+
+use super::OrganisationProvider;
+use crate::entity::organisation;
+use crate::mapper::to_data_layer_error;
 
 #[autometrics]
 #[async_trait::async_trait]

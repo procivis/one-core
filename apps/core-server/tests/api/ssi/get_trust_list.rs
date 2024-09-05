@@ -1,8 +1,10 @@
-use crate::utils::{context::TestContext, field_match::FieldHelpers};
 use one_core::model::organisation::Organisation;
 use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
 use one_core::model::trust_entity::{TrustEntity, TrustEntityRole};
 use uuid::Uuid;
+
+use crate::utils::context::TestContext;
+use crate::utils::field_match::FieldHelpers;
 
 pub async fn new_with_trust_list() -> (
     TestContext,

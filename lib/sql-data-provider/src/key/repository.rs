@@ -1,8 +1,3 @@
-use crate::entity::key;
-use crate::key::mapper::from_model_and_relations;
-use crate::key::KeyProvider;
-use crate::list_query::SelectWithListQuery;
-use crate::mapper::to_data_layer_error;
 use autometrics::autometrics;
 use one_core::model::key::{GetKeyList, GetKeyQuery, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
@@ -15,6 +10,11 @@ use sea_orm::{
 };
 
 use super::mapper::create_list_response;
+use crate::entity::key;
+use crate::key::mapper::from_model_and_relations;
+use crate::key::KeyProvider;
+use crate::list_query::SelectWithListQuery;
+use crate::mapper::to_data_layer_error;
 
 impl KeyProvider {
     async fn get_organisation(

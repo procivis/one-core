@@ -1,4 +1,6 @@
-use crate::{binding::OneCoreBinding, error::BindingError, ImportProofSchemaRequestBindingsDTO};
+use crate::binding::OneCoreBinding;
+use crate::error::BindingError;
+use crate::ImportProofSchemaRequestBindingsDTO;
 
 impl OneCoreBinding {
     pub fn import_proof_schema(

@@ -1,20 +1,15 @@
 use core::panic;
-use one_core::model::{
-    did::{Did, DidType, KeyRole, RelatedKey},
-    organisation::Organisation,
-};
+use std::str::FromStr;
+
+use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
+use one_core::model::organisation::Organisation;
 use one_providers::common_models::key::OpenKey;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue};
-use std::str::FromStr;
 
-use crate::{
-    fixtures::{TestingDidParams, TestingKeyParams},
-    utils::{
-        context::TestContext,
-        db_clients::keys::{eddsa_testing_params, es256_testing_params},
-    },
-};
+use crate::fixtures::{TestingDidParams, TestingKeyParams};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::keys::{eddsa_testing_params, es256_testing_params};
 
 pub(super) async fn prepare_dids_for_mdoc(
     context: &TestContext,

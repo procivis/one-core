@@ -1,15 +1,15 @@
+use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::proof::ProofStateEnum;
-use one_core::model::{credential::CredentialStateEnum, credential_schema::CredentialSchema};
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::fixtures::{TestingCredentialSchemaParams, TestingDidParams};
-use crate::utils::server::run_server;
-use crate::{
-    fixtures::{self, TestingCredentialParams},
-    utils,
+use crate::fixtures::{
+    self, TestingCredentialParams, TestingCredentialSchemaParams, TestingDidParams,
 };
+use crate::utils;
+use crate::utils::server::run_server;
 
 fn get_procivis_temporary_interaction_data(
     key: String,

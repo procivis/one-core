@@ -1,11 +1,12 @@
-use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 
-use one_core::repository::{
-    claim_repository::ClaimRepository, credential_schema_repository::CredentialSchemaRepository,
-    did_repository::DidRepository, interaction_repository::InteractionRepository,
-    key_repository::KeyRepository, revocation_list_repository::RevocationListRepository,
-};
+use one_core::repository::claim_repository::ClaimRepository;
+use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
+use one_core::repository::did_repository::DidRepository;
+use one_core::repository::interaction_repository::InteractionRepository;
+use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::revocation_list_repository::RevocationListRepository;
+use sea_orm::DatabaseConnection;
 
 mod entity_model;
 pub mod mapper;

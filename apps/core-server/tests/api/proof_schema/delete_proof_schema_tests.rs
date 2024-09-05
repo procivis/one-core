@@ -1,7 +1,5 @@
-use crate::utils::{
-    context::TestContext,
-    db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
-};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
 #[tokio::test]
 async fn test_delete_proof_schema_success() {

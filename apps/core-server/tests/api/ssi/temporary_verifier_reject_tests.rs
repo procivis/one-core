@@ -1,13 +1,9 @@
 use one_core::model::proof::ProofStateEnum;
 
-use crate::{
-    fixtures,
-    utils::{
-        self,
-        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
-        server::run_server,
-    },
-};
+use crate::fixtures;
+use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::server::run_server;
+use crate::utils::{self};
 
 #[tokio::test]
 async fn test_temporary_verifier_reject_success() {

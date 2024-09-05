@@ -1,6 +1,7 @@
+use shared_types::CredentialId;
+
 use super::error::DataLayerError;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
-use shared_types::CredentialId;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

@@ -1,18 +1,15 @@
 use autometrics::autometrics;
+use one_core::model::history::{GetHistoryList, History, HistoryListQuery};
+use one_core::repository::error::DataLayerError;
+use one_core::repository::history_repository::HistoryRepository;
 use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, QueryOrder};
-
-use one_core::{
-    model::history::{GetHistoryList, History, HistoryListQuery},
-    repository::{error::DataLayerError, history_repository::HistoryRepository},
-};
 use shared_types::HistoryId;
 
 use super::mapper::create_list_response;
-use crate::list_query_generic::SelectWithFilterJoin;
-use crate::{
-    entity::history, history::HistoryProvider, list_query_generic::SelectWithListQuery,
-    mapper::to_data_layer_error,
-};
+use crate::entity::history;
+use crate::history::HistoryProvider;
+use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
+use crate::mapper::to_data_layer_error;
 
 #[autometrics]
 #[async_trait::async_trait]

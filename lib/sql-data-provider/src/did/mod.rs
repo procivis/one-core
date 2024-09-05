@@ -1,8 +1,8 @@
-use one_core::repository::{
-    key_repository::KeyRepository, organisation_repository::OrganisationRepository,
-};
-use sea_orm::DatabaseConnection;
 use std::sync::Arc;
+
+use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::organisation_repository::OrganisationRepository;
+use sea_orm::DatabaseConnection;
 
 pub mod mapper;
 pub mod repository;

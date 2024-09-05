@@ -1,13 +1,13 @@
 use dto_mapper::convert_inner;
 use migration::SimpleExpr;
+use one_core::model::key::{GetKeyList, SortableKeyColumn};
+use one_core::model::organisation::Organisation;
 use one_providers::common_models::key::OpenKey;
 use sea_orm::IntoSimpleExpr;
 
+use crate::common::calculate_pages_count;
 use crate::entity;
-use one_core::model::key::{GetKeyList, SortableKeyColumn};
-use one_core::model::organisation::Organisation;
-
-use crate::{common::calculate_pages_count, list_query::GetEntityColumn};
+use crate::list_query::GetEntityColumn;
 
 pub(super) fn from_model_and_relations(
     value: entity::key::Model,

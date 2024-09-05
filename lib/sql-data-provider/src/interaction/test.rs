@@ -1,18 +1,16 @@
-use std::{str::FromStr, vec};
+use std::str::FromStr;
+use std::vec;
 
-use one_core::{
-    model::interaction::{Interaction, InteractionRelations},
-    repository::interaction_repository::InteractionRepository,
-};
+use one_core::model::interaction::{Interaction, InteractionRelations};
+use one_core::repository::interaction_repository::InteractionRepository;
 use sea_orm::DbErr;
 use url::Url;
 use uuid::Uuid;
 
+use super::InteractionProvider;
 use crate::test_utilities::{
     get_dummy_date, get_interaction, insert_interaction, setup_test_data_layer_and_connection,
 };
-
-use super::InteractionProvider;
 
 struct TestSetup {
     pub provider: InteractionProvider,

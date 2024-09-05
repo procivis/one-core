@@ -1,5 +1,4 @@
-use dto_mapper::convert_inner;
-use dto_mapper::{From, Into};
+use dto_mapper::{convert_inner, From, Into};
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaDetailResponseDTO, CredentialSchemaListIncludeEntityTypeEnum,

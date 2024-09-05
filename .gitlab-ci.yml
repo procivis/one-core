@@ -1,4 +1,4 @@
-image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.80.0-0.2
+image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.80.0-0.3
 
 include:
   - project: 'procivis/one/one-operations'
@@ -169,7 +169,8 @@ linter:clippy:
 linter:rustfmt:
   stage: test
   script:
-    - cargo fmt --all -- --check
+    - TOOLCHAIN_VERSION=$(rustup toolchain list | grep nightly | head -n1 | awk '{print $1}')
+    - cargo +$TOOLCHAIN_VERSION fmt --all -- --check
 
 linter:dependencies:
   stage: test

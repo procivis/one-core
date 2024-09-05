@@ -1,9 +1,7 @@
 use shared_types::HistoryId;
 
-use crate::{
-    model::history::{GetHistoryList, History, HistoryListQuery},
-    repository::error::DataLayerError,
-};
+use crate::model::history::{GetHistoryList, History, HistoryListQuery};
+use crate::repository::error::DataLayerError;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

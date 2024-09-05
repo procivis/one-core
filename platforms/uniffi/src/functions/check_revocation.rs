@@ -1,8 +1,9 @@
-use crate::{
-    dto::CredentialRevocationCheckResponseBindingDTO, error::BindingError, utils::into_id,
-    OneCoreBinding,
-};
 use dto_mapper::convert_inner;
+
+use crate::dto::CredentialRevocationCheckResponseBindingDTO;
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn check_revocation(

@@ -1,20 +1,15 @@
 use std::str::FromStr;
 
-use one_core::model::{
-    credential::CredentialStateEnum,
-    did::{KeyRole, RelatedKey},
-};
+use one_core::model::credential::CredentialStateEnum;
+use one_core::model::did::{KeyRole, RelatedKey};
 use serde_json::Value;
 use shared_types::DidValue;
 
-use crate::{
-    fixtures::{self, TestingDidParams},
-    utils,
+use crate::fixtures::{
+    self, TestingCredentialParams, TestingCredentialSchemaParams, TestingDidParams,
 };
-use crate::{
-    fixtures::{TestingCredentialParams, TestingCredentialSchemaParams},
-    utils::server::run_server,
-};
+use crate::utils;
+use crate::utils::server::run_server;
 
 #[tokio::test]
 async fn test_add_credential_to_list() {

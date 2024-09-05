@@ -1,7 +1,8 @@
-use crate::{
-    error::BindingError, utils::into_id, CredentialSchemaDetailBindingDTO, OneCoreBinding,
-};
 use shared_types::CredentialSchemaId;
+
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::{CredentialSchemaDetailBindingDTO, OneCoreBinding};
 
 impl OneCoreBinding {
     pub fn get_credential_schema(

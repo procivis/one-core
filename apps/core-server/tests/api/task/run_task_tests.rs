@@ -1,8 +1,10 @@
-use one_core::model::credential::CredentialStateEnum;
 use std::ops::Sub;
+
+use one_core::model::credential::CredentialStateEnum;
 use time::{Duration, OffsetDateTime};
 
-use crate::{fixtures::TestingCredentialParams, utils::context::TestContext};
+use crate::fixtures::TestingCredentialParams;
+use crate::utils::context::TestContext;
 
 #[tokio::test]
 async fn test_run_task_suspend_check_no_update() {

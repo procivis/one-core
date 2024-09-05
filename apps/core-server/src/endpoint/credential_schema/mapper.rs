@@ -1,7 +1,7 @@
-use one_core::{
-    model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch, StringMatchType},
-    service::credential_schema::dto::CredentialSchemaFilterValue,
+use one_core::model::list_filter::{
+    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
 };
+use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 
 use super::dto::{CredentialSchemasExactColumn, CredentialSchemasFilterQueryParamsRest};
 

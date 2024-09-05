@@ -1,12 +1,12 @@
-use crate::{
-    error::BindingError, utils::into_id, DidListBindingDTO, DidListQueryBindingDTO,
-    ExactDidFilterColumnBindingEnum, OneCoreBinding,
-};
 use dto_mapper::convert_inner;
-use one_core::model::{
-    did::{DidFilterValue, DidListQuery},
-    list_filter::{ListFilterValue, StringMatch, StringMatchType},
-    list_query::{ListPagination, ListSorting},
+use one_core::model::did::{DidFilterValue, DidListQuery};
+use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
+use one_core::model::list_query::{ListPagination, ListSorting};
+
+use crate::error::BindingError;
+use crate::utils::into_id;
+use crate::{
+    DidListBindingDTO, DidListQueryBindingDTO, ExactDidFilterColumnBindingEnum, OneCoreBinding,
 };
 
 impl OneCoreBinding {

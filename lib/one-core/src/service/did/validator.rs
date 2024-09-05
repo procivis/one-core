@@ -1,12 +1,13 @@
 use std::collections::HashSet;
+use std::hash::Hash;
+
+use one_providers::did::model::AmountOfKeys;
+use one_providers::did::DidMethod;
 
 use super::DidDeactivationError;
 use crate::model::did::Did;
-use crate::service::error::{BusinessLogicError, ValidationError};
-use crate::service::{did::dto::CreateDidRequestKeysDTO, error::ServiceError};
-use one_providers::did::model::AmountOfKeys;
-use one_providers::did::DidMethod;
-use std::hash::Hash;
+use crate::service::did::dto::CreateDidRequestKeysDTO;
+use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
 fn count_uniq<T: Eq + Hash>(vec: impl IntoIterator<Item = T>) -> usize {
     vec.into_iter().collect::<HashSet<_>>().len()

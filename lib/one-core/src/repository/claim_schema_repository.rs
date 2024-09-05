@@ -1,7 +1,6 @@
 use shared_types::ClaimSchemaId;
 
 use super::error::DataLayerError;
-
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]

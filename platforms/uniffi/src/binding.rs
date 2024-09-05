@@ -1,11 +1,11 @@
-use std::{future::Future, pin::Pin};
+use std::future::Future;
+use std::pin::Pin;
+
+use tokio::fs;
+use tokio::runtime::Runtime;
+use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::error::BindingError;
-use tokio::{
-    fs,
-    runtime::Runtime,
-    sync::{RwLock, RwLockReadGuard},
-};
 
 type CoreBuilder = Box<
     dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<one_core::OneCore, BindingError>>>>

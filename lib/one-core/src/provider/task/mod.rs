@@ -1,21 +1,18 @@
-use self::suspend_check::SuspendCheckProvider;
-use crate::repository::revocation_list_repository::RevocationListRepository;
-use crate::repository::validity_credential_repository::ValidityCredentialRepository;
-use crate::service::error::ServiceError;
-use crate::{
-    config::{
-        core_config::{TaskConfig, TaskType},
-        ConfigError,
-    },
-    repository::{
-        credential_repository::CredentialRepository, history_repository::HistoryRepository,
-    },
-};
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
 use serde_json::Value;
-use std::collections::HashMap;
-use std::sync::Arc;
+
+use self::suspend_check::SuspendCheckProvider;
+use crate::config::core_config::{TaskConfig, TaskType};
+use crate::config::ConfigError;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::history_repository::HistoryRepository;
+use crate::repository::revocation_list_repository::RevocationListRepository;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::error::ServiceError;
 
 pub mod provider;
 pub mod suspend_check;

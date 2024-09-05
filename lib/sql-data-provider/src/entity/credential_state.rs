@@ -1,11 +1,11 @@
 use dto_mapper::{From, Into};
+use one_core::model::credential::{
+    CredentialState as ModelCredentialState, CredentialStateEnum as ModelCredentialStateEnum,
+};
 use sea_orm::entity::prelude::*;
 use serde::Deserialize;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
-
-use one_core::model::credential::CredentialState as ModelCredentialState;
-use one_core::model::credential::CredentialStateEnum as ModelCredentialStateEnum;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Into, Deserialize)]
 #[into(ModelCredentialState)]

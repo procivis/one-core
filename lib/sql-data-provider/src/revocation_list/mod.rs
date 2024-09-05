@@ -1,7 +1,7 @@
-use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 
 use one_core::repository::did_repository::DidRepository;
+use sea_orm::DatabaseConnection;
 
 pub mod repository;
 

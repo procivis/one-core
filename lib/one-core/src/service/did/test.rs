@@ -1,41 +1,39 @@
-use super::DidService;
-use crate::repository::error::DataLayerError;
-use crate::service::error::EntityNotFoundError;
-use crate::service::error::{BusinessLogicError, ValidationError};
-use crate::{
-    config::core_config::{self, CoreConfig, DidConfig, Fields},
-    model::{
-        did::{Did, DidListQuery, DidRelations, DidType, GetDidList, KeyRole, RelatedKey},
-        list_query::ListPagination,
-        organisation::{Organisation, OrganisationRelations},
-    },
-    repository::key_repository::MockKeyRepository,
-    repository::{
-        did_repository::MockDidRepository, history_repository::MockHistoryRepository,
-        organisation_repository::MockOrganisationRepository,
-    },
-    service::{
-        did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
-        error::ServiceError,
-    },
-};
+use std::collections::HashMap;
+use std::str::FromStr;
+use std::sync::Arc;
+
 use mockall::predicate::*;
+use one_providers::caching_loader::CachingLoader;
 use one_providers::common_models::did::DidValue;
 use one_providers::common_models::key::OpenKey;
 use one_providers::did::imp::provider::DidMethodProviderImpl;
 use one_providers::did::model::DidCapabilities;
 use one_providers::did::{DidMethod, MockDidMethod};
-use serde_json::Value;
-use shared_types::DidId;
-use std::{collections::HashMap, str::FromStr, sync::Arc};
-use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
-
-use crate::model::key::KeyRelations;
-use one_providers::caching_loader::CachingLoader;
 use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_providers::remote_entity_storage::in_memory::InMemoryStorage;
 use one_providers::remote_entity_storage::RemoteEntityType;
+use serde_json::Value;
+use shared_types::DidId;
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+
+use super::DidService;
+use crate::config::core_config::{self, CoreConfig, DidConfig, Fields};
+use crate::model::did::{
+    Did, DidListQuery, DidRelations, DidType, GetDidList, KeyRole, RelatedKey,
+};
+use crate::model::key::KeyRelations;
+use crate::model::list_query::ListPagination;
+use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::repository::did_repository::MockDidRepository;
+use crate::repository::error::DataLayerError;
+use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::key_repository::MockKeyRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
+use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
+};
 
 fn setup_service(
     did_repository: MockDidRepository,

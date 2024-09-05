@@ -1,18 +1,21 @@
+use std::str::FromStr;
+
 use autometrics::autometrics;
+use one_core::model::revocation_list::{
+    RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
+};
+use one_core::repository::error::DataLayerError;
+use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::{
     ActiveEnum, ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Set, Unchanged,
 };
 use shared_types::DidId;
-use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{entity, entity::revocation_list, revocation_list::RevocationListProvider};
-use one_core::model::revocation_list::RevocationListPurpose;
-use one_core::{
-    model::revocation_list::{RevocationList, RevocationListId, RevocationListRelations},
-    repository::{error::DataLayerError, revocation_list_repository::RevocationListRepository},
-};
+use crate::entity;
+use crate::entity::revocation_list;
+use crate::revocation_list::RevocationListProvider;
 
 impl RevocationListProvider {
     async fn entity_model_to_repository_model(

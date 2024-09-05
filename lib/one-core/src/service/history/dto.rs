@@ -3,13 +3,9 @@ use serde::{Deserialize, Serialize};
 use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 
-use crate::{
-    model::{
-        common::GetListResponse,
-        history::{HistoryAction, HistoryEntityType, HistoryMetadata},
-    },
-    service::backup::dto::UnexportableEntitiesResponseDTO,
-};
+use crate::model::common::GetListResponse;
+use crate::model::history::{HistoryAction, HistoryEntityType, HistoryMetadata};
+use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 #[from(HistoryMetadata)]

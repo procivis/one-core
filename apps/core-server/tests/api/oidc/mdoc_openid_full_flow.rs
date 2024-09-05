@@ -1,31 +1,22 @@
 use axum::http::StatusCode;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use one_core::model::{
-    credential::CredentialStateEnum,
-    proof::{ProofClaim, ProofStateEnum},
-};
+use one_core::model::credential::CredentialStateEnum;
+use one_core::model::proof::{ProofClaim, ProofStateEnum};
 use one_providers::common_models::key::OpenKey;
+use p256::elliptic_curve::sec1::ToEncodedPoint;
 use serde_json::json;
-
+use time::macros::format_description;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    api_oidc_tests::full_flow_common::{
-        ecdsa_key_2, eddsa_key_2, eddsa_key_for_did_mdl, es256_key_for_did_mdl,
-        prepare_dids_for_mdoc,
-    },
-    fixtures::TestingCredentialParams,
-    utils::{
-        api_clients::interactions::SubmittedCredential, context::TestContext,
-        db_clients::proof_schemas::CreateProofInputSchema,
-    },
-};
-
-use p256::elliptic_curve::sec1::ToEncodedPoint;
-
-use time::{macros::format_description, OffsetDateTime};
-
 use super::full_flow_common::TestKey;
+use crate::api_oidc_tests::full_flow_common::{
+    ecdsa_key_2, eddsa_key_2, eddsa_key_for_did_mdl, es256_key_for_did_mdl, prepare_dids_for_mdoc,
+};
+use crate::fixtures::TestingCredentialParams;
+use crate::utils::api_clients::interactions::SubmittedCredential;
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 enum KeyType {
     Ecdsa,

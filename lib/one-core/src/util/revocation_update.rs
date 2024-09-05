@@ -1,3 +1,17 @@
+use std::sync::Arc;
+
+use dto_mapper::convert_inner;
+use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::imp::bitstring_status_list::model::RevocationUpdateData;
+use one_providers::revocation::imp::bitstring_status_list::{
+    format_status_list_credential, generate_bitstring_from_credentials,
+    purpose_to_credential_state_enum,
+};
+use one_providers::revocation::model::{CredentialAdditionalData, RevocationUpdate};
+use one_providers::revocation::provider::RevocationMethodProvider;
+use time::OffsetDateTime;
+use uuid::Uuid;
+
 use crate::model::credential::{Credential, CredentialRelations, CredentialStateRelations};
 use crate::model::did::Did;
 use crate::model::revocation_list::{
@@ -8,18 +22,6 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
-use dto_mapper::convert_inner;
-use one_providers::key_storage::provider::KeyProvider;
-use one_providers::revocation::imp::bitstring_status_list::model::RevocationUpdateData;
-use one_providers::revocation::imp::bitstring_status_list::{
-    format_status_list_credential, generate_bitstring_from_credentials,
-    purpose_to_credential_state_enum,
-};
-use one_providers::revocation::model::{CredentialAdditionalData, RevocationUpdate};
-use one_providers::revocation::provider::RevocationMethodProvider;
-use std::sync::Arc;
-use time::OffsetDateTime;
-use uuid::Uuid;
 
 pub(crate) async fn generate_credential_additional_data(
     credential: &Credential,
