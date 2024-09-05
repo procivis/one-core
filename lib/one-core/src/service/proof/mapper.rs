@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::time::Duration;
 
 use dto_mapper::convert_inner;
 use one_providers::common_models::key::OpenKey;
@@ -122,12 +123,20 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             })
             .map(|state| state.created_date);
 
+        let retain_until_date = match (completed_date, &value.schema) {
+            (Some(completed_date), Some(schema)) if schema.expire_duration != 0 => {
+                Some(completed_date + Duration::from_secs(schema.expire_duration as _))
+            }
+            _ => None,
+        };
+
         Ok(Self {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             issuance_date: value.issuance_date,
             requested_date,
+            retain_until_date,
             transport: value.transport,
             completed_date,
             verifier_did: convert_inner(value.verifier_did),
@@ -411,6 +420,7 @@ pub fn get_verifier_proof_detail(
         last_modified: list_item_response.last_modified,
         issuance_date: list_item_response.issuance_date,
         requested_date: list_item_response.requested_date,
+        retain_until_date: list_item_response.retain_until_date,
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
         holder_did_id,
@@ -591,6 +601,7 @@ pub fn get_holder_proof_detail(
         last_modified: list_item_response.last_modified,
         issuance_date: list_item_response.issuance_date,
         requested_date: list_item_response.requested_date,
+        retain_until_date: list_item_response.retain_until_date,
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
         holder_did_id,

@@ -1,18 +1,12 @@
-use one_core::model::{
-    credential::CredentialStateEnum,
-    did::{KeyRole, RelatedKey},
-    proof::ProofStateEnum,
-};
+use one_core::model::credential::CredentialStateEnum;
+use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::proof::ProofStateEnum;
 use validator::ValidateLength;
 
-use crate::{
-    fixtures::TestingDidParams,
-    utils::{
-        context::TestContext,
-        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
-        field_match::FieldHelpers,
-    },
-};
+use crate::fixtures::TestingDidParams;
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_get_proof_success() {
@@ -552,4 +546,82 @@ async fn test_get_proof_as_holder_success() {
     resp["organisationId"].assert_eq(&organisation.id);
     assert!(resp["schema"].as_object().is_none());
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
+async fn test_get_proof_with_retain_date() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
+    let verifier_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "proof-schema-name",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &verifier_did,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Accepted,
+            "OPENID4VC",
+            None,
+            verifier_key.to_owned(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.proofs.get(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert!(!resp["retainUntilDate"].is_null())
 }

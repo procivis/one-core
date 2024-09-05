@@ -394,7 +394,7 @@ pub fn proof_schema_from_create_request(
         created_date: now,
         last_modified: now,
         name: request.name,
-        expire_duration: request.expire_duration,
+        expire_duration: request.expire_duration.unwrap_or(0),
         organisation: Some(organisation),
         deleted_at: None,
         input_schemas: Some(input_schemas),

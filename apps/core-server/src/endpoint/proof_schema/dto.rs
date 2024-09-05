@@ -29,7 +29,7 @@ pub struct CreateProofSchemaRequestRestDTO {
     #[schema(min_length = 1)]
     pub name: String,
     pub organisation_id: Uuid,
-    pub expire_duration: u32,
+    pub expire_duration: Option<u32>,
     #[into(with_fn = convert_inner)]
     #[schema(min_items = 1)]
     pub proof_input_schemas: Vec<ProofInputSchemaRequestRestDTO>,

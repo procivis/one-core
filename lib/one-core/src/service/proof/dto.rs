@@ -13,10 +13,8 @@ use crate::model::list_query::ListQuery;
 use crate::model::proof::{ProofStateEnum, SortableProofColumn};
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceAddress;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
-use crate::provider::exchange_protocol::iso_mdl::{
-    self,
-    common::{SkDevice, SkReader},
-};
+use crate::provider::exchange_protocol::iso_mdl;
+use crate::provider::exchange_protocol::iso_mdl::common::{SkDevice, SkReader};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::did::dto::DidListItemResponseDTO;
@@ -59,6 +57,7 @@ pub struct ProofDetailResponseDTO {
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
     pub requested_date: Option<OffsetDateTime>,
+    pub retain_until_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
     pub verifier_did: Option<DidListItemResponseDTO>,
     pub holder_did_id: Option<DidId>,
@@ -79,6 +78,7 @@ pub struct ProofListItemResponseDTO {
     pub issuance_date: OffsetDateTime,
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
+    pub retain_until_date: Option<OffsetDateTime>,
     pub verifier_did: Option<DidListItemResponseDTO>,
     pub exchange: String,
     pub transport: String,

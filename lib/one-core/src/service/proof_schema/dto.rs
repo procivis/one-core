@@ -66,7 +66,7 @@ pub struct CreateProofSchemaClaimRequestDTO {
 pub struct CreateProofSchemaRequestDTO {
     pub name: String,
     pub organisation_id: OrganisationId,
-    pub expire_duration: u32,
+    pub expire_duration: Option<u32>,
     pub proof_input_schemas: Vec<ProofInputSchemaRequestDTO>,
 }
 
