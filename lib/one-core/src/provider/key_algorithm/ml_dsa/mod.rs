@@ -1,7 +1,7 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkMlweData};
 use one_providers::key_algorithm::error::KeyAlgorithmError;
-use one_providers::key_algorithm::model::GeneratedKey;
+use one_providers::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};
 use one_providers::key_algorithm::KeyAlgorithm;
 use pqc_dilithium::Keypair;
 use serde::Deserialize;
@@ -80,5 +80,9 @@ impl KeyAlgorithm for MlDsa {
 
     fn public_key_from_der(&self, _public_key_der: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
         unimplemented!()
+    }
+
+    fn get_capabilities(&self) -> KeyAlgorithmCapabilities {
+        KeyAlgorithmCapabilities { features: vec![] }
     }
 }

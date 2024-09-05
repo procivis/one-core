@@ -450,6 +450,7 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 key_provider.clone(),
                 config.clone(),
+                key_algorithm_provider.clone(),
             ),
             proof_schema_service: ProofSchemaService::new(
                 data_provider.get_proof_schema_repository(),
