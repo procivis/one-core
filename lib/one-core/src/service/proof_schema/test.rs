@@ -403,7 +403,7 @@ async fn test_create_proof_schema_success() {
 
     let create_request = CreateProofSchemaRequestDTO {
         name: "name".to_string(),
-        expire_duration: 0,
+        expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
@@ -443,7 +443,7 @@ async fn test_create_proof_schema_success() {
                 && claim_schemas[0].schema.id == claim_schema_id
                 && proof_schema.organisation.as_ref().unwrap().id == organisation_id
                 && proof_schema.name == create_request_clone.name
-                && proof_schema.expire_duration == create_request_clone.expire_duration
+                && proof_schema.expire_duration == create_request_clone.expire_duration.unwrap()
         })
         .returning(|request| Ok(request.id));
 
@@ -552,7 +552,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
 
     let create_request = CreateProofSchemaRequestDTO {
         name: "name".to_string(),
-        expire_duration: 0,
+        expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![
             ProofInputSchemaRequestDTO {
@@ -720,7 +720,7 @@ async fn test_create_proof_schema_array_object_fail() {
 
     let create_request = CreateProofSchemaRequestDTO {
         name: "name".to_string(),
-        expire_duration: 0,
+        expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
@@ -880,7 +880,7 @@ async fn test_create_proof_schema_array_success() {
 
     let create_request = CreateProofSchemaRequestDTO {
         name: "name".to_string(),
-        expire_duration: 0,
+        expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
@@ -920,7 +920,7 @@ async fn test_create_proof_schema_array_success() {
                 && claim_schemas[0].schema.id == claim_id
                 && proof_schema.organisation.as_ref().unwrap().id == organisation_id
                 && proof_schema.name == create_request_clone.name
-                && proof_schema.expire_duration == create_request_clone.expire_duration
+                && proof_schema.expire_duration == create_request_clone.expire_duration.unwrap()
         })
         .returning(|request| Ok(request.id));
 
@@ -942,7 +942,7 @@ async fn test_create_proof_schema_unique_name_error() {
 
     let create_request = CreateProofSchemaRequestDTO {
         name: "name".to_string(),
-        expire_duration: 0,
+        expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
             credential_schema_id: Uuid::new_v4().into(),
@@ -1071,7 +1071,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
     let result = service
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "name".to_string(),
-            expire_duration: 0,
+            expire_duration: Some(0),
             organisation_id,
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
                 credential_schema_id,
@@ -1104,7 +1104,7 @@ async fn test_create_proof_schema_no_claims() {
     let result = service
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "name".to_string(),
-            expire_duration: 0,
+            expire_duration: Some(0),
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
                 credential_schema_id: Uuid::new_v4().into(),
@@ -1133,7 +1133,7 @@ async fn test_create_proof_schema_no_required_claims() {
     let result = service
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "name".to_string(),
-            expire_duration: 0,
+            expire_duration: Some(0),
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
                 credential_schema_id: Uuid::new_v4().into(),
@@ -1169,7 +1169,7 @@ async fn test_create_proof_schema_duplicit_claims() {
     let result = service
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "name".to_string(),
-            expire_duration: 0,
+            expire_duration: Some(0),
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
                 credential_schema_id: Uuid::new_v4().into(),
@@ -2250,7 +2250,7 @@ async fn test_create_proof_schema_verify_nested_generic(
 
     let create_request = CreateProofSchemaRequestDTO {
         name: "name".to_string(),
-        expire_duration: 0,
+        expire_duration: Some(0),
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
             claim_schemas: claim_schemas

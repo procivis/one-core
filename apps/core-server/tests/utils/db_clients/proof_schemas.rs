@@ -1,17 +1,13 @@
 use std::sync::Arc;
 
-use one_core::{
-    model::{
-        claim_schema::ClaimSchema,
-        credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        organisation::{Organisation, OrganisationRelations},
-        proof_schema::{
-            ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
-            ProofSchemaRelations,
-        },
-    },
-    repository::proof_schema_repository::ProofSchemaRepository,
+use one_core::model::claim_schema::ClaimSchema;
+use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::proof_schema::{
+    ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
+    ProofSchemaRelations,
 };
+use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use shared_types::{ClaimSchemaId, ProofSchemaId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
@@ -80,7 +76,7 @@ impl ProofSchemasDB {
             name: name.to_owned(),
             organisation: Some(organisation.to_owned()),
             deleted_at: None,
-            expire_duration: 0,
+            expire_duration: 10,
             input_schemas: Some(input_schemas),
         };
 

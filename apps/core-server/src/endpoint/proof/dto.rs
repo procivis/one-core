@@ -129,6 +129,11 @@ pub struct ProofListItemResponseRestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub retain_until_date: Option<OffsetDateTime>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
     #[from(with_fn = convert_inner)]
@@ -244,6 +249,11 @@ pub struct ProofDetailResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub requested_date: Option<OffsetDateTime>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub retain_until_date: Option<OffsetDateTime>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
