@@ -1,6 +1,10 @@
+use std::sync::Arc;
+
+use one_providers::key_algorithm::error::KeyAlgorithmError;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use time::Duration;
 
-use crate::config::core_config::{CoreConfig, KeyAlgorithmConfig};
+use crate::config::core_config::CoreConfig;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO};
 
@@ -22,11 +26,16 @@ pub(super) fn validate_generate_request(
 pub(super) fn validate_generate_csr_request(
     request: &KeyGenerateCSRRequestDTO,
     key_type: &str,
-    config: &KeyAlgorithmConfig,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
 ) -> Result<(), ServiceError> {
-    let config_key_type = &config.get_fields(key_type)?.r#type;
-    //TODO Capabilities CSR?
-    if config_key_type != "ES256" && config_key_type != "EDDSA" {
+    let key_algorithm = &key_algorithm_provider
+        .get_key_algorithm(key_type)
+        .ok_or(KeyAlgorithmError::NotSupported(key_type.to_owned()))?;
+    if !key_algorithm
+        .get_capabilities()
+        .features
+        .contains(&"GENERATE_CSR".to_string())
+    {
         return Err(BusinessLogicError::UnsupportedKeyTypeForCSR.into());
     }
 

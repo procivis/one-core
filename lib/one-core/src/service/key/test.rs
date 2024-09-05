@@ -2,6 +2,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use one_providers::common_models::key::OpenKey;
+use one_providers::key_algorithm::model::KeyAlgorithmCapabilities;
+use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
+use one_providers::key_algorithm::MockKeyAlgorithm;
 use one_providers::key_storage::imp::provider::KeyProviderImpl;
 use one_providers::key_storage::model::StorageGeneratedKey;
 use one_providers::key_storage::{KeyStorage, MockKeyStorage};
@@ -27,6 +30,7 @@ fn setup_service(
     organisation_repository: MockOrganisationRepository,
     key_storage: MockKeyStorage,
     config: crate::config::core_config::CoreConfig,
+    key_algorithm_provider: MockKeyAlgorithmProvider,
 ) -> KeyService {
     let mut storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
     storages.insert("INTERNAL".to_string(), Arc::new(key_storage));
@@ -39,6 +43,7 @@ fn setup_service(
         Arc::new(organisation_repository),
         Arc::new(provider),
         Arc::new(config),
+        Arc::new(key_algorithm_provider),
     )
 }
 
@@ -69,6 +74,7 @@ async fn test_create_key_success() {
     let mut repository = MockKeyRepository::default();
     let mut organisation_repository = MockOrganisationRepository::default();
     let mut key_storage = MockKeyStorage::default();
+    let key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
     let org_id = Uuid::new_v4();
 
@@ -107,6 +113,7 @@ async fn test_create_key_success() {
         organisation_repository,
         key_storage,
         generic_config().core,
+        key_algorithm_provider,
     );
 
     let result = service
@@ -129,6 +136,7 @@ async fn test_get_key_success() {
     let mut repository = MockKeyRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
     let key_storage = MockKeyStorage::default();
+    let key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
     let org_id: Uuid = Uuid::new_v4();
     let key = generic_key("NAME", org_id);
@@ -146,6 +154,7 @@ async fn test_get_key_success() {
         organisation_repository,
         key_storage,
         generic_config().core,
+        key_algorithm_provider,
     );
 
     let result = service.get_key(&key.id.to_owned().into()).await;
@@ -161,6 +170,7 @@ async fn test_get_key_list() {
     let key_storage = MockKeyStorage::default();
     let org_id: Uuid = Uuid::new_v4();
     let keys = vec![generic_key("NAME1", org_id), generic_key("NAME2", org_id)];
+    let key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
     let moved_keys = keys.clone();
     repository.expect_get_key_list().once().returning(move |_| {
@@ -177,6 +187,7 @@ async fn test_get_key_list() {
         organisation_repository,
         key_storage,
         generic_config().core,
+        key_algorithm_provider,
     );
 
     let query = GetKeyQueryDTO {
@@ -225,6 +236,14 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
     let mut repository = MockKeyRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
     let key_storage = MockKeyStorage::default();
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    let mut key_alg = MockKeyAlgorithm::default();
+    key_alg
+        .expect_get_capabilities()
+        .once()
+        .returning(|| KeyAlgorithmCapabilities { features: vec![] });
+
+    let key_alg = Arc::new(key_alg);
 
     let org_id: Uuid = Uuid::new_v4();
     let mut key = generic_key("NAME", org_id);
@@ -235,6 +254,15 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
             .expect_get_key()
             .once()
             .returning(move |_, _| Ok(Some(key.clone())));
+
+        key_algorithm_provider
+            .expect_get_key_algorithm()
+            .once()
+            .withf(move |alg| {
+                assert_eq!(alg, "BBS_PLUS");
+                true
+            })
+            .returning(move |_| Some(key_alg.clone()));
     }
 
     let service = setup_service(
@@ -243,6 +271,7 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
         organisation_repository,
         key_storage,
         generic_config().core,
+        key_algorithm_provider,
     );
 
     let result = service
@@ -261,6 +290,16 @@ async fn test_generate_csr_failed_requested_for_more_than_457_days() {
     let mut repository = MockKeyRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
     let key_storage = MockKeyStorage::default();
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    let mut key_alg = MockKeyAlgorithm::default();
+    key_alg
+        .expect_get_capabilities()
+        .once()
+        .returning(|| KeyAlgorithmCapabilities {
+            features: vec!["GENERATE_CSR".to_string()],
+        });
+
+    let key_alg = Arc::new(key_alg);
 
     let org_id: Uuid = Uuid::new_v4();
     let key = generic_key("NAME", org_id);
@@ -270,6 +309,15 @@ async fn test_generate_csr_failed_requested_for_more_than_457_days() {
             .expect_get_key()
             .once()
             .returning(move |_, _| Ok(Some(key.clone())));
+
+        key_algorithm_provider
+            .expect_get_key_algorithm()
+            .once()
+            .withf(move |alg| {
+                assert_eq!(alg, "EDDSA");
+                true
+            })
+            .returning(move |_| Some(key_alg.clone()));
     }
 
     let service = setup_service(
@@ -278,6 +326,7 @@ async fn test_generate_csr_failed_requested_for_more_than_457_days() {
         organisation_repository,
         key_storage,
         generic_config().core,
+        key_algorithm_provider,
     );
 
     let mut request = generic_csr_request();

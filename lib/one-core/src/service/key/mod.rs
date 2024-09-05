@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
 
 use crate::config::core_config;
@@ -20,6 +21,7 @@ pub struct KeyService {
     organisation_repository: Arc<dyn OrganisationRepository>,
     key_provider: Arc<dyn KeyProvider>,
     config: Arc<core_config::CoreConfig>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 impl KeyService {
@@ -29,6 +31,7 @@ impl KeyService {
         organisation_repository: Arc<dyn OrganisationRepository>,
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<core_config::CoreConfig>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ) -> Self {
         Self {
             key_repository,
@@ -36,6 +39,7 @@ impl KeyService {
             organisation_repository,
             key_provider,
             config,
+            key_algorithm_provider,
         }
     }
 }

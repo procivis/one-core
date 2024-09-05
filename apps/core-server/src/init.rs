@@ -49,6 +49,7 @@ use one_providers::key_algorithm::imp::bbs::BBS;
 use one_providers::key_algorithm::imp::eddsa::Eddsa;
 use one_providers::key_algorithm::imp::es256::Es256;
 use one_providers::key_algorithm::imp::provider::KeyAlgorithmProviderImpl;
+use one_providers::key_algorithm::model::KeyAlgorithmCapabilities;
 use one_providers::key_algorithm::KeyAlgorithm;
 use one_providers::key_storage::imp::azure_vault::AzureVaultKeyProvider;
 use one_providers::key_storage::imp::internal::InternalKeyProvider;
@@ -115,6 +116,14 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                 other => panic!("Unexpected key algorithm: {other}"),
             };
             key_algorithms.insert(name.to_owned(), key_algorithm);
+        }
+
+        for (key, value) in config.iter_mut() {
+            if let Some(entity) = key_algorithms.get(key) {
+                value.capabilities = Some(json!(Into::<KeyAlgorithmCapabilities>::into(
+                    entity.get_capabilities()
+                )));
+            }
         }
 
         Arc::new(KeyAlgorithmProviderImpl::new(
