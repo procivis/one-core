@@ -470,7 +470,7 @@ impl SSIHolderService {
 
                 let response: IssuerResponseDTO = self
                     .client
-                    .get(&lvvc_url)
+                    .get(lvvc_url.as_str())
                     .bearer_auth(&bearer_token)
                     .send()
                     .await
