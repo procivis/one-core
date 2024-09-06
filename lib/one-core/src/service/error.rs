@@ -261,6 +261,9 @@ pub enum BusinessLogicError {
     #[error("Incompatible proof exchange protocol")]
     IncompatibleProofExchangeProtocol,
 
+    #[error("Incompatible proof verfication key storage")]
+    IncompatibleProofVerificationKeyStorage,
+
     #[error("Invalid claim type (mdoc top level only objects allowed)")]
     InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
 
@@ -842,6 +845,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Certificate not signed by MDOC")]
     BR_0157,
+
+    #[strum(to_string = "Key storage not supported for proof request")]
+    BR_0158,
 }
 
 impl From<FormatError> for ServiceError {
@@ -965,6 +971,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IncompatibleIssuanceDidMethod => ErrorCode::BR_0127,
             Self::IncompatibleIssuanceExchangeProtocol => ErrorCode::BR_0111,
             Self::IncompatibleProofExchangeProtocol => ErrorCode::BR_0112,
+            Self::IncompatibleProofVerificationKeyStorage => ErrorCode::BR_0158,
             Self::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed => ErrorCode::BR_0117,
             Self::ClaimSchemaKeyTooLong => ErrorCode::BR_0126,
             Self::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,

@@ -65,6 +65,9 @@ impl IntoFilterCondition for DidFilterValue {
             DidFilterValue::KeyAlgorithms(key_algorithms) => {
                 key::Column::KeyType.is_in(key_algorithms).into_condition()
             }
+            DidFilterValue::KeyStorages(key_storages) => key::Column::StorageType
+                .is_in(key_storages)
+                .into_condition(),
             DidFilterValue::KeyRoles(key_roles) => key_did::Column::Role
                 .is_in(
                     key_roles
@@ -100,6 +103,18 @@ impl IntoJoinCondition for DidFilterValue {
                     join_type: JoinType::InnerJoin,
                     relation_def: did::Relation::KeyDid.def(),
                 }]
+            }
+            DidFilterValue::KeyStorages(_) => {
+                vec![
+                    JoinRelation {
+                        join_type: JoinType::InnerJoin,
+                        relation_def: did::Relation::KeyDid.def(),
+                    },
+                    JoinRelation {
+                        join_type: JoinType::InnerJoin,
+                        relation_def: key_did::Relation::Key.def(),
+                    },
+                ]
             }
             _ => vec![],
         }
