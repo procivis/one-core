@@ -25,6 +25,9 @@ pub enum VcValidationError {
 
     #[error("Provided credential contains an empty `credentialSubject`")]
     EmptyCredentialSubject,
+
+    #[error("Invalid validity period, `validUntil` before its `validFrom`")]
+    ValidUntilBeforeValidFrom,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -71,6 +74,13 @@ pub(super) fn validate_verifiable_credential(
     let credential_subject = &credential.credential_subject;
     if credential_subject.id.is_none() && credential_subject.subject.is_empty() {
         return Err(VcValidationError::EmptyCredentialSubject);
+    }
+
+    match (credential.valid_from, credential.valid_until) {
+        (Some(valid_from), Some(valid_until)) if valid_until < valid_from => {
+            return Err(VcValidationError::ValidUntilBeforeValidFrom);
+        }
+        _ => {}
     }
 
     Ok(())
