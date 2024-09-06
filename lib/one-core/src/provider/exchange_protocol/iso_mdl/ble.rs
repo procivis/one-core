@@ -257,7 +257,7 @@ pub async fn start_client(
                     .collect::<anyhow::Result<_>>()?,
             })?;
 
-            let device_request = sk_device.encrypt(&device_request)?;
+            let device_request = sk_reader.encrypt(&device_request)?;
 
             send_session_establishment(
                 &*central,
@@ -279,7 +279,7 @@ pub async fn start_client(
             .context("data is missing")?
             .0;
 
-            let decrypted = sk_reader.decrypt(&session_data)?;
+            let decrypted = sk_device.decrypt(&session_data)?;
             let presentation_content = Base64UrlSafeNoPadding::encode_to_string(decrypted)?;
             let holder_did = proof.holder_did.clone().context("holder did is missing")?;
 
