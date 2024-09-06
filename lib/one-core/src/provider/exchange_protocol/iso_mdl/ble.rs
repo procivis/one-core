@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::iter;
 use std::sync::{Arc, LazyLock};
 
@@ -22,6 +22,7 @@ use super::common::{
 };
 use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment};
+use crate::config::core_config::{self, DatatypeType};
 use crate::model::interaction::{Interaction, InteractionRelations};
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
@@ -223,6 +224,7 @@ pub async fn start_client(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    config: Arc<core_config::CoreConfig>,
 ) -> Result<(), ServiceError> {
     let proof_id = proof.id;
     let repository = proof_repository.clone();
@@ -251,7 +253,7 @@ pub async fn start_client(
                     .clone()
                     .context("missing input_schemas")?
                     .into_iter()
-                    .map(schema_to_doc_request)
+                    .map(|schema| schema_to_doc_request(schema, &config))
                     .collect::<anyhow::Result<_>>()?,
             })?;
 
@@ -595,15 +597,31 @@ pub async fn set_proof_error(proof_repository: &dyn ProofRepository, proof_id: &
         .await;
 }
 
-fn schema_to_doc_request(input: ProofInputSchema) -> anyhow::Result<DocRequest> {
-    let credential = input
+fn schema_to_doc_request(
+    input: ProofInputSchema,
+    config: &core_config::CoreConfig,
+) -> anyhow::Result<DocRequest> {
+    let credential_schema = input
         .credential_schema
         .context("credential_schema is missing")?;
-    let claim_schemas = input.claim_schemas.context("claim_schemas is missing")?;
+
+    let claim_schemas = credential_schema
+        .claim_schemas
+        .context("claim_schemas is missing")?;
+
+    let object_datatypes = config
+        .datatype
+        .iter()
+        .filter_map(|(key, field)| (field.r#type == DatatypeType::Object).then_some(key))
+        .collect::<HashSet<_>>();
 
     let mut name_spaces = HashMap::new();
 
-    for claim_schema in claim_schemas {
+    // TODO: revisit proof-schema claims nesting representation
+    for claim_schema in claim_schemas.iter().filter(|schema| {
+        !object_datatypes.contains(&schema.schema.data_type.as_str())
+            || schema.schema.key.contains(NESTED_CLAIM_MARKER)
+    }) {
         let (namespace, element_identifier) = claim_schema
             .schema
             .key
@@ -622,7 +640,7 @@ fn schema_to_doc_request(input: ProofInputSchema) -> anyhow::Result<DocRequest> 
 
     Ok(DocRequest {
         items_request: EmbeddedCbor(ItemsRequest {
-            doc_type: credential.schema_id,
+            doc_type: credential_schema.schema_id,
             name_spaces,
         }),
     })

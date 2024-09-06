@@ -75,6 +75,7 @@ impl ProofService {
             self.key_algorithm_provider.clone(),
             self.did_method_provider.clone(),
             self.revocation_method_provider.clone(),
+            self.config.clone(),
         )
         .await?;
 
