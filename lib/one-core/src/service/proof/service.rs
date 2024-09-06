@@ -274,7 +274,7 @@ impl ProofService {
                 .await;
         } else if exchange_type == ExchangeType::IsoMdl {
             return self
-                .handle_iso_mdl(
+                .handle_iso_mdl_verifier(
                     proof_schema,
                     request.exchange,
                     request

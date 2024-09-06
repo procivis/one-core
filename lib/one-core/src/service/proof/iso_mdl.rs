@@ -6,14 +6,16 @@ use super::ProofService;
 use crate::config::validator::transport::get_available_transport_type;
 use crate::model::proof::{self, Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
-use crate::provider::exchange_protocol::iso_mdl::ble::start_client;
+use crate::provider::exchange_protocol::iso_mdl::ble_verifier::{
+    setup_verifier_session, start_client,
+};
 use crate::provider::exchange_protocol::iso_mdl::device_engagement::{
     DeviceEngagement, RetrievalOptions,
 };
 use crate::service::error::ServiceError;
 
 impl ProofService {
-    pub(super) async fn handle_iso_mdl(
+    pub(super) async fn handle_iso_mdl_verifier(
         &self,
         schema: ProofSchema,
         exchange: String,
@@ -35,6 +37,8 @@ impl ProofService {
             .clone();
 
         let transport = get_available_transport_type(&self.config.transport)?;
+
+        let verifier_session = setup_verifier_session(qr.device_engagement, &schema, &self.config)?;
 
         let now = OffsetDateTime::now_utc();
         let proof = Proof {
@@ -58,27 +62,12 @@ impl ProofService {
             interaction: None,
         };
 
-        self.proof_repository.create_proof(proof.clone()).await?;
+        let proof_id = self.proof_repository.create_proof(proof.clone()).await?;
 
         let RetrievalOptions::Ble(ble_options) = device_retrieval_method.retrieval_options;
 
-        start_client(
-            ble,
-            ble_options,
-            qr.device_engagement,
-            schema,
-            proof.clone(),
-            self.proof_repository.clone(),
-            self.credential_repository.clone(),
-            self.did_repository.clone(),
-            self.credential_formatter_provider.clone(),
-            self.key_algorithm_provider.clone(),
-            self.did_method_provider.clone(),
-            self.revocation_method_provider.clone(),
-            self.config.clone(),
-        )
-        .await?;
+        start_client(ble, ble_options, verifier_session, proof).await?;
 
-        Ok(proof.id)
+        Ok(proof_id)
     }
 }

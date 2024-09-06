@@ -35,6 +35,7 @@ pub struct ProofService {
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
+    #[allow(dead_code)]
     did_method_provider: Arc<dyn DidMethodProvider>,
     ble: Option<BleWaiter>,
     config: Arc<core_config::CoreConfig>,

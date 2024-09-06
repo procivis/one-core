@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
+use std::iter;
 
 use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, KeyInit};
@@ -78,6 +79,21 @@ impl From<Chunk> for Vec<u8> {
             Chunk::Next(v) => std::iter::once(1).chain(v).collect(),
         }
     }
+}
+
+pub(super) fn split_into_chunks(
+    session_message: Vec<u8>,
+    mtu_size: usize,
+) -> anyhow::Result<Vec<Vec<u8>>> {
+    let mut chunks = session_message.chunks(mtu_size - 1);
+
+    let last = Chunk::Last(chunks.next_back().context("no chunks")?.to_vec());
+
+    Ok(chunks
+        .map(|slice| Chunk::Next(slice.to_vec()))
+        .chain(iter::once(last))
+        .map(Into::into)
+        .collect())
 }
 
 // EDeviceKey = COSE_Key
