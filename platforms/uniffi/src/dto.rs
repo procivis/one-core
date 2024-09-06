@@ -38,7 +38,7 @@ use one_core::service::credential_schema::dto::{
 use one_core::service::did::dto::{DidListItemResponseDTO, GetDidListResponseDTO};
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::GetHistoryListResponseDTO;
-use one_core::service::key::dto::KeyListItemResponseDTO;
+use one_core::service::key::dto::{KeyCheckCertificateRequestDTO, KeyListItemResponseDTO};
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, ProofClaimDTO, ProofClaimValueDTO,
     ProofInputDTO, ProofListItemResponseDTO, ProposeProofResponseDTO, ScanToVerifyBarcodeTypeEnum,
@@ -1442,4 +1442,10 @@ pub struct ProposeProofResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub interaction_id: String,
     pub url: String,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(KeyCheckCertificateRequestDTO)]
+pub struct KeyCheckCertificateRequestBindingDTO {
+    pub certificate: String,
 }

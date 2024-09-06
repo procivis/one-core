@@ -1,4 +1,5 @@
 mod backup_info;
+mod check_certificate;
 mod check_revocation;
 mod create_anchor;
 mod create_backup;
