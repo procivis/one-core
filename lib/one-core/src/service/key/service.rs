@@ -8,12 +8,13 @@ use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
 use shared_types::KeyId;
 use uuid::Uuid;
 
-use super::dto::{GetKeyListResponseDTO, GetKeyQueryDTO};
+use super::dto::{GetKeyListResponseDTO, GetKeyQueryDTO, KeyCheckCertificateRequestDTO};
 use super::mapper::request_to_certificate_params;
 use super::KeyService;
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
+use crate::provider::did_method::mdl::{parse_pem, parse_x509_from_der, parse_x509_from_pem};
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -115,6 +116,42 @@ impl KeyService {
         let result = self.key_repository.get_key_list(query).await?;
 
         Ok(result.into())
+    }
+
+    /// Check certificate in PEM or DER format
+    ///
+    /// # Arguments
+    ///
+    /// * `KeyId` - Id of an existing key
+    pub async fn check_certificate(
+        &self,
+        key_id: &KeyId,
+        request: KeyCheckCertificateRequestDTO,
+    ) -> Result<(), ServiceError> {
+        let key = self
+            .key_repository
+            .get_key(
+                &key_id.to_owned().into(),
+                &KeyRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                },
+            )
+            .await?
+            .ok_or(EntityNotFoundError::Key(key_id.to_owned()))?;
+
+        if let Ok(pem) = parse_pem(&request.certificate) {
+            let certificate = parse_x509_from_pem(&pem)?;
+            self.did_mdl_validator
+                .validate_subject_public_key(&certificate, &key)?;
+            self.did_mdl_validator.validate_certificate(&certificate)?;
+        } else {
+            let certificate = parse_x509_from_der(request.certificate.as_bytes())?;
+            self.did_mdl_validator
+                .validate_subject_public_key(&certificate, &key)?;
+            self.did_mdl_validator.validate_certificate(&certificate)?;
+        };
+
+        Ok(())
     }
 
     /// Returns x509 CSR of given key
