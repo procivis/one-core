@@ -4,6 +4,7 @@ use one_providers::credential_formatter::{
     imp::json_ld::model::{ContextType, LdCredential, LdPresentation},
     model::Context,
 };
+use url::Url;
 
 use crate::service::error::ServiceError;
 
@@ -28,6 +29,9 @@ pub enum VcValidationError {
 
     #[error("Invalid validity period, `validUntil` before its `validFrom`")]
     ValidUntilBeforeValidFrom,
+
+    #[error("VC contains invalid credentialSchema id. Must be a URL")]
+    InvalidCredentialSchemaId,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -81,6 +85,14 @@ pub(super) fn validate_verifiable_credential(
             return Err(VcValidationError::ValidUntilBeforeValidFrom);
         }
         _ => {}
+    }
+
+    if credential
+        .credential_schema
+        .as_ref()
+        .is_some_and(|cs| !cs.id.parse::<Url>().is_ok())
+    {
+        return Err(VcValidationError::InvalidCredentialSchemaId);
     }
 
     Ok(())
