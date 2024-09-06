@@ -22,6 +22,9 @@ pub enum VcValidationError {
 
     #[error("Provided credential is missing the specified `type` property")]
     MissingVerifiableCredentialType,
+
+    #[error("Provided credential contains an empty `credentialSubject`")]
+    EmptyCredentialSubject,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -63,6 +66,11 @@ pub(super) fn validate_verifiable_credential(
         .any(|c| c == "VerifiableCredential" || c == "EnvelopedVerifiableCredential")
     {
         return Err(VcValidationError::MissingVerifiableCredentialType);
+    }
+
+    let credential_subject = &credential.credential_subject;
+    if credential_subject.id.is_none() && credential_subject.subject.is_empty() {
+        return Err(VcValidationError::EmptyCredentialSubject);
     }
 
     Ok(())
@@ -108,35 +116,5 @@ impl From<VcValidationError> for ServiceError {
 impl From<VpValidationError> for ServiceError {
     fn from(value: VpValidationError) -> Self {
         ServiceError::ValidationError(value.to_string())
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use one_providers::credential_formatter::imp::json_ld::model::LdCredential;
-
-    #[test]
-    fn test_x() {
-        let x: LdCredential = serde_json::from_str(
-            r#"{
-  
-        "@context": [
-            "https://www.w3.org/ns/credentials/v2"
-        ],
-        "type": [
-            "VerifiableCredential"
-        ],
-        "issuer": {
-            "name": "ExampleIssuer",
-            "id": "did:key:z6MkorouVyS1LSZPyEaq7juWLUqWQqwu9xgZzLduf8TypMHg"
-        },
-        "credentialSubject": {
-            "id": "did:example:subject"
-        }
-
-}
-    "#,
-        )
-        .unwrap();
     }
 }
