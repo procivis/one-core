@@ -29,31 +29,6 @@ impl IsoMdlBleHolder {
         Self { ble }
     }
 
-    // The native implementation is loaded lazily. It sometimes happens that
-    // on the first call to this method, the native implementation is not loaded yet.
-    // This causes the method to return false even though the adapter is enabled.
-    // To work around this, we retry the call after a short delay.
-    #[tracing::instrument(level = "debug", skip(self), err(Debug))]
-    pub async fn enabled(&self) -> Result<bool, ExchangeProtocolError> {
-        let enabled = self
-            .ble
-            .is_enabled()
-            .await
-            .map(|s| s.central)
-            .unwrap_or(false);
-
-        if enabled {
-            return Ok(true);
-        }
-
-        tokio::time::sleep(Duration::from_secs(1)).await;
-        self.ble
-            .is_enabled()
-            .await
-            .map(|s| s.central)
-            .map_err(|err| ExchangeProtocolError::Transport(err.into()))
-    }
-
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     pub async fn submit_presentation(
         &self,

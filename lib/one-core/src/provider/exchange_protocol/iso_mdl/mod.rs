@@ -46,6 +46,7 @@ use crate::util::ble_resource::{Abort, BleWaiter};
 
 pub(crate) mod ble;
 mod ble_holder;
+pub(crate) mod ble_verifier;
 pub(crate) mod common;
 
 use common::Chunk;
@@ -222,12 +223,6 @@ impl ExchangeProtocolImpl for IsoMdl {
         )?;
 
         let ble_holder = IsoMdlBleHolder::new(ble.clone());
-
-        if !ble_holder.enabled().await? {
-            return Err(ExchangeProtocolError::Failed(
-                "BLE adapter disabled".to_string(),
-            ));
-        }
 
         let tokens: Vec<String> = credential_presentations
             .iter()
