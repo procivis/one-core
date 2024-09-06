@@ -1,8 +1,9 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use dto_mapper::{From, Into, TryFrom};
 use one_core::service::key::dto::{
-    KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
-    KeyGenerateCSRResponseDTO, KeyListItemResponseDTO, KeyRequestDTO, KeyResponseDTO,
+    KeyCheckCertificateRequestDTO, KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile,
+    KeyGenerateCSRRequestSubjectDTO, KeyGenerateCSRResponseDTO, KeyListItemResponseDTO,
+    KeyRequestDTO, KeyResponseDTO,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -131,4 +132,10 @@ pub struct KeyGenerateCSRRequestSubjectRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct KeyGenerateCSRResponseRestDTO {
     pub content: String,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(KeyCheckCertificateRequestDTO)]
+pub struct KeyCheckCertificateRequestRestDTO {
+    pub certificate: String,
 }

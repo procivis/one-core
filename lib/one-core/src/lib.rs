@@ -266,6 +266,12 @@ impl OneCore {
             _ => None,
         };
 
+        let did_mdl_validator = providers
+            .did_mdl_validator
+            .as_ref()
+            .expect("Did method validator is required")
+            .clone();
+
         let did_method_provider = providers
             .did_method_provider
             .as_ref()
@@ -448,6 +454,7 @@ impl OneCore {
                 data_provider.get_key_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
+                did_mdl_validator,
                 key_provider.clone(),
                 config.clone(),
                 key_algorithm_provider.clone(),

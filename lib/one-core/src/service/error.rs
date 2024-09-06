@@ -22,6 +22,7 @@ use crate::model::credential::CredentialStateEnum;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofStateEnum;
 use crate::model::revocation_list::RevocationListId;
+use crate::provider::did_method::mdl::DidMdlValidationError;
 use crate::repository::error::DataLayerError;
 use crate::util::oidc::FormatError;
 
@@ -74,6 +75,9 @@ pub enum ServiceError {
 
     #[error("Did method provider error `{0}`")]
     DidMethodProviderError(#[from] DidMethodProviderError),
+
+    #[error("Did mdl validation error `{0}`")]
+    DidMdlValidationError(#[from] DidMdlValidationError),
 
     #[error("Crypto provider error: `{0}`")]
     CryptoError(#[from] CryptoProviderError),
@@ -832,6 +836,12 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Invalid mdl request")]
     BR_0147,
+
+    #[strum(to_string = "Public key not matching key in core")]
+    BR_0156,
+
+    #[strum(to_string = "Certificate not signed by MDOC")]
+    BR_0157,
 }
 
 impl From<FormatError> for ServiceError {
@@ -876,6 +886,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::KeyAlgorithmProviderError(_) => ErrorCode::BR_0063,
             Self::DidMethodError(_) => ErrorCode::BR_0064,
             Self::DidMethodProviderError(error) => did_method_provider_error_code(error),
+            Self::DidMdlValidationError(error) => error.error_code(),
             Self::ValidationError(_) | Self::Other(_) => ErrorCode::BR_0000,
             Self::Revocation(_) => ErrorCode::BR_0101,
         }
@@ -1062,5 +1073,17 @@ pub fn did_method_provider_error_code(error: &DidMethodProviderError) -> ErrorCo
         | DidMethodProviderError::RemoteEntityStorage(_)
         | DidMethodProviderError::Other(_) => ErrorCode::BR_0064,
         DidMethodProviderError::MissingProvider(_) => ErrorCode::BR_0031,
+    }
+}
+
+impl ErrorCodeMixin for DidMdlValidationError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            DidMdlValidationError::CertificateSignatureVerificationFailed(_)
+            | DidMdlValidationError::CertificateExpired => ErrorCode::BR_0157,
+            DidMdlValidationError::SubjectPublicKeyNotMatching
+            | DidMdlValidationError::KeyTypeNotSupported(_)
+            | DidMdlValidationError::SubjectPublicKeyInvalidDer(_) => ErrorCode::BR_0156,
+        }
     }
 }

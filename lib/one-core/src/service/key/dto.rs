@@ -73,3 +73,8 @@ pub struct KeyGenerateCSRRequestSubjectDTO {
 pub struct KeyGenerateCSRResponseDTO {
     pub content: String,
 }
+
+#[derive(Debug)]
+pub struct KeyCheckCertificateRequestDTO {
+    pub certificate: String,
+}

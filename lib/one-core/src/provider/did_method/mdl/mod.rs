@@ -239,7 +239,7 @@ fn extract_x509_certificate(params: &serde_json::Value) -> Result<&str, DidMetho
     Ok(certificate)
 }
 
-fn parse_pem(certificate: &str) -> Result<Pem, DidMethodError> {
+pub(crate) fn parse_pem(certificate: &str) -> Result<Pem, DidMethodError> {
     let (_leftover, pem) =
         x509_parser::pem::parse_x509_pem(certificate.as_bytes()).map_err(|err| {
             DidMethodError::CouldNotCreate(format!(
@@ -250,7 +250,7 @@ fn parse_pem(certificate: &str) -> Result<Pem, DidMethodError> {
     Ok(pem)
 }
 
-fn parse_x509_from_pem(pem: &Pem) -> Result<X509Certificate, DidMethodError> {
+pub(crate) fn parse_x509_from_pem(pem: &Pem) -> Result<X509Certificate, DidMethodError> {
     pem.parse_x509().map_err(|err| {
         DidMethodError::CouldNotCreate(format!(
             "Error parsing x509 certificate from PEM format: {err}"
@@ -258,7 +258,7 @@ fn parse_x509_from_pem(pem: &Pem) -> Result<X509Certificate, DidMethodError> {
     })
 }
 
-fn parse_x509_from_der(certificate: &[u8]) -> Result<X509Certificate, DidMethodError> {
+pub(crate) fn parse_x509_from_der(certificate: &[u8]) -> Result<X509Certificate, DidMethodError> {
     let (_leftover, certificate) =
         x509_parser::parse_x509_certificate(certificate).map_err(|err| {
             DidMethodError::CouldNotCreate(format!(

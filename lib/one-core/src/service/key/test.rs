@@ -14,6 +14,7 @@ use uuid::Uuid;
 use super::KeyService;
 use crate::model::key::GetKeyList;
 use crate::model::organisation::Organisation;
+use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -28,6 +29,7 @@ fn setup_service(
     repository: MockKeyRepository,
     history_repository: MockHistoryRepository,
     organisation_repository: MockOrganisationRepository,
+    did_mdl_validator: MockDidMdlValidator,
     key_storage: MockKeyStorage,
     config: crate::config::core_config::CoreConfig,
     key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -41,6 +43,7 @@ fn setup_service(
         Arc::new(repository),
         Arc::new(history_repository),
         Arc::new(organisation_repository),
+        Arc::new(did_mdl_validator),
         Arc::new(provider),
         Arc::new(config),
         Arc::new(key_algorithm_provider),
@@ -111,6 +114,7 @@ async fn test_create_key_success() {
         repository,
         history_repository,
         organisation_repository,
+        MockDidMdlValidator::default(),
         key_storage,
         generic_config().core,
         key_algorithm_provider,
@@ -152,6 +156,7 @@ async fn test_get_key_success() {
         repository,
         MockHistoryRepository::default(),
         organisation_repository,
+        MockDidMdlValidator::default(),
         key_storage,
         generic_config().core,
         key_algorithm_provider,
@@ -185,6 +190,7 @@ async fn test_get_key_list() {
         repository,
         MockHistoryRepository::default(),
         organisation_repository,
+        MockDidMdlValidator::default(),
         key_storage,
         generic_config().core,
         key_algorithm_provider,
@@ -269,6 +275,7 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
         repository,
         MockHistoryRepository::default(),
         organisation_repository,
+        MockDidMdlValidator::default(),
         key_storage,
         generic_config().core,
         key_algorithm_provider,
@@ -324,6 +331,7 @@ async fn test_generate_csr_failed_requested_for_more_than_457_days() {
         repository,
         MockHistoryRepository::default(),
         organisation_repository,
+        MockDidMdlValidator::default(),
         key_storage,
         generic_config().core,
         key_algorithm_provider,
