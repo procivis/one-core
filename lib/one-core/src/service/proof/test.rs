@@ -7,7 +7,7 @@ use one_providers::common_models::key::OpenKey;
 use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::model::FormatterCapabilities;
 use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::credential_formatter::MockCredentialFormatter;
+use one_providers::credential_formatter::{CredentialFormatter, MockCredentialFormatter};
 use one_providers::did::provider::MockDidMethodProvider;
 use one_providers::exchange_protocol::imp::provider::MockExchangeProtocol;
 use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
@@ -1935,15 +1935,18 @@ async fn test_create_proof_without_related_key() {
     let exchange_copy = exchange.to_owned();
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(|| FormatterCapabilities {
-            proof_exchange_protocols: vec![exchange_copy],
+        .times(2)
+        .returning(move || FormatterCapabilities {
+            proof_exchange_protocols: vec![exchange_copy.clone()],
+            verification_key_storages: vec!["INTERNAL".to_string()],
             ..Default::default()
         });
+
+    let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
         .expect_get_formatter()
-        .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .times(2)
+        .returning(move |_| Some(formatter.clone()));
 
     let proof_id = Uuid::new_v4().into();
     let mut proof_repository = MockProofRepository::default();
@@ -2037,15 +2040,18 @@ async fn test_create_proof_with_related_key() {
     let exchange_copy = exchange.to_owned();
     formatter
         .expect_get_capabilities()
-        .once()
-        .return_once(move || FormatterCapabilities {
-            proof_exchange_protocols: vec![exchange_copy],
+        .times(2)
+        .returning(move || FormatterCapabilities {
+            proof_exchange_protocols: vec![exchange_copy.clone()],
+            verification_key_storages: vec!["INTERNAL".to_string()],
             ..Default::default()
         });
+
+    let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
         .expect_get_formatter()
-        .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .times(2)
+        .returning(move |_| Some(formatter.clone()));
 
     let proof_id = Uuid::new_v4().into();
     let mut proof_repository = MockProofRepository::default();
@@ -2388,6 +2394,107 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
     assert2::assert!(
         let Err(ServiceError::Validation(ValidationError::InvalidScanToVerifyParameters)) = result
     );
+}
+
+#[tokio::test]
+async fn test_create_proof_failed_incompatible_verification_key_storage() {
+    let exchange = "PROCIVIS_TEMPORARY".to_string();
+    let request = CreateProofRequestDTO {
+        proof_schema_id: Uuid::new_v4().into(),
+        verifier_did_id: Uuid::new_v4().into(),
+        exchange: exchange.to_owned(),
+        redirect_uri: None,
+        verifier_key: None,
+        scan_to_verify: None,
+        iso_mdl_engagement: None,
+    };
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .once()
+        .withf(move |id, _| &request.proof_schema_id == id)
+        .returning(|id, _| {
+            Ok(Some(ProofSchema {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: None,
+                input_schemas: Some(vec![generic_proof_input_schema()]),
+            }))
+        });
+
+    let verifier_key_id = Uuid::new_v4();
+
+    let request_clone = request.clone();
+    let mut did_repository = MockDidRepository::default();
+    did_repository
+        .expect_get_did()
+        .once()
+        .withf(move |id, _| &request_clone.verifier_did_id == id)
+        .returning(move |id, _| {
+            Ok(Some(Did {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: OpenKey {
+                        id: verifier_key_id.into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        public_key: vec![],
+                        name: "key".to_string(),
+                        key_reference: vec![],
+                        storage_type: "INTERNAL".to_string(),
+                        key_type: "EDDSA".to_string(),
+                        organisation: None,
+                    },
+                }]),
+                deactivated: false,
+            }))
+        });
+
+    let mut formatter = MockCredentialFormatter::default();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
+    formatter
+        .expect_get_capabilities()
+        .times(2)
+        .returning(move || FormatterCapabilities {
+            proof_exchange_protocols: vec![exchange.clone()],
+            verification_key_storages: vec![],
+            ..Default::default()
+        });
+
+    let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
+    credential_formatter_provider
+        .expect_get_formatter()
+        .times(2)
+        .returning(move |_| Some(formatter.clone()));
+
+    let service = setup_service(Repositories {
+        did_repository,
+        proof_schema_repository,
+        credential_formatter_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.create_proof(request.to_owned()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::IncompatibleProofVerificationKeyStorage
+        ))
+    ));
 }
 
 #[tokio::test]

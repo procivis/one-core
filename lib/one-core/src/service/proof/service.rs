@@ -16,7 +16,7 @@ use super::dto::{
 use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
 };
-use super::validator::validate_mdl_exchange;
+use super::validator::{validate_mdl_exchange, validate_verification_key_storage_compatibility};
 use super::ProofService;
 use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
@@ -320,6 +320,13 @@ impl ProofService {
         if verifier_key.key_type == "BBS_PLUS" {
             return Err(ValidationError::BBSNotSupported.into());
         }
+
+        validate_verification_key_storage_compatibility(
+            &self.config,
+            &proof_schema,
+            &verifier_key,
+            &*self.credential_formatter_provider,
+        )?;
 
         let (transport, _) = get_available_transport_type(&self.config.transport)?;
 

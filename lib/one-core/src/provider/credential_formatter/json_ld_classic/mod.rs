@@ -287,6 +287,11 @@ impl CredentialFormatter for JsonLdClassic {
                 "ARRAY".to_string(),
             ],
             verification_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
+            verification_key_storages: vec![
+                "INTERNAL".to_string(),
+                "AZURE_HSM".to_string(),
+                "SECURE_ELEMENT".to_string(),
+            ],
             forbidden_claim_names: [
                 json_ld::jsonld_forbidden_claim_names(),
                 vec!["0".to_string()],

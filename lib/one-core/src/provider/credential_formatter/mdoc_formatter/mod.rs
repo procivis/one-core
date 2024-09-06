@@ -473,6 +473,7 @@ impl CredentialFormatter for MdocFormatter {
             revocation_methods: vec!["NONE".to_string()],
             signing_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
             verification_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
+            verification_key_storages: vec!["INTERNAL".to_string()],
             datatypes: vec![
                 "STRING".to_string(),
                 "BOOLEAN".to_string(),

@@ -1,3 +1,4 @@
+use one_providers::common_models::key::OpenKey;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 
 use super::dto::CreateProofRequestDTO;
@@ -95,4 +96,54 @@ pub(super) fn validate_mdl_exchange(
         )),
         _ => Ok(()),
     }
+}
+
+pub(super) fn validate_verification_key_storage_compatibility(
+    config: &CoreConfig,
+    proof_schema: &ProofSchema,
+    verifier_key: &OpenKey,
+    formatter_provider: &dyn CredentialFormatterProvider,
+) -> Result<(), ServiceError> {
+    let input_schemas = proof_schema
+        .input_schemas
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "input_schemas is None".to_string(),
+        ))?;
+
+    let key_storage_type = config
+        .key_storage
+        .get_fields(&verifier_key.storage_type)?
+        .r#type
+        .to_owned();
+
+    input_schemas.iter().try_for_each(|input_schema| {
+        let credential_schema =
+            input_schema
+                .credential_schema
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "credential_schema is None".to_string(),
+                ))?;
+
+        let formatter = formatter_provider
+            .get_formatter(&credential_schema.format.to_string())
+            .ok_or(MissingProviderError::Formatter(
+                credential_schema.format.to_string(),
+            ))?;
+
+        let capabilities = formatter.get_capabilities();
+        if !capabilities
+            .verification_key_storages
+            .contains(&key_storage_type)
+        {
+            return Err(ServiceError::BusinessLogic(
+                BusinessLogicError::IncompatibleProofVerificationKeyStorage,
+            ));
+        }
+
+        Ok(())
+    })?;
+
+    Ok(())
 }
