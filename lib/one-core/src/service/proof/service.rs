@@ -164,7 +164,8 @@ impl ProofService {
             .into());
         }
 
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)
+            .or_else(|_| throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested))?;
 
         let exchange = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
             MissingProviderError::ExchangeProtocol(proof.exchange.clone()),
