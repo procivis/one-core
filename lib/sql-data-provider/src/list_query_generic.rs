@@ -239,7 +239,7 @@ pub(crate) fn get_blob_match_condition(
 ) -> Condition {
     let StringMatch { r#match, value } = value;
     let slice = Expr::expr(
-        Func::cust(Hex).arg(Func::cust(SubStr).arg(column.into_expr()).arg(0).arg(limit)),
+        Func::cust(Hex).arg(Func::cust(SubStr).arg(column.into_expr()).arg(1).arg(limit)),
     );
     let value = hex::encode(value);
 

@@ -103,7 +103,7 @@ pub fn create_config(
         core_config::AppConfig::from_yaml_str_configs(configs.collect()).unwrap();
 
     app_config.app = ServerConfig {
-        database_url: "sqlite::memory:".to_string(),
+        database_url: std::env::var("ONE_app__databaseUrl").unwrap_or("sqlite::memory:".into()),
         auth_token: "test".to_string(),
         core_base_url: core_base_url.into(),
         server_ip: None,
