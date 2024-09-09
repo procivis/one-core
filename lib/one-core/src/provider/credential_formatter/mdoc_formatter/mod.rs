@@ -18,9 +18,10 @@ use one_providers::common_models::did::DidValue;
 use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::model::{
-    AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema, CredentialSubject,
-    DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities,
-    Presentation, PublishedClaim, SignatureProvider, TokenVerifier, VerificationFn,
+    AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema,
+    CredentialSchemaMetadata, CredentialSubject, DetailCredential, ExtractPresentationCtx,
+    FormatPresentationCtx, FormatterCapabilities, Presentation, PublishedClaim, SignatureProvider,
+    TokenVerifier, VerificationFn,
 };
 use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::did::provider::DidMethodProvider;
@@ -28,6 +29,7 @@ use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use rand::RngCore;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use serde_with::{serde_as, DurationSeconds};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use time::{Duration, OffsetDateTime};
@@ -43,6 +45,7 @@ use self::mdoc::{
     ValidityInfo, ValueDigests,
 };
 use super::common::nest_claims;
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::provider::did_method::mdl::DidMdlValidator;
@@ -52,6 +55,8 @@ pub mod mdoc;
 
 #[cfg(test)]
 mod test;
+
+static LAYOUT_NAMESPACE: &str = "ch.procivis.mdoc_layout.1";
 
 pub struct MdocFormatter {
     did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
@@ -71,6 +76,7 @@ pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub mso_expected_update_in: Duration,
     pub leeway: u64,
+    pub embed_layout_properties: Option<bool>,
 }
 
 impl MdocFormatter {
@@ -122,7 +128,33 @@ impl CredentialFormatter for MdocFormatter {
             )
         })?;
 
-        let namespaces = try_build_namespaces(credential.claims, &self.datatype_config)?;
+        let additional_namespaces: IndexMap<Namespace, serde_json::Value> =
+            if let Some(metadata) = credential.schema.metadata {
+                let layout_value = match self.params.embed_layout_properties {
+                    Some(true) => {
+                        json!({
+                            "id": credential_schema_id,
+                            "layoutProperties": metadata.layout_properties,
+                            "layoutType": metadata.layout_type,
+                        })
+                    }
+                    _ => {
+                        json!({
+                            "id": credential_schema_id
+                        })
+                    }
+                };
+                IndexMap::from([(LAYOUT_NAMESPACE.to_string(), layout_value)])
+            } else {
+                IndexMap::new()
+            };
+
+        let namespaces = try_build_namespaces(
+            credential.claims,
+            additional_namespaces,
+            &self.datatype_config,
+        )?;
+
         let cose_key =
             try_build_cose_key(&*self.did_method_provider, &holder_did.to_owned()).await?;
 
@@ -368,7 +400,16 @@ impl CredentialFormatter for MdocFormatter {
             ));
         };
 
-        let disclosed_keys: IndexSet<_> = credential.disclosed_keys.iter().collect();
+        let mut disclosed_keys: IndexSet<&str> = credential
+            .disclosed_keys
+            .iter()
+            .map(|key| key.as_str())
+            .collect();
+
+        if namespaces.contains_key(LAYOUT_NAMESPACE) {
+            // We would like to disclose that namespace as well
+            disclosed_keys.insert(LAYOUT_NAMESPACE);
+        }
 
         let mut paths_for_namespace = IndexMap::new();
         for disclosed_key in disclosed_keys {
@@ -446,7 +487,7 @@ impl CredentialFormatter for MdocFormatter {
                 "ARRAY".to_string(),
                 "MDL_PICTURE".to_string(),
             ],
-            forbidden_claim_names: vec!["0".to_string()],
+            forbidden_claim_names: vec!["0".to_string(), LAYOUT_NAMESPACE.to_string()],
         }
     }
 
@@ -687,7 +728,12 @@ fn extract_credentials_internal(
         }
     }
 
-    let claims = try_extract_claims(namespaces)?;
+    let mut claims = try_extract_claims(namespaces)?;
+
+    let layout = claims.remove(LAYOUT_NAMESPACE);
+
+    let metadata: Option<CredentialSchemaMetadata> =
+        layout.and_then(|layout| serde_json::from_value(layout).ok());
 
     Ok(DetailCredential {
         id: None,
@@ -705,7 +751,7 @@ fn extract_credentials_internal(
         credential_schema: Some(CredentialSchema {
             id: mso.doc_type,
             r#type: CredentialSchemaType::Mdoc.to_string(),
-            metadata: None,
+            metadata,
         }),
     })
 }
@@ -827,11 +873,13 @@ pub async fn try_verify_detached_signature_with_provider(
 
 fn try_build_namespaces(
     claims: Vec<PublishedClaim>,
+    additional_namespaces: IndexMap<String, serde_json::Value>,
     datatype_config: &DatatypeConfig,
 ) -> Result<Namespaces, FormatterError> {
     let mut namespaces = Namespaces::new();
 
-    let nested = nest_claims(claims.clone())?;
+    let mut nested = nest_claims(claims.clone())?;
+    nested.extend(additional_namespaces);
 
     let mut digest_id: u64 = 0;
 
@@ -906,6 +954,22 @@ fn build_ciborium_value(
             Ok(ciborium::Value::Array(items))
         }
         serde_json::Value::Null => Ok(ciborium::Value::Null),
+        serde_json::Value::String(value)
+            if this_path
+                .chars()
+                .take_while(|c| c != &NESTED_CLAIM_MARKER)
+                .eq(LAYOUT_NAMESPACE.chars()) =>
+        {
+            let claim = PublishedClaim {
+                key: this_path.to_string(),
+                value: one_providers::credential_formatter::model::PublishedClaimValue::String(
+                    value.to_string(),
+                ),
+                datatype: Some("STRING".to_owned()),
+                array_item: false,
+            };
+            map_to_ciborium_value(&claim, datatype_config)
+        }
         _ => {
             let claim =
                 claims
@@ -914,7 +978,6 @@ fn build_ciborium_value(
                     .ok_or(FormatterError::Failed(format!(
                         "Missing claim: {this_path}"
                     )))?;
-
             map_to_ciborium_value(claim, datatype_config)
         }
     }

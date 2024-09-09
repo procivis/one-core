@@ -3,8 +3,11 @@ use std::collections::BTreeMap;
 use coset::{KeyType, Label, RegisteredLabelWithPrivate};
 use hex_literal::hex;
 use maplit::hashmap;
+use one_providers::common_models::credential_schema::{
+    OpenBackgroundProperties, OpenLayoutProperties, OpenLayoutType,
+};
 use one_providers::credential_formatter::model::{
-    CredentialSchemaData, MockSignatureProvider, PublishedClaimValue,
+    CredentialSchemaData, MockSignatureProvider, MockTokenVerifier, PublishedClaimValue,
 };
 use one_providers::did::model::{DidDocument, DidVerificationMethod};
 use one_providers::did::provider::MockDidMethodProvider;
@@ -189,7 +192,20 @@ async fn test_credential_formatting_ok_for_es256() {
             r#type: None,
             context: None,
             name: "credential-schema-name".to_string(),
-            metadata: None,
+            metadata: Some(CredentialSchemaMetadata {
+                layout_type: OpenLayoutType::Card,
+                layout_properties: OpenLayoutProperties {
+                    background: Some(OpenBackgroundProperties {
+                        color: Some("color".to_string()),
+                        image: None,
+                    }),
+                    logo: None,
+                    primary_attribute: None,
+                    secondary_attribute: None,
+                    picture_attribute: None,
+                    code: None,
+                },
+            }),
         },
     };
 
@@ -232,6 +248,7 @@ async fn test_credential_formatting_ok_for_es256() {
         mso_expires_in: time::Duration::seconds(10),
         mso_expected_update_in: time::Duration::days(10),
         leeway: 60_u64,
+        embed_layout_properties: None,
     };
     let algorithm = "ES256";
 
@@ -281,7 +298,8 @@ async fn test_credential_formatting_ok_for_es256() {
     let cose_sign1 = issuer_signed.issuer_auth.0;
 
     // check namespaces
-    assert_eq!(1, namespaces.len());
+    // additional namespace is included always when credential schema contains layout
+    assert_eq!(2, namespaces.len());
     assert_eq!(1, namespaces["a"].len());
     let signed_item = &namespaces["a"][0].0;
 
@@ -323,7 +341,8 @@ async fn test_credential_formatting_ok_for_es256() {
         ciborium::from_reader(cose_sign1.payload.unwrap().as_slice()).unwrap();
 
     // check value digests
-    assert_eq!(1, mso.value_digests.len());
+    // additional namespace is included always when credential schema contains layout
+    assert_eq!(2, mso.value_digests.len());
     assert_eq!(1, mso.value_digests["a"].len());
     assert!(mso.value_digests["a"].get(&signed_item.digest_id).is_some());
 
@@ -414,6 +433,7 @@ async fn test_unverified_credential_extraction() {
         mso_expires_in: time::Duration::seconds(10),
         mso_expected_update_in: time::Duration::days(10),
         leeway: 60_u64,
+        embed_layout_properties: None,
     };
     let algorithm = "ES256";
 
@@ -503,4 +523,172 @@ async fn test_unverified_credential_extraction() {
         },
         credential.claims.values
     )
+}
+
+#[tokio::test]
+async fn test_credential_formatting_ok_for_es256_layout_transfered() {
+    let detailed_credential = format_and_extract_es256(true).await;
+    assert_eq!(
+        detailed_credential
+            .credential_schema
+            .unwrap()
+            .metadata
+            .unwrap()
+            .layout_properties
+            .background
+            .unwrap()
+            .color
+            .unwrap(),
+        "color"
+    );
+}
+
+#[tokio::test]
+async fn test_credential_formatting_ok_for_es256_layout_not_transfered() {
+    let detailed_credential = format_and_extract_es256(false).await;
+    assert!(detailed_credential
+        .credential_schema
+        .unwrap()
+        .metadata
+        .is_none());
+}
+
+async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
+    let issuer_did = DidValue::from("did:mdl:certificate:MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg".to_string());
+
+    let credential_data = CredentialData {
+        id: None,
+        issuance_date: OffsetDateTime::now_utc(),
+        valid_for: time::Duration::seconds(10),
+        claims: vec![PublishedClaim {
+            key: "a/b/c".to_string(),
+            value: PublishedClaimValue::String("15".to_string()),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        }],
+        issuer_did: issuer_did.clone(),
+        status: vec![],
+        schema: CredentialSchemaData {
+            id: Some("credential-schema-id".to_string()),
+            r#type: None,
+            context: None,
+            name: "credential-schema-name".to_string(),
+            metadata: Some(CredentialSchemaMetadata {
+                layout_type: OpenLayoutType::Card,
+                layout_properties: OpenLayoutProperties {
+                    background: Some(OpenBackgroundProperties {
+                        color: Some("color".to_string()),
+                        image: None,
+                    }),
+                    logo: None,
+                    primary_attribute: None,
+                    secondary_attribute: None,
+                    picture_attribute: None,
+                    code: None,
+                },
+            }),
+        },
+    };
+
+    let holder_did = DidValue::from("holder-did".to_string());
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+
+    did_method_provider
+        .expect_resolve()
+        .withf({
+            let holder_did = holder_did.clone();
+
+            move |did| did == &holder_did
+        })
+        .returning(|holder_did| {
+            Ok(DidDocument {
+                context: json!({}),
+                id: holder_did.to_owned(),
+                verification_method: vec![DidVerificationMethod {
+                    id: "did-vm-id".to_string(),
+                    r#type: "did-vm-type".to_string(),
+                    controller: "did-vm-controller".to_string(),
+                    public_key_jwk: OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
+                        r#use: None,
+                        crv: "P-256".to_string(),
+                        x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
+                        y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
+                    }),
+                }],
+                authentication: None,
+                assertion_method: None,
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+                rest: Default::default(),
+            })
+        });
+
+    let params = Params {
+        mso_expires_in: time::Duration::seconds(10),
+        mso_expected_update_in: time::Duration::days(10),
+        leeway: 60_u64,
+        embed_layout_properties: Some(embed_layout),
+    };
+    let algorithm = "ES256";
+
+    let mut key_algorithm = MockKeyAlgorithm::new();
+    key_algorithm
+        .expect_jwk_to_bytes()
+        .once()
+        .returning(|_| Ok(b"abcd".to_vec()));
+
+    key_algorithm
+        .expect_get_multibase()
+        .withf(|pk| pk == b"abcd")
+        .returning(|_| Ok("zAbCd".to_string()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .once()
+        .returning({
+            let key_algorithm = Arc::new(key_algorithm);
+            move |_| Some(key_algorithm.clone())
+        });
+
+    let config = generic_config().core;
+
+    let formatter = MdocFormatter::new(
+        params,
+        Some(Arc::new(MockDidMdlValidator::new())),
+        Arc::new(did_method_provider),
+        Arc::new(key_algorithm_provider),
+        None,
+        config.datatype,
+    );
+
+    let mut auth_fn = MockSignatureProvider::new();
+    auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
+
+    let formatted_credential = formatter
+        .format_credentials(
+            credential_data,
+            &holder_did.to_owned(),
+            algorithm,
+            vec![],
+            vec![],
+            Box::new(auth_fn),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+
+    let mut token_verifier = MockTokenVerifier::new();
+    token_verifier
+        .expect_verify()
+        .never()
+        .returning(move |_, _, _, _, _| Ok(()));
+
+    formatter
+        .extract_credentials(&formatted_credential, Box::new(token_verifier))
+        .await
+        .unwrap()
 }
