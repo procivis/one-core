@@ -140,6 +140,7 @@ impl VCAPIService {
             },
             name: create_request.credential.name,
             terms_of_use: create_request.credential.terms_of_use,
+            evidence: create_request.credential.evidence,
         };
 
         let formatter = self
