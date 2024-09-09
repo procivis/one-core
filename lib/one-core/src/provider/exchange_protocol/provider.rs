@@ -256,7 +256,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                         &credentials_by_issuer_did,
                         issuer_did,
                         RevocationListPurpose::Revocation,
-                        &self.revocation_list_repository,
+                        &*self.revocation_list_repository,
                         &self.key_provider,
                         &self.core_base_url,
                     )
@@ -265,7 +265,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                         &credentials_by_issuer_did,
                         issuer_did,
                         RevocationListPurpose::Suspension,
-                        &self.revocation_list_repository,
+                        &*self.revocation_list_repository,
                         &self.key_provider,
                         &self.core_base_url,
                     )
@@ -276,8 +276,8 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
         if let Some(update) = update {
             process_update(
                 update,
-                &self.validity_credential_repository,
-                &self.revocation_list_repository,
+                &*self.validity_credential_repository,
+                &*self.revocation_list_repository,
             )
             .await?;
         }

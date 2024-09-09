@@ -178,7 +178,7 @@ impl KeyService {
             return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
         };
 
-        validate_generate_csr_request(&request, &key.key_type, &self.key_algorithm_provider)?;
+        validate_generate_csr_request(&request, &key.key_type, &*self.key_algorithm_provider)?;
 
         let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(
             ServiceError::MissingProvider(MissingProviderError::KeyStorage(

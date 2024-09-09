@@ -968,6 +968,7 @@ pub enum HistoryActionBindingEnum {
     Restored,
     Shared,
     Imported,
+    ClaimsRemoved,
 }
 
 #[derive(From, Into)]

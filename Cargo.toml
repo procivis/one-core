@@ -36,7 +36,7 @@ serde_json         = { version = "1.0" }
 serde_qs           = { version = "0.13" }
 serde_urlencoded   = { version = "0.7" }
 serde_with         = { version = "3.8", features = ["json", "time_0_3"] }
-shadow-rs          = { version = "0.33" }
+shadow-rs          = { version = "0.34" }
 strum              = { version = "0.26", features = ["derive"] }
 tempfile           = { version = "3.10" }
 thiserror          = { version = "1.0" }

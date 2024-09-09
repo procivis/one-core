@@ -727,7 +727,7 @@ impl OIDCService {
                 self.mark_proof_as_failed(&proof.id).await?;
 
                 let _ = log_history_event_proof(
-                    &self.history_repository,
+                    &*self.history_repository,
                     &proof,
                     HistoryAction::Errored,
                 )

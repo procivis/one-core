@@ -92,6 +92,8 @@ pub enum HistoryAction {
     Shared,
     #[sea_orm(string_value = "IMPORTED")]
     Imported,
+    #[sea_orm(string_value = "CLAIMS_REMOVED")]
+    ClaimsRemoved,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

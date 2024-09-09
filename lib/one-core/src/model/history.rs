@@ -52,6 +52,7 @@ pub enum HistoryAction {
     Restored,
     Shared,
     Imported,
+    ClaimsRemoved,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

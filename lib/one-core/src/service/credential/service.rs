@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anyhow::Context;
 use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::exchange_protocol::openid4vc::model::{
@@ -178,7 +176,7 @@ impl CredentialService {
             .await?;
 
         let _ = log_history_event_credential(
-            &self.history_repository,
+            &*self.history_repository,
             &credential,
             HistoryAction::Created,
         )
@@ -473,7 +471,7 @@ impl CredentialService {
         clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
 
         let _ = log_history_event_credential(
-            &self.history_repository,
+            &*self.history_repository,
             &credential,
             HistoryAction::Offered,
         )
@@ -603,9 +601,9 @@ impl CredentialService {
                 revocation_state.to_owned(),
                 generate_credential_additional_data(
                     &credential,
-                    &self.credential_repository,
-                    &self.revocation_list_repository,
-                    &self.revocation_method_provider,
+                    &*self.credential_repository,
+                    &*self.revocation_list_repository,
+                    &*self.revocation_method_provider,
                     &self.key_provider,
                     &self.base_url,
                 )
@@ -614,8 +612,8 @@ impl CredentialService {
             .await?;
         process_update(
             update,
-            &self.validity_credential_repository,
-            &self.revocation_list_repository,
+            &*self.validity_credential_repository,
+            &*self.revocation_list_repository,
         )
         .await?;
 
@@ -644,7 +642,7 @@ impl CredentialService {
             .await?;
 
         let _ = log_history_event_credential_revocation(
-            &self.history_repository,
+            &*self.history_repository,
             &credential,
             revocation_state,
         )
@@ -729,7 +727,7 @@ impl CredentialService {
                 &mut credential,
                 &*self.interaction_repository,
                 interaction_data.clone(),
-                &self.client,
+                &*self.client,
             )
             .await;
 
@@ -739,7 +737,7 @@ impl CredentialService {
                     &*self.credential_repository,
                     &*self.key_provider,
                     interaction_data,
-                    &self.client,
+                    &*self.client,
                 )
                 .await;
 
@@ -896,7 +894,7 @@ impl CredentialService {
                 .await?;
 
             let _ = log_history_event_credential_revocation(
-                &self.history_repository,
+                &*self.history_repository,
                 &credential,
                 worst_revocation_state,
             )
@@ -917,7 +915,7 @@ async fn obtain_and_update_new_mso(
     credentials: &dyn CredentialRepository,
     key_provider: &dyn KeyProvider,
     interaction_data: HolderInteractionData,
-    client: &Arc<dyn HttpClient>,
+    client: &dyn HttpClient,
 ) -> Result<(), ServiceError> {
     let key = credential
         .key
@@ -998,7 +996,7 @@ async fn update_mso_interaction_access_token(
     credential: &mut Credential,
     interactions: &dyn InteractionRepository,
     mut interaction_data: HolderInteractionData,
-    client: &Arc<dyn HttpClient>,
+    client: &dyn HttpClient,
 ) -> Result<(), ServiceError> {
     let now = OffsetDateTime::now_utc();
 

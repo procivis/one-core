@@ -115,7 +115,9 @@ pub enum ProofFilterValue {
     OrganisationId(OrganisationId),
     ProofStates(Vec<ProofStateEnum>),
     ProofIds(Vec<ProofId>),
+    ProofIdsNot(Vec<ProofId>),
     ProofSchemaIds(Vec<ProofSchemaId>),
+    ValidForDeletion,
 }
 
 impl ListFilterValue for ProofFilterValue {}

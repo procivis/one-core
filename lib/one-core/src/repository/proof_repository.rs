@@ -48,5 +48,7 @@ pub trait ProofRepository: Send + Sync {
         claims: Vec<Claim>,
     ) -> Result<(), DataLayerError>;
 
+    async fn delete_proof_claims(&self, proof_id: &ProofId) -> Result<(), DataLayerError>;
+
     async fn update_proof(&self, proof: UpdateProofRequest) -> Result<(), DataLayerError>;
 }

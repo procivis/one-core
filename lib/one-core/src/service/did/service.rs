@@ -214,7 +214,8 @@ impl DidService {
                 err => ServiceError::from(err),
             })?;
 
-        let _ = log_history_event_did(&self.history_repository, &did, HistoryAction::Created).await;
+        let _ =
+            log_history_event_did(&*self.history_repository, &did, HistoryAction::Created).await;
 
         Ok(did_id)
     }
@@ -255,8 +256,8 @@ impl DidService {
         };
         self.did_repository.update_did(update_did).await?;
 
-        let _ =
-            log_history_event_did(&self.history_repository, &did, HistoryAction::Deactivated).await;
+        let _ = log_history_event_did(&*self.history_repository, &did, HistoryAction::Deactivated)
+            .await;
 
         Ok(())
     }

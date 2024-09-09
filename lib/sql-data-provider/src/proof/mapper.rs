@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use migration::IntoCondition;
 use one_core::model::claim::Claim;
 use one_core::model::did::Did;
+use one_core::model::organisation::Organisation;
 use one_core::model::proof::{GetProofList, Proof, ProofState, SortableProofColumn};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::error::DataLayerError;
@@ -10,6 +11,7 @@ use one_core::service::proof::dto::ProofFilterValue;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
 use shared_types::ProofId;
+use time::OffsetDateTime;
 
 use super::model::ProofListItemModel;
 use crate::common::calculate_pages_count;
@@ -45,6 +47,8 @@ impl IntoFilterCondition for ProofFilterValue {
                 .into_condition(),
             Self::ProofSchemaIds(ids) => proof_schema::Column::Id.is_in(ids).into_condition(),
             Self::ProofIds(ids) => proof::Column::Id.is_in(ids).into_condition(),
+            Self::ProofIdsNot(ids) => proof::Column::Id.is_not_in(ids).into_condition(),
+            Self::ValidForDeletion => proof_schema::Column::ExpireDuration.gt(0).into_condition(),
         }
     }
 }
@@ -95,8 +99,12 @@ impl TryFrom<ProofListItemModel> for Proof {
                 last_modified: value.schema_last_modified,
                 deleted_at: None,
                 name: value.schema_name,
-                expire_duration: value.expire_duration,
-                organisation: None,
+                expire_duration: value.schema_expire_duration,
+                organisation: Some(Organisation {
+                    id: value.schema_organisation_id,
+                    created_date: OffsetDateTime::UNIX_EPOCH,
+                    last_modified: OffsetDateTime::UNIX_EPOCH,
+                }),
                 input_schemas: None,
             }),
             claims: None,

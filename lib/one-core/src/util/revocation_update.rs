@@ -25,9 +25,9 @@ use crate::service::error::{MissingProviderError, ServiceError};
 
 pub(crate) async fn generate_credential_additional_data(
     credential: &Credential,
-    credential_repository: &Arc<dyn CredentialRepository>,
-    revocation_list_repository: &Arc<dyn RevocationListRepository>,
-    revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
+    credential_repository: &dyn CredentialRepository,
+    revocation_list_repository: &dyn RevocationListRepository,
+    revocation_method_provider: &dyn RevocationMethodProvider,
     key_provider: &Arc<dyn KeyProvider>,
     core_base_url: &Option<String>,
 ) -> Result<Option<CredentialAdditionalData>, ServiceError> {
@@ -96,8 +96,8 @@ pub(crate) async fn generate_credential_additional_data(
 
 pub(crate) async fn process_update(
     revocation_update: RevocationUpdate,
-    lvvc_repository: &Arc<dyn ValidityCredentialRepository>,
-    revocation_list_repository: &Arc<dyn RevocationListRepository>,
+    lvvc_repository: &dyn ValidityCredentialRepository,
+    revocation_list_repository: &dyn RevocationListRepository,
 ) -> Result<(), ServiceError> {
     if revocation_update.status_type == "LVVC" {
         let update_data: Lvvc = serde_json::from_slice(&revocation_update.data)
@@ -117,7 +117,7 @@ pub(crate) async fn get_revocation_list_id(
     credentials_by_issuer_did: &[one_providers::common_models::credential::OpenCredential],
     issuer_did: &Did,
     purpose: RevocationListPurpose,
-    revocation_list_repository: &Arc<dyn RevocationListRepository>,
+    revocation_list_repository: &dyn RevocationListRepository,
     key_provider: &Arc<dyn KeyProvider>,
     core_base_url: &Option<String>,
 ) -> Result<RevocationListId, ServiceError> {

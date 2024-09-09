@@ -203,6 +203,16 @@ impl ProofRepository for ProofProvider {
         Ok(())
     }
 
+    async fn delete_proof_claims(&self, proof_id: &ProofId) -> Result<(), DataLayerError> {
+        proof_claim::Entity::delete_many()
+            .filter(proof_claim::Column::ProofId.eq(proof_id))
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        Ok(())
+    }
+
     async fn set_proof_claims(
         &self,
         proof_id: &ProofId,
@@ -303,7 +313,14 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
         .column_as(proof_schema::Column::Name, "schema_name")
         .column_as(proof_schema::Column::CreatedDate, "schema_created_date")
         .column_as(proof_schema::Column::LastModified, "schema_last_modified")
-        .column_as(proof_schema::Column::ExpireDuration, "expire_duration")
+        .column_as(
+            proof_schema::Column::ExpireDuration,
+            "schema_expire_duration",
+        )
+        .column_as(
+            proof_schema::Column::OrganisationId,
+            "schema_organisation_id",
+        )
         // find most recent state (to enable sorting)
         .join(
             sea_orm::JoinType::InnerJoin,

@@ -407,8 +407,9 @@ impl ProofService {
         update_proof_interaction(proof.id, interaction_id, &*self.proof_repository).await?;
         clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
 
-        let _ = log_history_event_proof(&self.history_repository, &proof, HistoryAction::Requested)
-            .await;
+        let _ =
+            log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Requested)
+                .await;
 
         Ok(EntityShareResponseDTO { url })
     }

@@ -320,6 +320,7 @@ impl OneCore {
             data_provider.get_revocation_list_repository(),
             data_provider.get_validity_credential_repository(),
             key_provider.to_owned(),
+            data_provider.get_proof_repository(),
             providers.core_base_url.clone(),
         )?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
