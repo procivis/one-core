@@ -2641,7 +2641,7 @@ async fn test_retract_proof_ok_for_allowed_state(
             .inner
             .expect_retract_proof()
             .times(1)
-            .returning(|_, _| Ok(()));
+            .returning(|_| Ok(()));
 
         Some(Arc::new(protocol))
     });
@@ -2795,7 +2795,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
             .inner
             .expect_retract_proof()
             .times(1)
-            .returning(|_, _| Ok(()));
+            .returning(|_| Ok(()));
 
         Some(Arc::new(protocol))
     });
