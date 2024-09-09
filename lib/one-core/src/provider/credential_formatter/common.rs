@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-
+use indexmap::IndexMap;
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::model::PublishedClaim;
 
 pub(super) fn nest_claims(
     claims: impl IntoIterator<Item = PublishedClaim>,
-) -> Result<HashMap<String, serde_json::Value>, FormatterError> {
+) -> Result<IndexMap<String, serde_json::Value>, FormatterError> {
     let mut data = serde_json::Value::Object(Default::default());
 
     let mut claims = claims.into_iter().collect::<Vec<PublishedClaim>>();
@@ -56,7 +55,7 @@ mod tests {
                 array_item: false,
             },
         ];
-        let expected = HashMap::from([
+        let expected = IndexMap::from([
             (
                 "location".to_string(),
                 json!({
@@ -92,7 +91,7 @@ mod tests {
                 array_item: true,
             },
         ];
-        let expected = HashMap::from([
+        let expected = IndexMap::from([
             ("location".to_string(), json!(["1", "2"])),
             ("name".to_string(), json!("John")),
         ]);
