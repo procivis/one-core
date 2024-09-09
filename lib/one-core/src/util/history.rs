@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use one_providers::revocation::model::CredentialRevocationState;
 use shared_types::{EntityId, OrganisationId};
 use time::OffsetDateTime;
@@ -37,7 +35,7 @@ pub(crate) fn history_event(
 }
 
 pub(crate) async fn log_history_event_credential(
-    history_repository: &Arc<dyn HistoryRepository>,
+    history_repository: &dyn HistoryRepository,
     credential: &Credential,
     event: HistoryAction,
 ) -> Result<(), ServiceError> {
@@ -73,7 +71,7 @@ pub(crate) async fn log_history_event_credential(
 }
 
 pub(crate) async fn log_history_event_credential_revocation(
-    history_repository: &Arc<dyn HistoryRepository>,
+    history_repository: &dyn HistoryRepository,
     credential: &Credential,
     new_state: CredentialRevocationState,
 ) -> Result<(), ServiceError> {
@@ -87,7 +85,7 @@ pub(crate) async fn log_history_event_credential_revocation(
 }
 
 pub(crate) async fn log_history_event_credential_schema(
-    history_repository: &Arc<dyn HistoryRepository>,
+    history_repository: &dyn HistoryRepository,
     schema: &CredentialSchema,
     event: HistoryAction,
 ) -> Result<(), ServiceError> {
@@ -112,7 +110,7 @@ pub(crate) async fn log_history_event_credential_schema(
 }
 
 pub(crate) async fn log_history_event_did(
-    history_repository: &Arc<dyn HistoryRepository>,
+    history_repository: &dyn HistoryRepository,
     did: &Did,
     event: HistoryAction,
 ) -> Result<(), ServiceError> {
@@ -137,7 +135,7 @@ pub(crate) async fn log_history_event_did(
 }
 
 pub(crate) async fn log_history_event_proof(
-    history_repository: &Arc<dyn HistoryRepository>,
+    history_repository: &dyn HistoryRepository,
     proof: &Proof,
     event: HistoryAction,
 ) -> Result<(), ServiceError> {
@@ -179,7 +177,7 @@ pub(crate) async fn log_history_event_proof(
 }
 
 pub(crate) async fn log_history_event_proof_schema(
-    history_repository: &Arc<dyn HistoryRepository>,
+    history_repository: &dyn HistoryRepository,
     proof_schema: &ProofSchema,
     event: HistoryAction,
 ) -> Result<(), ServiceError> {

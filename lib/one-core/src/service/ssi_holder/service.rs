@@ -197,7 +197,7 @@ impl SSIHolderService {
             .is_ok()
         {
             let _ =
-                log_history_event_proof(&self.history_repository, &proof, HistoryAction::Rejected)
+                log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Rejected)
                     .await;
             ProofStateEnum::Rejected
         } else {
@@ -544,7 +544,7 @@ impl SSIHolderService {
         } else {
             HistoryAction::Errored
         };
-        let _ = log_history_event_proof(&self.history_repository, &proof, action).await;
+        let _ = log_history_event_proof(&*self.history_repository, &proof, action).await;
 
         submit_result
     }
@@ -684,7 +684,7 @@ impl SSIHolderService {
                 .await?;
 
             let _ = log_history_event_credential(
-                &self.history_repository,
+                &*self.history_repository,
                 &credential,
                 HistoryAction::Accepted,
             )
@@ -756,7 +756,7 @@ impl SSIHolderService {
                 .await?;
 
             let _ = log_history_event_credential(
-                &self.history_repository,
+                &*self.history_repository,
                 &credential,
                 HistoryAction::Rejected,
             )

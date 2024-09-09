@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
+use retain_proof_check::RetainProofCheck;
 use serde_json::Value;
 
 use self::suspend_check::SuspendCheckProvider;
@@ -10,11 +11,13 @@ use crate::config::core_config::{TaskConfig, TaskType};
 use crate::config::ConfigError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
+use crate::repository::proof_repository::ProofRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::error::ServiceError;
 
 pub mod provider;
+pub mod retain_proof_check;
 pub mod suspend_check;
 
 #[cfg_attr(test, mockall::automock)]
@@ -32,6 +35,7 @@ pub(crate) fn tasks_from_config(
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     key_provider: Arc<dyn KeyProvider>,
+    proof_repository: Arc<dyn ProofRepository>,
     core_base_url: Option<String>,
 ) -> Result<HashMap<String, Arc<dyn Task>>, ConfigError> {
     let mut providers: HashMap<String, Arc<dyn Task>> = HashMap::new();
@@ -50,7 +54,11 @@ pub(crate) fn tasks_from_config(
                 validity_credential_repository.to_owned(),
                 key_provider.to_owned(),
                 core_base_url.to_owned(),
-            )),
+            )) as _,
+            TaskType::RetainProofCheck => Arc::new(RetainProofCheck::new(
+                proof_repository.clone(),
+                history_repository.clone(),
+            )) as _,
         };
         providers.insert(name.to_owned(), provider);
     }

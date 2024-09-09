@@ -206,7 +206,7 @@ impl SSIIssuerService {
             .await?;
 
         let _ = log_history_event_credential(
-            &self.history_repository,
+            &*self.history_repository,
             &credential,
             HistoryAction::Rejected,
         )

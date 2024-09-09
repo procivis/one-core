@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use one_providers::key_algorithm::error::KeyAlgorithmError;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use time::Duration;
@@ -26,7 +24,7 @@ pub(super) fn validate_generate_request(
 pub(super) fn validate_generate_csr_request(
     request: &KeyGenerateCSRRequestDTO,
     key_type: &str,
-    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), ServiceError> {
     let key_algorithm = &key_algorithm_provider
         .get_key_algorithm(key_type)

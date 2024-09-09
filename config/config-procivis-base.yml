@@ -279,6 +279,11 @@ task:
     display: "task.suspendCheck"
     order: 0
     params: null
+  RETAIN_PROOF_CHECK:
+    type: "RETAIN_PROOF_CHECK"
+    display: "task.retainProofCheck"
+    order: 1
+    params: null
 cacheEntities:
   STATUS_LIST_CREDENTIAL:
     cacheType: DB

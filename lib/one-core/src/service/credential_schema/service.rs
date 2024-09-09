@@ -72,7 +72,7 @@ impl CredentialSchemaService {
             .map_err(ServiceError::from)?;
 
         let _ = log_history_event_credential_schema(
-            &self.history_repository,
+            &*self.history_repository,
             &credential_schema,
             HistoryAction::Created,
         )
@@ -116,7 +116,7 @@ impl CredentialSchemaService {
             })?;
 
         let _ = log_history_event_credential_schema(
-            &self.history_repository,
+            &*self.history_repository,
             &credential_schema,
             HistoryAction::Deleted,
         )
@@ -234,7 +234,7 @@ impl CredentialSchemaService {
             .map_err(ServiceError::from)?;
 
         let _ = log_history_event_credential_schema(
-            &self.history_repository,
+            &*self.history_repository,
             &credential_schema,
             HistoryAction::Imported,
         )
@@ -272,7 +272,7 @@ impl CredentialSchemaService {
             ))?;
 
         let _ = log_history_event_credential_schema(
-            &self.history_repository,
+            &*self.history_repository,
             &credential_schema,
             HistoryAction::Shared,
         )

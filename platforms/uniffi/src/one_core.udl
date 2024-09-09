@@ -702,6 +702,7 @@ enum HistoryActionBindingEnum {
   "Restored",
   "Shared",
   "Imported",
+  "ClaimsRemoved",
 };
 
 enum HistoryEntityTypeBindingEnum {

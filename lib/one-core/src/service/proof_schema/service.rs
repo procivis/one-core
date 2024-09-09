@@ -231,7 +231,7 @@ impl ProofSchemaService {
             })?;
 
         let _ = log_history_event_proof_schema(
-            &self.history_repository,
+            &*self.history_repository,
             &proof_schema,
             HistoryAction::Deleted,
         )
@@ -261,7 +261,7 @@ impl ProofSchemaService {
             .ok_or(EntityNotFoundError::ProofSchema(id))?;
 
         let _ = log_history_event_proof_schema(
-            &self.history_repository,
+            &*self.history_repository,
             &proof_schema,
             HistoryAction::Shared,
         )

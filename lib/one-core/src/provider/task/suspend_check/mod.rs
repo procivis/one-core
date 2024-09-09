@@ -127,9 +127,9 @@ impl Task for SuspendCheckProvider {
                     CredentialRevocationState::Valid,
                     generate_credential_additional_data(
                         &credential,
-                        &self.credential_repository,
-                        &self.revocation_list_repository,
-                        &self.revocation_method_provider,
+                        &*self.credential_repository,
+                        &*self.revocation_list_repository,
+                        &*self.revocation_method_provider,
                         &self.key_provider,
                         &self.core_base_url,
                     )
@@ -138,8 +138,8 @@ impl Task for SuspendCheckProvider {
                 .await?;
             process_update(
                 update,
-                &self.validity_credential_repository,
-                &self.revocation_list_repository,
+                &*self.validity_credential_repository,
+                &*self.revocation_list_repository,
             )
             .await?;
 
@@ -161,7 +161,7 @@ impl Task for SuspendCheckProvider {
                 .await?;
 
             let _ = log_history_event_credential_revocation(
-                &self.history_repository,
+                &*self.history_repository,
                 &credential,
                 CredentialRevocationState::Valid,
             )

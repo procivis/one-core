@@ -156,7 +156,7 @@ impl SSIVerifierService {
                 self.fail_proof(&proof_id).await?;
 
                 let _ = log_history_event_proof(
-                    &self.history_repository,
+                    &*self.history_repository,
                     &proof,
                     HistoryAction::Errored,
                 )
@@ -176,7 +176,7 @@ impl SSIVerifierService {
         )
         .await?;
 
-        let _ = log_history_event_proof(&self.history_repository, &proof, HistoryAction::Accepted)
+        let _ = log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Accepted)
             .await;
         Ok(())
     }
@@ -223,7 +223,7 @@ impl SSIVerifierService {
             )
             .await?;
 
-        let _ = log_history_event_proof(&self.history_repository, &proof, HistoryAction::Rejected)
+        let _ = log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Rejected)
             .await;
 
         Ok(())
