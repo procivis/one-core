@@ -301,7 +301,7 @@ async fn test_credential_formatting_ok_for_es256() {
     // additional namespace is included always when credential schema contains layout
     assert_eq!(2, namespaces.len());
     assert_eq!(1, namespaces["a"].len());
-    let signed_item = &namespaces["a"][0].0;
+    let signed_item = &namespaces["a"][0].inner();
 
     assert_eq!(0, signed_item.digest_id);
     assert_eq!("b", &signed_item.element_identifier);
@@ -337,17 +337,19 @@ async fn test_credential_formatting_ok_for_es256() {
     assert_eq!(&expected_issuer_did, x5chain);
 
     // check MSO
-    let EmbeddedCbor::<MobileSecurityObject>(mso) =
+    let mso: EmbeddedCbor<MobileSecurityObject> =
         ciborium::from_reader(cose_sign1.payload.unwrap().as_slice()).unwrap();
 
     // check value digests
     // additional namespace is included always when credential schema contains layout
-    assert_eq!(2, mso.value_digests.len());
-    assert_eq!(1, mso.value_digests["a"].len());
-    assert!(mso.value_digests["a"].get(&signed_item.digest_id).is_some());
+    assert_eq!(2, mso.inner().value_digests.len());
+    assert_eq!(1, mso.inner().value_digests["a"].len());
+    assert!(mso.inner().value_digests["a"]
+        .get(&signed_item.digest_id)
+        .is_some());
 
     // check COSE_Key
-    let cose_key = mso.device_key_info.device_key.0;
+    let cose_key = mso.into_inner().device_key_info.device_key.0;
 
     assert_eq!(KeyType::Assigned(iana::KeyType::EC2), cose_key.kty);
 
