@@ -40,11 +40,16 @@ pub(crate) struct MdocBleHolderInteractionData {
     pub continuation_task_id: Uuid,
 
     // known only after verifier connects
-    pub sk_device: Option<SkDevice>,
-    pub sk_reader: Option<SkReader>,
-    pub device_request_bytes: Option<Vec<u8>>,
-    pub device_address: Option<DeviceAddress>,
-    pub mtu: Option<u16>,
+    pub session: Option<MdocBleHolderInteractionSessionData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct MdocBleHolderInteractionSessionData {
+    pub sk_device: SkDevice,
+    pub sk_reader: SkReader,
+    pub device_request_bytes: Vec<u8>,
+    pub device_address: DeviceAddress,
+    pub mtu: u16,
 }
 
 #[derive(Debug, Clone)]
@@ -157,11 +162,13 @@ pub(crate) async fn receive_mdl_request(
                     interaction.data = Some(
                         serde_json::to_vec(&MdocBleHolderInteractionData {
                             continuation_task_id: task_id,
-                            sk_device: Some(sk_device),
-                            sk_reader: Some(sk_reader),
-                            device_address: Some(info.address.clone()),
-                            device_request_bytes: Some(device_request_bytes),
-                            mtu: Some(info.mtu()),
+                            session: Some(MdocBleHolderInteractionSessionData {
+                                sk_device,
+                                sk_reader,
+                                device_address: info.address.clone(),
+                                device_request_bytes,
+                                mtu: info.mtu(),
+                            }),
                             ..interaction_data
                         })
                         .context("interaction serialization error")
@@ -230,15 +237,17 @@ pub(crate) async fn send_mdl_response(
             .and_then(|interaction| interaction.data.as_ref()),
     )?;
 
+    let interaction_session_data =
+        interaction_data
+            .session
+            .ok_or(ExchangeProtocolError::Failed(
+                "interaction_session_data missing".to_string(),
+            ))?;
+
     let device_response_bytes = to_cbor(&device_response)?;
 
-    let sk_device = interaction_data
+    let encrypted_device_response = interaction_session_data
         .sk_device
-        .ok_or(ExchangeProtocolError::Failed(
-            "sk_device missing".to_string(),
-        ))?;
-
-    let encrypted_device_response = sk_device
         .encrypt(&device_response_bytes)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -248,17 +257,7 @@ pub(crate) async fn send_mdl_response(
     };
     let session_data_bytes = to_cbor(&session_data)?;
 
-    let device_address = interaction_data
-        .device_address
-        .ok_or(ExchangeProtocolError::Failed(
-            "Device address missing".to_string(),
-        ))?;
-
-    let mtu = interaction_data
-        .mtu
-        .ok_or(ExchangeProtocolError::Failed("Mtu missing".to_string()))?;
-
-    let chunks = split_into_chunks(session_data_bytes, mtu as _)
+    let chunks = split_into_chunks(session_data_bytes, interaction_session_data.mtu as _)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let (_, result) = ble
@@ -268,7 +267,7 @@ pub(crate) async fn send_mdl_response(
                 for chunk in chunks {
                     peripheral
                         .notify_characteristic_data(
-                            device_address.clone(),
+                            interaction_session_data.device_address.clone(),
                             interaction_data.service_uuid.to_string(),
                             SERVER_2_CLIENT.into(),
                             &chunk,

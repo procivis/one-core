@@ -241,8 +241,9 @@ impl ExchangeProtocolImpl for IsoMdl {
             serde_json::from_value(interaction_data).map_err(ExchangeProtocolError::JsonError)?;
 
         let device_request_bytes = interaction_data
-            .device_request_bytes
-            .ok_or_else(|| ExchangeProtocolError::Failed("Missing device_request".to_string()))?;
+            .session
+            .ok_or_else(|| ExchangeProtocolError::Failed("Missing device_request".to_string()))?
+            .device_request_bytes;
 
         let device_request: DeviceRequest = ciborium::from_reader(device_request_bytes.as_slice())
             .context("device request deserialization error")

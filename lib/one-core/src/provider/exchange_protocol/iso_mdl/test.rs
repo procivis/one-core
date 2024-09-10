@@ -26,7 +26,9 @@ use super::IsoMdl;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
-use crate::provider::exchange_protocol::iso_mdl::ble_holder::MdocBleHolderInteractionData;
+use crate::provider::exchange_protocol::iso_mdl::ble_holder::{
+    MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData,
+};
 use crate::provider::exchange_protocol::iso_mdl::common::{
     to_cbor, DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
 };
@@ -91,12 +93,14 @@ async fn test_presentation_reject_ok() {
     let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
         service_uuid: Uuid::new_v4(),
         continuation_task_id,
-        sk_device: Some(SkDevice::new([0; 32])),
-        sk_reader: Some(SkReader::new([0; 32])),
-        device_request_bytes: Some(device_request_bytes),
-        device_address: Some("test address".to_string()),
         organisation_id,
-        mtu: Some(512),
+        session: Some(MdocBleHolderInteractionSessionData {
+            sk_device: SkDevice::new([0; 32]),
+            sk_reader: SkReader::new([0; 32]),
+            device_request_bytes,
+            device_address: "test address".to_string(),
+            mtu: 512,
+        }),
     })
     .unwrap();
     let proof = OpenProof {
@@ -186,12 +190,14 @@ async fn test_get_presentation_definition_ok() {
     let interaction_data = serde_json::to_value(MdocBleHolderInteractionData {
         service_uuid: Uuid::new_v4(),
         continuation_task_id: Uuid::new_v4(),
-        sk_device: Some(SkDevice::new([0; 32])),
-        sk_reader: Some(SkReader::new([0; 32])),
-        device_request_bytes: Some(device_request_bytes),
-        device_address: None,
         organisation_id,
-        mtu: None,
+        session: Some(MdocBleHolderInteractionSessionData {
+            sk_device: SkDevice::new([0; 32]),
+            sk_reader: SkReader::new([0; 32]),
+            device_request_bytes,
+            device_address: "test address".to_string(),
+            mtu: 512,
+        }),
     })
     .unwrap();
 

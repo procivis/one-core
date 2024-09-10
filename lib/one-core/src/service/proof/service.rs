@@ -532,11 +532,7 @@ impl ProofService {
             organisation_id,
             service_uuid: server.service_uuid,
             continuation_task_id: server.task_id,
-            sk_device: None,
-            sk_reader: None,
-            device_address: None,
-            device_request_bytes: None,
-            mtu: None,
+            session: None,
         })
         .context("interaction serialization error")
         .map_err(ExchangeProtocolError::Other)?;
