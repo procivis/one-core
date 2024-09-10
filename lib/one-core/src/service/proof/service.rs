@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
 use one_providers::exchange_protocol::openid4vc::{
     ExchangeProtocolError, FormatMapper, TypeToDescriptorMapper,
@@ -9,8 +10,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, MdocBleInteractionData,
-    ProofDetailResponseDTO, ProposeProofResponseDTO,
+    CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
+    ProposeProofResponseDTO,
 };
 use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
@@ -19,7 +20,7 @@ use super::validator::validate_mdl_exchange;
 use super::ProofService;
 use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
-use crate::config::core_config::ExchangeType;
+use crate::config::core_config::{ExchangeType, TransportType};
 use crate::config::validator::exchange::validate_exchange_type;
 use crate::config::validator::transport::get_available_transport_type;
 use crate::model::claim::ClaimRelations;
@@ -40,9 +41,10 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
-use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::dto::PresentationDefinitionResponseDTO;
-use crate::provider::exchange_protocol::iso_mdl::ble::{connect, start_server};
+use crate::provider::exchange_protocol::iso_mdl::ble_holder::{
+    receive_mdl_request, start_mdl_server, MdocBleHolderInteractionData,
+};
 use crate::provider::exchange_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
 use crate::provider::exchange_protocol::iso_mdl::device_engagement::{
     BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
@@ -319,7 +321,7 @@ impl ProofService {
             return Err(ValidationError::BBSNotSupported.into());
         }
 
-        let transport = get_available_transport_type(&self.config.transport)?;
+        let (transport, _) = get_available_transport_type(&self.config.transport)?;
 
         self.proof_repository
             .create_proof(proof_from_create_request(
@@ -456,15 +458,7 @@ impl ProofService {
             ServiceError::MissingExchangeProtocol(proof.exchange.clone()),
         )?;
 
-        let task_id = deserialize_interaction_data::<MdocBleInteractionData>(
-            proof.interaction.as_ref().and_then(|i| i.data.as_ref()),
-        )
-        .ok()
-        .map(|data| data.task_id);
-
-        exchange_protocol
-            .retract_proof(&proof.clone().into(), task_id)
-            .await?;
+        exchange_protocol.retract_proof(&proof.into()).await?;
 
         self.proof_repository
             .update_proof(UpdateProofRequest {
@@ -494,6 +488,19 @@ impl ProofService {
         organisation_id: OrganisationId,
     ) -> Result<ProposeProofResponseDTO, ServiceError> {
         validate_exchange_type(&exchange, &self.config.exchange)?;
+        let exchange_type = self.config.exchange.get_fields(&exchange)?.r#type;
+        if exchange_type != ExchangeType::IsoMdl {
+            return Err(ValidationError::InvalidExchangeType {
+                value: exchange,
+                source: anyhow::anyhow!("propose_proof"),
+            }
+            .into());
+        }
+
+        let (transport, transport_type) = get_available_transport_type(&self.config.transport)?;
+        if transport_type != TransportType::Ble {
+            return Err(ServiceError::Other("BLE transport not available".into()));
+        }
 
         let ble = self
             .ble
@@ -501,9 +508,7 @@ impl ProofService {
             .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?;
 
         let now = OffsetDateTime::now_utc();
-        let transport = get_available_transport_type(&self.config.transport)?;
-
-        let server = start_server(ble).await?;
+        let server = start_mdl_server(ble).await?;
         let key_pair = KeyAgreement::<EDeviceKey>::new();
         let device_engagement = DeviceEngagement {
             security: Security {
@@ -511,8 +516,8 @@ impl ProofService {
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {
-                    peripheral_server_uuid: server.service_id,
-                    peripheral_server_mac_address: server.mac,
+                    peripheral_server_uuid: server.service_uuid,
+                    peripheral_server_mac_address: server.mac_address,
                 }),
             }],
         };
@@ -522,11 +527,21 @@ impl ProofService {
             .map_err(|err| ServiceError::Other(err.to_string()))?;
 
         let interaction_id = Uuid::new_v4();
+
+        let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
+            organisation_id,
+            service_uuid: server.service_uuid,
+            continuation_task_id: server.task_id,
+            session: None,
+        })
+        .context("interaction serialization error")
+        .map_err(ExchangeProtocolError::Other)?;
+
         let interaction = add_new_interaction(
             interaction_id,
             &self.base_url,
             &*self.interaction_repository,
-            None,
+            Some(interaction_data),
         )
         .await?;
 
@@ -554,17 +569,14 @@ impl ProofService {
             })
             .await?;
 
-        connect(
+        receive_mdl_request(
             ble,
-            server.task_id,
-            server.service_id,
-            device_engagement.clone(),
+            qr.device_engagement_bytes,
             key_pair,
             self.interaction_repository.clone(),
             interaction,
             self.proof_repository.clone(),
             proof_id,
-            organisation_id,
         )
         .await?;
 

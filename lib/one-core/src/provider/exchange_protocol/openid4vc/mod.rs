@@ -21,7 +21,6 @@ use one_providers::exchange_protocol::openid4vc::{
 use openidvc_ble::OpenID4VCBLE;
 use serde_json::json;
 use url::Url;
-use uuid::Uuid;
 
 use super::{ExchangeProtocol, ExchangeProtocolError, ExchangeProtocolImpl, StorageAccess};
 use crate::config::core_config::TransportType;
@@ -272,13 +271,9 @@ impl ExchangeProtocolImpl for OpenID4VC {
         unimplemented!()
     }
 
-    async fn retract_proof(
-        &self,
-        proof: &OpenProof,
-        id: Option<Uuid>,
-    ) -> Result<(), ExchangeProtocolError> {
+    async fn retract_proof(&self, proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
         if proof.transport == TransportType::Ble.to_string() {
-            self.openid_ble.retract_proof(proof, id).await?;
+            self.openid_ble.retract_proof(proof).await?;
         }
 
         Ok(())

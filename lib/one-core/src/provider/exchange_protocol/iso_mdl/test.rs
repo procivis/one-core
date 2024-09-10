@@ -26,12 +26,14 @@ use super::IsoMdl;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
-use crate::provider::exchange_protocol::iso_mdl::common::{
-    DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
+use crate::provider::exchange_protocol::iso_mdl::ble_holder::{
+    MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData,
 };
-use crate::service::proof::dto::MdocBleInteractionData;
+use crate::provider::exchange_protocol::iso_mdl::common::{
+    to_cbor, DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
+};
 use crate::service::test_utilities::generic_config;
-use crate::util::ble_resource::BleWaiter;
+use crate::util::ble_resource::{BleWaiter, OnConflict};
 
 #[tokio::test]
 async fn test_presentation_reject_ok() {
@@ -47,43 +49,58 @@ async fn test_presentation_reject_ok() {
         .times(1)
         .returning(move || Ok(()));
 
+    let ble_waiter = BleWaiter::new(Arc::new(MockBleCentral::new()), Arc::new(ble_peripheral));
+    let (continuation_task_id, _) = ble_waiter
+        .schedule(
+            Uuid::new_v4(),
+            |_, _, _| async {},
+            |_, _| async {},
+            OnConflict::DoNothing,
+            true,
+        )
+        .await
+        .value_or(anyhow::anyhow!("test"))
+        .await
+        .unwrap();
+
     let provider = IsoMdl::new(
         Arc::new(core_config),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
-        Some(BleWaiter::new(
-            Arc::new(MockBleCentral::new()),
-            Arc::new(ble_peripheral),
-        )),
+        Some(ble_waiter),
     );
 
     let schema_id = "org.iso.18013.5.1".to_string();
     let organisation_id = Uuid::new_v4().into();
-    let interaction_data = serde_json::to_vec(&MdocBleInteractionData {
-        service_id: Uuid::new_v4(),
-        task_id: Uuid::new_v4(),
-        sk_device: SkDevice::new([0; 32]),
-        sk_reader: SkReader::new([0; 32]),
-        device_request: DeviceRequest {
-            version: "1.0".to_string(),
-            doc_request: vec![DocRequest {
-                items_request: EmbeddedCbor(ItemsRequest {
-                    doc_type: schema_id.clone(),
-                    name_spaces: hashmap! {
-                        "org.iso.18013.5.1.mDL".to_string() => hashmap! {
-                            "name".to_string() => true,
-                            "age".to_string() => true,
-                            "country".to_string() => true,
-                            "info".to_string() => true,
-                        }
-                    },
-                }),
-            }],
-        }
-        .into(),
-        device_address: Some("test address".to_string()),
+    let device_request_bytes = to_cbor(&DeviceRequest {
+        version: "1.0".to_string(),
+        doc_requests: vec![DocRequest {
+            items_request: EmbeddedCbor(ItemsRequest {
+                doc_type: schema_id.clone(),
+                name_spaces: hashmap! {
+                    "org.iso.18013.5.1.mDL".to_string() => hashmap! {
+                        "name".to_string() => true,
+                        "age".to_string() => true,
+                        "country".to_string() => true,
+                        "info".to_string() => true,
+                    }
+                },
+            }),
+        }],
+    })
+    .unwrap();
+
+    let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
+        service_uuid: Uuid::new_v4(),
+        continuation_task_id,
         organisation_id,
-        mtu: Some(512),
+        session: Some(MdocBleHolderInteractionSessionData {
+            sk_device: SkDevice::new([0; 32]),
+            sk_reader: SkReader::new([0; 32]),
+            device_request_bytes,
+            device_address: "test address".to_string(),
+            mtu: 512,
+        }),
     })
     .unwrap();
     let proof = OpenProof {
@@ -152,31 +169,35 @@ async fn test_get_presentation_definition_ok() {
 
     let organisation_id = Uuid::new_v4().into();
     let schema_id = "org.iso.18013.5.1".to_string();
-    let interaction_data = serde_json::to_value(MdocBleInteractionData {
-        service_id: Uuid::new_v4(),
-        task_id: Uuid::new_v4(),
-        sk_device: SkDevice::new([0; 32]),
-        sk_reader: SkReader::new([0; 32]),
-        device_request: DeviceRequest {
-            version: "1.0".to_string(),
-            doc_request: vec![DocRequest {
-                items_request: EmbeddedCbor(ItemsRequest {
-                    doc_type: schema_id.clone(),
-                    name_spaces: hashmap! {
-                        "org.iso.18013.5.1.mDL".to_string() => hashmap! {
-                            "name".to_string() => true,
-                            "age".to_string() => true,
-                            "country".to_string() => true,
-                            "info".to_string() => true,
-                        }
-                    },
-                }),
-            }],
-        }
-        .into(),
-        device_address: None,
+    let device_request_bytes = to_cbor(&DeviceRequest {
+        version: "1.0".to_string(),
+        doc_requests: vec![DocRequest {
+            items_request: EmbeddedCbor(ItemsRequest {
+                doc_type: schema_id.clone(),
+                name_spaces: hashmap! {
+                    "org.iso.18013.5.1.mDL".to_string() => hashmap! {
+                        "name".to_string() => true,
+                        "age".to_string() => true,
+                        "country".to_string() => true,
+                        "info".to_string() => true,
+                    }
+                },
+            }),
+        }],
+    })
+    .unwrap();
+
+    let interaction_data = serde_json::to_value(MdocBleHolderInteractionData {
+        service_uuid: Uuid::new_v4(),
+        continuation_task_id: Uuid::new_v4(),
         organisation_id,
-        mtu: None,
+        session: Some(MdocBleHolderInteractionSessionData {
+            sk_device: SkDevice::new([0; 32]),
+            sk_reader: SkReader::new([0; 32]),
+            device_request_bytes,
+            device_address: "test address".to_string(),
+            mtu: 512,
+        }),
     })
     .unwrap();
 
