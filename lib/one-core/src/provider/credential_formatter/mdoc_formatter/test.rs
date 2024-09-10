@@ -208,6 +208,9 @@ async fn test_credential_formatting_ok_for_es256() {
             }),
         },
         name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
     };
 
     let holder_did = DidValue::from("holder-did".to_string());
@@ -396,6 +399,9 @@ async fn test_unverified_credential_extraction() {
             metadata: None,
         },
         name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
     };
 
     let holder_did = DidValue::from("holder-did".to_string());
@@ -592,6 +598,10 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
                 },
             }),
         },
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
     };
 
     let holder_did = DidValue::from("holder-did".to_string());
@@ -674,7 +684,7 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
-            &holder_did.to_owned(),
+            &Some(holder_did.to_owned()),
             algorithm,
             vec![],
             vec![],

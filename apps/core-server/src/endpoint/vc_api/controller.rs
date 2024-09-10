@@ -25,14 +25,11 @@ pub(crate) async fn issue_credential(
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<CredentialIssueResponseDto> {
-    // println!("{request}");
-    let issued = dbg!(
-        state
-            .core
-            .vc_api_service
-            .issue_credential(request.into())
-            .await
-    );
+    let issued = state
+        .core
+        .vc_api_service
+        .issue_credential(request.into())
+        .await;
 
     match issued {
         Ok(value) => OkOrErrorResponse::Ok(value.into()),
@@ -58,13 +55,12 @@ pub(crate) async fn verify_credential(
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<CredentialVerifyResponseDto> {
-    match dbg!(
-        state
-            .core
-            .vc_api_service
-            .verify_credential(request.into())
-            .await
-    ) {
+    match state
+        .core
+        .vc_api_service
+        .verify_credential(request.into())
+        .await
+    {
         Ok(value) => OkOrErrorResponse::ok(value),
         Err(error) => {
             tracing::error!("verification error: {:?}", error);
@@ -88,13 +84,12 @@ pub(crate) async fn verify_presentation(
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<PresentationVerifyResponseDto> {
-    match dbg!(
-        state
-            .core
-            .vc_api_service
-            .verify_presentation(request.into())
-            .await
-    ) {
+    match state
+        .core
+        .vc_api_service
+        .verify_presentation(request.into())
+        .await
+    {
         Ok(value) => OkOrErrorResponse::ok(value),
         Err(error) => {
             tracing::error!("verification error: {:?}", error);

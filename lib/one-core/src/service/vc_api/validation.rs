@@ -1,4 +1,4 @@
-use std::cell::LazyCell;
+use std::sync::LazyLock;
 
 use one_providers::credential_formatter::imp::json_ld::model::{
     ContextType, LdCredential, LdPresentation,
@@ -8,10 +8,10 @@ use url::Url;
 
 use crate::service::error::ServiceError;
 
-const V1: LazyCell<ContextType> =
-    LazyCell::new(|| ContextType::Url(Context::CredentialsV1.to_string().parse().unwrap()));
-const V2: LazyCell<ContextType> =
-    LazyCell::new(|| ContextType::Url(Context::CredentialsV2.to_string().parse().unwrap()));
+static V1: LazyLock<ContextType> =
+    LazyLock::new(|| ContextType::Url(Context::CredentialsV1.to_string().parse().unwrap()));
+static V2: LazyLock<ContextType> =
+    LazyLock::new(|| ContextType::Url(Context::CredentialsV2.to_string().parse().unwrap()));
 
 #[derive(Debug, thiserror::Error)]
 pub enum VcValidationError {
@@ -93,7 +93,7 @@ pub(super) fn validate_verifiable_credential(
     if credential
         .credential_schema
         .as_ref()
-        .is_some_and(|cs| !cs.id.parse::<Url>().is_ok())
+        .is_some_and(|cs| cs.id.parse::<Url>().is_err())
     {
         return Err(VcValidationError::InvalidCredentialSchemaId);
     }
