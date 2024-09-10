@@ -2,14 +2,13 @@ use axum::extract::State;
 use axum::Json;
 use axum_extra::extract::WithRejection;
 
-use crate::dto::response::CreatedOrErrorResponse;
-use crate::dto::{error::ErrorResponseRestDTO, response::OkOrErrorResponse};
-use crate::router::AppState;
-
 use super::dto::{
     CredentialIssueRequestDto, CredentialIssueResponseDto, CredentialVerifiyRequestDto,
     CredentialVerifyResponseDto, PresentationVerifyRequestDto, PresentationVerifyResponseDto,
 };
+use crate::dto::error::ErrorResponseRestDTO;
+use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
+use crate::router::AppState;
 
 #[tracing::instrument(level = "debug", skip(state))]
 #[utoipa::path(

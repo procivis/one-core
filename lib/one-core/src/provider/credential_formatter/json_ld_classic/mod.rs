@@ -12,7 +12,7 @@ use one_providers::credential_formatter::imp::json_ld::context::caching_loader::
     ContextCache, JsonLdCachingLoader,
 };
 use one_providers::credential_formatter::imp::json_ld::model::{
-    ContextType, LdCredential, LdPresentation, LdProof, ManyOrOne,
+    ContextType, LdCredential, LdPresentation, LdProof, ManyOrOne, VerifiableCredential,
 };
 use one_providers::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
@@ -194,7 +194,7 @@ impl CredentialFormatter for JsonLdClassic {
             r#type: ManyOrOne::One("VerifiablePresentation".to_string()),
             verifiable_credential,
             holder: Issuer::Url(holder_did.as_str().parse().unwrap()),
-            nonce,
+            nonce: ctx.nonce,
             proof: None,
             issuance_date: OffsetDateTime::now_utc(),
         };
