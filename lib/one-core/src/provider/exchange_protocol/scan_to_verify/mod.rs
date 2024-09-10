@@ -24,7 +24,6 @@ use one_providers::exchange_protocol::openid4vc::{
 };
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use url::Url;
-use uuid::Uuid;
 
 use crate::service::proof::dto::ScanToVerifyRequestDTO;
 use crate::util::key_verification::KeyVerification;
@@ -134,11 +133,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         unimplemented!()
     }
 
-    async fn retract_proof(
-        &self,
-        _proof: &OpenProof,
-        _id: Option<Uuid>,
-    ) -> Result<(), ExchangeProtocolError> {
+    async fn retract_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
         Ok(())
     }
 

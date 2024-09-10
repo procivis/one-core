@@ -36,7 +36,7 @@ impl ProofService {
         let submission_data = serde_json::to_vec(&submission)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
-        let transport = get_available_transport_type(&self.config.transport)?;
+        let (transport, _) = get_available_transport_type(&self.config.transport)?;
 
         let proof =
             proof_for_scan_to_verify(&exchange, proof_schema, transport, submission_data.clone());

@@ -724,11 +724,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         unimplemented!()
     }
 
-    async fn retract_proof(
-        &self,
-        _proof: &OpenProof,
-        _id: Option<Uuid>,
-    ) -> Result<(), ExchangeProtocolError> {
+    async fn retract_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
         self.ble
             .as_ref()
             .ok_or_else(|| ExchangeProtocolError::Failed("BLE is missing in service".to_string()))?
