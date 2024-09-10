@@ -1,10 +1,6 @@
 use std::sync::Arc;
 use std::vec;
 
-use one_crypto::CryptoProvider;
-use one_providers::credential_formatter::imp::json_ld::model::ContextType;
-
-use super::json_ld_classic::verify_credential_signature;
 use async_trait::async_trait;
 use model::OptiocalBarcodeCredential;
 use one_crypto::CryptoProvider;
@@ -13,6 +9,7 @@ use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
 };
+use one_providers::credential_formatter::imp::json_ld::model::ContextType;
 use one_providers::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
     ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,

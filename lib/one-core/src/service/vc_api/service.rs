@@ -1,38 +1,29 @@
 use std::sync::Arc;
-use time::Duration;
 
-use one_providers::{
-    common_models::did::KeyRole,
-    credential_formatter::{
-        model::{
-            CredentialData, CredentialSchemaData, ExtractPresentationCtx, PublishedClaim,
-            PublishedClaimValue,
-        },
-        provider::CredentialFormatterProvider,
-    },
-    did::provider::DidMethodProvider,
-    key_algorithm::provider::KeyAlgorithmProvider,
-    key_storage::provider::KeyProvider,
-    util::key_verification::KeyVerification,
+use one_providers::common_models::did::KeyRole;
+use one_providers::credential_formatter::model::{
+    CredentialData, CredentialSchemaData, ExtractPresentationCtx, PublishedClaim,
+    PublishedClaimValue,
 };
-use time::OffsetDateTime;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::did::provider::DidMethodProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::key_storage::provider::KeyProvider;
+use one_providers::util::key_verification::KeyVerification;
+use time::{Duration, OffsetDateTime};
 
-use crate::{
-    model::{did::DidRelations, key::KeyRelations},
-    repository::did_repository::DidRepository,
-    service::error::ServiceError,
+use super::dto::{
+    CredentialIssueOptions, CredentialIssueRequest, CredentialIssueResponse,
+    CredentialVerifiyRequest, CredentialVerifyResponse, PresentationVerifyRequest,
+    PresentationVerifyResponse,
 };
-
-use super::{
-    dto::{
-        CredentialIssueOptions, CredentialIssueRequest, CredentialIssueResponse,
-        CredentialVerifiyRequest, CredentialVerifyResponse, PresentationVerifyRequest,
-        PresentationVerifyResponse,
-    },
-    mapper::value_to_published_claim,
-    validation::{validate_verifiable_credential, validate_verifiable_presentation},
-    VCAPIService,
-};
+use super::mapper::value_to_published_claim;
+use super::validation::{validate_verifiable_credential, validate_verifiable_presentation};
+use super::VCAPIService;
+use crate::model::did::DidRelations;
+use crate::model::key::KeyRelations;
+use crate::repository::did_repository::DidRepository;
+use crate::service::error::ServiceError;
 
 impl VCAPIService {
     pub fn new(
@@ -137,6 +128,7 @@ impl VCAPIService {
                 r#type: None,
                 context: None,
                 name: "vc_interop_test_no_schema_data".to_string(),
+                metadata: None,
             },
             name: create_request.credential.name,
             description: create_request.credential.description,

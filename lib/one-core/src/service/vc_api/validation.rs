@@ -1,9 +1,9 @@
 use std::cell::LazyCell;
 
-use one_providers::credential_formatter::{
-    imp::json_ld::model::{ContextType, LdCredential, LdPresentation},
-    model::Context,
+use one_providers::credential_formatter::imp::json_ld::model::{
+    ContextType, LdCredential, LdPresentation,
 };
+use one_providers::credential_formatter::model::Context;
 use url::Url;
 
 use crate::service::error::ServiceError;
@@ -49,6 +49,9 @@ pub enum VpValidationError {
 
     #[error("Provided presentation is missing the specified `type` property")]
     MissingVerifiablePresentationType,
+
+    #[error("Failed parsing VC")]
+    InvalidVc,
 
     #[error(transparent)]
     Vc(#[from] VcValidationError),
@@ -106,6 +109,8 @@ pub(super) fn validate_verifiable_presentation(
     }
 
     for vc in &presentation.verifiable_credential {
+        let vc =
+            serde_json::from_value(vc.clone().into()).map_err(|_| VpValidationError::InvalidVc)?;
         validate_verifiable_credential(&vc)?;
     }
 

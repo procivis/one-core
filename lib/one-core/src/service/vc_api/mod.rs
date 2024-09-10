@@ -2,11 +2,12 @@ mod service;
 
 use std::sync::Arc;
 
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::did::provider::DidMethodProvider;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::key_storage::provider::KeyProvider;
+
 use crate::repository::did_repository::DidRepository;
-use one_providers::{
-    credential_formatter::provider::CredentialFormatterProvider, did::provider::DidMethodProvider,
-    key_algorithm::provider::KeyAlgorithmProvider, key_storage::provider::KeyProvider,
-};
 
 pub mod dto;
 pub mod mapper;
