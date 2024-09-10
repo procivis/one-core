@@ -46,8 +46,6 @@ impl VCAPIService {
         &self,
         create_request: CredentialIssueRequest,
     ) -> Result<CredentialIssueResponse, ServiceError> {
-        dbg!(&create_request);
-
         let CredentialIssueOptions {
             signature_algorithm,
             credential_format,
@@ -197,7 +195,6 @@ impl VCAPIService {
         &self,
         verify_request: PresentationVerifyRequest,
     ) -> Result<PresentationVerifyResponse, ServiceError> {
-        dbg!(&verify_request.verifiable_presentation);
         validate_verifiable_presentation(&verify_request.verifiable_presentation)?;
 
         let formatter = self

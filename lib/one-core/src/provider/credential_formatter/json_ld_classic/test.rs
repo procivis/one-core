@@ -83,6 +83,10 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
                 },
             }),
         },
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
     };
 
     let holder_did = DidValue::from("holder-did".to_string());
@@ -178,7 +182,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
-            &holder_did.to_owned(),
+            &Some(holder_did).to_owned(),
             algorithm,
             vec![],
             vec![],
