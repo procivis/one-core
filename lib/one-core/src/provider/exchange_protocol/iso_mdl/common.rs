@@ -14,20 +14,11 @@ use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize, Serializer};
 use sha2::{Digest, Sha256};
-use uuid::Uuid;
 use x25519_dalek::{EphemeralSecret, PublicKey};
 use zeroize::Zeroize;
 
-use super::device_engagement::DeviceEngagement;
 use super::session::SessionTranscript;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
-
-#[derive(Debug, Clone)]
-pub struct ServerInfo {
-    pub task_id: Uuid,
-    pub mac: Option<String>,
-    pub service_id: Uuid,
-}
 
 #[derive(Debug, Clone)]
 pub enum Chunk {
@@ -39,7 +30,7 @@ pub enum Chunk {
 #[serde(rename_all = "camelCase")]
 pub struct DeviceRequest {
     pub version: String,
-    pub doc_request: Vec<DocRequest>,
+    pub doc_requests: Vec<DocRequest>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -375,14 +366,11 @@ fn x25519_from_cose_key(key: CoseKey) -> anyhow::Result<x25519_dalek::PublicKey>
 }
 
 pub fn create_session_transcript_bytes(
-    device_engagement: &DeviceEngagement,
+    device_engagement_bytes: Vec<u8>,
     e_reader_key: &EReaderKey,
 ) -> Result<Vec<u8>, ExchangeProtocolError> {
     let session_transcript = SessionTranscript {
-        device_engagement_bytes: EmbeddedCbor(device_engagement)
-            .to_vec()
-            .context("device_engagement serialization error")
-            .map_err(ExchangeProtocolError::Other)?,
+        device_engagement_bytes,
         e_reader_key_bytes: EmbeddedCbor(e_reader_key)
             .to_vec()
             .context("device_engagement serialization error")

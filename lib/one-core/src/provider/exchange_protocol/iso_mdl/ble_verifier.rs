@@ -1,14 +1,16 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::LazyLock;
 
 use anyhow::Context;
 use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
+use uuid::Uuid;
 
-use super::ble::{CLIENT_2_SERVER, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE};
+use super::ble::{CLIENT_2_SERVER, SERVER_2_CLIENT, STATE};
 use super::common::{
     create_session_transcript_bytes, split_into_chunks, to_cbor, Chunk, DeviceRequest, DocRequest,
     EReaderKey, ItemsRequest, KeyAgreement, SkDevice,
 };
-use super::device_engagement::{BleOptions, DeviceEngagement};
+use super::device_engagement::{BleOptions, ParsedQRCode};
 use super::session::{Command, SessionData, SessionEstablishment};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{self, DatatypeType};
@@ -24,6 +26,8 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
 use crate::service::error::ServiceError;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
 
+pub(crate) static ISO_MDL_VERIFIER_FLOW: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
+
 #[derive(Debug, Clone)]
 pub(crate) struct VerifierSession {
     pub reader_key: EReaderKey,
@@ -34,23 +38,23 @@ pub(crate) struct VerifierSession {
 }
 
 pub(crate) fn setup_verifier_session(
-    device_engagement: DeviceEngagement,
+    qr: ParsedQRCode,
     schema: &ProofSchema,
     config: &core_config::CoreConfig,
 ) -> Result<VerifierSession, ExchangeProtocolError> {
     let key_pair = KeyAgreement::<EReaderKey>::new();
     let reader_key = key_pair.reader_key().clone();
 
-    let transcript = create_session_transcript_bytes(&device_engagement, &reader_key)?;
+    let transcript = create_session_transcript_bytes(qr.device_engagement_bytes, &reader_key)?;
 
     let (sk_device, sk_reader) = key_pair
-        .derive_session_keys(device_engagement.security.key_bytes.0, &transcript)
+        .derive_session_keys(qr.device_engagement.security.key_bytes.0, &transcript)
         .context("failed to derive key")
         .map_err(ExchangeProtocolError::Other)?;
 
     let device_request = DeviceRequest {
         version: "1.0".into(),
-        doc_request: schema
+        doc_requests: schema
             .input_schemas
             .as_ref()
             .context("missing input_schemas")
@@ -84,7 +88,7 @@ pub(crate) async fn start_client(
     _proof: Proof,
 ) -> Result<(), ServiceError> {
     ble.schedule(
-        *ISO_MDL_FLOW,
+        *ISO_MDL_VERIFIER_FLOW,
         move |_, central, _| async move {
             // TODO: proper error-handling (any error results in proof state Error + (ev. signaling End command) + disconnect)
 

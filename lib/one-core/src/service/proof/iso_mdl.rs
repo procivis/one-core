@@ -3,6 +3,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
+use crate::config::core_config::TransportType;
 use crate::config::validator::transport::get_available_transport_type;
 use crate::model::proof::{self, Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
@@ -24,6 +25,11 @@ impl ProofService {
         let qr = DeviceEngagement::parse_qr_code(&iso_mdl_engagement)
             .map_err(|err| ServiceError::Other(err.to_string()))?;
 
+        let (transport, transport_type) = get_available_transport_type(&self.config.transport)?;
+        if transport_type != TransportType::Ble {
+            return Err(ServiceError::Other("BLE transport not available".into()));
+        }
+
         let ble = self
             .ble
             .as_ref()
@@ -36,9 +42,7 @@ impl ProofService {
             .ok_or_else(|| ServiceError::Other("no device retrival method".into()))?
             .clone();
 
-        let transport = get_available_transport_type(&self.config.transport)?;
-
-        let verifier_session = setup_verifier_session(qr.device_engagement, &schema, &self.config)?;
+        let verifier_session = setup_verifier_session(qr, &schema, &self.config)?;
 
         let now = OffsetDateTime::now_utc();
         let proof = Proof {

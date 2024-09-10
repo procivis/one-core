@@ -470,11 +470,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         unimplemented!()
     }
 
-    async fn retract_proof(
-        &self,
-        _proof: &OpenProof,
-        _id: Option<Uuid>,
-    ) -> Result<(), ExchangeProtocolError> {
+    async fn retract_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
         Ok(())
     }
 }

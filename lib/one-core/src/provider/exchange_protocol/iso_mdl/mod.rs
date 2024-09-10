@@ -1,18 +1,18 @@
-use std::collections::{HashMap, HashSet};
-use std::iter;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
+use ble_holder::{send_mdl_response, MdocBleHolderInteractionData};
+use common::DeviceRequest;
 use one_providers::common_dto::PublicKeyJwkDTO;
 use one_providers::common_models::credential::{OpenCredential, OpenCredentialStateEnum};
 use one_providers::common_models::did::OpenDid;
 use one_providers::common_models::key::{KeyId, OpenKey};
 use one_providers::common_models::organisation::OpenOrganisation;
 use one_providers::common_models::proof::{OpenProof, OpenProofStateEnum};
-use one_providers::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
+use one_providers::credential_formatter::model::DetailCredential;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::exchange_protocol::openid4vc::imp::create_presentation_submission;
 use one_providers::exchange_protocol::openid4vc::model::{
     DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentationDefinitionFieldDTO,
     PresentationDefinitionRequestGroupResponseDTO,
@@ -28,33 +28,27 @@ use one_providers::exchange_protocol::openid4vc::{
 };
 use one_providers::key_storage::provider::KeyProvider;
 use url::Url;
-use uuid::Uuid;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    Bstr, DeviceResponse, DeviceResponseVersion, DocumentError,
+    DeviceResponse, DeviceResponseVersion, DocumentError,
 };
 use crate::provider::exchange_protocol::deserialize_interaction_data;
-use crate::provider::exchange_protocol::iso_mdl::ble::SERVER_2_CLIENT;
-use crate::provider::exchange_protocol::iso_mdl::ble_holder::IsoMdlBleHolder;
-use crate::provider::exchange_protocol::iso_mdl::session::{SessionData, StatusCode};
-use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
 use crate::service::credential::mapper::credential_detail_response_from_model;
-use crate::service::proof::dto::MdocBleInteractionData;
 use crate::util::ble_resource::{Abort, BleWaiter};
 
-pub(crate) mod ble;
-mod ble_holder;
+mod ble;
+pub(crate) mod ble_holder;
 pub(crate) mod ble_verifier;
 pub(crate) mod common;
-
-use common::Chunk;
 pub(crate) mod device_engagement;
 mod session;
+
 #[cfg(test)]
 mod test;
 
+#[allow(dead_code)]
 pub(crate) struct IsoMdl {
     config: Arc<CoreConfig>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -98,7 +92,10 @@ impl ExchangeProtocolImpl for IsoMdl {
     }
 
     async fn reject_proof(&self, proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
-        let mut bytes = vec![];
+        let ble = self.ble.as_ref().ok_or(ExchangeProtocolError::Failed(
+            "Missing BLE waiter".to_string(),
+        ))?;
+
         let mut doc_types = DocumentError::new();
         let input_schemas = proof
             .schema
@@ -120,83 +117,14 @@ impl ExchangeProtocolImpl for IsoMdl {
                 .schema_id;
             doc_types.insert(schema_id, 0);
         }
-        let response = DeviceResponse {
+        let device_response = DeviceResponse {
             version: DeviceResponseVersion::V1_0,
             documents: None,
             document_errors: vec![doc_types].into(),
             status: 0,
         };
-        ciborium::ser::into_writer(&response, &mut bytes).map_err(|_err| {
-            ExchangeProtocolError::Failed("CBOR serialization error".to_string())
-        })?;
 
-        let session_data = SessionData {
-            data: Some(Bstr(bytes)),
-            status: Some(StatusCode::SessionTermination),
-        };
-
-        let mut writer = vec![];
-        ciborium::into_writer(&session_data, &mut writer).unwrap();
-
-        let interaction_data: MdocBleInteractionData = deserialize_interaction_data(
-            proof
-                .interaction
-                .as_ref()
-                .and_then(|interaction| interaction.data.as_ref()),
-        )?;
-
-        let device_address =
-            interaction_data
-                .device_address
-                .ok_or(ExchangeProtocolError::Failed(
-                    "Device address missing".to_string(),
-                ))?;
-
-        let mtu = interaction_data
-            .mtu
-            .ok_or(ExchangeProtocolError::Failed("Mtu missing".to_string()))?;
-
-        let mut chunks = writer.chunks(mtu.into());
-
-        let last = Chunk::Last(
-            chunks
-                .next_back()
-                .context("no chunks")
-                .map_err(|_| ExchangeProtocolError::Failed("No chunks available".to_string()))?
-                .to_vec(),
-        );
-
-        let chunks: Vec<Vec<u8>> = chunks
-            .map(|slice| Chunk::Next(slice.to_vec()))
-            .chain(iter::once(last))
-            .map(Into::into)
-            .collect();
-
-        let ble_peripheral = self
-            .ble
-            .clone()
-            .ok_or(ExchangeProtocolError::Failed(
-                "Missing BLE waiter".to_string(),
-            ))?
-            .get_peripheral();
-
-        for chunk in chunks {
-            ble_peripheral
-                .notify_characteristic_data(
-                    device_address.clone(),
-                    interaction_data.service_id.to_string(),
-                    SERVER_2_CLIENT.into(),
-                    &chunk,
-                )
-                .await
-                .map_err(|_err| {
-                    ExchangeProtocolError::Failed("Unable to send end event to central".to_string())
-                })?;
-        }
-
-        ble_peripheral.stop_server().await.map_err(|_err| {
-            ExchangeProtocolError::Failed("Server could not be stopped".to_string())
-        })?;
+        send_mdl_response(ble, device_response, proof).await?;
 
         Ok(())
     }
@@ -204,107 +132,26 @@ impl ExchangeProtocolImpl for IsoMdl {
     async fn submit_proof(
         &self,
         proof: &OpenProof,
-        credential_presentations: Vec<PresentedCredential>,
-        holder_did: &OpenDid,
-        key: &OpenKey,
-        jwk_key_id: Option<String>,
+        _credential_presentations: Vec<PresentedCredential>,
+        _holder_did: &OpenDid,
+        _key: &OpenKey,
+        _jwk_key_id: Option<String>,
         _format_map: HashMap<String, String>,
-        presentation_format_map: HashMap<String, String>,
+        _presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
-        let ble = self.ble.clone().ok_or_else(|| {
+        let _ble = self.ble.clone().ok_or_else(|| {
             ExchangeProtocolError::Failed("Missing BLE central for submit proof".to_string())
         })?;
 
-        let interaction_data: BLEOpenID4VPInteractionData = deserialize_interaction_data(
+        let _interaction_data: MdocBleHolderInteractionData = deserialize_interaction_data(
             proof
                 .interaction
                 .as_ref()
                 .and_then(|interaction| interaction.data.as_ref()),
         )?;
 
-        let ble_holder = IsoMdlBleHolder::new(ble.clone());
-
-        let tokens: Vec<String> = credential_presentations
-            .iter()
-            .map(|presented_credential| presented_credential.presentation.to_owned())
-            .collect();
-
-        let formats: HashSet<&str> = credential_presentations
-            .iter()
-            .map(|presented_credential| presented_credential.credential_schema.format.as_str())
-            .collect();
-
-        let (format, oidc_format) = match () {
-            _ if formats.contains("MDOC") => {
-                if formats.len() > 1 {
-                    return Err(ExchangeProtocolError::Failed(
-                        "Currently for a proof MDOC cannot be used with other formats".to_string(),
-                    ));
-                };
-
-                ("MDOC", "mso_mdoc")
-            }
-            _ if formats.contains("JSON_LD_CLASSIC")
-                || formats.contains("JSON_LD_BBSPLUS")
-                // Workaround for missing cryptosuite information in openid4vc
-                || formats.contains("JSON_LD") =>
-            {
-                ("JSON_LD_CLASSIC", "ldp_vp")
-            }
-            _ => ("JWT", "jwt_vp_json"),
-        };
-
-        let presentation_formatter = self
-            .formatter_provider
-            .get_formatter(format)
-            .ok_or_else(|| ExchangeProtocolError::Failed("Formatter not found".to_string()))?;
-
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(key, jwk_key_id)
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        let presentation_definition_id = interaction_data
-            .presentation_definition
-            .as_ref()
-            .ok_or(ExchangeProtocolError::Failed(
-                "Missing presentation definition".into(),
-            ))?
-            .id;
-
-        let presentation_submission = create_presentation_submission(
-            presentation_definition_id,
-            credential_presentations,
-            oidc_format,
-            presentation_format_map,
-        )?;
-
-        if format == "MDOC" {
-            return Err(ExchangeProtocolError::Failed(
-                "Mdoc over BLE not available".to_string(),
-            ));
-        }
-
-        let nonce = interaction_data.nonce.to_owned();
-        let ctx = FormatPresentationCtx {
-            nonce,
-            ..Default::default()
-        };
-
-        let vp_token = presentation_formatter
-            .format_presentation(
-                &tokens,
-                &holder_did.did.to_string().into(),
-                &key.key_type,
-                auth_fn,
-                ctx,
-            )
-            .await
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        ble_holder
-            .submit_presentation(vp_token, presentation_submission, &interaction_data)
-            .await?;
+        // TODO:
+        // submit proof logic
 
         Ok(UpdateResponse {
             result: (),
@@ -351,18 +198,22 @@ impl ExchangeProtocolImpl for IsoMdl {
         unimplemented!()
     }
 
-    async fn retract_proof(
-        &self,
-        _proof: &OpenProof,
-        id: Option<Uuid>,
-    ) -> Result<(), ExchangeProtocolError> {
-        let task_id = id.ok_or(ExchangeProtocolError::Failed("Missing task_id".to_string()))?;
+    async fn retract_proof(&self, proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+        // TODO: implement retract proof on verifier
+
+        let interaction_data: MdocBleHolderInteractionData = deserialize_interaction_data(
+            proof
+                .interaction
+                .as_ref()
+                .and_then(|interaction| interaction.data.as_ref()),
+        )?;
 
         let ble = self.ble.clone().ok_or_else(|| {
             ExchangeProtocolError::Failed("Missing BLE central for submit proof".to_string())
         })?;
 
-        ble.abort(Abort::Task(task_id)).await;
+        ble.abort(Abort::Task(interaction_data.continuation_task_id))
+            .await;
         Ok(())
     }
 
@@ -386,16 +237,25 @@ impl ExchangeProtocolImpl for IsoMdl {
         _format_map: HashMap<String, String>,
         _types: HashMap<String, DatatypeType>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
-        let interaction_data: MdocBleInteractionData =
+        let interaction_data: MdocBleHolderInteractionData =
             serde_json::from_value(interaction_data).map_err(ExchangeProtocolError::JsonError)?;
+
+        let device_request_bytes = interaction_data
+            .session
+            .ok_or_else(|| ExchangeProtocolError::Failed("Missing device_request".to_string()))?
+            .device_request_bytes;
+
+        let device_request: DeviceRequest = ciborium::from_reader(device_request_bytes.as_slice())
+            .context("device request deserialization error")
+            .map_err(ExchangeProtocolError::Other)?;
 
         let mut relevant_credentials = vec![];
         let mut requested_credentials = vec![];
 
         let organisation_id = interaction_data.organisation_id;
 
-        for doc_request in interaction_data.device_request.doc_request {
-            let items_request = doc_request.items_request;
+        for doc_request in device_request.doc_requests {
+            let items_request = doc_request.items_request.0;
             let schema_id = items_request.doc_type;
             let namespaces = items_request.name_spaces;
 

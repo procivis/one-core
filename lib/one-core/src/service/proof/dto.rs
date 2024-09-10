@@ -1,20 +1,12 @@
-use std::collections::HashMap;
-
-use dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::model::common::GetListResponse;
 use crate::model::interaction::InteractionId;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ProofStateEnum, SortableProofColumn};
-use crate::provider::bluetooth_low_energy::low_level::dto::DeviceAddress;
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
-use crate::provider::exchange_protocol::iso_mdl;
-use crate::provider::exchange_protocol::iso_mdl::common::{SkDevice, SkReader};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::did::dto::DidListItemResponseDTO;
@@ -129,53 +121,4 @@ pub struct ProposeProofResponseDTO {
     pub proof_id: ProofId,
     pub interaction_id: InteractionId,
     pub url: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MdocBleInteractionData {
-    pub service_id: Uuid,
-    pub task_id: Uuid,
-    pub sk_device: SkDevice,
-    pub sk_reader: SkReader,
-    pub device_request: DeviceRequest,
-    pub device_address: Option<DeviceAddress>,
-    pub organisation_id: OrganisationId,
-    pub mtu: Option<u16>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, From, Into)]
-#[from(iso_mdl::common::DeviceRequest)]
-#[into(iso_mdl::common::DeviceRequest)]
-pub struct DeviceRequest {
-    pub version: String,
-    #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
-    pub doc_request: Vec<DocRequest>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, From, Into)]
-#[from(iso_mdl::common::DocRequest)]
-#[into(iso_mdl::common::DocRequest)]
-pub struct DocRequest {
-    pub items_request: ItemsRequest,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, From, Into)]
-#[from(iso_mdl::common::ItemsRequest)]
-#[into(iso_mdl::common::ItemsRequest)]
-pub struct ItemsRequest {
-    pub doc_type: String,
-    pub name_spaces: HashMap<String, HashMap<String, bool>>,
-}
-
-impl From<ItemsRequest> for EmbeddedCbor<iso_mdl::common::ItemsRequest> {
-    fn from(value: ItemsRequest) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<EmbeddedCbor<iso_mdl::common::ItemsRequest>> for ItemsRequest {
-    fn from(EmbeddedCbor(value): EmbeddedCbor<iso_mdl::common::ItemsRequest>) -> Self {
-        value.into()
-    }
 }
