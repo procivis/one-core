@@ -30,7 +30,7 @@ pub(crate) static ISO_MDL_VERIFIER_FLOW: LazyLock<Uuid> = LazyLock::new(Uuid::ne
 
 #[derive(Debug, Clone)]
 pub(crate) struct VerifierSession {
-    pub reader_key: EReaderKey,
+    pub reader_key: EmbeddedCbor<EReaderKey>,
     #[allow(dead_code)]
     pub device_request: DeviceRequest,
     pub device_request_encrypted: Vec<u8>,
@@ -43,12 +43,18 @@ pub(crate) fn setup_verifier_session(
     config: &core_config::CoreConfig,
 ) -> Result<VerifierSession, ExchangeProtocolError> {
     let key_pair = KeyAgreement::<EReaderKey>::new();
-    let reader_key = key_pair.reader_key().clone();
 
-    let transcript = create_session_transcript_bytes(qr.device_engagement_bytes, &reader_key)?;
+    let reader_key = EmbeddedCbor::new(key_pair.reader_key().clone())
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let transcript =
+        create_session_transcript_bytes(qr.device_engagement_bytes, reader_key.to_owned())?;
 
     let (sk_device, sk_reader) = key_pair
-        .derive_session_keys(qr.device_engagement.security.key_bytes.0, &transcript)
+        .derive_session_keys(
+            qr.device_engagement.security.key_bytes.into_inner(),
+            &transcript,
+        )
         .context("failed to derive key")
         .map_err(ExchangeProtocolError::Other)?;
 
@@ -197,11 +203,11 @@ async fn send_session_establishment(
     device: &PeripheralDiscoveryData,
     service_uuid: String,
     mtu_size: usize,
-    key: EReaderKey,
+    e_reader_key: EmbeddedCbor<EReaderKey>,
     device_request_encrypted: Vec<u8>,
 ) -> anyhow::Result<()> {
     let session_establishment = SessionEstablishment {
-        e_reader_key: EmbeddedCbor(key),
+        e_reader_key,
         data: Bstr(device_request_encrypted),
     };
 
@@ -298,9 +304,9 @@ fn proof_input_schema_to_doc_request(
     }
 
     Ok(DocRequest {
-        items_request: EmbeddedCbor(ItemsRequest {
+        items_request: EmbeddedCbor::new(ItemsRequest {
             doc_type: credential_schema.schema_id,
             name_spaces,
-        }),
+        })?,
     })
 }

@@ -136,11 +136,14 @@ pub(crate) async fn receive_mdl_request(
 
                     let transcript = create_session_transcript_bytes(
                         device_engagement_bytes,
-                        &session_establishment.e_reader_key.0,
+                        session_establishment.e_reader_key.to_owned(),
                     )?;
 
                     let (sk_device, sk_reader) = key_pair
-                        .derive_session_keys(session_establishment.e_reader_key.0, &transcript)
+                        .derive_session_keys(
+                            session_establishment.e_reader_key.into_inner(),
+                            &transcript,
+                        )
                         .context("failed to derive key")
                         .map_err(ExchangeProtocolError::Other)?;
 

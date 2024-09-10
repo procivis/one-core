@@ -433,7 +433,7 @@ mod test {
 
         DeviceEngagement {
             security: Security {
-                key_bytes: EmbeddedCbor(EDeviceKey::new(pk)),
+                key_bytes: EmbeddedCbor::new(EDeviceKey::new(pk)).unwrap(),
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {

@@ -367,14 +367,11 @@ fn x25519_from_cose_key(key: CoseKey) -> anyhow::Result<x25519_dalek::PublicKey>
 
 pub fn create_session_transcript_bytes(
     device_engagement_bytes: Vec<u8>,
-    e_reader_key: &EReaderKey,
+    e_reader_key: EmbeddedCbor<EReaderKey>,
 ) -> Result<Vec<u8>, ExchangeProtocolError> {
     let session_transcript = SessionTranscript {
         device_engagement_bytes,
-        e_reader_key_bytes: EmbeddedCbor(e_reader_key)
-            .to_vec()
-            .context("device_engagement serialization error")
-            .map_err(ExchangeProtocolError::Other)?,
+        e_reader_key_bytes: e_reader_key.into_bytes(),
     };
 
     to_cbor(&session_transcript)

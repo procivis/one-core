@@ -519,7 +519,8 @@ impl ProofService {
         let key_pair = KeyAgreement::<EDeviceKey>::new();
         let device_engagement = DeviceEngagement {
             security: Security {
-                key_bytes: EmbeddedCbor(EDeviceKey::new(key_pair.device_key().0)),
+                key_bytes: EmbeddedCbor::new(EDeviceKey::new(key_pair.device_key().0))
+                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {

@@ -96,7 +96,7 @@ mod test {
     fn test_session_establishment_serialization() {
         let reader_key = KeyAgreement::<EReaderKey>::new();
         let session_establishment = SessionEstablishment {
-            e_reader_key: EmbeddedCbor(reader_key.reader_key().clone()),
+            e_reader_key: EmbeddedCbor::new(reader_key.reader_key().clone()).unwrap(),
             data: Bstr(b"test data".to_vec()),
         };
 
@@ -128,9 +128,9 @@ mod test {
         let reader_key = KeyAgreement::<EReaderKey>::new();
 
         let session_transcript = SessionTranscript {
-            device_engagement_bytes: EmbeddedCbor(DeviceEngagement {
+            device_engagement_bytes: EmbeddedCbor::new(DeviceEngagement {
                 security: Security {
-                    key_bytes: EmbeddedCbor(device_key.device_key().clone()),
+                    key_bytes: EmbeddedCbor::new(device_key.device_key().clone()).unwrap(),
                 },
                 device_retrieval_methods: vec![DeviceRetrievalMethod {
                     retrieval_options: RetrievalOptions::Ble(BleOptions {
@@ -139,11 +139,11 @@ mod test {
                     }),
                 }],
             })
-            .to_vec()
-            .unwrap(),
-            e_reader_key_bytes: EmbeddedCbor(reader_key.reader_key().clone())
-                .to_vec()
-                .unwrap(),
+            .unwrap()
+            .into_bytes(),
+            e_reader_key_bytes: EmbeddedCbor::new(reader_key.reader_key().clone())
+                .unwrap()
+                .into_bytes(),
         };
 
         let mut writer = vec![];
