@@ -103,7 +103,7 @@ pub enum LayoutType {
     SingleAttribute,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into)]
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into, Default)]
 #[from(one_providers::common_models::credential_schema::OpenLayoutProperties)]
 #[into(one_providers::common_models::credential_schema::OpenLayoutProperties)]
 #[serde(rename_all = "camelCase")]
@@ -175,4 +175,8 @@ pub struct UpdateCredentialSchemaRequest {
     pub format: Option<String>,
     #[from(with_fn = convert_inner_of_inner)]
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
+    #[from(with_fn = convert_inner)]
+    pub layout_type: Option<LayoutType>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<LayoutProperties>,
 }
