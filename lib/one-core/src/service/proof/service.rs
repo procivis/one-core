@@ -579,7 +579,7 @@ impl ProofService {
 
         receive_mdl_request(
             ble,
-            qr.device_engagement_bytes,
+            qr.device_engagement,
             key_pair,
             self.interaction_repository.clone(),
             interaction,

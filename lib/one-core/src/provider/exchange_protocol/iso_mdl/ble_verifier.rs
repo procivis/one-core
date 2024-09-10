@@ -10,7 +10,7 @@ use super::common::{
     create_session_transcript_bytes, split_into_chunks, to_cbor, Chunk, DeviceRequest, DocRequest,
     EReaderKey, ItemsRequest, KeyAgreement, SkDevice,
 };
-use super::device_engagement::{BleOptions, ParsedQRCode};
+use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{self, DatatypeType};
@@ -38,7 +38,7 @@ pub(crate) struct VerifierSession {
 }
 
 pub(crate) fn setup_verifier_session(
-    qr: ParsedQRCode,
+    device_engagement: EmbeddedCbor<DeviceEngagement>,
     schema: &ProofSchema,
     config: &core_config::CoreConfig,
 ) -> Result<VerifierSession, ExchangeProtocolError> {
@@ -48,11 +48,15 @@ pub(crate) fn setup_verifier_session(
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let transcript =
-        create_session_transcript_bytes(qr.device_engagement_bytes, reader_key.to_owned())?;
+        create_session_transcript_bytes(device_engagement.to_owned(), reader_key.to_owned())?;
 
     let (sk_device, sk_reader) = key_pair
         .derive_session_keys(
-            qr.device_engagement.security.key_bytes.into_inner(),
+            device_engagement
+                .into_inner()
+                .security
+                .key_bytes
+                .into_inner(),
             &transcript,
         )
         .context("failed to derive key")

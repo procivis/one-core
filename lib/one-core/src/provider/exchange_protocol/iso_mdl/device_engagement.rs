@@ -7,9 +7,7 @@ use serde::{de, ser, Deserialize, Serialize, Serializer};
 use uuid::Uuid;
 
 use super::common::EDeviceKey;
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
-
-pub type EDeviceKeyBytes = EmbeddedCbor<EDeviceKey>;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct DeviceEngagement {
@@ -24,7 +22,7 @@ const DEVICE_ENGAGEMENT_VERSION: &str = "1.0";
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Security {
     // pub version: i8,
-    pub key_bytes: EDeviceKeyBytes,
+    pub key_bytes: EmbeddedCbor<EDeviceKey>,
 }
 
 const SECURITY_VERSION: i8 = 1;
@@ -57,40 +55,32 @@ pub(crate) struct BleOptions {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GeneratedQRCode {
     pub qr_code_content: String,
-    pub device_engagement_bytes: Vec<u8>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct ParsedQRCode {
-    pub device_engagement: DeviceEngagement,
-    pub device_engagement_bytes: Vec<u8>,
+    pub device_engagement: EmbeddedCbor<DeviceEngagement>,
 }
 
 impl DeviceEngagement {
     const QR_CODE_PREFIX: &'static str = "mdoc:";
 
-    pub(crate) fn generate_qr_code(&self) -> anyhow::Result<GeneratedQRCode> {
-        let mut data: Vec<u8> = vec![];
-        ciborium::into_writer(&self, &mut data).map_err(|e| anyhow!(e))?;
+    pub(crate) fn generate_qr_code(self) -> anyhow::Result<GeneratedQRCode> {
+        let device_engagement = EmbeddedCbor::new(self)?;
 
-        let qr_code_content = Base64UrlSafeNoPadding::encode_to_string(&data)
+        let ciborium::tag::Required::<_, 24>(Bstr(embedded_cbor)) =
+            ciborium::from_reader(device_engagement.to_bytes())?;
+
+        let qr_code_content = Base64UrlSafeNoPadding::encode_to_string(&embedded_cbor)
             .map(|content| format!("{}{content}", Self::QR_CODE_PREFIX))
-            .map_err(|e| anyhow!(e))?;
-
-        let tagged_value = ciborium::tag::Required::<_, 24>(ciborium::Value::Bytes(data));
-
-        let mut device_engagement_bytes: Vec<u8> = vec![];
-        ciborium::into_writer(&tagged_value, &mut device_engagement_bytes)
             .map_err(|e| anyhow!(e))?;
 
         Ok(GeneratedQRCode {
             qr_code_content,
-            device_engagement_bytes,
+            device_engagement,
         })
     }
 
     #[allow(dead_code)]
-    pub(crate) fn parse_qr_code(qr_code_content: &str) -> anyhow::Result<ParsedQRCode> {
+    pub(crate) fn parse_qr_code(
+        qr_code_content: &str,
+    ) -> anyhow::Result<EmbeddedCbor<DeviceEngagement>> {
         if !qr_code_content.starts_with(Self::QR_CODE_PREFIX) {
             return Err(anyhow!("Invalid mdoc QR: {qr_code_content}"));
         }
@@ -98,22 +88,13 @@ impl DeviceEngagement {
         let data = Base64UrlSafeNoPadding::decode_to_vec(
             &qr_code_content[Self::QR_CODE_PREFIX.len()..],
             None,
-        )
-        .map_err(|e| anyhow!(e))?;
+        )?;
 
-        let device_engagement: DeviceEngagement =
-            ciborium::from_reader(&data[..]).map_err(|e| anyhow!(e))?;
+        let tagged_value = ciborium::tag::Required::<_, 24>(Bstr(data));
+        let mut bytes: Vec<u8> = vec![];
+        ciborium::into_writer(&tagged_value, &mut bytes)?;
 
-        let tagged_value = ciborium::tag::Required::<_, 24>(ciborium::Value::Bytes(data));
-
-        let mut device_engagement_bytes: Vec<u8> = vec![];
-        ciborium::into_writer(&tagged_value, &mut device_engagement_bytes)
-            .map_err(|e| anyhow!(e))?;
-
-        Ok(ParsedQRCode {
-            device_engagement,
-            device_engagement_bytes,
-        })
+        Ok(ciborium::from_reader(bytes.as_slice())?)
     }
 }
 
@@ -402,13 +383,14 @@ mod test {
     fn test_device_engagement_qr_code() {
         let engagement = get_example_engagement();
 
-        let generated = engagement.generate_qr_code().unwrap();
+        let generated = engagement.clone().generate_qr_code().unwrap();
         let parsed = DeviceEngagement::parse_qr_code(&generated.qr_code_content).unwrap();
 
-        assert_eq!(engagement, parsed.device_engagement);
+        assert_eq!(&engagement, parsed.inner());
+        assert_eq!(generated.device_engagement, parsed);
         assert_eq!(
-            generated.device_engagement_bytes,
-            parsed.device_engagement_bytes
+            generated.device_engagement.into_bytes(),
+            parsed.into_bytes()
         );
     }
 
