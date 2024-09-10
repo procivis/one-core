@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use one_core::model::organisation::Organisation;
 use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
 use one_core::model::trust_entity::{TrustEntity, TrustEntityRole};
@@ -66,8 +68,13 @@ async fn test_get_trust_list_success() {
 
     resp["id"].assert_eq(&trust_anchor.id);
     resp["name"].assert_eq(&trust_anchor.name);
-    resp["entities"][0]["name"].assert_eq(&entity_one.name);
-    resp["entities"][1]["name"].assert_eq(&entity_two.name);
+    assert_eq!(
+        [&resp["entities"][0]["name"], &resp["entities"][1]["name"]]
+            .into_iter()
+            .map(|v| v.as_str().unwrap().to_owned())
+            .collect::<HashSet<_>>(),
+        HashSet::from_iter([entity_one.name, entity_two.name])
+    );
 }
 
 #[tokio::test]

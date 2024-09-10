@@ -32,6 +32,7 @@ use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use one_providers::common_models::key::OpenKey;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
+use sea_orm::ConnectionTrait;
 use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue, KeyId, ProofId};
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
@@ -120,9 +121,34 @@ pub fn create_config(
 }
 
 pub async fn create_db(config: &AppConfig<ServerConfig>) -> DbConn {
-    sql_data_provider::db_conn(&config.app.database_url, true)
+    let db = sql_data_provider::db_conn(&config.app.database_url, true)
         .await
-        .unwrap()
+        .unwrap();
+
+    let url = std::env::var("ONE_app__databaseUrl").ok();
+    let prefix = url.as_ref().and_then(|val| val.rsplit_once('/'));
+
+    if let Some((prefix, _)) = prefix {
+        let this_test_db: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(10)
+            .map(char::from)
+            .collect();
+
+        db.execute_unprepared(&format!("CREATE DATABASE {this_test_db};"))
+            .await
+            .unwrap();
+
+        db.execute_unprepared(&format!("USE {this_test_db};"))
+            .await
+            .unwrap();
+
+        sql_data_provider::db_conn(&format!("{prefix}/{this_test_db}"), true)
+            .await
+            .unwrap()
+    } else {
+        db
+    }
 }
 
 pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
