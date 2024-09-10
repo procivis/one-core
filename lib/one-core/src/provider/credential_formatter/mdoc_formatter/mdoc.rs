@@ -38,7 +38,9 @@ const DATE_TIME_CBOR_TAG: u64 = 0;
 #[serde(rename_all = "camelCase")]
 pub struct DeviceResponse {
     pub version: DeviceResponseVersion,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub documents: Option<Vec<Document>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub document_errors: Option<Vec<DocumentError>>,
     pub status: u64,
 }
@@ -49,6 +51,7 @@ pub struct Document {
     pub doc_type: DocType,
     pub issuer_signed: IssuerSigned,
     pub device_signed: DeviceSigned,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub errors: Option<Errors>,
 }
 
@@ -80,6 +83,7 @@ pub struct DeviceSigned {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceAuth {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub device_signature: Option<CoseSign1>,
 }
 
