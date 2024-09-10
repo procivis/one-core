@@ -56,6 +56,7 @@ indoc              = { version = "2.0" }
 p256.workspace     = true
 rand.workspace     = true
 reqwest            = { version = "0.12", features = ["json"] }
+sea-orm.workspace  = true
 sql-data-provider  = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["test_utils"] }
 wiremock.workspace = true
 
