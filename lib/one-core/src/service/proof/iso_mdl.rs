@@ -70,7 +70,14 @@ impl ProofService {
 
         let RetrievalOptions::Ble(ble_options) = device_retrieval_method.retrieval_options;
 
-        start_client(ble, ble_options, verifier_session, proof).await?;
+        start_client(
+            ble,
+            ble_options,
+            verifier_session,
+            proof,
+            self.proof_repository.clone(),
+        )
+        .await?;
 
         Ok(proof_id)
     }
