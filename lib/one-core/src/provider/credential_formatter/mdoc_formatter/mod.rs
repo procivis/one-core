@@ -691,7 +691,7 @@ fn extract_credentials_internal(
 
     if verify {
         let digest_algo = mso.digest_algorithm;
-        let digest_fn = |data: Vec<u8>| match digest_algo {
+        let digest_fn = |data: &[u8]| match digest_algo {
             DigestAlgorithm::Sha256 => Sha256::digest(data).to_vec(),
             DigestAlgorithm::Sha384 => Sha384::digest(data).to_vec(),
             DigestAlgorithm::Sha512 => Sha512::digest(data).to_vec(),
@@ -711,7 +711,7 @@ fn extract_credentials_internal(
                     FormatterError::CouldNotExtractCredentials("Missing digest_ids".to_owned()),
                 )?;
 
-                let item_as_cbor = signed_item.clone().into_bytes();
+                let item_as_cbor = signed_item.to_bytes();
                 let digest = digest_fn(item_as_cbor);
 
                 if digest != digest_id.0 {
