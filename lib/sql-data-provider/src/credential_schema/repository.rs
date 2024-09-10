@@ -23,6 +23,7 @@ use crate::credential_schema::mapper::{
     claim_schemas_to_model_vec, claim_schemas_to_relations, credential_schema_from_models,
 };
 use crate::credential_schema::CredentialSchemaProvider;
+use crate::entity::credential_schema::LayoutType;
 use crate::entity::{
     claim_schema, credential_schema, credential_schema_claim_schema, organisation,
 };
@@ -312,11 +313,23 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             Some(format) => Set(format),
         };
 
+        let layout_type = match request.layout_type {
+            None => Unchanged(LayoutType::Card),
+            Some(layout_type) => Set(layout_type.into()),
+        };
+
+        let layout_properties = match request.layout_properties {
+            None => Unchanged(Default::default()),
+            Some(layout_properties) => Set(Some(layout_properties.into())),
+        };
+
         let update_model = credential_schema::ActiveModel {
             id: Unchanged(*id),
             last_modified: Set(OffsetDateTime::now_utc()),
             revocation_method,
             format,
+            layout_type,
+            layout_properties,
             ..Default::default()
         };
 
