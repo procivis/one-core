@@ -127,6 +127,11 @@ impl CredentialFormatter for PhysicalCardFormatter {
                 "ES256".to_string(),
                 "DILITHIUM".to_string(),
             ],
+            verification_key_storages: vec![
+                "INTERNAL".to_string(),
+                "AZURE_HSM".to_string(),
+                "SECURE_ELEMENT".to_string(),
+            ],
             datatypes: vec![
                 "STRING".to_string(),
                 "EMAIL".to_string(),

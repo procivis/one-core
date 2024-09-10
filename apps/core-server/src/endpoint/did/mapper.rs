@@ -66,6 +66,10 @@ impl From<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
             .key_roles
             .map(|values| DidFilterValue::KeyRoles(convert_inner(values)));
 
+        let key_storages = value.key_storages.map(|values| {
+            DidFilterValue::KeyStorages(values.into_iter().filter(|key| !key.is_empty()).collect())
+        });
+
         let did_methods = value.did_methods.map(DidFilterValue::DidMethods);
 
         organisation_id
@@ -74,6 +78,7 @@ impl From<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
             & deactivated
             & key_algorithms
             & key_roles
+            & key_storages
             & did_methods
     }
 }
