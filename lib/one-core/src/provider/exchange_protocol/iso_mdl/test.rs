@@ -75,7 +75,7 @@ async fn test_presentation_reject_ok() {
     let device_request_bytes = to_cbor(&DeviceRequest {
         version: "1.0".to_string(),
         doc_requests: vec![DocRequest {
-            items_request: EmbeddedCbor(ItemsRequest {
+            items_request: EmbeddedCbor::new(ItemsRequest {
                 doc_type: schema_id.clone(),
                 name_spaces: hashmap! {
                     "org.iso.18013.5.1.mDL".to_string() => hashmap! {
@@ -85,7 +85,8 @@ async fn test_presentation_reject_ok() {
                         "info".to_string() => true,
                     }
                 },
-            }),
+            })
+            .unwrap(),
         }],
     })
     .unwrap();
@@ -172,7 +173,7 @@ async fn test_get_presentation_definition_ok() {
     let device_request_bytes = to_cbor(&DeviceRequest {
         version: "1.0".to_string(),
         doc_requests: vec![DocRequest {
-            items_request: EmbeddedCbor(ItemsRequest {
+            items_request: EmbeddedCbor::new(ItemsRequest {
                 doc_type: schema_id.clone(),
                 name_spaces: hashmap! {
                     "org.iso.18013.5.1.mDL".to_string() => hashmap! {
@@ -182,7 +183,8 @@ async fn test_get_presentation_definition_ok() {
                         "info".to_string() => true,
                     }
                 },
-            }),
+            })
+            .unwrap(),
         }],
     })
     .unwrap();

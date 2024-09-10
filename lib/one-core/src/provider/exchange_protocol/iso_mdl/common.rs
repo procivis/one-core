@@ -17,6 +17,7 @@ use sha2::{Digest, Sha256};
 use x25519_dalek::{EphemeralSecret, PublicKey};
 use zeroize::Zeroize;
 
+use super::device_engagement::DeviceEngagement;
 use super::session::SessionTranscript;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
 
@@ -366,18 +367,17 @@ fn x25519_from_cose_key(key: CoseKey) -> anyhow::Result<x25519_dalek::PublicKey>
 }
 
 pub fn create_session_transcript_bytes(
-    device_engagement_bytes: Vec<u8>,
-    e_reader_key: &EReaderKey,
+    device_engagement: EmbeddedCbor<DeviceEngagement>,
+    e_reader_key: EmbeddedCbor<EReaderKey>,
 ) -> Result<Vec<u8>, ExchangeProtocolError> {
     let session_transcript = SessionTranscript {
-        device_engagement_bytes,
-        e_reader_key_bytes: EmbeddedCbor(e_reader_key)
-            .to_vec()
-            .context("device_engagement serialization error")
-            .map_err(ExchangeProtocolError::Other)?,
+        device_engagement,
+        e_reader_key,
     };
 
-    to_cbor(&session_transcript)
+    Ok(EmbeddedCbor::new(session_transcript)
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+        .into_bytes())
 }
 
 pub fn to_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, ExchangeProtocolError> {

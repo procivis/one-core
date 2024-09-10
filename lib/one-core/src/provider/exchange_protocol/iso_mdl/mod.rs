@@ -255,7 +255,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         let organisation_id = interaction_data.organisation_id;
 
         for doc_request in device_request.doc_requests {
-            let items_request = doc_request.items_request.0;
+            let items_request = doc_request.items_request.into_inner();
             let schema_id = items_request.doc_type;
             let namespaces = items_request.name_spaces;
 
