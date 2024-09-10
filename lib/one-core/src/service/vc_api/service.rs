@@ -139,6 +139,7 @@ impl VCAPIService {
                 name: "vc_interop_test_no_schema_data".to_string(),
             },
             name: create_request.credential.name,
+            description: create_request.credential.description,
             terms_of_use: create_request.credential.terms_of_use,
             evidence: create_request.credential.evidence,
         };
