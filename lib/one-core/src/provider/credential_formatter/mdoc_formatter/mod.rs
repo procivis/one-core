@@ -12,7 +12,7 @@ use coset::{
 };
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
-use mdoc::DataElementValue;
+use mdoc::{DataElementValue, DeviceNamespaces};
 use one_crypto::SignerError;
 use one_providers::common_models::did::DidValue;
 use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
@@ -182,13 +182,13 @@ impl CredentialFormatter for MdocFormatter {
             doc_type: credential_schema_id,
             validity_info,
         };
-        let mso = EmbeddedCbor::<MobileSecurityObject>(mso)
-            .to_vec()
+        let mso = EmbeddedCbor::<MobileSecurityObject>::new(mso)
             .map_err(|err| {
                 FormatterError::Failed(format!(
                     "CBOR serialization failed for MobileSecurityObjectBytes: {err}"
                 ))
-            })?;
+            })?
+            .into_bytes();
 
         let algorithm_header = try_build_algorithm_header(algorithm)?;
 
@@ -435,11 +435,11 @@ impl CredentialFormatter for MdocFormatter {
                 return true;
             }
 
-            claims.retain(|EmbeddedCbor(claim)| {
+            claims.retain(|claim| {
                 // we pull in everything starting with `path` since a `disclosed_key` for an object will contain only name of the object
                 related_paths
                     .iter()
-                    .any(|path| claim.element_identifier.starts_with(path))
+                    .any(|path| claim.inner().element_identifier.starts_with(path))
             });
 
             !claims.is_empty()
@@ -563,10 +563,10 @@ fn try_extract_holder_public_key(
         .as_ref()
         .ok_or_else(|| FormatterError::Failed("Issuer auth missing mso object".to_owned()))?;
 
-    let EmbeddedCbor(mso): EmbeddedCbor<MobileSecurityObject> = ciborium::from_reader(&mso[..])
+    let mso: EmbeddedCbor<MobileSecurityObject> = ciborium::from_reader(&mso[..])
         .map_err(|err| FormatterError::Failed(format!("Failed deserializing MSO: {err}")))?;
 
-    let DeviceKey(cose_key) = mso.device_key_info.device_key;
+    let DeviceKey(cose_key) = mso.into_inner().device_key_info.device_key;
 
     let get_param_value = |key| {
         cose_key
@@ -691,7 +691,7 @@ fn extract_credentials_internal(
 
     if verify {
         let digest_algo = mso.digest_algorithm;
-        let digest_fn = |data: Vec<u8>| match digest_algo {
+        let digest_fn = |data: &[u8]| match digest_algo {
             DigestAlgorithm::Sha256 => Sha256::digest(data).to_vec(),
             DigestAlgorithm::Sha384 => Sha384::digest(data).to_vec(),
             DigestAlgorithm::Sha512 => Sha512::digest(data).to_vec(),
@@ -706,18 +706,12 @@ fn extract_credentials_internal(
                     "Missing digest value for namespace {namespace}"
                 )))?;
 
-            for signed_item_bytes in signed_items {
-                let signed_item = &signed_item_bytes.0;
-                let digest_id = digest_ids.get(&signed_item.digest_id).ok_or(
+            for signed_item in signed_items {
+                let digest_id = digest_ids.get(&signed_item.inner().digest_id).ok_or(
                     FormatterError::CouldNotExtractCredentials("Missing digest_ids".to_owned()),
                 )?;
 
-                let item_as_cbor = signed_item_bytes.to_vec().map_err(|err| {
-                    FormatterError::Failed(format!(
-                        "Failed encoding signed item as embedded CBOR : {err}"
-                    ))
-                })?;
-
+                let item_as_cbor = signed_item.to_bytes();
                 let digest = digest_fn(item_as_cbor);
 
                 if digest != digest_id.0 {
@@ -769,18 +763,28 @@ async fn try_build_device_signed(
     let session_transcript = SessionTranscript {
         handover: OID4VPHandover::compute(client_id, response_uri, nonce, mdoc_generated_nonce),
     };
-    let device_namespaces_bytes = EmbeddedCbor([].into());
-
-    let device_auth = DeviceAuthentication {
-        session_transcript: EmbeddedCbor(session_transcript),
-        doctype: doctype.to_owned(),
-        device_namespaces: device_namespaces_bytes.clone(),
-    };
-    let device_auth_bytes = EmbeddedCbor(device_auth).to_vec().map_err(|err| {
+    let device_namespaces = EmbeddedCbor::<DeviceNamespaces>::new([].into()).map_err(|err| {
         FormatterError::Failed(format!(
-            "CBOR serialization failed for DeviceAuthentication: {err}"
+            "CBOR serialization failed for DeviceNamespaces: {err}"
         ))
     })?;
+
+    let device_auth = DeviceAuthentication {
+        session_transcript: EmbeddedCbor::new(session_transcript).map_err(|err| {
+            FormatterError::Failed(format!(
+                "CBOR serialization failed for SessionTranscript: {err}"
+            ))
+        })?,
+        doctype: doctype.to_owned(),
+        device_namespaces: device_namespaces.clone(),
+    };
+    let device_auth_bytes = EmbeddedCbor::new(device_auth)
+        .map_err(|err| {
+            FormatterError::Failed(format!(
+                "CBOR serialization failed for DeviceAuthentication: {err}"
+            ))
+        })?
+        .into_bytes();
 
     let algorithm_header = try_build_algorithm_header(algorithm)?;
     let cose_sign1 = CoseSign1Builder::new()
@@ -795,7 +799,7 @@ async fn try_build_device_signed(
     };
 
     let device_signed = DeviceSigned {
-        name_spaces: device_namespaces_bytes,
+        name_spaces: device_namespaces,
         device_auth,
     };
 
@@ -816,18 +820,28 @@ async fn try_verify_device_signed(
     let session_transcript = SessionTranscript {
         handover: OID4VPHandover::compute(client_id, response_uri, nonce, mdoc_generated_nonce),
     };
-    let device_namespaces_bytes = EmbeddedCbor([].into());
-
-    let device_auth = DeviceAuthentication {
-        session_transcript: EmbeddedCbor(session_transcript),
-        doctype: doctype.to_owned(),
-        device_namespaces: device_namespaces_bytes,
-    };
-    let device_auth_bytes = EmbeddedCbor(device_auth).to_vec().map_err(|err| {
+    let device_namespaces = EmbeddedCbor::new([].into()).map_err(|err| {
         FormatterError::Failed(format!(
-            "CBOR serialization failed for DeviceAuthentication: {err}"
+            "CBOR serialization failed for DeviceNamespaces: {err}"
         ))
     })?;
+
+    let device_auth = DeviceAuthentication {
+        session_transcript: EmbeddedCbor::new(session_transcript).map_err(|err| {
+            FormatterError::Failed(format!(
+                "CBOR serialization failed for SessionTranscript: {err}"
+            ))
+        })?,
+        doctype: doctype.to_owned(),
+        device_namespaces,
+    };
+    let device_auth_bytes = EmbeddedCbor::new(device_auth)
+        .map_err(|err| {
+            FormatterError::Failed(format!(
+                "CBOR serialization failed for DeviceAuthentication: {err}"
+            ))
+        })?
+        .into_bytes();
 
     try_verify_detached_signature_with_provider(
         signature,
@@ -912,7 +926,11 @@ fn try_build_namespaces(
                 )?,
             };
 
-            namespace.push(EmbeddedCbor::<IssuerSignedItem>(signed_item));
+            namespace.push(EmbeddedCbor::new(signed_item).map_err(|err| {
+                FormatterError::Failed(format!(
+                    "CBOR serialization failed for IssuerSignedItem: {err}"
+                ))
+            })?);
             digest_id += 1;
         }
     }
@@ -1156,14 +1174,14 @@ fn try_extract_mobile_security_object(
         ));
     };
 
-    let EmbeddedCbor::<MobileSecurityObject>(mso) =
+    let mso: EmbeddedCbor<MobileSecurityObject> =
         ciborium::from_reader(&payload[..]).map_err(|err| {
             FormatterError::Failed(format!(
                 "IssuerAuth payload cannot be converted to MSO: {err}"
             ))
         })?;
 
-    Ok(mso)
+    Ok(mso.into_inner())
 }
 
 fn try_build_value_digests(
@@ -1181,15 +1199,9 @@ fn try_build_value_digests(
     for (namespace, signed_items) in namespaces {
         let digest_ids = value_digests.entry(namespace.to_owned()).or_default();
 
-        for signed_item_bytes @ EmbeddedCbor::<IssuerSignedItem>(item) in signed_items {
-            let item_as_cbor = signed_item_bytes.to_vec().map_err(|err| {
-                FormatterError::Failed(format!(
-                    "Failed encoding signed item as embedded CBOR : {err}"
-                ))
-            })?;
-            let digest = digest_fn(item_as_cbor);
-
-            let digest_id = item.digest_id;
+        for signed_item in signed_items {
+            let digest = digest_fn(signed_item.to_bytes());
+            let digest_id = signed_item.inner().digest_id;
             digest_ids.insert(digest_id, Bstr(digest));
         }
     }
@@ -1350,10 +1362,10 @@ fn try_extract_claims(
     for (namespace, inner_claims) in namespaces {
         let mut namespace_object_content = serde_json::Map::new();
 
-        for EmbeddedCbor::<IssuerSignedItem>(issuer_signed) in inner_claims {
-            let val = build_json_value(issuer_signed.element_value)?;
-
-            namespace_object_content.insert(issuer_signed.element_identifier, val);
+        for issuer_signed_item in inner_claims {
+            let issuer_signed_item = issuer_signed_item.into_inner();
+            let val = build_json_value(issuer_signed_item.element_value)?;
+            namespace_object_content.insert(issuer_signed_item.element_identifier, val);
         }
         result.insert(
             namespace,

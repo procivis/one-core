@@ -22,7 +22,7 @@ impl ProofService {
         exchange: String,
         iso_mdl_engagement: String,
     ) -> Result<ProofId, ServiceError> {
-        let qr = DeviceEngagement::parse_qr_code(&iso_mdl_engagement)
+        let device_engagement = DeviceEngagement::parse_qr_code(&iso_mdl_engagement)
             .map_err(|err| ServiceError::Other(err.to_string()))?;
 
         let (transport, transport_type) = get_available_transport_type(&self.config.transport)?;
@@ -35,14 +35,14 @@ impl ProofService {
             .as_ref()
             .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?;
 
-        let device_retrieval_method = qr
-            .device_engagement
+        let device_retrieval_method = device_engagement
+            .inner()
             .device_retrieval_methods
             .first()
             .ok_or_else(|| ServiceError::Other("no device retrival method".into()))?
             .clone();
 
-        let verifier_session = setup_verifier_session(qr, &schema, &self.config)?;
+        let verifier_session = setup_verifier_session(device_engagement, &schema, &self.config)?;
 
         let now = OffsetDateTime::now_utc();
         let proof = Proof {

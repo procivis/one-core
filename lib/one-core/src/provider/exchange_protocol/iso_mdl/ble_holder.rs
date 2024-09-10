@@ -13,6 +13,7 @@ use super::common::{
     create_session_transcript_bytes, split_into_chunks, to_cbor, Chunk, DeviceRequest, EDeviceKey,
     KeyAgreement, SkDevice, SkReader,
 };
+use super::device_engagement::DeviceEngagement;
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{ProofState, ProofStateEnum};
@@ -21,7 +22,9 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceAddress, DeviceInfo, ServiceDescription,
 };
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, DeviceResponse};
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
+    Bstr, DeviceResponse, EmbeddedCbor,
+};
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -103,7 +106,7 @@ pub(crate) async fn start_mdl_server(ble: &BleWaiter) -> Result<ServerInfo, Serv
 /// Waits for verifier connection + reads device request
 pub(crate) async fn receive_mdl_request(
     ble: &BleWaiter,
-    device_engagement_bytes: Vec<u8>,
+    device_engagement: EmbeddedCbor<DeviceEngagement>,
     key_pair: KeyAgreement<EDeviceKey>,
     interaction_repository: Arc<dyn InteractionRepository>,
     mut interaction: Interaction,
@@ -135,12 +138,15 @@ pub(crate) async fn receive_mdl_request(
                         read_request(&*peripheral, &info, interaction_data.service_uuid).await?;
 
                     let transcript = create_session_transcript_bytes(
-                        device_engagement_bytes,
-                        &session_establishment.e_reader_key.0,
+                        device_engagement,
+                        session_establishment.e_reader_key.to_owned(),
                     )?;
 
                     let (sk_device, sk_reader) = key_pair
-                        .derive_session_keys(session_establishment.e_reader_key.0, &transcript)
+                        .derive_session_keys(
+                            session_establishment.e_reader_key.into_inner(),
+                            &transcript,
+                        )
                         .context("failed to derive key")
                         .map_err(ExchangeProtocolError::Other)?;
 
