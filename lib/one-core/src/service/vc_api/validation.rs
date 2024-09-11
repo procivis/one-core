@@ -93,7 +93,7 @@ pub(super) fn validate_verifiable_credential(
     if credential
         .credential_schema
         .as_ref()
-        .is_some_and(|cs| cs.id.parse::<Url>().is_err())
+        .is_some_and(|cs| cs.iter().any(|v| v.id.parse::<Url>().is_err()))
     {
         return Err(VcValidationError::InvalidCredentialSchemaId);
     }
