@@ -94,15 +94,15 @@ impl VCAPIService {
             .key_provider
             .get_signature_provider(&key.key, Some(key_id.to_owned()))?;
 
-        let mut claims: Vec<PublishedClaim> = create_request
-            .credential
-            .credential_subject
+        let credential_subject = create_request.credential.credential_subject[0].clone();
+
+        let mut claims: Vec<PublishedClaim> = credential_subject
             .subject
             .into_iter()
             .flat_map(|claim| value_to_published_claim(claim, "", false))
             .collect();
 
-        if let Some(credential_subject) = create_request.credential.credential_subject.id {
+        if let Some(credential_subject) = credential_subject.id {
             claims.push(PublishedClaim {
                 key: "id".to_string(),
                 value: PublishedClaimValue::String(credential_subject.into()),

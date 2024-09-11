@@ -46,7 +46,7 @@ impl OptiocalBarcodeCredential {
         Ok(Self {
             schema: schema?,
             optical_data: ProtectedOpticalData::new_from_credential_subject(
-                &credential.credential_subject,
+                &credential.credential_subject[0],
                 input.barcode,
             )?,
             credential,

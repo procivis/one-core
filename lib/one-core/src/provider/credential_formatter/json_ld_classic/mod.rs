@@ -350,8 +350,7 @@ impl JsonLdClassic {
         }
 
         // We only take first subject now as one credential only contains one credential schema
-        let subject = credential
-            .credential_subject
+        let subject = credential.credential_subject[0]
             .subject
             .values()
             .next()
@@ -377,7 +376,7 @@ impl JsonLdClassic {
             update_at: None,
             invalid_before: None,
             issuer_did: Some(credential.issuer.to_did_value()),
-            subject: credential.credential_subject.id,
+            subject: credential.credential_subject[0].id.clone(),
             claims,
             status: credential.credential_status,
             credential_schema: credential.credential_schema,
