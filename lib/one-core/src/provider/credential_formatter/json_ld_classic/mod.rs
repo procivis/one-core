@@ -74,7 +74,14 @@ impl CredentialFormatter for JsonLdClassic {
             holder_did.as_ref(),
             additional_context,
             additional_types,
-            json_ld_context_url.map(|u| u.parse().unwrap()),
+            json_ld_context_url
+                .map(|u| u.parse())
+                .transpose()
+                .map_err(|_| {
+                    FormatterError::CouldNotFormat(
+                        "Provded context url is not a valid URL".to_string(),
+                    )
+                })?,
             custom_subject_name,
             self.params.embed_layout_properties.unwrap_or_default(),
         )?;
@@ -97,9 +104,7 @@ impl CredentialFormatter for JsonLdClassic {
             "assertionMethod",
             cryptosuite,
             key_id,
-            indexset![ContextType::Url(
-                Context::CredentialsV2.to_string().parse().unwrap()
-            )],
+            indexset![ContextType::Url(Context::CredentialsV2.to_url())],
         )
         .await?;
 
@@ -193,7 +198,9 @@ impl CredentialFormatter for JsonLdClassic {
             context: context.clone(),
             r#type: ManyOrOne::One("VerifiablePresentation".to_string()),
             verifiable_credential,
-            holder: Issuer::Url(holder_did.as_str().parse().unwrap()),
+            holder: holder_did.as_str().parse().map(Issuer::Url).map_err(|_| {
+                FormatterError::CouldNotFormat("Holder DID is not a URL".to_string())
+            })?,
             nonce: ctx.nonce,
             proof: None,
             issuance_date: OffsetDateTime::now_utc(),

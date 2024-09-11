@@ -9,9 +9,9 @@ use url::Url;
 use crate::service::error::ServiceError;
 
 static V1: LazyLock<ContextType> =
-    LazyLock::new(|| ContextType::Url(Context::CredentialsV1.to_string().parse().unwrap()));
+    LazyLock::new(|| ContextType::Url(Context::CredentialsV1.to_url()));
 static V2: LazyLock<ContextType> =
-    LazyLock::new(|| ContextType::Url(Context::CredentialsV2.to_string().parse().unwrap()));
+    LazyLock::new(|| ContextType::Url(Context::CredentialsV2.to_url()));
 
 #[derive(Debug, thiserror::Error)]
 pub enum VcValidationError {
