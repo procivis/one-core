@@ -114,7 +114,7 @@ pub struct ProofClaimRelations {
     pub credential: Option<CredentialRelations>,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, From)]
+#[derive(Clone, Debug, Eq, PartialEq, From)]
 #[from(one_providers::common_models::proof::OpenUpdateProofRequest)]
 pub struct UpdateProofRequest {
     pub id: ProofId,

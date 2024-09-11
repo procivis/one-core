@@ -219,12 +219,15 @@ fn update_proof_request(id: ProofId, new_state: ProofStateEnum) -> UpdateProofRe
     let now = OffsetDateTime::now_utc();
     UpdateProofRequest {
         id,
+        holder_did_id: None,
+        verifier_did_id: None,
         state: Some(ProofState {
             created_date: now,
             last_modified: now,
             state: new_state,
         }),
-        ..Default::default()
+        interaction: None,
+        redirect_uri: None,
     }
 }
 

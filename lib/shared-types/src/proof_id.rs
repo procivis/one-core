@@ -5,7 +5,7 @@ use crate::macros::{
     impl_from_unnamed, impl_into, impls_for_seaorm_newtype, impls_for_uuid_newtype,
 };
 
-#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(transparent)]
 #[repr(transparent)]
