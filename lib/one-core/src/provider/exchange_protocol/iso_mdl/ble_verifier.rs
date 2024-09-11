@@ -149,7 +149,7 @@ async fn verifier_flow(
     central: &dyn BleCentral,
 ) -> Result<(), anyhow::Error> {
     let (device, mtu_size) =
-        connect_to_server(&*central, ble_options.peripheral_server_uuid.to_string()).await?;
+        connect_to_server(central, ble_options.peripheral_server_uuid.to_string()).await?;
 
     let result = process_proof(
         ble_options,
@@ -179,8 +179,8 @@ async fn process_proof(
     mtu_size: usize,
 ) -> Result<(), anyhow::Error> {
     send_session_establishment(
-        &*central,
-        &device,
+        central,
+        device,
         ble_options.peripheral_server_uuid.to_string(),
         mtu_size,
         verifier_session.reader_key,
@@ -192,8 +192,8 @@ async fn process_proof(
     // set proof state - requested
 
     let session_data = read_response(
-        &*central,
-        &device,
+        central,
+        device,
         ble_options.peripheral_server_uuid.to_string(),
     )
     .await?;
