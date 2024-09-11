@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 
 use anyhow::Context;
 use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
+use shared_types::ProofId;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ble::{CLIENT_2_SERVER, SERVER_2_CLIENT, STATE};
@@ -14,7 +16,7 @@ use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{self, DatatypeType};
-use crate::model::proof::Proof;
+use crate::model::proof::{Proof, ProofState, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
@@ -23,6 +25,7 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     Bstr, DeviceResponse, EmbeddedCbor,
 };
+use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
 
@@ -95,52 +98,28 @@ pub(crate) async fn start_client(
     ble: &BleWaiter,
     ble_options: BleOptions,
     verifier_session: VerifierSession,
-    _proof: Proof,
+    proof: Proof,
+    proof_repository: Arc<dyn ProofRepository>,
 ) -> Result<(), ServiceError> {
     ble.schedule(
         *ISO_MDL_VERIFIER_FLOW,
         move |_, central, _| async move {
             // TODO: proper error-handling (any error results in proof state Error + (ev. signaling End command) + disconnect)
 
-            let (device, mtu_size) =
-                connect_to_server(&*central, ble_options.peripheral_server_uuid.to_string())
-                    .await?;
-
-            send_session_establishment(
+            if let Err(_error) = verifier_flow(
+                ble_options,
+                verifier_session,
+                &proof,
+                proof_repository.clone(),
                 &*central,
-                &device,
-                ble_options.peripheral_server_uuid.to_string(),
-                mtu_size,
-                verifier_session.reader_key,
-                verifier_session.device_request_encrypted,
             )
-            .await?;
-
-            // TODO:
-            // set proof state - requested
-
-            let session_data = read_response(
-                &*central,
-                &device,
-                ble_options.peripheral_server_uuid.to_string(),
-            )
-            .await?;
-
-            // TODO:
-            // signal End command (if session termination not signaled via response)
-            // disconnect
-
-            let decrypted = verifier_session
-                .sk_device
-                .decrypt(&session_data.data.context("data is missing")?.0)?;
-            let _device_response: DeviceResponse = ciborium::from_reader(&decrypted[..])?;
-
-            // TODO:
-            // validate DeviceResponse content
-            // if valid, fill proof claims + credentials
-            // set proof state
-
-            Ok::<_, anyhow::Error>(())
+            .await
+            {
+                let _ = proof_repository
+                    .update_proof(update_proof_request(proof.id, ProofStateEnum::Error))
+                    .await;
+                // TODO: log error?
+            }
         },
         move |_, _| async move {
             // TODO:
@@ -155,6 +134,101 @@ pub(crate) async fn start_client(
     .await;
 
     Ok(())
+}
+
+/// This function does whole flow from verifier's side (connecting, sending request, receiving
+/// and parsing response)
+///
+/// It's split into smaller functions to simplify error handling - depending on place of failure
+/// we may need to send End command, disconnect BLE central and set proof state to error
+async fn verifier_flow(
+    ble_options: BleOptions,
+    verifier_session: VerifierSession,
+    proof: &Proof,
+    proof_repository: Arc<dyn ProofRepository>,
+    central: &dyn BleCentral,
+) -> Result<(), anyhow::Error> {
+    let (device, mtu_size) =
+        connect_to_server(central, ble_options.peripheral_server_uuid.to_string()).await?;
+
+    let result = process_proof(
+        ble_options,
+        verifier_session,
+        proof,
+        &*proof_repository,
+        central,
+        &device,
+        mtu_size,
+    )
+    .await;
+    if let Err(_error) = &result {
+        // TODO: send end
+        let _ = central.disconnect(device.device_address).await;
+    }
+
+    result
+}
+
+async fn process_proof(
+    ble_options: BleOptions,
+    verifier_session: VerifierSession,
+    _proof: &Proof,
+    _proof_repository: &dyn ProofRepository,
+    central: &dyn BleCentral,
+    device: &PeripheralDiscoveryData,
+    mtu_size: usize,
+) -> Result<(), anyhow::Error> {
+    send_session_establishment(
+        central,
+        device,
+        ble_options.peripheral_server_uuid.to_string(),
+        mtu_size,
+        verifier_session.reader_key,
+        verifier_session.device_request_encrypted,
+    )
+    .await?;
+
+    // TODO:
+    // set proof state - requested
+
+    let session_data = read_response(
+        central,
+        device,
+        ble_options.peripheral_server_uuid.to_string(),
+    )
+    .await?;
+
+    // TODO:
+    // signal End command (if session termination not signaled via response)
+    // disconnect
+
+    let decrypted = verifier_session
+        .sk_device
+        .decrypt(&session_data.data.context("data is missing")?.0)?;
+    let _device_response: DeviceResponse = ciborium::from_reader(&decrypted[..])?;
+
+    // TODO:
+    // validate DeviceResponse content
+    // if valid, fill proof claims + credentials
+    // set proof state
+
+    Ok::<_, anyhow::Error>(())
+}
+
+fn update_proof_request(id: ProofId, new_state: ProofStateEnum) -> UpdateProofRequest {
+    let now = OffsetDateTime::now_utc();
+    UpdateProofRequest {
+        id,
+        holder_did_id: None,
+        verifier_did_id: None,
+        state: Some(ProofState {
+            created_date: now,
+            last_modified: now,
+            state: new_state,
+        }),
+        interaction: None,
+        redirect_uri: None,
+    }
 }
 
 async fn connect_to_server(
