@@ -5,6 +5,8 @@ use anyhow::Context;
 use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use shared_types::ProofId;
 use time::OffsetDateTime;
+use tokio::sync::oneshot;
+use uuid::Uuid;
 
 use super::ble::{CLIENT_2_SERVER, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE};
 use super::common::{
@@ -12,17 +14,17 @@ use super::common::{
     EReaderKey, ItemsRequest, KeyAgreement, SkDevice,
 };
 use super::device_engagement::{BleOptions, DeviceEngagement};
-use super::session::{Command, SessionData, SessionEstablishment};
+use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{self, DatatypeType};
 use crate::model::proof::{Proof, ProofState, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
-    CharacteristicWriteType, PeripheralDiscoveryData,
+    CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
 };
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    Bstr, DeviceResponse, EmbeddedCbor,
+    Bstr, DeviceResponse, Document, EmbeddedCbor,
 };
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
@@ -98,17 +100,21 @@ pub(crate) async fn start_client(
     proof: Proof,
     proof_repository: Arc<dyn ProofRepository>,
 ) -> Result<(), ServiceError> {
+    let peripheral_server_uuid = ble_options.peripheral_server_uuid.to_owned();
+    let proof_id = proof.id.to_owned();
+    let proof_repository_clone = proof_repository.clone();
+
+    let (sender, receiver) = oneshot::channel();
     ble.schedule(
         *ISO_MDL_FLOW,
         move |_, central, _| async move {
-            // TODO: proper error-handling (any error results in proof state Error + (ev. signaling End command) + disconnect)
-
             if let Err(_error) = verifier_flow(
                 ble_options,
                 verifier_session,
                 &proof,
                 proof_repository.clone(),
                 &*central,
+                sender,
             )
             .await
             {
@@ -118,12 +124,19 @@ pub(crate) async fn start_client(
                 // TODO: log error?
             }
         },
-        move |_, _| async move {
-            // TODO:
-            // stop scanning if still scanning
-            // if State Start signaled, signal End command
-            // disconnect (if connected)
-            // set proof state - Error
+        move |central, _| async move {
+            if let Ok(true) = central.is_scanning().await {
+                let _ = central.stop_scan().await;
+            }
+            {
+                if let Ok(device_info) = receiver.await {
+                    send_end_and_disconnect(&device_info, &peripheral_server_uuid, &*central).await;
+                }
+            }
+
+            let _ = proof_repository_clone
+                .update_proof(update_proof_request(proof_id, ProofStateEnum::Error))
+                .await;
         },
         OnConflict::ReplaceIfSameFlow,
         false,
@@ -144,9 +157,14 @@ async fn verifier_flow(
     proof: &Proof,
     proof_repository: Arc<dyn ProofRepository>,
     central: &dyn BleCentral,
+    sender: oneshot::Sender<PeripheralDiscoveryData>,
 ) -> Result<(), anyhow::Error> {
     let (device, mtu_size) =
         connect_to_server(central, ble_options.peripheral_server_uuid.to_string()).await?;
+
+    let _ = sender.send(device.to_owned());
+
+    let peripheral_server_uuid = ble_options.peripheral_server_uuid;
 
     let result = process_proof(
         ble_options,
@@ -159,18 +177,18 @@ async fn verifier_flow(
     )
     .await;
     if let Err(_error) = &result {
-        // TODO: send end
-        let _ = central.disconnect(device.device_address).await;
+        send_end_and_disconnect(&device, &peripheral_server_uuid, central).await;
     }
 
     result
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_proof(
     ble_options: BleOptions,
     verifier_session: VerifierSession,
-    _proof: &Proof,
-    _proof_repository: &dyn ProofRepository,
+    proof: &Proof,
+    proof_repository: &dyn ProofRepository,
     central: &dyn BleCentral,
     device: &PeripheralDiscoveryData,
     mtu_size: usize,
@@ -185,8 +203,9 @@ async fn process_proof(
     )
     .await?;
 
-    // TODO:
-    // set proof state - requested
+    proof_repository
+        .update_proof(update_proof_request(proof.id, ProofStateEnum::Requested))
+        .await?;
 
     let session_data = read_response(
         central,
@@ -195,21 +214,91 @@ async fn process_proof(
     )
     .await?;
 
-    // TODO:
-    // signal End command (if session termination not signaled via response)
-    // disconnect
+    let received_status_termination = session_data
+        .status
+        .is_some_and(|status| status == StatusCode::SessionTermination);
+    if !received_status_termination {
+        let _ = send_end(
+            device.device_address.to_owned(),
+            &ble_options.peripheral_server_uuid,
+            central,
+        )
+        .await;
+    }
+    let _ = central.disconnect(device.device_address.to_owned()).await;
 
     let decrypted = verifier_session
         .sk_device
         .decrypt(&session_data.data.context("data is missing")?.0)?;
-    let _device_response: DeviceResponse = ciborium::from_reader(&decrypted[..])?;
+    let device_response: DeviceResponse = ciborium::from_reader(&decrypted[..])?;
 
-    // TODO:
-    // validate DeviceResponse content
-    // if valid, fill proof claims + credentials
-    // set proof state
+    let new_state = match (
+        device_response
+            .documents
+            .as_ref()
+            .is_some_and(|documents| !documents.is_empty()),
+        device_response
+            .document_errors
+            .is_some_and(|errors| !errors.is_empty()),
+    ) {
+        (true, false) => ProofStateEnum::Accepted,
+        (false, true) => ProofStateEnum::Rejected,
+        (_, _) => ProofStateEnum::Error,
+    };
+
+    if new_state == ProofStateEnum::Accepted {
+        let documents = device_response
+            .documents
+            .ok_or(ServiceError::ResponseMapping(
+                "documents are None".to_string(),
+            ))?;
+        fill_proof_claims_and_credentials(documents).await?;
+        // TODO: fill proof claims + credentials
+    }
+
+    proof_repository
+        .update_proof(update_proof_request(proof.id, new_state))
+        .await?;
 
     Ok::<_, anyhow::Error>(())
+}
+
+async fn send_end(
+    device_address: DeviceAddress,
+    peripheral_server_uuid: &Uuid,
+    central: &dyn BleCentral,
+) -> Result<(), anyhow::Error> {
+    central
+        .write_data(
+            device_address,
+            peripheral_server_uuid.to_string(),
+            STATE.into(),
+            &[Command::End as _],
+            CharacteristicWriteType::WithoutResponse,
+        )
+        .await
+        .context("send end")
+}
+
+async fn send_end_and_disconnect(
+    device_info: &PeripheralDiscoveryData,
+    peripheral_server_uuid: &Uuid,
+    central: &dyn BleCentral,
+) {
+    let _ = send_end(
+        device_info.device_address.clone(),
+        peripheral_server_uuid,
+        central,
+    )
+    .await;
+    let _ = central.disconnect(device_info.device_address.clone()).await;
+}
+
+async fn fill_proof_claims_and_credentials(documents: Vec<Document>) -> Result<(), anyhow::Error> {
+    // TODO: implement this
+    for _document in documents {}
+
+    Ok(())
 }
 
 fn update_proof_request(id: ProofId, new_state: ProofStateEnum) -> UpdateProofRequest {
