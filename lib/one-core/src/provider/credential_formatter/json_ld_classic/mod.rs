@@ -379,7 +379,7 @@ impl JsonLdClassic {
             subject: credential.credential_subject[0].id.clone(),
             claims,
             status: credential.credential_status,
-            credential_schema: credential.credential_schema,
+            credential_schema: credential.credential_schema.map(|v| v[0].clone()),
         })
     }
 
