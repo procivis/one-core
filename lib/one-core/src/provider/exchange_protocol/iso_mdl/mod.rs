@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
+use ble::ISO_MDL_FLOW;
 use ble_holder::{send_mdl_response, MdocBleHolderInteractionData};
 use common::DeviceRequest;
 use one_providers::common_dto::PublicKeyJwkDTO;
@@ -198,22 +199,15 @@ impl ExchangeProtocolImpl for IsoMdl {
         unimplemented!()
     }
 
-    async fn retract_proof(&self, proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
-        // TODO: implement retract proof on verifier
+    async fn retract_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+        let ble = self
+            .ble
+            .as_ref()
+            .ok_or_else(|| ExchangeProtocolError::Failed("Missing BLE interface".to_string()))?;
 
-        let interaction_data: MdocBleHolderInteractionData = deserialize_interaction_data(
-            proof
-                .interaction
-                .as_ref()
-                .and_then(|interaction| interaction.data.as_ref()),
-        )?;
-
-        let ble = self.ble.clone().ok_or_else(|| {
-            ExchangeProtocolError::Failed("Missing BLE central for submit proof".to_string())
-        })?;
-
-        ble.abort(Abort::Task(interaction_data.continuation_task_id))
-            .await;
+        // There is one shared flowId for both holder and verifier logic.
+        // So this call cancels either one, if it is running
+        ble.abort(Abort::Flow(*ISO_MDL_FLOW)).await;
         Ok(())
     }
 
