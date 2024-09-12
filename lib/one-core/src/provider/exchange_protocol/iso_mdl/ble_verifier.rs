@@ -2,7 +2,11 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use anyhow::Context;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::did::provider::DidMethodProvider;
 use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
+use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::revocation::provider::RevocationMethodProvider;
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::sync::oneshot;
@@ -15,7 +19,7 @@ use super::common::{
 };
 use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
-use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_mapper::{encode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{self, DatatypeType};
 use crate::model::proof::{Proof, ProofState, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
@@ -24,8 +28,10 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
 };
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    Bstr, DeviceResponse, Document, EmbeddedCbor,
+    Bstr, DeviceResponse, EmbeddedCbor,
 };
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::did_repository::DidRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
@@ -93,11 +99,18 @@ pub(crate) fn setup_verifier_session(
 
 /// Main background task on mDL verifier
 /// All from initializing connection to handling response
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn start_client(
     ble: &BleWaiter,
     ble_options: BleOptions,
     verifier_session: VerifierSession,
     proof: Proof,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    did_repository: Arc<dyn DidRepository>,
     proof_repository: Arc<dyn ProofRepository>,
 ) -> Result<(), ServiceError> {
     let peripheral_server_uuid = ble_options.peripheral_server_uuid.to_owned();
@@ -105,6 +118,7 @@ pub(crate) async fn start_client(
     let proof_repository_clone = proof_repository.clone();
 
     let (sender, receiver) = oneshot::channel();
+
     ble.schedule(
         *ISO_MDL_FLOW,
         move |_, central, _| async move {
@@ -112,9 +126,15 @@ pub(crate) async fn start_client(
                 ble_options,
                 verifier_session,
                 &proof,
-                proof_repository.clone(),
                 &*central,
                 sender,
+                credential_formatter_provider.clone(),
+                did_method_provider.clone(),
+                key_algorithm_provider.clone(),
+                revocation_method_provider.clone(),
+                credential_repository.clone(),
+                did_repository.clone(),
+                proof_repository.clone(),
             )
             .await
             {
@@ -151,13 +171,20 @@ pub(crate) async fn start_client(
 ///
 /// It's split into smaller functions to simplify error handling - depending on place of failure
 /// we may need to send End command, disconnect BLE central and set proof state to error
+#[allow(clippy::too_many_arguments)]
 async fn verifier_flow(
     ble_options: BleOptions,
     verifier_session: VerifierSession,
     proof: &Proof,
-    proof_repository: Arc<dyn ProofRepository>,
     central: &dyn BleCentral,
     sender: oneshot::Sender<PeripheralDiscoveryData>,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    did_repository: Arc<dyn DidRepository>,
+    proof_repository: Arc<dyn ProofRepository>,
 ) -> Result<(), anyhow::Error> {
     let (device, mtu_size) =
         connect_to_server(central, ble_options.peripheral_server_uuid.to_string()).await?;
@@ -170,10 +197,16 @@ async fn verifier_flow(
         ble_options,
         verifier_session,
         proof,
-        &*proof_repository,
         central,
         &device,
         mtu_size,
+        credential_formatter_provider,
+        did_method_provider,
+        key_algorithm_provider,
+        revocation_method_provider,
+        credential_repository,
+        did_repository,
+        proof_repository,
     )
     .await;
     if let Err(_error) = &result {
@@ -188,10 +221,16 @@ async fn process_proof(
     ble_options: BleOptions,
     verifier_session: VerifierSession,
     proof: &Proof,
-    proof_repository: &dyn ProofRepository,
     central: &dyn BleCentral,
     device: &PeripheralDiscoveryData,
     mtu_size: usize,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    did_repository: Arc<dyn DidRepository>,
+    proof_repository: Arc<dyn ProofRepository>,
 ) -> Result<(), anyhow::Error> {
     send_session_establishment(
         central,
@@ -232,13 +271,14 @@ async fn process_proof(
         .decrypt(&session_data.data.context("data is missing")?.0)?;
     let device_response: DeviceResponse = ciborium::from_reader(&decrypted[..])?;
 
-    let new_state = match (
+    let mut new_state = match (
         device_response
             .documents
             .as_ref()
             .is_some_and(|documents| !documents.is_empty()),
         device_response
             .document_errors
+            .as_ref()
             .is_some_and(|errors| !errors.is_empty()),
     ) {
         (true, false) => ProofStateEnum::Accepted,
@@ -247,13 +287,22 @@ async fn process_proof(
     };
 
     if new_state == ProofStateEnum::Accepted {
-        let documents = device_response
-            .documents
-            .ok_or(ServiceError::ResponseMapping(
-                "documents are None".to_string(),
-            ))?;
-        fill_proof_claims_and_credentials(documents).await?;
-        // TODO: fill proof claims + credentials
+        if let Err(_error) = fill_proof_claims_and_credentials(
+            device_response,
+            proof,
+            credential_formatter_provider,
+            did_method_provider.clone(),
+            key_algorithm_provider.clone(),
+            revocation_method_provider.clone(),
+            credential_repository,
+            did_repository,
+            proof_repository.clone(),
+        )
+        .await
+        {
+            // todo: log error?
+            new_state = ProofStateEnum::Error;
+        }
     }
 
     proof_repository
@@ -294,9 +343,57 @@ async fn send_end_and_disconnect(
     let _ = central.disconnect(device_info.device_address.clone()).await;
 }
 
-async fn fill_proof_claims_and_credentials(documents: Vec<Document>) -> Result<(), anyhow::Error> {
-    // TODO: implement this
-    for _document in documents {}
+#[allow(clippy::too_many_arguments)]
+async fn fill_proof_claims_and_credentials(
+    device_response: DeviceResponse,
+    proof: &Proof,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    did_repository: Arc<dyn DidRepository>,
+    proof_repository: Arc<dyn ProofRepository>,
+) -> Result<(), anyhow::Error> {
+    let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
+        "proof_schema is None".to_string(),
+    ))?;
+    let holder_did = proof
+        .holder_did
+        .as_ref()
+        .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
+
+    let encoded = encode_cbor_base64(&device_response)?;
+
+    let proved_claims = match super::verify_proof::validate_proof(
+        proof_schema,
+        holder_did,
+        &encoded,
+        &*credential_formatter_provider,
+        key_algorithm_provider,
+        did_method_provider,
+        revocation_method_provider,
+    )
+    .await
+    {
+        Ok(claims) => claims,
+        Err(e) => {
+            // todo: impl fail proof + history event errored
+            return Err(e.into());
+        }
+    };
+
+    super::verify_proof::accept_proof(
+        proof.clone(),
+        proved_claims,
+        holder_did.clone(),
+        &*did_repository,
+        &*credential_repository,
+        &*proof_repository,
+    )
+    .await?;
+
+    // todo: history log accepted
 
     Ok(())
 }
