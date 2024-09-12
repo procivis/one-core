@@ -1,13 +1,12 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use anyhow::Context;
 use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use shared_types::ProofId;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
-use super::ble::{CLIENT_2_SERVER, SERVER_2_CLIENT, STATE};
+use super::ble::{CLIENT_2_SERVER, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE};
 use super::common::{
     create_session_transcript_bytes, split_into_chunks, to_cbor, Chunk, DeviceRequest, DocRequest,
     EReaderKey, ItemsRequest, KeyAgreement, SkDevice,
@@ -28,8 +27,6 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
-
-pub(crate) static ISO_MDL_VERIFIER_FLOW: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
 
 #[derive(Debug, Clone)]
 pub(crate) struct VerifierSession {
@@ -102,7 +99,7 @@ pub(crate) async fn start_client(
     proof_repository: Arc<dyn ProofRepository>,
 ) -> Result<(), ServiceError> {
     ble.schedule(
-        *ISO_MDL_VERIFIER_FLOW,
+        *ISO_MDL_FLOW,
         move |_, central, _| async move {
             // TODO: proper error-handling (any error results in proof state Error + (ev. signaling End command) + disconnect)
 

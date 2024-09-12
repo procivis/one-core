@@ -1,4 +1,4 @@
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
 use one_providers::common_models::proof::OpenProof;
@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use super::ble::{CLIENT_2_SERVER, SERVER_2_CLIENT, STATE};
+use super::ble::{CLIENT_2_SERVER, ISO_MDL_FLOW, SERVER_2_CLIENT, STATE};
 use super::common::{
     create_session_transcript_bytes, split_into_chunks, to_cbor, Chunk, DeviceRequest, EDeviceKey,
     KeyAgreement, SkDevice, SkReader,
@@ -30,8 +30,6 @@ use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
 use crate::util::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
-
-pub(crate) static ISO_MDL_HOLDER_FLOW: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct MdocBleHolderInteractionData {
@@ -68,7 +66,7 @@ pub(crate) async fn start_mdl_server(ble: &BleWaiter) -> Result<ServerInfo, Serv
 
     let (task_id, result) = ble
         .schedule(
-            *ISO_MDL_HOLDER_FLOW,
+            *ISO_MDL_FLOW,
             |_, _, peripheral| async move {
                 peripheral
                     .start_advertisement(
