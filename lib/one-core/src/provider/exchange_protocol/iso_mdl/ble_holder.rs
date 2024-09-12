@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
-use one_providers::common_models::proof::OpenProof;
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, ProofId};
 use time::OffsetDateTime;
@@ -232,15 +231,8 @@ pub(crate) async fn receive_mdl_request(
 pub(crate) async fn send_mdl_response(
     ble: &BleWaiter,
     device_response: DeviceResponse,
-    proof: &OpenProof,
+    interaction_data: MdocBleHolderInteractionData,
 ) -> Result<(), ExchangeProtocolError> {
-    let interaction_data: MdocBleHolderInteractionData = deserialize_interaction_data(
-        proof
-            .interaction
-            .as_ref()
-            .and_then(|interaction| interaction.data.as_ref()),
-    )?;
-
     let interaction_session_data =
         interaction_data
             .session

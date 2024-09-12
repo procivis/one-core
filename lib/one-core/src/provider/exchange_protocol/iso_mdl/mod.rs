@@ -97,35 +97,38 @@ impl ExchangeProtocolImpl for IsoMdl {
             "Missing BLE waiter".to_string(),
         ))?;
 
-        let mut doc_types = DocumentError::new();
-        let input_schemas = proof
-            .schema
-            .clone()
-            .ok_or(ExchangeProtocolError::Failed(
-                "Proof schema missing".to_string(),
-            ))?
-            .input_schemas
-            .ok_or(ExchangeProtocolError::Failed(
-                "Input schemas missing".to_string(),
-            ))?;
+        let interaction_data: MdocBleHolderInteractionData = deserialize_interaction_data(
+            proof
+                .interaction
+                .as_ref()
+                .and_then(|interaction| interaction.data.as_ref()),
+        )?;
 
-        for input_schema in input_schemas {
-            let schema_id = input_schema
-                .credential_schema
-                .ok_or(ExchangeProtocolError::Failed(
-                    "Credential schema missing".to_string(),
-                ))?
-                .schema_id;
-            doc_types.insert(schema_id, 0);
+        let device_request_bytes = &interaction_data
+            .session
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "interaction_session_data missing".to_string(),
+            ))?
+            .device_request_bytes;
+
+        let device_request: DeviceRequest = ciborium::from_reader(device_request_bytes.as_slice())
+            .context("device request deserialization error")
+            .map_err(ExchangeProtocolError::Other)?;
+
+        let mut document_error = DocumentError::new();
+        for doc_request in device_request.doc_requests {
+            let doc_type = doc_request.items_request.into_inner().doc_type;
+            document_error.insert(doc_type, 0);
         }
         let device_response = DeviceResponse {
             version: DeviceResponseVersion::V1_0,
             documents: None,
-            document_errors: vec![doc_types].into(),
+            document_errors: Some(vec![document_error]),
             status: 0,
         };
 
-        send_mdl_response(ble, device_response, proof).await?;
+        send_mdl_response(ble, device_response, interaction_data).await?;
 
         Ok(())
     }
