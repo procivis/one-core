@@ -12,7 +12,7 @@ use one_providers::credential_formatter::imp::json_ld::context::caching_loader::
     ContextCache, JsonLdCachingLoader,
 };
 use one_providers::credential_formatter::imp::json_ld::model::{
-    ContextType, LdCredential, LdPresentation, LdProof, ManyOrOne, VerifiableCredential,
+    ContextType, LdCredential, LdPresentation, LdProof, VerifiableCredential,
 };
 use one_providers::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
@@ -196,7 +196,7 @@ impl CredentialFormatter for JsonLdClassic {
 
         let mut presentation = LdPresentation {
             context: context.clone(),
-            r#type: ManyOrOne::One("VerifiablePresentation".to_string()),
+            r#type: vec!["VerifiablePresentation".to_string()],
             verifiable_credential,
             holder: holder_did.as_str().parse().map(Issuer::Url).map_err(|_| {
                 FormatterError::CouldNotFormat("Holder DID is not a URL".to_string())

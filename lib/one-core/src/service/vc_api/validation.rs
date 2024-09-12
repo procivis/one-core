@@ -124,9 +124,10 @@ pub(super) fn validate_verifiable_presentation(
         _ => {}
     };
 
-    if !["VerifiablePresentation", "EnvelopedVerifiablePresentation"]
+    if !presentation
+        .r#type
         .iter()
-        .any(|t| presentation.r#type.contains(t))
+        .any(|t| t == "VerifiablePresentation" || t == "EnvelopedVerifiablePresentation")
     {
         return Err(VpValidationError::MissingVerifiablePresentationType);
     }
