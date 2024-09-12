@@ -255,7 +255,8 @@ impl CredentialFormatter for MdocFormatter {
 
         let algorithm_header = try_build_algorithm_header(algorithm)?;
 
-        let x5chain_header = build_x5chain_header(credential.issuer_did.to_string().into())?;
+        let x5chain_header =
+            build_x5chain_header(credential.issuer_did.to_did_value().to_string().into())?;
 
         let cose_sign1 = CoseSign1Builder::new()
             .protected(algorithm_header)

@@ -119,7 +119,7 @@ impl VCAPIService {
                 .unwrap_or(OffsetDateTime::now_utc()), // TODO
             valid_for: Duration::minutes(60), // TODO
             claims,
-            issuer_did: create_request.credential.issuer.to_did_value(),
+            issuer_did: create_request.credential.issuer,
             status: create_request.credential.credential_status,
             schema: CredentialSchemaData {
                 id: None,

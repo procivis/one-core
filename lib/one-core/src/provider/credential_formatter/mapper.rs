@@ -41,7 +41,11 @@ pub fn credential_data_from_credential_detail_response(
         issuance_date,
         valid_for,
         claims: map_claims(&credential.claims, false),
-        issuer_did: issuer_did.into(),
+        issuer_did: issuer_did
+            .as_str()
+            .parse()
+            .map(Issuer::Url)
+            .map_err(|_| ServiceError::ValidationError("Issuer DID is not URL".to_string()))?,
         status: credential_status,
         schema: CredentialSchemaData {
             id: Some(credential.schema.schema_id),

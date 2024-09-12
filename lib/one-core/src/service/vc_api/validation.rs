@@ -78,9 +78,10 @@ pub(super) fn validate_verifiable_credential(
         return Err(VcValidationError::MissingVerifiableCredentialType);
     }
 
-    let credential_subject = &credential.credential_subject[0];
-    if credential_subject.id.is_none() && credential_subject.subject.is_empty() {
-        return Err(VcValidationError::EmptyCredentialSubject);
+    for credential_subject in &credential.credential_subject {
+        if credential_subject.id.is_none() && credential_subject.subject.is_empty() {
+            return Err(VcValidationError::EmptyCredentialSubject);
+        }
     }
 
     match (credential.valid_from, credential.valid_until) {
@@ -93,7 +94,11 @@ pub(super) fn validate_verifiable_credential(
     if credential
         .credential_schema
         .as_ref()
-        .is_some_and(|cs| cs.iter().any(|v| v.id.parse::<Url>().is_err()))
+        .is_some_and(|schemas| {
+            schemas
+                .iter()
+                .any(|schema| schema.id.parse::<Url>().is_err())
+        })
     {
         return Err(VcValidationError::InvalidCredentialSchemaId);
     }
