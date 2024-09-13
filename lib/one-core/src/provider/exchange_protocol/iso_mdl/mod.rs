@@ -48,6 +48,7 @@ mod session;
 
 #[cfg(test)]
 mod test;
+mod verify_proof;
 
 #[allow(dead_code)]
 pub(crate) struct IsoMdl {
