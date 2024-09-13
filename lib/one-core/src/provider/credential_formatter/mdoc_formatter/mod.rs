@@ -731,7 +731,7 @@ fn extract_credentials_internal(
                     FormatterError::CouldNotExtractCredentials("Missing digest_ids".to_owned()),
                 )?;
 
-                let item_as_cbor = signed_item.to_bytes();
+                let item_as_cbor = signed_item.bytes();
                 let digest = digest_fn(item_as_cbor);
 
                 if digest != digest_id.0 {
@@ -1202,7 +1202,7 @@ fn try_build_value_digests(
         let digest_ids = value_digests.entry(namespace.to_owned()).or_default();
 
         for signed_item in signed_items {
-            let digest = digest_fn(signed_item.to_bytes());
+            let digest = digest_fn(signed_item.bytes());
             let digest_id = signed_item.inner().digest_id;
             digest_ids.insert(digest_id, Bstr(digest));
         }

@@ -63,7 +63,7 @@ pub(crate) fn setup_verifier_session(
                 .security
                 .key_bytes
                 .into_inner(),
-            session_transcript_bytes.to_bytes(),
+            session_transcript_bytes.bytes(),
         )
         .context("failed to derive key")
         .map_err(ExchangeProtocolError::Other)?;

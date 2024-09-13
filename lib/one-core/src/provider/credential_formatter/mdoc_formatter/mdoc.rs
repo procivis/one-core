@@ -416,7 +416,7 @@ impl<'a> Deserialize<'a> for OID4VPHandover {
 #[derive(Debug, PartialEq, Clone)]
 pub struct EmbeddedCbor<T> {
     inner: T,
-    bytes: Vec<u8>,
+    original_bytes: Vec<u8>,
 }
 
 impl<T> EmbeddedCbor<T> {
@@ -429,18 +429,21 @@ impl<T> EmbeddedCbor<T> {
 
         let tagged_value = Required::<_, EMBEDDED_CBOR_TAG>(Bstr(t));
 
-        let mut bytes: Vec<u8> = Vec::with_capacity(128);
-        ciborium::into_writer(&tagged_value, &mut bytes)?;
+        let mut original_bytes: Vec<u8> = Vec::with_capacity(128);
+        ciborium::into_writer(&tagged_value, &mut original_bytes)?;
 
-        Ok(Self { bytes, inner })
+        Ok(Self {
+            original_bytes,
+            inner,
+        })
     }
 
-    pub(crate) fn to_bytes(&self) -> &[u8] {
-        self.bytes.as_slice()
+    pub(crate) fn bytes(&self) -> &[u8] {
+        self.original_bytes.as_slice()
     }
 
     pub(crate) fn into_bytes(self) -> Vec<u8> {
-        self.bytes
+        self.original_bytes
     }
 
     pub(crate) fn inner(&self) -> &T {
@@ -458,7 +461,7 @@ impl<T: Serialize> Serialize for EmbeddedCbor<T> {
         S: Serializer,
     {
         let Required::<_, EMBEDDED_CBOR_TAG>(Bstr(embedded_cbor)) =
-            ciborium::from_reader(self.bytes.as_slice()).map_err(ser::Error::custom)?;
+            ciborium::from_reader(self.original_bytes.as_slice()).map_err(ser::Error::custom)?;
 
         let tagged_value = Required::<_, EMBEDDED_CBOR_TAG>(Bstr(embedded_cbor));
 
@@ -482,9 +485,12 @@ where
 
         let tagged_value = Required::<_, EMBEDDED_CBOR_TAG>(Bstr(embedded_cbor));
 
-        let mut bytes: Vec<u8> = Vec::with_capacity(128);
-        ciborium::into_writer(&tagged_value, &mut bytes).map_err(de::Error::custom)?;
+        let mut original_bytes: Vec<u8> = Vec::with_capacity(128);
+        ciborium::into_writer(&tagged_value, &mut original_bytes).map_err(de::Error::custom)?;
 
-        Ok(Self { inner, bytes })
+        Ok(Self {
+            inner,
+            original_bytes,
+        })
     }
 }
