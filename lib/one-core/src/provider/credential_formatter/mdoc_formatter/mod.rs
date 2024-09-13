@@ -28,7 +28,7 @@ use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use rand::RngCore;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use serde_with::{serde_as, DurationSeconds};
 use sha2::{Digest, Sha256, Sha384, Sha512};
@@ -45,7 +45,7 @@ use self::mdoc::{
     ValidityInfo, ValueDigests,
 };
 use super::common::nest_claims;
-use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_mapper::{encode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::provider::did_method::mdl::DidMdlValidator;
@@ -1374,18 +1374,6 @@ fn try_extract_claims(
     }
 
     Ok(result)
-}
-
-fn encode_cbor_base64<T: Serialize>(t: T) -> Result<String, FormatterError> {
-    let type_name = type_name::<T>();
-    let mut bytes = vec![];
-
-    ciborium::ser::into_writer(&t, &mut bytes).map_err(|err| {
-        FormatterError::Failed(format!("CBOR serialization of `{type_name}` failed: {err}"))
-    })?;
-
-    Base64UrlSafeNoPadding::encode_to_string(bytes)
-        .map_err(|err| FormatterError::Failed(format!("Base64 encoding failed: {err}")))
 }
 
 fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, FormatterError> {
