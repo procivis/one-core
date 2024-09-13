@@ -350,16 +350,11 @@ async fn fill_proof_claims_and_credentials(
     let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
         "proof_schema is None".to_string(),
     ))?;
-    let holder_did = proof
-        .holder_did
-        .as_ref()
-        .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
 
     let encoded = encode_cbor_base64(&device_response)?;
 
-    let proved_claims = match super::verify_proof::validate_proof(
+    let (holder_did, proved_claims) = match super::verify_proof::validate_proof(
         proof_schema,
-        holder_did,
         &encoded,
         &*credential_formatter_provider,
         key_algorithm_provider,
@@ -377,7 +372,7 @@ async fn fill_proof_claims_and_credentials(
     super::verify_proof::accept_proof(
         proof.clone(),
         proved_claims,
-        holder_did.clone(),
+        holder_did,
         &*did_repository,
         &*credential_repository,
         &*proof_repository,

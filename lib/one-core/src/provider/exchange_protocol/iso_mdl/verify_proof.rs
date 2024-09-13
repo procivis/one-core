@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use one_providers::common_models::did::DidValue;
 use one_providers::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
@@ -13,7 +14,7 @@ use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::did::{Did, KeyRole};
+use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::repository::credential_repository::CredentialRepository;
@@ -34,12 +35,11 @@ pub struct ValidatedProofClaimDTO {
 #[allow(clippy::too_many_arguments)]
 pub async fn validate_proof(
     proof_schema: &ProofSchema,
-    holder_did: &Did,
     presentation: &str,
     formatter_provider: &dyn CredentialFormatterProvider,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
-) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
+) -> Result<(DidValue, Vec<ValidatedProofClaimDTO>), ServiceError> {
     let key_verification_presentation = Box::new(KeyVerification {
         key_algorithm_provider: key_algorithm_provider.clone(),
         did_method_provider: did_method_provider.clone(),
@@ -64,6 +64,10 @@ pub async fn validate_proof(
             ExtractPresentationCtx::default(),
         )
         .await?;
+
+    let holder_did = presentation
+        .issuer_did
+        .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
     // Check if presentation is expired
     let leeway = formatter.get_leeway();
@@ -163,7 +167,7 @@ pub async fn validate_proof(
         };
 
         if Into::<String>::into(claim_subject.to_string())
-            != Into::<String>::into(holder_did.did.to_string())
+            != Into::<String>::into(holder_did.to_string())
         {
             return Err(ServiceError::ValidationError(
                 "Holder DID doesn't match.".to_owned(),
@@ -211,10 +215,13 @@ pub async fn validate_proof(
         ));
     }
 
-    Ok(proved_credentials
-        .into_iter()
-        .flat_map(|(.., claims)| claims)
-        .collect())
+    Ok((
+        holder_did,
+        proved_credentials
+            .into_iter()
+            .flat_map(|(.., claims)| claims)
+            .collect(),
+    ))
 }
 
 fn extract_matching_requested_schema(
@@ -250,7 +257,7 @@ fn extract_matching_requested_schema(
 pub async fn accept_proof(
     proof: Proof,
     proved_claims: Vec<ValidatedProofClaimDTO>,
-    holder_did: Did,
+    holder_did: DidValue,
     did_repository: &dyn DidRepository,
     credential_repository: &dyn CredentialRepository,
     proof_repository: &dyn ProofRepository,
@@ -337,6 +344,13 @@ pub async fn accept_proof(
             .or_default()
             .push(proved_claim);
     }
+
+    let holder_did = get_or_create_did(
+        did_repository,
+        &proof_schema.organisation,
+        &holder_did.clone().into(),
+    )
+    .await?;
 
     let mut proof_claims: Vec<Claim> = vec![];
     for (_, credential_claims) in claims_per_credential {
