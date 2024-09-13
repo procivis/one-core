@@ -105,6 +105,66 @@ impl MdocFormatter {
             ))?
             .clone())
     }
+
+    fn extract_presentation_context(
+        &self,
+        context: &ExtractPresentationCtx,
+    ) -> Result<(SessionTranscript, Option<String>), FormatterError> {
+        // ISO mDL:
+        if let Some(session_transcript) = context.mdoc_session_transcript.as_ref() {
+            let session_transcript = ciborium::from_reader(session_transcript.as_slice())
+                .context("session_transcript deserialization error")
+                .map_err(|e| FormatterError::Failed(e.to_string()))?;
+
+            return Ok((session_transcript, None));
+        }
+
+        // OpenID4VP:
+        let nonce = context
+            .nonce
+            .as_ref()
+            .ok_or(FormatterError::CouldNotExtractPresentation(
+                "Missing nonce".to_owned(),
+            ))?
+            .to_string();
+
+        let mdoc_generated_nonce =
+            context
+                .format_nonce
+                .as_ref()
+                .ok_or(FormatterError::CouldNotExtractPresentation(
+                    "Missing mdoc_generated_nonce".to_owned(),
+                ))?;
+
+        let base_url =
+            self.base_url
+                .as_ref()
+                .ok_or(FormatterError::CouldNotExtractPresentation(
+                    "Missing base_url".to_owned(),
+                ))?;
+
+        // workaround, info not passed via context
+        let client_id = Url::parse(&format!("{}/ssi/oidc-verifier/v1/response", base_url))
+            .map_err(|_| {
+                FormatterError::CouldNotExtractPresentation(
+                    "Could not create client_id for validation".to_owned(),
+                )
+            })?;
+        let response_uri = &client_id;
+
+        let session_transcript = SessionTranscript {
+            device_engagement_bytes: None,
+            e_reader_key_bytes: None,
+            handover: Some(OID4VPHandover::compute(
+                &client_id,
+                response_uri,
+                &nonce,
+                mdoc_generated_nonce,
+            )),
+        };
+
+        Ok((session_transcript, Some(nonce)))
+    }
 }
 
 #[async_trait]
@@ -233,7 +293,7 @@ impl CredentialFormatter for MdocFormatter {
         context: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
         let FormatPresentationCtx {
-            session_transcript: Some(session_transcript),
+            mdoc_session_transcript: Some(session_transcript),
             ..
         } = context
         else {
@@ -290,11 +350,7 @@ impl CredentialFormatter for MdocFormatter {
 
         let mut tokens: Vec<String> = Vec::with_capacity(documents.len());
 
-        let nonce = &context
-            .nonce
-            .ok_or(FormatterError::CouldNotExtractPresentation(
-                "Missing nonce".to_owned(),
-            ))?;
+        let (session_transcript, nonce) = self.extract_presentation_context(&context)?;
 
         let did_mdl_validator = self.did_mdl_validator()?;
         let mut current_issuer_did = None;
@@ -328,32 +384,9 @@ impl CredentialFormatter for MdocFormatter {
                 ))?
                 .0;
 
-            let base_url =
-                self.base_url
-                    .as_ref()
-                    .ok_or(FormatterError::CouldNotExtractPresentation(
-                        "Missing base_url".to_owned(),
-                    ))?;
-
-            let client_id = Url::parse(&format!("{}/ssi/oidc-verifier/v1/response", base_url))
-                .map_err(|_| {
-                    FormatterError::CouldNotExtractPresentation(
-                        "Could not create client_id for validation".to_owned(),
-                    )
-                })?;
-
-            let mdoc_generated_nonce = context.format_nonce.as_ref().ok_or(
-                FormatterError::CouldNotExtractPresentation(
-                    "Missing mdoc_generated_nonce".to_owned(),
-                ),
-            )?;
-
             try_verify_device_signed(
-                nonce,
-                mdoc_generated_nonce,
+                session_transcript.to_owned(),
                 &doc_type,
-                &client_id,
-                &client_id,
                 &signature,
                 &holder_did,
                 &verification,
@@ -369,7 +402,7 @@ impl CredentialFormatter for MdocFormatter {
             issued_at: context.issuance_date,
             expires_at: context.expiration_date,
             issuer_did: current_issuer_did.map(|value| value.to_string().into()),
-            nonce: Some(nonce.clone()),
+            nonce,
             credentials: tokens,
         })
     }
@@ -787,25 +820,12 @@ async fn try_build_device_signed(
 
 #[allow(clippy::too_many_arguments)]
 async fn try_verify_device_signed(
-    nonce: &str,
-    mdoc_generated_nonce: &str,
+    session_transcript: SessionTranscript,
     doctype: &str,
-    client_id: &Url,
-    response_uri: &Url,
     signature: &coset::CoseSign1,
     holder_did: &DidValue,
     verify_fn: &VerificationFn,
 ) -> Result<(), FormatterError> {
-    let session_transcript = SessionTranscript {
-        device_engagement_bytes: None,
-        e_reader_key_bytes: None,
-        handover: Some(OID4VPHandover::compute(
-            client_id,
-            response_uri,
-            nonce,
-            mdoc_generated_nonce,
-        )),
-    };
     let device_namespaces = EmbeddedCbor::new([].into()).map_err(|err| {
         FormatterError::Failed(format!(
             "CBOR serialization failed for DeviceNamespaces: {err}"

@@ -310,7 +310,7 @@ impl Serialize for DeviceAuthentication {
 //    EReaderKeyBytes,
 //    OID4VPHandover
 //  ]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SessionTranscript {
     pub device_engagement_bytes: Option<EmbeddedCbor<DeviceEngagement>>,
     pub e_reader_key_bytes: Option<EmbeddedCbor<EReaderKey>>,
@@ -355,7 +355,7 @@ impl<'a> Deserialize<'a> for SessionTranscript {
 //    responseUriHash,
 //    nonce
 //  ]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OID4VPHandover {
     client_id_hash: Bstr,
     response_uri_hash: Bstr,
