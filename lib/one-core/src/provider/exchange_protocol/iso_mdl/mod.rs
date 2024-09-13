@@ -5,14 +5,14 @@ use anyhow::Context;
 use async_trait::async_trait;
 use ble::ISO_MDL_FLOW;
 use ble_holder::{send_mdl_response, MdocBleHolderInteractionData};
-use common::DeviceRequest;
+use common::{to_cbor, DeviceRequest};
 use one_providers::common_dto::PublicKeyJwkDTO;
 use one_providers::common_models::credential::{OpenCredential, OpenCredentialStateEnum};
 use one_providers::common_models::did::OpenDid;
 use one_providers::common_models::key::{KeyId, OpenKey};
 use one_providers::common_models::organisation::OpenOrganisation;
 use one_providers::common_models::proof::{OpenProof, OpenProofStateEnum};
-use one_providers::credential_formatter::model::DetailCredential;
+use one_providers::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::exchange_protocol::openid4vc::model::{
     DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentationDefinitionFieldDTO,
@@ -30,10 +30,10 @@ use one_providers::exchange_protocol::openid4vc::{
 use one_providers::key_storage::provider::KeyProvider;
 use url::Url;
 
-use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_mapper::{decode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::CoreConfig;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    DeviceResponse, DeviceResponseVersion, DocumentError,
+    DeviceResponse, DeviceResponseVersion, DocumentError, EmbeddedCbor, SessionTranscript,
 };
 use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::service::credential::mapper::credential_detail_response_from_model;
@@ -137,26 +137,91 @@ impl ExchangeProtocolImpl for IsoMdl {
     async fn submit_proof(
         &self,
         proof: &OpenProof,
-        _credential_presentations: Vec<PresentedCredential>,
-        _holder_did: &OpenDid,
-        _key: &OpenKey,
+        credential_presentations: Vec<PresentedCredential>,
+        holder_did: &OpenDid,
+        key: &OpenKey,
         _jwk_key_id: Option<String>,
         _format_map: HashMap<String, String>,
         _presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
-        let _ble = self.ble.clone().ok_or_else(|| {
+        let ble = self.ble.clone().ok_or_else(|| {
             ExchangeProtocolError::Failed("Missing BLE central for submit proof".to_string())
         })?;
 
-        let _interaction_data: MdocBleHolderInteractionData = deserialize_interaction_data(
+        let interaction_data: MdocBleHolderInteractionData = deserialize_interaction_data(
             proof
                 .interaction
                 .as_ref()
                 .and_then(|interaction| interaction.data.as_ref()),
         )?;
 
-        // TODO:
-        // submit proof logic
+        let session = interaction_data
+            .session
+            .as_ref()
+            .ok_or_else(|| ExchangeProtocolError::Failed("invalid interaction data".to_string()))?;
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(key, None)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let credential_presentation =
+            credential_presentations
+                .first()
+                .ok_or(ExchangeProtocolError::Failed(
+                    "no credentials to format".into(),
+                ))?;
+
+        let formatter = self
+            .formatter_provider
+            .get_formatter(&credential_presentation.credential_schema.format)
+            .ok_or(ExchangeProtocolError::Failed(format!(
+                "unknown format: {}",
+                credential_presentation.credential_schema.format
+            )))?;
+
+        let device_engagement = ciborium::from_reader(session.device_engagement.as_slice())
+            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+        let e_reader_key = ciborium::from_reader(session.e_reader_key.as_slice())
+            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+        let ctx = FormatPresentationCtx {
+            session_transcript: Some(
+                to_cbor(&SessionTranscript {
+                    device_engagement_bytes: Some(EmbeddedCbor::new(device_engagement).map_err(
+                        |err| {
+                            ExchangeProtocolError::Failed(format!(
+                                "CBOR serialization failed for device_engagement_bytes: {err}"
+                            ))
+                        },
+                    )?),
+                    e_reader_key_bytes: Some(EmbeddedCbor::new(e_reader_key).map_err(|err| {
+                        ExchangeProtocolError::Failed(format!(
+                            "CBOR serialization failed for e_reader_key_bytes: {err}"
+                        ))
+                    })?),
+                    handover: None,
+                })
+                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
+            ),
+            ..Default::default()
+        };
+
+        let presentaitons = credential_presentations
+            .into_iter()
+            .map(|credential| credential.presentation)
+            .collect::<Vec<_>>();
+
+        let device_response = formatter
+            .format_presentation(&presentaitons, &holder_did.did, &key.key_type, auth_fn, ctx)
+            .await
+            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+        let device_response = decode_cbor_base64(&device_response)
+            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+        send_mdl_response(&ble, device_response, interaction_data).await?;
 
         Ok(UpdateResponse {
             result: (),

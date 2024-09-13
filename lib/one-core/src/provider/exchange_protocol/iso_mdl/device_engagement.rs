@@ -10,7 +10,7 @@ use super::common::EDeviceKey;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct DeviceEngagement {
+pub struct DeviceEngagement {
     // pub version: DeviceEngagementVersion,
     pub security: Security,
     pub device_retrieval_methods: Vec<DeviceRetrievalMethod>,
@@ -20,7 +20,7 @@ pub(crate) struct DeviceEngagement {
 const DEVICE_ENGAGEMENT_VERSION: &str = "1.0";
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Security {
+pub struct Security {
     // pub version: i8,
     pub key_bytes: EmbeddedCbor<EDeviceKey>,
 }
@@ -28,7 +28,7 @@ pub(crate) struct Security {
 const SECURITY_VERSION: i8 = 1;
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct DeviceRetrievalMethod {
+pub struct DeviceRetrievalMethod {
     // pub r#type: u8,
     // pub version: u8,
     pub retrieval_options: RetrievalOptions,
@@ -38,13 +38,13 @@ const RETRIEVAL_METHOD_TYPE_BLE: u8 = 2;
 const RETRIEVAL_METHOD_VERSION: u8 = 1;
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum RetrievalOptions {
+pub enum RetrievalOptions {
     Ble(BleOptions),
     // WifiOptions and NfcOptions not implemented
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct BleOptions {
+pub struct BleOptions {
     // pub peripheral_server_mode_supported: bool, // required to be true
     // pub central_client_mode_supported: bool,
     pub peripheral_server_uuid: Uuid,

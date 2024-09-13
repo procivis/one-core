@@ -50,6 +50,8 @@ pub(crate) struct MdocBleHolderInteractionSessionData {
     pub device_request_bytes: Vec<u8>,
     pub device_address: DeviceAddress,
     pub mtu: u16,
+    pub device_engagement: Vec<u8>, // DeviceEngagement,
+    pub e_reader_key: Vec<u8>,      // EReaderKey,
 }
 
 #[derive(Debug, Clone)]
@@ -135,13 +137,13 @@ pub(crate) async fn receive_mdl_request(
                         read_request(&*peripheral, &info, interaction_data.service_uuid).await?;
 
                     let transcript = create_session_transcript_bytes(
-                        device_engagement,
-                        session_establishment.e_reader_key.to_owned(),
+                        device_engagement.clone(),
+                        session_establishment.e_reader_key.clone(),
                     )?;
 
                     let (sk_device, sk_reader) = key_pair
                         .derive_session_keys(
-                            session_establishment.e_reader_key.into_inner(),
+                            session_establishment.e_reader_key.clone().into_inner(),
                             &transcript,
                         )
                         .context("failed to derive key")
@@ -171,6 +173,10 @@ pub(crate) async fn receive_mdl_request(
                                 device_address: info.address.clone(),
                                 device_request_bytes,
                                 mtu: info.mtu(),
+                                device_engagement: to_cbor(&device_engagement.into_inner())?,
+                                e_reader_key: to_cbor(
+                                    &session_establishment.e_reader_key.into_inner(),
+                                )?,
                             }),
                             ..interaction_data
                         })

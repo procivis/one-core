@@ -1,39 +1,13 @@
 use one_providers::credential_formatter::model::{
     CredentialData, CredentialSchemaData, CredentialSchemaMetadata, CredentialStatus,
-    ExtractPresentationCtx, FormatPresentationCtx,
 };
-use one_providers::exchange_protocol::openid4vc::model::OpenID4VPInteractionContent;
 use time::OffsetDateTime;
 use uuid::fmt::Urn;
 
 use super::map_claims;
 use crate::config::core_config::RevocationType;
-use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPInteractionData;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::error::ServiceError;
-
-pub fn extract_presentation_ctx_from_interaction_content(
-    content: OpenID4VPInteractionContent,
-) -> ExtractPresentationCtx {
-    ExtractPresentationCtx {
-        nonce: Some(content.nonce),
-        format_nonce: None,
-        issuance_date: None,
-        expiration_date: None,
-    }
-}
-
-pub fn format_presentation_ctx_from_interaction_data(
-    data: OpenID4VPInteractionData,
-) -> FormatPresentationCtx {
-    FormatPresentationCtx {
-        nonce: Some(data.nonce),
-        client_id: Some(data.client_id),
-        response_uri: Some(data.response_uri),
-        format_nonce: None,
-        ..Default::default()
-    }
-}
 
 pub fn credential_data_from_credential_detail_response(
     credential: CredentialDetailResponseDTO,

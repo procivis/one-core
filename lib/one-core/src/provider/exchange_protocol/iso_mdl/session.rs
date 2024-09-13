@@ -1,10 +1,8 @@
 use anyhow::anyhow;
-use ciborium::cbor;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use super::common::EReaderKey;
-use super::device_engagement::DeviceEngagement;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
@@ -48,33 +46,12 @@ pub enum StatusCode {
     SessionTermination = 20,
 }
 
-// SessionTranscript = [
-//  DeviceEngagementBytes,
-//  EReaderKeyBytes,
-//  Handover = null for QRHandover
-//]
-#[derive(Debug, PartialEq, Clone)]
-pub struct SessionTranscript {
-    pub(crate) device_engagement: EmbeddedCbor<DeviceEngagement>,
-    pub(crate) e_reader_key: EmbeddedCbor<EReaderKey>,
-}
-
-impl Serialize for SessionTranscript {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        cbor!([self.device_engagement, self.e_reader_key, null])
-            .map_err(serde::ser::Error::custom)?
-            .serialize(serializer)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use uuid::Uuid;
 
     use super::*;
+    use crate::provider::credential_formatter::mdoc_formatter::mdoc::SessionTranscript;
     use crate::provider::exchange_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
     use crate::provider::exchange_protocol::iso_mdl::device_engagement::{
         BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
@@ -116,7 +93,7 @@ mod test {
         let reader_key = KeyAgreement::<EReaderKey>::new();
 
         let session_transcript = SessionTranscript {
-            device_engagement: EmbeddedCbor::new(DeviceEngagement {
+            device_engagement_bytes: EmbeddedCbor::new(DeviceEngagement {
                 security: Security {
                     key_bytes: EmbeddedCbor::new(device_key.device_key().clone()).unwrap(),
                 },
@@ -127,8 +104,12 @@ mod test {
                     }),
                 }],
             })
-            .unwrap(),
-            e_reader_key: EmbeddedCbor::new(reader_key.reader_key().clone()).unwrap(),
+            .unwrap()
+            .into(),
+            e_reader_key_bytes: EmbeddedCbor::new(reader_key.reader_key().clone())
+                .unwrap()
+                .into(),
+            handover: None,
         };
 
         let mut writer = vec![];
@@ -140,14 +121,17 @@ mod test {
         let (tag, device_engagement_bytes) = value[0].as_tag().unwrap();
         assert_eq!(24, tag);
         assert_eq!(
-            &session_transcript.device_engagement.to_bytes()[4..],
+            &session_transcript
+                .device_engagement_bytes
+                .unwrap()
+                .to_bytes()[4..],
             device_engagement_bytes.as_bytes().unwrap()
         );
 
         let (tag, e_reader_key_bytes) = value[1].as_tag().unwrap();
         assert_eq!(24, tag);
         assert_eq!(
-            &session_transcript.e_reader_key.to_bytes()[4..],
+            &session_transcript.e_reader_key_bytes.unwrap().to_bytes()[4..],
             e_reader_key_bytes.as_bytes().unwrap()
         );
 

@@ -1,13 +1,14 @@
 use std::any::type_name;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use dto_mapper::{convert_inner, try_convert_inner};
 use one_providers::common_models::OpenPublicKeyJwk;
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::exchange_protocol::openid4vc::imp::OpenID4VCParams;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use shared_types::{CredentialId, DidId, DidValue, KeyId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -111,18 +112,6 @@ pub(crate) async fn get_or_create_did(
             }
         },
     )
-}
-
-pub(super) fn deserialize_with_serde_json<'de, D, T>(deserializer: D) -> Result<T, D::Error>
-where
-    D: Deserializer<'de>,
-    T: for<'a> Deserialize<'a>,
-{
-    let value = serde_json::Value::deserialize(deserializer)?;
-    match value.as_str() {
-        None => serde_json::from_value(value).map_err(serde::de::Error::custom),
-        Some(buffer) => serde_json::from_str(buffer).map_err(serde::de::Error::custom),
-    }
 }
 
 pub(super) fn did_method_id_from_value(did_value: &DidValue) -> Result<String, ServiceError> {
@@ -320,4 +309,16 @@ pub(crate) fn encode_cbor_base64<T: Serialize>(t: T) -> Result<String, Formatter
 
     Base64UrlSafeNoPadding::encode_to_string(bytes)
         .map_err(|err| FormatterError::Failed(format!("Base64 encoding failed: {err}")))
+}
+
+pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, FormatterError> {
+    let bytes = Base64UrlSafeNoPadding::decode_to_vec(s, None)
+        .map_err(|err| FormatterError::Failed(format!("Base64 decoding failed: {err}")))?;
+
+    let type_name = type_name::<T>();
+    ciborium::de::from_reader(&bytes[..]).map_err(|err| {
+        FormatterError::Failed(format!(
+            "CBOR deserialization into `{type_name}` failed: {err}"
+        ))
+    })
 }
