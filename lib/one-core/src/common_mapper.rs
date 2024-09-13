@@ -1,9 +1,13 @@
+use std::any::type_name;
+
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use dto_mapper::{convert_inner, try_convert_inner};
 use one_providers::common_models::OpenPublicKeyJwk;
+use one_providers::credential_formatter::error::FormatterError;
 use one_providers::exchange_protocol::openid4vc::imp::OpenID4VCParams;
 use one_providers::key_algorithm::error::KeyAlgorithmError;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use shared_types::{CredentialId, DidId, DidValue, KeyId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -304,4 +308,16 @@ pub fn get_encryption_key_jwk_from_proof(
         key_id: encryption_key.id.into(),
         jwk: key_algorithm.bytes_to_jwk(&encryption_key.public_key, Some("enc".to_string()))?,
     })
+}
+
+pub(crate) fn encode_cbor_base64<T: Serialize>(t: T) -> Result<String, FormatterError> {
+    let type_name = type_name::<T>();
+    let mut bytes = vec![];
+
+    ciborium::ser::into_writer(&t, &mut bytes).map_err(|err| {
+        FormatterError::Failed(format!("CBOR serialization of `{type_name}` failed: {err}"))
+    })?;
+
+    Base64UrlSafeNoPadding::encode_to_string(bytes)
+        .map_err(|err| FormatterError::Failed(format!("Base64 encoding failed: {err}")))
 }
