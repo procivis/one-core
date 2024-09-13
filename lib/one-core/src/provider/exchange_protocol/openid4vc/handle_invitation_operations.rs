@@ -183,6 +183,22 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 BuildCredentialSchemaResponse { claims, schema }
             }
             "mdoc" => {
+                // MDOC doesn't have any information about schema url. It's replaced by doctype, hence we need to figure something out for now
+                let schema_url = issuer_metadata
+                    .credential_issuer
+                    .replace("/ssi/oidc-issuer/v1/", "/ssi/schema/v1/");
+
+                let result = fetch_procivis_schema(&schema_url).await;
+
+                let (layout_type, layout_properties) = match result {
+                    Ok(schema) => (
+                        schema.layout_type.unwrap_or(OpenLayoutType::Card),
+                        schema.layout_properties,
+                    ),
+                    Err(_) => (OpenLayoutType::Card, None),
+                };
+                // END OF WORKAROUND
+
                 let credential_format = map_from_oidc_format_to_core(&credential.format)
                     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
@@ -216,8 +232,8 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                             vec![]
                         },
                         wallet_storage_type: credential.wallet_storage_type.to_owned(),
-                        layout_type: OpenLayoutType::Card,
-                        layout_properties: None,
+                        layout_type,
+                        layout_properties,
                         schema_id: Some(schema_data.schema_id.clone()),
                     },
                     self.organisation.clone().into(),

@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    GetCredentialSchemaQuery, LayoutType, UpdateCredentialSchemaRequest,
+    BackgroundProperties, CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
+    CredentialSchemaType, GetCredentialSchemaQuery, LayoutProperties, LayoutType,
+    UpdateCredentialSchemaRequest,
 };
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
@@ -503,6 +504,14 @@ async fn test_update_credential_schema_success() {
             revocation_method: Some(new_revocation_method.to_string()),
             format: Some(new_format.to_string()),
             claim_schemas: None,
+            layout_properties: Some(LayoutProperties {
+                background: Some(BackgroundProperties {
+                    color: Some("color".to_string()),
+                    image: None,
+                }),
+                ..Default::default()
+            }),
+            layout_type: Some(LayoutType::Document),
         })
         .await;
     assert!(result.is_ok());
@@ -514,6 +523,18 @@ async fn test_update_credential_schema_success() {
     assert_eq!(db_schemas.len(), 1);
     assert_eq!(db_schemas[0].revocation_method, new_revocation_method);
     assert_eq!(db_schemas[0].format, new_format);
+    assert_eq!(db_schemas[0].layout_type, LayoutType::Document.into());
+    assert_eq!(
+        &db_schemas[0]
+            .layout_properties
+            .as_ref()
+            .unwrap()
+            .background
+            .as_ref()
+            .unwrap()
+            .color,
+        &Some("color".to_string())
+    );
 }
 
 #[tokio::test]

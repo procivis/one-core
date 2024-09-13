@@ -413,6 +413,8 @@ impl ProofSchemaService {
                     claim_schemas: Some(missing_claim_schemas),
                     revocation_method: None,
                     format: None,
+                    layout_type: None,
+                    layout_properties: None,
                 })
                 .await?;
 
