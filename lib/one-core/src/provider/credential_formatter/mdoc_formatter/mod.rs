@@ -1,4 +1,3 @@
-use std::any::type_name;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -27,7 +26,6 @@ use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use rand::RngCore;
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde_json::json;
 use serde_with::{serde_as, DurationSeconds};
@@ -45,7 +43,7 @@ use self::mdoc::{
     ValidityInfo, ValueDigests,
 };
 use super::common::nest_claims;
-use crate::common_mapper::{encode_cbor_base64, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::provider::did_method::mdl::DidMdlValidator;
@@ -235,16 +233,12 @@ impl CredentialFormatter for MdocFormatter {
         context: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
         let FormatPresentationCtx {
-            nonce: Some(nonce),
-            format_nonce: Some(mdoc_generated_nonce),
-            client_id: Some(client_id),
-            response_uri: Some(response_uri),
-            token_formats: None,
+            session_transcript: Some(session_transcript),
             ..
         } = context
         else {
             return Err(FormatterError::Failed(format!(
-                "Cannot format mdoc presentation invalid context `{context:?}`. All fields must be present."
+                "Cannot format mdoc presentation invalid context `{context:?}`"
             )));
         };
 
@@ -254,16 +248,9 @@ impl CredentialFormatter for MdocFormatter {
             let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
             let doc_type = mso.doc_type;
 
-            let device_signed = try_build_device_signed(
-                &*auth_fn,
-                algorithm,
-                &nonce,
-                &mdoc_generated_nonce,
-                &doc_type,
-                &client_id,
-                &response_uri,
-            )
-            .await?;
+            let device_signed =
+                try_build_device_signed(&*auth_fn, algorithm, &doc_type, &session_transcript)
+                    .await?;
 
             let document = Document {
                 doc_type,
@@ -754,15 +741,11 @@ fn extract_credentials_internal(
 async fn try_build_device_signed(
     auth_fn: &dyn SignatureProvider,
     algorithm: &str,
-    nonce: &str,
-    mdoc_generated_nonce: &str,
     doctype: &str,
-    client_id: &Url,
-    response_uri: &Url,
+    session_transcript_bytes: &[u8],
 ) -> Result<DeviceSigned, FormatterError> {
-    let session_transcript = SessionTranscript {
-        handover: OID4VPHandover::compute(client_id, response_uri, nonce, mdoc_generated_nonce),
-    };
+    let session_transcript = ciborium::from_reader(session_transcript_bytes)
+        .map_err(|err| FormatterError::Failed(format!("invalid session transcript: {err}")))?;
     let device_namespaces = EmbeddedCbor::<DeviceNamespaces>::new([].into()).map_err(|err| {
         FormatterError::Failed(format!(
             "CBOR serialization failed for DeviceNamespaces: {err}"
@@ -770,11 +753,7 @@ async fn try_build_device_signed(
     })?;
 
     let device_auth = DeviceAuthentication {
-        session_transcript: EmbeddedCbor::new(session_transcript).map_err(|err| {
-            FormatterError::Failed(format!(
-                "CBOR serialization failed for SessionTranscript: {err}"
-            ))
-        })?,
+        session_transcript,
         doctype: doctype.to_owned(),
         device_namespaces: device_namespaces.clone(),
     };
@@ -818,7 +797,14 @@ async fn try_verify_device_signed(
     verify_fn: &VerificationFn,
 ) -> Result<(), FormatterError> {
     let session_transcript = SessionTranscript {
-        handover: OID4VPHandover::compute(client_id, response_uri, nonce, mdoc_generated_nonce),
+        device_engagement_bytes: None,
+        e_reader_key_bytes: None,
+        handover: Some(OID4VPHandover::compute(
+            client_id,
+            response_uri,
+            nonce,
+            mdoc_generated_nonce,
+        )),
     };
     let device_namespaces = EmbeddedCbor::new([].into()).map_err(|err| {
         FormatterError::Failed(format!(
@@ -827,11 +813,7 @@ async fn try_verify_device_signed(
     })?;
 
     let device_auth = DeviceAuthentication {
-        session_transcript: EmbeddedCbor::new(session_transcript).map_err(|err| {
-            FormatterError::Failed(format!(
-                "CBOR serialization failed for SessionTranscript: {err}"
-            ))
-        })?,
+        session_transcript,
         doctype: doctype.to_owned(),
         device_namespaces,
     };
@@ -1374,16 +1356,4 @@ fn try_extract_claims(
     }
 
     Ok(result)
-}
-
-fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, FormatterError> {
-    let bytes = Base64UrlSafeNoPadding::decode_to_vec(s, None)
-        .map_err(|err| FormatterError::Failed(format!("Base64 decoding failed: {err}")))?;
-
-    let type_name = type_name::<T>();
-    ciborium::de::from_reader(&bytes[..]).map_err(|err| {
-        FormatterError::Failed(format!(
-            "CBOR deserialization into `{type_name}` failed: {err}"
-        ))
-    })
 }

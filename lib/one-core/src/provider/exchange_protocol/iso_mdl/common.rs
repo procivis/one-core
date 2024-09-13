@@ -18,8 +18,9 @@ use x25519_dalek::{EphemeralSecret, PublicKey};
 use zeroize::Zeroize;
 
 use super::device_engagement::DeviceEngagement;
-use super::session::SessionTranscript;
-use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
+    EmbeddedCbor, SessionTranscript,
+};
 
 #[derive(Debug, Clone)]
 pub enum Chunk {
@@ -367,12 +368,13 @@ fn x25519_from_cose_key(key: CoseKey) -> anyhow::Result<x25519_dalek::PublicKey>
 }
 
 pub fn create_session_transcript_bytes(
-    device_engagement: EmbeddedCbor<DeviceEngagement>,
-    e_reader_key: EmbeddedCbor<EReaderKey>,
+    device_engagement_bytes: EmbeddedCbor<DeviceEngagement>,
+    e_reader_key_bytes: EmbeddedCbor<EReaderKey>,
 ) -> Result<Vec<u8>, ExchangeProtocolError> {
     let session_transcript = SessionTranscript {
-        device_engagement,
-        e_reader_key,
+        device_engagement_bytes: Some(device_engagement_bytes),
+        e_reader_key_bytes: Some(e_reader_key_bytes),
+        handover: None,
     };
 
     Ok(EmbeddedCbor::new(session_transcript)
