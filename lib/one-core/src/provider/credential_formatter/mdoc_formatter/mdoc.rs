@@ -1,6 +1,6 @@
 use anyhow::anyhow;
+use ciborium::cbor;
 use ciborium::tag::Required;
-use ciborium::{cbor, Value};
 use coset::AsCborValue;
 use indexmap::IndexMap;
 use serde::de::{self, DeserializeOwned};
@@ -9,6 +9,9 @@ use sha2::{Digest, Sha256};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use url::Url;
+
+use crate::provider::exchange_protocol::iso_mdl::common::EReaderKey;
+use crate::provider::exchange_protocol::iso_mdl::device_engagement::DeviceEngagement;
 
 pub type Namespace = String;
 
@@ -281,7 +284,7 @@ impl TryFrom<ciborium::Value> for Bstr {
 // should be serialized as cbor array: DeviceAuthentication = ["DeviceAuthentication", SessionTranscriptBytes, DocType; DeviceNameSpaceBytes]
 #[derive(Debug, PartialEq)]
 pub struct DeviceAuthentication {
-    pub session_transcript: EmbeddedCbor<SessionTranscript>,
+    pub session_transcript: SessionTranscript,
     pub doctype: DocType,
     pub device_namespaces: EmbeddedCbor<DeviceNamespaces>,
 }
@@ -303,13 +306,15 @@ impl Serialize for DeviceAuthentication {
 }
 
 //  SessionTranscript = [
-//       DeviceEngagementBytes = null,
-//       EReaderKeyBytes = null,
-//       OID4VPHandover
-//     ]
+//    DeviceEngagementBytes,
+//    EReaderKeyBytes,
+//    OID4VPHandover
+//  ]
 #[derive(Debug, PartialEq)]
 pub struct SessionTranscript {
-    pub handover: OID4VPHandover,
+    pub device_engagement_bytes: Option<EmbeddedCbor<DeviceEngagement>>,
+    pub e_reader_key_bytes: Option<EmbeddedCbor<EReaderKey>>,
+    pub handover: Option<OID4VPHandover>,
 }
 
 impl Serialize for SessionTranscript {
@@ -317,9 +322,31 @@ impl Serialize for SessionTranscript {
     where
         S: Serializer,
     {
-        cbor!([Value::Null, Value::Null, self.handover])
-            .map_err(ser::Error::custom)?
-            .serialize(serializer)
+        cbor!([
+            self.device_engagement_bytes,
+            self.e_reader_key_bytes,
+            self.handover
+        ])
+        .map_err(ser::Error::custom)?
+        .serialize(serializer)
+    }
+}
+
+impl<'a> Deserialize<'a> for SessionTranscript {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'a>,
+    {
+        let (device_engagement_bytes, e_reader_key_bytes, handover) =
+            ciborium::Value::deserialize(deserializer)?
+                .deserialized()
+                .map_err(de::Error::custom)?;
+
+        Ok(Self {
+            device_engagement_bytes,
+            e_reader_key_bytes,
+            handover,
+        })
     }
 }
 
@@ -363,6 +390,24 @@ impl Serialize for OID4VPHandover {
         cbor!([self.client_id_hash, self.response_uri_hash, self.nonce])
             .map_err(ser::Error::custom)?
             .serialize(serializer)
+    }
+}
+
+impl<'a> Deserialize<'a> for OID4VPHandover {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'a>,
+    {
+        let (client_id_hash, response_uri_hash, nonce) =
+            ciborium::Value::deserialize(deserializer)?
+                .deserialized()
+                .map_err(de::Error::custom)?;
+
+        Ok(Self {
+            client_id_hash,
+            response_uri_hash,
+            nonce,
+        })
     }
 }
 

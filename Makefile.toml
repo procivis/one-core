@@ -17,10 +17,13 @@ command = "cargo"
 args    = ["clippy", "--all-targets", "--", "-D", "clippy::print_stderr", "-D", "clippy::dbg_macro"]
 command = "cargo"
 
-[tasks.fmt]
+[tasks.format]
 args      = ["fmt"]
 command   = "cargo"
 toolchain = "nightly"
+
+[tasks.fmt]
+alias = "format"
 
 [tasks.run]
 args = [
