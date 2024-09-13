@@ -19,10 +19,8 @@ use one_providers::credential_formatter::provider::MockCredentialFormatterProvid
 use one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionRuleTypeEnum;
 use one_providers::exchange_protocol::openid4vc::{ExchangeProtocolImpl, MockStorageProxy};
 use one_providers::key_storage::provider::MockKeyProvider;
-use rand::rngs::OsRng;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use x25519_dalek::{EphemeralSecret, PublicKey};
 
 use super::IsoMdl;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
@@ -32,9 +30,8 @@ use crate::provider::exchange_protocol::iso_mdl::ble_holder::{
     MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData,
 };
 use crate::provider::exchange_protocol::iso_mdl::common::{
-    to_cbor, DeviceRequest, DocRequest, EDeviceKey, EReaderKey, ItemsRequest, SkDevice, SkReader,
+    to_cbor, DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
 };
-use crate::provider::exchange_protocol::iso_mdl::device_engagement::{DeviceEngagement, Security};
 use crate::service::test_utilities::generic_config;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
 
@@ -104,20 +101,7 @@ async fn test_presentation_reject_ok() {
             device_request_bytes,
             device_address: "test address".to_string(),
             mtu: 512,
-            device_engagement: to_cbor(&DeviceEngagement {
-                security: Security {
-                    key_bytes: EmbeddedCbor::new(EDeviceKey::new(PublicKey::from(
-                        &EphemeralSecret::random_from_rng(OsRng),
-                    )))
-                    .unwrap(),
-                },
-                device_retrieval_methods: vec![],
-            })
-            .unwrap(),
-            e_reader_key: to_cbor(&EReaderKey::new(PublicKey::from(
-                &EphemeralSecret::random_from_rng(OsRng),
-            )))
-            .unwrap(),
+            session_transcript_bytes: vec![],
         }),
     })
     .unwrap();
@@ -216,20 +200,7 @@ async fn test_get_presentation_definition_ok() {
             device_request_bytes,
             device_address: "test address".to_string(),
             mtu: 512,
-            device_engagement: to_cbor(&DeviceEngagement {
-                security: Security {
-                    key_bytes: EmbeddedCbor::new(EDeviceKey::new(PublicKey::from(
-                        &EphemeralSecret::random_from_rng(OsRng),
-                    )))
-                    .unwrap(),
-                },
-                device_retrieval_methods: vec![],
-            })
-            .unwrap(),
-            e_reader_key: to_cbor(&EReaderKey::new(PublicKey::from(
-                &EphemeralSecret::random_from_rng(OsRng),
-            )))
-            .unwrap(),
+            session_transcript_bytes: vec![],
         }),
     })
     .unwrap();
