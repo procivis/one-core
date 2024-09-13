@@ -6,7 +6,6 @@ use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::revocation::provider::RevocationMethodProvider;
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::sync::oneshot;
@@ -108,7 +107,6 @@ pub(crate) async fn start_client(
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     did_repository: Arc<dyn DidRepository>,
     proof_repository: Arc<dyn ProofRepository>,
@@ -131,7 +129,6 @@ pub(crate) async fn start_client(
                 credential_formatter_provider.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
-                revocation_method_provider.clone(),
                 credential_repository.clone(),
                 did_repository.clone(),
                 proof_repository.clone(),
@@ -181,7 +178,6 @@ async fn verifier_flow(
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     did_repository: Arc<dyn DidRepository>,
     proof_repository: Arc<dyn ProofRepository>,
@@ -203,7 +199,6 @@ async fn verifier_flow(
         credential_formatter_provider,
         did_method_provider,
         key_algorithm_provider,
-        revocation_method_provider,
         credential_repository,
         did_repository,
         proof_repository,
@@ -227,7 +222,6 @@ async fn process_proof(
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     did_repository: Arc<dyn DidRepository>,
     proof_repository: Arc<dyn ProofRepository>,
@@ -293,7 +287,6 @@ async fn process_proof(
             credential_formatter_provider,
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
-            revocation_method_provider.clone(),
             credential_repository,
             did_repository,
             proof_repository.clone(),
@@ -350,7 +343,6 @@ async fn fill_proof_claims_and_credentials(
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     did_repository: Arc<dyn DidRepository>,
     proof_repository: Arc<dyn ProofRepository>,
@@ -372,7 +364,6 @@ async fn fill_proof_claims_and_credentials(
         &*credential_formatter_provider,
         key_algorithm_provider,
         did_method_provider,
-        revocation_method_provider,
     )
     .await
     {

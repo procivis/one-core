@@ -78,7 +78,6 @@ impl ProofService {
             self.credential_formatter_provider.clone(),
             self.did_method_provider.clone(),
             self.key_algorithm_provider.clone(),
-            self.revocation_method_provider.clone(),
             self.credential_repository.clone(),
             self.did_repository.clone(),
             self.proof_repository.clone(),

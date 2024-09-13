@@ -5,15 +5,11 @@ use one_providers::credential_formatter::model::{DetailCredential, ExtractPresen
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::revocation::model::{
-    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
-};
-use one_providers::revocation::provider::RevocationMethodProvider;
 use shared_types::{ClaimSchemaId, CredentialSchemaId};
 use time::OffsetDateTime;
 
 use crate::common_mapper::{extracted_credential_to_model, get_or_create_did};
-use crate::common_validator::{is_lvvc, validate_expiration_time, validate_issuance_time};
+use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
@@ -23,7 +19,7 @@ use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
+use crate::service::error::{MissingProviderError, ServiceError};
 use crate::util::key_verification::KeyVerification;
 
 #[derive(Clone, Debug)]
@@ -43,7 +39,6 @@ pub async fn validate_proof(
     formatter_provider: &dyn CredentialFormatterProvider,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
-    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 ) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
     let key_verification_presentation = Box::new(KeyVerification {
         key_algorithm_provider: key_algorithm_provider.clone(),
@@ -58,11 +53,11 @@ pub async fn validate_proof(
     });
 
     let format = "MDOC";
-    let presentation_formatter = formatter_provider
+    let formatter = formatter_provider
         .get_formatter(format)
         .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
 
-    let presentation = presentation_formatter
+    let presentation = formatter
         .extract_presentation(
             presentation,
             key_verification_presentation.clone(),
@@ -71,18 +66,9 @@ pub async fn validate_proof(
         .await?;
 
     // Check if presentation is expired
-    validate_issuance_time(&presentation.issued_at, presentation_formatter.get_leeway())?;
-    validate_expiration_time(
-        &presentation.expires_at,
-        presentation_formatter.get_leeway(),
-    )?;
-
-    let input_schemas = proof_schema
-        .input_schemas
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "claim_schemas is None".to_string(),
-        ))?;
+    let leeway = formatter.get_leeway();
+    validate_issuance_time(&presentation.issued_at, leeway)?;
+    validate_expiration_time(&presentation.expires_at, leeway)?;
 
     let (requested_cred_schema_ids, claim_schemas_with_cred_schemas) =
         match proof_schema.input_schemas.as_ref() {
@@ -154,77 +140,17 @@ pub async fn validate_proof(
     let mut proved_credentials: HashMap<CredentialSchemaId, Vec<ValidatedProofClaimDTO>> =
         HashMap::new();
 
-    let extracted_lvvcs = extract_lvvcs(&presentation.credentials, formatter_provider).await?;
-
     for credential in presentation.credentials {
-        let credential_formatter = formatter_provider
-            .get_formatter(format)
-            .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
-
-        let credential = credential_formatter
+        let credential = formatter
             .extract_credentials(&credential, key_verification_credentials.clone())
             .await?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
-        validate_issuance_time(
-            &credential.invalid_before,
-            credential_formatter.get_leeway(),
-        )?;
-        validate_expiration_time(&credential.valid_until, credential_formatter.get_leeway())?;
-
-        if is_lvvc(&credential) {
-            continue;
-        }
+        validate_issuance_time(&credential.invalid_before, leeway)?;
+        validate_expiration_time(&credential.valid_until, leeway)?;
 
         let (credential_schema_id, requested_proof_claims) =
             extract_matching_requested_schema(&credential, &mut remaining_requested_claims)?;
-
-        let issuer_did = credential
-            .issuer_did
-            .as_ref()
-            .ok_or(ServiceError::ValidationError(
-                "Issuer DID missing".to_owned(),
-            ))?;
-
-        for credential_status in credential.status.iter() {
-            let (revocation_method, _) = revocation_method_provider
-                .get_revocation_method_by_status_type(&credential_status.r#type)
-                .ok_or(MissingProviderError::RevocationMethod(
-                    credential_status.r#type.clone(),
-                ))?;
-
-            let proof_input = input_schemas
-                .iter()
-                .find(|input_schema| {
-                    input_schema.credential_schema.as_ref().map(|cs| cs.id)
-                        == Some(credential_schema_id)
-                })
-                .ok_or(ServiceError::ValidationError(
-                    "Missing matching input schema".to_owned(),
-                ))?
-                .clone();
-
-            match revocation_method
-                .check_credential_revocation_status(
-                    credential_status,
-                    issuer_did,
-                    Some(CredentialDataByRole::Verifier(Box::new(
-                        VerifierCredentialData {
-                            credential: credential.to_owned(),
-                            extracted_lvvcs: extracted_lvvcs.to_owned(),
-                            proof_input: proof_input.into(),
-                        },
-                    ))),
-                )
-                .await?
-            {
-                CredentialRevocationState::Valid => {}
-                CredentialRevocationState::Revoked
-                | CredentialRevocationState::Suspended { .. } => {
-                    return Err(BusinessLogicError::CredentialIsRevokedOrSuspended.into());
-                }
-            }
-        }
 
         // Check if all subjects of the submitted VCs is matching the holder did.
         let claim_subject = match &credential.subject {
@@ -318,31 +244,6 @@ fn extract_matching_requested_schema(
         matching_claim_schemas.to_owned(),
     );
     remaining_requested_claims.remove(&result.0);
-    Ok(result)
-}
-
-async fn extract_lvvcs(
-    presentation_credentials: &[String],
-    formatter_provider: &dyn CredentialFormatterProvider,
-) -> Result<Vec<DetailCredential>, ServiceError> {
-    let mut result = vec![];
-
-    for credential in presentation_credentials {
-        // Workaround credential format detection
-        let format = "MDOC";
-
-        let credential_formatter = formatter_provider
-            .get_formatter(format)
-            .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
-
-        let credential = credential_formatter
-            .extract_credentials_unverified(credential)
-            .await?;
-        if is_lvvc(&credential) {
-            result.push(credential);
-        }
-    }
-
     Ok(result)
 }
 
