@@ -180,30 +180,14 @@ impl ExchangeProtocolImpl for IsoMdl {
                 credential_presentation.credential_schema.format
             )))?;
 
-        let device_engagement = ciborium::from_reader(session.device_engagement.as_slice())
-            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
-
-        let e_reader_key = ciborium::from_reader(session.e_reader_key.as_slice())
-            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+        let session_transcript_bytes: EmbeddedCbor<SessionTranscript> =
+            ciborium::from_reader(session.session_transcript_bytes.as_slice())
+                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
         let ctx = FormatPresentationCtx {
             session_transcript: Some(
-                to_cbor(&SessionTranscript {
-                    device_engagement_bytes: Some(EmbeddedCbor::new(device_engagement).map_err(
-                        |err| {
-                            ExchangeProtocolError::Failed(format!(
-                                "CBOR serialization failed for device_engagement_bytes: {err}"
-                            ))
-                        },
-                    )?),
-                    e_reader_key_bytes: Some(EmbeddedCbor::new(e_reader_key).map_err(|err| {
-                        ExchangeProtocolError::Failed(format!(
-                            "CBOR serialization failed for e_reader_key_bytes: {err}"
-                        ))
-                    })?),
-                    handover: None,
-                })
-                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
+                to_cbor(session_transcript_bytes.inner())
+                    .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
             ),
             ..Default::default()
         };
