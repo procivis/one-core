@@ -351,6 +351,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 .route(
                     "/vc-api/presentations/verify",
                     post(vc_api::controller::verify_presentation),
+                )
+                .route(
+                    "/vc-api/identifiers/:identifier",
+                    get(vc_api::controller::resolve_identifier),
                 );
 
             Router::new().merge(interop_test_endpoints)

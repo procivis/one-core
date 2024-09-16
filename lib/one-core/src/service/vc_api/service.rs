@@ -49,9 +49,7 @@ impl VCAPIService {
         let CredentialIssueOptions {
             signature_algorithm,
             credential_format,
-        } = create_request
-            .options
-            .ok_or(ServiceError::Other("Options are missing".to_string()))?;
+        } = create_request.options;
 
         validate_verifiable_credential(&create_request.credential)?;
 
@@ -137,7 +135,7 @@ impl VCAPIService {
 
         let formatter = self
             .credential_formatter
-            .get_formatter(&credential_format)
+            .get_formatter(&credential_format.unwrap_or("JSON_LD_CLASSIC".to_string()))
             .unwrap();
 
         let test = formatter
@@ -164,10 +162,17 @@ impl VCAPIService {
     ) -> Result<CredentialVerifyResponse, ServiceError> {
         validate_verifiable_credential(&verify_request.verifiable_credential)?;
 
-        let formatter = self
-            .credential_formatter
-            .get_formatter("JSON_LD_CLASSIC")
-            .unwrap();
+        let format = &verify_request
+            .options
+            .credential_format
+            .unwrap_or("JSON_LD_CLASSIC".to_string());
+
+        let formatter =
+            self.credential_formatter
+                .get_formatter(format)
+                .ok_or(ServiceError::Other(format!(
+                    "Formatter not found for credential format {format}"
+                )))?;
 
         let string_token =
             serde_json::to_string(&verify_request.verifiable_credential).map_err(|e| {

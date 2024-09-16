@@ -1,14 +1,19 @@
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use serde_json::json;
+use one_core::service::error::{MissingProviderError, ServiceError};
+use one_providers::did::error::DidMethodProviderError;
+use shared_types::DidValue;
 
 use super::dto::{
     CredentialIssueRequestDto, CredentialIssueResponseDto, CredentialVerifiyRequestDto,
-    CredentialVerifyResponseDto, PresentationVerifyRequestDto, PresentationVerifyResponseDto,
+    CredentialVerifyResponseDto, DidDocumentResolutionResponseDto, PresentationVerifyRequestDto,
+    PresentationVerifyResponseDto,
 };
+use super::response::VcApiErrorResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
+use crate::endpoint::vc_api::response::VcApiResponse;
 use crate::router::AppState;
 
 #[tracing::instrument(level = "debug", skip(state))]
@@ -26,8 +31,6 @@ pub(crate) async fn issue_credential(
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<CredentialIssueResponseDto> {
-    println!("{}", json!(&request));
-
     let issued = state
         .core
         .vc_api_service
@@ -99,4 +102,33 @@ pub(crate) async fn verify_presentation(
             OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
         }
     }
+}
+
+#[tracing::instrument(level = "debug", skip(state))]
+#[utoipa::path(
+    get,
+    path = "/vc-api/identifiers/{identifier}",
+    responses(VcApiResponse<DidDocumentResolutionResponseDto>),
+    params(
+        ("identifier" = String, Path, description = "Identifier")
+    ),
+    tag = "vc_interop_testing",
+)]
+pub(crate) async fn resolve_identifier(
+    state: State<AppState>,
+    WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, VcApiErrorResponseRestDTO>,
+) -> VcApiResponse<DidDocumentResolutionResponseDto> {
+    let result = state
+        .core
+        .did_service
+        .resolve_did(&did_value)
+        .await
+        .map_err(|e| match e {
+            DidMethodProviderError::MissingProvider(e) => {
+                ServiceError::MissingProvider(MissingProviderError::DidMethod(e))
+            }
+            _ => ServiceError::DidMethodProviderError(e),
+        });
+
+    VcApiResponse::from_result(result)
 }

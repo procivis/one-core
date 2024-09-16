@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use dto_mapper::convert_inner;
+use one_providers::credential_formatter::imp::json_ld::model::ContextType;
+use one_providers::credential_formatter::model::Context;
 use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::exchange_protocol::openid4vc::error::OpenID4VCIError;
@@ -342,6 +344,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
         )?;
 
         let json_ld_context = revocation_method.get_json_ld_context()?;
+        let contexts = vec![ContextType::Url(Context::CredentialsV2.to_url())];
 
         let token = self
             .formatter_provider
@@ -351,7 +354,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                 credential_data,
                 &Some(holder_did.did.into()),
                 &key.key_type,
-                vec![],
+                contexts,
                 vec![],
                 auth_fn,
                 json_ld_context.url,
