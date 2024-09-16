@@ -1,6 +1,7 @@
 use axum::extract::State;
 use axum::Json;
 use axum_extra::extract::WithRejection;
+use serde_json::json;
 
 use super::dto::{
     CredentialIssueRequestDto, CredentialIssueResponseDto, CredentialVerifiyRequestDto,
@@ -25,6 +26,8 @@ pub(crate) async fn issue_credential(
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<CredentialIssueResponseDto> {
+    println!("{}", json!(&request));
+
     let issued = state
         .core
         .vc_api_service

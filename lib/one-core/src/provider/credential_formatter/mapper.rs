@@ -70,5 +70,6 @@ pub fn credential_data_from_credential_detail_response(
         description: None,
         terms_of_use: vec![],
         evidence: vec![],
+        related_resource: None,
     })
 }

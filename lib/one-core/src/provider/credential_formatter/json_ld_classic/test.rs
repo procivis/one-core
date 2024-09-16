@@ -90,6 +90,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
         description: None,
         terms_of_use: vec![],
         evidence: vec![],
+        related_resource: None,
     };
 
     let holder_did = DidValue::from("holder-did".to_string());

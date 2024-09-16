@@ -79,7 +79,7 @@ impl CredentialFormatter for JsonLdClassic {
                 .transpose()
                 .map_err(|_| {
                     FormatterError::CouldNotFormat(
-                        "Provded context url is not a valid URL".to_string(),
+                        "Provided context url is not a valid URL".to_string(),
                     )
                 })?,
             custom_subject_name,
