@@ -370,16 +370,14 @@ fn x25519_from_cose_key(key: CoseKey) -> anyhow::Result<x25519_dalek::PublicKey>
 pub fn create_session_transcript_bytes(
     device_engagement_bytes: EmbeddedCbor<DeviceEngagement>,
     e_reader_key_bytes: EmbeddedCbor<EReaderKey>,
-) -> Result<Vec<u8>, ExchangeProtocolError> {
+) -> Result<EmbeddedCbor<SessionTranscript>, ExchangeProtocolError> {
     let session_transcript = SessionTranscript {
         device_engagement_bytes: Some(device_engagement_bytes),
         e_reader_key_bytes: Some(e_reader_key_bytes),
         handover: None,
     };
 
-    Ok(EmbeddedCbor::new(session_transcript)
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
-        .into_bytes())
+    EmbeddedCbor::new(session_transcript).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
 }
 
 pub fn to_cbor<T: Serialize>(value: &T) -> Result<Vec<u8>, ExchangeProtocolError> {

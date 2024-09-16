@@ -9,6 +9,7 @@ use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use shared_types::{ClaimSchemaId, CredentialSchemaId};
 use time::OffsetDateTime;
 
+use super::common::to_cbor;
 use crate::common_mapper::{extracted_credential_to_model, get_or_create_did};
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::model::claim::Claim;
@@ -17,6 +18,7 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::SessionTranscript;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -36,6 +38,7 @@ pub struct ValidatedProofClaimDTO {
 pub async fn validate_proof(
     proof_schema: &ProofSchema,
     presentation: &str,
+    session_transcript: SessionTranscript,
     formatter_provider: &dyn CredentialFormatterProvider,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -60,8 +63,11 @@ pub async fn validate_proof(
     let presentation = formatter
         .extract_presentation(
             presentation,
-            key_verification_presentation.clone(),
-            ExtractPresentationCtx::default(),
+            key_verification_presentation,
+            ExtractPresentationCtx {
+                mdoc_session_transcript: Some(to_cbor(&session_transcript)?),
+                ..Default::default()
+            },
         )
         .await?;
 

@@ -213,7 +213,6 @@ bitrise_ios_sdk:
   stage: sdk_build
   image: registry.gitlab.procivis.ch/procivis/one/one-operations/bitrise-builder:0.1.0
   needs: []
-  dependencies: []
   variables:
     # ONE-wallet project on Bitrise
     BITRISE_PROJECT_SLUG: 6ee8c26f-6d7b-4bcb-8ddc-be1ba3cd2687
@@ -227,39 +226,31 @@ bitrise_ios_sdk:
       --commit "$CI_COMMIT_SHA"
       --env "CI_PIPELINE_ID:$CI_PIPELINE_ID"
       --output "artifacts"
-  extends:
-    - .only_main_or_tag_manual
+  when: manual
   artifacts:
     paths:
       - artifacts
     expire_in: 10 days
-  allow_failure: false
 
 build_android_sdk:
   services:
     - docker:dind
   stage: sdk_build
   needs: []
-  dependencies: []
   script:
     - export HOSTNAME=$(docker ps -ql)
     - export CROSS_CONTAINER_OPTS='--env="CI_PIPELINE_ID='$CI_PIPELINE_ID'"'
     - makers build_android
+  when: manual
   artifacts:
     paths:
       - target/bindings/android
     expire_in: 5 days
-  extends:
-    - .only_main_or_tag_manual
-  allow_failure: false
 
 upload_sdk_artifacts:
   stage: sdk_artifact
   image: mcr.microsoft.com/azure-cli
   needs: [build_android_sdk, bitrise_ios_sdk]
-  dependencies: [build_android_sdk, bitrise_ios_sdk]
-  extends:
-    - .only_main_or_tag
   variables:
     AZURE_CONTAINER_NAME: "core-sdk"
     ANDROID_BUILD_SOURCE_PATH: "target/bindings/android"

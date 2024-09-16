@@ -121,17 +121,14 @@ mod test {
         let (tag, device_engagement_bytes) = value[0].as_tag().unwrap();
         assert_eq!(24, tag);
         assert_eq!(
-            &session_transcript
-                .device_engagement_bytes
-                .unwrap()
-                .to_bytes()[4..],
+            &session_transcript.device_engagement_bytes.unwrap().bytes()[4..],
             device_engagement_bytes.as_bytes().unwrap()
         );
 
         let (tag, e_reader_key_bytes) = value[1].as_tag().unwrap();
         assert_eq!(24, tag);
         assert_eq!(
-            &session_transcript.e_reader_key_bytes.unwrap().to_bytes()[4..],
+            &session_transcript.e_reader_key_bytes.unwrap().bytes()[4..],
             e_reader_key_bytes.as_bytes().unwrap()
         );
 

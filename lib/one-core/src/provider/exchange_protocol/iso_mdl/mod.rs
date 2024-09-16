@@ -185,7 +185,7 @@ impl ExchangeProtocolImpl for IsoMdl {
                 .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
         let ctx = FormatPresentationCtx {
-            session_transcript: Some(
+            mdoc_session_transcript: Some(
                 to_cbor(session_transcript_bytes.inner())
                     .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
             ),
