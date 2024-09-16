@@ -65,7 +65,7 @@ impl DeviceEngagement {
         let device_engagement = EmbeddedCbor::new(self)?;
 
         let ciborium::tag::Required::<_, 24>(Bstr(embedded_cbor)) =
-            ciborium::from_reader(device_engagement.to_bytes())?;
+            ciborium::from_reader(device_engagement.bytes())?;
 
         let qr_code_content = Base64UrlSafeNoPadding::encode_to_string(&embedded_cbor)
             .map(|content| format!("{}{content}", Self::QR_CODE_PREFIX))

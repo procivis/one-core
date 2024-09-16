@@ -27,7 +27,7 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
 };
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
-    Bstr, DeviceResponse, EmbeddedCbor,
+    Bstr, DeviceResponse, EmbeddedCbor, SessionTranscript,
 };
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
@@ -38,8 +38,7 @@ use crate::util::ble_resource::{BleWaiter, OnConflict};
 #[derive(Debug, Clone)]
 pub(crate) struct VerifierSession {
     pub reader_key: EmbeddedCbor<EReaderKey>,
-    #[allow(dead_code)]
-    pub device_request: DeviceRequest,
+    pub session_transcript: SessionTranscript,
     pub device_request_encrypted: Vec<u8>,
     pub sk_device: SkDevice,
 }
@@ -54,7 +53,7 @@ pub(crate) fn setup_verifier_session(
     let reader_key = EmbeddedCbor::new(key_pair.reader_key().clone())
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-    let transcript =
+    let session_transcript_bytes =
         create_session_transcript_bytes(device_engagement.to_owned(), reader_key.to_owned())?;
 
     let (sk_device, sk_reader) = key_pair
@@ -64,7 +63,7 @@ pub(crate) fn setup_verifier_session(
                 .security
                 .key_bytes
                 .into_inner(),
-            &transcript,
+            session_transcript_bytes.bytes(),
         )
         .context("failed to derive key")
         .map_err(ExchangeProtocolError::Other)?;
@@ -90,7 +89,7 @@ pub(crate) fn setup_verifier_session(
 
     Ok(VerifierSession {
         reader_key,
-        device_request,
+        session_transcript: session_transcript_bytes.into_inner(),
         device_request_encrypted,
         sk_device,
     })
@@ -284,6 +283,7 @@ async fn process_proof(
         if let Err(_error) = fill_proof_claims_and_credentials(
             device_response,
             proof,
+            verifier_session.session_transcript,
             credential_formatter_provider,
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
@@ -340,6 +340,7 @@ async fn send_end_and_disconnect(
 async fn fill_proof_claims_and_credentials(
     device_response: DeviceResponse,
     proof: &Proof,
+    session_transcript: SessionTranscript,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -353,21 +354,15 @@ async fn fill_proof_claims_and_credentials(
 
     let encoded = encode_cbor_base64(&device_response)?;
 
-    let (holder_did, proved_claims) = match super::verify_proof::validate_proof(
+    let (holder_did, proved_claims) = super::verify_proof::validate_proof(
         proof_schema,
         &encoded,
+        session_transcript,
         &*credential_formatter_provider,
         key_algorithm_provider,
         did_method_provider,
     )
-    .await
-    {
-        Ok(claims) => claims,
-        Err(e) => {
-            // todo: impl fail proof + history event errored
-            return Err(e.into());
-        }
-    };
+    .await?;
 
     super::verify_proof::accept_proof(
         proof.clone(),
