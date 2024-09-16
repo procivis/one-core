@@ -211,6 +211,7 @@ pub fn extracted_credential_to_model(
     claims: Vec<(serde_json::Value, ClaimSchema)>,
     issuer_did: Did,
     holder_did: Option<Did>,
+    exchange: String,
 ) -> Result<Credential, ServiceError> {
     let now = OffsetDateTime::now_utc();
     let credential_id = Uuid::new_v4().into();
@@ -234,7 +235,7 @@ pub fn extracted_credential_to_model(
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange,
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Accepted,
@@ -321,4 +322,86 @@ pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, Form
             "CBOR deserialization into `{type_name}` failed: {err}"
         ))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
+    use serde_json::json;
+
+    use super::*;
+    use crate::model::credential_schema::{CredentialSchemaType, LayoutType};
+
+    #[test]
+    fn test_extracted_credential_to_model_mdoc() {
+        let namespace_claim_schema = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "namespace".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+        };
+
+        let element_claim_schema = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "namespace/element".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+        };
+
+        let claim_schemas = vec![
+            CredentialSchemaClaim {
+                schema: namespace_claim_schema.clone(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: element_claim_schema.clone(),
+                required: true,
+            },
+        ];
+
+        let credential = extracted_credential_to_model(
+            &claim_schemas,
+            CredentialSchema {
+                id: Uuid::new_v4().into(),
+                deleted_at: None,
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "CredentialSchema".to_string(),
+                format: "MDOC".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+                layout_type: LayoutType::Card,
+                layout_properties: None,
+                schema_id: "pavel.3310.simple".to_string(),
+                schema_type: CredentialSchemaType::Mdoc,
+                claim_schemas: Some(claim_schemas.clone()),
+                organisation: None,
+            },
+            vec![(json!({ "element": "Test" }), namespace_claim_schema)],
+            Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "IssuerDid".to_string(),
+                did: "did:issuer".to_string().into(),
+                did_type: DidType::Remote,
+                did_method: "didMethod".to_string(),
+                deactivated: false,
+                keys: None,
+                organisation: None,
+            },
+            None,
+            "ISO_MDL".to_string(),
+        )
+        .unwrap();
+
+        let claims = credential.claims.unwrap();
+        assert_eq!(claims.len(), 1);
+        assert_eq!(claims[0].schema.as_ref().unwrap(), &element_claim_schema);
+        assert_eq!(claims[0].value, "Test");
+    }
 }

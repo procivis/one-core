@@ -139,6 +139,7 @@ pub async fn accept_proof(
             claims,
             issuer_did,
             Some(holder_did.clone()),
+            proof.exchange.to_owned(),
         )?;
 
         proof_claims.append(

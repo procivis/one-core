@@ -276,14 +276,6 @@ pub async fn accept_proof(
         Some(input_schemas) if !input_schemas.is_empty() => {
             let mut res: Vec<(ProofInputClaimSchema, CredentialSchema)> = Vec::new();
 
-            let input_schemas =
-                proof_schema
-                    .input_schemas
-                    .as_ref()
-                    .ok_or(ServiceError::MappingError(
-                        "claim_schemas is None".to_string(),
-                    ))?;
-
             for input in input_schemas {
                 let proof_input_claim_schemas =
                     input
@@ -383,12 +375,22 @@ pub async fn accept_proof(
         )
         .await?;
 
+        let credential_schema = &first_claim.credential_schema;
+        let claim_schemas =
+            credential_schema
+                .claim_schemas
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "claim_schemas missing".to_string(),
+                ))?;
+
         let credential = extracted_credential_to_model(
-            &[],
-            first_claim.credential_schema.to_owned(),
+            claim_schemas,
+            credential_schema.to_owned(),
             claims,
             issuer_did,
             Some(holder_did.clone()),
+            proof.exchange.to_owned(),
         )?;
 
         proof_claims.append(
