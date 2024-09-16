@@ -1043,6 +1043,9 @@ interface OneCoreBinding {
   ConfigBindingDTO get_config();
 
   [Throws=BindingError]
+  string run_task(string task);
+
+  [Throws=BindingError]
   string create_organisation(string? uuid);
 
   [Throws=BindingError]
