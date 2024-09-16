@@ -32,6 +32,9 @@ pub enum VcValidationError {
 
     #[error("VC contains invalid credentialSchema id. Must be a URL")]
     InvalidCredentialSchemaId,
+
+    #[error("Related resource MUST contain digestSRI or digestMultibase")]
+    InvalidRelatedResource,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -101,6 +104,18 @@ pub(super) fn validate_verifiable_credential(
         })
     {
         return Err(VcValidationError::InvalidCredentialSchemaId);
+    }
+
+    match &credential.related_resource {
+        None => {}
+        Some(resource) => {
+            if resource
+                .iter()
+                .any(|r| r.digest_sri.is_none() && r.digest_multibase.is_none())
+            {
+                return Err(VcValidationError::InvalidRelatedResource);
+            }
+        }
     }
 
     Ok(())
