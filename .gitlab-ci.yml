@@ -315,7 +315,7 @@ deploy:dev:
   resource_group: core-dev
   trigger:
     project: procivis/one/one-operations
-    branch: one-3416-charts-from-projects
+    branch: main
     strategy: depend
   variables:
     HELM_PATH: charts/one-core-chart
