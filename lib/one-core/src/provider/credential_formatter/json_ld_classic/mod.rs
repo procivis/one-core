@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::vec;
 
 use async_trait::async_trait;
+use indexmap::indexset;
 use model::CredentialEnvelope;
 use one_crypto::CryptoProvider;
 use one_providers::common_models::did::DidValue;
@@ -11,11 +12,11 @@ use one_providers::credential_formatter::imp::json_ld::context::caching_loader::
     ContextCache, JsonLdCachingLoader,
 };
 use one_providers::credential_formatter::imp::json_ld::model::{
-    LdCredential, LdPresentation, LdProof, VerifiableCredential,
+    ContextType, LdCredential, LdPresentation, LdProof, VerifiableCredential,
 };
 use one_providers::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
-    DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities,
+    DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Issuer,
     Presentation, VerificationFn,
 };
 use one_providers::credential_formatter::CredentialFormatter;
@@ -60,9 +61,9 @@ impl CredentialFormatter for JsonLdClassic {
     async fn format_credentials(
         &self,
         credential: CredentialData,
-        holder_did: &DidValue,
+        holder_did: &Option<DidValue>,
         algorithm: &str,
-        additional_context: Vec<String>,
+        additional_context: Vec<ContextType>,
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
         json_ld_context_url: Option<String>,
@@ -70,10 +71,17 @@ impl CredentialFormatter for JsonLdClassic {
     ) -> Result<String, FormatterError> {
         let mut credential = json_ld::prepare_credential(
             credential,
-            holder_did,
+            holder_did.as_ref(),
             additional_context,
             additional_types,
-            json_ld_context_url,
+            json_ld_context_url
+                .map(|u| u.parse())
+                .transpose()
+                .map_err(|_| {
+                    FormatterError::CouldNotFormat(
+                        "Provided context url is not a valid URL".to_string(),
+                    )
+                })?,
             custom_subject_name,
             self.params.embed_layout_properties.unwrap_or_default(),
         )?;
@@ -96,7 +104,7 @@ impl CredentialFormatter for JsonLdClassic {
             "assertionMethod",
             cryptosuite,
             key_id,
-            vec![Context::CredentialsV2.to_string()],
+            indexset![ContextType::Url(Context::CredentialsV2.to_url())],
         )
         .await?;
 
@@ -146,7 +154,8 @@ impl CredentialFormatter for JsonLdClassic {
         auth_fn: AuthenticationFn,
         ctx: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
-        let context = json_ld::prepare_context(vec![]);
+        // TODO Move out
+        let context = indexset![ContextType::Url(Context::CredentialsV2.to_url(),)];
 
         let formats = ctx.token_formats.map(|formats| {
             formats
@@ -188,9 +197,11 @@ impl CredentialFormatter for JsonLdClassic {
 
         let mut presentation = LdPresentation {
             context: context.clone(),
-            r#type: "VerifiablePresentation".to_string(),
+            r#type: vec!["VerifiablePresentation".to_string()],
             verifiable_credential,
-            holder: holder_did.to_owned(),
+            holder: holder_did.as_str().parse().map(Issuer::Url).map_err(|_| {
+                FormatterError::CouldNotFormat("Holder DID is not a URL".to_string())
+            })?,
             nonce: ctx.nonce,
             proof: None,
             issuance_date: OffsetDateTime::now_utc(),
@@ -347,8 +358,7 @@ impl JsonLdClassic {
         }
 
         // We only take first subject now as one credential only contains one credential schema
-        let subject = credential
-            .credential_subject
+        let subject = credential.credential_subject[0]
             .subject
             .values()
             .next()
@@ -368,16 +378,16 @@ impl JsonLdClassic {
         };
 
         Ok(DetailCredential {
-            id: credential.id,
+            id: credential.id.map(|url| url.to_string()),
             valid_from: credential.valid_from.or(credential.issuance_date),
             valid_until: credential.valid_until,
             update_at: None,
             invalid_before: None,
-            issuer_did: Some(credential.issuer),
-            subject: credential.credential_subject.id,
+            issuer_did: Some(credential.issuer.to_did_value()),
+            subject: credential.credential_subject[0].id.clone(),
             claims,
             status: credential.credential_status,
-            credential_schema: credential.credential_schema,
+            credential_schema: credential.credential_schema.map(|v| v[0].clone()),
         })
     }
 
@@ -419,7 +429,7 @@ impl JsonLdClassic {
             id: None,
             issued_at: Some(presentation.issuance_date),
             expires_at: None,
-            issuer_did: Some(presentation.holder),
+            issuer_did: Some(presentation.holder.to_did_value()),
             nonce: presentation.nonce,
             credentials,
         })
@@ -464,7 +474,7 @@ pub(super) async fn verify_credential_signature(
     verify_proof_signature(
         &proof_hash,
         &proof_value,
-        issuer_did,
+        &issuer_did.to_did_value(),
         key_id,
         &proof.cryptosuite,
         verification_fn,
@@ -503,7 +513,7 @@ pub(super) async fn verify_presentation_signature(
     verify_proof_signature(
         &proof_hash,
         &proof_value,
-        issuer_did,
+        &issuer_did.to_did_value(),
         key_id,
         &proof.cryptosuite,
         verification_fn,
@@ -533,7 +543,8 @@ pub(super) async fn verify_proof_signature(
         .map_err(|_| FormatterError::CouldNotVerify("Hash decoding error".to_owned()))?;
 
     let algorithm = match cryptosuite {
-        "eddsa-rdfc-2022" => "EDDSA",
+        // todo: check if `eddsa-2022` is correct as the VCDM test suite is sending this
+        "eddsa-rdfc-2022" | "eddsa-2022" => "EDDSA",
         "ecdsa-rdfc-2019" => "ES256",
         "ecdsa-xi-2023" => "ES256",
         _ => {

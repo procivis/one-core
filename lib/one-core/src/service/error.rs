@@ -1060,6 +1060,7 @@ pub fn error_code_formatter(error: &FormatterError) -> ErrorCode {
         | FormatterError::MissingPart
         | FormatterError::MissingDisclosure
         | FormatterError::MissingIssuer
+        | FormatterError::MissingHolder
         | FormatterError::MissingClaim
         | FormatterError::CryptoError(_)
         | FormatterError::MissingBaseUrl { .. }
