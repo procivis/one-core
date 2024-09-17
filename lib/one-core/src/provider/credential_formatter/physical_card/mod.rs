@@ -9,6 +9,7 @@ use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
 };
+use one_providers::credential_formatter::imp::json_ld::model::ContextType;
 use one_providers::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
     ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
@@ -35,9 +36,9 @@ impl CredentialFormatter for PhysicalCardFormatter {
     async fn format_credentials(
         &self,
         _credential: CredentialData,
-        _holder_did: &DidValue,
+        _holder_did: &Option<DidValue>,
         _algorithm: &str,
-        _additional_context: Vec<String>,
+        _additional_context: Vec<ContextType>,
         _additional_types: Vec<String>,
         _auth_fn: AuthenticationFn,
         _json_ld_context_url: Option<String>,

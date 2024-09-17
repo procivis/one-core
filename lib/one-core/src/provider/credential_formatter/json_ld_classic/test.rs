@@ -12,7 +12,7 @@ use one_providers::common_models::did::DidValue;
 use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::model::{
     CredentialData, CredentialSchemaData, CredentialSchemaMetadata, ExtractPresentationCtx,
-    FormatPresentationCtx, MockSignatureProvider, MockTokenVerifier, PublishedClaim,
+    FormatPresentationCtx, Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaim,
     PublishedClaimValue,
 };
 use one_providers::credential_formatter::CredentialFormatter;
@@ -48,8 +48,11 @@ async fn test_format_with_layout_disabled() {
 }
 
 async fn create_token(include_layout: bool) -> serde_json::Value {
-    let issuer_did =
-        DidValue::from("did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y".to_string());
+    let issuer_did = Issuer::Url(
+        "did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y"
+            .parse()
+            .unwrap(),
+    );
 
     let credential_data = CredentialData {
         id: None,
@@ -83,6 +86,11 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
                 },
             }),
         },
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
+        related_resource: None,
     };
 
     let holder_did = DidValue::from("holder-did".to_string());
@@ -178,7 +186,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
-            &holder_did.to_owned(),
+            &Some(holder_did).to_owned(),
             algorithm,
             vec![],
             vec![],

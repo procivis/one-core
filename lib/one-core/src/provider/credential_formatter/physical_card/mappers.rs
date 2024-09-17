@@ -46,7 +46,7 @@ impl OptiocalBarcodeCredential {
         Ok(Self {
             schema: schema?,
             optical_data: ProtectedOpticalData::new_from_credential_subject(
-                &credential.credential_subject,
+                &credential.credential_subject[0],
                 input.barcode,
             )?,
             credential,
@@ -117,12 +117,12 @@ impl TryInto<DetailCredential> for OptiocalBarcodeCredential {
             });
 
         Ok(DetailCredential {
-            id: self.credential.id,
+            id: self.credential.id.map(|url| url.to_string()),
             valid_from: self.credential.valid_from.or(self.credential.issuance_date),
             valid_until: None,
             update_at: None,
             invalid_before: None,
-            issuer_did: Some(self.credential.issuer),
+            issuer_did: Some(self.credential.issuer.to_did_value()),
             subject: None,
             claims: credential_subject,
             status: status?,

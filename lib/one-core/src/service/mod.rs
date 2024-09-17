@@ -21,6 +21,7 @@ pub mod storage_proxy;
 pub mod task;
 pub mod trust_anchor;
 pub mod trust_entity;
+pub mod vc_api;
 
 #[cfg(test)]
 pub mod test_utilities;

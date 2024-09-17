@@ -37,6 +37,7 @@ use service::ssi_verifier::SSIVerifierService;
 use service::task::TaskService;
 use service::trust_anchor::TrustAnchorService;
 use service::trust_entity::TrustEntityService;
+use service::vc_api::VCAPIService;
 use util::ble_resource::BleWaiter;
 
 use crate::config::core_config::{DidConfig, RevocationConfig};
@@ -113,6 +114,7 @@ pub struct OneCore {
     pub task_service: TaskService,
     pub jsonld_service: JsonLdService,
     pub config: Arc<CoreConfig>,
+    pub vc_api_service: VCAPIService,
 }
 
 #[derive(Default)]
@@ -505,6 +507,14 @@ impl OneCore {
                 config.clone(),
                 providers.core_base_url.clone(),
                 data_provider.get_history_repository(),
+            ),
+            // TODO - config based
+            vc_api_service: VCAPIService::new(
+                formatter_provider.clone(),
+                key_provider.clone(),
+                data_provider.get_did_repository(),
+                did_method_provider.clone(),
+                key_algorithm_provider.clone(),
             ),
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_repository(),

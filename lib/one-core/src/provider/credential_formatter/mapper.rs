@@ -1,5 +1,5 @@
 use one_providers::credential_formatter::model::{
-    CredentialData, CredentialSchemaData, CredentialSchemaMetadata, CredentialStatus,
+    CredentialData, CredentialSchemaData, CredentialSchemaMetadata, CredentialStatus, Issuer,
 };
 use time::OffsetDateTime;
 use uuid::fmt::Urn;
@@ -41,7 +41,11 @@ pub fn credential_data_from_credential_detail_response(
         issuance_date,
         valid_for,
         claims: map_claims(&credential.claims, false),
-        issuer_did: issuer_did.into(),
+        issuer_did: issuer_did
+            .as_str()
+            .parse()
+            .map(Issuer::Url)
+            .map_err(|_| ServiceError::ValidationError("Issuer DID is not URL".to_string()))?,
         status: credential_status,
         schema: CredentialSchemaData {
             id: Some(credential.schema.schema_id),
@@ -62,5 +66,10 @@ pub fn credential_data_from_credential_detail_response(
                 _ => None,
             },
         },
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
+        related_resource: None,
     })
 }
