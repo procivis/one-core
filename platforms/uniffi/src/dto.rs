@@ -275,6 +275,8 @@ pub struct ProofListItemBindingDTO {
     pub state: ProofStateBindingEnum,
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemBindingDTO>,
+    #[from(with_fn = optional_time)]
+    pub retain_until_date: Option<String>,
 }
 
 #[derive(From)]
@@ -600,6 +602,7 @@ pub struct ProofRequestBindingDTO {
     pub exchange: String,
     pub redirect_uri: Option<String>,
     pub proof_inputs: Vec<ProofInputBindingDTO>,
+    pub retain_until_date: Option<String>,
 }
 
 #[derive(TryInto)]
