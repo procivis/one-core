@@ -59,14 +59,14 @@ before_script:
 .only_main_or_tag:
   rules:
     - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
-    - if: $CI_COMMIT_BRANCH == "one-3416-move-helm-charts" || $CI_COMMIT_BRANCH == "release"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "release"
 
 .only_main_or_tag_manual:
   when: manual
   rules:
     - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: manual
-    - if: $CI_COMMIT_BRANCH == "one-3416-move-helm-charts" || $CI_COMMIT_BRANCH == "release"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "release"
       when: manual
 
 .only_main_or_tag_or_manual:
@@ -76,7 +76,7 @@ before_script:
 
 .manual_except_main_branch:
   rules:
-    - if: $CI_COMMIT_BRANCH == "one-3416-move-helm-charts"
+    - if: $CI_COMMIT_BRANCH == "main"
       when: never
     - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: never
@@ -149,9 +149,9 @@ tests:sqlite:
   extends:
     - .cargo_tests
   rules:
-    - if: $CI_COMMIT_BRANCH == "one-3416-move-helm-charts" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: always
-    - if: $CI_COMMIT_BRANCH != "one-3416-move-helm-charts"
+    - if: $CI_COMMIT_BRANCH != "main"
       when: always
 
 linter:clippy:
@@ -324,7 +324,7 @@ deploy:dev:
     HELM_APP_NAME: one-core
     DEPLOY_IMAGE_TAG: $APP_VERSION
   rules:
-    - if: $CI_COMMIT_REF_NAME == "one-3416-move-helm-charts"
+    - if: $CI_COMMIT_REF_NAME == "main"
 
 deploy:test:
   stage: deploy
