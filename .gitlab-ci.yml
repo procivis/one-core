@@ -3,15 +3,12 @@ image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.80.0-
 include:
   - project: "procivis/one/one-operations"
     file:
-      - "gitlab/aks-deploy.gitlab-ci.yml"
       - "gitlab/docker.gitlab-ci.yml"
 
 variables:
   DOCKER_DRIVER: overlay2
   DEPENDENCY_TRACK_PROJECT_NAME: "ONE-Core"
   CI_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/
-  HELM_APP_NAME: one-core
-  HELM_PATH: onecorechart
 
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
@@ -312,11 +309,21 @@ test_e2e:
     - .run_e2e_tests
     - .only_main_or_tag
 
-deploy:dev:
+.deploy_trigger:
   stage: deploy
-  extends:
-    - .deploy_k8s:sops
+  trigger:
+    project: procivis/one/one-operations
+    branch: main
+    strategy: depend
+  variables:
+    HELM_PATH: charts/one-core-chart
+    HELM_APP_NAME: one-core
+    DEPLOY_IMAGE_TAG: $APP_VERSION
+
+deploy:dev:
   resource_group: core-dev
+  extends:
+    - .deploy_trigger
   variables:
     VALUES_PATH: values/dev
     K8S_NAMESPACE: default
@@ -324,9 +331,8 @@ deploy:dev:
     - if: $CI_COMMIT_REF_NAME == "main"
 
 deploy:test:
-  stage: deploy
   extends:
-    - .deploy_k8s:sops
+    - .deploy_trigger
   variables:
     VALUES_PATH: values/test
     K8S_NAMESPACE: one-test
@@ -335,16 +341,13 @@ deploy:test:
       when: on_success
 
 deploy:demo:
-  stage: deploy
   extends:
-    - .deploy_k8s:sops
+    - .deploy_trigger
   variables:
     VALUES_PATH: values/demo
     K8S_NAMESPACE: default
-  before_script:
-    - *app_settings
-    - RESOURCE_GROUP=$DEMO_RESOURCE_GROUP
-    - CLUSTER_NAME=$DEMO_CLUSTER_NAME
+    RESOURCE_GROUP: $DEMO_RESOURCE_GROUP
+    CLUSTER_NAME: $DEMO_CLUSTER_NAME
   rules:
     - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: manual
