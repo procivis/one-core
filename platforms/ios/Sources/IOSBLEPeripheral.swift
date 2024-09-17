@@ -17,7 +17,7 @@ class IOSBLEPeripheral: NSObject {
     private var adapterStateCallback: BLEResultCallback<CBManagerState>?
     private var startAdvertisementResultCallback: BLEThrowingResultCallback<String?>?
     private var getConnectionChangeEventsResultCallback: BLEResultCallback<[ConnectionEventBindingEnum]>?
-    private var readyToUpdateSubscribersCallback: [UUID: () async throws -> Void] = [:]
+    private var readyToUpdateSubscribersCallbacks: [() async -> Void] = []
     private var getCharacteristicWritesResultCallbacks: [CharacteristicKey: BLEResultCallback<[Data]>] = [:]
     private var getCharacteristicReadResultCallbacks: [CharacteristicKey: BLEResultCallback<Void>] = [:]
     
@@ -99,7 +99,7 @@ extension IOSBLEPeripheral: BlePeripheral {
         _peripheralManager = nil
         startAdvertisementResultCallback = nil
         getConnectionChangeEventsResultCallback = nil
-        readyToUpdateSubscribersCallback = [:]
+        readyToUpdateSubscribersCallbacks = []
         getCharacteristicWritesResultCallbacks = [:]
         getCharacteristicReadResultCallbacks = [:]
         services = []
@@ -133,31 +133,36 @@ extension IOSBLEPeripheral: BlePeripheral {
         guard !subscribedCentrals.isEmpty else {
             return
         }
-        let updateResult = peripheralManager.updateValue(data, for: cbCharacteristic, onSubscribedCentrals: subscribedCentrals)
-#if DEBUG
-        print("update value result \(updateResult)")
-#endif
-        if updateResult {
-            return
-        }
         
-        let id = UUID()
         return try await withCheckedThrowingContinuation { continuation in
             notifyLock.withLock {
-                readyToUpdateSubscribersCallback[id] = { [weak self] in
+                let updateResult = peripheralManager.updateValue(data, for: cbCharacteristic, onSubscribedCentrals: subscribedCentrals)
+#if DEBUG
+                print("update value result \(updateResult)")
+#endif
+                if updateResult {
+                    continuation.resume()
+                    return
+                }
+                
+                readyToUpdateSubscribersCallbacks.append({ [weak self] in
                     guard let self = self else {
                         continuation.resume(throwing: BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: serviceUuid,
                                                                                                                          characteristic: characteristicUuid,
                                                                                                                          operation: "notify")))
                         return
                     }
-                    self.readyToUpdateSubscribersCallback[id] = nil
-                    try await self.notifyCharacteristicData(deviceAddress: deviceAddress,
-                                                            serviceUuid: serviceUuid,
-                                                            characteristicUuid: characteristicUuid,
-                                                            data: data)
-                    continuation.resume()
-                }
+
+                    do {
+                        try await self.notifyCharacteristicData(deviceAddress: deviceAddress,
+                                                                serviceUuid: serviceUuid,
+                                                                characteristicUuid: characteristicUuid,
+                                                                data: data)
+                        continuation.resume()
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                })
             }
         }
     }
@@ -408,11 +413,12 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
         print("peripheral manager ready to update subscribers")
 #endif
         notifyLock.withLock {
-            readyToUpdateSubscribersCallback.values.forEach { callback in
+            readyToUpdateSubscribersCallbacks.forEach { callback in
                 Task {
-                    try? await callback()
+                    await callback()
                 }
             }
+            readyToUpdateSubscribersCallbacks = []
         }
     }
 }
