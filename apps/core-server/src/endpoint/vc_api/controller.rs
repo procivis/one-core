@@ -6,13 +6,11 @@ use one_providers::did::error::DidMethodProviderError;
 use shared_types::DidValue;
 
 use super::dto::{
-    CredentialIssueRequestDto, CredentialIssueResponseDto, CredentialVerifiyRequestDto,
-    CredentialVerifyResponseDto, DidDocumentResolutionResponseDto, PresentationVerifyRequestDto,
+    CredentialIssueRequestDto, CredentialIssueResponseDTO, CredentialVerifiyRequestDto,
+    CredentialVerifyResponseDto, DidDocumentResolutionResponseDTO, PresentationVerifyRequestDto,
     PresentationVerifyResponseDto,
 };
-use super::response::VcApiErrorResponseRestDTO;
-use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
+use super::error::VcApiError;
 use crate::endpoint::vc_api::response::VcApiResponse;
 use crate::router::AppState;
 
@@ -21,29 +19,20 @@ use crate::router::AppState;
     post,
     path = "/vc-api/credentials/issue",
     request_body = CredentialIssueRequestDto,
-    responses(CreatedOrErrorResponse<CredentialIssueResponseDto>),
+    responses(VcApiResponse<CredentialIssueResponseDTO>),
     tag = "vc_interop_testing",
 )]
 pub(crate) async fn issue_credential(
     state: State<AppState>,
-    WithRejection(Json(request), _): WithRejection<
-        Json<CredentialIssueRequestDto>,
-        ErrorResponseRestDTO,
-    >,
-) -> OkOrErrorResponse<CredentialIssueResponseDto> {
+    WithRejection(Json(request), _): WithRejection<Json<CredentialIssueRequestDto>, VcApiError>,
+) -> VcApiResponse<CredentialIssueResponseDTO> {
     let issued = state
         .core
         .vc_api_service
         .issue_credential(request.into())
         .await;
 
-    match issued {
-        Ok(value) => OkOrErrorResponse::Ok(value.into()),
-        Err(error) => {
-            tracing::error!("issuance error: {:?}", error);
-            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
-        }
-    }
+    VcApiResponse::from_result(issued)
 }
 
 #[tracing::instrument(level = "debug", skip(state))]
@@ -51,28 +40,20 @@ pub(crate) async fn issue_credential(
     post,
     path = "/vc-api/credentials/verify",
     request_body = CredentialVerifiyRequestDto,
-    responses(CreatedOrErrorResponse<CredentialVerifyResponseDto>),
+    responses(VcApiResponse<CredentialVerifyResponseDto>),
     tag = "vc_interop_testing",
 )]
 pub(crate) async fn verify_credential(
     state: State<AppState>,
-    WithRejection(Json(request), _): WithRejection<
-        Json<CredentialVerifiyRequestDto>,
-        ErrorResponseRestDTO,
-    >,
-) -> OkOrErrorResponse<CredentialVerifyResponseDto> {
-    match state
+    WithRejection(Json(request), _): WithRejection<Json<CredentialVerifiyRequestDto>, VcApiError>,
+) -> VcApiResponse<CredentialVerifyResponseDto> {
+    let result = state
         .core
         .vc_api_service
         .verify_credential(request.into())
-        .await
-    {
-        Ok(value) => OkOrErrorResponse::ok(value),
-        Err(error) => {
-            tracing::error!("verification error: {:?}", error);
-            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
-        }
-    }
+        .await;
+
+    VcApiResponse::from_result(result)
 }
 
 #[tracing::instrument(level = "debug", skip(state))]
@@ -80,35 +61,27 @@ pub(crate) async fn verify_credential(
     post,
     path = "/vc-api/presentations/verify",
     request_body = PresentationVerifiyRequestDto,
-    responses(CreatedOrErrorResponse<PresentationVerifyResponseDto>),
+    responses(VcApiResponse<PresentationVerifyResponseDto>),
     tag = "vc_interop_testing",
 )]
 pub(crate) async fn verify_presentation(
     state: State<AppState>,
-    WithRejection(Json(request), _): WithRejection<
-        Json<PresentationVerifyRequestDto>,
-        ErrorResponseRestDTO,
-    >,
-) -> OkOrErrorResponse<PresentationVerifyResponseDto> {
-    match state
+    WithRejection(Json(request), _): WithRejection<Json<PresentationVerifyRequestDto>, VcApiError>,
+) -> VcApiResponse<PresentationVerifyResponseDto> {
+    let result = state
         .core
         .vc_api_service
         .verify_presentation(request.into())
-        .await
-    {
-        Ok(value) => OkOrErrorResponse::ok(value),
-        Err(error) => {
-            tracing::error!("verification error: {:?}", error);
-            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
-        }
-    }
+        .await;
+
+    VcApiResponse::from_result(result)
 }
 
 #[tracing::instrument(level = "debug", skip(state))]
 #[utoipa::path(
     get,
     path = "/vc-api/identifiers/{identifier}",
-    responses(VcApiResponse<DidDocumentResolutionResponseDto>),
+    responses(VcApiResponse<DidDocumentResolutionResponseDTO>),
     params(
         ("identifier" = String, Path, description = "Identifier")
     ),
@@ -116,8 +89,8 @@ pub(crate) async fn verify_presentation(
 )]
 pub(crate) async fn resolve_identifier(
     state: State<AppState>,
-    WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, VcApiErrorResponseRestDTO>,
-) -> VcApiResponse<DidDocumentResolutionResponseDto> {
+    WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, VcApiError>,
+) -> VcApiResponse<DidDocumentResolutionResponseDTO> {
     let result = state
         .core
         .did_service

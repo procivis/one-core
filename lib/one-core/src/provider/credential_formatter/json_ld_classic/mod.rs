@@ -155,9 +155,7 @@ impl CredentialFormatter for JsonLdClassic {
         ctx: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
         // TODO Move out
-        let context = indexset![ContextType::Url(
-            Context::CredentialsV2.to_url(),
-        )];
+        let context = indexset![ContextType::Url(Context::CredentialsV2.to_url(),)];
 
         let formats = ctx.token_formats.map(|formats| {
             formats

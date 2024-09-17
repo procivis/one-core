@@ -1,3 +1,4 @@
+use super::error::DidResolverError;
 use crate::endpoint::ssi::dto::DidDocumentRestDTO;
 use dto_mapper::{convert_inner, From, Into};
 use one_core::service::vc_api::dto::{
@@ -31,7 +32,7 @@ pub struct IssueOptionsDto {
 #[derive(Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialIssueResponse)]
-pub struct CredentialIssueResponseDto {
+pub struct CredentialIssueResponseDTO {
     #[serde(flatten)]
     pub verifiable_credential: LdCredential,
 }
@@ -100,9 +101,9 @@ impl From<DidDocument> for VcApiDidDocumentRestDTO {
         }
     }
 }
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct DidDocumentResolutionResponseDto {
+pub struct DidDocumentResolutionResponseDTO {
     #[serde(rename = "@context")]
     pub context: Vec<String>,
     pub did_document: VcApiDidDocumentRestDTO,
@@ -110,16 +111,16 @@ pub struct DidDocumentResolutionResponseDto {
     pub did_resolution_metadata: Option<DidResolutionMetadataResponseDto>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Serialize, ToSchema)]
 pub struct DidResolutionMetadataResponseDto {
     pub(crate) content_type: String,
-    pub(crate) error: Option<String>,
+    pub(crate) error: Option<DidResolverError>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct DidDocumentMetadataRestDTO {}
 
-impl From<DidDocument> for DidDocumentResolutionResponseDto {
+impl From<DidDocument> for DidDocumentResolutionResponseDTO {
     fn from(value: DidDocument) -> Self {
         Self {
             did_document: value.into(),
@@ -128,6 +129,20 @@ impl From<DidDocument> for DidDocumentResolutionResponseDto {
             did_resolution_metadata: Some(DidResolutionMetadataResponseDto {
                 content_type: "application/did+ld+json".to_string(),
                 error: None,
+            }),
+        }
+    }
+}
+
+impl DidDocumentResolutionResponseDTO {
+    pub fn from_error(error: DidResolverError) -> Self {
+        Self {
+            context: vec!["https://w3id.org/did-resolution/v1".to_string()],
+            did_document: VcApiDidDocumentRestDTO { document: None },
+            did_document_metadata: None,
+            did_resolution_metadata: Some(DidResolutionMetadataResponseDto {
+                content_type: "application/did+ld+json".to_string(),
+                error: Some(error),
             }),
         }
     }

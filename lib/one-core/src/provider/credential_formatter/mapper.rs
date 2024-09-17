@@ -1,5 +1,5 @@
 use one_providers::credential_formatter::model::{
-    CredentialData, CredentialSchemaData, CredentialSchemaMetadata, CredentialStatus,
+    CredentialData, CredentialSchemaData, CredentialSchemaMetadata, CredentialStatus, Issuer,
 };
 use time::OffsetDateTime;
 use uuid::fmt::Urn;
