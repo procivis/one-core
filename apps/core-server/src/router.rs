@@ -336,7 +336,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .route("/metrics", get(misc::get_metrics));
 
     let router = {
-        if config.allow_vc_api_endpoints {
+        if config.insecure_vc_api_endpoints_enabled {
             let interop_test_endpoints = Router::new()
                 .route(
                     "/vc-api/credentials/issue",
