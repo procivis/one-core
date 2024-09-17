@@ -3,7 +3,6 @@ image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.80.0-
 include:
   - project: "procivis/one/one-operations"
     file:
-      - "gitlab/aks-deploy.gitlab-ci.yml"
       - "gitlab/docker.gitlab-ci.yml"
 
 variables:
@@ -310,26 +309,27 @@ test_e2e:
     - .run_e2e_tests
     - .only_main_or_tag
 
-deploy:dev:
+.deploy_trigger:
   stage: deploy
-  resource_group: core-dev
   trigger:
     project: procivis/one/one-operations
     branch: main
     strategy: depend
   variables:
     HELM_PATH: charts/one-core-chart
-    VALUES_PATH: values/dev
-    K8S_NAMESPACE: default
     HELM_APP_NAME: one-core
     DEPLOY_IMAGE_TAG: $APP_VERSION
+
+deploy:dev:
+  resource_group: core-dev
+  extends:
+    - .deploy_trigger
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
 
 deploy:test:
-  stage: deploy
   extends:
-    - .deploy_k8s:sops
+    - .deploy_trigger
   variables:
     VALUES_PATH: values/test
     K8S_NAMESPACE: one-test
@@ -338,16 +338,13 @@ deploy:test:
       when: on_success
 
 deploy:demo:
-  stage: deploy
   extends:
-    - .deploy_k8s:sops
+    - .deploy_trigger
   variables:
     VALUES_PATH: values/demo
     K8S_NAMESPACE: default
-  before_script:
-    - *app_settings
-    - RESOURCE_GROUP=$DEMO_RESOURCE_GROUP
-    - CLUSTER_NAME=$DEMO_CLUSTER_NAME
+    RESOURCE_GROUP: $DEMO_RESOURCE_GROUP
+    CLUSTER_NAME: $DEMO_CLUSTER_NAME
   rules:
     - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: manual
