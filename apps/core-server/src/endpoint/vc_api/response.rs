@@ -1,14 +1,16 @@
 use std::collections::BTreeMap;
 
-use super::dto::DidDocumentResolutionResponseDTO;
-use super::error::{DidResolverError, VcApiError, VcApiErrorRestDTO};
-use crate::dto::response::ErrorResponse;
 use axum::extract::rejection::{FormRejection, JsonRejection, PathRejection, QueryRejection};
-use axum::{response::IntoResponse, Json};
+use axum::response::IntoResponse;
+use axum::Json;
 use one_core::service::error::ServiceError;
 use reqwest::StatusCode;
 use serde::Serialize;
 use utoipa::ToSchema;
+
+use super::dto::DidDocumentResolutionResponseDTO;
+use super::error::{DidResolverError, VcApiError, VcApiErrorRestDTO};
+use crate::dto::response::ErrorResponse;
 
 pub enum VcApiResponse<T: Serialize> {
     Error(VcApiError),
