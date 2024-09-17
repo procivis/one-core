@@ -38,6 +38,7 @@ mod propose_proof;
 mod resolve_json_ld_context;
 mod retract_proof;
 mod rollback_import;
+mod run_task;
 mod share_proof;
 mod unpack_backup;
 mod version;

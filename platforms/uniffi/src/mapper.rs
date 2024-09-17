@@ -111,6 +111,9 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             exchange: value.exchange,
             redirect_uri: value.redirect_uri,
             proof_inputs: convert_inner(value.proof_inputs),
+            retain_until_date: value
+                .retain_until_date
+                .map(|retain_until_date| retain_until_date.format_timestamp()),
         }
     }
 }

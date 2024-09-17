@@ -448,6 +448,7 @@ dictionary ProofRequestBindingDTO {
   string? redirect_uri;
   ProofStateBindingEnum state;
   sequence<ProofInputBindingDTO> proof_inputs;
+  string? retain_until_date;
 };
 
 dictionary PresentationSubmitCredentialRequestBindingDTO {
@@ -497,6 +498,7 @@ dictionary ProofListItemBindingDTO {
   string transport;
   ProofStateBindingEnum state;
   GetProofSchemaListItemBindingDTO? schema;
+  string? retain_until_date;
 };
 
 dictionary ProofListBindingDTO {
@@ -1039,6 +1041,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   ConfigBindingDTO get_config();
+
+  [Throws=BindingError]
+  string run_task(string task);
 
   [Throws=BindingError]
   string create_organisation(string? uuid);
