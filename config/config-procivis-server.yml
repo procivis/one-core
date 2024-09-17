@@ -9,7 +9,7 @@ app:
   sentryEnvironment: ""
   hideErrorResponseCause: false
   allowInsecureHttpTransport: false
-  allowVcApiEndpoints: false
+  insecureVcApiEndpointsEnabled: false
 keyStorage:
   AZURE_VAULT:
     display: "keyStorage.azureKeyVault"
