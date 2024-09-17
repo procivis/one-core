@@ -1,7 +1,6 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
 use std::any::Any;
-use std::env;
 use std::net::TcpListener;
 use std::sync::Arc;
 use std::time::Duration;
@@ -336,9 +335,8 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .route("/health", get(misc::health_check))
         .route("/metrics", get(misc::get_metrics));
 
-    // TODO clean this up a bit, cfg / move(?)
     let router = {
-        if env::var("VC_API_ENABLED").is_ok() {
+        if config.allow_vc_api_endpoints {
             let interop_test_endpoints = Router::new()
                 .route(
                     "/vc-api/credentials/issue",
