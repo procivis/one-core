@@ -409,6 +409,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             history::controller::get_history_list,
             history::controller::get_history_entry,
 
+            key::controller::check_certificate,
             key::controller::generate_csr,
             key::controller::get_key,
             key::controller::get_key_list,
@@ -533,6 +534,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 key::dto::KeyRequestRestDTO,
                 key::dto::KeyResponseRestDTO,
                 key::dto::KeyListItemResponseRestDTO,
+                key::dto::KeyCheckCertificateRequestRestDTO,
                 key::dto::KeyGenerateCSRRequestRestDTO,
                 key::dto::KeyGenerateCSRRequestProfileRest,
                 key::dto::KeyGenerateCSRRequestSubjectRestDTO,
