@@ -22,7 +22,7 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
     config, credential, credential_schema, did, did_resolver, history, interaction, jsonld, key,
-    misc, organisation, proof, proof_schema, ssi, task, trust_anchor, trust_entity,
+    misc, organisation, proof, proof_schema, ssi, task, trust_anchor, trust_entity, vc_api,
 };
 use crate::middleware::get_http_request_context;
 use crate::{build_info, dto, ServerConfig};
@@ -335,7 +335,33 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .route("/health", get(misc::health_check))
         .route("/metrics", get(misc::get_metrics));
 
-    Router::new()
+    let router = {
+        if config.allow_vc_api_endpoints {
+            let interop_test_endpoints = Router::new()
+                .route(
+                    "/vc-api/credentials/issue",
+                    post(vc_api::controller::issue_credential),
+                )
+                .route(
+                    "/vc-api/credentials/verify",
+                    post(vc_api::controller::verify_credential),
+                )
+                .route(
+                    "/vc-api/presentations/verify",
+                    post(vc_api::controller::verify_presentation),
+                )
+                .route(
+                    "/vc-api/identifiers/:identifier",
+                    get(vc_api::controller::resolve_identifier),
+                );
+
+            Router::new().merge(interop_test_endpoints)
+        } else {
+            Router::new()
+        }
+    };
+
+    router
         .merge(protected)
         .merge(unprotected)
         .layer(

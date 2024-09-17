@@ -16,6 +16,7 @@ use one_crypto::SignerError;
 use one_providers::common_models::did::DidValue;
 use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::error::FormatterError;
+use one_providers::credential_formatter::imp::json_ld::model::ContextType;
 use one_providers::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema,
     CredentialSchemaMetadata, CredentialSubject, DetailCredential, ExtractPresentationCtx,
@@ -172,9 +173,9 @@ impl CredentialFormatter for MdocFormatter {
     async fn format_credentials(
         &self,
         credential: CredentialData,
-        holder_did: &DidValue,
+        holder_did: &Option<DidValue>,
         algorithm: &str,
-        _additional_context: Vec<String>,
+        _additional_context: Vec<ContextType>,
         _additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
         _json_ld_context_url: Option<String>,
@@ -184,6 +185,10 @@ impl CredentialFormatter for MdocFormatter {
             FormatterError::Failed(
                 "Cannot format credential, missing credential schema id".to_string(),
             )
+        })?;
+
+        let holder_did = holder_did.as_ref().ok_or_else(|| {
+            FormatterError::Failed("Cannot format credential, missing holder did".to_string())
         })?;
 
         let additional_namespaces: IndexMap<Namespace, serde_json::Value> =
@@ -250,7 +255,8 @@ impl CredentialFormatter for MdocFormatter {
 
         let algorithm_header = try_build_algorithm_header(algorithm)?;
 
-        let x5chain_header = build_x5chain_header(credential.issuer_did.to_string().into())?;
+        let x5chain_header =
+            build_x5chain_header(credential.issuer_did.to_did_value().to_string().into())?;
 
         let cose_sign1 = CoseSign1Builder::new()
             .protected(algorithm_header)

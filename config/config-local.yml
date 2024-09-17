@@ -8,6 +8,7 @@ app:
   traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error"
   hideErrorResponseCause: false
   allowInsecureHttpTransport: true
+  allowVcApiEndpoints: true
 exchange:
   OPENID4VC:
     params:

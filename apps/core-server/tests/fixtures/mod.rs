@@ -115,6 +115,7 @@ pub fn create_config(
         trace_level: Some("debug,hyper=error,sea_orm=info,sqlx::query=error".into()),
         hide_error_response_cause: true,
         allow_insecure_http_transport: true,
+        allow_vc_api_endpoints: true,
     };
 
     app_config
