@@ -394,8 +394,6 @@ impl CredentialFormatter for MdocFormatter {
             try_verify_device_signed(
                 session_transcript.to_owned(),
                 &doc_type,
-                &client_id,
-                response_uri,
                 &signature,
                 &holder_did,
                 &verification,

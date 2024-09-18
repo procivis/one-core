@@ -45,7 +45,7 @@ use super::dto::OpenID4VPBleData;
 use super::mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
 use super::model::BLEOpenID4VPInteractionData;
 use crate::config::core_config::{self, TransportType};
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{self, Interaction};
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::exchange_protocol::mapper::{
@@ -501,7 +501,6 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         )?;
 
         let ctx = FormatPresentationCtx {
-            format_nonce: interaction_data.holder_nonce.clone(),
             nonce: interaction_data.nonce.clone(),
             client_id: interaction_data.client_id.clone(),
             token_formats: Some(token_formats),

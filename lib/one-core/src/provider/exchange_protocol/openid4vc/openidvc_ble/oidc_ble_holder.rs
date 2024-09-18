@@ -119,8 +119,8 @@ impl OpenID4VCBLEHolder {
                             tokio::time::sleep(Duration::from_millis(200)).await;
 
                             tracing::debug!("read_presentation_definition");
-                            let presentation_definition =
-                                read_presentation_definition(&ble_peer, central.clone()).await?;
+                            let request =
+                                read_presentation_request(&ble_peer, central.clone()).await?;
 
                             let now = OffsetDateTime::now_utc();
 
@@ -135,7 +135,7 @@ impl OpenID4VCBLEHolder {
                                         peer: ble_peer,
                                         nonce: Some(request.nonce),
                                 holder_nonce: Some(hex::encode(identity_request.nonce)),
-                                        presentation_definition: Some(presentation_definition),
+                                        presentation_definition: Some(request.presentation_definition),
                                         presentation_submission: None,
                                 client_id: Some(request.verifier_client_id),
                                     })
