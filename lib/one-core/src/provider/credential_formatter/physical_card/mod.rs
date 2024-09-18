@@ -130,7 +130,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
             ],
             verification_key_storages: vec![
                 "INTERNAL".to_string(),
-                "AZURE_HSM".to_string(),
+                "AZURE_VAULT".to_string(),
                 "SECURE_ELEMENT".to_string(),
             ],
             datatypes: vec![
