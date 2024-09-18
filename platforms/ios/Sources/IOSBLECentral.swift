@@ -10,28 +10,31 @@ class IOSBLECentral: NSObject {
     
     
     private var adapterStateCallback: BLEResultCallback<CBManagerState>?
-    private var peripheralConnectResultCallback: BLEThrowingResultCallback<Void>?
-    private var peripheralDisconnectResultCallback: BLEThrowingResultCallback<Void>?
-    private var getDiscoveredDevicesCallback: BLEResultCallback<[PeripheralDiscoveryDataBindingDto]>?
-    private var characteristicWriteResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Void>] = [:]
-    private var characteristicWriteWithoutResponseResultCallbacks: [UUID: BLEThrowingResultCallback<Void>] = [:]
-    private var characteristicReadResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Data>] = [:]
-    private var subscribeToCharacteristicNotificationsResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Void>] = [:]
-    private var subscribedCharacteristics = Set<CharacteristicKey>()
-    private var unsubscribeFromCharacteristicNotificationsResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Void>] = [:]
-    private var getNotificationsCallbacks: [CharacteristicKey: BLEThrowingResultCallback<[Data]>] = [:]
     private var discoverServicesResultCallback: BLEThrowingResultCallback<[ServiceDescriptionBindingDto]>?
     private var discoverCharacteristicsResultCallbacks: [CBUUID: BLEThrowingResultCallback<ServiceDescriptionBindingDto>] = [:]
     
     private let deviceDiscoveryLock = NSLock()
-    private let deviceDisconnectLock = NSLock()
-    private let writeLock = NSLock()
-    private let notificationsLock = NSLock()
-    
-    private var connectedPeripherals: Set<CBPeripheral> = []
+    private var getDiscoveredDevicesCallback: BLEResultCallback<[PeripheralDiscoveryDataBindingDto]>?
     private var discoveredPeripheralsQueue: [PeripheralDiscoveryDataBindingDto] = []
-    private var disconnectedPeripheralsQueue: [String] = []
+    
+    private let deviceConnectionLock = NSLock()
+    private var peripheralConnectResultCallback: BLEThrowingResultCallback<Void>?
+    private var peripheralDisconnectResultCallback: BLEThrowingResultCallback<Void>?
+    private var connectedPeripherals: Set<CBPeripheral> = []
+    
+    private let writeLock = NSLock()
+    private var characteristicWriteResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Void>] = [:]
+    private var characteristicWriteWithoutResponseResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Void>] = [:]
+    
+    private let readLock = NSLock()
+    private var characteristicReadResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Data>] = [:]
+    
+    private let notificationsLock = NSLock()
+    private var getNotificationsCallbacks: [CharacteristicKey: BLEThrowingResultCallback<[Data]>] = [:]
     private var notificationsQueues: [CharacteristicKey: [Data]] = [:]
+    private var subscribeToCharacteristicNotificationsResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Void>] = [:]
+    private var unsubscribeFromCharacteristicNotificationsResultCallbacks: [CharacteristicKey: BLEThrowingResultCallback<Void>] = [:]
+    private var subscribedCharacteristics = Set<CharacteristicKey>()
 }
 
 // MARK: - BLECentral interface implementation
@@ -55,6 +58,9 @@ extension IOSBLECentral: BleCentral {
     }
     
     func startScan(filterServices: [String]?) async throws {
+#if DEBUG
+        print("startScan: \(filterServices)")
+#endif
         guard try await isAdapterEnabled() else {
             throw BleErrorWrapper.Ble(error: BleError.AdapterNotEnabled)
         }
@@ -66,6 +72,9 @@ extension IOSBLECentral: BleCentral {
     }
     
     func stopScan() async throws {
+#if DEBUG
+        print("stopScan")
+#endif
         guard centralManager.isScanning else {
             return
         }
@@ -77,6 +86,9 @@ extension IOSBLECentral: BleCentral {
     }
     
     func connect(deviceAddress: String) async throws -> UInt16 {
+#if DEBUG
+        print("connect: \(deviceAddress)")
+#endif
         guard let peripheralUuid = UUID(uuidString: deviceAddress) else {
             throw BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: deviceAddress))
         }
@@ -110,12 +122,15 @@ extension IOSBLECentral: BleCentral {
     }
     
     func disconnect(deviceAddress: String) async throws {
+#if DEBUG
+        print("disconnect: \(deviceAddress)")
+#endif
         guard let peripheralUuid = UUID(uuidString: deviceAddress) else {
             throw BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: deviceAddress))
         }
         let cbPeripheral = try retrievePeripheral(peripheral: peripheralUuid)
         return try await withCheckedThrowingContinuation { continuation in
-            deviceDisconnectLock.withLock {
+            deviceConnectionLock.withLock {
                 centralManager.cancelPeripheralConnection(cbPeripheral)
                 peripheralDisconnectResultCallback = { [weak self] result in
                     self?.peripheralDisconnectResultCallback = nil
@@ -143,16 +158,19 @@ extension IOSBLECentral: BleCentral {
     }
     
     func writeData(deviceAddress: String, serviceUuid: String, characteristicUuid: String, data: Data, writeType: CharacteristicWriteTypeBindingEnum) async throws {
+#if DEBUG
+        print("writeData: \(deviceAddress), characteristic: \(characteristicUuid)")
+#endif
+        guard let peripheralUuid = UUID(uuidString: deviceAddress) else {
+            throw BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: deviceAddress))
+        }
+        
+        let service = CBUUID(string: serviceUuid)
+        let characteristic = CBUUID(string: characteristicUuid)
+        let characteristicKey = characteristicKey(peripheral: peripheralUuid, service: service, characteristic: characteristic)
         return try await withCheckedThrowingContinuation { continuation in
             writeLock.withLock {
-                guard let peripheralUuid = UUID(uuidString: deviceAddress) else {
-                    continuation.resume(throwing: BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: deviceAddress)))
-                    return
-                }
-                let service = CBUUID(string: serviceUuid)
-                let characteristic = CBUUID(string: characteristicUuid)
-                let characteristicKey = characteristicKey(peripheral: peripheralUuid, service: service, characteristic: characteristic)
-                guard characteristicWriteResultCallbacks[characteristicKey] == nil, characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] == nil, characteristicReadResultCallbacks[characteristicKey] == nil else {
+                guard characteristicWriteResultCallbacks[characteristicKey] == nil, characteristicWriteWithoutResponseResultCallbacks[characteristicKey] == nil else {
                     continuation.resume(throwing: BleErrorWrapper.Ble(error: BleError.AnotherOperationInProgress))
                     return
                 }
@@ -175,8 +193,8 @@ extension IOSBLECentral: BleCentral {
                 }
                 
                 if (delayedWrite) {
-                    characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] = { [weak self] result in
-                        self?.characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] = nil
+                    characteristicWriteWithoutResponseResultCallbacks[characteristicKey] = { [weak self] result in
+                        self?.characteristicWriteWithoutResponseResultCallbacks[characteristicKey] = nil
                         switch (result) {
                         case .success:
                             cbPeripheral.writeValue(data, for: cbCharacteristic, type: writeType.cbCharacteristicWriteType)
@@ -197,75 +215,99 @@ extension IOSBLECentral: BleCentral {
     }
     
     func readData(deviceAddress: String, serviceUuid: String, characteristicUuid: String) async throws -> Data {
+#if DEBUG
+        print("readData: \(deviceAddress), characteristic: \(characteristicUuid)")
+#endif
         guard let peripheralUuid = UUID(uuidString: deviceAddress) else {
             throw BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: deviceAddress))
         }
         let service = CBUUID(string: serviceUuid)
         let characteristic = CBUUID(string: characteristicUuid)
         let characteristicKey = characteristicKey(peripheral: peripheralUuid, service: service, characteristic: characteristic)
-        guard characteristicWriteResultCallbacks[characteristicKey] == nil, characteristicWriteWithoutResponseResultCallbacks[peripheralUuid] == nil, characteristicReadResultCallbacks[characteristicKey] == nil else {
-            throw BleErrorWrapper.Ble(error: BleError.AnotherOperationInProgress)
-        }
-        guard !subscribedCharacteristics.contains(characteristicKey) else {
-            throw BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: serviceUuid,
-                                                                                     characteristic: characteristicUuid,
-                                                                                     operation: "read"))
+        try notificationsLock.withLock {
+            guard !subscribedCharacteristics.contains(characteristicKey) else {
+                throw BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: serviceUuid,
+                                                                                         characteristic: characteristicUuid,
+                                                                                         operation: "read"))
+            }
         }
         let (cbCharacteristic, cbPeripheral) = try retrieveCharacteristic(peripheral: peripheralUuid, service: service, characteristic: characteristic)
-        cbPeripheral.readValue(for: cbCharacteristic)
         return try await withCheckedThrowingContinuation { continuation in
-            characteristicReadResultCallbacks[characteristicKey] = { [weak self] result in
-                self?.characteristicReadResultCallbacks[characteristicKey] = nil
-                continuation.resume(with: result)
+            readLock.withLock {
+                guard characteristicReadResultCallbacks[characteristicKey] == nil else {
+                    continuation.resume(throwing: BleErrorWrapper.Ble(error: BleError.AnotherOperationInProgress))
+                    return
+                }
+                cbPeripheral.readValue(for: cbCharacteristic)
+                characteristicReadResultCallbacks[characteristicKey] = { [weak self] result in
+                    self?.characteristicReadResultCallbacks[characteristicKey] = nil
+                    continuation.resume(with: result)
+                }
             }
         }
     }
     
     func subscribeToCharacteristicNotifications(peripheral: String, service: String, characteristic: String) async throws {
+#if DEBUG
+        print("subscribeToCharacteristicNotifications: \(peripheral), characteristic: \(characteristic)")
+#endif
         guard let peripheralUuid = UUID(uuidString: peripheral) else {
             throw BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: peripheral))
         }
         let serviceUuid = CBUUID(string: service)
         let characteristicUuid = CBUUID(string: characteristic)
         let characteristicKey = characteristicKey(peripheral: peripheralUuid, service: serviceUuid, characteristic: characteristicUuid)
-        guard characteristicReadResultCallbacks[characteristicKey] == nil &&
-                unsubscribeFromCharacteristicNotificationsResultCallbacks[characteristicKey] == nil &&
-                !subscribedCharacteristics.contains(characteristicKey) else {
-            throw BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: service,
-                                                                                     characteristic: characteristic,
-                                                                                     operation: "subscribe"))
+        try readLock.withLock {
+            guard characteristicReadResultCallbacks[characteristicKey] == nil else {
+                throw BleErrorWrapper.Ble(error: BleError.AnotherOperationInProgress)
+            }
         }
         let (cbCharacteristic, cbPeripheral) = try retrieveCharacteristic(peripheral: peripheralUuid, service: serviceUuid, characteristic: characteristicUuid)
-        subscribedCharacteristics.insert(characteristicKey)
-        cbPeripheral.setNotifyValue(true, for: cbCharacteristic)
         return try await withCheckedThrowingContinuation { continuation in
-            subscribeToCharacteristicNotificationsResultCallbacks[characteristicKey] = { [weak self] result in
-                self?.subscribeToCharacteristicNotificationsResultCallbacks[characteristicKey] = nil
-                continuation.resume(with: result)
+            notificationsLock.withLock {
+                guard unsubscribeFromCharacteristicNotificationsResultCallbacks[characteristicKey] == nil &&
+                        !subscribedCharacteristics.contains(characteristicKey) else {
+                    continuation.resume(throwing: BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: service,
+                                                                                                                     characteristic: characteristic,
+                                                                                                                     operation: "subscribe")))
+                    return
+                }
+                subscribedCharacteristics.insert(characteristicKey)
+                cbPeripheral.setNotifyValue(true, for: cbCharacteristic)
+                subscribeToCharacteristicNotificationsResultCallbacks[characteristicKey] = { [weak self] result in
+                    self?.subscribeToCharacteristicNotificationsResultCallbacks[characteristicKey] = nil
+                    continuation.resume(with: result)
+                }
             }
         }
     }
     
     func unsubscribeFromCharacteristicNotifications(peripheral: String, service: String, characteristic: String) async throws {
+#if DEBUG
+        print("unsubscribeFromCharacteristicNotifications: \(peripheral), characteristic: \(characteristic)")
+#endif
         guard let peripheralUuid = UUID(uuidString: peripheral) else {
             throw BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: peripheral))
         }
         let serviceUuid = CBUUID(string: service)
         let characteristicUuid = CBUUID(string: characteristic)
         let characteristicKey = characteristicKey(peripheral: peripheralUuid, service: serviceUuid, characteristic: characteristicUuid)
-        guard subscribedCharacteristics.contains(characteristicKey) &&
-                subscribeToCharacteristicNotificationsResultCallbacks[characteristicKey] == nil else {
-            throw BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: service,
-                                                                                     characteristic: characteristic,
-                                                                                     operation: "unsubscribe"))
-        }
         let (cbCharacteristic, cbPeripheral) = try retrieveCharacteristic(peripheral: peripheralUuid, service: serviceUuid, characteristic: characteristicUuid)
-        subscribedCharacteristics.remove(characteristicKey)
-        cbPeripheral.setNotifyValue(false, for: cbCharacteristic)
         return try await withCheckedThrowingContinuation { continuation in
-            unsubscribeFromCharacteristicNotificationsResultCallbacks[characteristicKey] = { [weak self] result in
-                self?.unsubscribeFromCharacteristicNotificationsResultCallbacks[characteristicKey] = nil
-                continuation.resume(with: result)
+            notificationsLock.withLock {
+                guard subscribedCharacteristics.contains(characteristicKey) &&
+                        subscribeToCharacteristicNotificationsResultCallbacks[characteristicKey] == nil else {
+                    continuation.resume(throwing: BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: service,
+                                                                                                                     characteristic: characteristic,
+                                                                                                                     operation: "unsubscribe")))
+                    return
+                }
+                subscribedCharacteristics.remove(characteristicKey)
+                cbPeripheral.setNotifyValue(false, for: cbCharacteristic)
+                unsubscribeFromCharacteristicNotificationsResultCallbacks[characteristicKey] = { [weak self] result in
+                    self?.unsubscribeFromCharacteristicNotificationsResultCallbacks[characteristicKey] = nil
+                    continuation.resume(with: result)
+                }
             }
         }
     }
@@ -300,15 +342,18 @@ extension IOSBLECentral: BleCentral {
 private extension IOSBLECentral {
     
     private func connectWithoutDiscovery(peripheral: UUID) async throws {
-        guard peripheralConnectResultCallback == nil else {
-            throw BleErrorWrapper.Ble(error: BleError.Unknown(reason: "Already connecting"))
-        }
         let cbPeripheral = try retrievePeripheral(peripheral: peripheral, connected: false)
-        centralManager.connect(cbPeripheral)
         return try await withCheckedThrowingContinuation { continuation in
-            peripheralConnectResultCallback = { [weak self] result in
-                self?.peripheralConnectResultCallback = nil
-                continuation.resume(with: result)
+            deviceConnectionLock.withLock {
+                guard peripheralConnectResultCallback == nil else {
+                    continuation.resume(throwing: BleErrorWrapper.Ble(error: BleError.Unknown(reason: "Already connecting")))
+                    return
+                }
+                centralManager.connect(cbPeripheral)
+                peripheralConnectResultCallback = { [weak self] result in
+                    self?.peripheralConnectResultCallback = nil
+                    continuation.resume(with: result)
+                }
             }
         }
     }
@@ -320,12 +365,12 @@ private extension IOSBLECentral {
         } else {
             cbPeripheral = try retrievePeripheral(peripheral: peripheral)
         }
-        cbPeripheral.discoverServices(services)
         return try await withCheckedThrowingContinuation { continuation in
             discoverServicesResultCallback = { [weak self] result in
                 self?.discoverServicesResultCallback = nil
                 continuation.resume(with: result)
             }
+            cbPeripheral.discoverServices(services)
         }
     }
     
@@ -341,12 +386,12 @@ private extension IOSBLECentral {
     @MainActor
     private func discoverCharacteristics(peripheral: UUID, service: CBUUID, characteristics: [CBUUID]?) async throws -> ServiceDescriptionBindingDto {
         let (cbService, cbPeripheral) = try retrieveService(peripheral: peripheral, service: service)
-        cbPeripheral.discoverCharacteristics(characteristics, for: cbService)
         return try await withCheckedThrowingContinuation { continuation in
             discoverCharacteristicsResultCallbacks[service] = { [weak self] result in
                 continuation.resume(with: result)
                 self?.discoverCharacteristicsResultCallbacks[service] = nil
             }
+            cbPeripheral.discoverCharacteristics(characteristics, for: cbService)
         }
     }
 }
@@ -389,32 +434,43 @@ private extension IOSBLECentral {
         }
         return (cbCharacteristic, cbPeripheral)
     }
-    
-    private func characteristicKey(peripheral: UUID, service: CBUUID, characteristic: CBUUID) -> CharacteristicKey {
-        return CharacteristicKey(deviceAddress: peripheral, serviceUUID: service, characteristicUUID: characteristic)
+}
+
+// MARK: - static helper functions
+
+private func characteristicKey(peripheral: UUID, service: CBUUID, characteristic: CBUUID) -> CharacteristicKey {
+    return CharacteristicKey(deviceAddress: peripheral, serviceUUID: service, characteristicUUID: characteristic)
+}
+
+private func characteristicKey(peripheral: CBPeripheral, characteristic: CBCharacteristic) -> CharacteristicKey? {
+    guard let serviceUUID = characteristic.service?.uuid else {
+        return nil
     }
-    
-    private func characteristicKey(peripheral: CBPeripheral, characteristic: CBCharacteristic) -> CharacteristicKey? {
-        guard let serviceUUID = characteristic.service?.uuid else {
-            return nil
-        }
-        let deviceAddress = peripheral.identifier
-        let characteristicUUID = characteristic.uuid
-        let characteristicKey = CharacteristicKey(deviceAddress: deviceAddress, serviceUUID: serviceUUID, characteristicUUID: characteristicUUID)
-        return characteristicKey
+    let deviceAddress = peripheral.identifier
+    let characteristicUUID = characteristic.uuid
+    let characteristicKey = CharacteristicKey(deviceAddress: deviceAddress, serviceUUID: serviceUUID, characteristicUUID: characteristicUUID)
+    return characteristicKey
+}
+
+private func getResult<T>(value: T?, error: Error?) -> Result<T, Error> {
+    let result: Result<T, Error>
+    if let error = error {
+        result = Result.failure(error)
+    } else if let value = value {
+        result = Result.success(value)
+    } else {
+        result = Result.failure(BleErrorWrapper.Ble(error: BleError.Unknown(reason: error?.localizedDescription ?? "Unknown")))
     }
-    
-    func getResult<T>(value: T?, error: Error?) -> Result<T, Error> {
-        let result: Result<T, Error>
-        if let error = error {
-            result = Result.failure(error)
-        } else if let value = value {
-            result = Result.success(value)
-        } else {
-            result = Result.failure(BleErrorWrapper.Ble(error: BleError.Unknown(reason: error?.localizedDescription ?? "Unknown")))
-        }
-        return result
+    return result
+}
+
+private func getKeys<T>(_ keys: Dictionary<CharacteristicKey, T>.Keys, for peripheral: CBPeripheral, service: CBUUID?) -> [CharacteristicKey]? {
+    let deviceKey = peripheral.identifier
+    let result = keys.filter({ $0.deviceAddress == deviceKey && (service == nil || $0.serviceUUID == service) })
+    guard !result.isEmpty else {
+        return nil
     }
+    return result
 }
 
 // MARK: - CBCentralManagerDelegate methods
@@ -429,12 +485,12 @@ extension IOSBLECentral: CBCentralManagerDelegate {
     }
     
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
+        let uuids = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID])?.map { $0.uuidString } ?? []
+        let peripheral = PeripheralDiscoveryDataBindingDto(deviceAddress: peripheral.identifier.uuidString,
+                                                           localDeviceName: advertisementData[CBAdvertisementDataLocalNameKey] as? String,
+                                                           advertisedServices: uuids,
+                                                           advertisedServiceData: advertisementData[CBAdvertisementDataServiceDataKey] as? [String: Data])
         deviceDiscoveryLock.withLock {
-            let uuids = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID])?.map { $0.uuidString } ?? []
-            let peripheral = PeripheralDiscoveryDataBindingDto(deviceAddress: peripheral.identifier.uuidString,
-                                                               localDeviceName: advertisementData[CBAdvertisementDataLocalNameKey] as? String,
-                                                               advertisedServices: uuids,
-                                                               advertisedServiceData: advertisementData[CBAdvertisementDataServiceDataKey] as? [String: Data])
             guard let callback = getDiscoveredDevicesCallback else {
                 discoveredPeripheralsQueue.append(peripheral)
                 return
@@ -448,73 +504,68 @@ extension IOSBLECentral: CBCentralManagerDelegate {
         print("connected to \(peripheral.name ?? "unnamed") \(peripheral.identifier)")
 #endif
         peripheral.delegate = self
-        connectedPeripherals.insert(peripheral)
-        peripheralConnectResultCallback?(Result.success(()))
+        deviceConnectionLock.withLock {
+            connectedPeripherals.insert(peripheral)
+            peripheralConnectResultCallback?(Result.success(()))
+        }
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: (any Error)?) {
 #if DEBUG
         print("failed to connect to \(peripheral.name ?? "unnamed") \(peripheral.identifier)")
 #endif
-        peripheralConnectResultCallback?(Result.failure(BleErrorWrapper.Ble(error: BleError.Unknown(reason: error?.localizedDescription ?? "Unknown"))))
+        deviceConnectionLock.withLock {
+            peripheralConnectResultCallback?(Result.failure(BleErrorWrapper.Ble(error: BleError.Unknown(reason: error?.localizedDescription ?? "Unknown"))))
+        }
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
 #if DEBUG
         print("disconnected from \(peripheral.name ?? "unnamed") \(peripheral.identifier)")
 #endif
-        deviceDisconnectLock.withLock {
-            cleanupAwaitingCallbacks(peripheral: peripheral)
+        invalidateAwaitingCallbacks(peripheral: peripheral, service: nil)
+        deviceConnectionLock.withLock {
             peripheralDisconnectResultCallback?(Result.success(()))
             connectedPeripherals.remove(peripheral)
         }
     }
     
-    private func cleanupAwaitingCallbacks(peripheral: CBPeripheral) {
+    private func invalidateAwaitingCallbacks(peripheral: CBPeripheral, service: CBUUID?) {
         let error = BleErrorWrapper.Ble(error: BleError.DeviceNotConnected(address: peripheral.identifier.uuidString))
         
-        if let keys = getKeys(characteristicWriteResultCallbacks.keys, for: peripheral) {
-            keys.forEach { key in
-                if let callback = characteristicWriteResultCallbacks[key] {
-                    characteristicWriteResultCallbacks[key] = nil
-                    callback(Result.failure(error))
+        writeLock.withLock {
+            if let keys = getKeys(characteristicWriteResultCallbacks.keys, for: peripheral, service: service) {
+                keys.forEach { key in
+                    if let callback = characteristicWriteResultCallbacks[key] {
+                        characteristicWriteResultCallbacks[key] = nil
+                        callback(Result.failure(error))
+                    }
+                }
+            }
+            
+            if let keys = getKeys(characteristicWriteWithoutResponseResultCallbacks.keys, for: peripheral, service: service) {
+                keys.forEach { key in
+                    if let callback = characteristicWriteWithoutResponseResultCallbacks[key] {
+                        characteristicWriteWithoutResponseResultCallbacks[key] = nil
+                        callback(Result.failure(error))
+                    }
                 }
             }
         }
         
-        if let writeWithoutResponse = characteristicWriteWithoutResponseResultCallbacks[peripheral.identifier] {
-            writeWithoutResponse(Result.failure(error))
-        }
-        
-        if let keys = getKeys(characteristicReadResultCallbacks.keys, for: peripheral) {
-            keys.forEach { key in
-                if let callback = characteristicReadResultCallbacks[key] {
-                    characteristicReadResultCallbacks[key] = nil
-                    callback(Result.failure(error))
-                }
-            }
-        }
-        
-        if let keys = getKeys(subscribeToCharacteristicNotificationsResultCallbacks.keys, for: peripheral) {
-            keys.forEach { key in
-                if let callback = subscribeToCharacteristicNotificationsResultCallbacks[key] {
-                    subscribeToCharacteristicNotificationsResultCallbacks[key] = nil
-                    callback(Result.failure(error))
-                }
-            }
-        }
-        
-        if let keys = getKeys(unsubscribeFromCharacteristicNotificationsResultCallbacks.keys, for: peripheral) {
-            keys.forEach { key in
-                if let callback = unsubscribeFromCharacteristicNotificationsResultCallbacks[key] {
-                    unsubscribeFromCharacteristicNotificationsResultCallbacks[key] = nil
-                    callback(Result.failure(error))
+        readLock.withLock {
+            if let keys = getKeys(characteristicReadResultCallbacks.keys, for: peripheral, service: service) {
+                keys.forEach { key in
+                    if let callback = characteristicReadResultCallbacks[key] {
+                        characteristicReadResultCallbacks[key] = nil
+                        callback(Result.failure(error))
+                    }
                 }
             }
         }
         
         notificationsLock.withLock {
-            if let keys = getKeys(getNotificationsCallbacks.keys, for: peripheral) {
+            if let keys = getKeys(getNotificationsCallbacks.keys, for: peripheral, service: service) {
                 keys.forEach { key in
                     if let callback = getNotificationsCallbacks[key] {
                         getNotificationsCallbacks[key] = nil
@@ -522,20 +573,30 @@ extension IOSBLECentral: CBCentralManagerDelegate {
                     }
                 }
             }
+            
+            
+            if let keys = getKeys(subscribeToCharacteristicNotificationsResultCallbacks.keys, for: peripheral, service: service) {
+                keys.forEach { key in
+                    if let callback = subscribeToCharacteristicNotificationsResultCallbacks[key] {
+                        subscribeToCharacteristicNotificationsResultCallbacks[key] = nil
+                        callback(Result.failure(error))
+                    }
+                }
+            }
+            
+            if let keys = getKeys(unsubscribeFromCharacteristicNotificationsResultCallbacks.keys, for: peripheral, service: service) {
+                keys.forEach { key in
+                    if let callback = unsubscribeFromCharacteristicNotificationsResultCallbacks[key] {
+                        unsubscribeFromCharacteristicNotificationsResultCallbacks[key] = nil
+                        callback(Result.failure(error))
+                    }
+                }
+            }
+            
+            subscribedCharacteristics.filter { $0.deviceAddress == peripheral.identifier && (service == nil || $0.serviceUUID == service) }.forEach { characteristicKey in
+                subscribedCharacteristics.remove(characteristicKey)
+            }
         }
-        
-        subscribedCharacteristics.filter { $0.deviceAddress == peripheral.identifier }.forEach { characteristicKey in
-            subscribedCharacteristics.remove(characteristicKey)
-        }
-    }
-    
-    private func getKeys<T>(_ keys: Dictionary<CharacteristicKey, T>.Keys, for peripheral: CBPeripheral) -> [CharacteristicKey]? {
-        let deviceKey = peripheral.identifier
-        let result = keys.filter({ $0.deviceAddress == deviceKey })
-        guard !result.isEmpty else {
-            return nil
-        }
-        return result
     }
 }
 
@@ -546,18 +607,22 @@ extension IOSBLECentral: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: (any Error)?) {
         let result = getResult(value: peripheral.servicesDescriptions, error: error)
         discoverServicesResultCallback?(result)
-        let deviceAddress: UUID = peripheral.identifier
-        let services: [ServiceDescriptionBindingDto] = peripheral.servicesDescriptions
 #if DEBUG
+        let deviceAddress: UUID = peripheral.identifier
         print("discovered services of \(peripheral.name ?? "") \(deviceAddress)")
+        let services: [ServiceDescriptionBindingDto] = peripheral.servicesDescriptions
         print(services)
 #endif
     }
     
     func peripheral(_ peripheral: CBPeripheral, didModifyServices invalidatedServices: [CBService]) {
+        // This is signaled if the peripheral server stops
 #if DEBUG
         print("peripheral \(peripheral.identifier) did modify services: \(invalidatedServices)")
 #endif
+        invalidatedServices.forEach { service in
+            invalidateAwaitingCallbacks(peripheral: peripheral, service: service.uuid)
+        }
     }
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: (any Error)?) {
@@ -572,11 +637,11 @@ extension IOSBLECentral: CBPeripheralDelegate {
     }
     
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: (any Error)?) {
+        guard let characteristicKey = characteristicKey(peripheral: peripheral, characteristic: characteristic) else {
+            return
+        }
+        let result = getResult(value: (), error: error)
         writeLock.withLock {
-            guard let characteristicKey = characteristicKey(peripheral: peripheral, characteristic: characteristic) else {
-                return
-            }
-            let result = getResult(value: (), error: error)
             characteristicWriteResultCallbacks[characteristicKey]?(result)
 #if DEBUG
             print("did write value for \(characteristic): \(String(describing: characteristic.value))")
@@ -585,12 +650,16 @@ extension IOSBLECentral: CBPeripheralDelegate {
     }
     
     func peripheralIsReady(toSendWriteWithoutResponse peripheral: CBPeripheral) {
-        writeLock.withLock {
 #if DEBUG
-            print("peripheralIsReady")
+        print("peripheralIsReady")
 #endif
-            let result = getResult(value: (), error: nil)
-            characteristicWriteWithoutResponseResultCallbacks[peripheral.identifier]?(result)
+        let result = getResult(value: (), error: nil)
+        writeLock.withLock {
+            if let keys = getKeys(characteristicWriteWithoutResponseResultCallbacks.keys, for: peripheral, service: nil) {
+                keys.forEach { key in
+                    characteristicWriteWithoutResponseResultCallbacks[key]?(result)
+                }
+            }
         }
     }
     
@@ -626,8 +695,10 @@ extension IOSBLECentral: CBPeripheralDelegate {
     }
     
     private func handleCharacteristicReadResult(key characteristicKey: CharacteristicKey, result: Result<Data, Error>) {
-        if let callback = characteristicReadResultCallbacks[characteristicKey] {
-            callback(result)
+        readLock.withLock {
+            if let callback = characteristicReadResultCallbacks[characteristicKey] {
+                callback(result)
+            }
         }
     }
     
@@ -639,10 +710,12 @@ extension IOSBLECentral: CBPeripheralDelegate {
             return
         }
         let result = getResult(value: (), error: error)
-        if let callback = subscribeToCharacteristicNotificationsResultCallbacks[characteristicKey] {
-            callback(result)
-        } else if let callback = unsubscribeFromCharacteristicNotificationsResultCallbacks[characteristicKey] {
-            callback(result)
+        notificationsLock.withLock {
+            if let callback = subscribeToCharacteristicNotificationsResultCallbacks[characteristicKey] {
+                callback(result)
+            } else if let callback = unsubscribeFromCharacteristicNotificationsResultCallbacks[characteristicKey] {
+                callback(result)
+            }
         }
     }
 }
