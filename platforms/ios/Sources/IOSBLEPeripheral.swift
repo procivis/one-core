@@ -97,12 +97,12 @@ extension IOSBLEPeripheral: BlePeripheral {
         if !services.isEmpty {
             advertisementData[CBAdvertisementDataServiceUUIDsKey] = uuids
         }
-        peripheralManager.startAdvertising(advertisementData)
         return try await withCheckedThrowingContinuation { continuation in
             startAdvertisementResultCallback = { [weak self] result in
                 self?.startAdvertisementResultCallback = nil
                 continuation.resume(with: result)
             }
+            peripheralManager.startAdvertising(advertisementData)
         }
     }
     
