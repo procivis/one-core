@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{anyhow, Context};
 use serde::{Deserialize, Serialize};
@@ -278,7 +279,8 @@ pub(crate) async fn send_mdl_response(
 
                 // End command signal not necessary, since we signal SessionTermination via SessionData status
 
-                // TODO: probably we should somehow wait for device disconnection here (but this would mean blocking UI)
+                // Wait for device disconnection here (but this means blocking UI)
+                tokio::time::sleep(Duration::from_millis(200)).await;
 
                 peripheral.stop_server().await.map_err(|e| {
                     ExchangeProtocolError::Failed(format!("Unable to stop server: {e}"))
