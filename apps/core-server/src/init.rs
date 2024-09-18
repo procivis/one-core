@@ -459,7 +459,9 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                 let revocation_method = match fields.r#type {
                     RevocationType::None => Arc::new(NoneRevocation {}) as _,
                     RevocationType::BitstringStatusList => {
-                        let params = config.get(key).expect("failed to get BitstringStatusList params");
+                        let params = config
+                            .get(key)
+                            .expect("failed to get BitstringStatusList params");
 
                         Arc::new(BitstringStatusList::new(
                             Some(core_base_url.clone()),

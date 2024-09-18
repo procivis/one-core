@@ -41,6 +41,7 @@ pub(crate) struct SuspendCheckProvider {
 }
 
 impl SuspendCheckProvider {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         credential_repository: Arc<dyn CredentialRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
