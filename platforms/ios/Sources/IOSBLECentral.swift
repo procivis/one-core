@@ -8,10 +8,11 @@ class IOSBLECentral: NSObject {
                                 queue: nil)
     }()
     
-    
-    private var adapterStateCallback: BLEResultCallback<CBManagerState>?
     private var discoverServicesResultCallback: BLEThrowingResultCallback<[ServiceDescriptionBindingDto]>?
     private var discoverCharacteristicsResultCallbacks: [CBUUID: BLEThrowingResultCallback<ServiceDescriptionBindingDto>] = [:]
+    
+    private let adapterStateLock = NSLock()
+    private var adapterStateCallback: BLEResultCallback<CBManagerState>?
     
     private let deviceDiscoveryLock = NSLock()
     private var getDiscoveredDevicesCallback: BLEResultCallback<[PeripheralDiscoveryDataBindingDto]>?
@@ -42,19 +43,33 @@ class IOSBLECentral: NSObject {
 extension IOSBLECentral: BleCentral {
     
     func isAdapterEnabled() async throws -> Bool {
-        var state = centralManager.state
-        if (state == .unknown) {
-            state = await withCheckedContinuation { continuation in
-                adapterStateCallback = { [weak self] result in
-                    self?.adapterStateCallback = nil
-                    continuation.resume(with: result)
+        return await withCheckedContinuation { continuation in
+            adapterStateLock.withLock {
+                let state = centralManager.state
+                if (state == .unknown) {
+                    adapterStateCallback = { [weak self] result in
+                        self?.adapterStateCallback = nil
+                        switch (result) {
+                        case .success:
+                            let updatedState = result.get()
+#if DEBUG
+                            print("centralManager updatedState \(updatedState)")
+#endif
+                            continuation.resume(returning: updatedState == .poweredOn)
+                            break
+                        default:
+                            // never happens
+                            break
+                        }
+                    }
+                } else {
+#if DEBUG
+                    print("centralManager state \(state)")
+#endif
+                    continuation.resume(returning: state == .poweredOn)
                 }
             }
         }
-#if DEBUG
-        print("centralManager state \(state)")
-#endif
-        return state == .poweredOn
     }
     
     func startScan(filterServices: [String]?) async throws {
@@ -481,7 +496,9 @@ extension IOSBLECentral: CBCentralManagerDelegate {
 #if DEBUG
         print("central manager did update state \(central.state)")
 #endif
-        adapterStateCallback?(Result.success(central.state))
+        adapterStateLock.withLock {
+            adapterStateCallback?(Result.success(central.state))
+        }
     }
     
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {

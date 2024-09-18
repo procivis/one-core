@@ -14,9 +14,11 @@ class IOSBLEPeripheral: NSObject {
         }
     }
     
-    private var adapterStateCallback: BLEResultCallback<CBManagerState>?
     private var startAdvertisementResultCallback: BLEThrowingResultCallback<String?>?
     private var services: [CBMutableService] = []
+    
+    private let adapterStateLock = NSLock()
+    private var adapterStateCallback: BLEResultCallback<CBManagerState>?
     
     private let notifyLock = NSLock()
     private var readyToUpdateSubscribersCallbacks: [() async -> Void] = []
@@ -41,19 +43,33 @@ class IOSBLEPeripheral: NSObject {
 extension IOSBLEPeripheral: BlePeripheral {
     
     func isAdapterEnabled() async throws -> Bool {
-        var state = peripheralManager.state
-        if (state == .unknown) {
-            state = await withCheckedContinuation { continuation in
-                adapterStateCallback = { [weak self] result in
-                    self?.adapterStateCallback = nil
-                    continuation.resume(with: result)
+        return await withCheckedContinuation { continuation in
+            adapterStateLock.withLock {
+                let state = peripheralManager.state
+                if (state == .unknown) {
+                    adapterStateCallback = { [weak self] result in
+                        self?.adapterStateCallback = nil
+                        switch (result) {
+                        case .success:
+                            let updatedState = result.get()
+#if DEBUG
+                            print("peripheralManager updatedState \(updatedState)")
+#endif
+                            continuation.resume(returning: updatedState == .poweredOn)
+                            break
+                        default:
+                            // never happens
+                            break
+                        }
+                    }
+                } else {
+#if DEBUG
+                    print("peripheralManager state \(state)")
+#endif
+                    continuation.resume(returning: state == .poweredOn)
                 }
             }
         }
-#if DEBUG
-        print("peripheralManager state \(state)")
-#endif
-        return state == .poweredOn
     }
     
     private func setupServicesAndCharacteristics(servicesWithCharacteristics: [ServiceDescriptionBindingDto]) {
@@ -121,9 +137,9 @@ extension IOSBLEPeripheral: BlePeripheral {
         let characteristic = CBUUID(string: characteristicUuid)
         let characteristicValueKey = characteristicValueKey(service: service, characteristic: characteristic)
         readLock.withLock {
-        characteristicValues[characteristicValueKey] = data
-        characteristicReadsQueue[characteristicValueKey] = Set<String>()
-    }
+            characteristicValues[characteristicValueKey] = data
+            characteristicReadsQueue[characteristicValueKey] = Set<String>()
+        }
     }
     
     func notifyCharacteristicData(deviceAddress: String, serviceUuid: String, characteristicUuid: String, data: Data) async throws {
@@ -156,7 +172,7 @@ extension IOSBLEPeripheral: BlePeripheral {
                                                                                                                          operation: "notify")))
                         return
                     }
-
+                    
                     do {
                         try await self.notifyCharacteristicData(deviceAddress: deviceAddress,
                                                                 serviceUuid: serviceUuid,
@@ -255,12 +271,12 @@ private extension IOSBLEPeripheral {
     
     private func retrieveCentralsSubscribedToCharacteristic(characteristic: CBUUID) -> [CBCentral] {
         connectionLock.withLock {
-        connectedCentrals.keys.filter { central in
-            connectedCentrals[central]?.contains(where: { cbCharacteristic in
-                cbCharacteristic.uuid == characteristic
-            }) == true
+            connectedCentrals.keys.filter { central in
+                connectedCentrals[central]?.contains(where: { cbCharacteristic in
+                    cbCharacteristic.uuid == characteristic
+                }) == true
+            }
         }
-    }
     }
     
     private func characteristicKey(central: UUID, service: CBUUID, characteristic: CBUUID) -> CharacteristicKey {
@@ -312,7 +328,9 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
 #if DEBUG
         print("peripheral manager did update state \(peripheral.state)")
 #endif
-        adapterStateCallback?(Result.success(peripheral.state))
+        adapterStateLock.withLock {
+            adapterStateCallback?(Result.success(peripheral.state))
+        }
     }
     
     func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: (any Error)?) {
@@ -338,14 +356,14 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
         }
         
         readLock.withLock {
-        guard let characteristicValueKey = characteristicValueKey(characteristic: request.characteristic),
-              let value = characteristicValues[characteristicValueKey] ?? request.characteristic.value else  {
-            peripheral.respond(to: request, withResult: .attributeNotFound)
-            return
-        }
-        request.value = value
-        peripheral.respond(to: request, withResult: .success)
-        
+            guard let characteristicValueKey = characteristicValueKey(characteristic: request.characteristic),
+                  let value = characteristicValues[characteristicValueKey] ?? request.characteristic.value else  {
+                peripheral.respond(to: request, withResult: .attributeNotFound)
+                return
+            }
+            request.value = value
+            peripheral.respond(to: request, withResult: .success)
+            
             guard let characteristicKey = characteristicKey(central: request.central, characteristic: request.characteristic),
                   let callback = getCharacteristicReadResultCallbacks[characteristicKey] else {
                 characteristicReadsQueue[characteristicValueKey] = characteristicReadsQueue[characteristicValueKey] ?? Set<String>()
@@ -361,20 +379,20 @@ extension IOSBLEPeripheral: CBPeripheralManagerDelegate {
         print("did receive write requests \(requests)")
 #endif
         
-            requests.forEach { request in
+        requests.forEach { request in
 #if DEBUG
-                if let value = request.value {
-                    print("write data: \(String(describing: String(data: value, encoding: .ascii)))")
-                }
+            if let value = request.value {
+                print("write data: \(String(describing: String(data: value, encoding: .ascii)))")
+            }
 #endif
-                connectionLock.withLock {
-                    sendConnectedEventIfIsNewCentral(central: request.central)
-                }
-                peripheral.respond(to: request, withResult: .success)
-                
-                guard let characteristicKey = characteristicKey(central: request.central, characteristic: request.characteristic) else {
-                    return
-                }
+            connectionLock.withLock {
+                sendConnectedEventIfIsNewCentral(central: request.central)
+            }
+            peripheral.respond(to: request, withResult: .success)
+            
+            guard let characteristicKey = characteristicKey(central: request.central, characteristic: request.characteristic) else {
+                return
+            }
             
             writeLock.withLock {
                 guard let callback = getCharacteristicWritesResultCallbacks[characteristicKey] else {
