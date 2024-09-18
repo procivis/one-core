@@ -321,6 +321,7 @@ impl OneCore {
             revocation_method_provider.to_owned(),
             data_provider.get_revocation_list_repository(),
             data_provider.get_validity_credential_repository(),
+            formatter_provider.to_owned(),
             key_provider.to_owned(),
             data_provider.get_proof_repository(),
             providers.core_base_url.clone(),

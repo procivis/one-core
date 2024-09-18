@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::model::CredentialRevocationState;
 use one_providers::revocation::provider::RevocationMethodProvider;
@@ -34,6 +35,7 @@ pub(crate) struct SuspendCheckProvider {
     history_repository: Arc<dyn HistoryRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     core_base_url: Option<String>,
 }
@@ -45,6 +47,7 @@ impl SuspendCheckProvider {
         history_repository: Arc<dyn HistoryRepository>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         core_base_url: Option<String>,
     ) -> Self {
@@ -55,6 +58,7 @@ impl SuspendCheckProvider {
             revocation_list_repository,
             validity_credential_repository,
             key_provider,
+            formatter_provider,
             core_base_url,
         }
     }
@@ -81,21 +85,6 @@ impl Task for SuspendCheckProvider {
         let credentials = credential_list.values;
 
         for credential in credentials.iter() {
-            let credential_schema =
-                credential
-                    .schema
-                    .as_ref()
-                    .ok_or(ServiceError::MappingError(
-                        "credential_schema is None".to_string(),
-                    ))?;
-
-            let revocation_method = self
-                .revocation_method_provider
-                .get_revocation_method(&credential_schema.revocation_method)
-                .ok_or(MissingProviderError::RevocationMethod(
-                    credential_schema.revocation_method.clone(),
-                ))?;
-
             let credential_id = credential.id;
             let credential = self
                 .credential_repository
@@ -121,6 +110,13 @@ impl Task for SuspendCheckProvider {
                 return Err(EntityNotFoundError::Credential(credential_id).into());
             };
 
+            let revocation_method = self
+                .revocation_method_provider
+                .get_revocation_method("BitstringStatusList")
+                .ok_or(MissingProviderError::RevocationMethod(
+                    "BitstringStatusList".to_string(),
+                ))?;
+
             let update = revocation_method
                 .mark_credential_as(
                     &credential.to_owned().into(),
@@ -129,7 +125,8 @@ impl Task for SuspendCheckProvider {
                         &credential,
                         &*self.credential_repository,
                         &*self.revocation_list_repository,
-                        &*self.revocation_method_provider,
+                        &*revocation_method,
+                        &*self.formatter_provider,
                         &self.key_provider,
                         &self.core_base_url,
                     )

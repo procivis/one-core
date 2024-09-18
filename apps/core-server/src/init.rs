@@ -458,17 +458,23 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
 
                 let revocation_method = match fields.r#type {
                     RevocationType::None => Arc::new(NoneRevocation {}) as _,
-                    RevocationType::BitstringStatusList => Arc::new(BitstringStatusList::new(
-                        Some(core_base_url.clone()),
-                        key_algorithm_provider.clone(),
-                        did_method_provider.clone(),
-                        key_provider.clone(),
-                        initialize_statuslist_loader(
-                            &cache_entities_config,
-                            data_repository.clone(),
-                        ),
-                        client.clone(),
-                    )) as _,
+                    RevocationType::BitstringStatusList => {
+                        let params = config.get(key).expect("failed to get BitstringStatusList params");
+
+                        Arc::new(BitstringStatusList::new(
+                            Some(core_base_url.clone()),
+                            key_algorithm_provider.clone(),
+                            did_method_provider.clone(),
+                            key_provider.clone(),
+                            formatter_provider.clone(),
+                            initialize_statuslist_loader(
+                                &cache_entities_config,
+                                data_repository.clone(),
+                            ),
+                            client.clone(),
+                            Some(params),
+                        )) as _
+                    }
                     RevocationType::Lvvc => {
                         ({
                             let params = config.get(key).expect("failed to get LVVC params");

@@ -501,16 +501,20 @@ fn initialize_core(
                         let revocation_method = match fields.r#type {
                             RevocationType::None => Arc::new(NoneRevocation {}) as _,
                             RevocationType::BitstringStatusList => {
+                                let params = config.get(key).expect("failed to get Bitstring params");
                                 Arc::new(BitstringStatusList::new(
                                     None,
                                     key_algorithm_provider.clone(),
                                     did_method_provider.clone(),
                                     key_provider.clone(),
+                                    formatter_provider.clone(),
                                     initialize_statuslist_loader(
                                         &cache_entities_config,
                                         data_repository.clone(),
                                     ),
                                     client.clone(),
+                                    // TODO Different param structure than expected (e.g. the one we get from config here has public / private)
+                                    Some(params)
                                 )) as _
                             }
                             RevocationType::Lvvc => {

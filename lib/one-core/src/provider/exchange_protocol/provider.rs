@@ -249,6 +249,11 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                 credential_schema.revocation_method.clone(),
             ))?;
 
+        let formatter = self
+            .formatter_provider
+            .get_formatter(&format)
+            .ok_or(ValidationError::InvalidFormatter(format.to_string()))?;
+
         let (update, status) = revocation_method
             .add_issued_credential(
                 &credential.to_owned().into(),
@@ -261,6 +266,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                         &*self.revocation_list_repository,
                         &self.key_provider,
                         &self.core_base_url,
+                        &*formatter,
                     )
                     .await?,
                     suspension_list_id: get_revocation_list_id(
@@ -270,6 +276,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                         &*self.revocation_list_repository,
                         &self.key_provider,
                         &self.core_base_url,
+                        &*formatter,
                     )
                     .await?,
                 }),

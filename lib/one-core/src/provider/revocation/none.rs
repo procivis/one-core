@@ -59,4 +59,8 @@ impl RevocationMethod for NoneRevocation {
     fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
         Ok(JsonLdContext::default())
     }
+
+    fn get_params(&self) -> Result<serde_json::Value, RevocationError> {
+        Ok(serde_json::json!({}))
+    }
 }
