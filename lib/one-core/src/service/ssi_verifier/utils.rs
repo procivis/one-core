@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use one_providers::credential_formatter::model::DetailCredential;
 use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
 
@@ -12,6 +11,7 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::ProofInputClaimSchema;
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -126,12 +126,8 @@ pub async fn accept_proof(
                 .ok_or(ServiceError::MappingError(
                     "issuer_did is missing".to_string(),
                 ))?;
-        let issuer_did = get_or_create_did(
-            did_repository,
-            &proof_schema.organisation,
-            &issuer_did.clone().into(),
-        )
-        .await?;
+        let issuer_did =
+            get_or_create_did(did_repository, &proof_schema.organisation, issuer_did).await?;
 
         let credential = extracted_credential_to_model(
             &[],

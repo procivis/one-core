@@ -4,30 +4,28 @@ use std::vec;
 use async_trait::async_trait;
 use indexmap::indexset;
 use model::CredentialEnvelope;
-use one_crypto::CryptoProvider;
-use one_providers::common_models::did::{DidValue, OpenDid};
-use one_providers::credential_formatter::error::FormatterError;
-use one_providers::credential_formatter::imp::json_ld;
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
+use serde::ser::Error;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DurationSeconds};
+use shared_types::DidValue;
+use time::{Duration, OffsetDateTime};
+
+use crate::crypto::CryptoProvider;
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
 };
-use one_providers::credential_formatter::imp::json_ld::model::{
-    ContextType, LdCredential, LdCredentialSubject, LdPresentation, LdProof, VerifiableCredential,
+use crate::provider::credential_formatter::json_ld::model::{
+    ContextType, LdCredential, LdPresentation, LdProof, VerifiableCredential,
 };
-use one_providers::credential_formatter::model::{
+use crate::provider::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
     DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Issuer,
     Presentation, VerificationFn,
 };
-use one_providers::credential_formatter::CredentialFormatter;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::http_client::HttpClient;
-use one_providers::revocation::imp::bitstring_status_list::model::StatusPurpose;
-use serde::ser::Error;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use serde_with::{serde_as, DurationSeconds};
-use time::{Duration, OffsetDateTime};
+use crate::provider::credential_formatter::{json_ld, CredentialFormatter};
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::http_client::HttpClient;
 
 #[cfg(test)]
 mod test;

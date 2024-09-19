@@ -6,12 +6,11 @@ use serde_json::Value;
 use shared_types::DidValue;
 use uuid::Uuid;
 
-use crate::fixtures;
 use crate::fixtures::TestingDidParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::server::run_server;
-use crate::utils::{self};
+use crate::{fixtures, utils};
 
 #[tokio::test]
 async fn test_share_proof_success() {

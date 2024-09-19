@@ -1,7 +1,4 @@
 use dto_mapper::{convert_inner, From, Into};
-use one_providers::common_models::credential_schema::{
-    OpenCodeTypeEnum, OpenLayoutProperties, OpenWalletStorageTypeEnum,
-};
 use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use strum_macros::{Display, EnumString};
@@ -12,7 +9,7 @@ use crate::model;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
     CredentialFormat, CredentialSchema, LayoutType, RevocationMethod,
-    SortableCredentialSchemaColumn,
+    SortableCredentialSchemaColumn, WalletStorageTypeEnum,
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
@@ -32,7 +29,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub name: String,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
-    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
@@ -53,17 +50,15 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
-    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, From, Into)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[from(one_providers::exchange_protocol::openid4vc::model::CredentialClaimSchemaDTO)]
-#[into(one_providers::exchange_protocol::openid4vc::model::CredentialClaimSchemaDTO)]
 pub struct CredentialClaimSchemaDTO {
     pub id: ClaimSchemaId,
     #[serde(with = "time::serde::rfc3339")]
@@ -75,8 +70,6 @@ pub struct CredentialClaimSchemaDTO {
     pub required: bool,
     pub array: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaDTO>,
 }
 
@@ -111,7 +104,7 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub revocation_method: String,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
-    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub layout_type: LayoutType,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub schema_id: Option<String>,
@@ -151,39 +144,6 @@ pub struct CredentialSchemaLayoutPropertiesRequestDTO {
     #[from(with_fn = convert_inner)]
     #[into(with_fn = convert_inner)]
     pub code: Option<CredentialSchemaCodePropertiesRequestDTO>,
-}
-
-impl From<OpenLayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
-    fn from(value: OpenLayoutProperties) -> Self {
-        Self {
-            background: value.background.map(|value| {
-                CredentialSchemaBackgroundPropertiesRequestDTO {
-                    color: value.color,
-                    image: value.image,
-                }
-            }),
-            logo: value
-                .logo
-                .map(|v| CredentialSchemaLogoPropertiesRequestDTO {
-                    font_color: v.font_color,
-                    background_color: v.background_color,
-                    image: v.image,
-                }),
-            primary_attribute: value.primary_attribute,
-            secondary_attribute: value.secondary_attribute,
-            picture_attribute: value.picture_attribute,
-            code: value
-                .code
-                .map(|v| CredentialSchemaCodePropertiesRequestDTO {
-                    attribute: v.attribute,
-                    r#type: match v.r#type {
-                        OpenCodeTypeEnum::Barcode => crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::Barcode,
-                        OpenCodeTypeEnum::Mrz => crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::Mrz,
-                        OpenCodeTypeEnum::QrCode => crate::service::credential_schema::dto::CredentialSchemaCodeTypeEnum::QrCode,
-                    },
-                }),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
@@ -244,7 +204,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub revocation_method: String,
     pub organisation_id: Uuid,
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
-    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,

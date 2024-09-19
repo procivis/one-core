@@ -198,7 +198,7 @@ impl CredentialProvider {
                 Some(key_id) => {
                     let key = self
                         .key_repository
-                        .get_key(&key_id.to_owned().into(), key_relations)
+                        .get_key(key_id, key_relations)
                         .await?
                         .ok_or(DataLayerError::MissingRequiredRelation {
                             relation: "credential-key",

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "one-core-docs-chart.fullname" . }}
+  labels:
+    {{- include "one-core-docs-chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "one-core-docs-chart.selectorLabels" . | nindent 4 }}

@@ -1,16 +1,15 @@
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
-use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::key_storage::provider::MockKeyProvider;
-use one_providers::revocation::model::{CredentialRevocationState, RevocationUpdate};
-use one_providers::revocation::provider::MockRevocationMethodProvider;
-use one_providers::revocation::MockRevocationMethod;
 use uuid::Uuid;
 
 use super::SuspendCheckProvider;
 use crate::model::credential::{Credential, CredentialStateEnum, GetCredentialList};
 use crate::model::history::{HistoryAction, HistoryEntityType};
+use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::revocation::model::{CredentialRevocationState, RevocationUpdate};
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::task::suspend_check::dto::SuspendCheckResultDTO;
 use crate::provider::task::Task;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -120,14 +119,12 @@ async fn test_run_one_update() {
         })
         .return_once(|_| Ok(()));
 
-    let credential_model =
-        one_providers::common_models::credential::OpenCredential::from(credential.clone());
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
         .expect_mark_credential_as()
         .once()
         .with(
-            eq(credential_model.clone()),
+            eq(credential.clone()),
             eq(CredentialRevocationState::Valid),
             always(),
         )

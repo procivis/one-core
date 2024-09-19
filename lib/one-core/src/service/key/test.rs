@@ -1,20 +1,19 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use one_providers::common_models::key::OpenKey;
-use one_providers::key_algorithm::model::KeyAlgorithmCapabilities;
-use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
-use one_providers::key_algorithm::MockKeyAlgorithm;
-use one_providers::key_storage::imp::provider::KeyProviderImpl;
-use one_providers::key_storage::model::StorageGeneratedKey;
-use one_providers::key_storage::{KeyStorage, MockKeyStorage};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::KeyService;
-use crate::model::key::GetKeyList;
+use crate::model::key::{GetKeyList, Key};
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
+use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_storage::model::StorageGeneratedKey;
+use crate::provider::key_storage::provider::KeyProviderImpl;
+use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -50,9 +49,9 @@ fn setup_service(
     )
 }
 
-fn generic_key(name: &str, organisation_id: Uuid) -> OpenKey {
+fn generic_key(name: &str, organisation_id: Uuid) -> Key {
     let now = OffsetDateTime::now_utc();
-    OpenKey {
+    Key {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
@@ -61,14 +60,11 @@ fn generic_key(name: &str, organisation_id: Uuid) -> OpenKey {
         key_reference: vec![],
         storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: Some(
-            Organisation {
-                id: organisation_id.into(),
-                created_date: now,
-                last_modified: now,
-            }
-            .into(),
-        ),
+        organisation: Some(Organisation {
+            id: organisation_id.into(),
+            created_date: now,
+            last_modified: now,
+        }),
     }
 }
 
@@ -89,7 +85,7 @@ async fn test_create_key_success() {
         organisation_repository
             .expect_get_organisation()
             .once()
-            .returning(move |_, _| Ok(Some(organisation.clone().into())));
+            .returning(move |_, _| Ok(Some(organisation.clone())));
 
         key_storage.expect_generate().once().returning(|_, _| {
             Ok(StorageGeneratedKey {
@@ -122,7 +118,7 @@ async fn test_create_key_success() {
 
     let result = service
         .generate_key(KeyRequestDTO {
-            organisation_id: organisation.id.into(),
+            organisation_id: organisation.id,
             key_type: "EDDSA".to_string(),
             key_params: Default::default(),
             name: "NAME".to_string(),
@@ -132,7 +128,7 @@ async fn test_create_key_success() {
         .await;
 
     assert!(result.is_ok());
-    assert_eq!(key.id, result.unwrap().into());
+    assert_eq!(key.id, result.unwrap());
 }
 
 #[tokio::test]
@@ -162,10 +158,10 @@ async fn test_get_key_success() {
         key_algorithm_provider,
     );
 
-    let result = service.get_key(&key.id.to_owned().into()).await;
+    let result = service.get_key(&key.id).await;
 
     assert!(result.is_ok());
-    assert_eq!(key.id, result.unwrap().id.into());
+    assert_eq!(key.id, result.unwrap().id);
 }
 
 #[tokio::test]
@@ -281,9 +277,7 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
         key_algorithm_provider,
     );
 
-    let result = service
-        .generate_csr(&key.id.to_owned().into(), generic_csr_request())
-        .await;
+    let result = service.generate_csr(&key.id, generic_csr_request()).await;
     assert!(matches!(
         result,
         Err(ServiceError::BusinessLogic(
@@ -340,9 +334,7 @@ async fn test_generate_csr_failed_requested_for_more_than_457_days() {
     let mut request = generic_csr_request();
     request.expires_at = request.not_before + Duration::days(458);
 
-    let result = service
-        .generate_csr(&key.id.to_owned().into(), request)
-        .await;
+    let result = service.generate_csr(&key.id, request).await;
     assert!(matches!(
         result,
         Err(ServiceError::Validation(

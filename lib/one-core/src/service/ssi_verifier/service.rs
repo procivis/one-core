@@ -303,13 +303,13 @@ impl SSIVerifierService {
 mod tests {
     use std::sync::Arc;
 
-    use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-    use one_providers::did::provider::MockDidMethodProvider;
-    use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
-    use one_providers::revocation::provider::MockRevocationMethodProvider;
     use uuid::Uuid;
 
     use super::*;
+    use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+    use crate::provider::did_method::provider::MockDidMethodProvider;
+    use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+    use crate::provider::revocation::provider::MockRevocationMethodProvider;
     use crate::repository::credential_repository::MockCredentialRepository;
     use crate::repository::did_repository::MockDidRepository;
     use crate::repository::history_repository::MockHistoryRepository;

@@ -22,8 +22,6 @@ dto_mapper.workspace         = true
 headers                      = { version = "0.4" }
 hex-literal                  = { version = "0.4" }
 one-core                     = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json", "config_yaml", "config_env"] }
-one-crypto                   = { workspace = true }
-one-providers                = { workspace = true }
 prometheus                   = { version = "0.13", features = ["process"] }
 reqwest.workspace            = true
 sentry                       = { version = "0.34", default-features = false, features = ["backtrace", "panic", "reqwest", "tracing"] }

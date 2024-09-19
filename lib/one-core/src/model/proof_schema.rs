@@ -1,4 +1,3 @@
-use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use shared_types::ProofSchemaId;
 use time::OffsetDateTime;
 
@@ -7,9 +6,7 @@ use super::common::{GetListQueryParams, GetListResponse};
 use super::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use super::organisation::{Organisation, OrganisationRelations};
 
-#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::proof_schema::OpenProofSchema)]
-#[from(one_providers::common_models::proof_schema::OpenProofSchema)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProofSchema {
     pub id: ProofSchemaId,
     pub created_date: OffsetDateTime,
@@ -19,32 +16,20 @@ pub struct ProofSchema {
     pub expire_duration: u32,
 
     // Relations
-    #[into(with_fn = "convert_inner")]
-    #[from(with_fn = "convert_inner")]
     pub organisation: Option<Organisation>,
-    #[into(with_fn = "convert_inner_of_inner")]
-    #[from(with_fn = "convert_inner_of_inner")]
     pub input_schemas: Option<Vec<ProofInputSchema>>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default, Into, From)]
-#[into(one_providers::common_models::proof_schema::OpenProofInputSchema)]
-#[from(one_providers::common_models::proof_schema::OpenProofInputSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProofInputSchema {
     pub validity_constraint: Option<i64>,
 
     // Relations
-    #[into(with_fn = "convert_inner_of_inner")]
-    #[from(with_fn = "convert_inner_of_inner")]
     pub claim_schemas: Option<Vec<ProofInputClaimSchema>>,
-    #[into(with_fn = "convert_inner")]
-    #[from(with_fn = "convert_inner")]
     pub credential_schema: Option<CredentialSchema>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::proof_schema::OpenProofInputClaimSchema)]
-#[from(one_providers::common_models::proof_schema::OpenProofInputClaimSchema)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProofInputClaimSchema {
     pub schema: ClaimSchema,
     pub required: bool,

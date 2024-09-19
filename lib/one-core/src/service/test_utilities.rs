@@ -2,12 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use indoc::indoc;
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::common_models::key::OpenKey;
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
-use one_providers::credential_formatter::model::FormatterCapabilities;
-use one_providers::remote_entity_storage::in_memory::InMemoryStorage;
-use one_providers::remote_entity_storage::{RemoteEntity, RemoteEntityType};
 use serde::{Deserialize, Serialize};
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
@@ -19,12 +13,18 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+    WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
+use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
+use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
+use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
+use crate::provider::remote_entity_storage::{RemoteEntity, RemoteEntityType};
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -201,7 +201,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "schema".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "format".to_string(),
             revocation_method: "revocation method".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -288,8 +288,8 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
     }
 }
 
-pub fn dummy_key() -> OpenKey {
-    OpenKey {
+pub fn dummy_key() -> Key {
+    Key {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
@@ -330,7 +330,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
-        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         format: "format".to_string(),
         revocation_method: "format".to_string(),
         claim_schemas: None,

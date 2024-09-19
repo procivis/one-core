@@ -5,9 +5,9 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
 use dto_mapper::convert_inner;
+use one_core::provider::credential_formatter::error::FormatterError;
+use one_core::provider::did_method::error::DidMethodProviderError;
 use one_core::service::error::{self, MissingProviderError, ServiceError};
-use one_providers::credential_formatter::error::FormatterError;
-use one_providers::did::error::DidMethodProviderError;
 use serde::Serialize;
 use utoipa::ToSchema;
 

@@ -2,15 +2,6 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use futures::TryFutureExt;
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::credential_formatter::model::CredentialPresentation;
-use one_providers::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, PresentationDefinitionRequestedCredentialResponseDTO,
-    PresentedCredential, UpdateResponse,
-};
-use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
-use one_providers::key_storage::model::KeySecurity;
-use one_providers::revocation::imp::lvvc::prepare_bearer_token;
 use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use url::Url;
@@ -25,18 +16,25 @@ use crate::config::core_config::{ExchangeType, Fields, RevocationType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    Credential, CredentialRelations, CredentialState, CredentialStateEnum,
-    CredentialStateRelations, UpdateCredentialRequest,
+    CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
+    UpdateCredentialRequest,
 };
-use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
+use crate::model::proof::{ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
+use crate::provider::credential_formatter::model::CredentialPresentation;
+use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::provider::exchange_protocol::openid4vc::mapper::fetch_procivis_schema;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    InvitationResponseDTO, PresentedCredential, UpdateResponse,
+};
+use crate::provider::key_storage::model::KeySecurity;
+use crate::provider::revocation::lvvc::prepare_bearer_token;
 use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -76,24 +74,17 @@ impl SSIHolderService {
         );
 
         let handle_operations = HandleInvitationOperationsImpl::new(
-            organisation.clone().into(),
+            organisation.clone(),
             self.credential_schema_repository.clone(),
             self.config.clone(),
         );
 
         let response = protocol
-            .handle_invitation(
-                url,
-                organisation.into(),
-                &storage_access,
-                &handle_operations,
-            )
+            .handle_invitation(url, organisation, &storage_access, &handle_operations)
             .await?;
         match &response {
             InvitationResponseDTO::Credential { credentials, .. } => {
                 for credential in credentials {
-                    let credential: Credential = credential.to_owned().into();
-
                     let _ = self
                         .history_repository
                         .create_history(history_event(
@@ -120,8 +111,6 @@ impl SSIHolderService {
                 }
             }
             InvitationResponseDTO::ProofRequest { proof, .. } => {
-                let proof: Proof = (**proof).to_owned().into();
-
                 let _ = self
                     .history_repository
                     .create_history(history_event(
@@ -132,7 +121,9 @@ impl SSIHolderService {
                     ))
                     .await;
 
-                self.proof_repository.create_proof(proof.to_owned()).await?;
+                self.proof_repository
+                    .create_proof(*proof.to_owned())
+                    .await?;
 
                 let _ = self
                     .history_repository
@@ -195,7 +186,7 @@ impl SSIHolderService {
             .ok_or(MissingProviderError::ExchangeProtocol(
                 proof.exchange.clone(),
             ))?
-            .reject_proof(&proof.clone().into())
+            .reject_proof(&proof)
             .await)
             .is_ok()
         {
@@ -267,10 +258,7 @@ impl SSIHolderService {
             None => holder_did.find_first_key_by_role(KeyRole::Authentication)?,
         };
 
-        let did_document = self
-            .did_method_provider
-            .resolve(&holder_did.did.to_owned().into())
-            .await?;
+        let did_document = self.did_method_provider.resolve(&holder_did.did).await?;
         let authentication_methods =
             did_document
                 .authentication
@@ -295,9 +283,8 @@ impl SSIHolderService {
             MissingProviderError::ExchangeProtocol(proof.exchange.clone()),
         )?;
 
-        let open_proof = proof.clone().into();
         exchange_protocol
-            .validate_proof_for_submission(&open_proof)
+            .validate_proof_for_submission(&proof)
             .await?;
 
         let interaction_data = proof
@@ -317,7 +304,7 @@ impl SSIHolderService {
 
         let presentation_definition = exchange_protocol
             .get_presentation_definition(
-                &open_proof,
+                &proof,
                 interaction_data,
                 &storage_access,
                 create_oicd_to_core_format_map(),
@@ -325,12 +312,11 @@ impl SSIHolderService {
             )
             .await?;
 
-        let requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseDTO> =
-            presentation_definition
-                .request_groups
-                .into_iter()
-                .flat_map(|group| group.requested_credentials)
-                .collect();
+        let requested_credentials: Vec<_> = presentation_definition
+            .request_groups
+            .into_iter()
+            .flat_map(|group| group.requested_credentials)
+            .collect();
 
         let mut submitted_claims: Vec<Claim> = vec![];
         let mut credential_presentations: Vec<PresentedCredential> = vec![];
@@ -443,7 +429,7 @@ impl SSIHolderService {
 
             credential_presentations.push(PresentedCredential {
                 presentation: formatted_credential_presentation.to_owned(),
-                credential_schema: credential_schema.to_owned().into(),
+                credential_schema: credential_schema.clone(),
                 request: requested_credential.to_owned(),
             });
 
@@ -464,8 +450,7 @@ impl SSIHolderService {
                     .to_owned();
 
                 let bearer_token =
-                    prepare_bearer_token(&credential.to_owned().into(), self.key_provider.clone())
-                        .await?;
+                    prepare_bearer_token(&credential, self.key_provider.clone()).await?;
 
                 let lvvc_url = credential_status.id.ok_or(ServiceError::MappingError(
                     "credential_status id is None".to_string(),
@@ -498,7 +483,7 @@ impl SSIHolderService {
 
                 credential_presentations.push(PresentedCredential {
                     presentation: formatted_lvvc_presentation,
-                    credential_schema: credential_schema.to_owned().into(),
+                    credential_schema: credential_schema.clone(),
                     request: requested_credential.to_owned(),
                 });
             }
@@ -506,9 +491,9 @@ impl SSIHolderService {
 
         let submit_result = exchange_protocol
             .submit_proof(
-                &open_proof,
+                &proof,
                 credential_presentations,
-                &holder_did.clone().into(),
+                &holder_did,
                 selected_key,
                 Some(holder_jwk_key_id),
                 create_core_to_oicd_format_map(),
@@ -618,10 +603,10 @@ impl SSIHolderService {
                 .as_ref()
                 .and_then(|schema| schema.wallet_storage_type.as_ref())
             {
-                Some(OpenWalletStorageTypeEnum::Hardware) => {
+                Some(WalletStorageTypeEnum::Hardware) => {
                     key_security.contains(&KeySecurity::Hardware)
                 }
-                Some(OpenWalletStorageTypeEnum::Software) => {
+                Some(WalletStorageTypeEnum::Software) => {
                     key_security.contains(&KeySecurity::Software)
                 }
                 None => true,
@@ -657,8 +642,8 @@ impl SSIHolderService {
                     credential.exchange.clone(),
                 ))?
                 .accept_credential(
-                    &credential.clone().into(),
-                    &did.clone().into(),
+                    &credential,
+                    &did,
                     selected_key,
                     None,
                     &format,
@@ -704,7 +689,7 @@ impl SSIHolderService {
                     holder_did_id: Some(did_id),
                     issuer_did_id: None,
                     interaction: None,
-                    key: Some(selected_key.id.into()),
+                    key: Some(selected_key.id),
                     redirect_uri: None,
                 })
                 .await?;
@@ -761,7 +746,7 @@ impl SSIHolderService {
                 .ok_or(MissingProviderError::ExchangeProtocol(
                     credential.exchange.clone(),
                 ))?
-                .reject_credential(&credential.clone().into())
+                .reject_credential(&credential)
                 .await?;
 
             self.credential_repository
@@ -797,21 +782,19 @@ impl SSIHolderService {
         update_response: UpdateResponse<T>,
     ) -> Result<T, ServiceError> {
         if let Some(update_proof) = update_response.update_proof {
-            self.proof_repository
-                .update_proof(update_proof.clone().into())
-                .await?;
+            self.proof_repository.update_proof(update_proof).await?;
         }
         if let Some(create_did) = update_response.create_did {
-            self.did_repository.create_did(create_did.into()).await?;
+            self.did_repository.create_did(create_did).await?;
         }
         if let Some(update_credential_schema) = update_response.update_credential_schema {
             self.credential_schema_repository
-                .update_credential_schema(update_credential_schema.into())
+                .update_credential_schema(update_credential_schema)
                 .await?;
         }
         if let Some(update_credential) = update_response.update_credential {
             self.credential_repository
-                .update_credential(update_credential.into())
+                .update_credential(update_credential)
                 .await?;
         }
         Ok(update_response.result)

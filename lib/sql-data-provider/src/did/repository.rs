@@ -4,9 +4,9 @@ use autometrics::autometrics;
 use one_core::model::did::{
     Did, DidListQuery, DidRelations, GetDidList, RelatedKey, UpdateDidRequest,
 };
+use one_core::model::key::Key;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
-use one_providers::common_models::key::OpenKey;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, Set, Unchanged,
@@ -18,6 +18,7 @@ use super::DidProvider;
 use crate::entity::{did, key_did};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_data_layer_error;
+
 impl DidProvider {
     async fn resolve_relations(
         &self,
@@ -46,7 +47,7 @@ impl DidProvider {
                 .map_err(|e| DataLayerError::Db(e.into()))?;
 
             let mut related_keys: Vec<RelatedKey> = vec![];
-            let mut key_map: HashMap<KeyId, OpenKey> = HashMap::default();
+            let mut key_map: HashMap<KeyId, Key> = HashMap::default();
             for key_did_model in key_dids {
                 let key_id = &key_did_model.key_id;
                 let key = if let Some(key) = key_map.get(key_id) {
@@ -54,7 +55,7 @@ impl DidProvider {
                 } else {
                     let key = self
                         .key_repository
-                        .get_key(&key_id.to_owned().into(), key_relations)
+                        .get_key(key_id, key_relations)
                         .await?
                         .ok_or(DataLayerError::MissingRequiredRelation {
                             relation: "did-key",
@@ -155,7 +156,7 @@ impl DidRepository for DidProvider {
                 keys.into_iter()
                     .map(|key| key_did::ActiveModel {
                         did_id: Set(did.id),
-                        key_id: Set(key.key.id.into()),
+                        key_id: Set(key.key.id),
                         role: Set(key.role.into()),
                     })
                     .collect::<Vec<_>>(),

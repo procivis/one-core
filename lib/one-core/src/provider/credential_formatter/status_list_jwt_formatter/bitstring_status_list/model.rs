@@ -1,8 +1,8 @@
-use one_providers::credential_formatter::model::Context;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
+use crate::provider::credential_formatter::model::Context;
 use crate::provider::credential_formatter::status_list_jwt_formatter::common::{
     from_timestamp, into_timestamp, StatusPurpose,
 };

@@ -1,13 +1,13 @@
 use autometrics::autometrics;
-use one_core::model::key::{GetKeyList, GetKeyQuery, KeyRelations};
+use one_core::model::key::{GetKeyList, GetKeyQuery, Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
-use one_providers::common_models::key::{KeyId, OpenKey};
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
 };
+use shared_types::KeyId;
 
 use super::mapper::create_list_response;
 use crate::entity::key;
@@ -40,11 +40,11 @@ impl KeyProvider {
 #[autometrics]
 #[async_trait::async_trait]
 impl KeyRepository for KeyProvider {
-    async fn create_key(&self, request: OpenKey) -> Result<KeyId, DataLayerError> {
+    async fn create_key(&self, request: Key) -> Result<KeyId, DataLayerError> {
         let organisation_id = request.organisation.ok_or(DataLayerError::MappingError)?.id;
 
         key::ActiveModel {
-            id: Set(request.id.into()),
+            id: Set(request.id),
             created_date: Set(request.created_date),
             last_modified: Set(request.last_modified),
             name: Set(request.name),
@@ -52,7 +52,7 @@ impl KeyRepository for KeyProvider {
             key_reference: Set(request.key_reference),
             storage_type: Set(request.storage_type),
             key_type: Set(request.key_type),
-            organisation_id: Set(organisation_id.into()),
+            organisation_id: Set(organisation_id),
             deleted_at: NotSet,
         }
         .insert(&self.db)
@@ -66,7 +66,7 @@ impl KeyRepository for KeyProvider {
         &self,
         id: &KeyId,
         relations: &KeyRelations,
-    ) -> Result<Option<OpenKey>, DataLayerError> {
+    ) -> Result<Option<Key>, DataLayerError> {
         let key = key::Entity::find_by_id(*id)
             .filter(key::Column::DeletedAt.is_null())
             .one(&self.db)
@@ -87,7 +87,7 @@ impl KeyRepository for KeyProvider {
         Ok(Some(key))
     }
 
-    async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<OpenKey>, DataLayerError> {
+    async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError> {
         let keys = key::Entity::find()
             .filter(key::Column::DeletedAt.is_null())
             .filter(key::Column::Id.is_in(ids.iter().map(ToString::to_string)))

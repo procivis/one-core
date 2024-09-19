@@ -1,23 +1,13 @@
 use std::sync::Arc;
 
 use dto_mapper::convert_inner;
-use one_providers::credential_formatter::imp::json_ld::model::ContextType;
-use one_providers::credential_formatter::model::Context;
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::exchange_protocol::openid4vc::error::OpenID4VCIError;
-use one_providers::exchange_protocol::openid4vc::model::SubmitIssuerResponse;
-use one_providers::exchange_protocol::provider::ExchangeProtocolProvider;
-use one_providers::key_storage::provider::KeyProvider;
-use one_providers::revocation::model::CredentialAdditionalData;
-use one_providers::revocation::provider::RevocationMethodProvider;
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
 use super::mapper::credential_accepted_history_event;
-use super::ExchangeProtocol;
+use super::ExchangeProtocolImpl;
 use crate::common_validator::get_latest_state;
 use crate::config::core_config::CoreConfig;
 use crate::config::ConfigValidationError;
@@ -32,9 +22,18 @@ use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::revocation_list::RevocationListPurpose;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
+use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
+use crate::provider::credential_formatter::model::Context;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
+use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
+use crate::provider::exchange_protocol::openid4vc::model::SubmitIssuerResponse;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::model::CredentialAdditionalData;
+use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
@@ -44,6 +43,21 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
+
+pub trait ExchangeProtocol:
+    ExchangeProtocolImpl<
+    VCInteractionContext = serde_json::Value,
+    VPInteractionContext = serde_json::Value,
+>
+{
+}
+
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[async_trait::async_trait]
+pub trait ExchangeProtocolProvider: Send + Sync {
+    fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn ExchangeProtocol>>;
+    fn detect_protocol(&self, url: &Url) -> Option<Arc<dyn ExchangeProtocol>>;
+}
 
 #[async_trait::async_trait]
 pub(crate) trait ExchangeProtocolProviderExtra: ExchangeProtocolProvider {
@@ -312,10 +326,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             .ok_or(ServiceError::Other("Missing issuer did".to_string()))?
             .did;
 
-        let did_document = self
-            .did_method_provider
-            .resolve(&issuer_did_value.to_owned().into())
-            .await?;
+        let did_document = self.did_method_provider.resolve(issuer_did_value).await?;
         let assertion_methods = did_document
             .assertion_method
             .ok_or(ServiceError::MappingError(
@@ -364,7 +375,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             .ok_or(ValidationError::InvalidFormatter(format.to_string()))?
             .format_credentials(
                 credential_data,
-                &Some(holder_did.did.into()),
+                &Some(holder_did.did),
                 &key.key_type,
                 contexts,
                 vec![],

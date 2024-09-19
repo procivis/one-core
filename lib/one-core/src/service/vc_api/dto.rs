@@ -1,4 +1,4 @@
-use one_providers::credential_formatter::imp::json_ld::model::{LdCredential, LdPresentation};
+use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdPresentation};
 
 #[derive(Debug)]
 pub struct CredentialIssueRequest {

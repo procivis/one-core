@@ -9,49 +9,66 @@ version = "0.1.0"
 aes-gcm               = { version = "0.10.3", features = ["std"] }
 anyhow.workspace      = true
 async-trait           = { version = "0.1" }
+bit-vec               = { version = "0.8" }
+blstrs                = { version = "0.7" }
 bs58                  = { version = "0.5" }
+chacha20poly1305      = { version = "0.10" }
 ciborium              = { version = "0.2" }
+cocoon                = { version = "0.4" }
 convert_case          = { version = "0.6" }
 coset                 = { version = "0.3", features = ["std"] }
 crc                   = { version = "3.2.1" }
 ct-codecs.workspace   = true
 dto_mapper.workspace  = true
+ed25519-compact       = { version = "2.1" }
 figment               = { version = "0.10", default-features = false }
+flate2                = { version = "1.0" }
 futures.workspace     = true
 hex.workspace         = true
 hkdf                  = { version = "0.12.4", features = ["std"] }
+hmac                  = { version = "0.12" }
 human-sort            = { version = "0.2" }
 indexmap              = { version = "2.2", features = ["serde"] }
 itertools             = { version = "0.13" }
 josekit               = { version = "0.8", features = ["vendored"] }
 json-ld               = { version = "0.15" }
+json-syntax           = { version = "0.9" }
 jsonptr               = { version = "0.5" }
+locspan               = { version = "0.7" }
+mime                  = { version = "0.3" }
 mockall               = { workspace = true, optional = true }
 mrtd                  = { version = "0.5.2" }
-one-crypto            = { workspace = true }
-one-providers         = { workspace = true }
 ouroboros             = { version = "0.18" }
+p256                  = { version = "0.13", features = ["jwk"] }
+pairing_crypto        = { version = "0.4", git = "https://github.com/Iskander508/pairing_crypto", rev = "517a424a989b57b987aacb3642bd7cd2c60b94d1" }
+pbkdf2                = { version = "0.12", features = ["simple"] }
 pqc_dilithium         = { version = "0.2.0", git = "https://github.com/ihor-rud/dilithium", rev = "e02a683" }
 rand.workspace        = true
+rand_chacha           = { version = "0.3" }
 rcgen                 = { version = "0.13" }
+rdf-types             = { version = "0.15" }
 regex                 = { version = "1.10" }
 reqwest.workspace     = true
 serde.workspace       = true
 serde_json.workspace  = true
 serde_qs.workspace    = true
 serde_repr            = { version = "0.1" }
+serde_urlencoded      = { version = "0.7" }
 serde_with.workspace  = true
 serde_yaml            = { version = "0.9" }
 sha2                  = { version = "0.10" }
 shadow-rs.workspace   = true
 shared-types          = { version = "0.1.0", path = "../shared-types" }
+sophia_api            = { version = "0.8" }
+sophia_c14n           = { version = "0.8" }
+sophia_jsonld         = { version = "0.8", features = ["http_client"] }
 strum.workspace       = true
 strum_macros          = { version = "0.26" }
 tempfile.workspace    = true
 thiserror.workspace   = true
 time.workspace        = true
+tokio                 = { workspace = true, features = ["macros"] }
 tokio-util            = { version = "0.7", features = ["rt"] }
-tokio.workspace       = true
 tracing.workspace     = true
 url.workspace         = true
 urlencoding.workspace = true
@@ -69,11 +86,10 @@ hex-literal       = { version = "0.4" }
 indoc             = { version = "2.0" }
 maplit            = { version = "1.0" }
 mockall.workspace = true
-one-crypto        = { workspace = true, features = ["mock"] }
-one-providers     = { workspace = true, features = ["mock"] }
 rstest            = { version = "0.22" }
 rusty-fork        = { version = "0.3" }
 tokio             = { workspace = true, features = ["rt-multi-thread", "macros"] }
+wiremock          = { version = "0.6" }
 
 [build-dependencies]
 shadow-rs.workspace = true

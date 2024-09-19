@@ -13,11 +13,10 @@ sea-orm = ["dep:sea-orm"]
 utoipa  = ["dep:utoipa"]
 
 [dependencies]
-one-providers = { workspace = true }
-sea-orm       = { workspace = true, features = ["macros"], optional = true }
-serde         = { workspace = true, features = ["derive"] }
-utoipa        = { workspace = true, features = ["uuid"], optional = true }
-uuid          = { workspace = true }
+sea-orm = { workspace = true, features = ["macros"], optional = true }
+serde   = { workspace = true, features = ["derive"] }
+utoipa  = { workspace = true, features = ["uuid"], optional = true }
+uuid    = { workspace = true }
 
 [lints]
 workspace = true

@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use mockall::predicate::eq;
-use one_providers::common_models::key::OpenKey;
-use one_providers::key_storage::error::KeyStorageError;
-use one_providers::key_storage::model::StorageGeneratedKey;
-use one_providers::key_storage::KeyStorage;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
+use crate::model::key::Key;
+use crate::provider::key_storage::error::KeyStorageError;
+use crate::provider::key_storage::model::StorageGeneratedKey;
+use crate::provider::key_storage::KeyStorage;
 
 fn get_params() -> Params {
     Params {
@@ -69,7 +69,7 @@ async fn test_sign_success() {
 
     let result = provider
         .sign(
-            &OpenKey {
+            &Key {
                 id: Uuid::new_v4().into(),
                 key_reference: b"key_reference".to_vec(),
                 created_date: OffsetDateTime::now_utc(),

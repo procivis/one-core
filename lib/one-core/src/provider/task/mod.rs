@@ -1,15 +1,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::key_storage::provider::KeyProvider;
-use one_providers::revocation::provider::RevocationMethodProvider;
 use retain_proof_check::RetainProofCheck;
 use serde_json::Value;
 
 use self::suspend_check::SuspendCheckProvider;
 use crate::config::core_config::{TaskConfig, TaskType};
 use crate::config::ConfigError;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::proof_repository::ProofRepository;

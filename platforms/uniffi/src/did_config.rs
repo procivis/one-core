@@ -1,5 +1,5 @@
 use dto_mapper::{convert_inner, From, Into};
-use one_crypto::imp::utilities::deserialize_base64;
+use one_core::crypto::utilities::deserialize_base64;
 use serde::de::Error;
 use serde::{Deserialize, Serialize};
 
@@ -14,14 +14,14 @@ pub struct DidMdlParams {
 }
 
 #[derive(Debug, Deserialize, Into)]
-#[into(one_providers::did::imp::universal::Params)]
+#[into(one_core::provider::did_method::universal::Params)]
 #[serde(rename_all = "camelCase")]
 pub struct DidUniversalParams {
     pub resolver_url: String,
 }
 
 #[derive(Debug, Deserialize, Into)]
-#[into(one_providers::did::imp::web::Params)]
+#[into(one_core::provider::did_method::web::Params)]
 #[serde(rename_all = "camelCase")]
 pub struct DidWebParams {
     #[serde(default)]
@@ -30,8 +30,8 @@ pub struct DidWebParams {
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, From, Into)]
-#[from(one_providers::did::keys::Keys)]
-#[into(one_providers::did::keys::Keys)]
+#[from(one_core::provider::did_method::keys::Keys)]
+#[into(one_core::provider::did_method::keys::Keys)]
 #[serde(rename_all = "camelCase")]
 pub struct Keys {
     #[serde(default, flatten)]
@@ -60,8 +60,8 @@ impl<const N: usize> Default for MinMax<N> {
     }
 }
 
-impl<const N: usize> From<one_providers::did::keys::MinMax<N>> for MinMax<N> {
-    fn from(value: one_providers::did::keys::MinMax<N>) -> Self {
+impl<const N: usize> From<one_core::provider::did_method::keys::MinMax<N>> for MinMax<N> {
+    fn from(value: one_core::provider::did_method::keys::MinMax<N>) -> Self {
         MinMax {
             min: value.min,
             max: value.max,
@@ -69,9 +69,9 @@ impl<const N: usize> From<one_providers::did::keys::MinMax<N>> for MinMax<N> {
     }
 }
 
-impl<const N: usize> From<MinMax<N>> for one_providers::did::keys::MinMax<N> {
+impl<const N: usize> From<MinMax<N>> for one_core::provider::did_method::keys::MinMax<N> {
     fn from(value: MinMax<N>) -> Self {
-        one_providers::did::keys::MinMax {
+        one_core::provider::did_method::keys::MinMax {
             min: value.min,
             max: value.max,
         }
@@ -108,8 +108,8 @@ impl<'a, const N: usize> Deserialize<'a> for MinMax<N> {
 
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, From, Into)]
-#[from(one_providers::did::model::Operation)]
-#[into(one_providers::did::model::Operation)]
+#[from(one_core::provider::did_method::model::Operation)]
+#[into(one_core::provider::did_method::model::Operation)]
 pub enum Operation {
     RESOLVE,
     CREATE,
@@ -117,8 +117,8 @@ pub enum Operation {
 }
 
 #[derive(Clone, Default, Serialize, Deserialize, From, Into)]
-#[from(one_providers::did::model::DidCapabilities)]
-#[into(one_providers::did::model::DidCapabilities)]
+#[from(one_core::provider::did_method::model::DidCapabilities)]
+#[into(one_core::provider::did_method::model::DidCapabilities)]
 #[serde(rename_all = "camelCase")]
 pub struct DidCapabilities {
     #[from(with_fn = convert_inner)]

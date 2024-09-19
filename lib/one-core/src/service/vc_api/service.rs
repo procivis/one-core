@@ -1,18 +1,5 @@
 use std::sync::Arc;
 
-use one_providers::common_models::credential::{OpenCredentialState, OpenCredentialStateEnum};
-use one_providers::common_models::did::KeyRole;
-use one_providers::credential_formatter::imp::json_ld::model::LdCredential;
-use one_providers::credential_formatter::model::{
-    CredentialData, CredentialSchemaData, ExtractPresentationCtx, PublishedClaim,
-    PublishedClaimValue,
-};
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::key_storage::provider::KeyProvider;
-use one_providers::revocation::imp::bitstring_status_list::{self};
-use one_providers::util::key_verification::KeyVerification;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -24,13 +11,20 @@ use super::dto::{
 use super::mapper::value_to_published_claim;
 use super::validation::{validate_verifiable_credential, validate_verifiable_presentation};
 use super::VCAPIService;
-use crate::model::did::DidRelations;
+use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
-use crate::model::revocation_list::RevocationListPurpose;
+use crate::provider::credential_formatter::model::{
+    CredentialData, CredentialSchemaData, ExtractPresentationCtx, PublishedClaim,
+    PublishedClaimValue,
+};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::error::ServiceError;
-use crate::util::revocation_update::get_or_create_revocation_list_id;
+use crate::util::key_verification::KeyVerification;
 
 impl VCAPIService {
     pub fn new(
@@ -65,7 +59,7 @@ impl VCAPIService {
 
         validate_verifiable_credential(&create_request.credential)?;
 
-        let issuer_did = create_request.credential.issuer.to_did_value().into();
+        let issuer_did = create_request.credential.issuer.to_did_value();
         let issuer = self
             .did_repository
             .get_did_by_value(
@@ -115,7 +109,7 @@ impl VCAPIService {
         if let Some(credential_subject) = credential_subject.id.clone() {
             claims.push(PublishedClaim {
                 key: "id".to_string(),
-                value: PublishedClaimValue::String(credential_subject.into()),
+                value: PublishedClaimValue::String(credential_subject.as_str().into()),
                 datatype: Some("STRING".to_string()),
                 array_item: false,
             });

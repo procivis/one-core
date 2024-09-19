@@ -12,26 +12,12 @@ use coset::{
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use mdoc::{DataElementValue, DeviceNamespaces};
-use one_crypto::SignerError;
-use one_providers::common_models::did::{DidValue, OpenDid};
-use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
-use one_providers::credential_formatter::error::FormatterError;
-use one_providers::credential_formatter::imp::json_ld::model::ContextType;
-use one_providers::credential_formatter::model::{
-    AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema,
-    CredentialSchemaMetadata, CredentialSubject, DetailCredential, ExtractPresentationCtx,
-    FormatPresentationCtx, FormatterCapabilities, Presentation, PublishedClaim, SignatureProvider,
-    TokenVerifier, VerificationFn,
-};
-use one_providers::credential_formatter::CredentialFormatter;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::revocation::imp::bitstring_status_list::model::StatusPurpose;
 use rand::RngCore;
 use serde::Deserialize;
 use serde_json::json;
 use serde_with::{serde_as, DurationSeconds};
 use sha2::{Digest, Sha256, Sha384, Sha512};
+use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -45,10 +31,23 @@ use self::mdoc::{
     ValidityInfo, ValueDigests,
 };
 use super::common::nest_claims;
+use super::json_ld::model::ContextType;
 use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
+use crate::crypto::SignerError;
 use crate::model::credential_schema::CredentialSchemaType;
+use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema,
+    CredentialSchemaMetadata, CredentialSubject, DetailCredential, ExtractPresentationCtx,
+    FormatPresentationCtx, FormatterCapabilities, Presentation, PublishedClaim, SignatureProvider,
+    TokenVerifier, VerificationFn,
+};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::mdl::DidMdlValidator;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 mod cose;
 pub mod mdoc;
@@ -121,7 +120,7 @@ impl MdocFormatter {
             return Ok((session_transcript, None));
         }
 
-        // OpenID4VP:
+        // ID4VP:
         let nonce = context
             .nonce
             .as_ref()
@@ -570,9 +569,9 @@ fn try_extract_holder_did_mdl_public_key(
 ) -> Result<DidValue, FormatterError> {
     let holder_public_key = try_extract_holder_public_key(issuer_auth)?;
     let algorithm = match &holder_public_key {
-        OpenPublicKeyJwk::Ec(_) => "ES256",
-        OpenPublicKeyJwk::Okp(_) => "EDDSA",
-        key @ (OpenPublicKeyJwk::Rsa(_) | OpenPublicKeyJwk::Oct(_) | OpenPublicKeyJwk::Mlwe(_)) => {
+        PublicKeyJwk::Ec(_) => "ES256",
+        PublicKeyJwk::Okp(_) => "EDDSA",
+        key @ (PublicKeyJwk::Rsa(_) | PublicKeyJwk::Oct(_) | PublicKeyJwk::Mlwe(_)) => {
             return Err(FormatterError::Failed(format!(
                 "Key `{key:?}` should not be available for mdoc",
             )));
@@ -598,7 +597,7 @@ fn try_extract_holder_did_mdl_public_key(
 
 fn try_extract_holder_public_key(
     CoseSign1(issuer_auth): &CoseSign1,
-) -> Result<OpenPublicKeyJwk, FormatterError> {
+) -> Result<PublicKeyJwk, FormatterError> {
     let mso = issuer_auth
         .payload
         .as_ref()
@@ -633,7 +632,7 @@ fn try_extract_holder_public_key(
                 .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
                 .context("Missing P-256  Y value in params")?;
 
-            let key = OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
+            let key = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "P-256".to_owned(),
                 x,
@@ -657,7 +656,7 @@ fn try_extract_holder_public_key(
                 .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
                 .context("Missing Ed25519 X value in params")?;
 
-            let key = OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
+            let key = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 r#use: None,
                 crv: "Ed25519".to_owned(),
                 x,
@@ -1004,7 +1003,7 @@ fn build_ciborium_value(
         {
             let claim = PublishedClaim {
                 key: this_path.to_string(),
-                value: one_providers::credential_formatter::model::PublishedClaimValue::String(
+                value: crate::provider::credential_formatter::model::PublishedClaimValue::String(
                     value.to_string(),
                 ),
                 datatype: Some("STRING".to_owned()),
@@ -1251,7 +1250,7 @@ async fn try_build_cose_key(
         .swap_remove(0)
         .public_key_jwk
     {
-        OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
+        PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
             crv, x, y: Some(y), ..
         }) if &crv == "P-256" => {
             let x = base64decode(x)?;
@@ -1260,7 +1259,7 @@ async fn try_build_cose_key(
             CoseKeyBuilder::new_ec2_pub_key(iana::EllipticCurve::P_256, x, y).build()
         }
 
-        OpenPublicKeyJwk::Okp(key) if key.crv == "Ed25519" => {
+        PublicKeyJwk::Okp(key) if key.crv == "Ed25519" => {
             let x = base64decode(key.x)?;
 
             CoseKeyBuilder::new_okp_key()

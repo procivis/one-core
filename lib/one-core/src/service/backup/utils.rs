@@ -3,12 +3,12 @@ use std::io::{self, Cursor, Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
 use anyhow::Context;
-use one_crypto::imp::hasher::sha256::SHA256;
 use time::OffsetDateTime;
 use uuid::Uuid;
 use zip::write::SimpleFileOptions;
 
 use super::dto::MetadataDTO;
+use crate::crypto::hasher::sha256::SHA256;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistoryMetadata};
 use crate::model::organisation::Organisation;
 use crate::service::error::ServiceError;

@@ -3,23 +3,22 @@ use std::vec;
 
 use async_trait::async_trait;
 use model::OptiocalBarcodeCredential;
-use one_crypto::CryptoProvider;
-use one_providers::common_models::did::{DidValue, OpenDid};
-use one_providers::credential_formatter::error::FormatterError;
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
+use shared_types::DidValue;
+
+use super::json_ld::model::ContextType;
+use super::json_ld_classic::verify_credential_signature;
+use crate::crypto::CryptoProvider;
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
 };
-use one_providers::credential_formatter::imp::json_ld::model::ContextType;
-use one_providers::credential_formatter::model::{
+use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
     ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
     VerificationFn,
 };
-use one_providers::credential_formatter::CredentialFormatter;
-use one_providers::http_client::HttpClient;
-use one_providers::revocation::imp::bitstring_status_list::model::StatusPurpose;
-
-use super::json_ld_classic::verify_credential_signature;
+use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::http_client::HttpClient;
 
 mod mappers;
 mod model;

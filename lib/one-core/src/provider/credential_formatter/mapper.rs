@@ -1,11 +1,11 @@
-use one_providers::credential_formatter::model::{
-    CredentialData, CredentialSchemaData, CredentialSchemaMetadata, CredentialStatus, Issuer,
-};
 use time::OffsetDateTime;
 use uuid::fmt::Urn;
 
-use super::map_claims;
+use super::common::map_claims;
 use crate::config::core_config::RevocationType;
+use crate::provider::credential_formatter::model::{
+    CredentialData, CredentialSchemaData, CredentialSchemaMetadata, CredentialStatus, Issuer,
+};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::error::ServiceError;
 
@@ -61,7 +61,7 @@ pub fn credential_data_from_credential_detail_response(
             ) {
                 (Some(l), Some(t)) => Some(CredentialSchemaMetadata {
                     layout_properties: l.into(),
-                    layout_type: t.into(),
+                    layout_type: t,
                 }),
                 _ => None,
             },

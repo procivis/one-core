@@ -10,53 +10,58 @@ use futures::{Stream, TryStreamExt};
 use hkdf::Hkdf;
 use oidc_ble_holder::OpenID4VCBLEHolder;
 use oidc_ble_verifier::OpenID4VCBLEVerifier;
-use one_crypto::imp::hasher::sha256::SHA256;
-use one_crypto::Hasher;
-use one_providers::common_dto::PublicKeyJwkDTO;
-use one_providers::common_models::credential::OpenCredential;
-use one_providers::common_models::did::{DidValue, OpenDid};
-use one_providers::common_models::key::{KeyId, OpenKey};
-use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::common_models::proof::{OpenProof, OpenProofStateEnum};
-use one_providers::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::exchange_protocol::openid4vc::imp::create_presentation_submission;
-use one_providers::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_presentation_definition;
-use one_providers::exchange_protocol::openid4vc::model::{
-    CredentialGroup, CredentialGroupItem, DatatypeType, InvitationResponseDTO, OpenID4VPFormat,
-    PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse, SubmitIssuerResponse,
-    UpdateResponse,
-};
-use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
-use one_providers::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
-use one_providers::exchange_protocol::openid4vc::{
-    FormatMapper, HandleInvitationOperationsAccess, TypeToDescriptorMapper,
-};
-use one_providers::key_storage::provider::KeyProvider;
 use rand::rngs::OsRng;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use shared_types::KeyId;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 use x25519_dalek::{EphemeralSecret, PublicKey};
 
 use super::dto::OpenID4VPBleData;
-use super::mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
+use super::mapper::{
+    create_presentation_submission, get_claim_name_by_json_path,
+    presentation_definition_from_interaction_data,
+};
 use super::model::BLEOpenID4VPInteractionData;
+use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{self, TransportType};
+use crate::crypto::hasher::sha256::SHA256;
+use crate::crypto::Hasher;
+use crate::model::credential::Credential;
+use crate::model::did::Did;
 use crate::model::interaction::Interaction;
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::provider::bluetooth_low_energy::BleError;
+use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::exchange_protocol::dto::{
+    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
+};
 use crate::provider::exchange_protocol::mapper::{
     get_relevant_credentials_to_credential_schemas, proof_from_handle_invitation,
+};
+use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_presentation_definition;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
+};
+use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
+use crate::provider::exchange_protocol::openid4vc::{
+    FormatMapper, HandleInvitationOperationsAccess, TypeToDescriptorMapper,
 };
 use crate::provider::exchange_protocol::{
     deserialize_interaction_data, ExchangeProtocolError, ExchangeProtocolImpl, StorageAccess,
 };
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
+use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::ble_resource::{Abort, BleWaiter};
 use crate::util::oidc::{create_core_to_oicd_format_map, map_from_oidc_format_to_core};
 
@@ -318,7 +323,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
     async fn handle_invitation(
         &self,
         url: Url,
-        _organisation: OpenOrganisation,
+        _organisation: Organisation,
         _storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
@@ -381,23 +386,23 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             "OPENID4VC",
             None,
             None,
-            interaction.into(),
+            interaction,
             now,
             None,
             "BLE",
         );
 
         ble_holder
-            .handle_invitation(name, key, proof.id.into(), interaction_id)
+            .handle_invitation(name, key, proof.id, interaction_id)
             .await?;
 
         Ok(InvitationResponseDTO::ProofRequest {
-            interaction_id: interaction_id.into(),
+            interaction_id,
             proof: Box::new(proof),
         })
     }
 
-    async fn reject_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+    async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let ble_holder = OpenID4VCBLEHolder::new(
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
@@ -412,10 +417,10 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
 
     async fn submit_proof(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
-        holder_did: &OpenDid,
-        key: &OpenKey,
+        holder_did: &Did,
+        key: &Key,
         jwk_key_id: Option<String>,
         format_map: HashMap<String, String>,
         _presentation_format_map: HashMap<String, String>,
@@ -514,9 +519,8 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             ..Default::default()
         };
 
-        let holder_did: DidValue = holder_did.did.to_string().into();
         let vp_token = presentation_formatter
-            .format_presentation(&tokens, &holder_did, &key.key_type, auth_fn, ctx)
+            .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -535,9 +539,9 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
 
     async fn accept_credential(
         &self,
-        _credential: &OpenCredential,
-        _holder_did: &OpenDid,
-        _key: &OpenKey,
+        _credential: &Credential,
+        _holder_did: &Did,
+        _key: &Key,
         _jwk_key_id: Option<String>,
         _format: &str,
         _storage_access: &StorageAccess,
@@ -548,14 +552,14 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
 
     async fn reject_credential(
         &self,
-        _credential: &OpenCredential,
+        _credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         Err(ExchangeProtocolError::OperationNotSupported)
     }
 
     async fn share_credential(
         &self,
-        _credential: &OpenCredential,
+        _credential: &Credential,
         _credential_format: &str,
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         Err(ExchangeProtocolError::OperationNotSupported)
@@ -563,7 +567,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
 
     async fn share_proof(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         format_to_type_mapper: FormatMapper,
         _key_id: KeyId,
         _encryption_key_jwk: PublicKeyJwkDTO,
@@ -574,7 +578,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
 
         // Pass the expected presentation content to interaction for verification
         let presentation_definition = create_open_id_for_vp_presentation_definition(
-            interaction_id.into(),
+            interaction_id,
             proof,
             type_to_descriptor,
             format_to_type_mapper,
@@ -603,7 +607,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         }
 
         ble_verifier
-            .share_proof(presentation_definition, proof.id.into(), interaction_id)
+            .share_proof(presentation_definition, proof.id, interaction_id)
             .await
             .map(|url| ShareResponse {
                 url,
@@ -614,7 +618,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
 
     async fn get_presentation_definition(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         interaction_data: Self::VPInteractionContext,
         storage_access: &StorageAccess,
         _format_map: HashMap<String, String>,
@@ -700,7 +704,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         )
         .await?;
         presentation_definition_from_interaction_data(
-            proof.id.into(),
+            proof.id,
             convert_inner(credentials),
             convert_inner(credential_groups),
             &self.config,
@@ -710,21 +714,21 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
 
     async fn validate_proof_for_submission(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
     ) -> std::result::Result<(), ExchangeProtocolError> {
-        throw_if_latest_proof_state_not_eq(proof, OpenProofStateEnum::Pending)
+        throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Pending)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     async fn verifier_handle_proof(
         &self,
-        _proof: &OpenProof,
+        _proof: &Proof,
         _submission: &[u8],
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
         unimplemented!()
     }
 
-    async fn retract_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+    async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         self.ble
             .as_ref()
             .ok_or_else(|| ExchangeProtocolError::Failed("BLE is missing in service".to_string()))?

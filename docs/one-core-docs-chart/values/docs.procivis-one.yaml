@@ -1,0 +1,6 @@
+ingress:
+  hosts:
+    - host: docs.procivis-one.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific

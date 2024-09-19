@@ -2,9 +2,6 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::PredicateBooleanExt;
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::credential_formatter::MockCredentialFormatter;
 use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -14,7 +11,7 @@ use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutType,
+    LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -22,6 +19,8 @@ use crate::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
     ProofSchema, ProofSchemaRelations,
 };
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -1274,7 +1273,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
                 schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
@@ -1396,7 +1395,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
                 schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
@@ -1468,7 +1467,7 @@ async fn test_import_proof_ok_existing_credential_schema_but_missing_claims() {
         name: "test-credential-schema".to_string(),
         format: "MDOC".to_string(),
         revocation_method: "NONE".to_string(),
-        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "iso-org-test123".to_string(),
@@ -1577,7 +1576,7 @@ async fn test_import_proof_ok_existing_credential_schema_but_missing_claims() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
                 schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
@@ -1660,7 +1659,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: "iso-org-test123".to_string(),
@@ -1712,7 +1711,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
                 schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
@@ -1792,7 +1791,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
                 schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
@@ -1865,7 +1864,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
                 schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
@@ -1937,7 +1936,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
                 name: "test-credential-schema".to_string(),
                 format: "OTHER_FORMAT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
                 schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,

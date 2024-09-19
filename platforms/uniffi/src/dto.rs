@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 use one_core::model::common::{EntityShareResponseDTO, ExactColumn};
 use one_core::model::credential::SortableCredentialColumn;
-use one_core::model::credential_schema::{LayoutType, SortableCredentialSchemaColumn};
+use one_core::model::credential_schema::{
+    LayoutType, SortableCredentialSchemaColumn, WalletStorageTypeEnum,
+};
 use one_core::model::did::{DidType, KeyRole, SortableDidColumn};
 use one_core::model::history::{HistoryAction, HistoryEntityType, HistorySearchEnum};
 use one_core::model::proof::{ProofStateEnum, SortableProofColumn};
@@ -19,6 +21,7 @@ use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
+use one_core::provider::key_storage::model::StorageGeneratedKey;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
@@ -54,8 +57,6 @@ use one_core::service::trust_anchor::dto::{
     GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO, SortableTrustAnchorColumn,
     TrustAnchorsListItemResponseDTO,
 };
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::key_storage::model::StorageGeneratedKey;
 
 use crate::error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
 use crate::mapper::{optional_did_string, optional_time, serialize_config_entity};
@@ -556,8 +557,8 @@ pub enum LayoutTypeBindingEnum {
 }
 
 #[derive(From, Clone, Debug, Into)]
-#[from(OpenWalletStorageTypeEnum)]
-#[into(OpenWalletStorageTypeEnum)]
+#[from(WalletStorageTypeEnum)]
+#[into(WalletStorageTypeEnum)]
 pub enum WalletStorageTypeBindingEnum {
     Hardware,
     Software,

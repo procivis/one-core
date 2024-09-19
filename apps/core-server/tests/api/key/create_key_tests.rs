@@ -26,7 +26,7 @@ async fn test_create_key_es256() {
     assert_eq!(key.name, "ESTEST");
     assert_eq!(key.key_type, "ES256");
     assert!(!key.public_key.is_empty());
-    assert_eq!(key.organisation.unwrap().id, organisation.id.into());
+    assert_eq!(key.organisation.unwrap().id, organisation.id);
 }
 
 #[tokio::test]
@@ -50,7 +50,7 @@ async fn test_create_key_eddsa() {
     assert_eq!(key.name, "EDDSATEST");
     assert_eq!(key.key_type, "EDDSA");
     assert!(!key.public_key.is_empty());
-    assert_eq!(key.organisation.unwrap().id, organisation.id.into());
+    assert_eq!(key.organisation.unwrap().id, organisation.id);
 }
 
 #[tokio::test]

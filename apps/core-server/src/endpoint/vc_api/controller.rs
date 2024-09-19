@@ -1,8 +1,8 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
+use one_core::provider::did_method::error::DidMethodProviderError;
 use one_core::service::error::{MissingProviderError, ServiceError};
-use one_providers::did::error::DidMethodProviderError;
 use shared_types::DidValue;
 
 use super::dto::{

@@ -1,5 +1,3 @@
-use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use serde::{Deserialize, Serialize};
 use shared_types::CredentialSchemaId;
 use strum::Display;
@@ -17,9 +15,7 @@ pub type CredentialSchemaName = String;
 pub type CredentialFormat = String;
 pub type RevocationMethod = String;
 
-#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::credential_schema::OpenCredentialSchema)]
-#[from(one_providers::common_models::credential_schema::OpenCredentialSchema)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CredentialSchema {
     pub id: CredentialSchemaId,
     pub deleted_at: Option<OffsetDateTime>,
@@ -28,23 +24,14 @@ pub struct CredentialSchema {
     pub name: CredentialSchemaName,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
-    #[into(with_fn = "convert_inner")]
-    #[from(with_fn = "convert_inner")]
-    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub layout_type: LayoutType,
-    #[into(with_fn = "convert_inner")]
-    #[from(with_fn = "convert_inner")]
     pub layout_properties: Option<LayoutProperties>,
     pub schema_id: String,
-    #[into(with_fn_ref = "ToString::to_string")]
     pub schema_type: CredentialSchemaType,
 
     // Relations
-    #[into(with_fn = "convert_inner_of_inner")]
-    #[from(with_fn = "convert_inner_of_inner")]
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
-    #[into(with_fn = "convert_inner")]
-    #[from(with_fn = "convert_inner")]
     pub organisation: Option<Organisation>,
 }
 
@@ -72,9 +59,7 @@ impl From<String> for CredentialSchemaType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::OpenCredentialSchemaClaim)]
-#[into(one_providers::common_models::credential_schema::OpenCredentialSchemaClaim)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CredentialSchemaClaim {
     pub schema: ClaimSchema,
     pub required: bool,
@@ -93,9 +78,7 @@ pub enum SortableCredentialSchemaColumn {
     CreatedDate,
 }
 
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::OpenLayoutType)]
-#[into(one_providers::common_models::credential_schema::OpenLayoutType)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum LayoutType {
     Card,
@@ -103,37 +86,32 @@ pub enum LayoutType {
     SingleAttribute,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into, Default)]
-#[from(one_providers::common_models::credential_schema::OpenLayoutProperties)]
-#[into(one_providers::common_models::credential_schema::OpenLayoutProperties)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum WalletStorageTypeEnum {
+    Hardware,
+    Software,
+}
+
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutProperties {
-    #[from(with_fn = "convert_inner")]
-    #[into(with_fn = "convert_inner")]
     pub background: Option<BackgroundProperties>,
-    #[from(with_fn = "convert_inner")]
-    #[into(with_fn = "convert_inner")]
     pub logo: Option<LogoProperties>,
     pub primary_attribute: Option<String>,
     pub secondary_attribute: Option<String>,
     pub picture_attribute: Option<String>,
-    #[from(with_fn = "convert_inner")]
-    #[into(with_fn = "convert_inner")]
     pub code: Option<CodeProperties>,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::OpenBackgroundProperties)]
-#[into(one_providers::common_models::credential_schema::OpenBackgroundProperties)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct BackgroundProperties {
     pub color: Option<String>,
     pub image: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::OpenLogoProperties)]
-#[into(one_providers::common_models::credential_schema::OpenLogoProperties)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct LogoProperties {
     pub font_color: Option<String>,
@@ -141,18 +119,14 @@ pub struct LogoProperties {
     pub image: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::OpenCodeProperties)]
-#[into(one_providers::common_models::credential_schema::OpenCodeProperties)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CodeProperties {
     pub attribute: String,
     pub r#type: CodeTypeEnum,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq, From, Into)]
-#[from(one_providers::common_models::credential_schema::OpenCodeTypeEnum)]
-#[into(one_providers::common_models::credential_schema::OpenCodeTypeEnum)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CodeTypeEnum {
     Barcode,
@@ -167,16 +141,12 @@ pub type GetCredentialSchemaQuery = ListQuery<
     CredentialSchemaListIncludeEntityTypeEnum,
 >;
 
-#[derive(Clone, Debug, Eq, PartialEq, From)]
-#[from(one_providers::common_models::credential_schema::OpenUpdateCredentialSchemaRequest)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
     pub revocation_method: Option<RevocationMethod>,
     pub format: Option<String>,
-    #[from(with_fn = convert_inner_of_inner)]
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
-    #[from(with_fn = convert_inner)]
     pub layout_type: Option<LayoutType>,
-    #[from(with_fn = convert_inner)]
     pub layout_properties: Option<LayoutProperties>,
 }

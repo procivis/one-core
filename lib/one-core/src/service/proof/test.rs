@@ -2,18 +2,6 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::Sequence;
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::common_models::key::OpenKey;
-use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
-use one_providers::credential_formatter::model::FormatterCapabilities;
-use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::credential_formatter::{CredentialFormatter, MockCredentialFormatter};
-use one_providers::did::provider::MockDidMethodProvider;
-use one_providers::exchange_protocol::imp::provider::MockExchangeProtocol;
-use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
-use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
-use one_providers::key_algorithm::MockKeyAlgorithm;
-use one_providers::revocation::provider::MockRevocationMethodProvider;
 use rstest::rstest;
 use shared_types::ProofId;
 use time::OffsetDateTime;
@@ -28,10 +16,11 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutType,
+    LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
+use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -46,10 +35,19 @@ use crate::model::proof_schema::{
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
-use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPPresentationDefinition;
-use crate::provider::exchange_protocol::openid4vc::model::BLEOpenID4VPInteractionData;
+use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::{CredentialFormatter, MockCredentialFormatter};
+use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    BLEOpenID4VPInteractionData, OpenID4VPPresentationDefinition, ShareResponse,
+};
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEPeer;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
+use crate::provider::exchange_protocol::MockExchangeProtocol;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -139,7 +137,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::KeyAgreement,
-                key: OpenKey {
+                key: Key {
                     id: Uuid::new_v4().into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -231,7 +229,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
-                    wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),
@@ -345,7 +343,7 @@ async fn test_get_proof_exists() {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
-                    wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),
@@ -471,7 +469,7 @@ async fn test_get_proof_with_array_holder() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -686,7 +684,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -903,7 +901,7 @@ async fn test_get_proof_with_object_array_holder() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1099,7 +1097,7 @@ async fn test_get_proof_with_array() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1331,7 +1329,7 @@ async fn test_get_proof_with_array_in_object() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1566,7 +1564,7 @@ async fn test_get_proof_with_object_array() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1914,7 +1912,7 @@ async fn test_create_proof_without_related_key() {
                 organisation: None,
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
-                    key: OpenKey {
+                    key: Key {
                         id: verifier_key_id.into(),
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
@@ -2019,8 +2017,8 @@ async fn test_create_proof_with_related_key() {
                 organisation: None,
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
-                    key: OpenKey {
-                        id: verifier_key_id.into(),
+                    key: Key {
+                        id: verifier_key_id,
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                         public_key: vec![],
@@ -2447,7 +2445,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
                 organisation: None,
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
-                    key: OpenKey {
+                    key: Key {
                         id: verifier_key_id.into(),
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
@@ -2506,7 +2504,7 @@ async fn test_share_proof_created_success() {
 
     let mut key_algorithm = MockKeyAlgorithm::new();
     key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
             crv: "123".to_string(),
             x: "456".to_string(),
@@ -2612,7 +2610,7 @@ async fn test_share_proof_pending_success() {
 
     let mut key_algorithm = MockKeyAlgorithm::new();
     key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
             crv: "123".to_string(),
             x: "456".to_string(),

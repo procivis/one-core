@@ -6,9 +6,9 @@ use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use headers::Authorization;
+use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
+use one_core::provider::exchange_protocol::openid4vc::model::OpenID4VCITokenRequestDTO;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use one_providers::exchange_protocol::openid4vc::error::OpenID4VCError;
-use one_providers::exchange_protocol::openid4vc::model::OpenID4VCITokenRequestDTO;
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, ProofId, ProofSchemaId, TrustAnchorId,
 };

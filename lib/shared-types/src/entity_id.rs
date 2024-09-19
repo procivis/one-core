@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::macros::{impls_for_seaorm_newtype, impls_for_uuid_newtype};
+use crate::macros::impls_for_uuid_newtype;
 use crate::{
     CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId, ProofId, ProofSchemaId,
     TrustAnchorId, TrustEntityId,
@@ -14,6 +14,9 @@ use crate::{
 pub struct EntityId(Uuid);
 
 impls_for_uuid_newtype!(EntityId);
+
+#[cfg(feature = "sea-orm")]
+use crate::macros::impls_for_seaorm_newtype;
 
 #[cfg(feature = "sea-orm")]
 impls_for_seaorm_newtype!(EntityId);
@@ -37,7 +40,3 @@ impl_from_other_type!(TrustAnchorId);
 impl_from_other_type!(TrustEntityId);
 impl_from_other_type!(ProofSchemaId);
 impl_from_other_type!(ProofId);
-
-impl_from_other_type!(one_providers::common_models::key::KeyId);
-impl_from_other_type!(one_providers::common_models::organisation::OrganisationId);
-impl_from_other_type!(one_providers::common_models::proof::ProofId);

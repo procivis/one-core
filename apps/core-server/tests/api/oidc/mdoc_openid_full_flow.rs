@@ -1,8 +1,8 @@
 use axum::http::StatusCode;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::CredentialStateEnum;
+use one_core::model::key::Key;
 use one_core::model::proof::{ProofClaim, ProofStateEnum};
-use one_providers::common_models::key::OpenKey;
 use p256::elliptic_curve::sec1::ToEncodedPoint;
 use serde_json::json;
 use time::macros::format_description;
@@ -75,7 +75,7 @@ async fn test_openid4vc_mdoc_flow_ecdsa_array() {
     test_openid4vc_mdoc_flow_array(es256_key_for_did_mdl(), ecdsa_key_2(), KeyType::Ecdsa).await
 }
 
-fn get_key_data(key_type: KeyType, key: OpenKey) -> KeyData {
+fn get_key_data(key_type: KeyType, key: Key) -> KeyData {
     match key_type {
         KeyType::Ecdsa => {
             let pk = p256::PublicKey::from_sec1_bytes(&key.public_key).unwrap();

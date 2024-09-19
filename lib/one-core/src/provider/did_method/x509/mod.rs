@@ -1,10 +1,11 @@
 use async_trait::async_trait;
-use one_providers::common_models::did::{DidId, DidValue};
-use one_providers::common_models::key::OpenKey;
-use one_providers::did::error::DidMethodError;
-use one_providers::did::keys::Keys;
-use one_providers::did::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
-use one_providers::did::DidMethod;
+use shared_types::{DidId, DidValue};
+
+use crate::model::key::Key;
+use crate::provider::did_method::error::DidMethodError;
+use crate::provider::did_method::keys::Keys;
+use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
+use crate::provider::did_method::DidMethod;
 
 pub struct X509Method {}
 
@@ -21,7 +22,7 @@ impl DidMethod for X509Method {
         &self,
         _id: Option<DidId>,
         _params: &Option<serde_json::Value>,
-        _keys: Option<Vec<OpenKey>>,
+        _keys: Option<Vec<Key>>,
     ) -> Result<DidValue, DidMethodError> {
         todo!()
     }

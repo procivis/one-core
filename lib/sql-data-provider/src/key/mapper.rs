@@ -1,8 +1,7 @@
 use dto_mapper::convert_inner;
 use migration::SimpleExpr;
-use one_core::model::key::{GetKeyList, SortableKeyColumn};
+use one_core::model::key::{GetKeyList, Key, SortableKeyColumn};
 use one_core::model::organisation::Organisation;
-use one_providers::common_models::key::OpenKey;
 use sea_orm::IntoSimpleExpr;
 
 use crate::common::calculate_pages_count;
@@ -12,9 +11,9 @@ use crate::list_query::GetEntityColumn;
 pub(super) fn from_model_and_relations(
     value: entity::key::Model,
     organisation: Option<Organisation>,
-) -> OpenKey {
-    OpenKey {
-        id: value.id.into(),
+) -> Key {
+    Key {
+        id: value.id,
         created_date: value.created_date,
         last_modified: value.last_modified,
         public_key: value.public_key,
@@ -50,10 +49,10 @@ pub(crate) fn create_list_response(
     }
 }
 
-impl From<entity::key::Model> for OpenKey {
+impl From<entity::key::Model> for Key {
     fn from(value: entity::key::Model) -> Self {
         Self {
-            id: value.id.into(),
+            id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             public_key: value.public_key,
