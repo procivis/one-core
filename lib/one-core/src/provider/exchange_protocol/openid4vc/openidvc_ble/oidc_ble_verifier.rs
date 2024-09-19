@@ -125,6 +125,12 @@ impl OpenID4VCBLEVerifier {
                             identity_request.nonce,
                         );
 
+                        let nonce = utilities::generate_nonce();
+                        let request = BleOpenId4VpRequest {
+                                    verifier_client_id: verifier_name.clone(),
+                                    nonce: nonce.clone(),
+                                    presentation_definition: presentation_definition.clone().into(),
+                                };
                         let presentation_submission = select! {
                             biased;
 
@@ -132,12 +138,6 @@ impl OpenID4VCBLEVerifier {
                                 Err(ExchangeProtocolError::Failed("wallet disconnected".into()))
                             },
                             result = async {
-                                let nonce = utilities::generate_nonce();
-                        let request = BleOpenId4VpRequest {
-                                    verifier_client_id: verifier_name.clone(),
-                                    nonce: nonce.clone(),
-                                    presentation_definition: presentation_definition.clone().into(),
-                                };
                                 write_presentation_request(request, &peer, peripheral.clone()).await?;
 
                                 let now = OffsetDateTime::now_utc();
@@ -162,7 +162,7 @@ impl OpenID4VCBLEVerifier {
                             peer,
                             client_id: Some(verifier_name),
                             nonce: Some(nonce),
-                            holder_nonce: Some(hex::encode(identity_request.nonce)),
+                            identity_request_nonce: Some(hex::encode(identity_request.nonce)),
                             presentation_definition: Some(presentation_definition.into()),
                             presentation_submission: Some(presentation_submission),
                         };

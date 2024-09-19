@@ -2889,7 +2889,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     input_descriptors: vec![],
                 }),
                 presentation_submission: None,
-                holder_nonce: None,
+                identity_request_nonce: None,
                 client_id: None,
             };
 

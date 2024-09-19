@@ -62,10 +62,11 @@ pub struct BLEOpenID4VPInteractionData {
     pub task_id: Uuid,
     pub peer: BLEPeer,
     pub nonce: Option<String>,
-    // nonce coming from the identity request
-    pub holder_nonce: Option<String>,
+    #[serde(default)]
+    pub identity_request_nonce: Option<String>,
     pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
     pub presentation_submission: Option<BleOpenId4VpResponse>,
+    #[serde(default)]
     pub client_id: Option<String>,
 }
 

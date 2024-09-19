@@ -8,7 +8,6 @@ use serde::{ser, Deserialize, Serialize, Serializer};
 use sha2::{Digest, Sha256};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
-use url::Url;
 
 use crate::provider::exchange_protocol::iso_mdl::common::EReaderKey;
 use crate::provider::exchange_protocol::iso_mdl::device_engagement::DeviceEngagement;
