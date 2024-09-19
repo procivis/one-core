@@ -116,16 +116,28 @@ extension IOSBLEPeripheral: BlePeripheral {
     func stopServer() async throws {
         _peripheralManager = nil
         startAdvertisementResultCallback = nil
-        getConnectionChangeEventsResultCallback = nil
-        readyToUpdateSubscribersCallbacks = []
-        getCharacteristicWritesResultCallbacks = [:]
-        getCharacteristicReadResultCallbacks = [:]
         services = []
-        connectedCentrals = [:]
-        characteristicValues = [:]
-        connectionChangeEventsQueue = []
-        characteristicWritesQueue = [:]
-        characteristicReadsQueue = [:]
+        
+        adapterStateLock.withLock {
+            adapterStateCallback = nil
+        }
+        notifyLock.withLock {
+            readyToUpdateSubscribersCallbacks = []
+        }
+        readLock.withLock {
+            getCharacteristicReadResultCallbacks = [:]
+            characteristicValues = [:]
+            characteristicReadsQueue = [:]
+        }
+        writeLock.withLock {
+            getCharacteristicWritesResultCallbacks = [:]
+            characteristicWritesQueue = [:]
+        }
+        connectionLock.withLock {
+            getConnectionChangeEventsResultCallback = nil
+            connectedCentrals = [:]
+            connectionChangeEventsQueue = []
+        }
     }
     
     func isAdvertising() async throws -> Bool {
