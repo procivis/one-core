@@ -49,17 +49,11 @@ extension IOSBLECentral: BleCentral {
                 if (state == .unknown) {
                     adapterStateCallback = { [weak self] result in
                         self?.adapterStateCallback = nil
-                        switch (result) {
-                        case .success:
-                            let updatedState = result.get()
+                        if case .success(let updatedState) = result {
 #if DEBUG
                             print("centralManager updatedState \(updatedState)")
 #endif
                             continuation.resume(returning: updatedState == .poweredOn)
-                            break
-                        default:
-                            // never happens
-                            break
                         }
                     }
                 } else {
