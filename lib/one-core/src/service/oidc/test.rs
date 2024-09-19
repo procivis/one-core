@@ -1273,6 +1273,8 @@ async fn test_oidc_verifier_presentation_definition_success() {
                 },
             }],
         },
+        client_id: None,
+        response_uri: None,
     })
     .unwrap();
 
@@ -1479,6 +1481,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 },
             }],
         },
+        client_id: None,
+        response_uri: None,
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let now = OffsetDateTime::now_utc();

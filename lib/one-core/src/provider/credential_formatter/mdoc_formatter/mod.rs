@@ -144,14 +144,25 @@ impl MdocFormatter {
                     "Missing base_url".to_owned(),
                 ))?;
 
-        // workaround, info not passed via context
-        let client_id = Url::parse(&format!("{}/ssi/oidc-verifier/v1/response", base_url))
-            .map_err(|_| {
+        let client_id = context
+            .client_id
+            .clone()
+            .or_else(|| {
+                // fallback for backwards compatibility
+                Url::parse(&format!("{}/ssi/oidc-verifier/v1/response", base_url))
+                    .map(|u| u.to_string())
+                    .ok()
+            })
+            .ok_or_else(|| {
                 FormatterError::CouldNotExtractPresentation(
                     "Could not create client_id for validation".to_owned(),
                 )
             })?;
-        let response_uri = &client_id;
+
+        let response_uri = context
+            .response_uri
+            .as_deref()
+            .unwrap_or(client_id.as_str());
 
         let session_transcript = SessionTranscript {
             device_engagement_bytes: None,
@@ -359,6 +370,7 @@ impl CredentialFormatter for MdocFormatter {
         let (session_transcript, nonce) = self.extract_presentation_context(&context)?;
 
         let did_mdl_validator = self.did_mdl_validator()?;
+
         let mut current_issuer_did = None;
 
         // can we have more than one document?

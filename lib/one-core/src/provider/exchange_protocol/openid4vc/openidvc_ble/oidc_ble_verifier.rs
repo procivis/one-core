@@ -28,7 +28,7 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, BleOpenId4VpResponse,
+    BLEOpenID4VPInteractionData, BleOpenId4VpRequest, BleOpenId4VpResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
     parse_identity_request, BLEParse,
@@ -72,7 +72,7 @@ impl OpenID4VCBLEVerifier {
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     pub async fn share_proof(
         self,
-        proof_request: OpenID4VPPresentationDefinition,
+        presentation_definition: OpenID4VPPresentationDefinition,
         proof_id: ProofId,
         interaction_id: InteractionId,
     ) -> Result<String, ExchangeProtocolError> {
@@ -98,8 +98,12 @@ impl OpenID4VCBLEVerifier {
             .schedule(
                 *OIDC_BLE_FLOW,
                 |task_id, _, peripheral| async move {
-                    start_advertisement(keypair.public_key_bytes(), verifier_name, &*peripheral)
-                        .await?;
+                    start_advertisement(
+                        keypair.public_key_bytes(),
+                        verifier_name.clone(),
+                        &*peripheral,
+                    )
+                    .await?;
 
                     let mut connection_event_stream =
                         get_connection_event_stream(peripheral.clone()).await;
@@ -121,6 +125,12 @@ impl OpenID4VCBLEVerifier {
                             identity_request.nonce,
                         );
 
+                        let nonce = utilities::generate_nonce();
+                        let request = BleOpenId4VpRequest {
+                                    verifier_client_id: verifier_name.clone(),
+                                    nonce: nonce.clone(),
+                                    presentation_definition: presentation_definition.clone().into(),
+                                };
                         let presentation_submission = select! {
                             biased;
 
@@ -128,12 +138,7 @@ impl OpenID4VCBLEVerifier {
                                 Err(ExchangeProtocolError::Failed("wallet disconnected".into()))
                             },
                             result = async {
-                                write_presentation_request(
-                                    proof_request.clone(),
-                                    &peer,
-                                    peripheral.clone(),
-                                )
-                                .await?;
+                                write_presentation_request(request, &peer, peripheral.clone()).await?;
 
                                 let now = OffsetDateTime::now_utc();
                                 proof_repository
@@ -155,8 +160,10 @@ impl OpenID4VCBLEVerifier {
                         let new_data = BLEOpenID4VPInteractionData {
                             task_id,
                             peer,
-                            nonce: Some(hex::encode(identity_request.nonce)),
-                            presentation_definition: Some(proof_request.into()),
+                            client_id: Some(verifier_name),
+                            nonce: Some(nonce),
+                            identity_request_nonce: Some(hex::encode(identity_request.nonce)),
+                            presentation_definition: Some(presentation_definition.into()),
                             presentation_submission: Some(presentation_submission),
                         };
 
@@ -337,7 +344,7 @@ async fn start_advertisement(
     };
 
     ble_peripheral
-        .start_advertisement(Some(verifier_name.clone()), vec![get_advertise_data()])
+        .start_advertisement(Some(verifier_name), vec![get_advertise_data()])
         .await
         .map_err(|e| ExchangeProtocolError::Transport(e.into()))?;
 
@@ -451,13 +458,13 @@ pub fn read(
 
 #[tracing::instrument(level = "debug", skip(ble_peripheral), err(Debug))]
 async fn write_presentation_request(
-    proof_request: OpenID4VPPresentationDefinition,
+    request: BleOpenId4VpRequest,
     peer: &BLEPeer,
     ble_peripheral: Arc<dyn BlePeripheral>,
 ) -> Result<(), ExchangeProtocolError> {
     let encrypted = peer
-        .encrypt(proof_request)
-        .context("Failed to encrypt proof request")
+        .encrypt(request)
+        .context("Failed to encrypt presentation request")
         .map_err(ExchangeProtocolError::Transport)?;
 
     let chunks = Chunks::from_bytes(encrypted.as_slice(), peer.device_info.mtu());
