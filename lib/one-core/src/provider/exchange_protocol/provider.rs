@@ -43,7 +43,7 @@ use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use crate::util::revocation_update::{get_revocation_list_id, process_update};
+use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
 
 #[async_trait::async_trait]
 pub(crate) trait ExchangeProtocolProviderExtra: ExchangeProtocolProvider {
@@ -249,38 +249,43 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                 credential_schema.revocation_method.clone(),
             ))?;
 
-        let formatter = self
-            .formatter_provider
-            .get_formatter(&format)
-            .ok_or(ValidationError::InvalidFormatter(format.to_string()))?;
+        let mut credential_additional_data = None;
+        // TODO: refactor this when refactoring the formatters as it makes no sense for to construct this for LVVC
+        if &credential_schema.revocation_method == "BITSTRINGSTATUSLIST" {
+            let formatter = self
+                .formatter_provider
+                .get_formatter("JWT")
+                .ok_or(ValidationError::InvalidFormatter("JWT".to_string()))?;
+
+            credential_additional_data = Some(CredentialAdditionalData {
+                credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
+                revocation_list_id: get_or_create_revocation_list_id(
+                    &credentials_by_issuer_did,
+                    issuer_did,
+                    RevocationListPurpose::Revocation,
+                    &*self.revocation_list_repository,
+                    &self.key_provider,
+                    &self.core_base_url,
+                    &*formatter,
+                    None,
+                )
+                .await?,
+                suspension_list_id: get_or_create_revocation_list_id(
+                    &credentials_by_issuer_did,
+                    issuer_did,
+                    RevocationListPurpose::Suspension,
+                    &*self.revocation_list_repository,
+                    &self.key_provider,
+                    &self.core_base_url,
+                    &*formatter,
+                    None,
+                )
+                .await?,
+            });
+        }
 
         let (update, status) = revocation_method
-            .add_issued_credential(
-                &credential.to_owned().into(),
-                Some(CredentialAdditionalData {
-                    credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
-                    revocation_list_id: get_revocation_list_id(
-                        &credentials_by_issuer_did,
-                        issuer_did,
-                        RevocationListPurpose::Revocation,
-                        &*self.revocation_list_repository,
-                        &self.key_provider,
-                        &self.core_base_url,
-                        &*formatter,
-                    )
-                    .await?,
-                    suspension_list_id: get_revocation_list_id(
-                        &credentials_by_issuer_did,
-                        issuer_did,
-                        RevocationListPurpose::Suspension,
-                        &*self.revocation_list_repository,
-                        &self.key_provider,
-                        &self.core_base_url,
-                        &*formatter,
-                    )
-                    .await?,
-                }),
-            )
+            .add_issued_credential(&credential.to_owned().into(), credential_additional_data)
             .await?;
         if let Some(update) = update {
             process_update(

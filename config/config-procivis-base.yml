@@ -81,9 +81,6 @@ revocation:
     order: 1
     disabled: false
     type: "BITSTRINGSTATUSLIST"
-    params:
-      public:
-        bitstringCredentialFormat: "JSON_LD_CLASSIC"
   LVVC:
     display: "revocation.lvvc"
     order: 2

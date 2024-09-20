@@ -26,6 +26,7 @@ pub struct CredentialIssueRequestDto {
 pub struct IssueOptionsDto {
     pub signature_algorithm: String,
     pub credential_format: String,
+    pub revocation_method: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, From)]

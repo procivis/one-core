@@ -15,10 +15,18 @@ use crate::dto::response::ErrorResponse;
 pub enum VcApiResponse<T: Serialize> {
     Error(VcApiError),
     Ok(T),
+    Created(T),
 }
 
 impl<T: Serialize> VcApiResponse<T> {
-    pub fn from_result(result: Result<impl Into<T>, ServiceError>) -> Self {
+    pub fn created(result: Result<impl Into<T>, ServiceError>) -> Self {
+        match result {
+            Ok(value) => Self::Created(value.into()),
+            Err(error) => Self::Error(error.into()),
+        }
+    }
+
+    pub fn ok(result: Result<impl Into<T>, ServiceError>) -> Self {
         match result {
             Ok(value) => Self::Ok(value.into()),
             Err(error) => Self::Error(error.into()),
@@ -30,6 +38,7 @@ impl<T: Serialize> IntoResponse for VcApiResponse<T> {
     fn into_response(self) -> axum::response::Response {
         match self {
             Self::Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+            Self::Created(value) => (StatusCode::CREATED, Json(value)).into_response(),
             Self::Error(error) => error.into_response(),
         }
     }

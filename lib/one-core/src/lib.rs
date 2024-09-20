@@ -495,7 +495,7 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 formatter_provider.clone(),
                 did_method_provider.clone(),
-                revocation_method_provider,
+                revocation_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 data_provider.get_history_repository(),
                 config.clone(),
@@ -516,6 +516,8 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
+                data_provider.get_revocation_list_repository(),
+                providers.core_base_url,
             ),
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_repository(),

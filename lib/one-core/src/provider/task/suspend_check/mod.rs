@@ -113,9 +113,9 @@ impl Task for SuspendCheckProvider {
 
             let revocation_method = self
                 .revocation_method_provider
-                .get_revocation_method("BitstringStatusList")
+                .get_revocation_method("BITSTRINGSTATUSLIST")
                 .ok_or(MissingProviderError::RevocationMethod(
-                    "BitstringStatusList".to_string(),
+                    "BITSTRINGSTATUSLIST".to_string(),
                 ))?;
 
             let update = revocation_method

@@ -40,11 +40,9 @@ pub(crate) async fn generate_credential_additional_data(
         return Ok(None);
     }
 
-    let params: Params = convert_params(revocation_method.get_params()?)?;
-
-    let bitstring_credential_format = params
-        .bistring_credential_format
-        .unwrap_or("JWT".to_string());
+    let _params: Params = convert_params(revocation_method.get_params()?)?;
+    // ignore JSON-LD formatter for now
+    let bitstring_credential_format = "JWT";
 
     let issuer_did = credential
         .issuer_did
@@ -64,12 +62,14 @@ pub(crate) async fn generate_credential_additional_data(
     );
 
     let formatter = formatter_provider
-        .get_formatter(&bitstring_credential_format)
-        .ok_or(ServiceError::MissingProvider(
-            MissingProviderError::Formatter(bitstring_credential_format.to_owned()),
-        ))?;
+        .get_formatter(bitstring_credential_format)
+        .ok_or_else(|| {
+            ServiceError::MissingProvider(MissingProviderError::Formatter(
+                bitstring_credential_format.to_owned(),
+            ))
+        })?;
 
-    let revocation_list_id = get_revocation_list_id(
+    let revocation_list_id = get_or_create_revocation_list_id(
         &credentials_by_issuer_did,
         issuer_did,
         RevocationListPurpose::Revocation,
@@ -77,10 +77,11 @@ pub(crate) async fn generate_credential_additional_data(
         key_provider,
         core_base_url,
         &*formatter,
+        None,
     )
     .await?;
 
-    let suspension_list_id = get_revocation_list_id(
+    let suspension_list_id = get_or_create_revocation_list_id(
         &credentials_by_issuer_did,
         issuer_did,
         RevocationListPurpose::Suspension,
@@ -88,6 +89,7 @@ pub(crate) async fn generate_credential_additional_data(
         key_provider,
         core_base_url,
         &*formatter,
+        None,
     )
     .await?;
 
@@ -117,7 +119,8 @@ pub(crate) async fn process_update(
     Ok(())
 }
 
-pub(crate) async fn get_revocation_list_id(
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn get_or_create_revocation_list_id(
     credentials_by_issuer_did: &[one_providers::common_models::credential::OpenCredential],
     issuer_did: &Did,
     purpose: RevocationListPurpose,
@@ -125,6 +128,7 @@ pub(crate) async fn get_revocation_list_id(
     key_provider: &Arc<dyn KeyProvider>,
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
+    key_id: Option<String>,
 ) -> Result<RevocationListId, ServiceError> {
     let revocation_list = revocation_list_repository
         .get_revocation_by_issuer_did_id(
@@ -155,6 +159,7 @@ pub(crate) async fn get_revocation_list_id(
                 key_provider,
                 core_base_url,
                 formatter,
+                key_id,
             )
             .await?;
 

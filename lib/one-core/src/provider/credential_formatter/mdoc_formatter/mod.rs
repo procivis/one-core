@@ -13,7 +13,7 @@ use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use mdoc::{DataElementValue, DeviceNamespaces};
 use one_crypto::SignerError;
-use one_providers::common_models::did::DidValue;
+use one_providers::common_models::did::{DidValue, OpenDid};
 use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::imp::json_ld::model::ContextType;
@@ -26,6 +26,7 @@ use one_providers::credential_formatter::model::{
 use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use one_providers::revocation::imp::bitstring_status_list::model::StatusPurpose;
 use rand::RngCore;
 use serde::Deserialize;
 use serde_json::json;
@@ -273,6 +274,20 @@ impl CredentialFormatter for MdocFormatter {
         };
 
         encode_cbor_base64(issuer_signed)
+    }
+
+    async fn format_bitstring_status_list(
+        &self,
+        _revocation_list_url: String,
+        _issuer_did: &OpenDid,
+        _encoded_list: String,
+        _algorithm: String,
+        _auth_fn: AuthenticationFn,
+        _status_purpose: StatusPurpose,
+    ) -> Result<String, FormatterError> {
+        Err(FormatterError::Failed(
+            "Cannot format BitstringStatusList with MDOC formatter".to_string(),
+        ))
     }
 
     async fn extract_credentials(

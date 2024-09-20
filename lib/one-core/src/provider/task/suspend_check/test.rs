@@ -145,7 +145,7 @@ async fn test_run_one_update() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .times(2)
+        .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
     let mut history_repository = MockHistoryRepository::default();
