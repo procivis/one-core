@@ -332,13 +332,19 @@ impl OIDCService {
                 &interaction.id,
                 &CredentialRelations {
                     interaction: Some(InteractionRelations::default()),
+                    schema: Some(CredentialSchemaRelations::default()),
                     state: Some(CredentialStateRelations::default()),
                     ..Default::default()
                 },
             )
             .await?;
 
-        let Some(credential) = credentials.into_iter().next() else {
+        let Some(credential) = credentials.iter().find(|credential| {
+            credential
+                .schema
+                .as_ref()
+                .is_some_and(|schema| schema.id == *credential_schema_id)
+        }) else {
             return Err(
                 BusinessLogicError::MissingCredentialsForInteraction { interaction_id }.into(),
             );
@@ -392,7 +398,7 @@ impl OIDCService {
         Ok(OpenID4VCICredentialResponseDTO {
             credential: issued_credential.credential,
             format: request.format,
-            redirect_uri: credential.redirect_uri,
+            redirect_uri: credential.redirect_uri.to_owned(),
         })
     }
 
