@@ -35,7 +35,7 @@ sql-data-provider            = { version = "0.1.0", path = "../../lib/sql-data-p
 thiserror.workspace          = true
 time.workspace               = true
 tokio                        = { workspace = true, features = ["macros", "rt-multi-thread"] }
-tower-http                   = { version = "0.5", features = ["trace", "catch-panic"] }
+tower-http                   = { version = "0.6", features = ["trace", "catch-panic"] }
 tracing-subscriber.workspace = true
 tracing.workspace            = true
 url.workspace                = true

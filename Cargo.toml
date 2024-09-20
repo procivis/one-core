@@ -15,9 +15,7 @@ members = [
   "apps/core-server",
   "apps/migration",
 
-  # "lib/one-dev-services/examples/did_resolution_example",
-  # "lib/one-dev-services/examples/credential_example",
-  # "lib/one-dev-services/examples/signature_example",
+  "examples",
 ]
 resolver = "2"
 
