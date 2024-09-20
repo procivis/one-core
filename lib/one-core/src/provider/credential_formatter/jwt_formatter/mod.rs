@@ -1,8 +1,9 @@
 //! Implementations for JWT credential format.
 
 use async_trait::async_trait;
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use mapper::format_vc;
-use model::{VCContent, VPContent, VC, VP};
+use model::{EnvelopedContent, VCContent, VPContent, VerifiableCredential, VC, VP};
 use serde::Deserialize;
 use serde_json::json;
 use shared_types::DidValue;
@@ -189,10 +190,10 @@ impl CredentialFormatter for JWTFormatter {
         auth_fn: AuthenticationFn,
         FormatPresentationCtx { nonce, .. }: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
-        let vp: VP = format_payload(tokens);
+        let vp: VP = format_payload(tokens)?;
 
         let now = OffsetDateTime::now_utc();
-        let valid_for = time::Duration::minutes(5);
+        let valid_for = Duration::minutes(5);
 
         let payload = JWTPayload {
             issued_at: Some(now),
@@ -220,7 +221,7 @@ impl CredentialFormatter for JWTFormatter {
         // Build fails if verification fails
         let jwt: Jwt<VP> = Jwt::build_from_token(token, Some(verification)).await?;
 
-        Ok(jwt.into())
+        jwt.try_into()
     }
 
     fn get_leeway(&self) -> u64 {
@@ -290,16 +291,46 @@ impl CredentialFormatter for JWTFormatter {
     ) -> Result<Presentation, FormatterError> {
         let jwt: Jwt<VP> = Jwt::build_from_token(token, None).await?;
 
-        Ok(jwt.into())
+        jwt.try_into()
     }
 }
 
-fn format_payload(credentials: &[String]) -> VP {
-    VP {
+fn format_payload(credentials: &[String]) -> Result<VP, FormatterError> {
+    let mut has_enveloped_presentation = false;
+
+    let tokens = credentials
+        .iter()
+        .map(|token| {
+            if Base64UrlSafeNoPadding::decode_to_vec(token, None).is_ok() {
+                let token = format!("data:application/vp+mso_mdoc,{}", token);
+
+                let vp = EnvelopedContent {
+                    context: vcdm_v2_base_context(None),
+                    id: token,
+                    r#type: vec!["EnvelopedVerifiablePresentation".to_owned()],
+                };
+                has_enveloped_presentation = true;
+
+                Ok(VerifiableCredential::Enveloped(vp))
+            } else {
+                Ok(VerifiableCredential::Token(token.to_owned()))
+            }
+        })
+        .collect::<Result<Vec<VerifiableCredential>, FormatterError>>()?;
+
+    let types = match has_enveloped_presentation {
+        false => vec!["VerifiablePresentation".to_owned()],
+        true => vec![
+            "VerifiablePresentation".to_owned(),
+            "EnvelopedVerifiablePresentation".to_owned(),
+        ],
+    };
+
+    Ok(VP {
         vp: VPContent {
             context: vcdm_v2_base_context(None),
-            r#type: vec!["VerifiablePresentation".to_owned()],
-            verifiable_credential: credentials.to_vec(),
+            r#type: types,
+            verifiable_credential: tokens,
         },
-    }
+    })
 }

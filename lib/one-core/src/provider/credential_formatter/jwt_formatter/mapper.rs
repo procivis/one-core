@@ -1,6 +1,6 @@
 use shared_types::DidValue;
 
-use super::model::{VCContent, VC, VP};
+use super::model::{VCContent, VerifiableCredential, VC, VP};
 use crate::provider::credential_formatter::common::nest_claims;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::model::ContextType;
@@ -78,15 +78,36 @@ impl From<Jwt<VC>> for DetailCredential {
     }
 }
 
-impl From<Jwt<VP>> for Presentation {
-    fn from(jwt: Jwt<VP>) -> Self {
-        Presentation {
+impl TryFrom<Jwt<VP>> for Presentation {
+    type Error = FormatterError;
+
+    fn try_from(jwt: Jwt<VP>) -> Result<Self, Self::Error> {
+        let credentials = jwt
+            .payload
+            .custom
+            .vp
+            .verifiable_credential
+            .into_iter()
+            .map(|vc| match vc {
+                VerifiableCredential::Enveloped(enveloped) => {
+                    let (_type, token) = enveloped.id.split_once(',').ok_or(
+                        FormatterError::CouldNotExtractPresentation(
+                            "Enveloped VP id missing delimiter".to_string(),
+                        ),
+                    )?;
+                    Ok(token.to_string())
+                }
+                VerifiableCredential::Token(token) => Ok(token),
+            })
+            .collect::<Result<Vec<_>, FormatterError>>()?;
+
+        Ok(Presentation {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
             issuer_did: jwt.payload.issuer.map(DidValue::from),
             nonce: jwt.payload.nonce,
-            credentials: jwt.payload.custom.vp.verifiable_credential,
-        }
+            credentials,
+        })
     }
 }

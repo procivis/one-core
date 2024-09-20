@@ -57,7 +57,7 @@ pub(crate) fn validate_create_request(
         .get_formatter(&request.format)
         .ok_or(MissingProviderError::Formatter(request.format.to_owned()))?;
 
-    validate_cliam_names(request, &*formatter)?;
+    validate_claim_names(request, &*formatter)?;
     validate_revocation_method_is_compatible_with_format(request, config, &*formatter)?;
     validate_credential_design(request, &*formatter)?;
     validate_mdoc_claim_types(request, config)?;
@@ -188,7 +188,7 @@ fn handle_attribute_claim_validation(
     Ok(())
 }
 
-fn validate_cliam_names(
+fn validate_claim_names(
     request: &CreateCredentialSchemaRequestDTO,
     formatter: &dyn CredentialFormatter,
 ) -> Result<(), ServiceError> {

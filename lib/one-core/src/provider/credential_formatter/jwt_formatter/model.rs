@@ -39,7 +39,7 @@ pub struct VPContent {
     pub context: Vec<ContextType>,
     #[serde(rename = "type")]
     pub r#type: Vec<String>,
-    pub verifiable_credential: Vec<String>,
+    pub verifiable_credential: Vec<VerifiableCredential>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -52,4 +52,20 @@ pub struct VC {
 #[serde(rename_all = "camelCase")]
 pub struct VP {
     pub vp: VPContent,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum VerifiableCredential {
+    Enveloped(EnvelopedContent),
+    Token(String),
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct EnvelopedContent {
+    #[serde(rename = "@context")]
+    pub context: Vec<ContextType>,
+    pub id: String,
+    #[serde(rename = "type")]
+    pub r#type: Vec<String>,
 }
