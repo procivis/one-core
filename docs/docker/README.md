@@ -1,11 +1,13 @@
 # Docker Rust documentation
 
-* Build image
+- Build image
+
 ```shell
-docker build -t open-core-docs -f docs/docker/Dockerfile .
+docker build -t one-core-docs -f docs/docker/Dockerfile .
 ```
 
-* Run image
+- Run image
+
 ```shell
-docker run -p 80:8000 -it --rm open-core-docs
+docker run -p 80:8000 -it --rm one-core-docs
 ```

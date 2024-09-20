@@ -6,14 +6,14 @@ use one_core::provider::did_method::universal::{
 };
 use one_core::provider::did_method::DidMethod;
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
-use one_dev_services::OneOpenCore;
+use one_dev_services::OneDevCore;
 use shared_types::DidValue;
 
 #[tokio::main]
 async fn main() -> Result<(), DidMethodError> {
     let client = Arc::new(ReqwestClient::default());
 
-    let core = OneOpenCore::new(None, client.clone()).unwrap();
+    let core = OneDevCore::new(None, client.clone()).unwrap();
     let did_service = core.did_service;
 
     let example_did_values_implemented = vec![

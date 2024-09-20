@@ -69,7 +69,7 @@
 //!
 //! ```ignore rust
 //! /// `None` initializes the Core with the default configuration
-//! let core = OneOpenCore::new(None).unwrap();
+//! let core = OneDevCore::new(None).unwrap();
 //! ```
 //!
 //! Then start using the services, e.g.:
@@ -94,13 +94,13 @@
 //!
 //! [cmvp]: https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program
 //! [cryp]: ../one_crypto/index.html
-//! [cs]: ..//one_open_core/service/credential_service/struct.CredentialService.html
+//! [cs]: ..//one_core/service/credential_service/struct.CredentialService.html
 //! [docs]: https://docs.procivis.ch/
-//! [dresolv]: ..//one_open_core/service/did_service/struct.DidService.html
+//! [dresolv]: ..//one_core/service/did_service/struct.DidService.html
 //! [repo]: https://github.com/procivis/one-open-core
-//! [serv]: ..//one_open_core/service/index.html
+//! [serv]: ..//one_core/service/index.html
 //! [sl]: https://w3c.github.io/vc-bitstring-status-list/
-//! [ss]: ..//one_open_core/service/signature_service/struct.SignatureService.html
+//! [ss]: ..//one_core/service/signature_service/struct.SignatureService.html
 
 #![doc(html_favicon_url = "https://docs.procivis.ch/img/favicon.svg")]
 
@@ -157,19 +157,19 @@ pub mod config;
 pub mod model;
 pub mod service;
 
-pub struct OneOpenCore {
+pub struct OneDevCore {
     pub signature_service: SignatureService,
     pub did_service: DidService,
     pub credential_service: CredentialService,
 }
 
-impl Default for OneOpenCore {
+impl Default for OneDevCore {
     fn default() -> Self {
         Self::new(None, Arc::new(ReqwestClient::default())).unwrap()
     }
 }
 
-impl OneOpenCore {
+impl OneDevCore {
     pub fn new(
         config: Option<OneCoreConfig>,
         client: Arc<dyn HttpClient>,

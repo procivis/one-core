@@ -3,11 +3,11 @@ use std::sync::Arc;
 use hex_literal::hex;
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_dev_services::model::KeyAlgorithmType;
-use one_dev_services::OneOpenCore;
+use one_dev_services::OneDevCore;
 use zeroize::Zeroizing;
 
 fn main() {
-    let core = OneOpenCore::new(None, Arc::new(ReqwestClient::default())).unwrap();
+    let core = OneDevCore::new(None, Arc::new(ReqwestClient::default())).unwrap();
 
     let key_pair = core
         .signature_service

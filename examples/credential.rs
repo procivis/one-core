@@ -7,13 +7,13 @@ use one_core::provider::credential_formatter::model::{
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_dev_services::model::{CredentialFormat, KeyAlgorithmType, StorageType};
 use one_dev_services::service::error::CredentialServiceError;
-use one_dev_services::OneOpenCore;
+use one_dev_services::OneDevCore;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> Result<(), CredentialServiceError> {
-    let core = OneOpenCore::new(None, Arc::new(ReqwestClient::default())).unwrap();
+    let core = OneDevCore::new(None, Arc::new(ReqwestClient::default())).unwrap();
 
     let did_service = core.did_service;
     let did_method = did_service
