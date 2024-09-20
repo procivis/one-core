@@ -32,7 +32,7 @@ pub(crate) async fn issue_credential(
         .issue_credential(request.into())
         .await;
 
-    VcApiResponse::from_result(issued)
+    VcApiResponse::created(issued)
 }
 
 #[tracing::instrument(level = "debug", skip(state))]
@@ -53,7 +53,7 @@ pub(crate) async fn verify_credential(
         .verify_credential(request.into())
         .await;
 
-    VcApiResponse::from_result(result)
+    VcApiResponse::ok(result)
 }
 
 #[tracing::instrument(level = "debug", skip(state))]
@@ -74,7 +74,7 @@ pub(crate) async fn verify_presentation(
         .verify_presentation(request.into())
         .await;
 
-    VcApiResponse::from_result(result)
+    VcApiResponse::ok(result)
 }
 
 #[tracing::instrument(level = "debug", skip(state))]
@@ -103,5 +103,5 @@ pub(crate) async fn resolve_identifier(
             _ => ServiceError::DidMethodProviderError(e),
         });
 
-    VcApiResponse::from_result(result)
+    VcApiResponse::ok(result)
 }

@@ -603,7 +603,8 @@ impl CredentialService {
                     &credential,
                     &*self.credential_repository,
                     &*self.revocation_list_repository,
-                    &*self.revocation_method_provider,
+                    &*revocation_method,
+                    &*self.formatter_provider,
                     &self.key_provider,
                     &self.base_url,
                 )

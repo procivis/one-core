@@ -2203,7 +2203,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .times(2)
+        .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
     let mut history_repository = MockHistoryRepository::default();
@@ -2277,7 +2277,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .times(2)
+        .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
     let mut history_repository = MockHistoryRepository::default();
@@ -2359,7 +2359,7 @@ async fn test_suspend_credential_success() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .times(2)
+        .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
     let mut history_repository = MockHistoryRepository::default();
@@ -2484,7 +2484,7 @@ async fn test_reactivate_credential_success() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .times(2)
+        .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
     let mut history_repository = MockHistoryRepository::default();

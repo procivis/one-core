@@ -81,6 +81,10 @@ pub(super) fn validate_verifiable_credential(
         return Err(VcValidationError::MissingVerifiableCredentialType);
     }
 
+    if credential.credential_subject.is_empty() {
+        return Err(VcValidationError::EmptyCredentialSubject);
+    }
+
     for credential_subject in &credential.credential_subject {
         if credential_subject.id.is_none() && credential_subject.subject.is_empty() {
             return Err(VcValidationError::EmptyCredentialSubject);

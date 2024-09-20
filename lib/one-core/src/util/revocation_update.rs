@@ -1,14 +1,17 @@
 use std::sync::Arc;
 
 use dto_mapper::convert_inner;
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
+use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::imp::bitstring_status_list::model::RevocationUpdateData;
 use one_providers::revocation::imp::bitstring_status_list::{
     format_status_list_credential, generate_bitstring_from_credentials,
-    purpose_to_credential_state_enum,
+    purpose_to_credential_state_enum, Params,
 };
 use one_providers::revocation::model::{CredentialAdditionalData, RevocationUpdate};
-use one_providers::revocation::provider::RevocationMethodProvider;
+use one_providers::revocation::RevocationMethod;
+use one_providers::util::params::convert_params;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -27,28 +30,19 @@ pub(crate) async fn generate_credential_additional_data(
     credential: &Credential,
     credential_repository: &dyn CredentialRepository,
     revocation_list_repository: &dyn RevocationListRepository,
-    revocation_method_provider: &dyn RevocationMethodProvider,
+    revocation_method: &dyn RevocationMethod,
+    formatter_provider: &dyn CredentialFormatterProvider,
     key_provider: &Arc<dyn KeyProvider>,
     core_base_url: &Option<String>,
 ) -> Result<Option<CredentialAdditionalData>, ServiceError> {
-    let revocation_method_name = credential
-        .schema
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "credential_schema is None".to_string(),
-        ))?
-        .revocation_method
-        .as_str();
-    let revocation_method = revocation_method_provider
-        .get_revocation_method(revocation_method_name)
-        .ok_or(ServiceError::MissingProvider(
-            MissingProviderError::RevocationMethod(revocation_method_name.to_string()),
-        ))?;
-
     let status_type = revocation_method.get_status_type();
     if status_type != "BitstringStatusListEntry" && status_type != "StatusList2021Entry" {
         return Ok(None);
     }
+
+    let _params: Params = convert_params(revocation_method.get_params()?)?;
+    // ignore JSON-LD formatter for now
+    let bitstring_credential_format = "JWT";
 
     let issuer_did = credential
         .issuer_did
@@ -67,23 +61,35 @@ pub(crate) async fn generate_credential_additional_data(
             .await?,
     );
 
-    let revocation_list_id = get_revocation_list_id(
+    let formatter = formatter_provider
+        .get_formatter(bitstring_credential_format)
+        .ok_or_else(|| {
+            ServiceError::MissingProvider(MissingProviderError::Formatter(
+                bitstring_credential_format.to_owned(),
+            ))
+        })?;
+
+    let revocation_list_id = get_or_create_revocation_list_id(
         &credentials_by_issuer_did,
         issuer_did,
         RevocationListPurpose::Revocation,
         revocation_list_repository,
         key_provider,
         core_base_url,
+        &*formatter,
+        None,
     )
     .await?;
 
-    let suspension_list_id = get_revocation_list_id(
+    let suspension_list_id = get_or_create_revocation_list_id(
         &credentials_by_issuer_did,
         issuer_did,
         RevocationListPurpose::Suspension,
         revocation_list_repository,
         key_provider,
         core_base_url,
+        &*formatter,
+        None,
     )
     .await?;
 
@@ -113,13 +119,16 @@ pub(crate) async fn process_update(
     Ok(())
 }
 
-pub(crate) async fn get_revocation_list_id(
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn get_or_create_revocation_list_id(
     credentials_by_issuer_did: &[one_providers::common_models::credential::OpenCredential],
     issuer_did: &Did,
     purpose: RevocationListPurpose,
     revocation_list_repository: &dyn RevocationListRepository,
     key_provider: &Arc<dyn KeyProvider>,
     core_base_url: &Option<String>,
+    formatter: &dyn CredentialFormatter,
+    key_id: Option<String>,
 ) -> Result<RevocationListId, ServiceError> {
     let revocation_list = revocation_list_repository
         .get_revocation_by_issuer_did_id(
@@ -149,6 +158,8 @@ pub(crate) async fn get_revocation_list_id(
                 purpose.to_owned().into(),
                 key_provider,
                 core_base_url,
+                formatter,
+                key_id,
             )
             .await?;
 
