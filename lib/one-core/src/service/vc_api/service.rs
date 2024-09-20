@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
+use one_providers::common_models::credential::{OpenCredentialState, OpenCredentialStateEnum};
 use one_providers::common_models::did::KeyRole;
+use one_providers::credential_formatter::imp::json_ld::model::LdCredential;
 use one_providers::credential_formatter::model::{
     CredentialData, CredentialSchemaData, ExtractPresentationCtx, PublishedClaim,
     PublishedClaimValue,
@@ -9,8 +11,10 @@ use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
+use one_providers::revocation::imp::bitstring_status_list::{self};
 use one_providers::util::key_verification::KeyVerification;
 use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
 
 use super::dto::{
     CredentialIssueOptions, CredentialIssueRequest, CredentialIssueResponse,
@@ -22,8 +26,11 @@ use super::validation::{validate_verifiable_credential, validate_verifiable_pres
 use super::VCAPIService;
 use crate::model::did::DidRelations;
 use crate::model::key::KeyRelations;
+use crate::model::revocation_list::RevocationListPurpose;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::error::ServiceError;
+use crate::util::revocation_update::get_or_create_revocation_list_id;
 
 impl VCAPIService {
     pub fn new(
@@ -32,6 +39,8 @@ impl VCAPIService {
         did_repository: Arc<dyn DidRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        revocation_list_repository: Arc<dyn RevocationListRepository>,
+        base_url: Option<String>,
     ) -> Self {
         Self {
             credential_formatter,
@@ -39,6 +48,8 @@ impl VCAPIService {
             did_repository,
             did_method_provider,
             key_algorithm_provider,
+            revocation_list_repository,
+            base_url,
         }
     }
 
@@ -49,6 +60,7 @@ impl VCAPIService {
         let CredentialIssueOptions {
             signature_algorithm,
             credential_format,
+            revocation_method,
         } = create_request.options;
 
         validate_verifiable_credential(&create_request.credential)?;
@@ -100,13 +112,66 @@ impl VCAPIService {
             .flat_map(|claim| value_to_published_claim(claim, "", false))
             .collect();
 
-        if let Some(credential_subject) = credential_subject.id {
+        if let Some(credential_subject) = credential_subject.id.clone() {
             claims.push(PublishedClaim {
                 key: "id".to_string(),
                 value: PublishedClaimValue::String(credential_subject.into()),
                 datatype: Some("STRING".to_string()),
                 array_item: false,
             });
+        }
+
+        let formatter = self
+            .credential_formatter
+            .get_formatter(&credential_format.unwrap_or("JSON_LD_CLASSIC".to_string()))
+            .unwrap();
+
+        let mut credential_status = vec![];
+
+        if revocation_method.is_some() {
+            let revocation_list_id = get_or_create_revocation_list_id(
+                &[one_providers::common_models::credential::OpenCredential {
+                    id: Uuid::new_v4().into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    issuance_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    deleted_at: None,
+                    credential: vec![],
+                    exchange: "OPENID4VC".to_owned(),
+                    redirect_uri: None,
+                    role: one_providers::common_models::credential::OpenCredentialRole::Issuer,
+                    state: Some(vec![OpenCredentialState {
+                        created_date: OffsetDateTime::now_utc(),
+                        state: OpenCredentialStateEnum::Offered,
+                        suspend_end_date: None,
+                    }]),
+                    claims: None,
+                    issuer_did: Some(issuer.clone().into()),
+                    holder_did: None,
+                    schema: None,
+                    key: None,
+                    interaction: None,
+                }],
+                &issuer,
+                RevocationListPurpose::Revocation,
+                &*self.revocation_list_repository,
+                &self.key_provider,
+                &self.base_url,
+                &*formatter,
+                Some(key_id.to_owned()),
+            )
+            .await
+            .unwrap();
+
+            let status = bitstring_status_list::create_credential_status(
+                &self.base_url,
+                &revocation_list_id,
+                0,
+                "revocation",
+            )
+            .unwrap();
+
+            credential_status.push(status);
         }
 
         let credential_data = CredentialData {
@@ -118,7 +183,7 @@ impl VCAPIService {
             valid_for: Duration::minutes(60), // TODO
             claims,
             issuer_did: create_request.credential.issuer,
-            status: create_request.credential.credential_status,
+            status: credential_status,
             schema: CredentialSchemaData {
                 id: None,
                 r#type: None,
@@ -133,15 +198,10 @@ impl VCAPIService {
             related_resource: create_request.credential.related_resource,
         };
 
-        let formatter = self
-            .credential_formatter
-            .get_formatter(&credential_format.unwrap_or("JSON_LD_CLASSIC".to_string()))
-            .unwrap();
-
         let test = formatter
             .format_credentials(
                 credential_data,
-                &None,
+                &credential_subject.id,
                 &signature_algorithm,
                 create_request.credential.context.into_iter().collect(),
                 create_request.credential.r#type,
@@ -151,8 +211,14 @@ impl VCAPIService {
             )
             .await;
 
+        let mut verifiable_credential: LdCredential = serde_json::from_str(&test?).unwrap();
+        verifiable_credential
+            .credential_subject
+            .iter_mut()
+            .for_each(|s| s.subject.clear());
+
         Ok(CredentialIssueResponse {
-            verifiable_credential: serde_json::from_str(&test?).unwrap(),
+            verifiable_credential,
         })
     }
 

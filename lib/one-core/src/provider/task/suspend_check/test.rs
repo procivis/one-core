@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
+use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
 use one_providers::key_storage::provider::MockKeyProvider;
 use one_providers::revocation::model::{CredentialRevocationState, RevocationUpdate};
 use one_providers::revocation::provider::MockRevocationMethodProvider;
@@ -25,6 +26,7 @@ struct TestDependencies {
     pub history_repository: MockHistoryRepository,
     pub revocation_list_repository: MockRevocationListRepository,
     pub validity_credential_repository: MockValidityCredentialRepository,
+    pub formatter_provider: MockCredentialFormatterProvider,
     pub key_provider: MockKeyProvider,
     pub core_base_url: Option<String>,
 }
@@ -36,6 +38,7 @@ fn setup(dependencies: TestDependencies) -> impl Task {
         Arc::new(dependencies.history_repository),
         Arc::new(dependencies.revocation_list_repository),
         Arc::new(dependencies.validity_credential_repository),
+        Arc::new(dependencies.formatter_provider),
         Arc::new(dependencies.key_provider),
         dependencies.core_base_url,
     )
@@ -142,7 +145,7 @@ async fn test_run_one_update() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .times(2)
+        .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
     let mut history_repository = MockHistoryRepository::default();

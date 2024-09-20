@@ -5,14 +5,14 @@ use async_trait::async_trait;
 use indexmap::indexset;
 use model::CredentialEnvelope;
 use one_crypto::CryptoProvider;
-use one_providers::common_models::did::DidValue;
+use one_providers::common_models::did::{DidValue, OpenDid};
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::imp::json_ld;
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
 };
 use one_providers::credential_formatter::imp::json_ld::model::{
-    ContextType, LdCredential, LdPresentation, LdProof, VerifiableCredential,
+    ContextType, LdCredential, LdCredentialSubject, LdPresentation, LdProof, VerifiableCredential,
 };
 use one_providers::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
@@ -22,8 +22,10 @@ use one_providers::credential_formatter::model::{
 use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::did::provider::DidMethodProvider;
 use one_providers::http_client::HttpClient;
+use one_providers::revocation::imp::bitstring_status_list::model::StatusPurpose;
 use serde::ser::Error;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use serde_with::{serde_as, DurationSeconds};
 use time::{Duration, OffsetDateTime};
 
@@ -128,6 +130,104 @@ impl CredentialFormatter for JsonLdClassic {
             .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
         Ok(resp)
+    }
+
+    async fn format_bitstring_status_list(
+        &self,
+        revocation_list_url: String,
+        issuer_did: &OpenDid,
+        encoded_list: String,
+        algorithm: String,
+        auth_fn: AuthenticationFn,
+        status_purpose: StatusPurpose,
+    ) -> Result<String, FormatterError> {
+        let issuer = Issuer::Url(
+            issuer_did
+                .did
+                .as_str()
+                .parse()
+                .map_err(|_| FormatterError::Failed("Invalid issuer DID".to_string()))?,
+        );
+
+        let credential_subject = LdCredentialSubject {
+            id: None,
+            subject: [
+                ("id".into(), format!("{}#list", revocation_list_url).into()),
+                ("type".into(), json!("BitstringStatusList")),
+                ("statusPurpose".into(), json!(status_purpose)),
+                ("encodedList".into(), json!(encoded_list)),
+            ]
+            .into_iter()
+            .collect(),
+        };
+
+        let mut credential = LdCredential {
+            context: indexset![ContextType::Url(Context::CredentialsV2.to_url())],
+            id: Some(revocation_list_url.parse().map_err(|_| {
+                FormatterError::Failed("Revocation list is not a valid URL".to_string())
+            })?),
+            r#type: vec![
+                "VerifiableCredential".to_string(),
+                "BitstringStatusListCredential".to_string(),
+            ],
+            issuer,
+            valid_from: Some(OffsetDateTime::now_utc()),
+            credential_subject: vec![credential_subject],
+            credential_status: vec![],
+            credential_schema: None,
+            valid_until: None,
+            issuance_date: None,
+            proof: None,
+            refresh_service: None,
+            name: None,
+            description: None,
+            terms_of_use: vec![],
+            evidence: vec![],
+            related_resource: None,
+        };
+
+        let cryptosuite = match algorithm.as_str() {
+            "EDDSA" => "eddsa-rdfc-2022",
+            "ES256" => "ecdsa-rdfc-2019",
+            _ => {
+                return Err(FormatterError::CouldNotFormat(format!(
+                    "Unsupported algorithm: {algorithm}"
+                )))
+            }
+        };
+
+        let key_id = auth_fn.get_key_id().ok_or(FormatterError::CouldNotFormat(
+            "Missing jwk key id".to_string(),
+        ))?;
+
+        let mut proof = json_ld::prepare_proof_config(
+            "assertionMethod",
+            cryptosuite,
+            key_id,
+            indexset![ContextType::Url(Context::CredentialsV2.to_url())],
+        )
+        .await?;
+
+        let proof_hash = prepare_proof_hash(
+            &credential,
+            &*self.crypto,
+            &proof,
+            self.caching_loader.to_owned(),
+            None,
+        )
+        .await?;
+
+        let signed_proof = sign_proof_hash(&proof_hash, auth_fn).await?;
+
+        proof.proof_value = Some(signed_proof);
+        proof.context = None;
+        credential.proof = Some(proof);
+
+        serde_json::to_string(&credential).map_err(|err| {
+            FormatterError::Failed(format!(
+                "Failed formatting BitstringStatusList credential {err}"
+            ))
+        })
     }
 
     async fn extract_credentials(

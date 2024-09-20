@@ -8,6 +8,7 @@ use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use one_providers::key_storage::provider::KeyProvider;
 
 use crate::repository::did_repository::DidRepository;
+use crate::repository::revocation_list_repository::RevocationListRepository;
 
 pub mod dto;
 pub mod mapper;
@@ -19,4 +20,6 @@ pub struct VCAPIService {
     did_repository: Arc<dyn DidRepository>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    revocation_list_repository: Arc<dyn RevocationListRepository>,
+    base_url: Option<String>,
 }

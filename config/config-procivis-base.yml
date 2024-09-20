@@ -81,7 +81,6 @@ revocation:
     order: 1
     disabled: false
     type: "BITSTRINGSTATUSLIST"
-    params: null
   LVVC:
     display: "revocation.lvvc"
     order: 2

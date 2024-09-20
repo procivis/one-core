@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use one_providers::credential_formatter::provider::CredentialFormatterProvider;
 use one_providers::key_storage::provider::KeyProvider;
 use one_providers::revocation::provider::RevocationMethodProvider;
 use retain_proof_check::RetainProofCheck;
@@ -34,6 +35,7 @@ pub(crate) fn tasks_from_config(
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     proof_repository: Arc<dyn ProofRepository>,
     core_base_url: Option<String>,
@@ -52,6 +54,7 @@ pub(crate) fn tasks_from_config(
                 history_repository.to_owned(),
                 revocation_list_repository.to_owned(),
                 validity_credential_repository.to_owned(),
+                formatter_provider.to_owned(),
                 key_provider.to_owned(),
                 core_base_url.to_owned(),
             )) as _,
