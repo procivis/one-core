@@ -378,6 +378,7 @@ async fn process_proof_submission(
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
             ),
+            did_method_provider,
             revocation_method_provider,
             map_oidc_format_to_external,
         )

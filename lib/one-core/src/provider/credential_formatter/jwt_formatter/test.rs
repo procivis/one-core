@@ -10,7 +10,7 @@ use crate::model::credential_schema::{LayoutProperties, LayoutType};
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
-use crate::provider::credential_formatter::jwt_formatter::model::{VC, VP};
+use crate::provider::credential_formatter::jwt_formatter::model::{VerifiableCredential, VC, VP};
 use crate::provider::credential_formatter::jwt_formatter::Params;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchemaData, CredentialSchemaMetadata,
@@ -666,7 +666,10 @@ async fn test_format_presentation() {
     let vp = payload.custom.vp;
 
     assert_eq!(vp.verifiable_credential.len(), 1);
-    assert_eq!(vp.verifiable_credential[0], jwt_token);
+    assert_eq!(
+        vp.verifiable_credential[0],
+        VerifiableCredential::Token(jwt_token.to_string())
+    );
 }
 
 #[tokio::test]

@@ -149,6 +149,7 @@ fn dummy_credential(
     protocol: &str,
     state: CredentialStateEnum,
     pre_authroized_code: bool,
+    schema: Option<CredentialSchema>,
 ) -> Credential {
     Credential {
         id: Uuid::new_v4().into(),
@@ -168,7 +169,7 @@ fn dummy_credential(
         claims: None,
         issuer_did: None,
         holder_did: None,
-        schema: None,
+        schema,
         interaction: Some(dummy_interaction(
             None,
             pre_authroized_code,
@@ -362,6 +363,7 @@ async fn test_oidc_create_token() {
             )
             .returning(move |_, _| Ok(Some(clone.clone())));
 
+        let clone = schema.clone();
         credential_repository
             .expect_get_credentials_by_interaction_id()
             .once()
@@ -370,6 +372,7 @@ async fn test_oidc_create_token() {
                     "OPENID4VC",
                     CredentialStateEnum::Pending,
                     false,
+                    Some(clone),
                 )])
             });
 
@@ -429,6 +432,7 @@ async fn test_oidc_create_token_incorrect_protocol() {
             )
             .returning(move |_, _| Ok(Some(clone.clone())));
 
+        let clone = schema.clone();
         credential_repository
             .expect_get_credentials_by_interaction_id()
             .once()
@@ -437,6 +441,7 @@ async fn test_oidc_create_token_incorrect_protocol() {
                     "PROCIVIS_TEMPORARY",
                     CredentialStateEnum::Pending,
                     false,
+                    Some(clone),
                 )])
             });
     }
@@ -520,6 +525,7 @@ async fn test_oidc_create_token_pre_authorized_code_used() {
             )
             .returning(move |_, _| Ok(Some(clone.clone())));
 
+        let clone = schema.clone();
         credential_repository
             .expect_get_credentials_by_interaction_id()
             .once()
@@ -528,6 +534,7 @@ async fn test_oidc_create_token_pre_authorized_code_used() {
                     "OPENID4VC",
                     CredentialStateEnum::Pending,
                     true,
+                    Some(clone),
                 )])
             });
     }
@@ -574,6 +581,7 @@ async fn test_oidc_create_token_wrong_credential_state() {
             )
             .returning(move |_, _| Ok(Some(clone.clone())));
 
+        let clone = schema.clone();
         credential_repository
             .expect_get_credentials_by_interaction_id()
             .once()
@@ -582,6 +590,7 @@ async fn test_oidc_create_token_wrong_credential_state() {
                     "OPENID4VC",
                     CredentialStateEnum::Offered,
                     false,
+                    Some(clone),
                 )])
             });
     }
@@ -620,7 +629,12 @@ async fn test_oidc_create_credential_success() {
     let now = OffsetDateTime::now_utc();
 
     let schema = generic_credential_schema();
-    let credential = dummy_credential("OPENID4VC", CredentialStateEnum::Pending, true);
+    let credential = dummy_credential(
+        "OPENID4VC",
+        CredentialStateEnum::Pending,
+        true,
+        Some(schema.clone()),
+    );
     let holder_did_id: DidId = Uuid::new_v4().into();
     {
         let clone = schema.clone();
@@ -707,7 +721,7 @@ async fn test_oidc_create_credential_success() {
         )
         .await;
 
-    assert!(result.is_ok());
+    //assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!("jwt_vc_json", result.format);
     assert_eq!("xyz", result.credential);
@@ -720,7 +734,12 @@ async fn test_oidc_create_credential_incorrect_protocol() {
     let mut interaction_repository = MockInteractionRepository::default();
 
     let schema = generic_credential_schema();
-    let credential = dummy_credential("PROCIVIS_TEMPORARY", CredentialStateEnum::Pending, true);
+    let credential = dummy_credential(
+        "PROCIVIS_TEMPORARY",
+        CredentialStateEnum::Pending,
+        true,
+        Some(schema.clone()),
+    );
     {
         let clone = schema.clone();
         repository
@@ -787,7 +806,12 @@ async fn test_oidc_create_credential_success_mdoc() {
         schema_id: "test.doctype".to_owned(),
         ..generic_credential_schema()
     };
-    let credential = dummy_credential("OPENID4VC", CredentialStateEnum::Pending, true);
+    let credential = dummy_credential(
+        "OPENID4VC",
+        CredentialStateEnum::Pending,
+        true,
+        Some(schema.clone()),
+    );
     let holder_did_id: DidId = Uuid::new_v4().into();
     {
         let clone = schema.clone();
@@ -1930,6 +1954,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
             move |_, _| Ok(Some(schema))
         });
 
+    let clone = schema.clone();
     credential_repository
         .expect_get_credentials_by_interaction_id()
         .once()
@@ -1938,6 +1963,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
                 "OPENID4VC",
                 CredentialStateEnum::Pending,
                 false,
+                Some(clone),
             )])
         });
 
@@ -2014,7 +2040,12 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
             Some(refresh_token),
             Some(refresh_token_expires_at),
         )),
-        ..dummy_credential("OPENID4VC", CredentialStateEnum::Accepted, false)
+        ..dummy_credential(
+            "OPENID4VC",
+            CredentialStateEnum::Accepted,
+            false,
+            Some(schema.clone()),
+        )
     };
 
     credential_repository
@@ -2090,7 +2121,12 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
             Some(refresh_token),
             Some(refresh_token_expires_at),
         )),
-        ..dummy_credential("OPENID4VC", CredentialStateEnum::Accepted, false)
+        ..dummy_credential(
+            "OPENID4VC",
+            CredentialStateEnum::Accepted,
+            false,
+            Some(schema.clone()),
+        )
     };
 
     credential_repository

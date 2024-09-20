@@ -15,6 +15,7 @@ use crate::provider::credential_formatter::model::{
     DetailCredential, ExtractPresentationCtx, Presentation, TokenVerifier,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::mapper::vec_last_position_from_token_path;
 use crate::provider::exchange_protocol::openid4vc::model::{
@@ -122,6 +123,7 @@ pub(super) async fn validate_credential(
     proof_schema_input: &ProofInputSchema,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_verification: Box<KeyVerification>,
+    did_method_provider: &Arc<dyn DidMethodProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     map_from_oidc_format_to_external: FnMapOidcFormatToExternalDetailed,
 ) -> Result<DetailCredential, OpenID4VCError> {
@@ -203,7 +205,17 @@ pub(super) async fn validate_credential(
         Some(did) => did,
     };
 
-    if claim_subject != holder_did {
+    let claim_subject_did = did_method_provider
+        .resolve(claim_subject)
+        .await
+        .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
+
+    let holder_did = did_method_provider
+        .resolve(holder_did)
+        .await
+        .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
+
+    if claim_subject_did != holder_did {
         return Err(OpenID4VCError::ValidationError(
             "Holder DID doesn't match.".to_owned(),
         ));

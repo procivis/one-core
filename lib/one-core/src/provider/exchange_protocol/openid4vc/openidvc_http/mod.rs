@@ -4,7 +4,9 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 pub use mappers::create_presentation_submission;
-use mappers::presentation_definition_from_interaction_data;
+use mappers::{
+    map_credential_formats_to_presentation_format, presentation_definition_from_interaction_data,
+};
 use one_crypto::utilities;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
@@ -228,25 +230,8 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
             .collect::<Option<_>>()
             .ok_or_else(|| ExchangeProtocolError::Failed("missing format mapping".into()))?;
 
-        let (format, oidc_format) = if let Some(&value) = formats.get("mso_mdoc") {
-            if formats.len() > 1 {
-                return Err(ExchangeProtocolError::Failed(
-                    "Currently for a proof MDOC cannot be used with other formats".to_string(),
-                ));
-            };
-
-            (value.to_owned(), "mso_mdoc".to_owned())
-        } else if let Some(&value) = formats.get("ldp_vc") {
-            (value.to_owned(), "ldp_vp".to_owned())
-        } else {
-            format_map
-                .iter()
-                .find(|(_, v)| v.as_str() == "jwt_vc_json" || v.as_str() == "vc+sd-jwt")
-                .map(|(k, _)| (k.to_owned(), "jwt_vp_json".to_owned()))
-                .ok_or_else(|| {
-                    ExchangeProtocolError::Failed("no jwt_vp_json format in map".into())
-                })?
-        };
+        let (_has_mdoc, format, oidc_format) =
+            map_credential_formats_to_presentation_format(&formats, &format_map)?;
 
         let presentation_format =
             presentation_format_map

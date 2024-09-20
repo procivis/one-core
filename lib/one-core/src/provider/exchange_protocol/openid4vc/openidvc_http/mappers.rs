@@ -599,6 +599,29 @@ fn find_schema_for_path(
     }
 }
 
+pub fn map_credential_formats_to_presentation_format(
+    formats: &HashMap<&str, &str>,
+    credential_formats: &HashMap<String, String>,
+) -> Result<(bool, String, String), ExchangeProtocolError> {
+    let mut has_mdoc = false;
+    if let Some(value) = formats.get("mso_mdoc") {
+        has_mdoc = true;
+        if formats.len() == 1 {
+            return Ok((has_mdoc, value.to_string(), "mso_mdoc".to_owned()));
+        }
+    };
+
+    if let Some(&value) = formats.get("ldp_vc") {
+        Ok((has_mdoc, value.to_owned(), "ldp_vp".to_owned()))
+    } else {
+        credential_formats
+            .iter()
+            .find(|(_, v)| v.as_str() == "jwt_vc_json" || v.as_str() == "vc+sd-jwt")
+            .map(|(k, _)| (has_mdoc, k.to_owned(), "jwt_vp_json".to_owned()))
+            .ok_or_else(|| ExchangeProtocolError::Failed("no jwt_vp_json format in map".into()))
+    }
+}
+
 pub(super) fn presentation_definition_from_interaction_data(
     proof_id: ProofId,
     credentials: Vec<Credential>,
