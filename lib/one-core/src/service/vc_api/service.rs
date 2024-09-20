@@ -126,7 +126,7 @@ impl VCAPIService {
             .get_formatter(&credential_format.unwrap_or("JSON_LD_CLASSIC".to_string()))
             .unwrap();
 
-        let mut credential_status = vec![];
+        let mut credential_status = create_request.credential.credential_status;
 
         if revocation_method.is_some() {
             let revocation_list_id = get_or_create_revocation_list_id(
