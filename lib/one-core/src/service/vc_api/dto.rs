@@ -10,6 +10,7 @@ pub struct CredentialIssueRequest {
 pub struct CredentialIssueOptions {
     pub signature_algorithm: String,
     pub credential_format: Option<String>,
+    pub revocation_method: Option<String>,
 }
 
 #[derive(Debug)]

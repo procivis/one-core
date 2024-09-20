@@ -4,7 +4,7 @@ use std::vec;
 use async_trait::async_trait;
 use model::OptiocalBarcodeCredential;
 use one_crypto::CryptoProvider;
-use one_providers::common_models::did::DidValue;
+use one_providers::common_models::did::{DidValue, OpenDid};
 use one_providers::credential_formatter::error::FormatterError;
 use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
@@ -17,6 +17,7 @@ use one_providers::credential_formatter::model::{
 };
 use one_providers::credential_formatter::CredentialFormatter;
 use one_providers::http_client::HttpClient;
+use one_providers::revocation::imp::bitstring_status_list::model::StatusPurpose;
 
 use super::json_ld_classic::verify_credential_signature;
 
@@ -45,6 +46,20 @@ impl CredentialFormatter for PhysicalCardFormatter {
         _custom_subject_name: Option<String>,
     ) -> Result<String, FormatterError> {
         todo!()
+    }
+
+    async fn format_bitstring_status_list(
+        &self,
+        _revocation_list_url: String,
+        _issuer_did: &OpenDid,
+        _encoded_list: String,
+        _algorithm: String,
+        _auth_fn: AuthenticationFn,
+        _status_purpose: StatusPurpose,
+    ) -> Result<String, FormatterError> {
+        Err(FormatterError::Failed(
+            "Cannot format BitstringStatusList with PhysicalCard formatter".to_string(),
+        ))
     }
 
     async fn extract_credentials(
