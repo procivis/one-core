@@ -1,5 +1,7 @@
 [package]
+authors           = ["Procivis"]
 edition.workspace = true
+license           = "Apache-2.0"
 name              = "sql-data-provider"
 publish           = false
 version.workspace = true

@@ -1,9 +1,11 @@
 [package]
-build   = "build.rs"
-edition = "2021"
-name    = "core-server"
-publish = false
-version = "0.1.0"
+authors           = ["Procivis"]
+build             = "build.rs"
+edition.workspace = true
+license           = "Apache-2.0"
+name              = "core-server"
+publish           = false
+version           = "0.1.0"
 
 # disable doctests
 [lib]

@@ -1,8 +1,10 @@
 [package]
-edition = "2021"
-name    = "one-core-uniffi"
-publish = false
-version = "0.1.0"
+authors           = ["Procivis"]
+edition.workspace = true
+license           = "Apache-2.0"
+name              = "one-core-uniffi"
+publish           = false
+version           = "0.1.0"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]

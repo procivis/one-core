@@ -1,8 +1,10 @@
 [package]
-edition = "2021"
-name    = "one-crypto"
-publish = false
-version = "0.1.0"
+authors           = ["Procivis"]
+edition.workspace = true
+license           = "Apache-2.0"
+name              = "one-crypto"
+publish           = false
+version           = "0.1.0"
 
 [lib]
 doctest = false
