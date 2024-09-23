@@ -119,6 +119,7 @@ pub(crate) async fn process_update(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn get_or_create_revocation_list_id(
     credentials_by_issuer_did: &[Credential],
     issuer_did: &Did,

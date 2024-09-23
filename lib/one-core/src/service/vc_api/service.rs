@@ -145,7 +145,7 @@ impl VCAPIService {
                         suspend_end_date: None,
                     }]),
                     claims: None,
-                    issuer_did: Some(issuer.clone().into()),
+                    issuer_did: Some(issuer.clone()),
                     holder_did: None,
                     schema: None,
                     key: None,

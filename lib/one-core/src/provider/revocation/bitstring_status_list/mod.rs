@@ -70,6 +70,7 @@ pub struct BitstringStatusList {
 }
 
 impl BitstringStatusList {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         core_base_url: Option<String>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
