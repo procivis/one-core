@@ -1,6 +1,6 @@
 use pqc_dilithium::*;
 
-use crate::crypto::{Signer, SignerError};
+use crate::{Signer, SignerError};
 pub struct CRYDI3Signer {}
 
 impl Signer for CRYDI3Signer {

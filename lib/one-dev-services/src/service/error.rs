@@ -1,8 +1,8 @@
 //! Enumerates errors for services.
 
-use one_core::crypto::{CryptoProviderError, SignerError};
 use one_core::provider::credential_formatter::error::FormatterError;
 use one_core::provider::key_storage::error::KeyStorageProviderError;
+use one_crypto::{CryptoProviderError, SignerError};
 use thiserror::Error;
 
 #[derive(Debug, Error)]

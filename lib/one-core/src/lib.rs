@@ -5,6 +5,7 @@ use config::core_config::{
     CoreConfig, DatatypeConfig, FormatConfig, KeyAlgorithmConfig, KeyStorageConfig,
 };
 use config::ConfigError;
+use one_crypto::CryptoProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderCoreImpl;
@@ -31,7 +32,6 @@ use service::vc_api::VCAPIService;
 use util::ble_resource::BleWaiter;
 
 use crate::config::core_config::{DidConfig, RevocationConfig};
-use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -43,7 +43,6 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 
 pub mod config;
-pub mod crypto;
 pub mod provider;
 
 pub mod model;

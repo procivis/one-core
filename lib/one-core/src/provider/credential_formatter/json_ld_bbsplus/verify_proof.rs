@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use one_crypto::signer::bbs::{BBSSigner, BbsProofInput};
 
 use super::super::json_ld::model::LdCredential;
 use super::JsonLdBbsplus;
-use crate::crypto::signer::bbs::{BBSSigner, BbsProofInput};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::{

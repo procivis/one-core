@@ -3,7 +3,7 @@ use std::io::Read;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use sha2::{Digest, Sha256};
 
-use crate::crypto::{Hasher, HasherError};
+use crate::{Hasher, HasherError};
 
 pub struct SHA256 {}
 

@@ -1,3 +1,4 @@
+use one_crypto::CryptoProviderError;
 use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
     OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
@@ -9,7 +10,6 @@ use uuid::Uuid;
 use super::did::DidDeactivationError;
 use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
-use crate::crypto::CryptoProviderError;
 use crate::model::credential::CredentialStateEnum;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofStateEnum;
