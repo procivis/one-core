@@ -12,7 +12,6 @@ async-trait           = { version = "0.1" }
 bit-vec               = { version = "0.8" }
 blstrs                = { version = "0.7" }
 bs58                  = { version = "0.5" }
-chacha20poly1305      = { version = "0.10" }
 ciborium              = { version = "0.2" }
 cocoon                = { version = "0.4" }
 convert_case          = { version = "0.6" }
@@ -26,7 +25,6 @@ flate2                = { version = "1.0" }
 futures.workspace     = true
 hex.workspace         = true
 hkdf                  = { version = "0.12.4", features = ["std"] }
-hmac                  = { version = "0.12" }
 human-sort            = { version = "0.2" }
 indexmap              = { version = "2.2", features = ["serde"] }
 itertools             = { version = "0.13" }
@@ -38,13 +36,12 @@ locspan               = { version = "0.7" }
 mime                  = { version = "0.3" }
 mockall               = { workspace = true, optional = true }
 mrtd                  = { version = "0.5.2" }
+one-crypto            = { version = "0.1.0", path = "../one-crypto" }
 ouroboros             = { version = "0.18" }
 p256                  = { version = "0.13", features = ["jwk"] }
 pairing_crypto        = { version = "0.4", git = "https://github.com/Iskander508/pairing_crypto", rev = "517a424a989b57b987aacb3642bd7cd2c60b94d1" }
-pbkdf2                = { version = "0.12", features = ["simple"] }
 pqc_dilithium         = { version = "0.2.0", git = "https://github.com/ihor-rud/dilithium", rev = "e02a683" }
 rand.workspace        = true
-rand_chacha           = { version = "0.3" }
 rcgen                 = { version = "0.13" }
 rdf-types             = { version = "0.15" }
 regex                 = { version = "1.10" }
@@ -86,6 +83,7 @@ hex-literal       = { version = "0.4" }
 indoc             = { version = "2.0" }
 maplit            = { version = "1.0" }
 mockall.workspace = true
+one-crypto        = { version = "0.1.0", path = "../one-crypto", features = ["mock"] }
 rstest            = { version = "0.22" }
 rusty-fork        = { version = "0.3" }
 tokio             = { workspace = true, features = ["rt-multi-thread", "macros"] }
@@ -99,7 +97,7 @@ config_env  = ["figment/env"]
 config_json = ["figment/json"]
 config_yaml = ["figment/yaml"]
 default     = ["config_yaml"]
-mock        = ["mockall"]
+mock        = ["mockall", "one-crypto/mock"]
 
 [lints]
 workspace = true

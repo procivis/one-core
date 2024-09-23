@@ -20,8 +20,8 @@ clap                         = { version = "4.5", features = ["derive"] }
 ct-codecs.workspace          = true
 dto_mapper.workspace         = true
 headers                      = { version = "0.4" }
-hex-literal                  = { version = "0.4" }
 one-core                     = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json", "config_yaml", "config_env"] }
+one-crypto                   = { version = "0.1.0", path = "../../lib/one-crypto" }
 prometheus                   = { version = "0.13", features = ["process"] }
 reqwest.workspace            = true
 sentry                       = { version = "0.34", default-features = false, features = ["backtrace", "panic", "reqwest", "tracing"] }
@@ -50,6 +50,7 @@ serde_json.workspace = true
 shadow-rs.workspace  = true
 
 [dev-dependencies]
+hex-literal        = { version = "0.4" }
 indoc              = { version = "2.0" }
 p256.workspace     = true
 rand.workspace     = true

@@ -15,6 +15,7 @@ strict = []
 async-trait          = { version = "0.1" }
 dto_mapper.workspace = true
 one-core             = { version = "0.1.0", path = "../../lib/one-core" }
+one-crypto           = { version = "0.1.0", path = "../../lib/one-crypto" }
 reqwest              = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
 serde.workspace      = true
 serde_json.workspace = true

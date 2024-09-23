@@ -5,6 +5,7 @@ version = "0.1.0"
 [workspace]
 members = [
   "lib/one-core",
+  "lib/one-crypto",
   "lib/one-dev-services",
   "lib/shared-types",
   "lib/sql-data-provider",

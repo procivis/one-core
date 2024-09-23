@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use mockall::predicate::eq;
+use one_crypto::MockCryptoProvider;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::crypto::MockCryptoProvider;
 use crate::model::revocation_list::{
     RevocationList, RevocationListPurpose, RevocationListRelations,
 };

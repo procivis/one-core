@@ -1,9 +1,9 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use ed25519_compact::{KeyPair, PublicKey};
+use one_crypto::SignerError;
 use serde::Deserialize;
 use zeroize::Zeroizing;
 
-use crate::crypto::SignerError;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};

@@ -7,9 +7,9 @@
 
 use std::sync::Arc;
 
-use one_core::crypto::CryptoProvider;
 use one_core::provider::key_algorithm::model::GeneratedKey;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use one_crypto::CryptoProvider;
 use zeroize::Zeroizing;
 
 use super::error::SignatureServiceError;

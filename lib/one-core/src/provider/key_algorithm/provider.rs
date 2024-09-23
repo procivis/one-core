@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use one_crypto::{CryptoProvider, Signer};
+
 use super::error::KeyAlgorithmProviderError;
 use super::model::ParsedPublicKeyJwk;
 use super::KeyAlgorithm;
-use crate::crypto::{CryptoProvider, Signer};
 use crate::model::key::PublicKeyJwk;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]

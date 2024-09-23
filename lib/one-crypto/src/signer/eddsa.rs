@@ -1,4 +1,4 @@
-use crate::crypto::{Signer, SignerError};
+use crate::{Signer, SignerError};
 
 pub struct EDDSASigner {}
 

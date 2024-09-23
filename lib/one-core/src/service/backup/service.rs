@@ -2,6 +2,7 @@ use std::fs::File;
 
 use anyhow::Context;
 use futures::{FutureExt, TryFutureExt};
+use one_crypto::encryption::{decrypt_file, encrypt_file};
 use tempfile::{tempfile_in, NamedTempFile};
 
 use super::dto::{BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO};
@@ -10,7 +11,6 @@ use super::utils::{
     get_metadata_from_zip, hash_reader, load_db_from_zip, map_error,
 };
 use super::BackupService;
-use crate::crypto::encryption::{decrypt_file, encrypt_file};
 use crate::model::history::HistoryAction;
 use crate::repository::error::DataLayerError;
 use crate::service::backup::mapper::unexportable_entities_to_response_dto;

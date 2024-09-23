@@ -2,13 +2,13 @@ use std::collections::{HashMap, HashSet};
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use itertools::Itertools;
+use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput};
 use urlencoding::encode;
 
 use super::super::json_ld::model::LdCredential;
 use super::model::{GroupEntry, TransformedEntry};
 use super::JsonLdBbsplus;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::crypto::signer::bbs::{BBSSigner, BbsDeriveInput};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::{

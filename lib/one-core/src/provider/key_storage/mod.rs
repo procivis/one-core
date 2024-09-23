@@ -1,8 +1,8 @@
 use async_trait;
+use one_crypto::SignerError;
 use shared_types::KeyId;
 use zeroize::Zeroizing;
 
-use crate::crypto::SignerError;
 use crate::model::key::Key;
 
 pub mod azure_vault;
