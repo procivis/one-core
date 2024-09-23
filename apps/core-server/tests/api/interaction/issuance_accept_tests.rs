@@ -543,7 +543,10 @@ async fn test_issuance_accept_openid4vc() {
         )
         .await;
 
-    context.server_mock.credential_endpoint().await;
+    context
+        .server_mock
+        .credential_endpoint(Some("http://redirect.uri".to_string()))
+        .await;
 
     // WHEN
     let resp = context
@@ -557,6 +560,7 @@ async fn test_issuance_accept_openid4vc() {
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(holder_did.id, credential.holder_did.unwrap().id);
+    assert_eq!(credential.redirect_uri.unwrap(), "http://redirect.uri");
 
     let states = credential.state.unwrap();
     assert_eq!(2, states.len());
@@ -632,7 +636,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         )
         .await;
 
-    context.server_mock.credential_endpoint().await;
+    context.server_mock.credential_endpoint(None).await;
 
     // WHEN
     let resp = context
