@@ -58,4 +58,6 @@ pub trait RevocationMethod: Send + Sync {
     /// For credentials with LVVC revocation method, this method creates the URL
     /// where the JSON-LD @context is hosted.
     fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError>;
+
+    fn get_params(&self) -> Result<serde_json::Value, RevocationError>;
 }

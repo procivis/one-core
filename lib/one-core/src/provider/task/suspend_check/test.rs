@@ -6,6 +6,7 @@ use uuid::Uuid;
 use super::SuspendCheckProvider;
 use crate::model::credential::{Credential, CredentialStateEnum, GetCredentialList};
 use crate::model::history::{HistoryAction, HistoryEntityType};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::model::{CredentialRevocationState, RevocationUpdate};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;

@@ -4,17 +4,19 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use resolver::StatusListResolver;
+use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, DidValue};
 
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::RevocationListPurpose;
 use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::revocation::bitstring_status_list::jwt_formatter::BitstringStatusListJwtFormatter;
 use crate::provider::revocation::bitstring_status_list::model::{
     RevocationUpdateData, StatusPurpose,
 };
@@ -27,6 +29,7 @@ use crate::provider::revocation::model::{
 };
 use crate::provider::revocation::RevocationMethod;
 use crate::util::key_verification::KeyVerification;
+use crate::util::params::convert_params;
 
 mod jwt_formatter;
 pub mod model;
@@ -35,13 +38,35 @@ pub mod util;
 
 const CREDENTIAL_STATUS_TYPE: &str = "BitstringStatusListEntry";
 
+fn default_bitstring_credential_format() -> Option<String> {
+    // TODO Enum value instead of strings
+    Some("JWT".to_owned())
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Params {
+    #[serde(default = "default_bitstring_credential_format")]
+    pub bistring_credential_format: Option<String>,
+}
+
+impl Default for Params {
+    fn default() -> Self {
+        Self {
+            bistring_credential_format: default_bitstring_credential_format(),
+        }
+    }
+}
+
 pub struct BitstringStatusList {
     pub core_base_url: Option<String>,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub key_provider: Arc<dyn KeyProvider>,
     pub caching_loader: StatusListCachingLoader,
+    pub formatter_provider: Arc<dyn CredentialFormatterProvider>,
     resolver: Arc<StatusListResolver>,
+    params: Params,
 }
 
 impl BitstringStatusList {
@@ -51,7 +76,9 @@ impl BitstringStatusList {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         caching_loader: StatusListCachingLoader,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
         client: Arc<dyn HttpClient>,
+        params: Option<Params>,
     ) -> Self {
         Self {
             core_base_url,
@@ -59,7 +86,9 @@ impl BitstringStatusList {
             did_method_provider,
             key_provider,
             caching_loader,
+            formatter_provider,
             resolver: Arc::new(StatusListResolver::new(client)),
+            params: params.unwrap_or_default(),
         }
     }
 }
@@ -157,7 +186,7 @@ impl RevocationMethod for BitstringStatusList {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        issuer_did: &DidValue,
+        _issuer_did: &DidValue,
         _additional_credential_data: Option<CredentialDataByRole>,
     ) -> Result<CredentialRevocationState, RevocationError> {
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
@@ -198,14 +227,21 @@ impl RevocationMethod for BitstringStatusList {
             key_role: KeyRole::AssertionMethod,
         });
 
-        let encoded_list = BitstringStatusListJwtFormatter::parse_status_list(
-            &response,
-            issuer_did,
-            key_verification,
-        )
-        .await?;
+        let status_credential = self
+            .get_formatter_for_credential_format()?
+            .extract_credentials(&response, key_verification)
+            .await?;
 
-        if util::extract_bitstring_index(encoded_list, list_index)? {
+        let encoded_list = status_credential
+            .claims
+            .values
+            .get("encodedList")
+            .and_then(|value| value.as_str())
+            .ok_or(RevocationError::ValidationError(
+                "Missing encodedList in status credential".to_string(),
+            ))?;
+
+        if util::extract_bitstring_index(encoded_list.to_owned(), list_index)? {
             Ok(match credential_status.status_purpose.as_ref() {
                 Some(purpose) => match purpose.as_str() {
                     "revocation" => CredentialRevocationState::Revoked,
@@ -235,12 +271,28 @@ impl RevocationMethod for BitstringStatusList {
         }
     }
 
+    fn get_params(&self) -> Result<serde_json::Value, RevocationError> {
+        convert_params(self.params.clone()).map_err(RevocationError::from)
+    }
+
     fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
         Ok(JsonLdContext::default())
     }
 }
 
 impl BitstringStatusList {
+    pub const DEFAULT_CREDENTIAL_FORMAT: &str = "JWT";
+
+    fn get_formatter_for_credential_format(
+        &self,
+    ) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
+        let format = Self::DEFAULT_CREDENTIAL_FORMAT;
+
+        self.formatter_provider
+            .get_formatter(format)
+            .ok_or_else(|| RevocationError::FormatterNotFound(format.to_string()))
+    }
+
     fn get_credential_index_on_revocation_list(
         &self,
         credentials_by_issuer_did: &[Credential],
@@ -264,22 +316,12 @@ impl BitstringStatusList {
         index_on_status_list: usize,
         purpose: &str,
     ) -> Result<CredentialStatus, RevocationError> {
-        let revocation_list_url = get_revocation_list_url(revocation_list_id, &self.core_base_url)?;
-        Ok(CredentialStatus {
-            id: Some(uuid::Uuid::new_v4().urn().to_string().parse().unwrap()),
-            r#type: CREDENTIAL_STATUS_TYPE.to_string(),
-            status_purpose: Some(purpose.to_string()),
-            additional_fields: HashMap::from([
-                (
-                    "statusListCredential".to_string(),
-                    revocation_list_url.into(),
-                ),
-                (
-                    "statusListIndex".to_string(),
-                    index_on_status_list.to_string().into(),
-                ),
-            ]),
-        })
+        create_credential_status(
+            &self.core_base_url,
+            revocation_list_id,
+            index_on_status_list,
+            purpose,
+        )
     }
 
     async fn mark_credential_as_impl(
@@ -319,6 +361,9 @@ impl BitstringStatusList {
             purpose,
             &self.key_provider,
             &self.core_base_url,
+            &*self.get_formatter_for_credential_format()?,
+            // TODO: needs to be fixed to pass this when using json-ld formatter, for now we just use JSON-LD formatter for the VC-API tests
+            None,
         )
         .await?;
 
@@ -330,6 +375,30 @@ impl BitstringStatusList {
             })?,
         })
     }
+}
+
+pub fn create_credential_status(
+    core_base_url: &Option<String>,
+    revocation_list_id: &RevocationListId,
+    index_on_status_list: usize,
+    purpose: &str,
+) -> Result<CredentialStatus, RevocationError> {
+    let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
+    Ok(CredentialStatus {
+        id: Some(uuid::Uuid::new_v4().urn().to_string().parse().unwrap()),
+        r#type: CREDENTIAL_STATUS_TYPE.to_string(),
+        status_purpose: Some(purpose.to_string()),
+        additional_fields: HashMap::from([
+            (
+                "statusListCredential".to_string(),
+                revocation_list_url.into(),
+            ),
+            (
+                "statusListIndex".to_string(),
+                index_on_status_list.to_string().into(),
+            ),
+        ]),
+    })
 }
 
 pub struct BitstringCredentialInfo {
@@ -351,6 +420,7 @@ pub fn purpose_to_bitstring_status_purpose(purpose: RevocationListPurpose) -> St
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn format_status_list_credential(
     revocation_list_id: &RevocationListId,
     issuer_did: &Did,
@@ -358,6 +428,9 @@ pub async fn format_status_list_credential(
     purpose: RevocationListPurpose,
     key_provider: &Arc<dyn KeyProvider>,
     core_base_url: &Option<String>,
+    formatter: &dyn CredentialFormatter,
+    // must be present if using JSON-LD formatter
+    key_id: Option<String>,
 ) -> Result<String, RevocationError> {
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
@@ -375,17 +448,18 @@ pub async fn format_status_list_credential(
             KeyRole::AssertionMethod,
         ))?;
 
-    let auth_fn = key_provider.get_signature_provider(&key.key.to_owned(), None)?;
+    let auth_fn = key_provider.get_signature_provider(&key.key.to_owned(), key_id)?;
 
-    let status_list = BitstringStatusListJwtFormatter::format_status_list(
-        revocation_list_url,
-        issuer_did,
-        encoded_list,
-        key.key.key_type.to_owned(),
-        auth_fn,
-        purpose_to_bitstring_status_purpose(purpose),
-    )
-    .await?;
+    let status_list = formatter
+        .format_bitstring_status_list(
+            revocation_list_url,
+            issuer_did,
+            encoded_list,
+            key.key.key_type.to_owned(),
+            auth_fn,
+            purpose_to_bitstring_status_purpose(purpose),
+        )
+        .await?;
 
     Ok(status_list)
 }

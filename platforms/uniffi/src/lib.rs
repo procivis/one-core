@@ -499,11 +499,11 @@ fn initialize_core(
                                     key_algorithm_provider.clone(),
                                     did_method_provider.clone(),
                                     key_provider.clone(),
-                                    formatter_provider.clone(),
                                     initialize_statuslist_loader(
                                         &cache_entities_config,
                                         data_repository.clone(),
                                     ),
+                                    formatter_provider.clone(),
                                     client.clone(),
                                     None,
                                 )) as _

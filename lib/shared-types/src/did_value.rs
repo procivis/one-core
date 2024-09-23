@@ -1,7 +1,9 @@
 use std::convert::Infallible;
 use std::str::FromStr;
 
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use crate::macros::{impl_display, impl_from};
 
@@ -14,6 +16,22 @@ pub struct DidValue(String);
 impl DidValue {
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+impl From<Url> for DidValue {
+    fn from(url: Url) -> Self {
+        url.to_string().into()
+    }
+}
+
+impl TryInto<Url> for &DidValue {
+    type Error = anyhow::Error;
+
+    fn try_into(self) -> Result<Url, Self::Error> {
+        self.as_str()
+            .parse()
+            .with_context(|| format!("Failed to convert did: {} to URL", self))
     }
 }
 

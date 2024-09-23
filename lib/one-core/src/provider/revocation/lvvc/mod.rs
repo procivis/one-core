@@ -32,6 +32,7 @@ use crate::provider::revocation::model::{
     VerifierCredentialData,
 };
 use crate::provider::revocation::RevocationMethod;
+use crate::util::params::convert_params;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 pub mod dto;
 pub mod mapper;
@@ -40,7 +41,7 @@ pub mod mapper;
 mod test;
 
 #[serde_with::serde_as]
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
@@ -333,6 +334,10 @@ impl RevocationMethod for LvvcProvider {
             url: self.get_json_ld_context_url()?,
         })
     }
+
+    fn get_params(&self) -> Result<serde_json::Value, RevocationError> {
+        convert_params(self.params.clone()).map_err(RevocationError::from)
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -427,7 +432,7 @@ pub async fn create_lvvc_with_status(
             credential_data,
             &Some(holder_did.did.clone()),
             &key.key_type,
-            vcdm_v2_base_context(),
+            vcdm_v2_base_context(None),
             vec![json_ld_context.revokable_credential_type],
             auth_fn,
             json_ld_context.url,

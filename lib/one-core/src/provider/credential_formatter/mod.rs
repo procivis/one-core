@@ -7,6 +7,9 @@ use model::{
 };
 use shared_types::DidValue;
 
+use crate::model::did::Did;
+use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+
 pub mod error;
 
 mod common;
@@ -45,6 +48,17 @@ pub trait CredentialFormatter: Send + Sync {
         json_ld_context_url: Option<String>,
         custom_subject_name: Option<String>,
     ) -> Result<String, error::FormatterError>;
+
+    /// Formats BitStringStatusList credential
+    async fn format_bitstring_status_list(
+        &self,
+        revocation_list_url: String,
+        issuer_did: &Did,
+        encoded_list: String,
+        algorithm: String,
+        auth_fn: AuthenticationFn,
+        status_purpose: StatusPurpose,
+    ) -> Result<String, FormatterError>;
 
     /// Parses a received credential and verifies the signature.
     async fn extract_credentials(

@@ -13,8 +13,10 @@ sea-orm = ["dep:sea-orm"]
 utoipa  = ["dep:utoipa"]
 
 [dependencies]
+anyhow  = { version = "1.0" }
 sea-orm = { workspace = true, features = ["macros"], optional = true }
 serde   = { workspace = true, features = ["derive"] }
+url     = { version = "2.5" }
 utoipa  = { workspace = true, features = ["uuid"], optional = true }
 uuid    = { workspace = true }
 

@@ -4,20 +4,23 @@ use dto_mapper::convert_inner;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::params::convert_params;
 use crate::model::credential::{Credential, CredentialRelations, CredentialStateRelations};
 use crate::model::did::Did;
 use crate::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
 };
 use crate::model::validity_credential::Lvvc;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::bitstring_status_list::model::RevocationUpdateData;
 use crate::provider::revocation::bitstring_status_list::{
     format_status_list_credential, generate_bitstring_from_credentials,
-    purpose_to_credential_state_enum,
+    purpose_to_credential_state_enum, Params,
 };
 use crate::provider::revocation::model::{CredentialAdditionalData, RevocationUpdate};
-use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::revocation::RevocationMethod;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;

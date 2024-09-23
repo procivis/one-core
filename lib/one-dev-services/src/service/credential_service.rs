@@ -66,7 +66,7 @@ impl CredentialService {
                 credential_data,
                 &Some(holder_did),
                 &algorithm.to_string(),
-                vcdm_v2_base_context(),
+                vcdm_v2_base_context(None),
                 vec![],
                 auth_fn,
                 None,

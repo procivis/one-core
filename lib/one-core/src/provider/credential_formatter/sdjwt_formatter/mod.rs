@@ -15,6 +15,7 @@ use shared_types::DidValue;
 use time::Duration;
 
 use crate::crypto::CryptoProvider;
+use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::{DecomposedToken, JWTPayload};
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -24,6 +25,7 @@ use crate::provider::credential_formatter::model::{
     VerificationFn,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 
 #[cfg(test)]
 mod test;
@@ -108,6 +110,20 @@ impl CredentialFormatter for SDJWTFormatter {
     ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(token, Some(verification))
             .await
+    }
+
+    async fn format_bitstring_status_list(
+        &self,
+        _revocation_list_url: String,
+        _issuer_did: &Did,
+        _encoded_list: String,
+        _algorithm: String,
+        _auth_fn: AuthenticationFn,
+        _status_purpose: StatusPurpose,
+    ) -> Result<String, FormatterError> {
+        Err(FormatterError::Failed(
+            "Cannot format BitstringStatusList with SD-JWT formatter".to_string(),
+        ))
     }
 
     async fn extract_credentials_unverified(

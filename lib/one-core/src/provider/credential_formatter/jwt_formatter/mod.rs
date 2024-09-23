@@ -2,8 +2,9 @@
 
 use async_trait::async_trait;
 use mapper::format_vc;
-use model::{VPContent, VC, VP};
+use model::{VCContent, VPContent, VC, VP};
 use serde::Deserialize;
+use serde_json::json;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -11,6 +12,8 @@ use uuid::Uuid;
 use super::json_ld::model::ContextType;
 use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
+use super::model::{Context, CredentialSubject, Issuer};
+use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
@@ -18,6 +21,7 @@ use crate::provider::credential_formatter::model::{
     VerificationFn,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
 #[cfg(test)]
@@ -84,6 +88,68 @@ impl CredentialFormatter for JWTFormatter {
 
         let key_id = auth_fn.get_key_id();
         let jwt = Jwt::new("JWT".to_owned(), algorithm.to_owned(), key_id, payload);
+
+        jwt.tokenize(auth_fn).await
+    }
+
+    async fn format_bitstring_status_list(
+        &self,
+        revocation_list_url: String,
+        issuer_did: &Did,
+        encoded_list: String,
+        algorithm: String,
+        auth_fn: AuthenticationFn,
+        status_purpose: StatusPurpose,
+    ) -> Result<String, FormatterError> {
+        let issuer = Issuer::Url(
+            issuer_did
+                .did
+                .as_str()
+                .parse()
+                .map_err(|_| FormatterError::Failed("Invalid issuer DID".to_string()))?,
+        );
+
+        let subject_id = format!("{}#list", revocation_list_url);
+        let credential_subject = CredentialSubject {
+            values: [
+                ("id".into(), json!(subject_id)),
+                ("type".into(), json!("BitstringStatusList")),
+                ("statusPurpose".into(), json!(status_purpose)),
+                ("encodedList".into(), json!(encoded_list)),
+            ]
+            .into_iter()
+            .collect(),
+        };
+
+        let vc = VC {
+            vc: VCContent {
+                context: vec![ContextType::Url(Context::CredentialsV2.to_url())],
+                id: Some(revocation_list_url.to_owned()),
+                r#type: vec![
+                    "VerifiableCredential".to_string(),
+                    "BitstringStatusListCredential".to_string(),
+                ],
+                issuer: Some(issuer),
+                valid_from: Some(OffsetDateTime::now_utc()),
+                credential_subject,
+                credential_status: vec![],
+                credential_schema: None,
+                valid_until: None,
+            },
+        };
+
+        let payload = JWTPayload {
+            issuer: Some(issuer_did.did.to_string()),
+            jwt_id: Some(revocation_list_url),
+            subject: Some(subject_id),
+            custom: vc,
+            issued_at: None,
+            expires_at: None,
+            invalid_before: None,
+            nonce: None,
+        };
+
+        let jwt = Jwt::new("JWT".to_owned(), algorithm, None, payload);
 
         jwt.tokenize(auth_fn).await
     }
@@ -231,7 +297,7 @@ impl CredentialFormatter for JWTFormatter {
 fn format_payload(credentials: &[String]) -> VP {
     VP {
         vp: VPContent {
-            context: vcdm_v2_base_context(),
+            context: vcdm_v2_base_context(None),
             r#type: vec!["VerifiablePresentation".to_owned()],
             verifiable_credential: credentials.to_vec(),
         },

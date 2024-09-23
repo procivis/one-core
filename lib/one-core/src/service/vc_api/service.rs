@@ -11,8 +11,11 @@ use super::dto::{
 use super::mapper::value_to_published_claim;
 use super::validation::{validate_verifiable_credential, validate_verifiable_presentation};
 use super::VCAPIService;
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
+use crate::model::revocation_list::RevocationListPurpose;
+use crate::provider::credential_formatter::json_ld::model::LdCredential;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchemaData, ExtractPresentationCtx, PublishedClaim,
     PublishedClaimValue,
@@ -21,10 +24,12 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::bitstring_status_list;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::error::ServiceError;
 use crate::util::key_verification::KeyVerification;
+use crate::util::revocation_update::get_or_create_revocation_list_id;
 
 impl VCAPIService {
     pub fn new(
@@ -124,7 +129,7 @@ impl VCAPIService {
 
         if revocation_method.is_some() {
             let revocation_list_id = get_or_create_revocation_list_id(
-                &[one_providers::common_models::credential::OpenCredential {
+                &[Credential {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     issuance_date: OffsetDateTime::now_utc(),
@@ -133,10 +138,10 @@ impl VCAPIService {
                     credential: vec![],
                     exchange: "OPENID4VC".to_owned(),
                     redirect_uri: None,
-                    role: one_providers::common_models::credential::OpenCredentialRole::Issuer,
-                    state: Some(vec![OpenCredentialState {
+                    role: CredentialRole::Issuer,
+                    state: Some(vec![CredentialState {
                         created_date: OffsetDateTime::now_utc(),
-                        state: OpenCredentialStateEnum::Offered,
+                        state: CredentialStateEnum::Offered,
                         suspend_end_date: None,
                     }]),
                     claims: None,
@@ -145,6 +150,7 @@ impl VCAPIService {
                     schema: None,
                     key: None,
                     interaction: None,
+                    revocation_list: None,
                 }],
                 &issuer,
                 RevocationListPurpose::Revocation,

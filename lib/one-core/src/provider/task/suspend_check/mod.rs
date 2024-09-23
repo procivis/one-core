@@ -14,6 +14,7 @@ use crate::model::did::DidRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use crate::model::organisation::OrganisationRelations;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::provider::revocation::provider::RevocationMethodProvider;

@@ -5,6 +5,7 @@ use retain_proof_check::RetainProofCheck;
 use serde_json::Value;
 
 use self::suspend_check::SuspendCheckProvider;
+use super::credential_formatter::provider::CredentialFormatterProvider;
 use crate::config::core_config::{TaskConfig, TaskType};
 use crate::config::ConfigError;
 use crate::provider::key_storage::provider::KeyProvider;

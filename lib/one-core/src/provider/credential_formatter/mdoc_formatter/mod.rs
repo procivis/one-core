@@ -36,6 +36,7 @@ use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64, NESTED_CLAIM_
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::crypto::SignerError;
 use crate::model::credential_schema::CredentialSchemaType;
+use crate::model::did::Did;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
@@ -48,6 +49,7 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 
 mod cose;
 pub mod mdoc;
@@ -278,7 +280,7 @@ impl CredentialFormatter for MdocFormatter {
     async fn format_bitstring_status_list(
         &self,
         _revocation_list_url: String,
-        _issuer_did: &OpenDid,
+        _issuer_did: &Did,
         _encoded_list: String,
         _algorithm: String,
         _auth_fn: AuthenticationFn,

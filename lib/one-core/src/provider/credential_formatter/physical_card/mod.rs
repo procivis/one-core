@@ -8,6 +8,7 @@ use shared_types::DidValue;
 use super::json_ld::model::ContextType;
 use super::json_ld_classic::verify_credential_signature;
 use crate::crypto::CryptoProvider;
+use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
@@ -19,6 +20,7 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::http_client::HttpClient;
+use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 
 mod mappers;
 mod model;
@@ -50,7 +52,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
     async fn format_bitstring_status_list(
         &self,
         _revocation_list_url: String,
-        _issuer_did: &OpenDid,
+        _issuer_did: &Did,
         _encoded_list: String,
         _algorithm: String,
         _auth_fn: AuthenticationFn,

@@ -6,11 +6,14 @@ use indexmap::indexset;
 use model::CredentialEnvelope;
 use serde::ser::Error;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use serde_with::{serde_as, DurationSeconds};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
+use super::json_ld::model::LdCredentialSubject;
 use crate::crypto::CryptoProvider;
+use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
@@ -26,6 +29,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::{json_ld, CredentialFormatter};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
+use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 
 #[cfg(test)]
 mod test;
@@ -133,7 +137,7 @@ impl CredentialFormatter for JsonLdClassic {
     async fn format_bitstring_status_list(
         &self,
         revocation_list_url: String,
-        issuer_did: &OpenDid,
+        issuer_did: &Did,
         encoded_list: String,
         algorithm: String,
         auth_fn: AuthenticationFn,

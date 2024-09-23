@@ -4826,8 +4826,10 @@ dependencies = [
 name = "shared-types"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "sea-orm",
  "serde",
+ "url",
  "utoipa",
  "uuid",
 ]
