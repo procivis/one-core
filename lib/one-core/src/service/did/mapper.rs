@@ -1,19 +1,14 @@
 use std::collections::HashMap;
 
 use dto_mapper::convert_inner;
-use one_providers::common_models::key::{KeyId, OpenKey};
-use one_providers::common_models::OpenPublicKeyJwk;
-use one_providers::did::model::{DidDocument, DidVerificationMethod};
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
-use super::dto::{
-    CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO, DidResponseKeysDTO,
-    GetDidListResponseDTO,
-};
+use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
 use crate::model::did::{Did, GetDidList, KeyRole, RelatedKey};
+use crate::model::key::{Key, PublicKeyJwk};
 use crate::model::organisation::Organisation;
+use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::service::error::{EntityNotFoundError, ServiceError};
 use crate::service::key::dto::KeyListItemResponseDTO;
 
@@ -70,7 +65,7 @@ pub(super) fn did_from_did_request(
     request: CreateDidRequestDTO,
     organisation: Organisation,
     did_value: DidValue,
-    found_keys: Vec<OpenKey>,
+    found_keys: Vec<Key>,
     now: OffsetDateTime,
 ) -> Result<Did, EntityNotFoundError> {
     let mut keys: Vec<RelatedKey> = vec![];
@@ -81,7 +76,7 @@ pub(super) fn did_from_did_request(
                 key: found_keys
                     .iter()
                     .find(|key| key.id == key_id)
-                    .ok_or(EntityNotFoundError::Key(key_id.into()))?
+                    .ok_or(EntityNotFoundError::Key(key_id))?
                     .clone(),
             });
         }
@@ -124,7 +119,7 @@ pub(super) fn map_did_model_to_did_web_response(
             "https://www.w3.org/ns/did/v1",
             "https://w3id.org/security/suites/jws-2020/v1",
         ]),
-        id: did.did.clone().into(),
+        id: did.did.clone(),
         verification_method: grouped_key.values().cloned().collect(),
         authentication: get_key_id_by_role(KeyRole::Authentication, keys, grouped_key)?.into(),
         assertion_method: get_key_id_by_role(KeyRole::AssertionMethod, keys, grouped_key)?.into(),
@@ -165,7 +160,7 @@ pub(super) fn get_key_id_by_role(
 pub(super) fn map_key_to_verification_method(
     did_value: &DidValue,
     public_key_id: &KeyId,
-    public_key_jwk: OpenPublicKeyJwk,
+    public_key_jwk: PublicKeyJwk,
 ) -> Result<DidVerificationMethod, ServiceError> {
     Ok(DidVerificationMethod {
         id: format!("{}#key-{}", did_value, public_key_id),
@@ -173,40 +168,4 @@ pub(super) fn map_key_to_verification_method(
         controller: did_value.to_string(),
         public_key_jwk,
     })
-}
-
-impl From<one_providers::exchange_protocol::openid4vc::model::DidListItemResponseDTO>
-    for DidListItemResponseDTO
-{
-    fn from(
-        value: one_providers::exchange_protocol::openid4vc::model::DidListItemResponseDTO,
-    ) -> Self {
-        Self {
-            id: Uuid::from(value.id).into(),
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            did: value.did.into(),
-            did_type: value.did_type.into(),
-            did_method: value.did_method,
-            deactivated: value.deactivated,
-        }
-    }
-}
-
-impl From<DidListItemResponseDTO>
-    for one_providers::exchange_protocol::openid4vc::model::DidListItemResponseDTO
-{
-    fn from(value: DidListItemResponseDTO) -> Self {
-        Self {
-            id: Uuid::from(value.id).into(),
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            did: value.did.into(),
-            did_type: value.did_type.into(),
-            did_method: value.did_method,
-            deactivated: value.deactivated,
-        }
-    }
 }

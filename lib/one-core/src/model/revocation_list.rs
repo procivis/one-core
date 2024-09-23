@@ -1,4 +1,4 @@
-use dto_mapper::Into;
+use serde::Serialize;
 use strum_macros::Display;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -24,8 +24,7 @@ pub struct RevocationListRelations {
     pub issuer_did: Option<DidRelations>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Display, Into)]
-#[into(one_providers::revocation::imp::bitstring_status_list::model::RevocationListPurpose)]
+#[derive(Clone, Debug, Eq, PartialEq, Display, Serialize)]
 pub enum RevocationListPurpose {
     Revocation,
     Suspension,

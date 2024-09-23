@@ -1,8 +1,4 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use one_providers::credential_formatter::error::FormatterError;
-use one_providers::revocation::imp::lvvc::create_lvvc_with_status;
-use one_providers::revocation::imp::lvvc::dto::LvvcStatus;
-use one_providers::revocation::imp::lvvc::mapper::status_from_lvvc_claims;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
@@ -12,6 +8,10 @@ use crate::model::did::{Did, DidRelations};
 use crate::model::key::KeyRelations;
 use crate::model::revocation_list::RevocationListRelations;
 use crate::model::validity_credential::ValidityCredentialType;
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::revocation::lvvc::create_lvvc_with_status;
+use crate::provider::revocation::lvvc::dto::LvvcStatus;
+use crate::provider::revocation::lvvc::mapper::status_from_lvvc_claims;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 use crate::service::revocation_list::dto::RevocationListId;
 use crate::service::revocation_list::RevocationListService;
@@ -115,7 +115,7 @@ impl RevocationListService {
 
         // If issuanceDate + credentialExpiry < now then a new VC of the LVVC credential needs to be created and saved in database.
         let revocation_method = schema.revocation_method.to_string();
-        let revocation_params: one_providers::revocation::imp::lvvc::Params =
+        let revocation_params: crate::provider::revocation::lvvc::Params =
             self.config.revocation.get(&revocation_method)?;
         let expiry = revocation_params.credential_expiry;
 
@@ -130,7 +130,7 @@ impl RevocationListService {
                 .ok_or(MissingProviderError::RevocationMethod(revocation_method))?;
 
             let lvvc = create_lvvc_with_status(
-                &credential.to_owned().into(),
+                &credential,
                 status,
                 &self.core_base_url,
                 expiry,
@@ -183,10 +183,7 @@ impl RevocationListService {
         let did = did
             .as_ref()
             .ok_or(ServiceError::MappingError("did is None".to_string()))?;
-        let resolved_did = self
-            .did_method_provider
-            .resolve(&did.did.to_owned().into())
-            .await?;
+        let resolved_did = self.did_method_provider.resolve(&did.did).await?;
 
         let parsed_jwk = self
             .key_algorithm_provider

@@ -1,8 +1,6 @@
 use std::collections::HashSet;
 
 use itertools::Itertools;
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::credential_formatter::CredentialFormatter;
 use shared_types::OrganisationId;
 
 use super::dto::{CreateProofSchemaRequestDTO, ImportProofSchemaDTO, ProofInputSchemaRequestDTO};
@@ -11,6 +9,8 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,

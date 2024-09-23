@@ -9,7 +9,7 @@ use crate::config::validator::datatype::{validate_datatype_value, DatatypeValida
 use crate::config::validator::exchange::validate_exchange_type;
 use crate::config::ConfigValidationError;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
-use crate::provider::credential_formatter::FormatterCapabilities;
+use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 

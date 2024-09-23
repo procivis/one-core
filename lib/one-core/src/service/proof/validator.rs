@@ -1,9 +1,8 @@
-use one_providers::common_models::key::OpenKey;
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-
 use super::dto::CreateProofRequestDTO;
 use crate::config::core_config::{CoreConfig, ExchangeConfig, ExchangeType};
+use crate::model::key::Key;
 use crate::model::proof_schema::ProofSchema;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -101,7 +100,7 @@ pub(super) fn validate_mdl_exchange(
 pub(super) fn validate_verification_key_storage_compatibility(
     config: &CoreConfig,
     proof_schema: &ProofSchema,
-    verifier_key: &OpenKey,
+    verifier_key: &Key,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<(), ServiceError> {
     let input_schemas = proof_schema

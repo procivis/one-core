@@ -3,35 +3,33 @@ use std::sync::Arc;
 
 use maplit::{hashmap, hashset};
 use mockall::predicate::eq;
-use one_providers::common_models::claim::OpenClaim;
-use one_providers::common_models::claim_schema::OpenClaimSchema;
-use one_providers::common_models::credential::{
-    OpenCredential, OpenCredentialRole, OpenCredentialState, OpenCredentialStateEnum,
-};
-use one_providers::common_models::credential_schema::{
-    OpenCredentialSchema, OpenCredentialSchemaClaim, OpenLayoutType,
-};
-use one_providers::common_models::interaction::OpenInteraction;
-use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::common_models::proof::OpenProof;
-use one_providers::common_models::proof_schema::{OpenProofInputSchema, OpenProofSchema};
-use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::exchange_protocol::openid4vc::model::PresentationDefinitionRuleTypeEnum;
-use one_providers::exchange_protocol::openid4vc::{ExchangeProtocolImpl, MockStorageProxy};
-use one_providers::key_storage::provider::MockKeyProvider;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::IsoMdl;
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+};
+use crate::model::interaction::Interaction;
+use crate::model::organisation::Organisation;
+use crate::model::proof::Proof;
+use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::exchange_protocol::dto::PresentationDefinitionRuleTypeEnum;
 use crate::provider::exchange_protocol::iso_mdl::ble_holder::{
     MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData,
 };
 use crate::provider::exchange_protocol::iso_mdl::common::{
     to_cbor, DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
 };
+use crate::provider::exchange_protocol::{ExchangeProtocolImpl, MockStorageProxy};
+use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::service::test_utilities::generic_config;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
 
@@ -105,7 +103,7 @@ async fn test_presentation_reject_ok() {
         }),
     })
     .unwrap();
-    let proof = OpenProof {
+    let proof = Proof {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
@@ -114,17 +112,17 @@ async fn test_presentation_reject_ok() {
         transport: "BLE".to_string(),
         redirect_uri: None,
         state: None,
-        schema: Some(OpenProofSchema {
+        schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
             name: "".to_string(),
             expire_duration: 0,
-            input_schemas: Some(vec![OpenProofInputSchema {
+            input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: None,
-                credential_schema: Some(OpenCredentialSchema {
+                credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -133,10 +131,10 @@ async fn test_presentation_reject_ok() {
                     format: "".to_string(),
                     revocation_method: "".to_string(),
                     wallet_storage_type: None,
-                    layout_type: OpenLayoutType::Card,
+                    layout_type: LayoutType::Card,
                     layout_properties: None,
                     schema_id,
-                    schema_type: "".to_string(),
+                    schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                     claim_schemas: None,
                     organisation: None,
                 }),
@@ -147,11 +145,12 @@ async fn test_presentation_reject_ok() {
         verifier_did: None,
         holder_did: None,
         verifier_key: None,
-        interaction: Some(OpenInteraction {
-            id: Uuid::new_v4().into(),
+        interaction: Some(Interaction {
+            id: Uuid::new_v4(),
             created_date: OffsetDateTime::now_utc(),
             host: None,
             data: Some(interaction_data),
+            last_modified: OffsetDateTime::now_utc(),
         }),
     };
 
@@ -206,7 +205,7 @@ async fn test_get_presentation_definition_ok() {
     .unwrap();
 
     let proof_id = Uuid::new_v4().into();
-    let proof = OpenProof {
+    let proof = Proof {
         id: proof_id,
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
@@ -227,8 +226,8 @@ async fn test_get_presentation_definition_ok() {
     let credential_schema_id = Uuid::new_v4().into();
 
     let claim_schemas = hashmap![
-       "org.iso.18013.5.1.mDL" => OpenCredentialSchemaClaim {
-            schema: OpenClaimSchema {
+       "org.iso.18013.5.1.mDL" => CredentialSchemaClaim {
+            schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "org.iso.18013.5.1.mDL".to_string(),
                 data_type: "OBJECT".to_string(),
@@ -238,8 +237,8 @@ async fn test_get_presentation_definition_ok() {
             },
             required: true,
         },
-        "org.iso.18013.5.1.mDL/name" => OpenCredentialSchemaClaim {
-            schema: OpenClaimSchema {
+        "org.iso.18013.5.1.mDL/name" => CredentialSchemaClaim {
+            schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "org.iso.18013.5.1.mDL/name".to_string(),
                 data_type: "STRING".to_string(),
@@ -249,8 +248,8 @@ async fn test_get_presentation_definition_ok() {
             },
             required: true,
         },
-       "org.iso.18013.5.1.mDL/age" => OpenCredentialSchemaClaim {
-            schema: OpenClaimSchema {
+       "org.iso.18013.5.1.mDL/age" => CredentialSchemaClaim {
+            schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "org.iso.18013.5.1.mDL/age".to_string(),
                 data_type: "NUMBER".to_string(),
@@ -260,8 +259,8 @@ async fn test_get_presentation_definition_ok() {
             },
             required: true,
         },
-       "org.iso.18013.5.1.mDL/country" => OpenCredentialSchemaClaim {
-            schema: OpenClaimSchema {
+       "org.iso.18013.5.1.mDL/country" => CredentialSchemaClaim {
+            schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "org.iso.18013.5.1.mDL/country".to_string(),
                 data_type: "STRING".to_string(),
@@ -271,8 +270,8 @@ async fn test_get_presentation_definition_ok() {
             },
             required: true,
         },
-       "org.iso.18013.5.1.mDL/country_code" => OpenCredentialSchemaClaim {
-            schema: OpenClaimSchema {
+       "org.iso.18013.5.1.mDL/country_code" => CredentialSchemaClaim {
+            schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "org.iso.18013.5.1.mDL/country_code".to_string(),
                 data_type: "STRING".to_string(),
@@ -282,8 +281,8 @@ async fn test_get_presentation_definition_ok() {
             },
             required: true,
         },
-        "org.iso.18013.5.1.mDL/info" => OpenCredentialSchemaClaim {
-            schema: OpenClaimSchema {
+        "org.iso.18013.5.1.mDL/info" => CredentialSchemaClaim {
+            schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "org.iso.18013.5.1.mDL/info".to_string(),
                 data_type: "OBJECT".to_string(),
@@ -293,8 +292,8 @@ async fn test_get_presentation_definition_ok() {
             },
             required: true,
         },
-        "org.iso.18013.5.1.mDL/info/code" => OpenCredentialSchemaClaim {
-            schema: OpenClaimSchema {
+        "org.iso.18013.5.1.mDL/info/code" => CredentialSchemaClaim {
+            schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "org.iso.18013.5.1.mDL/info/code".to_string(),
                 data_type: "STRING".to_string(),
@@ -305,32 +304,34 @@ async fn test_get_presentation_definition_ok() {
             required: true,
         },
     ];
-    let credential_schema = OpenCredentialSchema {
+    let credential_schema = CredentialSchema {
         id: credential_schema_id,
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "schema-name".to_string(),
         format: "ISO_MDL".to_string(),
         revocation_method: "NONE".to_string(),
-        layout_type: OpenLayoutType::Card,
+        layout_type: LayoutType::Card,
         schema_id: schema_id.clone(),
-        schema_type: "schema-type".to_string(),
-        organisation: Some(OpenOrganisation {
-            id: organisation_id.into(),
+        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        organisation: Some(Organisation {
+            id: organisation_id,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
         }),
         layout_properties: None,
         claim_schemas: Some(claim_schemas.values().cloned().collect()),
         wallet_storage_type: None,
         deleted_at: None,
     };
-    let credential_state = OpenCredentialState {
+    let credential_state = CredentialState {
         created_date: OffsetDateTime::now_utc(),
-        state: OpenCredentialStateEnum::Accepted,
+        state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
     };
     let claims = vec![
-        OpenClaim {
-            id: Uuid::new_v4().into(),
+        Claim {
+            id: Uuid::new_v4(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -338,8 +339,8 @@ async fn test_get_presentation_definition_ok() {
             path: "org.iso.18013.5.1.mDL/name".to_string(),
             value: "John".to_string(),
         },
-        OpenClaim {
-            id: Uuid::new_v4().into(),
+        Claim {
+            id: Uuid::new_v4(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -347,8 +348,8 @@ async fn test_get_presentation_definition_ok() {
             path: "org.iso.18013.5.1.mDL/age".to_string(),
             value: "55".to_string(),
         },
-        OpenClaim {
-            id: Uuid::new_v4().into(),
+        Claim {
+            id: Uuid::new_v4(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -360,8 +361,8 @@ async fn test_get_presentation_definition_ok() {
             path: "org.iso.18013.5.1.mDL/country".to_string(),
             value: "Germany".to_string(),
         },
-        OpenClaim {
-            id: Uuid::new_v4().into(),
+        Claim {
+            id: Uuid::new_v4(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -373,8 +374,8 @@ async fn test_get_presentation_definition_ok() {
             path: "org.iso.18013.5.1.mDL/country_code".to_string(),
             value: "DE".to_string(),
         },
-        OpenClaim {
-            id: Uuid::new_v4().into(),
+        Claim {
+            id: Uuid::new_v4(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -393,14 +394,14 @@ async fn test_get_presentation_definition_ok() {
         .expect_get_credentials_by_credential_schema_id()
         .with(eq(schema_id))
         .return_once(move |_| {
-            Ok(vec![OpenCredential {
+            Ok(vec![Credential {
                 id: credential_id,
                 created_date: OffsetDateTime::now_utc(),
                 issuance_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 exchange: "ISO_MDL".to_string(),
                 schema: Some(credential_schema),
-                role: OpenCredentialRole::Holder,
+                role: CredentialRole::Holder,
                 credential: vec![],
                 deleted_at: None,
                 redirect_uri: None,
@@ -410,6 +411,7 @@ async fn test_get_presentation_definition_ok() {
                 holder_did: None,
                 key: None,
                 interaction: None,
+                revocation_list: None,
             }])
         });
 

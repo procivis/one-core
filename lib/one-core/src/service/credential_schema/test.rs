@@ -2,10 +2,6 @@ use std::sync::Arc;
 use std::vec;
 
 use mockall::predicate::*;
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::credential_formatter::model::FormatterCapabilities;
-use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::credential_formatter::MockCredentialFormatter;
 use serde_json::json;
 use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
@@ -20,11 +16,14 @@ use crate::config::ConfigValidationError;
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    GetCredentialSchemaList, LayoutType,
+    GetCredentialSchemaList, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -67,7 +66,7 @@ fn generic_credential_schema() -> CredentialSchema {
         deleted_at: None,
         created_date: now,
         last_modified: now,
-        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         name: "".to_string(),
         format: "".to_string(),
         revocation_method: "".to_string(),
@@ -364,7 +363,7 @@ async fn test_create_credential_schema_success() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: organisation.id.to_owned(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -477,7 +476,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "MDOC".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: organisation.id.to_owned(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -577,7 +576,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: organisation.id.to_owned(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -625,7 +624,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -663,7 +662,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -716,7 +715,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -752,7 +751,7 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -834,7 +833,7 @@ async fn test_create_credential_schema_unique_name_error() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: organisation.id.to_owned(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -959,7 +958,7 @@ async fn test_create_credential_schema_fail_validation() {
             name: "cred".to_string(),
             format: "NON_EXISTING_FORMAT".to_string(),
             revocation_method: "NONE".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
@@ -980,7 +979,7 @@ async fn test_create_credential_schema_fail_validation() {
             name: "cred".to_string(),
             format: "JWT".to_string(),
             revocation_method: "TEST".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
@@ -1001,7 +1000,7 @@ async fn test_create_credential_schema_fail_validation() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -1021,7 +1020,7 @@ async fn test_create_credential_schema_fail_validation() {
     let no_claims = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
@@ -1090,7 +1089,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -1137,7 +1136,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -1186,7 +1185,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "MDOC".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![
@@ -1263,7 +1262,7 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "MDOC".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -1330,7 +1329,7 @@ async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() 
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "PHYSICAL_CARD".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -1377,7 +1376,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -1417,7 +1416,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -1443,7 +1442,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
@@ -1475,7 +1474,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             format: "JWT".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {

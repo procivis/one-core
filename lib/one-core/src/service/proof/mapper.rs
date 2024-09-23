@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use dto_mapper::convert_inner;
-use one_providers::common_models::key::OpenKey;
 use shared_types::{CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -17,6 +16,7 @@ use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
+use crate::model::key::Key;
 use crate::model::proof::{self, Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
@@ -621,7 +621,7 @@ pub fn proof_from_create_request(
     schema: ProofSchema,
     transport: &str,
     verifier_did: Did,
-    verifier_key: Option<OpenKey>,
+    verifier_key: Option<Key>,
 ) -> Proof {
     Proof {
         id: Uuid::new_v4().into(),

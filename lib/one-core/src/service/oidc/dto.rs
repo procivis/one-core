@@ -1,6 +1,7 @@
 use dto_mapper::Into;
-use one_providers::exchange_protocol::openid4vc::model::SubmitIssuerResponse;
 use serde::Deserialize;
+
+use crate::provider::exchange_protocol::openid4vc::model::SubmitIssuerResponse;
 
 #[derive(Clone, Debug, Deserialize, Into)]
 #[into(SubmitIssuerResponse)]

@@ -1,12 +1,14 @@
-use one_providers::common_models::credential::OpenCredential;
-use one_providers::common_models::did::DidValue;
-use one_providers::credential_formatter::model::CredentialStatus;
-use one_providers::revocation::error::RevocationError;
-use one_providers::revocation::model::{
+use shared_types::DidValue;
+
+use super::model::CredentialRevocationInfo;
+use crate::model::credential::Credential;
+use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::revocation::error::RevocationError;
+use crate::provider::revocation::model::{
     CredentialAdditionalData, CredentialDataByRole, CredentialRevocationState, JsonLdContext,
     RevocationMethodCapabilities, RevocationUpdate,
 };
-use one_providers::revocation::RevocationMethod;
+use crate::provider::revocation::RevocationMethod;
 
 pub struct NoneRevocation {}
 
@@ -18,21 +20,15 @@ impl RevocationMethod for NoneRevocation {
 
     async fn add_issued_credential(
         &self,
-        _credential: &OpenCredential,
+        _credential: &Credential,
         _additional_data: Option<CredentialAdditionalData>,
-    ) -> Result<
-        (
-            Option<RevocationUpdate>,
-            Vec<one_providers::revocation::model::CredentialRevocationInfo>,
-        ),
-        RevocationError,
-    > {
+    ) -> Result<(Option<RevocationUpdate>, Vec<CredentialRevocationInfo>), RevocationError> {
         Ok((None, vec![]))
     }
 
     async fn mark_credential_as(
         &self,
-        _credential: &OpenCredential,
+        _credential: &Credential,
         _new_state: CredentialRevocationState,
         _additional_data: Option<CredentialAdditionalData>,
     ) -> Result<RevocationUpdate, RevocationError> {

@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::key_storage::provider::KeyProvider;
-
 use crate::config::core_config;
 use crate::provider::did_method::mdl::DidMdlValidator;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;

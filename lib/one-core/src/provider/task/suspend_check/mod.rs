@@ -1,9 +1,5 @@
 use std::sync::Arc;
 
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::key_storage::provider::KeyProvider;
-use one_providers::revocation::model::CredentialRevocationState;
-use one_providers::revocation::provider::RevocationMethodProvider;
 use serde_json::Value;
 use time::OffsetDateTime;
 
@@ -18,6 +14,10 @@ use crate::model::did::DidRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use crate::model::organisation::OrganisationRelations;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::model::CredentialRevocationState;
+use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
@@ -120,7 +120,7 @@ impl Task for SuspendCheckProvider {
 
             let update = revocation_method
                 .mark_credential_as(
-                    &credential.to_owned().into(),
+                    &credential,
                     CredentialRevocationState::Valid,
                     generate_credential_additional_data(
                         &credential,

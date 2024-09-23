@@ -1,7 +1,7 @@
-use one_providers::credential_formatter::model::DetailCredential;
 use shared_types::{ClaimSchemaId, DidValue};
 use time::OffsetDateTime;
 
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 
 #[derive(Clone, Debug)]

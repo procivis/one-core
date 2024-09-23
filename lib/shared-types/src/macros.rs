@@ -11,6 +11,7 @@
 ///   impl FromStr for MyNewtype { ... }
 ///   impl_for_seaorm_newtype!(MyNewtype);
 /// ```
+#[cfg(feature = "sea-orm")]
 macro_rules! impls_for_seaorm_newtype {
     ($newtype: ty) => {
         impl std::convert::From<$newtype> for sea_orm::Value {
@@ -87,6 +88,7 @@ macro_rules! impls_for_seaorm_newtype {
         }
     };
 }
+#[cfg(feature = "sea-orm")]
 pub(crate) use impls_for_seaorm_newtype;
 
 /// Implements [`std::str::FromStr`], [`std::fmt::Display`], [`std::convert::From`] and [`std::convert::Into`] for a newtype that wraps an Uuid
@@ -139,18 +141,6 @@ macro_rules! impl_from {
 }
 pub(crate) use impl_from;
 
-/// Implements [`std::convert::From`]
-macro_rules! impl_from_unnamed {
-    ($newtype: ty; $inner: ty) => {
-        impl std::convert::From<$inner> for $newtype {
-            fn from(value: $inner) -> Self {
-                Self(value.into())
-            }
-        }
-    };
-}
-pub(crate) use impl_from_unnamed;
-
 /// Implements [`std::convert::Into`]
 macro_rules! impl_into {
     ($newtype: ty; $inner: ty) => {
@@ -162,17 +152,3 @@ macro_rules! impl_into {
     };
 }
 pub(crate) use impl_into;
-
-/// Implements [`std::convert::Into`]
-macro_rules! impl_into_unnamed {
-    ($newtype: ty; $inner: ty) => {
-        #[allow(clippy::from_over_into)]
-        impl std::convert::Into<$inner> for $newtype {
-            fn into(self) -> $inner {
-                <$inner>::from(self.0)
-            }
-        }
-    };
-}
-
-pub(crate) use impl_into_unnamed;

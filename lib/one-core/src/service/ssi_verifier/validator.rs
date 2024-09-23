@@ -1,14 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use one_providers::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::revocation::model::{
-    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
-};
-use one_providers::revocation::provider::RevocationMethodProvider;
 use shared_types::CredentialSchemaId;
 
 use super::dto::ValidatedProofClaimDTO;
@@ -16,6 +8,14 @@ use crate::common_validator::{is_lvvc, validate_expiration_time, validate_issuan
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::{Did, KeyRole};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
+use crate::provider::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::revocation::model::{
+    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
+};
+use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_detailed;
@@ -208,7 +208,7 @@ pub async fn validate_proof(
                         VerifierCredentialData {
                             credential: credential.to_owned(),
                             extracted_lvvcs: extracted_lvvcs.to_owned(),
-                            proof_input: proof_input.into(),
+                            proof_input,
                         },
                     ))),
                 )

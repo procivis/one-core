@@ -1,81 +1,127 @@
+use async_trait::async_trait;
+use error::FormatterError;
+use json_ld::model::ContextType;
+use model::{
+    AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
+    ExtractPresentationCtx, FormatPresentationCtx, Presentation, TokenVerifier,
+};
+use shared_types::DidValue;
+
+use crate::model::did::Did;
+use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+
 pub mod error;
 
 mod common;
 
 // Implementation
+pub mod json_ld;
+pub mod json_ld_bbsplus;
 pub mod json_ld_classic;
+pub mod jwt;
+pub mod jwt_formatter;
 pub mod mapper;
 pub mod mdoc_formatter;
+pub mod model;
 pub mod physical_card;
+pub mod provider;
+pub mod sdjwt_formatter;
 pub mod status_list_jwt_formatter;
 
 #[cfg(test)]
 mod test;
 
-use dto_mapper::{From, Into};
-use one_providers::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
-use serde::Serialize;
+/// Format credentials for sharing and parse credentials which have been shared.
+#[allow(clippy::too_many_arguments)]
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[async_trait]
+pub trait CredentialFormatter: Send + Sync {
+    /// Formats and signs a credential.
+    async fn format_credentials(
+        &self,
+        credential: CredentialData,
+        holder_did: &Option<DidValue>,
+        algorithm: &str,
+        additional_context: Vec<ContextType>,
+        additional_types: Vec<String>,
+        auth_fn: model::AuthenticationFn,
+        json_ld_context_url: Option<String>,
+        custom_subject_name: Option<String>,
+    ) -> Result<String, error::FormatterError>;
 
-use crate::service::credential::dto::{
-    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
-};
+    /// Formats BitStringStatusList credential
+    async fn format_bitstring_status_list(
+        &self,
+        revocation_list_url: String,
+        issuer_did: &Did,
+        encoded_list: String,
+        algorithm: String,
+        auth_fn: AuthenticationFn,
+        status_purpose: StatusPurpose,
+    ) -> Result<String, FormatterError>;
 
-#[derive(Clone, Default, Serialize, From, Into)]
-#[serde(rename_all = "camelCase")]
-#[from(one_providers::credential_formatter::model::FormatterCapabilities)]
-#[into(one_providers::credential_formatter::model::FormatterCapabilities)]
-pub struct FormatterCapabilities {
-    pub features: Vec<String>,
-    pub selective_disclosure: Vec<String>,
-    pub issuance_did_methods: Vec<String>,
-    pub issuance_exchange_protocols: Vec<String>,
-    pub proof_exchange_protocols: Vec<String>,
-    pub revocation_methods: Vec<String>,
-    pub signing_key_algorithms: Vec<String>,
-    pub verification_key_algorithms: Vec<String>,
-    pub verification_key_storages: Vec<String>,
-    pub datatypes: Vec<String>,
-    pub allowed_schema_ids: Vec<String>,
-    pub forbidden_claim_names: Vec<String>,
-}
+    /// Parses a received credential and verifies the signature.
+    async fn extract_credentials(
+        &self,
+        credentials: &str,
+        verification: Box<dyn model::TokenVerifier>,
+    ) -> Result<DetailCredential, FormatterError>;
 
-fn map_claims(
-    claims: &[DetailCredentialClaimResponseDTO],
-    array_item: bool,
-) -> Vec<PublishedClaim> {
-    let mut result = vec![];
+    /// Formats presentation with selective disclosure.
+    ///
+    /// For those formats capable of selective disclosure, call this with the keys of the claims
+    /// to be shared. The token is processed and returns the correctly formatted presentation
+    /// containing only the selected attributes.
+    async fn format_credential_presentation(
+        &self,
+        credential: CredentialPresentation,
+    ) -> Result<String, FormatterError>;
 
-    for claim in claims {
-        let published_claim_value = match &claim.value {
-            DetailCredentialClaimValueResponseDTO::Nested(value) => {
-                result.extend(map_claims(value, claim.schema.array));
-                None
-            }
-            DetailCredentialClaimValueResponseDTO::String(value) => {
-                Some(PublishedClaimValue::String(value.to_owned()))
-            }
-            DetailCredentialClaimValueResponseDTO::Boolean(value) => {
-                Some(PublishedClaimValue::Bool(value.to_owned()))
-            }
-            DetailCredentialClaimValueResponseDTO::Float(value) => {
-                Some(PublishedClaimValue::Float(value.to_owned()))
-            }
-            DetailCredentialClaimValueResponseDTO::Integer(value) => {
-                Some(PublishedClaimValue::Integer(value.to_owned()))
-            }
-        };
+    /// Parses a received credential without verifying the signature.
+    async fn extract_credentials_unverified(
+        &self,
+        credential: &str,
+    ) -> Result<DetailCredential, FormatterError>;
 
-        let key = claim.path.clone();
+    /// Formats a presentation of credentials and signs it.
+    async fn format_presentation(
+        &self,
+        tokens: &[String],
+        holder_did: &DidValue,
+        algorithm: &str,
+        auth_fn: AuthenticationFn,
+        ctx: FormatPresentationCtx,
+    ) -> Result<String, FormatterError>;
 
-        if let Some(value) = published_claim_value {
-            result.push(PublishedClaim {
-                key,
-                value,
-                datatype: Some(claim.schema.datatype.clone()),
-                array_item,
-            });
-        }
-    }
+    /// Parses a presentation and verifies the signature.
+    async fn extract_presentation(
+        &self,
+        token: &str,
+        verification: Box<dyn TokenVerifier>,
+        ctx: ExtractPresentationCtx,
+    ) -> Result<Presentation, FormatterError>;
 
-    result
+    /// Parses a presentation without verifying the signature.
+    ///
+    /// This can be useful for checking the validity of a presentation (e.g.
+    /// expiration and revocation status) before committing to verifying a
+    /// signature.
+    async fn extract_presentation_unverified(
+        &self,
+        token: &str,
+        ctx: ExtractPresentationCtx,
+    ) -> Result<Presentation, FormatterError>;
+
+    /// Returns the leeway time.
+    ///
+    /// Leeway is a buffer time (in seconds) added to account for clock skew
+    /// between systems when validating issuance and expiration dates of presentations
+    /// and the credentials included therein. This prevents minor discrepancies in system
+    /// clocks from causing validation failures.
+    fn get_leeway(&self) -> u64;
+
+    /// See the [API docs][cfc] for a complete list of credential format capabilities.
+    ///
+    /// [cfc]: https://docs.procivis.ch/api/resources/credential_schemas#credential-format-capabilities
+    fn get_capabilities(&self) -> model::FormatterCapabilities;
 }

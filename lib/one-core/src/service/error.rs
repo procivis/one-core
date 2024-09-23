@@ -1,12 +1,3 @@
-use one_crypto::CryptoProviderError;
-use one_providers::credential_formatter::error::FormatterError;
-use one_providers::did::error::{DidMethodError, DidMethodProviderError};
-use one_providers::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
-use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
-use one_providers::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
-use one_providers::key_storage::error::{KeyStorageError, KeyStorageProviderError};
-use one_providers::revocation::error::RevocationError;
-use one_providers::revocation::imp::bitstring_status_list::util::BitstringError;
 use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
     OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
@@ -18,11 +9,20 @@ use uuid::Uuid;
 use super::did::DidDeactivationError;
 use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
+use crate::crypto::CryptoProviderError;
 use crate::model::credential::CredentialStateEnum;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofStateEnum;
 use crate::model::revocation_list::RevocationListId;
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::did_method::mdl::DidMdlValidationError;
+use crate::provider::exchange_protocol::error::ExchangeProtocolError;
+use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
+use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
+use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
+use crate::provider::revocation::bitstring_status_list::util::BitstringError;
+use crate::provider::revocation::error::RevocationError;
 use crate::repository::error::DataLayerError;
 use crate::util::oidc::FormatError;
 

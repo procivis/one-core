@@ -6,37 +6,39 @@ use async_trait::async_trait;
 use ble::ISO_MDL_FLOW;
 use ble_holder::{send_mdl_response, MdocBleHolderInteractionData};
 use common::{to_cbor, DeviceRequest};
-use one_providers::common_dto::PublicKeyJwkDTO;
-use one_providers::common_models::credential::{OpenCredential, OpenCredentialStateEnum};
-use one_providers::common_models::did::OpenDid;
-use one_providers::common_models::key::{KeyId, OpenKey};
-use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::common_models::proof::{OpenProof, OpenProofStateEnum};
-use one_providers::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::exchange_protocol::openid4vc::model::{
-    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentationDefinitionFieldDTO,
-    PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, PresentedCredential,
-    ShareResponse, SubmitIssuerResponse, UpdateResponse,
-};
-use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
-use one_providers::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
-use one_providers::exchange_protocol::openid4vc::{
-    ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
-    StorageAccess, TypeToDescriptorMapper,
-};
-use one_providers::key_storage::provider::KeyProvider;
+use shared_types::KeyId;
 use url::Url;
 
+use super::dto::{
+    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+};
+use super::{
+    ExchangeProtocolError, ExchangeProtocolImpl, FnMapExternalFormatToExternalDetailed,
+    FormatMapper, HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
+};
 use crate::common_mapper::{decode_cbor_base64, NESTED_CLAIM_MARKER};
+use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::CoreConfig;
+use crate::model::credential::{Credential, CredentialStateEnum};
+use crate::model::did::Did;
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     DeviceResponse, DeviceResponseVersion, DocumentError, EmbeddedCbor, SessionTranscript,
 };
+use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::deserialize_interaction_data;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
+};
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::credential::mapper::credential_detail_response_from_model;
+use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::ble_resource::{Abort, BleWaiter};
 
 mod ble;
@@ -50,7 +52,6 @@ mod session;
 mod test;
 mod verify_proof;
 
-#[allow(dead_code)]
 pub(crate) struct IsoMdl {
     config: Arc<CoreConfig>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -86,14 +87,14 @@ impl ExchangeProtocolImpl for IsoMdl {
     async fn handle_invitation(
         &self,
         _url: Url,
-        _organisation: OpenOrganisation,
+        _organisation: Organisation,
         _storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         unimplemented!()
     }
 
-    async fn reject_proof(&self, proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let ble = self.ble.as_ref().ok_or(ExchangeProtocolError::Failed(
             "Missing BLE waiter".to_string(),
         ))?;
@@ -136,10 +137,10 @@ impl ExchangeProtocolImpl for IsoMdl {
 
     async fn submit_proof(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
-        holder_did: &OpenDid,
-        key: &OpenKey,
+        holder_did: &Did,
+        key: &Key,
         _jwk_key_id: Option<String>,
         _format_map: HashMap<String, String>,
         _presentation_format_map: HashMap<String, String>,
@@ -218,9 +219,9 @@ impl ExchangeProtocolImpl for IsoMdl {
 
     async fn accept_credential(
         &self,
-        _credential: &OpenCredential,
-        _holder_did: &OpenDid,
-        _key: &OpenKey,
+        _credential: &Credential,
+        _holder_did: &Did,
+        _key: &Key,
         _jwk_key_id: Option<String>,
         _format: &str,
         _storage_access: &StorageAccess,
@@ -231,28 +232,28 @@ impl ExchangeProtocolImpl for IsoMdl {
 
     async fn reject_credential(
         &self,
-        _credential: &OpenCredential,
+        _credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         unimplemented!()
     }
 
     async fn validate_proof_for_submission(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
     ) -> Result<(), ExchangeProtocolError> {
-        throw_if_latest_proof_state_not_eq(proof, OpenProofStateEnum::Requested)
+        throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Requested)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     async fn share_credential(
         &self,
-        _credential: &OpenCredential,
+        _credential: &Credential,
         _credential_format: &str,
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         unimplemented!()
     }
 
-    async fn retract_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+    async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let ble = self
             .ble
             .as_ref()
@@ -266,7 +267,7 @@ impl ExchangeProtocolImpl for IsoMdl {
 
     async fn share_proof(
         &self,
-        _proof: &OpenProof,
+        _proof: &Proof,
         _format_to_type_mapper: FormatMapper,
         _key_id: KeyId,
         _encryption_key_jwk: PublicKeyJwkDTO,
@@ -278,7 +279,7 @@ impl ExchangeProtocolImpl for IsoMdl {
 
     async fn get_presentation_definition(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         interaction_data: Self::VPInteractionContext,
         storage_access: &StorageAccess,
         _format_map: HashMap<String, String>,
@@ -320,7 +321,7 @@ impl ExchangeProtocolImpl for IsoMdl {
                         .schema
                         .as_ref()
                         .and_then(|schema| schema.organisation.as_ref())
-                        .filter(|organisation| organisation.id == organisation_id.into())
+                        .filter(|organisation| organisation.id == organisation_id)
                         .is_some()
                 })
                 .collect();
@@ -355,9 +356,9 @@ impl ExchangeProtocolImpl for IsoMdl {
 
                 if !matches!(
                     credential_state.state,
-                    OpenCredentialStateEnum::Accepted
-                        | OpenCredentialStateEnum::Revoked
-                        | OpenCredentialStateEnum::Suspended
+                    CredentialStateEnum::Accepted
+                        | CredentialStateEnum::Revoked
+                        | CredentialStateEnum::Suspended
                 ) {
                     continue;
                 }
@@ -390,13 +391,14 @@ impl ExchangeProtocolImpl for IsoMdl {
                     applicable_credentials.push(credential.id.to_string());
 
                     let credential =
-                        credential_detail_response_from_model(credential.into(), &self.config)
-                            .map_err(|err| {
+                        credential_detail_response_from_model(credential, &self.config).map_err(
+                            |err| {
                                 ExchangeProtocolError::Failed(format!(
                                     "Credential model mapping error: {err}"
                                 ))
-                            })?;
-                    relevant_credentials.push(credential.into());
+                            },
+                        )?;
+                    relevant_credentials.push(credential);
                 }
             }
 
@@ -433,7 +435,7 @@ impl ExchangeProtocolImpl for IsoMdl {
 
     async fn verifier_handle_proof(
         &self,
-        _proof: &OpenProof,
+        _proof: &Proof,
         _submission: &[u8],
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
         todo!()

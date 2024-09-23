@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use one_core::model::key::{GetKeyQuery, KeyRelations};
+use one_core::model::key::{GetKeyQuery, Key, KeyRelations};
 use one_core::model::organisation::Organisation;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
-use one_providers::common_models::key::OpenKey;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, Set};
 use shared_types::KeyId;
@@ -115,7 +114,7 @@ async fn test_create_key_success() {
 
     let id = Uuid::new_v4().into();
     let result = provider
-        .create_key(OpenKey {
+        .create_key(Key {
             id,
             created_date: now,
             last_modified: now,
@@ -124,7 +123,7 @@ async fn test_create_key_success() {
             key_reference: vec![],
             storage_type: "INTERNAL".to_string(),
             key_type: "RSA_4096".to_string(),
-            organisation: Some(organisation.into()),
+            organisation: Some(organisation),
         })
         .await;
 
@@ -144,16 +143,12 @@ async fn test_get_key_success() {
     };
 
     let result = provider
-        .get_key(
-            &key_id.to_owned().into(),
-            &KeyRelations { organisation: None },
-        )
+        .get_key(&key_id, &KeyRelations { organisation: None })
         .await
         .unwrap()
         .unwrap();
 
-    let result_key_id = shared_types::KeyId::from(result.id);
-    assert_eq!(key_id, result_key_id);
+    assert_eq!(key_id, result.id);
 }
 
 #[tokio::test]
@@ -190,8 +185,5 @@ async fn test_get_key_list_success() {
     assert_eq!(data.total_items, 2);
     assert_eq!(data.values.len(), 2);
 
-    assert!(data
-        .values
-        .iter()
-        .all(|key| ids.contains(&key.id.to_owned().into())));
+    assert!(data.values.iter().all(|key| ids.contains(&key.id)));
 }

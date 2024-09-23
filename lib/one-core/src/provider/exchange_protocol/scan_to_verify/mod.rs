@@ -3,28 +3,29 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use dto::ScanToVerifyCredentialDTO;
-use one_providers::common_dto::PublicKeyJwkDTO;
-use one_providers::common_models::credential::OpenCredential;
-use one_providers::common_models::did::{KeyRole, OpenDid};
-use one_providers::common_models::key::{KeyId, OpenKey};
-use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::common_models::proof::{OpenProof, OpenProofStateEnum};
-use one_providers::credential_formatter::model::DetailCredential;
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::exchange_protocol::openid4vc::model::{
-    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentationDefinitionResponseDTO,
-    PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
-};
-use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
-use one_providers::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
-use one_providers::exchange_protocol::openid4vc::{
-    ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
-    StorageAccess, TypeToDescriptorMapper,
-};
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use shared_types::KeyId;
 use url::Url;
 
+use super::dto::PresentationDefinitionResponseDTO;
+use super::{
+    ExchangeProtocolError, ExchangeProtocolImpl, FnMapExternalFormatToExternalDetailed,
+    FormatMapper, HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
+};
+use crate::common_validator::throw_if_latest_proof_state_not_eq;
+use crate::model::credential::Credential;
+use crate::model::did::{Did, KeyRole};
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
+use crate::model::proof::{Proof, ProofStateEnum};
+use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
+};
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::ScanToVerifyRequestDTO;
 use crate::util::key_verification::KeyVerification;
 
@@ -62,23 +63,23 @@ impl ExchangeProtocolImpl for ScanToVerify {
     async fn handle_invitation(
         &self,
         _url: Url,
-        _organisation: OpenOrganisation,
+        _organisation: Organisation,
         _storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         unimplemented!()
     }
 
-    async fn reject_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+    async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         unimplemented!()
     }
 
     async fn submit_proof(
         &self,
-        _proof: &OpenProof,
+        _proof: &Proof,
         _credential_presentations: Vec<PresentedCredential>,
-        _holder_did: &OpenDid,
-        _key: &OpenKey,
+        _holder_did: &Did,
+        _key: &Key,
         _jwk_key_id: Option<String>,
         _format_map: HashMap<String, String>,
         _presentation_format_map: HashMap<String, String>,
@@ -88,9 +89,9 @@ impl ExchangeProtocolImpl for ScanToVerify {
 
     async fn accept_credential(
         &self,
-        _credential: &OpenCredential,
-        _holder_did: &OpenDid,
-        _key: &OpenKey,
+        _credential: &Credential,
+        _holder_did: &Did,
+        _key: &Key,
         _jwk_key_id: Option<String>,
         _format: &str,
         _storage_access: &StorageAccess,
@@ -101,14 +102,14 @@ impl ExchangeProtocolImpl for ScanToVerify {
 
     async fn reject_credential(
         &self,
-        _credential: &OpenCredential,
+        _credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         unimplemented!()
     }
 
     async fn get_presentation_definition(
         &self,
-        _proof: &OpenProof,
+        _proof: &Proof,
         _interaction_data: Self::VPInteractionContext,
         _storage_access: &StorageAccess,
         _format_map: HashMap<String, String>,
@@ -119,27 +120,27 @@ impl ExchangeProtocolImpl for ScanToVerify {
 
     async fn validate_proof_for_submission(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
     ) -> Result<(), ExchangeProtocolError> {
-        throw_if_latest_proof_state_not_eq(proof, OpenProofStateEnum::Pending)
+        throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Pending)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     async fn share_credential(
         &self,
-        _credential: &OpenCredential,
+        _credential: &Credential,
         _credential_format: &str,
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         unimplemented!()
     }
 
-    async fn retract_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+    async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         Ok(())
     }
 
     async fn share_proof(
         &self,
-        _proof: &OpenProof,
+        _proof: &Proof,
         _format_to_type_mapper: FormatMapper,
         _key_id: KeyId,
         _encryption_key_jwk: PublicKeyJwkDTO,
@@ -151,7 +152,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
 
     async fn verifier_handle_proof(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         submission: &[u8],
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
         let proof_schema = proof.schema.as_ref().ok_or(ExchangeProtocolError::Failed(
@@ -195,7 +196,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         let key_verification = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
-            key_role: KeyRole::AssertionMethod.into(),
+            key_role: KeyRole::AssertionMethod,
         });
 
         let credential = formatter

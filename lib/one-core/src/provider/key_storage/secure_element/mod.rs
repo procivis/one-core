@@ -1,12 +1,16 @@
 use std::sync::Arc;
 
-use one_crypto::SignerError;
-use one_providers::common_models::key::{KeyId, OpenKey};
-use one_providers::key_storage::error::KeyStorageError;
-use one_providers::key_storage::model::{KeySecurity, KeyStorageCapabilities, StorageGeneratedKey};
-use one_providers::key_storage::KeyStorage;
 use serde::Deserialize;
+use shared_types::KeyId;
 use zeroize::Zeroizing;
+
+use crate::crypto::SignerError;
+use crate::model::key::Key;
+use crate::provider::key_storage::error::KeyStorageError;
+use crate::provider::key_storage::model::{
+    KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
+};
+use crate::provider::key_storage::KeyStorage;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait NativeKeyStorage: Send + Sync {
@@ -44,11 +48,11 @@ impl KeyStorage for SecureElementKeyProvider {
         self.native_storage.generate_key(key_alias)
     }
 
-    async fn sign(&self, key: &OpenKey, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         self.native_storage.sign(&key.key_reference, message)
     }
 
-    fn secret_key_as_jwk(&self, _key: &OpenKey) -> Result<Zeroizing<String>, KeyStorageError> {
+    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, KeyStorageError> {
         unimplemented!()
     }
 

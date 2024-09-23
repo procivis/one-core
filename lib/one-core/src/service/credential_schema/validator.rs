@@ -1,7 +1,5 @@
 use std::collections::HashSet;
 
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::credential_formatter::CredentialFormatter;
 use serde_json::Value;
 use shared_types::OrganisationId;
 
@@ -10,6 +8,8 @@ use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO,

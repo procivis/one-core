@@ -1,19 +1,17 @@
-use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
-use one_providers::common_models::key::OpenKey;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
+use strum::Display;
 use time::OffsetDateTime;
 
 use super::common::GetListResponse;
+use super::key::Key;
 use super::list_filter::{ListFilterValue, StringMatch};
 use super::list_query::ListQuery;
 use super::organisation::{Organisation, OrganisationRelations};
 use crate::model::key::KeyRelations;
 use crate::service::error::{ServiceError, ValidationError};
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Into, From)]
-#[into(one_providers::common_models::did::DidType)]
-#[from(one_providers::common_models::did::DidType)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DidType {
     Remote,
@@ -26,9 +24,7 @@ impl DidType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::did::KeyRole)]
-#[from(one_providers::common_models::did::KeyRole)]
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
 pub enum KeyRole {
     Authentication,
     AssertionMethod,
@@ -37,17 +33,13 @@ pub enum KeyRole {
     CapabilityDelegation,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::did::RelatedKey)]
-#[from(one_providers::common_models::did::RelatedKey)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RelatedKey {
     pub role: KeyRole,
-    pub key: OpenKey,
+    pub key: Key,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into, From)]
-#[into(one_providers::common_models::did::OpenDid)]
-#[from(one_providers::common_models::did::OpenDid)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Did {
     pub id: DidId,
     pub created_date: OffsetDateTime,
@@ -59,11 +51,7 @@ pub struct Did {
     pub deactivated: bool,
 
     // Relations:
-    #[into(with_fn = "convert_inner_of_inner")]
-    #[from(with_fn = "convert_inner_of_inner")]
     pub keys: Option<Vec<RelatedKey>>,
-    #[into(with_fn = "convert_inner")]
-    #[from(with_fn = "convert_inner")]
     pub organisation: Option<Organisation>,
 }
 
@@ -72,15 +60,13 @@ impl Did {
         self.did_type.is_remote()
     }
 
-    pub fn find_key(&self, key_id: &KeyId, role: KeyRole) -> Result<&OpenKey, ServiceError> {
-        let key_id: one_providers::common_models::key::KeyId = key_id.to_owned().into();
-
+    pub fn find_key(&self, key_id: &KeyId, role: KeyRole) -> Result<&Key, ServiceError> {
         let mut same_id_keys = self
             .keys
             .as_ref()
             .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
             .iter()
-            .filter(|entry| entry.key.id == key_id)
+            .filter(|entry| &entry.key.id == key_id)
             .peekable();
 
         if same_id_keys.peek().is_none() {
@@ -93,7 +79,7 @@ impl Did {
             .key)
     }
 
-    pub fn find_first_key_by_role(&self, role: KeyRole) -> Result<&OpenKey, ServiceError> {
+    pub fn find_first_key_by_role(&self, role: KeyRole) -> Result<&Key, ServiceError> {
         Ok(&self
             .keys
             .as_ref()

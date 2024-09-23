@@ -1,11 +1,11 @@
 use std::convert::Infallible;
 use std::str::FromStr;
 
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
+use url::Url;
 
-use crate::macros::{
-    impl_display, impl_from, impl_from_unnamed, impl_into_unnamed, impls_for_seaorm_newtype,
-};
+use crate::macros::{impl_display, impl_from};
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
@@ -16,6 +16,22 @@ pub struct DidValue(String);
 impl DidValue {
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+impl From<Url> for DidValue {
+    fn from(url: Url) -> Self {
+        url.to_string().into()
+    }
+}
+
+impl TryInto<Url> for &DidValue {
+    type Error = anyhow::Error;
+
+    fn try_into(self) -> Result<Url, Self::Error> {
+        self.as_str()
+            .parse()
+            .with_context(|| format!("Failed to convert did: {} to URL", self))
     }
 }
 
@@ -31,7 +47,7 @@ impl_from!(DidValue; String);
 impl_display!(DidValue);
 
 #[cfg(feature = "sea-orm")]
-impls_for_seaorm_newtype!(DidValue);
+use crate::macros::impls_for_seaorm_newtype;
 
-impl_from_unnamed!(DidValue; one_providers::common_models::did::DidValue);
-impl_into_unnamed!(DidValue; one_providers::common_models::did::DidValue);
+#[cfg(feature = "sea-orm")]
+impls_for_seaorm_newtype!(DidValue);

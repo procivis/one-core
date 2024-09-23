@@ -274,7 +274,7 @@ async fn test_create_credential_with_issuer_key() {
                     "path": "firstName"
                 }
             ]),
-            Some(key3.id.into()),
+            Some(key3.id),
         )
         .await;
 
@@ -335,7 +335,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
                     "path": "firstName"
                 }
             ]),
-            Some(key.id.into()),
+            Some(key.id),
         )
         .await;
 

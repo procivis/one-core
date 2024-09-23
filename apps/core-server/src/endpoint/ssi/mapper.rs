@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use dto_mapper::{convert_inner, convert_inner_of_inner};
-use one_core::service::error::ServiceError;
-use one_providers::common_dto::PublicKeyJwkDTO;
-use one_providers::common_models::OpenPublicKeyJwk;
-use one_providers::exchange_protocol::openid4vc::error::OpenID4VCIError;
-use one_providers::exchange_protocol::openid4vc::model::{
+use one_core::model::key::PublicKeyJwk;
+use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
+use one_core::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCICredentialOfferClaimValue, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
     OpenID4VCITokenRequestDTO, Timestamp,
 };
+use one_core::service::error::ServiceError;
+use one_core::service::key::dto::PublicKeyJwkDTO;
 
 use super::dto::{
     OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO, OpenID4VCITokenRequestRestDTO,
@@ -85,8 +85,8 @@ pub(super) fn convert_mdoc_claims(
     input.map(convert_inner_of_inner)
 }
 
-impl From<OpenPublicKeyJwk> for PublicKeyJwkRestDTO {
-    fn from(value: OpenPublicKeyJwk) -> Self {
+impl From<PublicKeyJwk> for PublicKeyJwkRestDTO {
+    fn from(value: PublicKeyJwk) -> Self {
         PublicKeyJwkDTO::from(value).into()
     }
 }

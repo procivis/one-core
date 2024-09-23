@@ -1,23 +1,23 @@
 use std::sync::Arc;
 
 use mockall::predicate;
-use one_crypto::{MockCryptoProvider, MockHasher};
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
-use one_providers::credential_formatter::model::MockTokenVerifier;
-use one_providers::credential_formatter::CredentialFormatter;
-use one_providers::http_client::imp::reqwest_client::ReqwestClient;
-use one_providers::remote_entity_storage::{
-    MockRemoteEntityStorage, RemoteEntity, RemoteEntityType,
-};
 use serde_json::json;
 use time::OffsetDateTime;
 
 use super::PhysicalCardFormatter;
+use crate::crypto::{MockCryptoProvider, MockHasher};
+use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
+use crate::provider::credential_formatter::model::MockTokenVerifier;
 use crate::provider::credential_formatter::physical_card::mappers::terse_bitstring_status_list_to_bitstring_status;
 use crate::provider::credential_formatter::physical_card::model::{
     OptiocalBarcodeCredential, TerseBitstringStatusListEntry,
 };
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::exchange_protocol::scan_to_verify::dto::ScanToVerifyCredentialDTO;
+use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::remote_entity_storage::{
+    MockRemoteEntityStorage, RemoteEntity, RemoteEntityType,
+};
 
 // https://w3c-ccg.github.io/vc-barcodes/#example-a-json-ld-vc-for-a-utopia-ead-vcb-0
 // https://w3c-ccg.github.io/vc-barcodes/#verifying-0

@@ -1,25 +1,25 @@
 use dto_mapper::convert_inner;
-use one_providers::common_models::key::{KeyId, OpenKey};
-use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::key_storage::model::StorageGeneratedKey;
 use rcgen::{CertificateParams, CustomExtension, DistinguishedName, DnType};
+use shared_types::KeyId;
 use time::OffsetDateTime;
 use yasna::models::ObjectIdentifier;
 
 use super::dto::{GetKeyListResponseDTO, KeyGenerateCSRRequestProfile};
-use crate::model::key::GetKeyList;
+use crate::model::key::{GetKeyList, Key};
+use crate::model::organisation::Organisation;
+use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::service::error::ServiceError;
 use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO, KeyResponseDTO};
 
 pub(super) fn from_create_request(
     key_id: KeyId,
     request: KeyRequestDTO,
-    organisation: OpenOrganisation,
+    organisation: Organisation,
     generated_key: StorageGeneratedKey,
-) -> OpenKey {
+) -> Key {
     let now = OffsetDateTime::now_utc();
 
-    OpenKey {
+    Key {
         id: key_id,
         created_date: now,
         last_modified: now,
@@ -32,10 +32,10 @@ pub(super) fn from_create_request(
     }
 }
 
-impl TryFrom<OpenKey> for KeyResponseDTO {
+impl TryFrom<Key> for KeyResponseDTO {
     type Error = ServiceError;
 
-    fn try_from(value: OpenKey) -> Result<Self, Self::Error> {
+    fn try_from(value: Key) -> Result<Self, Self::Error> {
         let organisation_id = value
             .organisation
             .ok_or(ServiceError::MappingError(
@@ -47,7 +47,7 @@ impl TryFrom<OpenKey> for KeyResponseDTO {
             id: value.id.into(),
             created_date: value.created_date,
             last_modified: value.last_modified,
-            organisation_id: organisation_id.into(),
+            organisation_id,
             name: value.name,
             public_key: value.public_key,
             key_type: value.key_type,

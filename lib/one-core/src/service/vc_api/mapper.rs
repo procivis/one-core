@@ -1,4 +1,4 @@
-use one_providers::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
+use crate::provider::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
 
 pub fn value_to_published_claim(
     claim: (String, serde_json::Value),

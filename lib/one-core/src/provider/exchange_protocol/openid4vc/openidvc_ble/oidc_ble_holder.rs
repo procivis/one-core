@@ -4,7 +4,6 @@ use std::vec;
 
 use anyhow::Context;
 use futures::{stream, Stream, StreamExt, TryFutureExt};
-use one_providers::exchange_protocol::openid4vc::model::PresentationSubmissionMappingDTO;
 use rand::rngs::OsRng;
 use rand::Rng;
 use shared_types::ProofId;
@@ -22,11 +21,10 @@ use crate::model::proof::{ProofState, ProofStateEnum};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
 use crate::provider::bluetooth_low_energy::BleError;
-use crate::provider::exchange_protocol::openid4vc::dto::{
-    Chunk, ChunkExt, Chunks, OpenID4VPPresentationDefinition,
-};
+use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, BleOpenId4VpResponse,
+    BLEOpenID4VPInteractionData, BleOpenId4VpResponse, OpenID4VPPresentationDefinition,
+    PresentationSubmissionMappingDTO,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
     PRESENTATION_REQUEST_UUID, TRANSFER_SUMMARY_REQUEST_UUID,

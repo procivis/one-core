@@ -3,6 +3,7 @@ use std::sync::Arc;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, LayoutType,
+    WalletStorageTypeEnum,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof_schema::{
@@ -20,7 +21,6 @@ use one_core::repository::organisation_repository::{
     self, MockOrganisationRepository, OrganisationRepository,
 };
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use sea_orm::{ActiveModelTrait, Set, Unchanged};
 use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
@@ -184,7 +184,7 @@ async fn test_create_proof_schema_already_exists() {
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
-                    wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     name: "schema".to_string(),
@@ -280,7 +280,7 @@ async fn test_create_proof_schema_success() {
                 credential_schema: Some(CredentialSchema {
                     id: credential_schema_id,
                     deleted_at: None,
-                    wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     name: "schema".to_string(),
@@ -491,7 +491,7 @@ async fn test_get_proof_schema_with_relations() {
             Ok(Some(CredentialSchema {
                 id: id.to_owned(),
                 deleted_at: None,
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "schema".to_string(),
@@ -628,7 +628,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
             Ok(Some(CredentialSchema {
                 id: id.to_owned(),
                 deleted_at: None,
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "schema".to_string(),

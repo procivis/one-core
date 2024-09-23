@@ -5,20 +5,10 @@ use config::core_config::{
     CoreConfig, DatatypeConfig, FormatConfig, KeyAlgorithmConfig, KeyStorageConfig,
 };
 use config::ConfigError;
-use one_crypto::CryptoProvider;
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::exchange_protocol::imp::provider::ExchangeProtocolProviderImpl;
-use one_providers::exchange_protocol::provider::ExchangeProtocol;
-use one_providers::http_client::imp::reqwest_client::ReqwestClient;
-use one_providers::http_client::HttpClient;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::key_storage::provider::KeyProvider;
-use one_providers::revocation::provider::RevocationMethodProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderCoreImpl;
+use provider::exchange_protocol::ExchangeProtocolProviderImpl;
 use provider::task::provider::TaskProviderImpl;
 use provider::task::tasks_from_config;
 use provider::trust_management::provider::TrustManagementProviderImpl;
@@ -41,8 +31,19 @@ use service::vc_api::VCAPIService;
 use util::ble_resource::BleWaiter;
 
 use crate::config::core_config::{DidConfig, RevocationConfig};
+use crate::crypto::CryptoProvider;
+use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::exchange_protocol::provider::ExchangeProtocol;
+use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::provider::RevocationMethodProvider;
 
 pub mod config;
+pub mod crypto;
 pub mod provider;
 
 pub mod model;

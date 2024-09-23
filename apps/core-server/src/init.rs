@@ -6,62 +6,59 @@ use one_core::config::core_config::{
     RevocationType,
 };
 use one_core::config::{core_config, ConfigError, ConfigParsingError, ConfigValidationError};
+use one_core::crypto::hasher::sha256::SHA256;
+use one_core::crypto::signer::bbs::BBSSigner;
+use one_core::crypto::signer::crydi3::CRYDI3Signer;
+use one_core::crypto::signer::eddsa::EDDSASigner;
+use one_core::crypto::signer::es256::ES256Signer;
+use one_core::crypto::{CryptoProviderImpl, Hasher, Signer};
+use one_core::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
+use one_core::provider::credential_formatter::json_ld_bbsplus::JsonLdBbsplus;
 use one_core::provider::credential_formatter::json_ld_classic::JsonLdClassic;
+use one_core::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use one_core::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use one_core::provider::credential_formatter::physical_card::PhysicalCardFormatter;
-use one_core::provider::credential_formatter::FormatterCapabilities;
+use one_core::provider::credential_formatter::provider::CredentialFormatterProviderImpl;
+use one_core::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
+use one_core::provider::credential_formatter::CredentialFormatter;
+use one_core::provider::did_method::jwk::JWKDidMethod;
+use one_core::provider::did_method::key::KeyDidMethod;
 use one_core::provider::did_method::mdl::{DidMdl, DidMdlValidator};
+use one_core::provider::did_method::provider::DidMethodProviderImpl;
+use one_core::provider::did_method::resolver::DidCachingLoader;
+use one_core::provider::did_method::universal::UniversalDidMethod;
+use one_core::provider::did_method::web::WebDidMethod;
 use one_core::provider::did_method::x509::X509Method;
+use one_core::provider::did_method::DidMethod;
+use one_core::provider::http_client::reqwest_client::ReqwestClient;
+use one_core::provider::http_client::HttpClient;
+use one_core::provider::key_algorithm::bbs::BBS;
+use one_core::provider::key_algorithm::eddsa::Eddsa;
+use one_core::provider::key_algorithm::es256::Es256;
 use one_core::provider::key_algorithm::ml_dsa::MlDsa;
+use one_core::provider::key_algorithm::model::KeyAlgorithmCapabilities;
+use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
+use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_storage::azure_vault::AzureVaultKeyProvider;
+use one_core::provider::key_storage::internal::InternalKeyProvider;
 use one_core::provider::key_storage::pkcs11::PKCS11KeyProvider;
-use one_core::provider::key_storage::KeyStorageCapabilities;
+use one_core::provider::key_storage::provider::KeyProviderImpl;
+use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
+use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
+use one_core::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
+use one_core::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
+use one_core::provider::revocation::bitstring_status_list::BitstringStatusList;
+use one_core::provider::revocation::lvvc::LvvcProvider;
 use one_core::provider::revocation::none::NoneRevocation;
+use one_core::provider::revocation::provider::RevocationMethodProviderImpl;
 use one_core::provider::revocation::status_list_2021::StatusList2021;
+use one_core::provider::revocation::RevocationMethod;
 use one_core::repository::DataRepository;
 use one_core::{
     DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyAlgorithmCreator,
     KeyStorageCreator, OneCore, OneCoreBuilder, RevocationMethodCreator,
 };
-use one_crypto::imp::hasher::sha256::SHA256;
-use one_crypto::imp::signer::bbs::BBSSigner;
-use one_crypto::imp::signer::crydi3::CRYDI3Signer;
-use one_crypto::imp::signer::eddsa::EDDSASigner;
-use one_crypto::imp::signer::es256::ES256Signer;
-use one_crypto::imp::CryptoProviderImpl;
-use one_crypto::{Hasher, Signer};
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::JsonLdCachingLoader;
-use one_providers::credential_formatter::imp::json_ld_bbsplus::JsonLdBbsplus;
-use one_providers::credential_formatter::imp::jwt_formatter::JWTFormatter;
-use one_providers::credential_formatter::imp::provider::CredentialFormatterProviderImpl;
-use one_providers::credential_formatter::imp::sdjwt_formatter::SDJWTFormatter;
-use one_providers::credential_formatter::CredentialFormatter;
-use one_providers::did::imp::jwk::JWKDidMethod;
-use one_providers::did::imp::key::KeyDidMethod;
-use one_providers::did::imp::provider::DidMethodProviderImpl;
-use one_providers::did::imp::resolver::DidCachingLoader;
-use one_providers::did::imp::universal::UniversalDidMethod;
-use one_providers::did::imp::web::WebDidMethod;
-use one_providers::did::DidMethod;
-use one_providers::http_client::imp::reqwest_client::ReqwestClient;
-use one_providers::http_client::HttpClient;
-use one_providers::key_algorithm::imp::bbs::BBS;
-use one_providers::key_algorithm::imp::eddsa::Eddsa;
-use one_providers::key_algorithm::imp::es256::Es256;
-use one_providers::key_algorithm::imp::provider::KeyAlgorithmProviderImpl;
-use one_providers::key_algorithm::model::KeyAlgorithmCapabilities;
-use one_providers::key_algorithm::KeyAlgorithm;
-use one_providers::key_storage::imp::azure_vault::AzureVaultKeyProvider;
-use one_providers::key_storage::imp::internal::InternalKeyProvider;
-use one_providers::key_storage::imp::provider::KeyProviderImpl;
-use one_providers::key_storage::KeyStorage;
-use one_providers::remote_entity_storage::in_memory::InMemoryStorage;
-use one_providers::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
-use one_providers::revocation::imp::bitstring_status_list::resolver::StatusListCachingLoader;
-use one_providers::revocation::imp::bitstring_status_list::BitstringStatusList;
-use one_providers::revocation::imp::lvvc::LvvcProvider;
-use one_providers::revocation::imp::provider::RevocationMethodProviderImpl;
-use one_providers::revocation::RevocationMethod;
 use sentry::integrations::tracing::EventFilter;
 use serde_json::json;
 use sql_data_provider::{DataLayer, DbConn};
@@ -296,9 +293,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
 
             for (key, value) in config.iter_mut() {
                 if let Some(entity) = key_providers.get(key) {
-                    value.capabilities = Some(json!(Into::<KeyStorageCapabilities>::into(
-                        entity.get_capabilities()
-                    )));
+                    value.capabilities = Some(json!(entity.get_capabilities()));
                 }
             }
 
@@ -396,9 +391,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
 
             for (key, value) in format_config.iter_mut() {
                 if let Some(entity) = formatters.get(key) {
-                    value.capabilities = Some(json!(Into::<FormatterCapabilities>::into(
-                        entity.get_capabilities()
-                    )));
+                    value.capabilities = Some(json!(entity.get_capabilities()));
                     if let Some(params) = &mut value.params {
                         if let Some(public) = &mut params.public {
                             if public["embedLayoutProperties"].is_null() {
@@ -463,11 +456,11 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                         key_algorithm_provider.clone(),
                         did_method_provider.clone(),
                         key_provider.clone(),
-                        formatter_provider.clone(),
                         initialize_statuslist_loader(
                             &cache_entities_config,
                             data_repository.clone(),
                         ),
+                        formatter_provider.clone(),
                         client.clone(),
                         None,
                     )) as _,

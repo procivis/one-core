@@ -2,6 +2,8 @@ use dto_mapper::{From, Into};
 use shared_types::RemoteEntityCacheId;
 use time::OffsetDateTime;
 
+use crate::provider::remote_entity_storage::RemoteEntityType;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RemoteEntityCache {
     pub id: RemoteEntityCacheId,
@@ -18,8 +20,8 @@ pub struct RemoteEntityCache {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into)]
-#[from(one_providers::remote_entity_storage::RemoteEntityType)]
-#[into(one_providers::remote_entity_storage::RemoteEntityType)]
+#[from(RemoteEntityType)]
+#[into(RemoteEntityType)]
 pub enum CacheType {
     DidDocument,
     JsonLdContext,

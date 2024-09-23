@@ -4,23 +4,6 @@ use std::vec;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
-use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::credential_formatter::MockCredentialFormatter;
-use one_providers::did::model::{DidDocument, DidVerificationMethod};
-use one_providers::did::provider::MockDidMethodProvider;
-use one_providers::exchange_protocol::imp::provider::MockExchangeProtocol;
-use one_providers::exchange_protocol::openid4vc::model::{
-    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, SubmitIssuerResponse,
-    UpdateResponse,
-};
-use one_providers::http_client::imp::reqwest_client::ReqwestClient;
-use one_providers::key_storage::model::{KeySecurity, KeyStorageCapabilities};
-use one_providers::key_storage::provider::MockKeyProvider;
-use one_providers::key_storage::MockKeyStorage;
 use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -28,11 +11,29 @@ use uuid::Uuid;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
+};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
+use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
+use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::exchange_protocol::dto::{
+    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+};
+use crate::provider::exchange_protocol::openid4vc::model::{SubmitIssuerResponse, UpdateResponse};
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
+use crate::provider::exchange_protocol::MockExchangeProtocol;
+use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
+use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::key_storage::MockKeyStorage;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -358,12 +359,12 @@ async fn test_submit_proof_succeeds() {
         .returning(move |_| {
             Ok(DidDocument {
                 context: json!({}),
-                id: dummy_did().did.into(),
+                id: dummy_did().did,
                 verification_method: vec![DidVerificationMethod {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
+                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -607,12 +608,12 @@ async fn test_submit_proof_repeating_claims() {
         .returning(move |_| {
             Ok(DidDocument {
                 context: json!({}),
-                id: dummy_did().did.into(),
+                id: dummy_did().did,
                 verification_method: vec![DidVerificationMethod {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
+                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -845,7 +846,7 @@ fn dummy_credential() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "schema".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: None,

@@ -1,10 +1,9 @@
 use one_core::model::proof::ProofStateEnum;
 use serde_json::Value;
 
-use crate::fixtures;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::server::run_server;
-use crate::utils::{self};
+use crate::{fixtures, utils};
 
 #[tokio::test]
 async fn test_temporary_verifier_connect_success() {

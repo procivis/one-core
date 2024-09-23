@@ -7,7 +7,7 @@ use one_core::model::credential::{
 };
 use one_core::model::did::{Did, DidRelations, DidType};
 use one_core::model::interaction::{Interaction, InteractionId, InteractionRelations};
-use one_core::model::key::KeyRelations;
+use one_core::model::key::{Key, KeyRelations};
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
 use one_core::model::proof::{
@@ -27,7 +27,6 @@ use one_core::repository::proof_schema_repository::{
     MockProofSchemaRepository, ProofSchemaRepository,
 };
 use one_core::service::proof::dto::ProofFilterValue;
-use one_providers::common_models::key::OpenKey;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
 use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
@@ -305,8 +304,8 @@ async fn test_create_proof_success() {
             deactivated: false,
         }),
         holder_did: None,
-        verifier_key: Some(OpenKey {
-            id: key_id.into(),
+        verifier_key: Some(Key {
+            id: key_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             public_key: vec![],
@@ -523,7 +522,7 @@ async fn test_get_proof_with_relations() {
         .expect_get_key()
         .once()
         .returning(|key_id, _| {
-            Ok(Some(OpenKey {
+            Ok(Some(Key {
                 id: key_id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -634,7 +633,7 @@ async fn test_get_proof_with_relations() {
     assert_eq!(proof.verifier_did.unwrap().id, did_id);
     assert!(proof.holder_did.is_none());
     assert_eq!(proof.interaction.unwrap().id, interaction_id);
-    assert_eq!(proof.verifier_key.unwrap().id, key_id.into());
+    assert_eq!(proof.verifier_key.unwrap().id, key_id);
 
     let claims = proof.claims.unwrap();
     assert_eq!(claims.len(), 1);
@@ -714,7 +713,7 @@ async fn test_get_proof_by_interaction_id_success() {
         .expect_get_key()
         .once()
         .returning(|key_id, _| {
-            Ok(Some(OpenKey {
+            Ok(Some(Key {
                 id: key_id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),

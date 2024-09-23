@@ -1,7 +1,3 @@
-use one_providers::exchange_protocol::provider::ExchangeProtocol;
-use one_providers::revocation::model::{
-    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
-};
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -17,6 +13,10 @@ use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
+use crate::provider::exchange_protocol::provider::ExchangeProtocol;
+use crate::provider::revocation::model::{
+    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
+};
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 impl ProofService {
@@ -126,7 +126,7 @@ impl ProofService {
             ))?;
 
         let credentials = exchange_protocol
-            .verifier_handle_proof(&proof.clone().into(), submission)
+            .verifier_handle_proof(proof, submission)
             .await?;
 
         let credential = credentials.first().ok_or(ServiceError::MappingError(
@@ -136,7 +136,7 @@ impl ProofService {
         let additional_data = CredentialDataByRole::Verifier(Box::new(VerifierCredentialData {
             credential: credential.to_owned(),
             extracted_lvvcs: vec![],
-            proof_input: input_schema.to_owned().into(),
+            proof_input: input_schema.clone(),
         }));
 
         let issuer_did = credential
@@ -221,7 +221,7 @@ impl ProofService {
         let issuer_did = get_or_create_did(
             &*self.did_repository,
             &proof_schema.organisation,
-            &issuer_did.to_owned().into(),
+            issuer_did,
         )
         .await?;
 
