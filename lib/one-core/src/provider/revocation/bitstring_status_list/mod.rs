@@ -37,6 +37,7 @@ pub mod resolver;
 pub mod util;
 
 const CREDENTIAL_STATUS_TYPE: &str = "BitstringStatusListEntry";
+const DEFAULT_CREDENTIAL_FORMAT: &str = "JWT";
 
 fn default_bitstring_credential_format() -> Option<String> {
     // TODO Enum value instead of strings
@@ -282,12 +283,10 @@ impl RevocationMethod for BitstringStatusList {
 }
 
 impl BitstringStatusList {
-    pub const DEFAULT_CREDENTIAL_FORMAT: &str = "JWT";
-
     fn get_formatter_for_credential_format(
         &self,
     ) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
-        let format = Self::DEFAULT_CREDENTIAL_FORMAT;
+        let format = DEFAULT_CREDENTIAL_FORMAT;
 
         self.formatter_provider
             .get_formatter(format)
