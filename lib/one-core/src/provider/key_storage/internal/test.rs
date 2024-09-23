@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use one_crypto::MockSigner;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::InternalKeyProvider;
-use crate::crypto::MockSigner;
 use crate::model::key::Key;
 use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;

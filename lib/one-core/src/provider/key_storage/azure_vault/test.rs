@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use one_crypto::{CryptoProvider, CryptoProviderImpl, Hasher, MockHasher};
 use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -12,7 +13,6 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::dto::AzureHsmGetTokenResponse;
 use super::{AzureVaultKeyProvider, Params};
-use crate::crypto::{CryptoProvider, CryptoProviderImpl, Hasher, MockHasher};
 use crate::model::key::Key;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::error::KeyStorageError;

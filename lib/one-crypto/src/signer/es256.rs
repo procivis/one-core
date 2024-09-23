@@ -3,7 +3,7 @@ use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use p256::EncodedPoint;
 use rand::thread_rng;
 
-use crate::crypto::{Signer, SignerError};
+use crate::{Signer, SignerError};
 
 pub struct ES256Signer {}
 

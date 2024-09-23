@@ -1,11 +1,11 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use one_crypto::signer::es256::ES256Signer;
 use p256::elliptic_curve::generic_array::GenericArray;
 use p256::elliptic_curve::sec1::{EncodedPoint, ToEncodedPoint};
 use p256::pkcs8::DecodePublicKey;
 use serde::Deserialize;
 use zeroize::Zeroizing;
 
-use crate::crypto::signer::es256::ES256Signer;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};

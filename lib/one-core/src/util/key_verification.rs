@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use one_crypto::SignerError;
 use shared_types::DidValue;
 use tracing::info;
 
-use crate::crypto::SignerError;
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -84,10 +84,10 @@ impl TokenVerifier for KeyVerification {
 #[cfg(test)]
 mod test {
     use mockall::predicate::*;
+    use one_crypto::MockSigner;
     use serde_json::json;
 
     use super::*;
-    use crate::crypto::MockSigner;
     use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
     use crate::provider::did_method::error::DidMethodProviderError;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};

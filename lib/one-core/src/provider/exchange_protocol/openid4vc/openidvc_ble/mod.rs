@@ -10,6 +10,8 @@ use futures::{Stream, TryStreamExt};
 use hkdf::Hkdf;
 use oidc_ble_holder::OpenID4VCBLEHolder;
 use oidc_ble_verifier::OpenID4VCBLEVerifier;
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::Hasher;
 use rand::rngs::OsRng;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -27,8 +29,6 @@ use super::mapper::{
 use super::model::BLEOpenID4VPInteractionData;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{self, TransportType};
-use crate::crypto::hasher::sha256::SHA256;
-use crate::crypto::Hasher;
 use crate::model::credential::Credential;
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;

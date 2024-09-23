@@ -9,9 +9,10 @@ version = "0.1.0"
 doctest = false
 
 [dependencies]
-one-core     = { version = "0.1.0", path = "../../lib/one-core" }
+one-core     = { version = "0.1.0", path = "../one-core" }
+one-crypto   = { version = "0.1.0", path = "../one-crypto" }
 reqwest      = { workspace = true }
-shared-types = { version = "0.1.0", path = "../../lib/shared-types" }
+shared-types = { version = "0.1.0", path = "../shared-types" }
 strum        = { version = "0.26" }
 strum_macros = { version = "0.26" }
 thiserror    = { workspace = true }

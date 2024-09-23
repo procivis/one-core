@@ -5,6 +5,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 pub use mappers::create_presentation_submission;
 use mappers::presentation_definition_from_interaction_data;
+use one_crypto::utilities;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use shared_types::{CredentialId, KeyId};
@@ -40,7 +41,6 @@ use super::{
     ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
     StorageAccess, TypeToDescriptorMapper,
 };
-use crate::crypto::utilities;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::UpdateCredentialSchemaRequest;
 use crate::model::did::{Did, DidType};

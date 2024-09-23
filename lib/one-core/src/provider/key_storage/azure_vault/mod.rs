@@ -11,6 +11,8 @@ use mapper::{
     create_generate_key_request, create_get_token_request, create_sign_request,
     public_key_from_components,
 };
+use one_crypto::signer::es256::ES256Signer;
+use one_crypto::{CryptoProvider, SignerError};
 use serde::Deserialize;
 use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
@@ -19,8 +21,6 @@ use url::Url;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
-use crate::crypto::signer::es256::ES256Signer;
-use crate::crypto::{CryptoProvider, SignerError};
 use crate::model::key::Key;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::error::KeyStorageError;

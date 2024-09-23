@@ -3,9 +3,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use one_crypto::SignerError;
+
 use super::error::KeyStorageProviderError;
 use super::KeyStorage;
-use crate::crypto::SignerError;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
 
