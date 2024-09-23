@@ -513,6 +513,7 @@ pub struct ShareResponse<T> {
 }
 
 #[derive(Clone, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct SubmitIssuerResponse {
     pub credential: String,
     pub format: String,
