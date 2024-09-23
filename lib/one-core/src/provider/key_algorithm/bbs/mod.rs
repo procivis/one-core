@@ -1,7 +1,7 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use one_crypto::utilities::get_rng;
 use pairing_crypto::bbs::ciphersuites::bls12_381::KeyPair;
 
-use crate::crypto::utilities::get_rng;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};

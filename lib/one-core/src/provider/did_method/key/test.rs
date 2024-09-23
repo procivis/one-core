@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyDidMethod;
-use crate::crypto::MockCryptoProvider;
+use one_crypto::MockCryptoProvider;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::did_method::model::{AmountOfKeys, DidDocument, DidVerificationMethod};
 use crate::provider::did_method::DidMethod;

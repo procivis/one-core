@@ -8,8 +8,8 @@ use url::Url;
 
 use super::model::{BbsProofComponents, GroupedFormatDataDocument, HashData, CBOR_PREFIX_BASE};
 use super::{mapper, JsonLdBbsplus};
-use crate::crypto::signer::bbs::BbsInput;
-use crate::crypto::utilities;
+use one_crypto::signer::bbs::BbsInput;
+use one_crypto::utilities;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld;
 use crate::provider::credential_formatter::json_ld::model::ContextType;

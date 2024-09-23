@@ -11,7 +11,7 @@ use shared_types::DidValue;
 
 use self::mapper::json_from_decoded;
 use self::model::{DecomposedToken, JWTHeader, JWTPayload};
-use crate::crypto::SignerError;
+use one_crypto::SignerError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
 

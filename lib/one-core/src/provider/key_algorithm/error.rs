@@ -1,8 +1,7 @@
 //! Enumerates errors related to the key algorithm provider.
 
+use one_crypto::SignerError;
 use thiserror::Error;
-
-use crate::crypto::SignerError;
 
 #[derive(Debug, Error)]
 pub enum KeyAlgorithmProviderError {

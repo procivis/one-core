@@ -1,0 +1,34 @@
+[package]
+edition = "2021"
+name    = "one-crypto"
+publish = false
+version = "0.1.0"
+
+[lib]
+doctest = false
+
+[dependencies]
+chacha20poly1305     = { version = "0.10" }
+ct-codecs.workspace  = true
+ed25519-compact      = { version = "2.1" }
+hmac                 = { version = "0.12" }
+mockall              = { workspace = true, optional = true }
+p256                 = { version = "0.13", features = ["jwk"] }
+pairing_crypto       = { version = "0.4", git = "https://github.com/Iskander508/pairing_crypto", rev = "517a424a989b57b987aacb3642bd7cd2c60b94d1" }
+pbkdf2               = { version = "0.12", features = ["simple"] }
+pqc_dilithium        = { version = "0.2.0", git = "https://github.com/ihor-rud/dilithium", rev = "e02a683" }
+rand.workspace       = true
+rand_chacha          = { version = "0.3" }
+serde.workspace      = true
+serde_json.workspace = true
+sha2                 = { version = "0.10" }
+thiserror.workspace  = true
+
+[dev-dependencies]
+mockall = { workspace = true }
+
+[features]
+mock = ["mockall"]
+
+[lints]
+workspace = true

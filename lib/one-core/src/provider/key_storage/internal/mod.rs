@@ -8,7 +8,7 @@ use sha2::{Digest, Sha256};
 use shared_types::KeyId;
 use zeroize::Zeroizing;
 
-use crate::crypto::{utilities, SignerError};
+use one_crypto::{utilities, SignerError};
 use crate::model::key::Key;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::error::KeyStorageError;

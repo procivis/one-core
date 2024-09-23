@@ -14,7 +14,7 @@ use serde::Deserialize;
 use shared_types::DidValue;
 use time::Duration;
 
-use crate::crypto::CryptoProvider;
+use one_crypto::CryptoProvider;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::{DecomposedToken, JWTPayload};

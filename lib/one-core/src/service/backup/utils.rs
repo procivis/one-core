@@ -8,7 +8,7 @@ use uuid::Uuid;
 use zip::write::SimpleFileOptions;
 
 use super::dto::MetadataDTO;
-use crate::crypto::hasher::sha256::SHA256;
+use one_crypto::hasher::sha256::SHA256;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistoryMetadata};
 use crate::model::organisation::Organisation;
 use crate::service::error::ServiceError;

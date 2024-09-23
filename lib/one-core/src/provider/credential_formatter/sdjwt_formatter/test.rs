@@ -10,8 +10,8 @@ use uuid::Uuid;
 
 use super::disclosures::DisclosureArray;
 use super::{prepare_sd_presentation, verify_claims, SDJWTFormatter};
-use crate::crypto::hasher::sha256::SHA256;
-use crate::crypto::{MockCryptoProvider, MockHasher};
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::{MockCryptoProvider, MockHasher};
 #[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::json_ld::model::ContextType;

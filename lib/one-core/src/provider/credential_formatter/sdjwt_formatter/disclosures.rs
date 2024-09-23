@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::model::DecomposedToken;
 use super::{remove_first_nesting_layer, Disclosure};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::crypto::{CryptoProvider, Hasher};
+use one_crypto::{CryptoProvider, Hasher};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::mapper::string_to_b64url_string;
 use crate::provider::credential_formatter::model::PublishedClaim;
@@ -204,7 +204,7 @@ pub(super) fn gather_disclosures(
     value_as_object.iter().try_for_each(|(k, v)| {
         match v {
             Value::Array(array) => {
-                let salt = crate::crypto::utilities::generate_salt_base64_16();
+                let salt = one_crypto::utilities::generate_salt_base64_16();
 
                 let value = serde_json::to_string(array)
                     .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
@@ -225,7 +225,7 @@ pub(super) fn gather_disclosures(
                 let (subdisclosures, sd_hashes) = gather_disclosures(v, algorithm, crypto)?;
                 disclosures.extend(subdisclosures);
 
-                let salt = crate::crypto::utilities::generate_salt_base64_16();
+                let salt = one_crypto::utilities::generate_salt_base64_16();
 
                 let sd_hashes_json = serde_json::json!({
                     SELECTIVE_DISCLOSURE_MARKER: sd_hashes
@@ -246,7 +246,7 @@ pub(super) fn gather_disclosures(
                 hashed_disclosures.push(hashed_subdisclosure);
             }
             Value::String(value) => {
-                let salt = crate::crypto::utilities::generate_salt_base64_16();
+                let salt = one_crypto::utilities::generate_salt_base64_16();
 
                 let result = serde_json::to_string(&[&salt, k, value])
                     .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
@@ -261,7 +261,7 @@ pub(super) fn gather_disclosures(
                 hashed_disclosures.push(hashed_disclosure);
             }
             Value::Number(number) => {
-                let salt = crate::crypto::utilities::generate_salt_base64_16();
+                let salt = one_crypto::utilities::generate_salt_base64_16();
 
                 let value = serde_json::to_string(number)
                     .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
@@ -279,7 +279,7 @@ pub(super) fn gather_disclosures(
                 hashed_disclosures.push(hashed_disclosure);
             }
             Value::Bool(bool) => {
-                let salt = crate::crypto::utilities::generate_salt_base64_16();
+                let salt = one_crypto::utilities::generate_salt_base64_16();
 
                 let value = serde_json::to_string(bool)
                     .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;

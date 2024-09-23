@@ -34,7 +34,7 @@ use super::common::nest_claims;
 use super::json_ld::model::ContextType;
 use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
-use crate::crypto::SignerError;
+use one_crypto::SignerError;
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::model::did::Did;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};

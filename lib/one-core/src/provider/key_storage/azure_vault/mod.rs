@@ -19,8 +19,8 @@ use url::Url;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
-use crate::crypto::signer::es256::ES256Signer;
-use crate::crypto::{CryptoProvider, SignerError};
+use one_crypto::signer::es256::ES256Signer;
+use one_crypto::{CryptoProvider, SignerError};
 use crate::model::key::Key;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::error::KeyStorageError;

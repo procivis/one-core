@@ -10,7 +10,7 @@ use time::{Duration, OffsetDateTime};
 
 use super::derived_proof::find_selective_indices;
 use super::model::{GroupEntry, TransformedEntry};
-use crate::crypto::{MockCryptoProvider, MockHasher};
+use one_crypto::{MockCryptoProvider, MockHasher};
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdCredentialSubject};

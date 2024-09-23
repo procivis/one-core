@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
-use crate::crypto::CryptoProvider;
+use one_crypto::CryptoProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;

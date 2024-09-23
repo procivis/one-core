@@ -1,4 +1,4 @@
-use one_core::crypto::SignerError;
+use one_crypto::SignerError;
 use one_core::provider::key_storage::error::KeyStorageError;
 use one_core::provider::key_storage::model::StorageGeneratedKey;
 

@@ -19,7 +19,7 @@ futures               = { version = "0.3" }
 hex.workspace         = true
 itertools             = { version = "0.13" }
 migration             = { version = "0.1.0", path = "../../apps/migration", default-features = false }
-one-core              = { version = "0.1.0", path = "../../lib/one-core" }
+one-core              = { version = "0.1.0", path = "../one-core" }
 sea-orm               = { workspace = true, features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros", "with-time", "with-json"] }
 serde.workspace       = true
 serde_json.workspace  = true
@@ -33,7 +33,7 @@ uuid.workspace        = true
 [dev-dependencies]
 futures.workspace  = true
 mockall.workspace  = true
-one-core           = { version = "0.1.0", path = "../../lib/one-core", features = ["mock"] }
+one-core           = { version = "0.1.0", path = "../one-core", features = ["mock"] }
 tempfile.workspace = true
 
 [lints]

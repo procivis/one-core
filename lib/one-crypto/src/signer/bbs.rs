@@ -10,7 +10,7 @@ use pairing_crypto::bbs::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::crypto::{Signer, SignerError};
+use crate::{Signer, SignerError};
 
 pub struct BBSSigner {}
 

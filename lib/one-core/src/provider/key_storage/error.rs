@@ -1,8 +1,8 @@
 //! Enumerates errors related to key storage provider.
 
+use one_crypto::SignerError;
 use thiserror::Error;
 
-use crate::crypto::SignerError;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 
 #[derive(Debug, Error)]

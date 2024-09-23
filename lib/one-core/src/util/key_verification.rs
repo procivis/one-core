@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use shared_types::DidValue;
 use tracing::info;
 
-use crate::crypto::SignerError;
+use one_crypto::SignerError;
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -87,7 +87,7 @@ mod test {
     use serde_json::json;
 
     use super::*;
-    use crate::crypto::MockSigner;
+    use one_crypto::MockSigner;
     use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
     use crate::provider::did_method::error::DidMethodProviderError;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};

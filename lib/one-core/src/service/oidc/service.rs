@@ -20,7 +20,7 @@ use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
 use crate::config::core_config::{ExchangeType, TransportType};
-use crate::crypto::utilities;
+use one_crypto::utilities;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{

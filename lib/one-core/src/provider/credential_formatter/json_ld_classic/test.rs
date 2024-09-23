@@ -8,7 +8,7 @@ use serde_json::json;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
-use crate::crypto::{MockCryptoProvider, MockHasher};
+use one_crypto::{MockCryptoProvider, MockHasher};
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::json_ld_classic::{JsonLdClassic, Params};

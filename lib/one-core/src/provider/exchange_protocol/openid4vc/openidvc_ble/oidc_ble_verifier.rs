@@ -6,6 +6,7 @@ use std::time::Duration;
 use anyhow::{anyhow, Context};
 use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt, TryFutureExt, TryStreamExt};
+use one_crypto::utilities;
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::select;
@@ -16,7 +17,6 @@ use super::{
     REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
     TRANSFER_SUMMARY_REQUEST_UUID,
 };
-use crate::crypto::utilities;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{self, ProofState, ProofStateEnum};
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;

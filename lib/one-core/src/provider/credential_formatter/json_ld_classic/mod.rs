@@ -12,7 +12,7 @@ use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
 use super::json_ld::model::LdCredentialSubject;
-use crate::crypto::CryptoProvider;
+use one_crypto::CryptoProvider;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{

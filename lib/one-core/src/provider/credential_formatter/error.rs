@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::crypto::CryptoProviderError;
+use one_crypto::CryptoProviderError;
 
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum ParseError {

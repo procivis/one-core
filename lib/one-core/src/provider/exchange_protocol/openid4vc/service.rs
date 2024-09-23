@@ -3,6 +3,7 @@ use std::ops::Sub;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use one_crypto::utilities;
 use shared_types::{CredentialSchemaId, KeyId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -22,7 +23,6 @@ use super::model::{
     OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, PresentationSubmissionMappingDTO,
     ValidatedProofClaimDTO,
 };
-use crate::crypto::utilities;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};

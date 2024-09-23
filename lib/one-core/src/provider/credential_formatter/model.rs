@@ -13,7 +13,7 @@ use url::Url;
 
 use super::error::FormatterError;
 use super::json_ld::model::{Evidence, RelatedResource, TermsOfUse};
-use crate::crypto::SignerError;
+use one_crypto::SignerError;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;

@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 
 use super::model::JWTPayload;
 use super::{Jwt, TokenVerifier};
-use crate::crypto::SignerError;
+use one_crypto::SignerError;
 use crate::provider::credential_formatter::common::MockAuth;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
