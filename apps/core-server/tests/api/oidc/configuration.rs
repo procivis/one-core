@@ -1,8 +1,7 @@
 use serde_json::Value;
 
-use crate::fixtures;
 use crate::utils::server::run_server;
-use crate::utils::{self};
+use crate::{fixtures, utils};
 
 #[tokio::test]
 async fn test_get_issuer_configuration() {

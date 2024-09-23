@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Context};
-use one_providers::common_models::key::OpenKey;
-use one_providers::key_algorithm::imp::es256::Es256;
-use one_providers::key_storage::KeyStorage;
 use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
 use shared_types::KeyId;
 use uuid::Uuid;
@@ -12,9 +9,11 @@ use super::dto::{GetKeyListResponseDTO, GetKeyQueryDTO, KeyCheckCertificateReque
 use super::mapper::request_to_certificate_params;
 use super::KeyService;
 use crate::model::history::{HistoryAction, HistoryEntityType};
-use crate::model::key::KeyRelations;
+use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::did_method::mdl::{parse_pem, parse_x509_from_der, parse_x509_from_pem};
+use crate::provider::key_algorithm::es256::Es256;
+use crate::provider::key_storage::KeyStorage;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -36,7 +35,7 @@ impl KeyService {
         let key = self
             .key_repository
             .get_key(
-                &key_id.to_owned().into(),
+                key_id,
                 &KeyRelations {
                     organisation: Some(OrganisationRelations::default()),
                 },
@@ -78,7 +77,7 @@ impl KeyService {
         let key_id = Uuid::new_v4().into();
         let key = provider.generate(Some(key_id), &request.key_type).await?;
 
-        let key_entity = from_create_request(key_id, request, organisation.into(), key);
+        let key_entity = from_create_request(key_id, request, organisation, key);
 
         let uuid = self
             .key_repository
@@ -101,7 +100,7 @@ impl KeyService {
             ))
             .await;
 
-        Ok(uuid.into())
+        Ok(uuid)
     }
 
     /// Returns list of keys according to query
@@ -131,7 +130,7 @@ impl KeyService {
         let key = self
             .key_repository
             .get_key(
-                &key_id.to_owned().into(),
+                key_id,
                 &KeyRelations {
                     organisation: Some(OrganisationRelations::default()),
                 },
@@ -167,7 +166,7 @@ impl KeyService {
         let key = self
             .key_repository
             .get_key(
-                &key_id.to_owned().into(),
+                key_id,
                 &KeyRelations {
                     organisation: Some(OrganisationRelations::default()),
                 },
@@ -204,7 +203,7 @@ impl KeyService {
 }
 
 struct RemoteKeyAdapter {
-    key: OpenKey,
+    key: Key,
     decompressed_public_key: Option<Vec<u8>>,
     key_storage: Arc<dyn KeyStorage>,
     algorithm: &'static rcgen::SignatureAlgorithm,
@@ -213,7 +212,7 @@ struct RemoteKeyAdapter {
 
 impl RemoteKeyAdapter {
     fn create_remote_key(
-        key: OpenKey,
+        key: Key,
         key_storage: Arc<dyn KeyStorage>,
         handle: tokio::runtime::Handle,
     ) -> anyhow::Result<Box<(dyn RemoteKeyPair + Send + Sync + 'static)>> {

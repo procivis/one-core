@@ -6,8 +6,6 @@ use std::time::Duration;
 use anyhow::{anyhow, Context};
 use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt, TryFutureExt, TryStreamExt};
-use one_crypto::imp::utilities;
-use one_providers::exchange_protocol::openid4vc::model::OpenID4VPPresentationDefinition;
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::select;
@@ -18,6 +16,7 @@ use super::{
     REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
     TRANSFER_SUMMARY_REQUEST_UUID,
 };
+use crate::crypto::utilities;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{self, ProofState, ProofStateEnum};
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
@@ -28,7 +27,7 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, BleOpenId4VpResponse,
+    BLEOpenID4VPInteractionData, BleOpenId4VpResponse, OpenID4VPPresentationDefinition,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
     parse_identity_request, BLEParse,
@@ -156,7 +155,7 @@ impl OpenID4VCBLEVerifier {
                             task_id,
                             peer,
                             nonce: Some(hex::encode(identity_request.nonce)),
-                            presentation_definition: Some(proof_request.into()),
+                            presentation_definition: Some(proof_request),
                             presentation_submission: Some(presentation_submission),
                         };
 

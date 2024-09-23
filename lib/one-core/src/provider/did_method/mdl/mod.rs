@@ -2,22 +2,23 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use one_providers::common_models::did::{DidId, DidValue};
-use one_providers::common_models::key::OpenKey;
-use one_providers::did::error::DidMethodError;
-use one_providers::did::imp::common::jwk_context;
-use one_providers::did::imp::key_helpers::{decode_did, generate_document, DidKeyType};
-use one_providers::did::keys::Keys;
-use one_providers::did::model::{
-    AmountOfKeys, DidCapabilities, DidDocument, DidVerificationMethod, Operation,
-};
-use one_providers::did::DidMethod;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use ouroboros::self_referencing;
+use shared_types::{DidId, DidValue};
 pub use validator::{DidMdlValidationError, DidMdlValidator};
 use x509_parser::certificate::X509Certificate;
 use x509_parser::oid_registry::{OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG_ED25519};
 use x509_parser::pem::Pem;
+
+use crate::model::key::Key;
+use crate::provider::did_method::common::jwk_context;
+use crate::provider::did_method::error::DidMethodError;
+use crate::provider::did_method::key_helpers::{decode_did, generate_document, DidKeyType};
+use crate::provider::did_method::keys::Keys;
+use crate::provider::did_method::model::{
+    AmountOfKeys, DidCapabilities, DidDocument, DidVerificationMethod, Operation,
+};
+use crate::provider::did_method::DidMethod;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[cfg(test)]
 mod test;
@@ -70,7 +71,7 @@ impl DidMethod for DidMdl {
         &self,
         _id: Option<DidId>,
         params: &Option<serde_json::Value>,
-        keys: Option<Vec<OpenKey>>,
+        keys: Option<Vec<Key>>,
     ) -> Result<DidValue, DidMethodError> {
         let Some(params) = params.as_ref() else {
             return Err(DidMethodError::CouldNotCreate(
@@ -269,7 +270,7 @@ pub(crate) fn parse_x509_from_der(certificate: &[u8]) -> Result<X509Certificate,
     Ok(certificate)
 }
 
-fn select_key(keys: &[OpenKey]) -> Result<&OpenKey, DidMethodError> {
+fn select_key(keys: &[Key]) -> Result<&Key, DidMethodError> {
     let [key] = keys else {
         return Err(DidMethodError::CouldNotCreate(format!(
             "Expected 1 provided {} keys for DID MDL creation",

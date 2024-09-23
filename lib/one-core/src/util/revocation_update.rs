@@ -1,26 +1,26 @@
 use std::sync::Arc;
 
 use dto_mapper::convert_inner;
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::credential_formatter::CredentialFormatter;
-use one_providers::key_storage::provider::KeyProvider;
-use one_providers::revocation::imp::bitstring_status_list::model::RevocationUpdateData;
-use one_providers::revocation::imp::bitstring_status_list::{
-    format_status_list_credential, generate_bitstring_from_credentials,
-    purpose_to_credential_state_enum, Params,
-};
-use one_providers::revocation::model::{CredentialAdditionalData, RevocationUpdate};
-use one_providers::revocation::RevocationMethod;
-use one_providers::util::params::convert_params;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::params::convert_params;
 use crate::model::credential::{Credential, CredentialRelations, CredentialStateRelations};
 use crate::model::did::Did;
 use crate::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
 };
 use crate::model::validity_credential::Lvvc;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::bitstring_status_list::model::RevocationUpdateData;
+use crate::provider::revocation::bitstring_status_list::{
+    format_status_list_credential, generate_bitstring_from_credentials,
+    purpose_to_credential_state_enum, Params,
+};
+use crate::provider::revocation::model::{CredentialAdditionalData, RevocationUpdate};
+use crate::provider::revocation::RevocationMethod;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -121,7 +121,7 @@ pub(crate) async fn process_update(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn get_or_create_revocation_list_id(
-    credentials_by_issuer_did: &[one_providers::common_models::credential::OpenCredential],
+    credentials_by_issuer_did: &[Credential],
     issuer_did: &Did,
     purpose: RevocationListPurpose,
     revocation_list_repository: &dyn RevocationListRepository,
@@ -138,7 +138,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
         )
         .await?;
 
-    let credential_state = purpose_to_credential_state_enum(purpose.to_owned().into());
+    let credential_state = purpose_to_credential_state_enum(purpose.clone());
 
     Ok(match revocation_list {
         Some(value) => value.id,
@@ -153,9 +153,9 @@ pub(crate) async fn get_or_create_revocation_list_id(
             let revocation_list_id = Uuid::new_v4();
             let list_credential = format_status_list_credential(
                 &revocation_list_id,
-                &issuer_did.to_owned().into(),
+                issuer_did,
                 encoded_list,
-                purpose.to_owned().into(),
+                purpose.to_owned(),
                 key_provider,
                 core_base_url,
                 formatter,

@@ -1,6 +1,3 @@
-// todo: remove this once the key agreement things are being used somewhere
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 use std::iter;
 
@@ -10,7 +7,6 @@ use anyhow::{anyhow, bail, Context};
 use coset::iana::{self, EnumI64};
 use coset::{AsCborValue, CoseKey, CoseKeyBuilder, KeyType, Label};
 use hkdf::Hkdf;
-use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize, Serializer};
 use sha2::{Digest, Sha256};
@@ -21,6 +17,7 @@ use super::device_engagement::DeviceEngagement;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     EmbeddedCbor, SessionTranscript,
 };
+use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 
 #[derive(Debug, Clone)]
 pub enum Chunk {

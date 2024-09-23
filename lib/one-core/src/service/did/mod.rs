@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-
 use super::error::ErrorCode;
 use crate::config::core_config;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::key_repository::KeyRepository;

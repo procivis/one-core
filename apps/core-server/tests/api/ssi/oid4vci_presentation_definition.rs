@@ -1,8 +1,8 @@
 use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::interaction::Interaction;
+use one_core::model::key::Key;
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::proof_schema::ProofSchema;
-use one_providers::common_models::key::OpenKey;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -16,7 +16,7 @@ pub struct TestContextWithOID4VCIData {
     pub proof_schema: ProofSchema,
     pub verifier_did: Did,
     pub interaction: Interaction,
-    pub verifier_key: OpenKey,
+    pub verifier_key: Key,
 }
 
 async fn new_test_data() -> TestContextWithOID4VCIData {

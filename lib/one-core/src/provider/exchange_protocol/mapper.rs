@@ -1,22 +1,21 @@
 use std::collections::{HashMap, HashSet};
 
-use one_providers::common_models::credential::{OpenCredential, OpenCredentialStateEnum};
-use one_providers::common_models::did::OpenDid;
-use one_providers::common_models::interaction::OpenInteraction;
-use one_providers::common_models::key::OpenKey;
-use one_providers::common_models::proof::{self, OpenProof, OpenProofStateEnum, ProofId};
-use one_providers::exchange_protocol::openid4vc::model::{
-    CredentialGroup, CredentialGroupItem, PresentationDefinitionFieldDTO,
-};
-use shared_types::{CredentialId, DidId};
+use shared_types::{CredentialId, DidId, ProofId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
+use super::dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionFieldDTO};
 use super::{ExchangeProtocolError, StorageAccess};
 use crate::config::core_config::CoreConfig;
-use crate::model::credential::{CredentialState, UpdateCredentialRequest};
+use crate::model::credential::{
+    Credential, CredentialState, CredentialStateEnum, UpdateCredentialRequest,
+};
+use crate::model::did::Did;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::interaction::Interaction;
+use crate::model::key::Key;
+use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
@@ -45,10 +44,11 @@ pub fn interaction_from_handle_invitation(
     host: Url,
     data: Option<Vec<u8>>,
     now: OffsetDateTime,
-) -> OpenInteraction {
-    OpenInteraction {
-        id: Uuid::new_v4().into(),
+) -> Interaction {
+    Interaction {
+        id: Uuid::new_v4(),
         created_date: now,
+        last_modified: now,
         host: Some(host),
         data,
     }
@@ -59,13 +59,13 @@ pub fn proof_from_handle_invitation(
     proof_id: &ProofId,
     protocol: &str,
     redirect_uri: Option<String>,
-    verifier_did: Option<OpenDid>,
-    interaction: OpenInteraction,
+    verifier_did: Option<Did>,
+    interaction: Interaction,
     now: OffsetDateTime,
-    verifier_key: Option<OpenKey>,
+    verifier_key: Option<Key>,
     transport: &str,
-) -> OpenProof {
-    OpenProof {
+) -> Proof {
+    Proof {
         id: proof_id.to_owned(),
         created_date: now,
         last_modified: now,
@@ -73,10 +73,10 @@ pub fn proof_from_handle_invitation(
         exchange: protocol.to_owned(),
         redirect_uri,
         transport: transport.to_owned(),
-        state: Some(vec![proof::OpenProofState {
+        state: Some(vec![ProofState {
             created_date: now,
             last_modified: now,
-            state: OpenProofStateEnum::Pending,
+            state: ProofStateEnum::Pending,
         }]),
         schema: None,
         claims: None,
@@ -88,13 +88,13 @@ pub fn proof_from_handle_invitation(
 }
 
 pub fn credential_model_to_credential_dto(
-    credentials: Vec<OpenCredential>,
+    credentials: Vec<Credential>,
     config: &CoreConfig,
 ) -> Result<Vec<CredentialDetailResponseDTO>, ExchangeProtocolError> {
     // Missing organisation here.
     credentials
         .into_iter()
-        .map(|credential| credential_detail_response_from_model(credential.into(), config))
+        .map(|credential| credential_detail_response_from_model(credential, config))
         .collect::<Result<Vec<CredentialDetailResponseDTO>, _>>()
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
 }
@@ -104,8 +104,8 @@ pub async fn get_relevant_credentials_to_credential_schemas(
     mut credential_groups: Vec<CredentialGroup>,
     group_id_to_schema_id_mapping: HashMap<String, String>,
     allowed_schema_formats: &HashSet<&str>,
-) -> Result<(Vec<OpenCredential>, Vec<CredentialGroup>), ExchangeProtocolError> {
-    let mut relevant_credentials: Vec<OpenCredential> = Vec::new();
+) -> Result<(Vec<Credential>, Vec<CredentialGroup>), ExchangeProtocolError> {
+    let mut relevant_credentials: Vec<Credential> = Vec::new();
     for group in &mut credential_groups {
         let credential_schema_id =
             group_id_to_schema_id_mapping
@@ -127,7 +127,10 @@ pub async fn get_relevant_credentials_to_credential_schemas(
 
             if !allowed_schema_formats
                 .iter()
-                .any(|allowed_schema_format| allowed_schema_format.starts_with(&schema.format))
+                // In case of JSON_LD we could have different crypto suits as separate formats.
+                // This will work as long as we have common part as allowed format. In this case
+                // it translates ldp_vc to JSON_LD that could be a common part of JSON_LD_CS1 and JSON_LD_CS2
+                .any(|allowed_schema_format| schema.format.starts_with(allowed_schema_format))
             {
                 continue;
             }
@@ -141,42 +144,44 @@ pub async fn get_relevant_credentials_to_credential_schemas(
 
             // only consider credentials that have finished the issuance flow
             if ![
-                OpenCredentialStateEnum::Accepted,
-                OpenCredentialStateEnum::Revoked,
-                OpenCredentialStateEnum::Suspended,
+                CredentialStateEnum::Accepted,
+                CredentialStateEnum::Revoked,
+                CredentialStateEnum::Suspended,
             ]
             .contains(&credential_state.state.clone())
             {
                 continue;
             }
 
-            let claim_schemas = credential
-                .claims
-                .as_ref()
-                .ok_or(ExchangeProtocolError::Failed("claims missing".to_string()))?
-                .iter()
-                .map(|claim| {
-                    claim
-                        .schema
-                        .as_ref()
-                        .ok_or(ExchangeProtocolError::Failed("schema missing".to_string()))
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            if group.claims.iter().all(|requested_claim| {
+            let claim_schemas = if let Some(claim_schemas) = schema.claim_schemas.clone() {
                 claim_schemas
-                    .iter()
-                    .any(|claim_schema| claim_schema.key.starts_with(&requested_claim.key))
+            } else {
+                return Err(ExchangeProtocolError::Failed(
+                    "claim schema missing".to_string(),
+                ));
+            };
+
+            if group.claims.iter().all(|requested_claim| {
+                !requested_claim.required
+                    || claim_schemas.iter().any(|claim_schema| {
+                        claim_schema.schema.key.starts_with(&requested_claim.key)
+                    })
             }) {
+                // For each requested claim
                 if group.claims.iter().all(|requested_claim| {
                     claim_schemas.iter().any(|claim_schema| {
-                        claim_schema.key.starts_with(&requested_claim.key)
+                        // Find the claim schema
+                        claim_schema.schema.key == requested_claim.key
+                            // And make sure a parent element is not an array
                             && claim_schemas
                                 .iter()
                                 .filter(|other_schema| {
-                                    other_schema.key.starts_with(&claim_schema.key)
-                                        && other_schema.key != claim_schema.key
+                                    claim_schema
+                                        .schema
+                                        .key
+                                        .starts_with(&format!("{}/", &other_schema.schema.key))
                                 })
-                                .any(|other_schema| other_schema.array)
+                                .any(|other_schema| other_schema.schema.array)
                     })
                 }) {
                     return Err(ExchangeProtocolError::Failed(
@@ -195,7 +200,7 @@ pub async fn get_relevant_credentials_to_credential_schemas(
 
 pub fn create_presentation_definition_field(
     field: CredentialGroupItem,
-    credentials: &[OpenCredential],
+    credentials: &[Credential],
 ) -> Result<PresentationDefinitionFieldDTO, ExchangeProtocolError> {
     let mut key_map: HashMap<String, String> = HashMap::new();
     let key = field.key;

@@ -2,11 +2,6 @@ use std::any::type_name;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use dto_mapper::{convert_inner, try_convert_inner};
-use one_providers::common_models::OpenPublicKeyJwk;
-use one_providers::credential_formatter::error::FormatterError;
-use one_providers::exchange_protocol::openid4vc::imp::OpenID4VCParams;
-use one_providers::key_algorithm::error::KeyAlgorithmError;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use shared_types::{CredentialId, DidId, DidValue, KeyId};
@@ -20,8 +15,13 @@ use crate::model::common::GetListResponse;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
+use crate::model::key::PublicKeyJwk;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::OpenID4VCParams;
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 
@@ -255,7 +255,7 @@ pub fn extracted_credential_to_model(
 
 pub struct PublicKeyWithJwk {
     pub key_id: KeyId,
-    pub jwk: OpenPublicKeyJwk,
+    pub jwk: PublicKeyJwk,
 }
 
 pub fn get_encryption_key_jwk_from_proof(
@@ -275,9 +275,7 @@ pub fn get_encryption_key_jwk_from_proof(
         .ok_or(ServiceError::MappingError(
             "verifier_key is None".to_string(),
         ))
-        .and_then(|value| {
-            verifier_did.find_key(&value.id.to_owned().into(), KeyRole::KeyAgreement)
-        });
+        .and_then(|value| verifier_did.find_key(&value.id, KeyRole::KeyAgreement));
 
     let encryption_key = match verifier_key {
         Ok(key) => Ok(key),
@@ -295,7 +293,7 @@ pub fn get_encryption_key_jwk_from_proof(
         ))?;
 
     Ok(PublicKeyWithJwk {
-        key_id: encryption_key.id.into(),
+        key_id: encryption_key.id,
         jwk: key_algorithm.bytes_to_jwk(&encryption_key.public_key, Some("enc".to_string()))?,
     })
 }
@@ -326,11 +324,12 @@ pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, Form
 
 #[cfg(test)]
 mod tests {
-    use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
     use serde_json::json;
 
     use super::*;
-    use crate::model::credential_schema::{CredentialSchemaType, LayoutType};
+    use crate::model::credential_schema::{
+        CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
+    };
 
     #[test]
     fn test_extracted_credential_to_model_mdoc() {
@@ -373,7 +372,7 @@ mod tests {
                 name: "CredentialSchema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: "pavel.3310.simple".to_string(),

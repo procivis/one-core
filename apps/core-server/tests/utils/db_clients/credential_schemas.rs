@@ -4,10 +4,10 @@ use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, CredentialSchemaClaim,
     CredentialSchemaRelations, CredentialSchemaType, LayoutProperties, LayoutType, LogoProperties,
+    WalletStorageTypeEnum,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use shared_types::CredentialSchemaId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
@@ -15,7 +15,7 @@ use uuid::Uuid;
 #[derive(Debug, Default, Clone)]
 pub struct TestingCreateSchemaParams {
     pub format: Option<String>,
-    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_type: Option<CredentialSchemaType>,
 }
 
@@ -71,7 +71,7 @@ impl CredentialSchemasDB {
             wallet_storage_type: Some(
                 params
                     .wallet_storage_type
-                    .unwrap_or(OpenWalletStorageTypeEnum::Software),
+                    .unwrap_or(WalletStorageTypeEnum::Software),
             ),
             organisation: Some(organisation.clone()),
             deleted_at: None,
@@ -141,7 +141,7 @@ impl CredentialSchemasDB {
             wallet_storage_type: Some(
                 params
                     .wallet_storage_type
-                    .unwrap_or(OpenWalletStorageTypeEnum::Software),
+                    .unwrap_or(WalletStorageTypeEnum::Software),
             ),
             organisation: Some(organisation.clone()),
             deleted_at: None,
@@ -220,7 +220,7 @@ impl CredentialSchemasDB {
             wallet_storage_type: Some(
                 params
                     .wallet_storage_type
-                    .unwrap_or(OpenWalletStorageTypeEnum::Software),
+                    .unwrap_or(WalletStorageTypeEnum::Software),
             ),
             organisation: Some(organisation.clone()),
             deleted_at: None,
@@ -323,7 +323,7 @@ impl CredentialSchemasDB {
             wallet_storage_type: Some(
                 params
                     .wallet_storage_type
-                    .unwrap_or(OpenWalletStorageTypeEnum::Software),
+                    .unwrap_or(WalletStorageTypeEnum::Software),
             ),
             organisation: Some(organisation.clone()),
             deleted_at: None,
@@ -438,7 +438,7 @@ impl CredentialSchemasDB {
             wallet_storage_type: Some(
                 params
                     .wallet_storage_type
-                    .unwrap_or(OpenWalletStorageTypeEnum::Software),
+                    .unwrap_or(WalletStorageTypeEnum::Software),
             ),
             organisation: Some(organisation.clone()),
             deleted_at: None,

@@ -2,16 +2,16 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use dto_mapper::{convert_inner, convert_inner_of_inner};
-use one_providers::common_models::credential::OpenCredential;
-use one_providers::common_models::credential_schema::{CredentialSchemaId, OpenCredentialSchema};
-use one_providers::common_models::did::{DidId, DidValue, OpenDid};
-use one_providers::common_models::interaction::{InteractionId, OpenInteraction};
-use one_providers::common_models::organisation::OrganisationId;
-use one_providers::exchange_protocol::openid4vc::StorageProxy;
+use shared_types::{CredentialSchemaId, DidId, DidValue, OrganisationId};
 
 use crate::model::claim::ClaimRelations;
-use crate::model::credential::CredentialRelations;
-use crate::model::credential_schema::{CredentialSchemaRelations, CredentialSchemaType};
+use crate::model::credential::{Credential, CredentialRelations};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
+};
+use crate::model::did::Did;
+use crate::model::interaction::{Interaction, InteractionId};
+use crate::provider::exchange_protocol::StorageProxy;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -42,13 +42,10 @@ impl StorageProxyImpl {
 
 #[async_trait::async_trait]
 impl StorageProxy for StorageProxyImpl {
-    async fn create_interaction(
-        &self,
-        interaction: OpenInteraction,
-    ) -> anyhow::Result<InteractionId> {
+    async fn create_interaction(&self, interaction: Interaction) -> anyhow::Result<InteractionId> {
         convert_inner(
             self.interactions
-                .create_interaction(interaction.into())
+                .create_interaction(interaction)
                 .await
                 .context("Create interaction error"),
         )
@@ -59,13 +56,13 @@ impl StorageProxy for StorageProxyImpl {
         schema_id: &str,
         schema_type: &str,
         organisation_id: OrganisationId,
-    ) -> anyhow::Result<Option<OpenCredentialSchema>> {
+    ) -> anyhow::Result<Option<CredentialSchema>> {
         convert_inner_of_inner(
             self.credential_schemas
                 .get_by_schema_id_and_organisation(
                     schema_id,
                     CredentialSchemaType::from(schema_type.to_string()),
-                    organisation_id.into(),
+                    organisation_id,
                     &CredentialSchemaRelations {
                         claim_schemas: Some(Default::default()),
                         organisation: Some(Default::default()),
@@ -79,7 +76,7 @@ impl StorageProxy for StorageProxyImpl {
     async fn get_credentials_by_credential_schema_id(
         &self,
         schema_id: &str,
-    ) -> anyhow::Result<Vec<OpenCredential>> {
+    ) -> anyhow::Result<Vec<Credential>> {
         convert_inner_of_inner(
             self.credentials
                 .get_credentials_by_credential_schema_id(
@@ -104,10 +101,8 @@ impl StorageProxy for StorageProxyImpl {
 
     async fn create_credential_schema(
         &self,
-        schema: OpenCredentialSchema,
+        schema: CredentialSchema,
     ) -> anyhow::Result<CredentialSchemaId> {
-        let schema: crate::model::credential_schema::CredentialSchema = schema.into();
-
         convert_inner(
             self.credential_schemas
                 .create_credential_schema(schema)
@@ -116,9 +111,7 @@ impl StorageProxy for StorageProxyImpl {
         )
     }
 
-    async fn create_did(&self, did: OpenDid) -> anyhow::Result<DidId> {
-        let did: crate::model::did::Did = did.into();
-
+    async fn create_did(&self, did: Did) -> anyhow::Result<DidId> {
         convert_inner(
             self.dids
                 .create_did(did)
@@ -127,10 +120,10 @@ impl StorageProxy for StorageProxyImpl {
         )
     }
 
-    async fn get_did_by_value(&self, value: &DidValue) -> anyhow::Result<Option<OpenDid>> {
+    async fn get_did_by_value(&self, value: &DidValue) -> anyhow::Result<Option<Did>> {
         convert_inner_of_inner(
             self.dids
-                .get_did_by_value(&value.clone().into(), &Default::default())
+                .get_did_by_value(value, &Default::default())
                 .await
                 .context("Could not fetch did by value"),
         )

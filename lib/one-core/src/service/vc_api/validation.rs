@@ -1,11 +1,11 @@
 use std::sync::LazyLock;
 
-use one_providers::credential_formatter::imp::json_ld::model::{
-    ContextType, LdCredential, LdPresentation,
-};
-use one_providers::credential_formatter::model::Context;
 use url::Url;
 
+use crate::provider::credential_formatter::json_ld::model::{
+    ContextType, LdCredential, LdPresentation,
+};
+use crate::provider::credential_formatter::model::Context;
 use crate::service::error::ServiceError;
 
 static V1: LazyLock<ContextType> =

@@ -1,9 +1,9 @@
-use one_providers::common_models::did::DidValue;
-use one_providers::credential_formatter::error::FormatterError;
-use one_providers::credential_formatter::imp::jwt::Jwt;
-use one_providers::credential_formatter::model::VerificationFn;
+use shared_types::DidValue;
 
 use self::model::VC;
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::credential_formatter::model::VerificationFn;
 
 mod model;
 

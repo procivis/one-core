@@ -1,15 +1,4 @@
 use anyhow::Context;
-use one_providers::credential_formatter::model::DetailCredential;
-use one_providers::exchange_protocol::openid4vc::model::{
-    OpenID4VCICredential, OpenID4VCIProof, OpenID4VCITokenResponseDTO, ShareResponse,
-};
-use one_providers::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
-use one_providers::exchange_protocol::openid4vc::ExchangeProtocolError;
-use one_providers::http_client::HttpClient;
-use one_providers::key_storage::provider::KeyProvider;
-use one_providers::revocation::model::{
-    CredentialDataByRole, CredentialRevocationState, RevocationMethodCapabilities,
-};
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -34,8 +23,19 @@ use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::exchange_protocol::deserialize_interaction_data;
-use crate::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
+use crate::provider::exchange_protocol::error::ExchangeProtocolError;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    HolderInteractionData, OpenID4VCICredential, OpenID4VCIProof, OpenID4VCITokenResponseDTO,
+    ShareResponse,
+};
+use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
+use crate::provider::http_client::HttpClient;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::model::{
+    CredentialDataByRole, CredentialRevocationState, RevocationMethodCapabilities,
+};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::interaction_repository::InteractionRepository;
@@ -126,7 +126,7 @@ impl CredentialService {
             &request.exchange,
             &request.claim_values,
             &schema,
-            &formatter_capabilities.clone().into(),
+            &formatter_capabilities,
             &self.config,
         )?;
 
@@ -455,9 +455,7 @@ impl CredentialService {
             url,
             id: interaction_id,
             context,
-        } = exchange
-            .share_credential(&credential.clone().into(), &format)
-            .await?;
+        } = exchange.share_credential(&credential, &format).await?;
 
         add_new_interaction(
             interaction_id,
@@ -597,7 +595,7 @@ impl CredentialService {
 
         let update = revocation_method
             .mark_credential_as(
-                &credential.to_owned().into(),
+                &credential,
                 revocation_state.to_owned(),
                 generate_credential_additional_data(
                     &credential,
@@ -827,12 +825,8 @@ impl CredentialService {
             .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
         let credential_data_by_role = match credential.role {
-            CredentialRole::Holder => {
-                Some(CredentialDataByRole::Holder(credential.to_owned().into()))
-            }
-            CredentialRole::Issuer => {
-                Some(CredentialDataByRole::Issuer(credential.to_owned().into()))
-            }
+            CredentialRole::Holder => Some(CredentialDataByRole::Holder(credential.clone())),
+            CredentialRole::Issuer => Some(CredentialDataByRole::Issuer(credential.clone())),
             CredentialRole::Verifier => None,
         };
 
@@ -841,7 +835,7 @@ impl CredentialService {
             match revocation_method
                 .check_credential_revocation_status(
                     &status,
-                    &issuer_did.did.to_owned().into(),
+                    &issuer_did.did,
                     credential_data_by_role.to_owned(),
                 )
                 .await
@@ -935,7 +929,7 @@ async fn obtain_and_update_new_mso(
 
     let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
         interaction_data.issuer_url,
-        &holder_did.clone().into(),
+        &holder_did,
         key.key_type.to_owned(),
         auth_fn,
     )

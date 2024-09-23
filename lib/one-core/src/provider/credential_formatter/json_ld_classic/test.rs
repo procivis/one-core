@@ -4,28 +4,26 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
-use one_crypto::{MockCryptoProvider, MockHasher};
-use one_providers::common_models::credential_schema::{
-    OpenBackgroundProperties, OpenLayoutProperties, OpenLayoutType,
-};
-use one_providers::common_models::did::DidValue;
-use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
-use one_providers::credential_formatter::model::{
+use serde_json::json;
+use shared_types::DidValue;
+use time::{Duration, OffsetDateTime};
+
+use crate::crypto::{MockCryptoProvider, MockHasher};
+use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
+use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::provider::credential_formatter::json_ld_classic::{JsonLdClassic, Params};
+use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchemaData, CredentialSchemaMetadata, ExtractPresentationCtx,
     FormatPresentationCtx, Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaim,
     PublishedClaimValue,
 };
-use one_providers::credential_formatter::CredentialFormatter;
-use one_providers::did::model::{DidDocument, DidVerificationMethod};
-use one_providers::did::provider::MockDidMethodProvider;
-use one_providers::http_client::imp::reqwest_client::ReqwestClient;
-use one_providers::http_client::HttpClient;
-use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
-use one_providers::key_algorithm::MockKeyAlgorithm;
-use serde_json::json;
-use time::{Duration, OffsetDateTime};
-
-use crate::provider::credential_formatter::json_ld_classic::{JsonLdClassic, Params};
+use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
+use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::service::test_utilities::prepare_caching_loader;
 
 #[tokio::test]
@@ -72,9 +70,9 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
             context: None,
             name: "credential-schema-name".to_string(),
             metadata: Some(CredentialSchemaMetadata {
-                layout_type: OpenLayoutType::Card,
-                layout_properties: OpenLayoutProperties {
-                    background: Some(OpenBackgroundProperties {
+                layout_type: LayoutType::Card,
+                layout_properties: LayoutProperties {
+                    background: Some(BackgroundProperties {
                         color: Some("color".to_string()),
                         image: None,
                     }),
@@ -112,7 +110,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
+                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -269,7 +267,7 @@ async fn test_format_presentation_multi_tokens() {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
+                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
@@ -478,7 +476,7 @@ async fn test_parse_presentation_multi_tokens() {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: OpenPublicKeyJwk::Ec(OpenPublicKeyJwkEllipticData {
+                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),

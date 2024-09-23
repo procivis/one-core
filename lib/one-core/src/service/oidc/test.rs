@@ -3,24 +3,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
-use one_providers::common_dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::common_models::key::OpenKey;
-use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
-use one_providers::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, Presentation,
-};
-use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::credential_formatter::MockCredentialFormatter;
-use one_providers::did::provider::MockDidMethodProvider;
-use one_providers::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
-use one_providers::exchange_protocol::openid4vc::model::*;
-use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
-use one_providers::key_algorithm::MockKeyAlgorithm;
-use one_providers::key_storage::provider::MockKeyProvider;
-use one_providers::revocation::model::CredentialRevocationState;
-use one_providers::revocation::provider::MockRevocationMethodProvider;
-use one_providers::revocation::MockRevocationMethod;
 use serde_json::json;
 use shared_types::{DidId, DidValue, ProofId};
 use time::{Duration, OffsetDateTime};
@@ -32,15 +14,30 @@ use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutType,
+    LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::HistoryAction;
 use crate::model::interaction::Interaction;
+use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
+use crate::provider::credential_formatter::model::{
+    CredentialStatus, CredentialSubject, DetailCredential, Presentation,
+};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
+use crate::provider::exchange_protocol::openid4vc::model::*;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::revocation::model::CredentialRevocationState;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -49,6 +46,7 @@ use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::error::ServiceError;
+use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::service::oidc::OIDCService;
 use crate::service::test_utilities::*;
 
@@ -99,7 +97,7 @@ fn generic_credential_schema() -> CredentialSchema {
         created_date: now,
         last_modified: now,
         name: "".to_string(),
-        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         format: "JWT".to_string(),
         revocation_method: "".to_string(),
         claim_schemas: None,
@@ -1576,8 +1574,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer_did: Some(issuer_did_clone.to_owned().into()),
-                subject: Some(holder_did_clone.to_owned().into()),
+                issuer_did: Some(issuer_did_clone.to_owned()),
+                subject: Some(holder_did_clone.to_owned()),
                 claims: CredentialSubject {
                     values: HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
@@ -1599,7 +1597,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some(holder_did_clone.to_owned().into()),
+                issuer_did: Some(holder_did_clone.to_owned()),
                 nonce: Some(nonce_clone.to_owned()),
                 credentials: vec!["credential".to_string()],
             })
@@ -1615,7 +1613,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some(holder_did_clone.to_owned().into()),
+                issuer_did: Some(holder_did_clone.to_owned()),
                 nonce: Some(nonce_clone.to_owned()),
                 credentials: vec!["credential".to_string()],
             })
@@ -1632,8 +1630,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer_did: Some(issuer_did_clone.to_owned().into()),
-                subject: Some(holder_did.to_owned().into()),
+                issuer_did: Some(issuer_did_clone.to_owned()),
+                subject: Some(holder_did.to_owned()),
                 claims: CredentialSubject {
                     values: HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
@@ -1795,7 +1793,7 @@ async fn test_get_client_metadata_success() {
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::KeyAgreement,
-                key: OpenKey {
+                key: Key {
                     id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
                         .unwrap()
                         .into(),
@@ -1822,7 +1820,7 @@ async fn test_get_client_metadata_success() {
             .return_once(move |_, _| Ok(Some(proof)));
 
         key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
-            Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
+            Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 r#use: Some("enc".to_string()),
                 crv: "123".to_string(),
                 x: "456".to_string(),

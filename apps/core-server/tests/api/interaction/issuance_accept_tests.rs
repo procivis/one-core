@@ -1,6 +1,6 @@
 use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -145,7 +145,7 @@ async fn test_issuance_accept_procivis_temp_with_key_id() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
         .await;
 
     // THEN
@@ -328,7 +328,7 @@ async fn test_fail_issuance_accept_procivis_temp_wrong_key_role() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
         .await;
 
     // THEN
@@ -418,7 +418,7 @@ async fn test_fail_issuance_accept_procivis_temp_wallet_storage_type_not_met() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 ..Default::default()
             },
         )
@@ -466,7 +466,7 @@ async fn test_fail_issuance_accept_procivis_temp_wallet_storage_type_not_met() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
         .await;
 
     // THEN
@@ -638,7 +638,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
         .await;
 
     assert_eq!(resp.status(), 204);
@@ -868,7 +868,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
         .await;
 
     // THEN
@@ -1000,7 +1000,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Hardware),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 ..Default::default()
             },
         )
@@ -1038,7 +1038,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id.into()))
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id))
         .await;
 
     // THEN

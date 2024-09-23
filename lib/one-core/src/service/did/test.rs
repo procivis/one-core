@@ -3,17 +3,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use mockall::predicate::*;
-use one_providers::caching_loader::CachingLoader;
-use one_providers::common_models::did::DidValue;
-use one_providers::common_models::key::OpenKey;
-use one_providers::did::imp::provider::DidMethodProviderImpl;
-use one_providers::did::model::DidCapabilities;
-use one_providers::did::{DidMethod, MockDidMethod};
-use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
-use one_providers::remote_entity_storage::in_memory::InMemoryStorage;
-use one_providers::remote_entity_storage::RemoteEntityType;
 use serde_json::Value;
-use shared_types::DidId;
+use shared_types::{DidId, DidValue};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -22,9 +13,16 @@ use crate::config::core_config::{self, CoreConfig, DidConfig, Fields};
 use crate::model::did::{
     Did, DidListQuery, DidRelations, DidType, GetDidList, KeyRole, RelatedKey,
 };
-use crate::model::key::KeyRelations;
+use crate::model::key::{Key, KeyRelations};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::provider::caching_loader::CachingLoader;
+use crate::provider::did_method::model::DidCapabilities;
+use crate::provider::did_method::provider::DidMethodProviderImpl;
+use crate::provider::did_method::{DidMethod, MockDidMethod};
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
+use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -108,7 +106,7 @@ async fn test_get_did_exists() {
         did_method: "KEY".to_string(),
         keys: Some(vec![RelatedKey {
             role: KeyRole::Authentication,
-            key: OpenKey {
+            key: Key {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -263,7 +261,7 @@ async fn test_create_did_success() {
 
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_keys().once().returning(move |_| {
-        Ok(vec![OpenKey {
+        Ok(vec![Key {
             id: key_id.into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -351,7 +349,7 @@ async fn test_create_did_value_already_exists() {
 
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_keys().once().returning(move |_| {
-        Ok(vec![OpenKey {
+        Ok(vec![Key {
             id: key_id.into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),

@@ -1,4 +1,4 @@
-use one_providers::exchange_protocol::openid4vc::model::InvitationResponseDTO;
+use one_core::provider::exchange_protocol::openid4vc::model::InvitationResponseDTO;
 
 use super::dto::HandleInvitationResponseRestDTO;
 
@@ -9,11 +9,11 @@ impl From<InvitationResponseDTO> for HandleInvitationResponseRestDTO {
                 credentials,
                 interaction_id,
             } => Self {
-                interaction_id: interaction_id.into(),
+                interaction_id,
                 credential_ids: Some(
                     credentials
                         .into_iter()
-                        .map(|credential| credential.id.into())
+                        .map(|credential| credential.id)
                         .collect(),
                 ),
                 proof_id: None,
@@ -23,9 +23,9 @@ impl From<InvitationResponseDTO> for HandleInvitationResponseRestDTO {
                 interaction_id,
                 ..
             } => Self {
-                interaction_id: interaction_id.into(),
+                interaction_id,
                 credential_ids: None,
-                proof_id: Some(proof.id.into()),
+                proof_id: Some(proof.id),
             },
         }
     }

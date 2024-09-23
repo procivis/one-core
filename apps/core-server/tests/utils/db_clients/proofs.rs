@@ -5,7 +5,7 @@ use one_core::model::claim_schema::ClaimSchemaRelations;
 use one_core::model::credential_schema::CredentialSchemaRelations;
 use one_core::model::did::{Did, DidRelations};
 use one_core::model::interaction::Interaction;
-use one_core::model::key::KeyRelations;
+use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::OrganisationRelations;
 use one_core::model::proof::{
     Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
@@ -14,7 +14,6 @@ use one_core::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use one_core::repository::proof_repository::ProofRepository;
-use one_providers::common_models::key::OpenKey;
 use shared_types::ProofId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
@@ -38,7 +37,7 @@ impl ProofsDB {
         state: ProofStateEnum,
         exchange: &str,
         interaction: Option<&Interaction>,
-        verifier_key: OpenKey,
+        verifier_key: Key,
     ) -> Proof {
         let proof = Proof {
             id: id.unwrap_or_else(|| Uuid::new_v4().into()),

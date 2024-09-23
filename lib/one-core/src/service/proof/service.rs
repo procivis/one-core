@@ -1,10 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
-use one_providers::exchange_protocol::openid4vc::{
-    ExchangeProtocolError, FormatMapper, TypeToDescriptorMapper,
-};
 use shared_types::{OrganisationId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -42,6 +38,7 @@ use crate::model::proof_schema::{
 };
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
 use crate::provider::exchange_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::iso_mdl::ble_holder::{
     receive_mdl_request, start_mdl_server, MdocBleHolderInteractionData,
 };
@@ -52,6 +49,8 @@ use crate::provider::exchange_protocol::iso_mdl::device_engagement::{
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
+use crate::provider::exchange_protocol::openid4vc::model::ShareResponse;
+use crate::provider::exchange_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -187,16 +186,16 @@ impl ProofService {
             self.did_repository.clone(),
         );
 
-        Ok(exchange
+        exchange
             .get_presentation_definition(
-                &proof.clone().into(),
+                &proof,
                 interaction_data,
                 &storage_access,
                 create_oicd_to_core_format_map(),
                 core_type_to_open_core_type(&self.config.datatype),
             )
-            .await?
-            .into())
+            .await
+            .map_err(Into::into)
     }
 
     /// Returns list of proofs according to query
@@ -397,9 +396,9 @@ impl ProofService {
             context,
         } = exchange
             .share_proof(
-                &proof.clone().into(),
+                &proof,
                 format_type_mapper,
-                jwk.key_id.into(),
+                jwk.key_id,
                 jwk.jwk.into(),
                 formats,
                 type_to_descriptor_mapper,
@@ -465,7 +464,7 @@ impl ProofService {
             ServiceError::MissingExchangeProtocol(proof.exchange.clone()),
         )?;
 
-        exchange_protocol.retract_proof(&proof.into()).await?;
+        exchange_protocol.retract_proof(&proof).await?;
 
         self.proof_repository
             .update_proof(UpdateProofRequest {

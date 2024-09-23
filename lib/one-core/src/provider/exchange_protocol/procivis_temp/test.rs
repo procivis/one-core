@@ -1,25 +1,24 @@
 use std::sync::Arc;
 
-use one_providers::common_models::credential::{OpenCredential, OpenCredentialRole};
-use one_providers::common_models::did::{KeyRole, OpenDid, RelatedKey};
-use one_providers::common_models::proof::OpenProof;
-use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
-use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::exchange_protocol::openid4vc::{
-    ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, TypeToDescriptorMapper,
-};
-use one_providers::http_client::imp::reqwest_client::ReqwestClient;
-use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
-use one_providers::key_algorithm::MockKeyAlgorithm;
-use one_providers::key_storage::provider::MockKeyProvider;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::ProcivisTemp;
+use super::{
+    ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, ProcivisTemp, TypeToDescriptorMapper,
+};
 use crate::common_mapper::get_encryption_key_jwk_from_proof;
+use crate::model::credential::{Credential, CredentialRole};
+use crate::model::did::{Did, KeyRole, RelatedKey};
+use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::proof::Proof;
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
+use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::service::test_utilities::{dummy_did, dummy_key, generic_config};
 
 #[derive(Default)]
@@ -38,8 +37,8 @@ fn setup_protocol(base_url: Option<String>, repositories: Repositories) -> Proci
     )
 }
 
-fn generate_credential(redirect_uri: Option<String>) -> OpenCredential {
-    OpenCredential {
+fn generate_credential(redirect_uri: Option<String>) -> Credential {
+    Credential {
         id: Uuid::default().into(),
         created_date: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
@@ -48,7 +47,7 @@ fn generate_credential(redirect_uri: Option<String>) -> OpenCredential {
         credential: vec![],
         exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri,
-        role: OpenCredentialRole::Issuer,
+        role: CredentialRole::Issuer,
         state: None,
         claims: None,
         issuer_did: None,
@@ -56,11 +55,12 @@ fn generate_credential(redirect_uri: Option<String>) -> OpenCredential {
         schema: None,
         interaction: None,
         key: None,
+        revocation_list: None,
     }
 }
 
-fn generate_proof(redirect_uri: Option<String>) -> OpenProof {
-    OpenProof {
+fn generate_proof(redirect_uri: Option<String>) -> Proof {
+    Proof {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
@@ -116,19 +116,19 @@ async fn test_share_proof_no_base_url() {
     let protocol = setup_protocol(None, Repositories::default());
     let mut proof = generate_proof(None);
 
-    let did = OpenDid {
+    let did = Did {
         keys: Some(vec![RelatedKey {
             role: KeyRole::KeyAgreement,
             key: dummy_key(),
         }]),
-        ..dummy_did().into()
+        ..dummy_did()
     };
 
     proof.verifier_did = Some(did);
 
     let mut key_alg = MockKeyAlgorithm::default();
     key_alg.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
             crv: "123".to_string(),
             x: "456".to_string(),
@@ -149,8 +149,7 @@ async fn test_share_proof_no_base_url() {
         .returning(move |_| Some(key_alg.clone()));
 
     let formats = create_open_id_for_vp_formats();
-    let jwk =
-        get_encryption_key_jwk_from_proof(&proof.clone().into(), &key_algorithm_provider).unwrap();
+    let jwk = get_encryption_key_jwk_from_proof(&proof, &key_algorithm_provider).unwrap();
 
     let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
 
@@ -160,7 +159,7 @@ async fn test_share_proof_no_base_url() {
         .share_proof(
             &proof,
             format_type_mapper,
-            jwk.key_id.into(),
+            jwk.key_id,
             jwk.jwk.into(),
             formats,
             type_to_descriptor_mapper,
@@ -174,19 +173,19 @@ async fn test_share_proof_success_no_redirect_uri() {
     let protocol = setup_protocol(Some("http://base_url".to_string()), Repositories::default());
     let mut proof = generate_proof(None);
 
-    let did = OpenDid {
+    let did = Did {
         keys: Some(vec![RelatedKey {
             role: KeyRole::KeyAgreement,
             key: dummy_key(),
         }]),
-        ..dummy_did().into()
+        ..dummy_did()
     };
 
     proof.verifier_did = Some(did);
 
     let mut key_alg = MockKeyAlgorithm::default();
     key_alg.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
             crv: "123".to_string(),
             x: "456".to_string(),
@@ -207,8 +206,7 @@ async fn test_share_proof_success_no_redirect_uri() {
         .returning(move |_| Some(key_alg.clone()));
 
     let formats = create_open_id_for_vp_formats();
-    let jwk =
-        get_encryption_key_jwk_from_proof(&proof.clone().into(), &key_algorithm_provider).unwrap();
+    let jwk = get_encryption_key_jwk_from_proof(&proof, &key_algorithm_provider).unwrap();
 
     let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
 
@@ -218,7 +216,7 @@ async fn test_share_proof_success_no_redirect_uri() {
         .share_proof(
             &proof,
             format_type_mapper,
-            jwk.key_id.into(),
+            jwk.key_id,
             jwk.jwk.into(),
             formats,
             type_to_descriptor_mapper,
@@ -233,19 +231,19 @@ async fn test_share_proof_success_with_redirect_uri_is_percent_encoded() {
     let protocol = setup_protocol(Some("http://base_url".to_string()), Repositories::default());
     let mut proof = generate_proof(Some("http://base_url/redirect?queryParam=1".to_string()));
 
-    let did = OpenDid {
+    let did = Did {
         keys: Some(vec![RelatedKey {
             role: KeyRole::KeyAgreement,
             key: dummy_key(),
         }]),
-        ..dummy_did().into()
+        ..dummy_did()
     };
 
     proof.verifier_did = Some(did);
 
     let mut key_alg = MockKeyAlgorithm::default();
     key_alg.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(OpenPublicKeyJwk::Okp(OpenPublicKeyJwkEllipticData {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
             crv: "123".to_string(),
             x: "456".to_string(),
@@ -266,8 +264,7 @@ async fn test_share_proof_success_with_redirect_uri_is_percent_encoded() {
         .returning(move |_| Some(key_alg.clone()));
 
     let formats = create_open_id_for_vp_formats();
-    let jwk =
-        get_encryption_key_jwk_from_proof(&proof.clone().into(), &key_algorithm_provider).unwrap();
+    let jwk = get_encryption_key_jwk_from_proof(&proof, &key_algorithm_provider).unwrap();
 
     let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
 
@@ -277,7 +274,7 @@ async fn test_share_proof_success_with_redirect_uri_is_percent_encoded() {
         .share_proof(
             &proof,
             format_type_mapper,
-            jwk.key_id.into(),
+            jwk.key_id,
             jwk.jwk.into(),
             formats,
             type_to_descriptor_mapper,

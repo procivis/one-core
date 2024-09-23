@@ -1,9 +1,9 @@
-use one_providers::common_models::key::OpenKey;
-use one_providers::key_algorithm::error::KeyAlgorithmError;
 use x509_parser::certificate::X509Certificate;
 use x509_parser::error::X509Error;
 
 use super::DidMdl;
+use crate::model::key::Key;
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DidMdlValidationError {
@@ -35,7 +35,7 @@ pub trait DidMdlValidator: Send + Sync {
     fn validate_subject_public_key<'cert>(
         &self,
         certificate: &X509Certificate<'cert>,
-        key: &OpenKey,
+        key: &Key,
     ) -> Result<(), DidMdlValidationError>;
 }
 
@@ -56,7 +56,7 @@ impl DidMdlValidator for DidMdl {
     fn validate_subject_public_key(
         &self,
         certificate: &X509Certificate<'_>,
-        key: &OpenKey,
+        key: &Key,
     ) -> Result<(), DidMdlValidationError> {
         check_is_valid_now(certificate)?;
 

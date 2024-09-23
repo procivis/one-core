@@ -6,35 +6,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use dto_mapper::convert_inner;
-use one_providers::common_dto::PublicKeyJwkDTO;
-use one_providers::common_models::claim::OpenClaim;
-use one_providers::common_models::claim_schema::OpenClaimSchema;
-use one_providers::common_models::credential::{
-    OpenCredential, OpenCredentialRole, OpenCredentialState, OpenCredentialStateEnum,
-};
-use one_providers::common_models::credential_schema::{
-    OpenCredentialSchema, OpenCredentialSchemaClaim,
-};
-use one_providers::common_models::did::{DidType, KeyRole, OpenDid};
-use one_providers::common_models::key::{KeyId, OpenKey};
-use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::common_models::proof::{OpenProof, OpenProofStateEnum};
-use one_providers::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::exchange_protocol::openid4vc::model::{
-    CredentialGroup, CredentialGroupItem, DatatypeType, InvitationResponseDTO, OpenID4VPFormat,
-    PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse, SubmitIssuerResponse,
-    UpdateResponse,
-};
-use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
-use one_providers::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
-use one_providers::exchange_protocol::openid4vc::{
-    ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess, StorageAccess,
-    TypeToDescriptorMapper,
-};
-use one_providers::http_client::HttpClient;
-use one_providers::key_storage::provider::KeyProvider;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -43,19 +15,43 @@ use self::mapper::{
     get_base_url, get_proof_claim_schemas_from_proof, presentation_definition_from_proof,
     remote_did_from_value,
 };
-use super::dto::{ConnectVerifierResponse, ProofClaimSchema};
+use super::dto::{
+    ConnectVerifierResponse, CredentialGroup, CredentialGroupItem,
+    PresentationDefinitionResponseDTO, ProofClaimSchema,
+};
 use super::mapper::get_relevant_credentials_to_credential_schemas;
+use super::{
+    ExchangeProtocolImpl, FnMapExternalFormatToExternalDetailed, FormatMapper,
+    HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
+};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::CoreConfig;
-use crate::model::credential_schema::LayoutType;
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};
+use crate::model::did::{Did, DidType, KeyRole};
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
+use crate::model::proof::{Proof, ProofStateEnum};
+use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
+use crate::provider::exchange_protocol::openid4vc::model::{
+    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
+};
 use crate::provider::exchange_protocol::ExchangeProtocolError;
+use crate::provider::http_client::HttpClient;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
+use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::ssi_issuer::dto::ConnectIssuerResponseDTO;
 
 const REDIRECT_URI_QUERY_PARAM_KEY: &str = "redirect_uri";
@@ -128,7 +124,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
     async fn handle_invitation(
         &self,
         url: Url,
-        organisation: OpenOrganisation,
+        organisation: Organisation,
         storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
@@ -190,7 +186,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         })
     }
 
-    async fn reject_proof(&self, proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let mut url = super::get_base_url_from_interaction(proof.interaction.as_ref())?;
         url.set_path("/ssi/temporary-verifier/v1/reject");
         url.set_query(Some(&format!("proof={}", proof.id)));
@@ -210,10 +206,10 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn submit_proof(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
-        holder_did: &OpenDid,
-        key: &OpenKey,
+        holder_did: &Did,
+        key: &Key,
         jwk_key_id: Option<String>,
         _format_map: HashMap<String, String>,
         _presentation_format_map: HashMap<String, String>,
@@ -275,9 +271,9 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn accept_credential(
         &self,
-        credential: &OpenCredential,
-        holder_did: &OpenDid,
-        _key: &OpenKey,
+        credential: &Credential,
+        holder_did: &Did,
+        _key: &Key,
         _jwk_key_id: Option<String>,
         _format: &str,
         _storage_access: &StorageAccess,
@@ -316,7 +312,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn reject_credential(
         &self,
-        credential: &OpenCredential,
+        credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         let mut url = super::get_base_url_from_interaction(credential.interaction.as_ref())?;
         url.set_path("/ssi/temporary-issuer/v1/reject");
@@ -339,15 +335,15 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn validate_proof_for_submission(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
     ) -> Result<(), ExchangeProtocolError> {
-        throw_if_latest_proof_state_not_eq(proof, OpenProofStateEnum::Pending)
+        throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Pending)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     async fn share_credential(
         &self,
-        credential: &OpenCredential,
+        credential: &Credential,
         _credential_format: &str,
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         let base_url = self
@@ -375,7 +371,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn share_proof(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         _format_to_type_mapper: FormatMapper,
         _key_id: KeyId,
         _encryption_key_jwk: PublicKeyJwkDTO,
@@ -407,7 +403,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn get_presentation_definition(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         proof_claim_schemas: Self::VPInteractionContext,
         storage_access: &StorageAccess,
         _format_map: HashMap<String, String>,
@@ -464,20 +460,20 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn verifier_handle_proof(
         &self,
-        _proof: &OpenProof,
+        _proof: &Proof,
         _submission: &[u8],
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
         unimplemented!()
     }
 
-    async fn retract_proof(&self, _proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+    async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         Ok(())
     }
 }
 
 async fn handle_credential_invitation(
     base_url: Url,
-    organisation: OpenOrganisation,
+    organisation: Organisation,
     issuer_response: ConnectIssuerResponseDTO,
     storage_access: &StorageAccess,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
@@ -492,14 +488,14 @@ async fn handle_credential_invitation(
         .map_err(ExchangeProtocolError::StorageAccessError)?
     {
         Some(credential_schema) => {
-            if credential_schema.schema_type != issuer_response.schema.schema_type.to_string() {
+            if credential_schema.schema_type != issuer_response.schema.schema_type.into() {
                 return Err(ExchangeProtocolError::IncorrectCredentialSchemaType);
             }
 
             storage_access
                 .get_schema(
                     &credential_schema.id.to_string(),
-                    &credential_schema.schema_type,
+                    &credential_schema.schema_type.to_string(),
                     organisation.id,
                 )
                 .await
@@ -509,8 +505,8 @@ async fn handle_credential_invitation(
                 ))?
         }
         None => {
-            let credential_schema = OpenCredentialSchema {
-                id: issuer_response.schema.id.into(),
+            let credential_schema = CredentialSchema {
+                id: issuer_response.schema.id,
                 deleted_at: None,
                 created_date: now,
                 last_modified: now,
@@ -521,11 +517,10 @@ async fn handle_credential_invitation(
                 layout_type: issuer_response
                     .schema
                     .layout_type
-                    .unwrap_or(LayoutType::Card)
-                    .into(),
+                    .unwrap_or(LayoutType::Card),
                 layout_properties: convert_inner(issuer_response.schema.layout_properties),
                 schema_id: issuer_response.schema.schema_id,
-                schema_type: issuer_response.schema.schema_type.to_string(),
+                schema_type: issuer_response.schema.schema_type.into(),
                 claim_schemas: Some(extract_claim_schemas_from_incoming(
                     &issuer_response.schema.claims,
                     now,
@@ -544,7 +539,7 @@ async fn handle_credential_invitation(
     };
 
     // insert issuer did if not yet known
-    let issuer_did_value = issuer_response.issuer_did.did.into();
+    let issuer_did_value = issuer_response.issuer_did.did;
     let did = storage_access
         .get_did_by_value(&issuer_did_value)
         .await
@@ -553,8 +548,7 @@ async fn handle_credential_invitation(
     let issuer_did = match did {
         Some(did) => did,
         None => {
-            let issuer_did =
-                remote_did_from_value(issuer_did_value.to_owned(), organisation.into());
+            let issuer_did = remote_did_from_value(issuer_did_value.to_owned(), organisation);
             let _ = storage_access
                 .create_did(issuer_did.clone())
                 .await
@@ -589,7 +583,7 @@ async fn handle_credential_invitation(
         .flatten()
         .collect();
 
-    let credential = OpenCredential {
+    let credential = Credential {
         id: Uuid::from(credential_id).into(),
         created_date: now,
         issuance_date: now,
@@ -598,10 +592,10 @@ async fn handle_credential_invitation(
         credential: vec![],
         exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: issuer_response.redirect_uri,
-        role: OpenCredentialRole::Holder,
-        state: Some(vec![OpenCredentialState {
+        role: CredentialRole::Holder,
+        state: Some(vec![CredentialState {
             created_date: now,
-            state: OpenCredentialStateEnum::Pending,
+            state: CredentialStateEnum::Pending,
             suspend_end_date: None,
         }]),
         claims: Some(claims),
@@ -610,6 +604,7 @@ async fn handle_credential_invitation(
         schema: Some(credential_schema),
         interaction: Some(interaction),
         key: None,
+        revocation_list: None,
     };
 
     Ok(InvitationResponseDTO::Credential {
@@ -622,13 +617,13 @@ fn extract_claim_schemas_from_incoming(
     incoming_claims: &[CredentialClaimSchemaDTO],
     now: OffsetDateTime,
     prefix: &str,
-) -> Result<Vec<OpenCredentialSchemaClaim>, ExchangeProtocolError> {
+) -> Result<Vec<CredentialSchemaClaim>, ExchangeProtocolError> {
     let mut result = vec![];
 
     incoming_claims.iter().try_for_each(|incoming_claim| {
         let key = format!("{prefix}{}", incoming_claim.key);
-        result.push(OpenCredentialSchemaClaim {
-            schema: OpenClaimSchema {
+        result.push(CredentialSchemaClaim {
+            schema: ClaimSchema {
                 id: Uuid::from(incoming_claim.id).into(),
                 key: key.to_owned(),
                 data_type: incoming_claim.datatype.to_owned(),
@@ -657,10 +652,10 @@ fn extract_claim_schemas_from_incoming(
 fn unnest_incoming_claim(
     credential_id: CredentialId,
     incoming_claim: &DetailCredentialClaimResponseDTO,
-    claim_schemas: &[OpenCredentialSchemaClaim],
+    claim_schemas: &[CredentialSchemaClaim],
     now: OffsetDateTime,
     prefix: &str,
-) -> Result<Vec<OpenClaim>, ExchangeProtocolError> {
+) -> Result<Vec<Claim>, ExchangeProtocolError> {
     let value =
         match &incoming_claim.value {
             DetailCredentialClaimValueResponseDTO::Boolean(value) => serde_json::to_string(value)
@@ -698,9 +693,9 @@ fn unnest_incoming_claim(
         .ok_or(ExchangeProtocolError::Failed(format!(
             "missing claim schema with key {expected_key}",
         )))?;
-    Ok(vec![OpenClaim {
-        id: Uuid::new_v4().into(),
-        credential_id: Uuid::from(credential_id).into(),
+    Ok(vec![Claim {
+        id: Uuid::new_v4(),
+        credential_id,
         path: current_claim_schema.schema.key.to_owned(),
         schema: Some(current_claim_schema.schema.to_owned()),
         value,
@@ -714,12 +709,12 @@ async fn handle_proof_invitation(
     proof_id: String,
     proof_request: ConnectVerifierResponse,
     protocol: &str,
-    organisation: OpenOrganisation,
+    organisation: Organisation,
     redirect_uri: Option<String>,
     storage_access: &StorageAccess,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let verifier_did_result = storage_access
-        .get_did_by_value(&proof_request.verifier_did.clone().into())
+        .get_did_by_value(&proof_request.verifier_did)
         .await
         .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
@@ -728,12 +723,12 @@ async fn handle_proof_invitation(
         Some(did) => did,
         None => {
             let id = Uuid::new_v4();
-            let new_did = OpenDid {
+            let new_did = Did {
                 id: id.into(),
                 created_date: now,
                 last_modified: now,
                 name: format!("verifier {id}"),
-                did: proof_request.verifier_did.into(),
+                did: proof_request.verifier_did,
                 did_type: DidType::Remote,
                 did_method: "KEY".to_owned(),
                 keys: None,

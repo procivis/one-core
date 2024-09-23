@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 
 use dto_mapper::{convert_inner, convert_inner_of_inner};
-use one_providers::exchange_protocol::openid4vc::model::{
-    OpenID4VCIInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
-    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VPInteractionContent, ProvedCredential,
-};
 
 use crate::common_mapper::{get_or_create_did, remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    OpenID4VCIInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
+    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VPInteractionContent, ProvedCredential,
+};
 use crate::repository::did_repository::DidRepository;
 use crate::service::error::ServiceError;
 use crate::util::oidc::map_core_to_oidc_format;
@@ -200,18 +200,18 @@ pub(super) async fn credential_from_proved(
     let issuer_did = get_or_create_did(
         did_repository,
         &Some(organisation.to_owned()),
-        &proved_credential.issuer_did_value.into(),
+        &proved_credential.issuer_did_value,
     )
     .await?;
     let holder_did = get_or_create_did(
         did_repository,
         &Some(organisation.to_owned()),
-        &proved_credential.holder_did_value.into(),
+        &proved_credential.holder_did_value,
     )
     .await?;
 
     Ok(Credential {
-        id: proved_credential.credential.id.into(),
+        id: proved_credential.credential.id,
         created_date: proved_credential.credential.created_date,
         issuance_date: proved_credential.credential.issuance_date,
         last_modified: proved_credential.credential.last_modified,
@@ -219,7 +219,7 @@ pub(super) async fn credential_from_proved(
         credential: proved_credential.credential.credential,
         exchange: proved_credential.credential.exchange,
         redirect_uri: proved_credential.credential.redirect_uri,
-        role: proved_credential.credential.role.into(),
+        role: proved_credential.credential.role,
         state: convert_inner_of_inner(proved_credential.credential.state),
         claims: convert_inner_of_inner(proved_credential.credential.claims),
         issuer_did: Some(issuer_did),
@@ -234,12 +234,9 @@ pub(super) async fn credential_from_proved(
     })
 }
 
-fn from_provider_schema(
-    schema: one_providers::common_models::credential_schema::OpenCredentialSchema,
-    organisation: Organisation,
-) -> CredentialSchema {
+fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) -> CredentialSchema {
     CredentialSchema {
-        id: schema.id.into(),
+        id: schema.id,
         deleted_at: schema.deleted_at,
         created_date: schema.created_date,
         last_modified: schema.last_modified,
@@ -247,10 +244,10 @@ fn from_provider_schema(
         format: schema.format,
         revocation_method: schema.revocation_method,
         wallet_storage_type: convert_inner(schema.wallet_storage_type),
-        layout_type: schema.layout_type.into(),
+        layout_type: schema.layout_type,
         layout_properties: convert_inner(schema.layout_properties),
         schema_id: schema.schema_id,
-        schema_type: schema.schema_type.into(),
+        schema_type: schema.schema_type,
         claim_schemas: convert_inner_of_inner(schema.claim_schemas),
         organisation: organisation.into(),
     }

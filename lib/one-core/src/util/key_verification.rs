@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use one_crypto::SignerError;
-use one_providers::common_models::did::DidValue;
-use one_providers::credential_formatter::model::TokenVerifier;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
+use shared_types::DidValue;
 use tracing::info;
 
+use crate::crypto::SignerError;
 use crate::model::did::KeyRole;
+use crate::provider::credential_formatter::model::TokenVerifier;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[derive(Clone)]
-pub(crate) struct KeyVerification {
+pub struct KeyVerification {
     pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     pub key_role: KeyRole,
@@ -84,16 +84,16 @@ impl TokenVerifier for KeyVerification {
 #[cfg(test)]
 mod test {
     use mockall::predicate::*;
-    use one_crypto::MockSigner;
-    use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkEllipticData};
-    use one_providers::did::error::DidMethodProviderError;
-    use one_providers::did::model::{DidDocument, DidVerificationMethod};
-    use one_providers::did::provider::MockDidMethodProvider;
-    use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
-    use one_providers::key_algorithm::MockKeyAlgorithm;
     use serde_json::json;
 
     use super::*;
+    use crate::crypto::MockSigner;
+    use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+    use crate::provider::did_method::error::DidMethodProviderError;
+    use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
+    use crate::provider::did_method::provider::MockDidMethodProvider;
+    use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+    use crate::provider::key_algorithm::MockKeyAlgorithm;
 
     fn get_dummy_did_document() -> DidDocument {
         DidDocument {
@@ -104,8 +104,8 @@ mod test {
                     id: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
                     r#type: "JsonWebKey2020".to_owned(),
                     controller: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
-                    public_key_jwk: OpenPublicKeyJwk::Ec(
-                        OpenPublicKeyJwkEllipticData {
+                    public_key_jwk: PublicKeyJwk::Ec(
+                        PublicKeyJwkEllipticData {
                             r#use: None,
                             crv: "P-256".to_owned(),
                             x: "AjDk2GBBiI_M6HvEmgfzXiVhJCWiVFqvoItknJgc-oEE".to_owned(),

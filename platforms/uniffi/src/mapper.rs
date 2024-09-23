@@ -7,6 +7,7 @@ use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::proof_schema::SortableProofSchemaColumn;
 use one_core::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
+use one_core::provider::exchange_protocol::openid4vc::model::InvitationResponseDTO;
 use one_core::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialSchemaType,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -26,9 +27,8 @@ use one_core::service::proof_schema::dto::ImportProofSchemaClaimSchemaDTO;
 use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, ListTrustAnchorsQueryDTO, TrustAnchorFilterValue,
 };
-use one_providers::common_models::key::KeyId;
-use one_providers::exchange_protocol::openid4vc::model::InvitationResponseDTO;
 use serde_json::json;
+use shared_types::KeyId;
 use time::OffsetDateTime;
 
 use super::dto::{ClaimBindingDTO, ClaimValueBindingDTO, CredentialSchemaBindingDTO};

@@ -1,11 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
-use one_providers::common_models::key::{KeyId, OpenKey};
-use one_providers::did::error::DidMethodProviderError;
-use one_providers::did::model::DidDocument;
-use one_providers::key_algorithm::error::KeyAlgorithmError;
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -16,8 +12,11 @@ use super::DidService;
 use crate::config::validator::did::validate_did_method;
 use crate::model::did::{DidListQuery, DidRelations, UpdateDidRequest};
 use crate::model::history::HistoryAction;
-use crate::model::key::KeyRelations;
+use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
+use crate::provider::did_method::error::DidMethodProviderError;
+use crate::provider::did_method::model::DidDocument;
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::repository::error::DataLayerError;
 use crate::service::did::mapper::{
     map_did_model_to_did_web_response, map_key_to_verification_method,
@@ -61,7 +60,7 @@ impl DidService {
             return Err(BusinessLogicError::DidIsDeactivated(did.id).into());
         }
 
-        let mut grouped_key: HashMap<KeyId, OpenKey> = HashMap::new();
+        let mut grouped_key: HashMap<KeyId, Key> = HashMap::new();
         let keys = did
             .keys
             .as_ref()
@@ -177,11 +176,7 @@ impl DidService {
         }
 
         let did_value = did_method
-            .create(
-                Some(new_did_id.into()),
-                &request.params,
-                Some(keys.to_owned()),
-            )
+            .create(Some(new_did_id), &request.params, Some(keys.to_owned()))
             .await?;
 
         let now = OffsetDateTime::now_utc();
@@ -263,8 +258,6 @@ impl DidService {
     }
 
     pub async fn resolve_did(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {
-        self.did_method_provider
-            .resolve(&did.to_owned().into())
-            .await
+        self.did_method_provider.resolve(did).await
     }
 }

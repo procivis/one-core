@@ -1,11 +1,10 @@
 use std::collections::HashSet;
 use std::hash::Hash;
 
-use one_providers::did::model::AmountOfKeys;
-use one_providers::did::DidMethod;
-
 use super::DidDeactivationError;
 use crate::model::did::Did;
+use crate::provider::did_method::model::AmountOfKeys;
+use crate::provider::did_method::DidMethod;
 use crate::service::did::dto::CreateDidRequestKeysDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 

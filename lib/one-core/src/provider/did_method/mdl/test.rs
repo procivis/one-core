@@ -1,13 +1,6 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use one_providers::common_models::key::OpenKey;
-use one_providers::did::keys::Keys;
-use one_providers::did::DidMethod;
-use one_providers::key_algorithm::imp::eddsa::Eddsa;
-use one_providers::key_algorithm::imp::es256::Es256;
-use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
-use one_providers::key_algorithm::KeyAlgorithm;
 use rcgen::{
     CertificateParams, CertifiedKey, SignatureAlgorithm, PKCS_ECDSA_P256_SHA256, PKCS_ED25519,
 };
@@ -17,6 +10,13 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{DidMdl, Params};
+use crate::model::key::Key;
+use crate::provider::did_method::keys::Keys;
+use crate::provider::did_method::DidMethod;
+use crate::provider::key_algorithm::eddsa::Eddsa;
+use crate::provider::key_algorithm::es256::Es256;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::KeyAlgorithm;
 
 #[test]
 fn test_new_did_mdl_instance() {
@@ -90,7 +90,7 @@ async fn test_create_mdl_did_for(
         "certificate": certificate.pem()
     });
 
-    let keys = [OpenKey {
+    let keys = [Key {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
@@ -107,11 +107,7 @@ async fn test_create_mdl_did_for(
 
     // act
     let did = service
-        .create(
-            Some(did_id.to_owned().into()),
-            &Some(params),
-            Some(keys.to_vec()),
-        )
+        .create(Some(did_id), &Some(params), Some(keys.to_vec()))
         .await
         .unwrap();
 

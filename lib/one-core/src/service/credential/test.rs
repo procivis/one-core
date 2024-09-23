@@ -3,22 +3,6 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use mockall::predicate::*;
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::common_models::key::OpenKey;
-use one_providers::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential,
-};
-use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::credential_formatter::MockCredentialFormatter;
-use one_providers::exchange_protocol::imp::provider::MockExchangeProtocol;
-use one_providers::exchange_protocol::openid4vc::model::ShareResponse;
-use one_providers::http_client::imp::reqwest_client::ReqwestClient;
-use one_providers::key_storage::provider::MockKeyProvider;
-use one_providers::revocation::model::{
-    CredentialRevocationState, RevocationMethodCapabilities, RevocationUpdate,
-};
-use one_providers::revocation::provider::MockRevocationMethodProvider;
-use one_providers::revocation::MockRevocationMethod;
 use serde_json::json;
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
@@ -34,12 +18,28 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+    WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
+use crate::provider::credential_formatter::model::{
+    CredentialStatus, CredentialSubject, DetailCredential,
+};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::exchange_protocol::openid4vc::model::ShareResponse;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
+use crate::provider::exchange_protocol::MockExchangeProtocol;
+use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::revocation::model::{
+    CredentialRevocationState, RevocationMethodCapabilities, RevocationUpdate,
+};
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -148,7 +148,7 @@ fn generic_credential() -> Credential {
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::AssertionMethod,
-                key: OpenKey {
+                key: Key {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -169,7 +169,7 @@ fn generic_credential() -> Credential {
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -226,7 +226,7 @@ fn generic_credential_list_entity() -> Credential {
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: None,
@@ -1217,15 +1217,7 @@ async fn test_check_revocation_invalid_state() {
                     valid_until: None,
                     update_at: None,
                     invalid_before: None,
-                    issuer_did: Some(
-                        credential_clone
-                            .issuer_did
-                            .as_ref()
-                            .unwrap()
-                            .did
-                            .clone()
-                            .into(),
-                    ),
+                    issuer_did: Some(credential_clone.issuer_did.as_ref().unwrap().did.clone()),
                     subject: None,
                     claims: CredentialSubject {
                         values: HashMap::new(),
@@ -1386,15 +1378,7 @@ async fn test_check_revocation_already_revoked() {
                     valid_until: None,
                     update_at: None,
                     invalid_before: None,
-                    issuer_did: Some(
-                        credential_clone
-                            .issuer_did
-                            .as_ref()
-                            .unwrap()
-                            .did
-                            .clone()
-                            .into(),
-                    ),
+                    issuer_did: Some(credential_clone.issuer_did.as_ref().unwrap().did.clone()),
                     subject: None,
                     claims: CredentialSubject {
                         values: HashMap::new(),
@@ -1666,7 +1650,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         keys: Some(vec![
             RelatedKey {
                 role: KeyRole::KeyAgreement,
-                key: OpenKey {
+                key: Key {
                     id: key_id.into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -1680,7 +1664,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
             },
             RelatedKey {
                 role: KeyRole::AssertionMethod,
-                key: OpenKey {
+                key: Key {
                     id: key_id.into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -1770,7 +1754,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
     let issuer_did = Did {
         keys: Some(vec![RelatedKey {
             role: KeyRole::KeyAgreement,
-            key: OpenKey {
+            key: Key {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1920,7 +1904,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
     let issuer_did = Did {
         keys: Some(vec![RelatedKey {
             role: KeyRole::KeyAgreement,
-            key: OpenKey {
+            key: Key {
                 id: key_id.into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -2003,7 +1987,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
     let issuer_did = Did {
         keys: Some(vec![RelatedKey {
             role: KeyRole::AssertionMethod,
-            key: OpenKey {
+            key: Key {
                 id: key_id.into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -2640,7 +2624,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
             },
         ],
         &schema,
-        &generic_formatter_capabilities().into(),
+        &generic_formatter_capabilities(),
         &generic_config().core,
     )
     .unwrap();
@@ -2722,7 +2706,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
             },
         ],
         &schema,
-        &generic_formatter_capabilities().into(),
+        &generic_formatter_capabilities(),
         &generic_config().core,
     )
     .unwrap();
@@ -2736,7 +2720,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
             path: "address".to_string(),
         }],
         &schema,
-        &generic_formatter_capabilities().into(),
+        &generic_formatter_capabilities(),
         &generic_config().core,
     )
     .unwrap();
@@ -2757,7 +2741,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
             },
         ],
         &schema,
-        &generic_formatter_capabilities().into(),
+        &generic_formatter_capabilities(),
         &generic_config().core,
     );
     assert!(matches!(
@@ -2844,7 +2828,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
             },
         ],
         &schema,
-        &generic_formatter_capabilities().into(),
+        &generic_formatter_capabilities(),
         &generic_config().core,
     )
     .unwrap();
@@ -2858,7 +2842,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
             path: "address".to_string(),
         }],
         &schema,
-        &generic_formatter_capabilities().into(),
+        &generic_formatter_capabilities(),
         &generic_config().core,
     );
     assert!(matches!(
@@ -2884,7 +2868,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
             },
         ],
         &schema,
-        &generic_formatter_capabilities().into(),
+        &generic_formatter_capabilities(),
         &generic_config().core,
     )
     .unwrap();
@@ -3095,7 +3079,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::AssertionMethod,
-                key: OpenKey {
+                key: Key {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -3116,7 +3100,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
@@ -3656,7 +3640,7 @@ async fn test_get_credential_success_array_index_sorting() {
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::AssertionMethod,
-                key: OpenKey {
+                key: Key {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -3677,7 +3661,7 @@ async fn test_get_credential_success_array_index_sorting() {
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
@@ -3965,7 +3949,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::AssertionMethod,
-                key: OpenKey {
+                key: Key {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -3986,7 +3970,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
@@ -4161,7 +4145,7 @@ async fn test_get_credential_success_array_single_element() {
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::AssertionMethod,
-                key: OpenKey {
+                key: Key {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -4182,7 +4166,7 @@ async fn test_get_credential_success_array_single_element() {
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
-            wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(

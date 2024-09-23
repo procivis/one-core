@@ -1,5 +1,5 @@
+use one_core::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use one_core::service::error::{MissingProviderError, ServiceError};
-use one_providers::did::error::{DidMethodError, DidMethodProviderError};
 use serde::Serialize;
 use utoipa::{IntoResponses, ToSchema};
 

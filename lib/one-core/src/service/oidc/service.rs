@@ -4,24 +4,6 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dto_mapper::convert_inner;
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
-use one_crypto::imp::utilities;
-use one_providers::common_models::key::OpenKey;
-use one_providers::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
-use one_providers::exchange_protocol::openid4vc::model::{
-    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCIDiscoveryResponseDTO,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-    OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPPresentationDefinition, RequestData,
-};
-use one_providers::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
-use one_providers::exchange_protocol::openid4vc::service::{
-    create_credential_offer, create_issuer_metadata_response,
-    create_open_id_for_vp_client_metadata, create_service_discovery_response, credentials_format,
-    get_credential_schema_base_url, parse_access_token, parse_refresh_token,
-};
-use one_providers::key_algorithm::error::KeyAlgorithmError;
-use one_providers::key_algorithm::imp::eddsa::JwkEddsaExt;
-use one_providers::key_storage::provider::KeyProvider;
 use shared_types::{CredentialId, CredentialSchemaId, KeyId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -38,6 +20,7 @@ use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
 use crate::config::core_config::{ExchangeType, TransportType};
+use crate::crypto::utilities;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -48,18 +31,32 @@ use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
 use crate::model::history::HistoryAction;
 use crate::model::interaction::InteractionRelations;
-use crate::model::key::KeyRelations;
+use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_open_id_for_vp_formats, credentials_format_mdoc,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, JwePayload,
+    BLEOpenID4VPInteractionData, JwePayload, OpenID4VCICredentialOfferDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCIDiscoveryResponseDTO,
+    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+    OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
+    OpenID4VPPresentationDefinition, RequestData,
 };
+use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
+use crate::provider::exchange_protocol::openid4vc::service::{
+    create_credential_offer, create_issuer_metadata_response,
+    create_open_id_for_vp_client_metadata, create_service_discovery_response, credentials_format,
+    get_credential_schema_base_url, parse_access_token, parse_refresh_token,
+};
+use crate::provider::key_algorithm::eddsa::JwkEddsaExt;
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -86,8 +83,7 @@ impl OIDCService {
                 "Host URL not specified".to_string(),
             ))?;
 
-        let base_url =
-            get_credential_schema_base_url(&credential_schema_id.to_owned().into(), core_base_url)?;
+        let base_url = get_credential_schema_base_url(credential_schema_id, core_base_url)?;
 
         let schema = self
             .credential_schema_repository
@@ -153,7 +149,7 @@ impl OIDCService {
         let jwk = get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider)?;
 
         Ok(create_open_id_for_vp_client_metadata(
-            jwk.key_id.into(),
+            jwk.key_id,
             jwk.jwk.into(),
             formats,
         ))
@@ -187,7 +183,7 @@ impl OIDCService {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
-        let schema_base_url = get_credential_schema_base_url(&schema.id.into(), core_base_url)?;
+        let schema_base_url = get_credential_schema_base_url(&schema.id, core_base_url)?;
 
         Ok(create_service_discovery_response(&schema_base_url)?)
     }
@@ -255,11 +251,8 @@ impl OIDCService {
 
         let claims = credential
             .claims
-            .as_ref()
-            .ok_or(ServiceError::MappingError("Missing claims".to_owned()))?
-            .iter()
-            .map(|claim| claim.to_owned().into())
-            .collect::<Vec<_>>();
+            .clone()
+            .ok_or(ServiceError::MappingError("Missing claims".to_owned()))?;
 
         let format_type = &self
             .config
@@ -273,9 +266,7 @@ impl OIDCService {
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         let credentials = match format_type.as_str() {
-            "MDOC" => {
-                credentials_format_mdoc(&credential_schema.clone().into(), &claims, &self.config)
-            }
+            "MDOC" => credentials_format_mdoc(credential_schema, &claims, &self.config),
             _ => credentials_format(wallet_storage_type, &oidc_format, &claims),
         }?;
 
@@ -284,7 +275,7 @@ impl OIDCService {
         Ok(create_credential_offer(
             &url,
             &interaction.id.to_string(),
-            &credential_schema_id.into(),
+            &credential_schema_id,
             credentials,
         )?)
     }
@@ -313,7 +304,7 @@ impl OIDCService {
 
         throw_if_credential_request_invalid(&schema, &request)?;
 
-        let interaction_id = parse_access_token(access_token)?.into();
+        let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
             .interaction_repository
             .get_interaction(&interaction_id, &InteractionRelations::default())
@@ -420,7 +411,7 @@ impl OIDCService {
                 ))
             })?,
             OpenID4VCITokenRequestDTO::RefreshToken { refresh_token } => {
-                parse_refresh_token(refresh_token)?.into()
+                parse_refresh_token(refresh_token)?
             }
         };
 
@@ -466,10 +457,10 @@ impl OIDCService {
             get_exchange_param_refresh_token_expires_in(&self.config, &credential.exchange)?;
 
         let mut interaction_data =
-            one_providers::exchange_protocol::openid4vc::service::oidc_create_token(
+            crate::provider::exchange_protocol::openid4vc::service::oidc_create_token(
                 interaction_data_to_dto(&interaction)?,
                 &convert_inner(credentials.to_owned()),
-                &interaction.to_owned().into(),
+                &interaction,
                 &request,
                 pre_authorization_expires_in,
                 access_token_expires_in,
@@ -677,9 +668,9 @@ impl OIDCService {
                 OpenID4VCIError::InvalidRequest,
             ))?;
 
-        match one_providers::exchange_protocol::openid4vc::service::oidc_verifier_direct_post(
+        match crate::provider::exchange_protocol::openid4vc::service::oidc_verifier_direct_post(
             unpacked_request,
-            proof.to_owned().into(),
+            proof.to_owned(),
             interaction_data,
             &self.did_method_provider,
             &self.formatter_provider,
@@ -775,7 +766,7 @@ impl OIDCService {
 
         let interaction_data = parse_interaction_content(interaction.data.as_ref())?;
 
-        Ok(one_providers::exchange_protocol::openid4vc::service::oidc_verifier_presentation_definition(proof.into(), interaction_data)?)
+        crate::provider::exchange_protocol::openid4vc::service::oidc_verifier_presentation_definition(proof, interaction_data).map_err(Into::into)
     }
 
     async fn mark_proof_as_failed(&self, id: &ProofId) -> Result<(), ServiceError> {
@@ -826,7 +817,7 @@ impl OIDCService {
 
                 let key = self
                     .key_repository
-                    .get_key(&key_id.to_owned().into(), &KeyRelations::default())
+                    .get_key(&key_id, &KeyRelations::default())
                     .await?
                     .ok_or_else(|| {
                         ServiceError::ValidationError("Invalid JWE key_id".to_string())
@@ -872,7 +863,7 @@ fn extract_jwe_header(jwe: &str) -> Result<JweHeader, anyhow::Error> {
 
 fn build_jwe_decrypter(
     key_provider: &dyn KeyProvider,
-    key: &OpenKey,
+    key: &Key,
 ) -> Result<impl JweDecrypter, ServiceError> {
     let key_storage = key_provider
         .get_key_storage(&key.storage_type)
