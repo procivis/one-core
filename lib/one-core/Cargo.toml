@@ -1,9 +1,11 @@
 [package]
-build   = "build.rs"
-edition = "2021"
-name    = "one-core"
-publish = false
-version = "0.1.0"
+authors           = ["Procivis"]
+build             = "build.rs"
+edition.workspace = true
+license           = "Apache-2.0"
+name              = "one-core"
+publish           = false
+version           = "0.1.0"
 
 [dependencies]
 aes-gcm               = { version = "0.10.3", features = ["std"] }

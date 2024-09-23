@@ -1,9 +1,10 @@
 [package]
-edition = "2021"
-license = "Apache-2.0"
-name    = "one-dev-services"
-publish = false
-version = "0.1.0"
+authors           = ["Procivis"]
+edition.workspace = true
+license           = "Apache-2.0"
+name              = "one-dev-services"
+publish           = false
+version           = "0.1.0"
 
 [lib]
 doctest = false
