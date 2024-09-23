@@ -3,10 +3,9 @@ use std::collections::BTreeSet;
 use one_core::model::proof::ProofStateEnum;
 use uuid::Uuid;
 
-use crate::fixtures;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::server::run_server;
-use crate::utils::{self};
+use crate::{fixtures, utils};
 
 static PRESENTATION_TOKEN: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDAxMzgwNTcsImV4cCI6MzMyMzYxMzgwNTcsIm5iZiI6MTcwMDEz\
 Nzk5NywiaXNzIjoiZGlkOmtleTp6Nk1rdHRpSlZaQjRkd1drRjlBTHdhRUxVRHE1Smo5ajFCaFpITnpOY0xWTmFtNm4iLCJzdWIiOiJkaWQ6a2V5Ono2TWt0\

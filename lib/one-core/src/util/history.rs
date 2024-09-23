@@ -1,4 +1,3 @@
-use one_providers::revocation::model::CredentialRevocationState;
 use shared_types::{EntityId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -10,6 +9,7 @@ use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
+use crate::provider::revocation::model::CredentialRevocationState;
 use crate::repository::history_repository::HistoryRepository;
 use crate::service::error::ServiceError;
 

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use one_providers::credential_formatter::imp::json_ld;
-use one_providers::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use thiserror::Error;
+
+use crate::provider::credential_formatter::json_ld;
+use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 
 #[derive(Debug, Error)]
 pub enum FormatError {

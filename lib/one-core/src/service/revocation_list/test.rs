@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
 use mockall::predicate::eq;
-use one_crypto::MockCryptoProvider;
-use one_providers::credential_formatter::provider::MockCredentialFormatterProvider;
-use one_providers::did::provider::MockDidMethodProvider;
-use one_providers::key_algorithm::provider::MockKeyAlgorithmProvider;
-use one_providers::key_storage::provider::MockKeyProvider;
-use one_providers::revocation::provider::MockRevocationMethodProvider;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::crypto::MockCryptoProvider;
 use crate::model::revocation_list::{
     RevocationList, RevocationListPurpose, RevocationListRelations,
 };
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;

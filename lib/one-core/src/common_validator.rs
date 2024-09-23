@@ -1,11 +1,11 @@
 use std::ops::{Add, Sub};
 use std::time::Duration;
 
-use one_providers::credential_formatter::model::DetailCredential;
 use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
 use crate::model::proof::{Proof, ProofStateEnum};
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub(crate) fn throw_if_latest_credential_state_eq(

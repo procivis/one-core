@@ -1,0 +1,22 @@
+[package]
+edition = "2021"
+license = "Apache-2.0"
+name    = "one-dev-services"
+publish = false
+version = "0.1.0"
+
+[lib]
+doctest = false
+
+[dependencies]
+one-core     = { version = "0.1.0", path = "../../lib/one-core" }
+reqwest      = { workspace = true }
+shared-types = { version = "0.1.0", path = "../../lib/shared-types" }
+strum        = { version = "0.26" }
+strum_macros = { version = "0.26" }
+thiserror    = { workspace = true }
+time         = { workspace = true }
+zeroize      = { version = "1.8" }
+
+[package.metadata.cargo-machete]
+ignored = ["strum"]

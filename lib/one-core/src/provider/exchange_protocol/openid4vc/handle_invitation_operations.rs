@@ -1,41 +1,39 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use one_providers::common_models::credential::CredentialId;
-use one_providers::common_models::credential_schema::{OpenCredentialSchema, OpenLayoutType};
-use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::exchange_protocol::openid4vc::imp::mappers::map_offered_claims_to_credential_schema;
-use one_providers::exchange_protocol::openid4vc::model::{
-    CreateCredentialSchemaRequestDTO, OpenID4VCICredentialOfferCredentialDTO,
-    OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
-    OpenID4VCIIssuerMetadataResponseDTO,
-};
-use one_providers::exchange_protocol::openid4vc::{
-    BasicSchemaData, BuildCredentialSchemaResponse, ExchangeProtocolError,
-    HandleInvitationOperations,
-};
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::mapper::{fetch_procivis_schema, from_create_request, parse_procivis_schema_claim};
 use crate::config::core_config::CoreConfig;
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
+use crate::model::organisation::Organisation;
+use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
-    create_claims_from_credential_definition, parse_mdoc_schema_claims,
+    create_claims_from_credential_definition, map_offered_claims_to_credential_schema,
+    parse_mdoc_schema_claims,
+};
+use crate::provider::exchange_protocol::openid4vc::model::{
+    CreateCredentialSchemaRequestDTO, OpenID4VCICredentialOfferCredentialDTO,
+    OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
+    OpenID4VCIIssuerMetadataResponseDTO,
+};
+use crate::provider::exchange_protocol::{
+    BasicSchemaData, BuildCredentialSchemaResponse, HandleInvitationOperations,
 };
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::util::oidc::map_from_oidc_format_to_core;
 
-pub const NESTED_CLAIM_MARKER: char = '/';
-
 pub struct HandleInvitationOperationsImpl {
-    pub organisation: OpenOrganisation,
+    pub organisation: Organisation,
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
     pub config: Arc<CoreConfig>,
 }
 
 impl HandleInvitationOperationsImpl {
     pub fn new(
-        organisation: OpenOrganisation,
+        organisation: Organisation,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         config: Arc<CoreConfig>,
     ) -> Self {
@@ -59,7 +57,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
             .first()
             .and_then(|credential| credential.display.as_ref())
             .and_then(|displays| displays.first())
-            .map(|display: &one_providers::exchange_protocol::openid4vc::model::OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO| display.name.to_owned());
+            .map(|display| display.name.to_owned());
 
         let credential_schema_name = match display_name {
             Some(display_name) => display_name,
@@ -141,7 +139,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
         credential: &OpenID4VCICredentialOfferCredentialDTO,
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
         credential_schema_name: &str,
-        organisation: OpenOrganisation,
+        organisation: Organisation,
     ) -> Result<BuildCredentialSchemaResponse, ExchangeProtocolError> {
         let result = match schema_data.schema_type.as_str() {
             "ProcivisOneSchema2024" => {
@@ -161,19 +159,19 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                             .map(parse_procivis_schema_claim)
                             .collect(),
                         wallet_storage_type: procivis_schema.wallet_storage_type,
-                        layout_type: procivis_schema.layout_type.unwrap_or(OpenLayoutType::Card),
+                        layout_type: procivis_schema.layout_type.unwrap_or(LayoutType::Card),
                         layout_properties: procivis_schema.layout_properties,
                         schema_id: Some(schema_data.schema_id.clone()),
                     },
-                    self.organisation.clone().into(),
+                    self.organisation.clone(),
                     "",
                     "JWT",
                     None,
                 )
                 .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
-                let schema = OpenCredentialSchema {
-                    schema_type: schema_data.schema_type.clone(),
+                let schema = CredentialSchema {
+                    schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                     ..schema
                 };
 
@@ -192,10 +190,10 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
                 let (layout_type, layout_properties) = match result {
                     Ok(schema) => (
-                        schema.layout_type.unwrap_or(OpenLayoutType::Card),
+                        schema.layout_type.unwrap_or(LayoutType::Card),
                         schema.layout_properties,
                     ),
-                    Err(_) => (OpenLayoutType::Card, None),
+                    Err(_) => (LayoutType::Card, None),
                 };
                 // END OF WORKAROUND
 
@@ -236,7 +234,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         layout_properties,
                         schema_id: Some(schema_data.schema_id.clone()),
                     },
-                    self.organisation.clone().into(),
+                    self.organisation.clone(),
                     "",
                     "MDOC",
                     None,
@@ -260,7 +258,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
                     BuildCredentialSchemaResponse {
                         claims,
-                        schema: OpenCredentialSchema {
+                        schema: CredentialSchema {
                             claim_schemas: Some(claim_schemas),
                             ..credential_schema
                         },
@@ -275,7 +273,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     create_claims_from_credential_definition(*credential_id, claim_keys)?;
 
                 let now = OffsetDateTime::now_utc();
-                let credential_schema = OpenCredentialSchema {
+                let credential_schema = CredentialSchema {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: now,
@@ -285,9 +283,9 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     wallet_storage_type: credential.wallet_storage_type.to_owned(),
                     revocation_method: "NONE".to_string(),
                     claim_schemas: Some(claim_schemas),
-                    layout_type: OpenLayoutType::Card,
+                    layout_type: LayoutType::Card,
                     layout_properties: None,
-                    schema_type: schema_data.schema_type.clone(),
+                    schema_type: CredentialSchemaType::Other(schema_data.schema_type.clone()),
                     schema_id: schema_data.schema_id.clone(),
                     organisation: Some(organisation),
                 };
@@ -299,9 +297,8 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
             }
         };
 
-        let mut schema: crate::model::credential_schema::CredentialSchema =
-            result.schema.clone().into();
-        schema.organisation = Some(self.organisation.to_owned().into());
+        let mut schema = result.schema.clone();
+        schema.organisation = Some(self.organisation.to_owned());
 
         self.credential_schemas
             .create_credential_schema(schema)

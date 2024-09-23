@@ -1,0 +1,115 @@
+//! A service for issuing credentials, creating and signing presentations as a holder,
+//! and parsing and verifying credentials as a verifier.
+//!
+//! See the **/examples** directory in the [repository][repo] for an
+//! example implementation.
+//!
+//! [repo]: https://github.com/procivis/one-open-core
+
+use std::sync::Arc;
+
+use one_core::model::did::KeyRole;
+use one_core::model::key::Key;
+use one_core::provider::credential_formatter::model::{
+    CredentialData, CredentialPresentation, DetailCredential,
+};
+use one_core::provider::credential_formatter::provider::CredentialFormatterProvider;
+use one_core::provider::did_method::provider::DidMethodProvider;
+use one_core::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use one_core::provider::key_storage::provider::KeyProvider;
+use one_core::util::key_verification::KeyVerification;
+use one_core::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
+use shared_types::DidValue;
+
+use crate::model::{CredentialFormat, KeyAlgorithmType};
+use crate::service::error::CredentialServiceError;
+
+pub struct CredentialService {
+    key_storage_provider: Arc<dyn KeyProvider>,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+}
+
+impl CredentialService {
+    pub fn new(
+        key_storage_provider: Arc<dyn KeyProvider>,
+        credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
+    ) -> Self {
+        Self {
+            key_storage_provider,
+            credential_formatter_provider,
+            key_algorithm_provider,
+            did_method_provider,
+        }
+    }
+
+    pub async fn format_credential(
+        &self,
+        credential_data: CredentialData,
+        format: CredentialFormat,
+        algorithm: KeyAlgorithmType,
+        holder_did: DidValue,
+        issuer_key: Key,
+    ) -> Result<String, CredentialServiceError> {
+        let auth_fn = self
+            .key_storage_provider
+            .get_signature_provider(&issuer_key, None)?;
+
+        let token = self
+            .credential_formatter_provider
+            .get_formatter(&format.to_string())
+            .ok_or(CredentialServiceError::MissingFormat(format.to_string()))?
+            .format_credentials(
+                credential_data,
+                &Some(holder_did),
+                &algorithm.to_string(),
+                vcdm_v2_base_context(None),
+                vec![],
+                auth_fn,
+                None,
+                None,
+            )
+            .await?;
+
+        Ok(token)
+    }
+
+    pub async fn format_credential_presentation(
+        &self,
+        format: CredentialFormat,
+        credential: CredentialPresentation,
+    ) -> Result<String, CredentialServiceError> {
+        let token = self
+            .credential_formatter_provider
+            .get_formatter(&format.to_string())
+            .ok_or(CredentialServiceError::MissingFormat(format.to_string()))?
+            .format_credential_presentation(credential)
+            .await?;
+
+        Ok(token)
+    }
+
+    pub async fn extract_credential(
+        &self,
+        format: CredentialFormat,
+        credential: &str,
+    ) -> Result<DetailCredential, CredentialServiceError> {
+        let key_verification = Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+        });
+
+        let details = self
+            .credential_formatter_provider
+            .get_formatter(&format.to_string())
+            .ok_or(CredentialServiceError::MissingFormat(format.to_string()))?
+            .extract_credentials(credential, key_verification)
+            .await?;
+
+        Ok(details)
+    }
+}

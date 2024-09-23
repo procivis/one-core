@@ -1,21 +1,21 @@
 use std::sync::Arc;
 
-use one_providers::common_models::credential::OpenCredential;
-use one_providers::common_models::did::DidValue;
-use one_providers::credential_formatter::model::CredentialStatus;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::http_client::HttpClient;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::revocation::error::RevocationError;
-use one_providers::revocation::imp::bitstring_status_list::util::extract_bitstring_index;
-use one_providers::revocation::model::{
+use shared_types::DidValue;
+
+use crate::model::credential::Credential;
+use crate::model::did::KeyRole;
+use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList2021JWTFormatter;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::revocation::bitstring_status_list::util::extract_bitstring_index;
+use crate::provider::revocation::error::RevocationError;
+use crate::provider::revocation::model::{
     CredentialAdditionalData, CredentialDataByRole, CredentialRevocationInfo,
     CredentialRevocationState, JsonLdContext, RevocationMethodCapabilities, RevocationUpdate,
 };
-use one_providers::revocation::RevocationMethod;
-
-use crate::model::did::KeyRole;
-use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList2021JWTFormatter;
+use crate::provider::revocation::RevocationMethod;
 use crate::util::key_verification::KeyVerification;
 
 pub struct StatusList2021 {
@@ -34,7 +34,7 @@ impl RevocationMethod for StatusList2021 {
 
     async fn add_issued_credential(
         &self,
-        _credential: &OpenCredential,
+        _credential: &Credential,
         _additional_data: Option<CredentialAdditionalData>,
     ) -> Result<(Option<RevocationUpdate>, Vec<CredentialRevocationInfo>), RevocationError> {
         Err(RevocationError::OperationNotSupported(
@@ -44,7 +44,7 @@ impl RevocationMethod for StatusList2021 {
 
     async fn mark_credential_as(
         &self,
-        _credential: &OpenCredential,
+        _credential: &Credential,
         _new_state: CredentialRevocationState,
         _additional_data: Option<CredentialAdditionalData>,
     ) -> Result<RevocationUpdate, RevocationError> {

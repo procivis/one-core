@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::config::core_config::{self, DatatypeConfig, DatatypeType};
 use crate::model::did::DidType;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
-use crate::provider::credential_formatter::{PublishedClaim, PublishedClaimValue};
+use crate::provider::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialRole, CredentialSchemaType, CredentialStateEnum,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,

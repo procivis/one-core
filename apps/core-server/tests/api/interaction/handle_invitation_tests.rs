@@ -1,13 +1,11 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use one_core::model::credential_schema::CredentialSchemaType;
+use one_core::model::credential_schema::{CredentialSchemaType, WalletStorageTypeEnum};
 use one_core::model::proof::ProofStateEnum;
-use one_core::provider::exchange_protocol::openid4vc::dto::OpenID4VPPresentationDefinition;
-use one_core::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::exchange_protocol::openid4vc::model::{
-    OpenID4VPClientMetadata, OpenID4VPFormat,
+use one_core::provider::exchange_protocol::openid4vc::model::{
+    HolderInteractionData, OpenID4VPClientMetadata, OpenID4VPFormat,
+    OpenID4VPPresentationDefinition,
 };
 use serde_json::json;
 use shared_types::ProofId;
@@ -617,7 +615,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         .await;
     assert_eq!(
         credential.schema.unwrap().wallet_storage_type,
-        Some(OpenWalletStorageTypeEnum::Software)
+        Some(WalletStorageTypeEnum::Software)
     );
 
     let interaction: HolderInteractionData =
@@ -1166,7 +1164,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
         .await;
     assert_eq!(
         credential.schema.unwrap().wallet_storage_type,
-        Some(OpenWalletStorageTypeEnum::Software)
+        Some(WalletStorageTypeEnum::Software)
     );
 
     let interaction: HolderInteractionData =

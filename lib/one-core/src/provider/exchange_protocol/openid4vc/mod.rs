@@ -1,35 +1,42 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use one_providers::common_dto::PublicKeyJwkDTO;
-use one_providers::common_models::credential::OpenCredential;
-use one_providers::common_models::did::OpenDid;
-use one_providers::common_models::key::{KeyId, OpenKey};
-use one_providers::common_models::organisation::OpenOrganisation;
-use one_providers::common_models::proof::{OpenProof, OpenProofStateEnum};
-use one_providers::credential_formatter::model::DetailCredential;
-use one_providers::exchange_protocol::openid4vc::imp::OpenID4VCHTTP;
-use one_providers::exchange_protocol::openid4vc::model::{
-    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentationDefinitionResponseDTO,
-    PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
-};
-use one_providers::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
-use one_providers::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
-use one_providers::exchange_protocol::openid4vc::{
-    FormatMapper, HandleInvitationOperationsAccess, TypeToDescriptorMapper,
-};
 use openidvc_ble::OpenID4VCBLE;
+use openidvc_http::OpenID4VCHTTP;
 use serde_json::json;
+use shared_types::KeyId;
 use url::Url;
 
-use super::{ExchangeProtocol, ExchangeProtocolError, ExchangeProtocolImpl, StorageAccess};
+use super::dto::PresentationDefinitionResponseDTO;
+use super::{
+    ExchangeProtocol, ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper,
+    HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
+};
+use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::TransportType;
+use crate::model::credential::Credential;
+use crate::model::did::Did;
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
+use crate::model::proof::{Proof, ProofStateEnum};
+use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
+};
+use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
+use crate::service::key::dto::PublicKeyJwkDTO;
 
 pub mod dto;
+pub mod error;
 pub mod handle_invitation_operations;
 pub(crate) mod mapper;
 pub mod model;
 pub(crate) mod openidvc_ble;
+pub mod openidvc_http;
+pub mod proof_formatter;
+pub mod service;
+pub mod validator;
 
 pub(crate) struct OpenID4VC {
     openid_http: OpenID4VCHTTP,
@@ -57,7 +64,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
     async fn handle_invitation(
         &self,
         url: Url,
-        organisation: OpenOrganisation,
+        organisation: Organisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
@@ -86,7 +93,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         }
     }
 
-    async fn reject_proof(&self, proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
         if proof.transport == TransportType::Ble.to_string() {
             self.openid_ble.reject_proof(proof).await
         } else {
@@ -96,10 +103,10 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
     async fn submit_proof(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
-        holder_did: &OpenDid,
-        key: &OpenKey,
+        holder_did: &Did,
+        key: &Key,
         jwk_key_id: Option<String>,
         format_map: HashMap<String, String>,
         presentation_format_map: HashMap<String, String>,
@@ -133,9 +140,9 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
     async fn accept_credential(
         &self,
-        credential: &OpenCredential,
-        holder_did: &OpenDid,
-        key: &OpenKey,
+        credential: &Credential,
+        holder_did: &Did,
+        key: &Key,
         jwk_key_id: Option<String>,
         format: &str,
         storage_access: &StorageAccess,
@@ -156,22 +163,22 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
     async fn reject_credential(
         &self,
-        credential: &OpenCredential,
+        credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         self.openid_http.reject_credential(credential).await
     }
 
     async fn validate_proof_for_submission(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
     ) -> Result<(), ExchangeProtocolError> {
-        throw_if_latest_proof_state_not_eq(proof, OpenProofStateEnum::Pending)
+        throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Pending)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     async fn share_credential(
         &self,
-        credential: &OpenCredential,
+        credential: &Credential,
         credential_format: &str,
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         self.openid_http
@@ -186,7 +193,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
     async fn share_proof(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         format_to_type_mapper: FormatMapper,
         key_id: KeyId,
         encryption_key_jwk: PublicKeyJwkDTO,
@@ -230,7 +237,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
     async fn get_presentation_definition(
         &self,
-        proof: &OpenProof,
+        proof: &Proof,
         interaction_data: Self::VPInteractionContext,
         storage_access: &StorageAccess,
         format_map: HashMap<String, String>,
@@ -265,13 +272,13 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
     async fn verifier_handle_proof(
         &self,
-        _proof: &OpenProof,
+        _proof: &Proof,
         _submission: &[u8],
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
         unimplemented!()
     }
 
-    async fn retract_proof(&self, proof: &OpenProof) -> Result<(), ExchangeProtocolError> {
+    async fn retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
         if proof.transport == TransportType::Ble.to_string() {
             self.openid_ble.retract_proof(proof).await?;
         }

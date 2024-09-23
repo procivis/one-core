@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-
 use crate::config::core_config;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::organisation_repository::OrganisationRepository;

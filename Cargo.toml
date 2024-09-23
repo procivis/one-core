@@ -5,14 +5,17 @@ version = "0.1.0"
 [workspace]
 members = [
   "lib/one-core",
-  "lib/sql-data-provider",
+  "lib/one-dev-services",
   "lib/shared-types",
+  "lib/sql-data-provider",
 
   "platforms/uniffi",
   "platforms/uniffi-bindgen",
 
   "apps/core-server",
   "apps/migration",
+
+  "examples",
 ]
 resolver = "2"
 
@@ -25,8 +28,6 @@ dto_mapper         = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6Udo
 futures            = { version = "0.3" }
 hex                = { version = "0.4", features = ["serde"] }
 mockall            = { version = "0.13" }
-one-crypto         = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "c7a3bbaa0c2fad2215c56c2d3edcc8f8076e62fc" }
-one-providers      = { version = "0.1.0", git = "https://one-core:glpat-Xsny3viKsMnfbMoFWycs@gitlab.procivis.ch/procivis/one/one-open-core.git", rev = "c7a3bbaa0c2fad2215c56c2d3edcc8f8076e62fc" }
 p256               = { version = "0.13", features = ["arithmetic", "jwk"] }
 rand               = { version = "0.8" }
 reqwest            = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
@@ -36,7 +37,7 @@ serde_json         = { version = "1.0" }
 serde_qs           = { version = "0.13" }
 serde_urlencoded   = { version = "0.7" }
 serde_with         = { version = "3.8", features = ["json", "time_0_3"] }
-shadow-rs          = { version = "0.34" }
+shadow-rs          = { version = "0.35" }
 strum              = { version = "0.26", features = ["derive"] }
 tempfile           = { version = "3.10" }
 thiserror          = { version = "1.0" }

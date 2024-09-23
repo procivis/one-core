@@ -3,9 +3,9 @@ use serde_json::Value;
 use shared_types::KeyId;
 
 use crate::fixtures::{self, TestingKeyParams};
+use crate::utils;
 use crate::utils::field_match::FieldHelpers;
 use crate::utils::server::run_server;
-use crate::utils::{self};
 
 #[tokio::test]
 async fn test_get_keys_ok() {
@@ -67,6 +67,6 @@ async fn test_get_keys_ok() {
     assert_eq!(2, values.len());
     let key1_id: KeyId = values[0]["id"].parse();
     let key2_name = &values[1]["name"];
-    assert_eq!(key1.id, key1_id.into());
+    assert_eq!(key1.id, key1_id);
     assert_eq!(&key2.name, key2_name);
 }

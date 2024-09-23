@@ -1,10 +1,11 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use one_providers::common_models::{OpenPublicKeyJwk, OpenPublicKeyJwkMlweData};
-use one_providers::key_algorithm::error::KeyAlgorithmError;
-use one_providers::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};
-use one_providers::key_algorithm::KeyAlgorithm;
 use pqc_dilithium::Keypair;
 use serde::Deserialize;
+
+use crate::model::key::{PublicKeyJwk, PublicKeyJwkMlweData};
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};
+use crate::provider::key_algorithm::KeyAlgorithm;
 
 pub struct MlDsa;
 
@@ -52,8 +53,8 @@ impl KeyAlgorithm for MlDsa {
         &self,
         bytes: &[u8],
         r#use: Option<String>,
-    ) -> Result<OpenPublicKeyJwk, KeyAlgorithmError> {
-        Ok(OpenPublicKeyJwk::Mlwe(OpenPublicKeyJwkMlweData {
+    ) -> Result<PublicKeyJwk, KeyAlgorithmError> {
+        Ok(PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
             r#use,
             alg: self.get_signer_algorithm_id(),
             x: Base64UrlSafeNoPadding::encode_to_string(bytes)
@@ -61,8 +62,8 @@ impl KeyAlgorithm for MlDsa {
         }))
     }
 
-    fn jwk_to_bytes(&self, jwk: &OpenPublicKeyJwk) -> Result<Vec<u8>, KeyAlgorithmError> {
-        if let OpenPublicKeyJwk::Mlwe(data) = jwk {
+    fn jwk_to_bytes(&self, jwk: &PublicKeyJwk) -> Result<Vec<u8>, KeyAlgorithmError> {
+        if let PublicKeyJwk::Mlwe(data) = jwk {
             if data.alg != self.get_signer_algorithm_id() {
                 return Err(KeyAlgorithmError::Failed(format!(
                     "unsupported key algorithm variant: {}",

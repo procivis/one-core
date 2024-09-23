@@ -3,8 +3,8 @@ use std::str::FromStr;
 use core_server::ServerConfig;
 use one_core::config::core_config::AppConfig;
 use one_core::model::did::{Did, KeyRole, RelatedKey};
+use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
-use one_providers::common_models::key::OpenKey;
 use shared_types::DidValue;
 use tokio::task::JoinHandle;
 use tracing_subscriber::layer::SubscriberExt;
@@ -84,7 +84,7 @@ impl TestContext {
         (context, organisation)
     }
 
-    pub async fn new_with_did() -> (Self, Organisation, Did, OpenKey) {
+    pub async fn new_with_did() -> (Self, Organisation, Did, Key) {
         let (context, organisation) = Self::new_with_organisation().await;
         let key = context
             .db

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use tempfile::NamedTempFile;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -12,6 +11,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+    WalletStorageTypeEnum,
 };
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::organisation::Organisation;
@@ -78,7 +78,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 deleted_at: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                 name: "name".into(),
                 format: "format".into(),
                 revocation_method: "revocation_method".into(),

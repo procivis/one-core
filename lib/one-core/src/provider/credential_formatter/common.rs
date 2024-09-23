@@ -1,6 +1,11 @@
 use indexmap::IndexMap;
-use one_providers::credential_formatter::error::FormatterError;
-use one_providers::credential_formatter::model::PublishedClaim;
+
+use super::model::PublishedClaimValue;
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::model::PublishedClaim;
+use crate::service::credential::dto::{
+    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
+};
 
 pub(super) fn nest_claims(
     claims: impl IntoIterator<Item = PublishedClaim>,
@@ -25,6 +30,70 @@ pub(super) fn nest_claims(
         .into_iter()
         .map(|(k, v)| (k.to_owned(), v.to_owned()))
         .collect())
+}
+
+pub(super) fn map_claims(
+    claims: &[DetailCredentialClaimResponseDTO],
+    array_item: bool,
+) -> Vec<PublishedClaim> {
+    let mut result = vec![];
+
+    for claim in claims {
+        let published_claim_value = match &claim.value {
+            DetailCredentialClaimValueResponseDTO::Nested(value) => {
+                result.extend(map_claims(value, claim.schema.array));
+                None
+            }
+            DetailCredentialClaimValueResponseDTO::String(value) => {
+                Some(PublishedClaimValue::String(value.to_owned()))
+            }
+            DetailCredentialClaimValueResponseDTO::Boolean(value) => {
+                Some(PublishedClaimValue::Bool(value.to_owned()))
+            }
+            DetailCredentialClaimValueResponseDTO::Float(value) => {
+                Some(PublishedClaimValue::Float(value.to_owned()))
+            }
+            DetailCredentialClaimValueResponseDTO::Integer(value) => {
+                Some(PublishedClaimValue::Integer(value.to_owned()))
+            }
+        };
+
+        let key = claim.path.clone();
+
+        if let Some(value) = published_claim_value {
+            result.push(PublishedClaim {
+                key,
+                value,
+                datatype: Some(claim.schema.datatype.clone()),
+                array_item,
+            });
+        }
+    }
+
+    result
+}
+
+#[cfg(any(test, feature = "mock"))]
+#[derive(Clone)]
+pub struct MockAuth<F: Fn(&[u8]) -> Vec<u8> + Send + Sync>(pub F);
+
+#[cfg(any(test, feature = "mock"))]
+pub use crate::crypto::SignerError;
+#[cfg(any(test, feature = "mock"))]
+pub use crate::provider::credential_formatter::model::SignatureProvider;
+
+#[cfg(any(test, feature = "mock"))]
+#[async_trait::async_trait]
+impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+        Ok(self.0(message))
+    }
+    fn get_key_id(&self) -> Option<String> {
+        Some("#key0".to_owned())
+    }
+    fn get_public_key(&self) -> Vec<u8> {
+        vec![]
+    }
 }
 
 #[cfg(test)]

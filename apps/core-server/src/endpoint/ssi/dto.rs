@@ -1,21 +1,9 @@
 use std::collections::HashMap;
 
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
-use one_core::service::oidc::dto::OpenID4VCICredentialResponseDTO;
-use one_core::service::ssi_issuer::dto::{
-    ConnectIssuerResponseDTO, IssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO,
-    JsonLDEntityDTO, JsonLDInlineEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
-};
-use one_core::service::ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO};
-use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
-use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
-use one_providers::common_dto::{
-    PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO,
-    PublicKeyJwkRsaDataDTO,
-};
-use one_providers::did::model::{DidDocument, DidVerificationMethod};
-use one_providers::exchange_protocol::openid4vc::error::OpenID4VCIError;
-use one_providers::exchange_protocol::openid4vc::model::{
+use one_core::provider::did_method::model::{DidDocument, DidVerificationMethod};
+use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
+use one_core::provider::exchange_protocol::openid4vc::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm,
     NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialDefinition,
@@ -37,6 +25,18 @@ use one_providers::exchange_protocol::openid4vc::model::{
     OpenID4VPPresentationDefinitionInputDescriptorFormat, PresentationSubmissionDescriptorDTO,
     PresentationSubmissionMappingDTO,
 };
+use one_core::service::key::dto::{
+    PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO,
+    PublicKeyJwkRsaDataDTO,
+};
+use one_core::service::oidc::dto::OpenID4VCICredentialResponseDTO;
+use one_core::service::ssi_issuer::dto::{
+    ConnectIssuerResponseDTO, IssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO,
+    JsonLDEntityDTO, JsonLDInlineEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
+};
+use one_core::service::ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO};
+use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
+use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
 use shared_types::{CredentialId, DidValue, KeyId, ProofId, TrustAnchorId, TrustEntityId};

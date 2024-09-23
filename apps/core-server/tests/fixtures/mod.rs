@@ -10,11 +10,11 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutProperties, LayoutType,
+    LayoutProperties, LayoutType, WalletStorageTypeEnum,
 };
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
-use one_core::model::key::KeyRelations;
+use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{
     Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
@@ -28,8 +28,6 @@ use one_core::model::revocation_list::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::DataRepository;
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::common_models::key::OpenKey;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use sea_orm::ConnectionTrait;
@@ -185,13 +183,13 @@ pub async fn create_key(
     db_conn: &DbConn,
     organisation: &Organisation,
     params: Option<TestingKeyParams>,
-) -> OpenKey {
+) -> Key {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     let now = OffsetDateTime::now_utc();
     let params = params.unwrap_or_default();
 
-    let key = OpenKey {
-        id: params.id.unwrap_or(Uuid::new_v4().into()).into(),
+    let key = Key {
+        id: params.id.unwrap_or(Uuid::new_v4().into()),
         created_date: params.created_date.unwrap_or(now),
         last_modified: params.last_modified.unwrap_or(now),
         public_key: params.public_key.unwrap_or_default(),
@@ -199,7 +197,7 @@ pub async fn create_key(
         key_reference: params.key_reference.unwrap_or_default(),
         storage_type: params.storage_type.unwrap_or_default(),
         key_type: params.key_type.unwrap_or_default(),
-        organisation: Some(organisation.to_owned().into()),
+        organisation: Some(organisation.to_owned()),
     };
 
     data_layer
@@ -211,7 +209,7 @@ pub async fn create_key(
     key
 }
 
-pub async fn create_es256_key(db_conn: &DbConn, organisation: &Organisation) -> OpenKey {
+pub async fn create_es256_key(db_conn: &DbConn, organisation: &Organisation) -> Key {
     create_key(
         db_conn,
         organisation,
@@ -236,7 +234,7 @@ pub async fn create_es256_key(db_conn: &DbConn, organisation: &Organisation) -> 
     .await
 }
 
-pub async fn create_eddsa_key(db_conn: &DbConn, organisation: &Organisation) -> OpenKey {
+pub async fn create_eddsa_key(db_conn: &DbConn, organisation: &Organisation) -> Key {
     create_key(
         db_conn,
         organisation,
@@ -263,12 +261,12 @@ pub async fn create_eddsa_key(db_conn: &DbConn, organisation: &Organisation) -> 
     .await
 }
 
-pub async fn get_key(db_conn: &DbConn, id: &KeyId) -> OpenKey {
+pub async fn get_key(db_conn: &DbConn, id: &KeyId) -> Key {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     data_layer
         .get_key_repository()
         .get_key(
-            &id.to_owned().into(),
+            id,
             &KeyRelations {
                 organisation: Some(OrganisationRelations::default()),
             },
@@ -333,7 +331,7 @@ pub struct TestingCredentialSchemaParams {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: Option<String>,
     pub format: Option<String>,
-    pub wallet_storage_type: Option<Option<OpenWalletStorageTypeEnum>>,
+    pub wallet_storage_type: Option<Option<WalletStorageTypeEnum>>,
     pub revocation_method: Option<String>,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<LayoutProperties>,
@@ -373,7 +371,7 @@ pub async fn create_credential_schema(
         name: unwrap_or_random(params.name),
         wallet_storage_type: params
             .wallet_storage_type
-            .unwrap_or(Some(OpenWalletStorageTypeEnum::Software)),
+            .unwrap_or(Some(WalletStorageTypeEnum::Software)),
         organisation: Some(organisation.to_owned()),
         deleted_at: params.deleted_at,
         format: params.format.unwrap_or("JWT".to_string()),
@@ -588,7 +586,7 @@ pub struct TestingCredentialParams<'a> {
     pub interaction: Option<Interaction>,
     pub deleted_at: Option<OffsetDateTime>,
     pub role: Option<CredentialRole>,
-    pub key: Option<OpenKey>,
+    pub key: Option<Key>,
     pub suspend_end_date: Option<OffsetDateTime>,
     pub random_claims: bool,
     pub claims_data: Option<Vec<(TestClaimSchema, ClaimPath<'a>, ClaimValue<'a>)>>,

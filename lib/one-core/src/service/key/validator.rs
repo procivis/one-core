@@ -1,8 +1,8 @@
-use one_providers::key_algorithm::error::KeyAlgorithmError;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
 use time::Duration;
 
 use crate::config::core_config::CoreConfig;
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO};
 

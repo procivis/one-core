@@ -10,7 +10,7 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutType,
+    LayoutType, WalletStorageTypeEnum,
 };
 use one_core::model::did::{Did, DidRelations};
 use one_core::model::interaction::{Interaction, InteractionRelations};
@@ -26,7 +26,6 @@ use one_core::repository::interaction_repository::MockInteractionRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::revocation_list_repository::MockRevocationListRepository;
 use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO};
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
@@ -86,7 +85,7 @@ async fn setup_empty() -> TestSetup {
         last_modified: get_dummy_date(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
-        wallet_storage_type: Some(OpenWalletStorageTypeEnum::Software),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(
             new_claim_schemas

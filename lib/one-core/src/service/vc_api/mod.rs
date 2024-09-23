@@ -2,11 +2,10 @@ mod service;
 
 use std::sync::Arc;
 
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use one_providers::key_storage::provider::KeyProvider;
-
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use one_providers::credential_formatter::imp::json_ld::context::caching_loader::{
+use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     JsonLdCachingLoader, JsonLdResolver,
 };
-use one_providers::http_client::HttpClient;
+use crate::provider::http_client::HttpClient;
 
 pub mod service;
 

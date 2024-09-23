@@ -77,7 +77,6 @@ impl DeviceEngagement {
         })
     }
 
-    #[allow(dead_code)]
     pub(crate) fn parse_qr_code(
         qr_code_content: &str,
     ) -> anyhow::Result<EmbeddedCbor<DeviceEngagement>> {

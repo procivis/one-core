@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use one_providers::remote_entity_storage::{
-    RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
-};
 use shared_types::RemoteEntityCacheId;
 use uuid::Uuid;
 
 use crate::model;
+use crate::provider::remote_entity_storage::{
+    RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
+};
 use crate::repository::json_ld_context_repository::RemoteEntityCacheRepository;
 
 pub struct DbStorage {

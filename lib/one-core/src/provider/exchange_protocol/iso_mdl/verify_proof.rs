@@ -1,12 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use one_providers::common_models::did::DidValue;
-use one_providers::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
-use one_providers::credential_formatter::provider::CredentialFormatterProvider;
-use one_providers::did::provider::DidMethodProvider;
-use one_providers::key_algorithm::provider::KeyAlgorithmProvider;
-use shared_types::{ClaimSchemaId, CredentialSchemaId};
+use shared_types::{ClaimSchemaId, CredentialSchemaId, DidValue};
 use time::OffsetDateTime;
 
 use super::common::to_cbor;
@@ -19,6 +14,10 @@ use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::SessionTranscript;
+use crate::provider::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -343,12 +342,8 @@ pub async fn accept_proof(
             .push(proved_claim);
     }
 
-    let holder_did = get_or_create_did(
-        did_repository,
-        &proof_schema.organisation,
-        &holder_did.clone().into(),
-    )
-    .await?;
+    let holder_did =
+        get_or_create_did(did_repository, &proof_schema.organisation, &holder_did).await?;
 
     let mut proof_claims: Vec<Claim> = vec![];
     for (_, credential_claims) in claims_per_credential {
@@ -368,12 +363,8 @@ pub async fn accept_proof(
                 .ok_or(ServiceError::MappingError(
                     "issuer_did is missing".to_string(),
                 ))?;
-        let issuer_did = get_or_create_did(
-            did_repository,
-            &proof_schema.organisation,
-            &issuer_did.clone().into(),
-        )
-        .await?;
+        let issuer_did =
+            get_or_create_did(did_repository, &proof_schema.organisation, issuer_did).await?;
 
         let credential_schema = &first_claim.credential_schema;
         let claim_schemas =

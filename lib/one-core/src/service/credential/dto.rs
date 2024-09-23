@@ -1,15 +1,15 @@
-use dto_mapper::{convert_inner, From, Into};
-use one_providers::common_models::credential_schema::OpenWalletStorageTypeEnum;
-use one_providers::common_models::key::KeyId;
+use dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
-use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, OrganisationId};
+use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId};
 use strum_macros::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 
 use crate::model;
 use crate::model::common::GetListResponse;
 use crate::model::credential::SortableCredentialColumn;
-use crate::model::credential_schema::{CredentialFormat, LayoutType, RevocationMethod};
+use crate::model::credential_schema::{
+    CredentialFormat, LayoutType, RevocationMethod, WalletStorageTypeEnum,
+};
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::service::credential_schema::dto::{
@@ -33,10 +33,8 @@ pub struct CredentialListItemResponseDTO {
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, From, Into)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[from(one_providers::exchange_protocol::openid4vc::model::CredentialDetailResponseDTO)]
-#[into(one_providers::exchange_protocol::openid4vc::model::CredentialDetailResponseDTO)]
 pub struct CredentialDetailResponseDTO {
     pub id: CredentialId,
     #[serde(with = "time::serde::rfc3339")]
@@ -49,11 +47,7 @@ pub struct CredentialDetailResponseDTO {
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub schema: DetailCredentialSchemaResponseDTO,
-    #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
     pub issuer_did: Option<DidListItemResponseDTO>,
-    #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
     pub claims: Vec<DetailCredentialClaimResponseDTO>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
@@ -63,9 +57,7 @@ pub struct CredentialDetailResponseDTO {
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, From, Into)]
-#[from(one_providers::exchange_protocol::openid4vc::model::DetailCredentialSchemaResponseDTO)]
-#[into(one_providers::exchange_protocol::openid4vc::model::DetailCredentialSchemaResponseDTO)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailCredentialSchemaResponseDTO {
     pub id: CredentialSchemaId,
@@ -79,19 +71,12 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
-    #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<OpenWalletStorageTypeEnum>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
-    #[into(with_fn_ref = "ToString::to_string")]
     pub schema_type: CredentialSchemaType,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
     pub layout_type: Option<LayoutType>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_inner)]
-    #[into(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
 }
 
@@ -110,30 +95,22 @@ pub enum CredentialSchemaType {
     Other(String),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, From, Into)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[from(one_providers::exchange_protocol::openid4vc::model::DetailCredentialClaimResponseDTO)]
-#[into(one_providers::exchange_protocol::openid4vc::model::DetailCredentialClaimResponseDTO)]
 pub struct DetailCredentialClaimResponseDTO {
     pub path: String,
     pub schema: CredentialClaimSchemaDTO,
     pub value: DetailCredentialClaimValueResponseDTO,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, From, Into)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
-#[from(one_providers::exchange_protocol::openid4vc::model::DetailCredentialClaimValueResponseDTO)]
-#[into(one_providers::exchange_protocol::openid4vc::model::DetailCredentialClaimValueResponseDTO)]
 pub enum DetailCredentialClaimValueResponseDTO {
     Boolean(bool),
     Float(f64),
     Integer(i64),
     String(String),
-    Nested(
-        #[from(with_fn = convert_inner)]
-        #[into(with_fn = convert_inner)]
-        Vec<DetailCredentialClaimResponseDTO>,
-    ),
+    Nested(Vec<DetailCredentialClaimResponseDTO>),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, From, AsRefStr)]
