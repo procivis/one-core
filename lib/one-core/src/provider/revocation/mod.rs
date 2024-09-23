@@ -51,8 +51,6 @@ pub trait RevocationMethod: Send + Sync {
         additional_credential_data: Option<CredentialDataByRole>,
     ) -> Result<CredentialRevocationState, RevocationError>;
 
-    #[doc = include_str!("../../../../../docs/capabilities.md")]
-    ///
     /// Revocation method capabilities include the operations possible for each revocation
     /// method.
     fn get_capabilities(&self) -> RevocationMethodCapabilities;

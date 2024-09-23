@@ -53,8 +53,6 @@ pub trait DidMethod: Send + Sync {
     /// DID deactivation is useful if, for instance, a private key is leaked.
     fn can_be_deactivated(&self) -> bool;
 
-    #[doc = include_str!("../../../../../docs/capabilities.md")]
-    ///
     /// See the [API docs][dmc] for a complete list of credential format capabilities.
     ///
     /// [dmc]: https://docs.procivis.ch/api/resources/dids#did-method-capabilities

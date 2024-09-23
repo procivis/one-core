@@ -34,8 +34,6 @@ pub trait KeyStorage: Send + Sync {
     /// May not be implemented for some storage providers (e.g. Azure Key Vault).
     fn secret_key_as_jwk(&self, key: &Key) -> Result<Zeroizing<String>, error::KeyStorageError>;
 
-    #[doc = include_str!("../../../../../docs/capabilities.md")]
-    ///
     /// See the [API docs][ksc] for a complete list of credential format capabilities.
     ///
     /// [ksc]: https://docs.procivis.ch/api/resources/keys#key-storage-capabilities

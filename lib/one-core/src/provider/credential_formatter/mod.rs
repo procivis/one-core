@@ -106,8 +106,6 @@ pub trait CredentialFormatter: Send + Sync {
     /// clocks from causing validation failures.
     fn get_leeway(&self) -> u64;
 
-    #[doc = include_str!("../../../../../docs/capabilities.md")]
-    ///
     /// See the [API docs][cfc] for a complete list of credential format capabilities.
     ///
     /// [cfc]: https://docs.procivis.ch/api/resources/credential_schemas#credential-format-capabilities
