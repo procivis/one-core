@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use mockall::predicate::eq;
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::json;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
@@ -10,8 +12,6 @@ use uuid::Uuid;
 
 use super::disclosures::DisclosureArray;
 use super::{prepare_sd_presentation, verify_claims, SDJWTFormatter};
-use one_crypto::hasher::sha256::SHA256;
-use one_crypto::{MockCryptoProvider, MockHasher};
 #[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::json_ld::model::ContextType;

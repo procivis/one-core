@@ -1,6 +1,7 @@
+use one_crypto::Hasher;
+
 use super::disclosures::{gather_hashes_from_disclosures, gather_hashes_from_hashed_claims};
 use super::model::Disclosure;
-use one_crypto::Hasher;
 use crate::provider::credential_formatter::error::FormatterError;
 
 pub(super) fn verify_claims(

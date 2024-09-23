@@ -1,6 +1,5 @@
-use thiserror::Error;
-
 use one_crypto::CryptoProviderError;
+use thiserror::Error;
 
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum ParseError {

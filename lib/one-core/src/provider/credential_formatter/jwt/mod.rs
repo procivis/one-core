@@ -5,13 +5,13 @@ use std::fmt::Debug;
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use mapper::{bin_to_b64url_string, string_to_b64url_string};
+use one_crypto::SignerError;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use shared_types::DidValue;
 
 use self::mapper::json_from_decoded;
 use self::model::{DecomposedToken, JWTHeader, JWTPayload};
-use one_crypto::SignerError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
 

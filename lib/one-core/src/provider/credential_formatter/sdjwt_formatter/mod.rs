@@ -10,11 +10,11 @@ use disclosures::{
     get_disclosures_by_claim_name, sort_published_claims_by_indices, to_hashmap,
 };
 use itertools::Itertools;
+use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use shared_types::DidValue;
 use time::Duration;
 
-use one_crypto::CryptoProvider;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::{DecomposedToken, JWTPayload};

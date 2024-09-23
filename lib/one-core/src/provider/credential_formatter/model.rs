@@ -5,6 +5,7 @@ use std::fmt::{Display, Formatter};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
+use one_crypto::SignerError;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use strum::{Display, IntoStaticStr};
@@ -13,7 +14,6 @@ use url::Url;
 
 use super::error::FormatterError;
 use super::json_ld::model::{Evidence, RelatedResource, TermsOfUse};
-use one_crypto::SignerError;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;

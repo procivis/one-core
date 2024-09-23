@@ -4,6 +4,7 @@ use std::vec;
 use async_trait::async_trait;
 use indexmap::indexset;
 use model::CredentialEnvelope;
+use one_crypto::CryptoProvider;
 use serde::ser::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -12,7 +13,6 @@ use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
 use super::json_ld::model::LdCredentialSubject;
-use one_crypto::CryptoProvider;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{

@@ -2,13 +2,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use mockall::predicate;
+use one_crypto::MockCryptoProvider;
 use serde_json::json;
 use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyDidMethod;
-use one_crypto::MockCryptoProvider;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::did_method::model::{AmountOfKeys, DidDocument, DidVerificationMethod};
 use crate::provider::did_method::DidMethod;

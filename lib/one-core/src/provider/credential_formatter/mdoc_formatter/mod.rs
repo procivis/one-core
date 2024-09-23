@@ -12,6 +12,7 @@ use coset::{
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use mdoc::{DataElementValue, DeviceNamespaces};
+use one_crypto::SignerError;
 use rand::RngCore;
 use serde::Deserialize;
 use serde_json::json;
@@ -34,7 +35,6 @@ use super::common::nest_claims;
 use super::json_ld::model::ContextType;
 use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
-use one_crypto::SignerError;
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::model::did::Did;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};

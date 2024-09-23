@@ -3,11 +3,11 @@ use std::vec;
 
 use async_trait::async_trait;
 use model::OptiocalBarcodeCredential;
+use one_crypto::CryptoProvider;
 use shared_types::DidValue;
 
 use super::json_ld::model::ContextType;
 use super::json_ld_classic::verify_credential_signature;
-use one_crypto::CryptoProvider;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{

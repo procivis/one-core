@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::vec;
 
 use async_trait::async_trait;
+use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
 use shared_types::DidValue;
@@ -13,7 +14,6 @@ use super::json_ld::context::caching_loader::ContextCache;
 use super::json_ld::jsonld_forbidden_claim_names;
 use super::json_ld::model::{ContextType, LdCredential};
 use super::CredentialFormatter;
-use one_crypto::CryptoProvider;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;

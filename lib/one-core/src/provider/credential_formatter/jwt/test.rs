@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use one_crypto::SignerError;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use time::macros::datetime;
@@ -6,7 +7,6 @@ use time::OffsetDateTime;
 
 use super::model::JWTPayload;
 use super::{Jwt, TokenVerifier};
-use one_crypto::SignerError;
 use crate::provider::credential_formatter::common::MockAuth;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]

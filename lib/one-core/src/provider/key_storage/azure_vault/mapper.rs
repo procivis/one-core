@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use one_crypto::{CryptoProvider, SignerError};
 
 use super::dto::{
     AzureHsmGenerateKeyRequest, AzureHsmGenerateKeyResponseKey, AzureHsmGetTokenRequest,
     AzureHsmSignRequest,
 };
-use one_crypto::{CryptoProvider, SignerError};
 use crate::provider::key_storage::error::KeyStorageError;
 
 pub(super) fn create_get_token_request(

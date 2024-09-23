@@ -3,12 +3,12 @@ use std::collections::HashMap;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use josekit::Value;
+use one_crypto::{CryptoProvider, Hasher};
 use serde::{Deserialize, Serialize};
 
 use super::model::DecomposedToken;
 use super::{remove_first_nesting_layer, Disclosure};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use one_crypto::{CryptoProvider, Hasher};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::mapper::string_to_b64url_string;
 use crate::provider::credential_formatter::model::PublishedClaim;

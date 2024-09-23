@@ -4,6 +4,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dto_mapper::convert_inner;
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
+use one_crypto::utilities;
 use shared_types::{CredentialId, CredentialSchemaId, KeyId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -20,7 +21,6 @@ use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
 use crate::config::core_config::{ExchangeType, TransportType};
-use one_crypto::utilities;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{

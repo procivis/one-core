@@ -4,11 +4,11 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
+use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::json;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
-use one_crypto::{MockCryptoProvider, MockHasher};
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::json_ld_classic::{JsonLdClassic, Params};

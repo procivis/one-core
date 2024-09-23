@@ -1,7 +1,7 @@
+use one_crypto::SignerError;
 use shared_types::KeyId;
 use zeroize::Zeroizing;
 
-use one_crypto::SignerError;
 use crate::model::key::Key;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
