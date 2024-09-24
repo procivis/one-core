@@ -625,3 +625,102 @@ async fn test_get_proof_with_retain_date() {
     let resp = resp.json_value().await;
     assert!(!resp["retainUntilDate"].is_null())
 }
+
+#[tokio::test]
+async fn test_get_proof_with_deleted_claims() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
+    let did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &did,
+            "PROCIVIS_TEMPORARY",
+            Default::default(),
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &did,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Accepted,
+            "OPENID4VC",
+            None,
+            verifier_key,
+        )
+        .await;
+
+    context
+        .db
+        .proofs
+        .set_proof_claims(&proof.id, credential.claims.unwrap())
+        .await;
+
+    let resp = context.api.tasks.run("RETAIN_PROOF_CHECK").await;
+    assert_eq!(resp.status(), 200);
+
+    // WHEN
+    let resp = context.api.proofs.get(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert!(!resp["claimsRemovedAt"].is_null())
+}
