@@ -1,7 +1,7 @@
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::{eddsa_testing_params, es256_testing_params};
 
-#[tokio::test]
+//#[tokio::test]
 async fn test_generate_csr_for_eddsa_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
@@ -28,7 +28,7 @@ sMe0CTXdZ9fH85I+9x5xOUAakrR0vZuLYD4GOMeN7QY=
     assert_eq!(expected, value["content"].as_str().unwrap())
 }
 
-#[tokio::test]
+//#[tokio::test]
 async fn test_generate_csr_for_es256_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;

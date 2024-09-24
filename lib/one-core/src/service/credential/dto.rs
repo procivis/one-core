@@ -73,6 +73,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub organisation_id: OrganisationId,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
+    pub imported_source_url: String,
     pub schema_type: CredentialSchemaType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub layout_type: Option<LayoutType>,

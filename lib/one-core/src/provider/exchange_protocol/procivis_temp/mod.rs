@@ -505,11 +505,13 @@ async fn handle_credential_invitation(
                 ))?
         }
         None => {
+            let id = issuer_response.schema.id;
             let credential_schema = CredentialSchema {
-                id: issuer_response.schema.id,
+                id,
                 deleted_at: None,
                 created_date: now,
                 last_modified: now,
+                imported_source_url: format!("{base_url}/ssi/schema/v1/{id}"),
                 name: issuer_response.schema.name,
                 format: issuer_response.schema.format,
                 revocation_method: issuer_response.schema.revocation_method,

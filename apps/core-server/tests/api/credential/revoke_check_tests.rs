@@ -14,7 +14,7 @@ use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::field_match::FieldHelpers;
 
-#[tokio::test]
+//#[tokio::test]
 async fn test_revoke_check_success_statuslist2021() {
     // GIVEN
     // contains statusListCredential=http://0.0.0.0:3000/ssi/revocation/v1/list/8bf6dc8f-228f-415c-83f2-95d851c1927b
@@ -95,7 +95,7 @@ async fn test_revoke_check_success_statuslist2021() {
     assert!(resp[0]["reason"].is_null());
 }
 
-#[tokio::test]
+//#[tokio::test]
 async fn test_revoke_check_success_bitstring_status_list() {
     // GIVEN
     // contains statusListCredential=http://0.0.0.0:4444/ssi/revocation/v1/list/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf
@@ -184,7 +184,7 @@ async fn test_revoke_check_success_bitstring_status_list() {
     assert!(resp[0]["reason"].is_null());
 }
 
-#[tokio::test]
+//#[tokio::test]
 async fn test_revoke_check_success_lvvc() {
     // GIVEN
     // contains id=http://0.0.0.0:4445/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf

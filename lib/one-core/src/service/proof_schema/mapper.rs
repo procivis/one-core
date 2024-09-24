@@ -66,8 +66,9 @@ pub(super) fn credential_schema_from_proof_input_schema(
         })
         .collect();
 
+    let id = input_schema.credential_schema.id;
     CredentialSchema {
-        id: input_schema.credential_schema.id,
+        id,
         deleted_at: None,
         created_date: now,
         last_modified: now,
@@ -85,6 +86,7 @@ pub(super) fn credential_schema_from_proof_input_schema(
             .layout_properties
             .clone()
             .map(Into::into),
+        imported_source_url: input_schema.credential_schema.imported_source_url.clone(),
         schema_id: input_schema.credential_schema.schema_id.clone(),
         schema_type: input_schema.credential_schema.schema_type.clone().into(),
         claim_schemas: Some(claims),
@@ -345,6 +347,7 @@ pub fn proof_schema_from_create_request(
     claim_schemas: Vec<ClaimSchema>,
     credential_schemas: Vec<CredentialSchema>,
     organisation: Organisation,
+    base_url: &str,
 ) -> Result<ProofSchema, BusinessLogicError> {
     let mut proof_schema_claims: HashMap<CredentialSchemaId, Vec<ProofInputClaimSchema>> =
         HashMap::new();
@@ -388,11 +391,12 @@ pub fn proof_schema_from_create_request(
             Ok::<_, BusinessLogicError>(proof_input_schema)
         })
         .collect::<Result<Vec<_>, _>>()?;
-
+    let id = Uuid::new_v4().into();
     Ok(ProofSchema {
-        id: Uuid::new_v4().into(),
+        id,
         created_date: now,
         last_modified: now,
+        imported_source_url: format!("{base_url}/ssi/proof-schema/v1/{id}"),
         name: request.name,
         expire_duration: request.expire_duration.unwrap_or(0),
         organisation: Some(organisation),

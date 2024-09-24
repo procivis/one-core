@@ -32,6 +32,7 @@ fn generate_credential_detail_response(
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
+            imported_source_url: "CORE_URL".to_string(),
             deleted_at: None,
             name: "".to_string(),
             format: "".to_string(),
