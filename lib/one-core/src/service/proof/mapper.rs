@@ -15,6 +15,7 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
+use crate::model::history::History;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::proof::{self, Proof, ProofStateEnum};
@@ -150,6 +151,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
 pub fn get_verifier_proof_detail(
     proof: Proof,
     config: &CoreConfig,
+    claims_removed_event: Option<History>,
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
     let holder_did_id = proof.holder_did.as_ref().map(|did| did.id);
 
@@ -431,6 +433,7 @@ pub fn get_verifier_proof_detail(
         schema: list_item_response.schema,
         redirect_uri,
         proof_inputs,
+        claims_removed_at: claims_removed_event.map(|event| event.created_date),
     })
 }
 
@@ -509,6 +512,7 @@ fn renest_proof_claims(claims: Vec<ProofClaimDTO>, prefix: &str) -> Vec<ProofCla
 pub fn get_holder_proof_detail(
     value: Proof,
     config: &CoreConfig,
+    claims_removed_event: Option<History>,
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
     let organisation_id = value
         .holder_did
@@ -612,6 +616,7 @@ pub fn get_holder_proof_detail(
         schema: list_item_response.schema,
         redirect_uri,
         proof_inputs,
+        claims_removed_at: claims_removed_event.map(|event| event.created_date),
     })
 }
 

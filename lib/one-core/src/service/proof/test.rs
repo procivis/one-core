@@ -19,6 +19,7 @@ use crate::model::credential_schema::{
     LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
+use crate::model::history::GetHistoryList;
 use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::list_filter::ListFilterValue;
@@ -302,6 +303,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
 #[tokio::test]
 async fn test_get_proof_exists() {
     let mut proof_repository = MockProofRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
 
     let proof = Proof {
         id: Uuid::new_v4().into(),
@@ -437,8 +439,17 @@ async fn test_get_proof_exists() {
             .returning(move |_, _| Ok(Some(res_clone.clone())));
     }
 
+    history_repository.expect_get_history_list().returning(|_| {
+        Ok(GetHistoryList {
+            values: vec![],
+            total_pages: 1,
+            total_items: 1,
+        })
+    });
+
     let service = setup_service(Repositories {
         proof_repository,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -454,6 +465,7 @@ async fn test_get_proof_exists() {
 #[tokio::test]
 async fn test_get_proof_with_array_holder() {
     let mut proof_repository = MockProofRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
 
     let organisation = Organisation {
         id: Uuid::new_v4().into(),
@@ -623,8 +635,17 @@ async fn test_get_proof_with_array_holder() {
             .returning(move |_, _| Ok(Some(res_clone.clone())));
     }
 
+    history_repository.expect_get_history_list().returning(|_| {
+        Ok(GetHistoryList {
+            values: vec![],
+            total_pages: 1,
+            total_items: 1,
+        })
+    });
+
     let service = setup_service(Repositories {
         proof_repository,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -654,6 +675,7 @@ async fn test_get_proof_with_array_holder() {
 #[tokio::test]
 async fn test_get_proof_with_array_in_object_holder() {
     let mut proof_repository = MockProofRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
 
     let organisation = Organisation {
         id: Uuid::new_v4().into(),
@@ -836,8 +858,17 @@ async fn test_get_proof_with_array_in_object_holder() {
             .returning(move |_, _| Ok(Some(res_clone.clone())));
     }
 
+    history_repository.expect_get_history_list().returning(|_| {
+        Ok(GetHistoryList {
+            values: vec![],
+            total_pages: 1,
+            total_items: 1,
+        })
+    });
+
     let service = setup_service(Repositories {
         proof_repository,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -872,6 +903,7 @@ async fn test_get_proof_with_array_in_object_holder() {
 #[tokio::test]
 async fn test_get_proof_with_object_array_holder() {
     let mut proof_repository = MockProofRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
 
     let organisation = Organisation {
         id: Uuid::new_v4().into(),
@@ -1054,8 +1086,17 @@ async fn test_get_proof_with_object_array_holder() {
             .returning(move |_, _| Ok(Some(res_clone.clone())));
     }
 
+    history_repository.expect_get_history_list().returning(|_| {
+        Ok(GetHistoryList {
+            values: vec![],
+            total_pages: 1,
+            total_items: 1,
+        })
+    });
+
     let service = setup_service(Repositories {
         proof_repository,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1085,6 +1126,7 @@ async fn test_get_proof_with_object_array_holder() {
 #[tokio::test]
 async fn test_get_proof_with_array() {
     let mut proof_repository = MockProofRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
 
     let organisation = Organisation {
         id: Uuid::new_v4().into(),
@@ -1272,8 +1314,17 @@ async fn test_get_proof_with_array() {
             .returning(move |_, _| Ok(Some(res_clone.clone())));
     }
 
+    history_repository.expect_get_history_list().returning(|_| {
+        Ok(GetHistoryList {
+            values: vec![],
+            total_pages: 1,
+            total_items: 1,
+        })
+    });
+
     let service = setup_service(Repositories {
         proof_repository,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1303,6 +1354,7 @@ async fn test_get_proof_with_array() {
 #[tokio::test]
 async fn test_get_proof_with_array_in_object() {
     let mut proof_repository = MockProofRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
 
     let organisation = Organisation {
         id: Uuid::new_v4().into(),
@@ -1503,8 +1555,17 @@ async fn test_get_proof_with_array_in_object() {
             .returning(move |_, _| Ok(Some(res_clone.clone())));
     }
 
+    history_repository.expect_get_history_list().returning(|_| {
+        Ok(GetHistoryList {
+            values: vec![],
+            total_pages: 1,
+            total_items: 1,
+        })
+    });
+
     let service = setup_service(Repositories {
         proof_repository,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1540,6 +1601,7 @@ async fn test_get_proof_with_array_in_object() {
 #[tokio::test]
 async fn test_get_proof_with_object_array() {
     let mut proof_repository = MockProofRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
 
     let organisation = Organisation {
         id: Uuid::new_v4().into(),
@@ -1740,8 +1802,17 @@ async fn test_get_proof_with_object_array() {
             .returning(move |_, _| Ok(Some(res_clone.clone())));
     }
 
+    history_repository.expect_get_history_list().returning(|_| {
+        Ok(GetHistoryList {
+            values: vec![],
+            total_pages: 1,
+            total_items: 1,
+        })
+    });
+
     let service = setup_service(Repositories {
         proof_repository,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });

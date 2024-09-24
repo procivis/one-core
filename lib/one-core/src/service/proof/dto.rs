@@ -60,6 +60,7 @@ pub struct ProofDetailResponseDTO {
     pub schema: Option<GetProofSchemaListItemDTO>,
     pub redirect_uri: Option<String>,
     pub proof_inputs: Vec<ProofInputDTO>,
+    pub claims_removed_at: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug)]

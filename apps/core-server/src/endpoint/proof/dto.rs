@@ -272,6 +272,11 @@ pub struct ProofDetailResponseRestDTO {
     pub redirect_uri: Option<String>,
     #[from(with_fn = convert_inner)]
     pub proof_inputs: Vec<ProofInputRestDTO>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub claims_removed_at: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

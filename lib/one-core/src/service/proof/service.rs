@@ -25,9 +25,11 @@ use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::history::HistoryAction;
+use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
     Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
@@ -121,10 +123,29 @@ impl ProofService {
             return Err(EntityNotFoundError::Proof(*id).into());
         };
 
+        let history_event = self
+            .history_repository
+            .get_history_list(HistoryListQuery {
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 1,
+                }),
+                sorting: None,
+                filtering: Some(
+                    HistoryFilterValue::EntityId(proof.id.into()).condition()
+                        & HistoryFilterValue::Action(HistoryAction::ClaimsRemoved),
+                ),
+                include: None,
+            })
+            .await?
+            .values
+            .into_iter()
+            .next();
+
         if proof.schema.is_some() {
-            get_verifier_proof_detail(proof, &self.config)
+            get_verifier_proof_detail(proof, &self.config, history_event)
         } else {
-            get_holder_proof_detail(proof, &self.config)
+            get_holder_proof_detail(proof, &self.config, history_event)
         }
     }
 
