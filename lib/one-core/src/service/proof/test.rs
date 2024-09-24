@@ -172,6 +172,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             wallet_storage_type: None,
+            imported_source_url: "CORE_URL".to_string(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "".to_string(),
@@ -202,6 +203,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
+            imported_source_url: "CORE_URL".to_string(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "proof schema".to_string(),
@@ -227,6 +229,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                 }]),
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
+                    imported_source_url: "CORE_URL".to_string(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
                     wallet_storage_type: Some(WalletStorageTypeEnum::Software),
@@ -315,6 +318,7 @@ async fn test_get_proof_exists() {
         redirect_uri: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
+            imported_source_url: "CORE_URL".to_string(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
@@ -344,6 +348,7 @@ async fn test_get_proof_exists() {
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
                     wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                    imported_source_url: "CORE_URL".to_string(),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),
@@ -468,6 +473,7 @@ async fn test_get_proof_with_array_holder() {
     let credential_schema = CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
+        imported_source_url: "CORE_URL".to_string(),
         created_date: OffsetDateTime::now_utc(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
@@ -683,6 +689,7 @@ async fn test_get_proof_with_array_in_object_holder() {
     let credential_schema = CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
+        imported_source_url: "CORE_URL".to_string(),
         created_date: OffsetDateTime::now_utc(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
@@ -902,6 +909,7 @@ async fn test_get_proof_with_object_array_holder() {
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        imported_source_url: "CORE_URL".to_string(),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1098,6 +1106,7 @@ async fn test_get_proof_with_array() {
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        imported_source_url: "CORE_URL".to_string(),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1171,6 +1180,7 @@ async fn test_get_proof_with_array() {
         redirect_uri: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
+            imported_source_url: "CORE_URL".to_string(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
@@ -1328,6 +1338,7 @@ async fn test_get_proof_with_array_in_object() {
     let credential_schema = CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
+        imported_source_url: "CORE_URL".to_string(),
         created_date: OffsetDateTime::now_utc(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         last_modified: OffsetDateTime::now_utc(),
@@ -1400,6 +1411,7 @@ async fn test_get_proof_with_array_in_object() {
         redirect_uri: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
+            imported_source_url: "CORE_URL".to_string(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
@@ -1565,6 +1577,7 @@ async fn test_get_proof_with_object_array() {
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        imported_source_url: "CORE_URL".to_string(),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1635,6 +1648,7 @@ async fn test_get_proof_with_object_array() {
         redirect_uri: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
+            imported_source_url: "CORE_URL".to_string(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
@@ -1793,6 +1807,7 @@ async fn test_get_proof_list_success() {
             state: ProofStateEnum::Created,
         }]),
         schema: Some(ProofSchema {
+            imported_source_url: "CORE_URL".to_string(),
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -1882,6 +1897,7 @@ async fn test_create_proof_without_related_key() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -1989,6 +2005,7 @@ async fn test_create_proof_with_related_key() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -2093,6 +2110,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -2174,6 +2192,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -2230,6 +2249,7 @@ async fn test_create_proof_did_deactivated_error() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -2302,6 +2322,7 @@ async fn test_create_proof_schema_deleted() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: Some(OffsetDateTime::now_utc()),
@@ -2343,6 +2364,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -2415,6 +2437,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,

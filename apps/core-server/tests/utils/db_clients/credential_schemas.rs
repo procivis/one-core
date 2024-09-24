@@ -65,6 +65,7 @@ impl CredentialSchemasDB {
 
         let credential_schema = CredentialSchema {
             id: id.into(),
+            imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
@@ -135,6 +136,7 @@ impl CredentialSchemasDB {
 
         let credential_schema = CredentialSchema {
             id: id.into(),
+            imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
@@ -214,6 +216,7 @@ impl CredentialSchemasDB {
         let id = Uuid::new_v4();
         let credential_schema = CredentialSchema {
             id: id.into(),
+            imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
@@ -317,6 +320,7 @@ impl CredentialSchemasDB {
         let id = Uuid::new_v4();
         let credential_schema = CredentialSchema {
             id: id.into(),
+            imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
@@ -432,6 +436,7 @@ impl CredentialSchemasDB {
         let id = Uuid::new_v4();
         let credential_schema = CredentialSchema {
             id: id.into(),
+            imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
@@ -483,6 +488,7 @@ impl CredentialSchemasDB {
         let new_id = Uuid::new_v4();
         let credential_schema = CredentialSchema {
             id: new_id.into(),
+            imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             wallet_storage_type: None,
@@ -537,6 +543,7 @@ impl CredentialSchemasDB {
 
         let credential_schema = CredentialSchema {
             id: id.to_owned().into(),
+            imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             wallet_storage_type: None,

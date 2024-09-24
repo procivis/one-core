@@ -94,6 +94,7 @@ fn generic_credential_schema() -> CredentialSchema {
     CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
+        imported_source_url: "CORE_URL".to_string(),
         created_date: now,
         last_modified: now,
         name: "".to_string(),
@@ -1296,6 +1297,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                     schema: Some(ProofSchema {
                         id: Uuid::default().into(),
                         created_date: now,
+                        imported_source_url: "CORE_URL".to_string(),
                         last_modified: now,
                         deleted_at: None,
                         name: "test".to_string(),
@@ -1321,6 +1323,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                                 id: Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
                                     .unwrap()
                                     .into(),
+                                imported_source_url: "CORE_URL".to_string(),
                                 deleted_at: None,
                                 created_date: get_dummy_date(),
                                 last_modified: get_dummy_date(),

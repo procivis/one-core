@@ -59,7 +59,7 @@ fn setup_service(
         history_repository: Arc::new(history_repository),
         formatter_provider: Arc::new(formatter_provider),
         config: Arc::new(generic_config().core),
-        base_url: Default::default(),
+        base_url: Some("BASE_URL".to_string()),
     }
 }
 
@@ -165,6 +165,7 @@ async fn test_get_proof_schema_list_success() {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
+        imported_source_url: "CORE_URL".to_string(),
         deleted_at: None,
         name: "name".to_string(),
         expire_duration: 0,
@@ -256,6 +257,7 @@ async fn test_delete_proof_schema_success() {
         .returning(|_, _| {
             Ok(Some(ProofSchema {
                 id: Uuid::new_v4().into(),
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -299,6 +301,7 @@ async fn test_delete_proof_schema_failure() {
             Ok(Some(ProofSchema {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
+                imported_source_url: "CORE_URL".to_string(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
                 name: "name".to_string(),
@@ -379,6 +382,7 @@ async fn test_create_proof_schema_success() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
+                imported_source_url: "CORE_URL".to_string(),
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
@@ -508,6 +512,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
+                imported_source_url: "CORE_URL".to_string(),
                 format: "PHYSICAL_CARD".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
@@ -528,6 +533,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema-2".to_string(),
+                imported_source_url: "CORE_URL".to_string(),
                 format: "PHYSICAL_CARD".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
@@ -678,6 +684,7 @@ async fn test_create_proof_schema_array_object_fail() {
         .returning(move |_, _| {
             let schema = CredentialSchema {
                 id: credential_schema_id,
+                imported_source_url: "CORE_URL".to_string(),
                 deleted_at: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -840,6 +847,7 @@ async fn test_create_proof_schema_array_success() {
                 id: credential_schema_id,
                 deleted_at: None,
                 created_date: OffsetDateTime::now_utc(),
+                imported_source_url: "CORE_URL".to_string(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
                 format: "SDJWT".to_string(),
@@ -1001,6 +1009,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
         .returning(move |_, _| {
             let schema = CredentialSchema {
                 id: credential_schema_id,
+                imported_source_url: "CORE_URL".to_string(),
                 deleted_at: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1254,6 +1263,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
+        imported_source_url: "CORE_URL".to_string(),
         name: "test-proof-schema".to_string(),
         organisation_id,
         expire_duration: 1000,
@@ -1269,6 +1279,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
             credential_schema: ImportProofSchemaCredentialSchemaDTO {
                 id: Uuid::new_v4().into(),
                 created_date: now,
+                imported_source_url: "CORE_URL".to_string(),
                 last_modified: now,
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
@@ -1374,6 +1385,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
 
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
+        imported_source_url: "CORE_URL".to_string(),
         created_date: now,
         last_modified: now,
         name: "test-proof-schema".to_string(),
@@ -1391,6 +1403,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
             credential_schema: ImportProofSchemaCredentialSchemaDTO {
                 id: Uuid::new_v4().into(),
                 created_date: now,
+                imported_source_url: "CORE_URL".to_string(),
                 last_modified: now,
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
@@ -1462,6 +1475,7 @@ async fn test_import_proof_ok_existing_credential_schema_but_missing_claims() {
     let existing_schema = CredentialSchema {
         id: existing_schema_id,
         deleted_at: None,
+        imported_source_url: "CORE_URL".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "test-credential-schema".to_string(),
@@ -1546,6 +1560,7 @@ async fn test_import_proof_ok_existing_credential_schema_but_missing_claims() {
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
         created_date: now,
+        imported_source_url: "CORE_URL".to_string(),
         last_modified: now,
         name: "test-proof-schema".to_string(),
         organisation_id,
@@ -1572,6 +1587,7 @@ async fn test_import_proof_ok_existing_credential_schema_but_missing_claims() {
             credential_schema: ImportProofSchemaCredentialSchemaDTO {
                 id: Uuid::new_v4().into(),
                 created_date: now,
+                imported_source_url: "CORE_URL".to_string(),
                 last_modified: now,
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
@@ -1655,6 +1671,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 id: existing_schema_id,
                 deleted_at: None,
                 created_date: get_dummy_date(),
+                imported_source_url: "CORE_URL".to_string(),
                 last_modified: get_dummy_date(),
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
@@ -1691,6 +1708,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
         created_date: now,
+        imported_source_url: "CORE_URL".to_string(),
         last_modified: now,
         name: "test-proof-schema".to_string(),
         organisation_id,
@@ -1707,6 +1725,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
             credential_schema: ImportProofSchemaCredentialSchemaDTO {
                 id: Uuid::new_v4().into(),
                 created_date: now,
+                imported_source_url: "CORE_URL".to_string(),
                 last_modified: now,
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
@@ -1772,6 +1791,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
+        imported_source_url: "CORE_URL".to_string(),
         name: "test-proof-schema".to_string(),
         organisation_id,
         expire_duration: 1000,
@@ -1788,6 +1808,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
+                imported_source_url: "CORE_URL".to_string(),
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
@@ -1845,6 +1866,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
+        imported_source_url: "CORE_URL".to_string(),
         name: "test-proof-schema".to_string(),
         organisation_id,
         expire_duration: 1000,
@@ -1861,6 +1883,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
+                imported_source_url: "CORE_URL".to_string(),
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
@@ -1917,6 +1940,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
+        imported_source_url: "CORE_URL".to_string(),
         name: "test-proof-schema".to_string(),
         organisation_id,
         expire_duration: 1000,
@@ -1933,6 +1957,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
+                imported_source_url: "CORE_URL".to_string(),
                 name: "test-credential-schema".to_string(),
                 format: "OTHER_FORMAT".to_string(),
                 revocation_method: "NONE".to_string(),
@@ -1973,6 +1998,7 @@ fn generic_proof_schema() -> ProofSchema {
     ProofSchema {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
+        imported_source_url: "CORE_URL".to_string(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         name: "name".to_string(),
@@ -2023,6 +2049,7 @@ async fn test_get_proof_schema_success_nested_claims() {
             last_modified: now,
             name: "".to_string(),
             format: "".to_string(),
+            imported_source_url: "CORE_URL".to_string(),
             revocation_method: "".to_string(),
             wallet_storage_type: None,
             layout_type: LayoutType::Card,
@@ -2218,6 +2245,7 @@ async fn test_create_proof_schema_verify_nested_generic(
             let schema = CredentialSchema {
                 id: credential_schema_id,
                 deleted_at: None,
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),

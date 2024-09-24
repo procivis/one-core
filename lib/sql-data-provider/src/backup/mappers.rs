@@ -60,6 +60,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 deleted_at: value.credential_schema_deleted_at,
                 created_date: value.credential_schema_created_date,
                 last_modified: value.credential_schema_last_modified,
+                imported_source_url: value.credential_schema_imported_source_url,
                 name: value.credential_schema_name,
                 format: value.credential_schema_format,
                 wallet_storage_type: convert_inner(value.credential_schema_wallet_storage_type),

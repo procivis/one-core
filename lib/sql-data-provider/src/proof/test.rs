@@ -282,6 +282,7 @@ async fn test_create_proof_success() {
         }]),
         schema: Some(ProofSchema {
             id: proof_schema_id,
+            imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
@@ -431,6 +432,7 @@ async fn test_get_proof_with_relations() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 deleted_at: None,
@@ -668,6 +670,7 @@ async fn test_get_proof_by_interaction_id_success() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 deleted_at: None,

@@ -141,6 +141,14 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
         credential_schema_name: &str,
         organisation: Organisation,
     ) -> Result<BuildCredentialSchemaResponse, ExchangeProtocolError> {
+        // The extraction of the schema_url is required for the imported_source_url that it is
+        // correct on HOLDER side as well, however the HOLDER will not use it therefore we might
+        // remove it when we fix the workaround for mDOC.
+        // MDOC doesn't have any information about schema url. It's replaced by doctype, hence we need to figure something out for now
+        let schema_url = issuer_metadata
+            .credential_issuer
+            .replace("/ssi/oidc-issuer/v1/", "/ssi/schema/v1/");
+
         let result = match schema_data.schema_type.as_str() {
             "ProcivisOneSchema2024" => {
                 let procivis_schema = fetch_procivis_schema(&schema_data.schema_id)
@@ -181,11 +189,6 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 BuildCredentialSchemaResponse { claims, schema }
             }
             "mdoc" => {
-                // MDOC doesn't have any information about schema url. It's replaced by doctype, hence we need to figure something out for now
-                let schema_url = issuer_metadata
-                    .credential_issuer
-                    .replace("/ssi/oidc-issuer/v1/", "/ssi/schema/v1/");
-
                 let result = fetch_procivis_schema(&schema_url).await;
 
                 let (layout_type, layout_properties) = match result {
@@ -273,13 +276,15 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     create_claims_from_credential_definition(*credential_id, claim_keys)?;
 
                 let now = OffsetDateTime::now_utc();
+                let id = Uuid::new_v4();
                 let credential_schema = CredentialSchema {
-                    id: Uuid::new_v4().into(),
+                    id: id.into(),
                     deleted_at: None,
                     created_date: now,
                     last_modified: now,
                     name: credential_schema_name.to_owned(),
                     format: credential_format,
+                    imported_source_url: schema_url,
                     wallet_storage_type: credential.wallet_storage_type.to_owned(),
                     revocation_method: "NONE".to_string(),
                     claim_schemas: Some(claim_schemas),

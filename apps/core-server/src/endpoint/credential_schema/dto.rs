@@ -338,6 +338,7 @@ pub struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[into(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     pub schema_id: String,
+    pub imported_source_url: String,
     pub schema_type: CredentialSchemaType,
     #[into(with_fn = convert_inner)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
