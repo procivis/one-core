@@ -99,6 +99,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                 last_modified: value.schema_last_modified,
                 deleted_at: None,
                 name: value.schema_name,
+                imported_source_url: value.schema_imported_source_url,
                 expire_duration: value.schema_expire_duration,
                 organisation: Some(Organisation {
                     id: value.schema_organisation_id,

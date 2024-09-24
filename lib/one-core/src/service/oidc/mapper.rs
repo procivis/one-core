@@ -246,6 +246,7 @@ fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) ->
         wallet_storage_type: convert_inner(schema.wallet_storage_type),
         layout_type: schema.layout_type,
         layout_properties: convert_inner(schema.layout_properties),
+        imported_source_url: schema.imported_source_url,
         schema_id: schema.schema_id,
         schema_type: schema.schema_type,
         claim_schemas: convert_inner_of_inner(schema.claim_schemas),

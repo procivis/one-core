@@ -81,6 +81,7 @@ async fn setup_empty() -> TestSetup {
     let credential_schema = CredentialSchema {
         id: credential_schema_id,
         deleted_at: None,
+        imported_source_url: "CORE_URL".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "credential schema".to_string(),

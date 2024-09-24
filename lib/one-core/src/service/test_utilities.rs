@@ -203,6 +203,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             name: "schema".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "format".to_string(),
+            imported_source_url: "CORE_URL".to_string(),
             revocation_method: "revocation method".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {
@@ -270,6 +271,7 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
+            imported_source_url: "CORE_URL".to_string(),
             deleted_at: None,
             name: "dummy".to_string(),
             expire_duration: 0,
@@ -316,6 +318,7 @@ pub fn dummy_proof_schema() -> ProofSchema {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
+        imported_source_url: "CORE_URL".to_string(),
         name: "Proof schema".to_string(),
         expire_duration: 100,
         organisation: None,
@@ -331,6 +334,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        imported_source_url: "CORE_URL".to_string(),
         format: "format".to_string(),
         revocation_method: "format".to_string(),
         claim_schemas: None,

@@ -99,6 +99,7 @@ pub async fn insert_credential_schema_to_database(
     let new_id: CredentialSchemaId = Uuid::new_v4().into();
     let schema = credential_schema::ActiveModel {
         id: Set(new_id.to_owned()),
+        imported_source_url: Set("CORE_URL".to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         format: Set(format.to_owned()),
@@ -241,6 +242,7 @@ pub async fn insert_proof_schema_with_claims_to_database<'a>(
 ) -> Result<ProofSchemaId, DbErr> {
     let schema = proof_schema::ActiveModel {
         id: Set(Uuid::new_v4().into()),
+        imported_source_url: Set("CORE_URL".to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(name.to_owned()),
@@ -288,6 +290,7 @@ pub async fn insert_proof_schema_to_database(
     let schema = proof_schema::ActiveModel {
         id: Set(Uuid::new_v4().into()),
         created_date: Set(get_dummy_date()),
+        imported_source_url: Set("CORE_URL".to_string()),
         last_modified: Set(get_dummy_date()),
         name: Set(name.to_owned()),
         expire_duration: Set(Default::default()),

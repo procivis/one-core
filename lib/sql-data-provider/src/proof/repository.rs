@@ -314,6 +314,10 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
         .column_as(proof_schema::Column::CreatedDate, "schema_created_date")
         .column_as(proof_schema::Column::LastModified, "schema_last_modified")
         .column_as(
+            proof_schema::Column::ImportedSourceUrl,
+            "schema_imported_source_url",
+        )
+        .column_as(
             proof_schema::Column::ExpireDuration,
             "schema_expire_duration",
         )

@@ -379,6 +379,7 @@ mod tests {
                 schema_type: CredentialSchemaType::Mdoc,
                 claim_schemas: Some(claim_schemas.clone()),
                 organisation: None,
+                imported_source_url: "CORE_URL".to_string(),
             },
             vec![(json!({ "element": "Test" }), namespace_claim_schema)],
             Did {

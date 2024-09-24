@@ -367,6 +367,7 @@ pub async fn create_credential_schema(
     let credential_schema = CredentialSchema {
         id,
         created_date: params.created_date.unwrap_or(now),
+        imported_source_url: "CORE_URL".to_string(),
         last_modified: params.last_modified.unwrap_or(now),
         name: unwrap_or_random(params.name),
         wallet_storage_type: params
@@ -422,6 +423,7 @@ pub async fn create_credential_schema_with_claims(
     let id = Uuid::new_v4();
     let credential_schema = CredentialSchema {
         id: id.into(),
+        imported_source_url: "CORE_URL".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         wallet_storage_type: None,
@@ -485,6 +487,7 @@ pub async fn create_proof_schema(
 
     let proof_schema = ProofSchema {
         id: Uuid::new_v4().into(),
+        imported_source_url: "CORE_URL".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: name.to_owned(),

@@ -62,6 +62,7 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             name: Set(value.name),
+            imported_source_url: Set(value.imported_source_url),
             format: Set(value.format),
             revocation_method: Set(value.revocation_method),
             organisation_id: Set(organisation_id),
@@ -148,6 +149,7 @@ pub(super) fn credential_schema_from_models(
             convert_inner(credential_schema.layout_properties)
         },
         schema_type: credential_schema.schema_type.into(),
+        imported_source_url: credential_schema.imported_source_url,
         schema_id: credential_schema.schema_id,
     }
 }

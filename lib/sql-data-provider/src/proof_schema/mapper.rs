@@ -20,6 +20,7 @@ impl From<proof_schema::Model> for ProofSchema {
             expire_duration: value.expire_duration,
             organisation: None,
             input_schemas: None,
+            imported_source_url: value.imported_source_url,
         }
     }
 }
@@ -56,6 +57,7 @@ impl TryFrom<&ProofSchema> for proof_schema::ActiveModel {
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             name: Set(value.name.to_owned()),
+            imported_source_url: Set(value.imported_source_url.clone()),
             organisation_id: Set(value
                 .organisation
                 .as_ref()
