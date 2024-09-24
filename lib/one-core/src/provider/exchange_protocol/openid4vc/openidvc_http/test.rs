@@ -137,6 +137,7 @@ fn generic_credential() -> Credential {
                 .unwrap()
                 .into(),
             deleted_at: None,
+            imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             last_modified: now,
@@ -628,6 +629,7 @@ fn generic_schema() -> CredentialSchema {
     CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
+        imported_source_url: "CORE_URL".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "LPTestNestedSelectiveZug".to_string(),
@@ -741,6 +743,7 @@ fn generic_schema_array_object() -> CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: get_dummy_date(),
+        imported_source_url: "CORE_URL".to_string(),
         last_modified: get_dummy_date(),
         name: "LPTestNestedSelectiveZug".to_string(),
         format: "JSON_LD_CLASSIC".to_string(),
@@ -853,6 +856,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: get_dummy_date(),
+        imported_source_url: "CORE_URL".to_string(),
         last_modified: get_dummy_date(),
         name: "LPTestNestedSelectiveZug".to_string(),
         format: "JSON_LD_CLASSIC".to_string(),

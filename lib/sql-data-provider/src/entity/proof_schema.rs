@@ -14,6 +14,7 @@ pub struct Model {
     pub name: String,
     pub expire_duration: u32,
     pub organisation_id: OrganisationId,
+    pub imported_source_url: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

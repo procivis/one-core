@@ -525,9 +525,8 @@ pub fn from_create_request_with_id(
 
     let claim_schemas = unnest_claim_schemas(request.claims);
 
-    let schema_id = request
-        .schema_id
-        .unwrap_or(format!("{core_base_url}/ssi/schema/v1/{id}"));
+    let url = format!("{core_base_url}/ssi/schema/v1/{id}");
+    let schema_id = request.schema_id.unwrap_or(url.clone());
     let schema_type = schema_type.unwrap_or(match format_type {
         "MDOC" => "mdoc".to_owned(),
         _ => "ProcivisOneSchema2024".to_owned(),
@@ -560,6 +559,7 @@ pub fn from_create_request_with_id(
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
         schema_type: schema_type.into(),
+        imported_source_url: url,
         schema_id,
         organisation: Some(organisation),
     })
@@ -1414,6 +1414,7 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
             created_date: value.created_date,
             deleted_at: value.deleted_at,
             last_modified: value.last_modified,
+            imported_source_url: value.imported_source_url,
             name: value.name,
             format: value.format,
             revocation_method: value.revocation_method,

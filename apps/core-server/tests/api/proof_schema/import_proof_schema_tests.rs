@@ -21,6 +21,7 @@ async fn test_import_proof_schema_ok() {
         "lastModified": now,
         "name": "test-proof-schema",
         "organisationId": Uuid::new_v4(),
+        "importedSourceUrl": "test",
         "expireDuration": 1000,
         "proofInputSchemas": [
             {
@@ -44,6 +45,7 @@ async fn test_import_proof_schema_ok() {
                     "id": Uuid::new_v4(),
                     "createdDate": now,
                     "lastModified": now,
+                    "importedSourceUrl": "test",
                     "name": "test-credential-schema",
                     "format": "MDOC",
                     "revocationMethod": "NONE",
@@ -116,6 +118,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         "createdDate": now,
         "lastModified": now,
         "name": "test-proof-schema",
+        "importedSourceUrl": "TEST",
         "organisationId": Uuid::new_v4(),
         "expireDuration": 1000,
         "proofInputSchemas": [
@@ -148,6 +151,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
                     "id": credential_schema.id,
                     "createdDate": now,
                     "lastModified": now,
+                    "importedSourceUrl": "TEST",
                     "name": credential_schema.name,
                     "format": credential_schema.format,
                     "revocationMethod": credential_schema.format,

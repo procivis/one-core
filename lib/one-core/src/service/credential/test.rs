@@ -166,6 +166,7 @@ fn generic_credential() -> Credential {
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
+            imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
@@ -223,6 +224,7 @@ fn generic_credential_list_entity() -> Credential {
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
+            imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
@@ -2533,6 +2535,7 @@ fn generate_credential_schema_with_claim_schemas(
     CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
+        imported_source_url: "CORE_URL".to_string(),
         created_date: now,
         last_modified: now,
         name: "nested".to_string(),
@@ -3098,6 +3101,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: now,
+            imported_source_url: "CORE_URL".to_string(),
             last_modified: now,
             name: "schema".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
@@ -3657,6 +3661,7 @@ async fn test_get_credential_success_array_index_sorting() {
         holder_did: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
+            imported_source_url: "CORE_URL".to_string(),
             deleted_at: None,
             created_date: now,
             last_modified: now,
@@ -3967,6 +3972,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
+            imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
@@ -4165,6 +4171,7 @@ async fn test_get_credential_success_array_single_element() {
             deleted_at: None,
             created_date: now,
             last_modified: now,
+            imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
@@ -4297,6 +4304,7 @@ async fn test_create_credential_array(
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
+        imported_source_url: "CORE_URL".to_string(),
         name: "str array".to_string(),
         format: "JWT".to_string(),
         revocation_method: "NONE".to_string(),

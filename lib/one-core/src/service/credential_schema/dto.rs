@@ -207,6 +207,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
+    pub imported_source_url: String,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
 }

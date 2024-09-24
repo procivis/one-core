@@ -26,6 +26,7 @@ pub struct Model {
     pub layout_properties: Option<LayoutProperties>,
     pub schema_type: CredentialSchemaType,
     pub schema_id: String,
+    pub imported_source_url: String,
 }
 
 #[derive(Debug, Clone, EnumIter, From, Into, PartialEq, Eq)]

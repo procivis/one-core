@@ -14,6 +14,7 @@ pub struct ProofSchema {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub expire_duration: u32,
+    pub imported_source_url: String,
 
     // Relations
     pub organisation: Option<Organisation>,

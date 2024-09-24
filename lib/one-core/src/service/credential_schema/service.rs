@@ -223,6 +223,7 @@ impl CredentialSchemaService {
             "", // importing credential schema will always contain the schema_id
             format_type,
             Some(request.schema.schema_type.to_owned().into()),
+            Some(request.schema.imported_source_url),
         )?;
 
         let credential_schema = regenerate_credential_schema_uuids(credential_schema);

@@ -74,6 +74,7 @@ pub struct ImportProofSchemaRestDTO {
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub last_modified: OffsetDateTime,
     pub name: String,
+    pub imported_source_url: String,
     pub organisation_id: OrganisationId,
     pub expire_duration: u32,
     #[into(with_fn = convert_inner)]
@@ -119,6 +120,7 @@ pub struct ImportProofSchemaCredentialSchemaRestDTO {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
+    pub imported_source_url: String,
     #[into(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     pub schema_id: String,

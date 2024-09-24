@@ -29,6 +29,7 @@ pub struct CredentialSchema {
     pub layout_properties: Option<LayoutProperties>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
+    pub imported_source_url: String,
 
     // Relations
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,

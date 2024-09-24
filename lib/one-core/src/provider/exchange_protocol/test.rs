@@ -922,6 +922,7 @@ fn dummy_credential() -> Credential {
         holder_did: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
+            imported_source_url: "CORE_URL".to_string(),
             deleted_at: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),

@@ -91,6 +91,7 @@ async fn test_connect_to_holder_succeeds() {
                             id: Uuid::new_v4().into(),
                             deleted_at: None,
                             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                            imported_source_url: "CORE_URL".to_string(),
                             created_date: OffsetDateTime::now_utc(),
                             last_modified: OffsetDateTime::now_utc(),
                             name: "name".to_string(),
@@ -207,6 +208,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
                         }]),
                         credential_schema: Some(CredentialSchema {
                             id: Uuid::new_v4().into(),
+                            imported_source_url: "CORE_URL".to_string(),
                             deleted_at: None,
                             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                             created_date: OffsetDateTime::now_utc(),

@@ -22,6 +22,7 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
             layout_properties: convert_inner(value.layout_properties),
             schema_id: value.schema_id,
             schema_type: value.schema_type.into(),
+            imported_source_url: value.imported_source_url,
         }
     }
 }

@@ -439,6 +439,8 @@ pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     #[try_into(infallible)]
     pub schema_id: String,
     #[try_into(infallible)]
+    pub imported_source_url: String,
+    #[try_into(infallible)]
     pub schema_type: CredentialSchemaTypeBindingEnum,
     #[try_into(with_fn = convert_inner, infallible)]
     pub layout_type: Option<LayoutTypeBindingEnum>,
@@ -1255,6 +1257,8 @@ pub struct ImportProofSchemaBindingDTO {
     pub organisation_id: String,
     #[try_into(infallible)]
     pub expire_duration: u32,
+    #[try_into(infallible)]
+    pub imported_source_url: String,
     #[try_into(with_fn = try_convert_inner)]
     pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaBindingDTO>,
 }
@@ -1360,6 +1364,8 @@ pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
     #[try_into(infallible)]
     pub schema_id: String,
+    #[try_into(infallible)]
+    pub imported_source_url: String,
     #[try_into(infallible)]
     pub schema_type: CredentialSchemaTypeBindingEnum,
     #[try_into(infallible, with_fn = convert_inner)]

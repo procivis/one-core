@@ -286,6 +286,7 @@ dictionary ImportProofSchemaCredentialSchemaBindingDTO {
   string revocation_method;
   WalletStorageTypeBindingEnum? wallet_storage_type;
   string schema_id;
+  string imported_source_url;
   CredentialSchemaTypeBindingEnum schema_type;
   LayoutTypeBindingEnum? layout_type;
   CredentialSchemaLayoutPropertiesBindingDTO? layout_properties;
@@ -912,6 +913,7 @@ dictionary ImportProofSchemaBindingDTO {
   string last_modified;
   string name;
   string organisation_id;
+  string imported_source_url;
   u32 expire_duration;
   sequence<ImportProofSchemaInputSchemaBindingDTO> proof_input_schemas;
 };
@@ -969,6 +971,7 @@ dictionary ImportCredentialSchemaRequestSchemaBindingDTO {
   string format;
   string revocation_method;
   string organisation_id;
+  string imported_source_url;
 
   sequence<ImportCredentialSchemaClaimSchemaBindingDTO> claims;
   WalletStorageTypeBindingEnum? wallet_storage_type;

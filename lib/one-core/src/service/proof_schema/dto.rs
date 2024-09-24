@@ -98,6 +98,7 @@ pub struct ImportProofSchemaDTO {
     pub organisation_id: OrganisationId,
     pub expire_duration: u32,
     pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaDTO>,
+    pub imported_source_url: String,
 }
 
 #[derive(Clone, Debug)]
@@ -127,6 +128,7 @@ pub struct ImportProofSchemaCredentialSchemaDTO {
     pub revocation_method: RevocationMethod,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
+    pub imported_source_url: String,
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,

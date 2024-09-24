@@ -169,6 +169,9 @@ impl ProofSchemaService {
             &credential_schemas,
             &*self.formatter_provider,
         )?;
+        let base_url = self.base_url.as_ref().ok_or_else(|| {
+            ServiceError::Other("Missing core_base_url for sharing proof schema".to_string())
+        })?;
 
         let now = OffsetDateTime::now_utc();
         let proof_schema = proof_schema_from_create_request(
@@ -177,6 +180,7 @@ impl ProofSchemaService {
             claim_schemas,
             credential_schemas,
             organisation.clone(),
+            base_url,
         )?;
 
         let id = self
@@ -356,6 +360,7 @@ impl ProofSchemaService {
             expire_duration: schema.expire_duration,
             organisation: Some(organisation.clone()),
             input_schemas: Some(input_schemas),
+            imported_source_url: schema.imported_source_url,
         };
 
         let proof_schema_id = self

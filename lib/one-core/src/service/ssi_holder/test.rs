@@ -845,6 +845,7 @@ fn dummy_credential() -> Credential {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
+            imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),

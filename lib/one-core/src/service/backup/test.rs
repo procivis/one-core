@@ -76,6 +76,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             schema: Some(CredentialSchema {
                 id: Uuid::new_v4().into(),
                 deleted_at: None,
+                imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Software),

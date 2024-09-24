@@ -115,6 +115,7 @@ async fn test_presentation_reject_ok() {
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
+            imported_source_url: "CORE_URL".to_string(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
             name: "".to_string(),
@@ -125,6 +126,7 @@ async fn test_presentation_reject_ok() {
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
+                    imported_source_url: "CORE_URL".to_string(),
                     last_modified: OffsetDateTime::now_utc(),
                     deleted_at: None,
                     name: "".to_string(),
@@ -307,6 +309,7 @@ async fn test_get_presentation_definition_ok() {
     let credential_schema = CredentialSchema {
         id: credential_schema_id,
         created_date: OffsetDateTime::now_utc(),
+        imported_source_url: "CORE_URL".to_string(),
         last_modified: OffsetDateTime::now_utc(),
         name: "schema-name".to_string(),
         format: "ISO_MDL".to_string(),

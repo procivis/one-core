@@ -64,6 +64,7 @@ fn generic_credential_schema() -> CredentialSchema {
     CredentialSchema {
         id: Uuid::new_v4().into(),
         deleted_at: None,
+        imported_source_url: "CORE_URL".to_string(),
         created_date: now,
         last_modified: now,
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
@@ -2465,6 +2466,7 @@ async fn test_import_credential_schema_success() {
             schema: ImportCredentialSchemaRequestSchemaDTO {
                 id: external_schema_id.into(),
                 created_date: now,
+                imported_source_url: "CORE_URL".to_string(),
                 last_modified: now,
                 name: "external schema".to_string(),
                 format: "JWT".to_string(),
