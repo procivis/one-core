@@ -8,6 +8,7 @@ use config::ConfigError;
 use one_crypto::CryptoProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
+use provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderCoreImpl;
 use provider::exchange_protocol::ExchangeProtocolProviderImpl;
 use provider::task::provider::TaskProviderImpl;
@@ -517,6 +518,7 @@ impl OneCore {
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 data_provider.get_revocation_list_repository(),
+                ContextCache::new(jsonld_caching_loader.clone(), client.clone()),
                 providers.core_base_url,
             ),
             ssi_holder_service: SSIHolderService::new(

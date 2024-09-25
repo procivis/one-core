@@ -15,6 +15,7 @@ use crate::model::credential::{Credential, CredentialRole, CredentialState, Cred
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::model::revocation_list::RevocationListPurpose;
+use crate::provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
 use crate::provider::credential_formatter::json_ld::model::LdCredential;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchemaData, ExtractPresentationCtx, PublishedClaim,
@@ -32,6 +33,7 @@ use crate::util::key_verification::KeyVerification;
 use crate::util::revocation_update::get_or_create_revocation_list_id;
 
 impl VCAPIService {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         credential_formatter: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
@@ -39,6 +41,7 @@ impl VCAPIService {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
+        json_ld_ctx_cache: ContextCache,
         base_url: Option<String>,
     ) -> Self {
         Self {
@@ -48,6 +51,7 @@ impl VCAPIService {
             did_method_provider,
             key_algorithm_provider,
             revocation_list_repository,
+            jsonld_ctx_cache: json_ld_ctx_cache,
             base_url,
         }
     }
@@ -62,7 +66,7 @@ impl VCAPIService {
             revocation_method,
         } = create_request.options;
 
-        validate_verifiable_credential(&create_request.credential)?;
+        validate_verifiable_credential(&create_request.credential, &self.jsonld_ctx_cache).await?;
 
         let issuer_did = create_request.credential.issuer.to_did_value();
         let issuer = self
@@ -226,7 +230,11 @@ impl VCAPIService {
         &self,
         verify_request: CredentialVerifiyRequest,
     ) -> Result<CredentialVerifyResponse, ServiceError> {
-        validate_verifiable_credential(&verify_request.verifiable_credential)?;
+        validate_verifiable_credential(
+            &verify_request.verifiable_credential,
+            &self.jsonld_ctx_cache,
+        )
+        .await?;
 
         let format = &verify_request
             .options
@@ -267,7 +275,11 @@ impl VCAPIService {
         &self,
         verify_request: PresentationVerifyRequest,
     ) -> Result<PresentationVerifyResponse, ServiceError> {
-        validate_verifiable_presentation(&verify_request.verifiable_presentation)?;
+        validate_verifiable_presentation(
+            &verify_request.verifiable_presentation,
+            &self.jsonld_ctx_cache,
+        )
+        .await?;
 
         let formatter = self
             .credential_formatter
