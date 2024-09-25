@@ -248,10 +248,6 @@ impl ProofSchemaService {
         &self,
         id: ProofSchemaId,
     ) -> Result<ProofSchemaShareResponseDTO, ServiceError> {
-        let base_url = self.base_url.as_ref().ok_or_else(|| {
-            ServiceError::Other("Missing core_base_url for sharing proof schema".to_string())
-        })?;
-
         let proof_schema = self
             .proof_schema_repository
             .get_proof_schema(
@@ -272,7 +268,7 @@ impl ProofSchemaService {
         .await;
 
         Ok(ProofSchemaShareResponseDTO {
-            url: format!("{base_url}/ssi/proof-schema/v1/{id}"),
+            url: proof_schema.imported_source_url,
         })
     }
 

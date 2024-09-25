@@ -1025,6 +1025,14 @@ dictionary ShareProofResponseBindingDTO {
    string url;
 };
 
+dictionary ProofSchemaShareResponseBindingDTO {
+   string url;
+};
+
+dictionary CredentialSchemaShareResponseBindingDTO {
+   string url;
+};
+
 dictionary ResolveJsonLDContextResponseBindingDTO {
   string context;
 };
@@ -1104,6 +1112,12 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   ShareProofResponseBindingDTO share_proof(string proof_id);
+
+  [Throws=BindingError]
+  ProofSchemaShareResponseBindingDTO share_proof_schema(string proof_schema_id);
+
+  [Throws=BindingError]
+  CredentialSchemaShareResponseBindingDTO share_credential_schema(string credential_schema_id);
 
   [Throws=BindingError]
   ProofRequestBindingDTO get_proof(string proof_id);

@@ -35,8 +35,9 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
     CredentialSchemaDetailResponseDTO, CredentialSchemaLayoutPropertiesRequestDTO,
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaLogoPropertiesRequestDTO,
-    GetCredentialSchemaListResponseDTO, ImportCredentialSchemaLayoutPropertiesDTO,
-    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
+    CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
+    ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
+    ImportCredentialSchemaRequestSchemaDTO,
 };
 use one_core::service::did::dto::{DidListItemResponseDTO, GetDidListResponseDTO};
 use one_core::service::error::ServiceError;
@@ -51,6 +52,7 @@ use one_core::service::proof_schema::dto::{
     GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, GetProofSchemaResponseDTO,
     ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO, ImportProofSchemaInputSchemaDTO,
     ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
+    ProofSchemaShareResponseDTO,
 };
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::service::trust_anchor::dto::{
@@ -1438,6 +1440,18 @@ pub enum ScanToVerifyBarcodeTypeBindingEnum {
 #[derive(From)]
 #[from(EntityShareResponseDTO)]
 pub struct ShareProofResponseBindingDTO {
+    pub url: String,
+}
+
+#[derive(From)]
+#[from(ProofSchemaShareResponseDTO)]
+pub struct ProofSchemaShareResponseBindingDTO {
+    pub url: String,
+}
+
+#[derive(From)]
+#[from(CredentialSchemaShareResponseDTO)]
+pub struct CredentialSchemaShareResponseBindingDTO {
     pub url: String,
 }
 

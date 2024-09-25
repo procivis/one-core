@@ -39,6 +39,8 @@ mod resolve_json_ld_context;
 mod retract_proof;
 mod rollback_import;
 mod run_task;
+mod share_credential_schema;
 mod share_proof;
+mod share_proof_schema;
 mod unpack_backup;
 mod version;
