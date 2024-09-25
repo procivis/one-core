@@ -248,17 +248,29 @@ impl rcgen::RemoteKeyPair for RemoteKeyAdapter {
     }
 
     fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, rcgen::Error> {
-        let _guard = self.handle.enter();
+        let handle = self.handle.clone();
+        let key_storage = self.key_storage.clone();
+        let key = self.key.clone();
+        let msg = msg.to_vec();
 
-        futures::executor::block_on(async {
-            self.key_storage
-                .sign(&self.key.to_owned(), msg)
-                .await
-                .map_err(|error| {
-                    tracing::error!(%error,  "Failed to sign CSR");
+        std::thread::spawn(move || {
+            let _guard = handle.enter();
+            let handle = tokio::spawn(async move {
+                key_storage.sign(&key, &msg).await.map_err(|error| {
+                    tracing::error!(%error, "Failed to sign CSR");
                     rcgen::Error::RemoteKeyError
                 })
+            });
+            futures::executor::block_on(handle).map_err(|_| {
+                tracing::error!("Failed to join CSR task");
+                rcgen::Error::RemoteKeyError
+            })?
         })
+        .join()
+        .map_err(|_| {
+            tracing::error!("Failed to join CSR thread");
+            rcgen::Error::RemoteKeyError
+        })?
     }
 
     fn algorithm(&self) -> &'static rcgen::SignatureAlgorithm {
