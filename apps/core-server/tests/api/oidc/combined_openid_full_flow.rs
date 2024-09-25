@@ -64,7 +64,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
             "NONE",
             &jsonld_claim_schemas,
             "JSON_LD_CLASSIC",
-            "jsonld_schema_id",
+            &format!("{base_url}/ssi/context/v1/{jsonld_schema_id}"),
         )
         .await;
 
@@ -132,7 +132,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": jsonld_credential_schema.schema_id
+                                "const": &format!("{base_url}/ssi/context/v1/{jsonld_schema_id}")
                             }
                         },
                         {
@@ -304,7 +304,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
             "NONE",
             &jsonld_claim_schemas,
             "JSON_LD_CLASSIC",
-            &jsonld_credential_schema.schema_id,
+            &format!("{base_url}/ssi/context/v1/{jsonld_schema_id}"),
         )
         .await;
 
@@ -412,7 +412,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": jsonld_credential_schema.schema_id
+                                "const": &format!("{base_url}/ssi/context/v1/{jsonld_schema_id}")
                             }
                         },
                         {

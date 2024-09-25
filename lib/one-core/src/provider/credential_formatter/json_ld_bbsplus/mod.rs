@@ -9,6 +9,7 @@ use serde::Deserialize;
 use serde_with::{serde_as, DurationSeconds};
 use shared_types::DidValue;
 use time::Duration;
+use url::Url;
 
 use super::json_ld::context::caching_loader::ContextCache;
 use super::json_ld::jsonld_forbidden_claim_names;
@@ -54,6 +55,7 @@ pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub leeway: Duration,
     pub embed_layout_properties: Option<bool>,
+    pub allowed_contexts: Option<Vec<Url>>,
 }
 
 #[async_trait]

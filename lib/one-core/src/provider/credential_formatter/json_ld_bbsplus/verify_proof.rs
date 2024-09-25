@@ -7,6 +7,7 @@ use super::super::json_ld::model::LdCredential;
 use super::JsonLdBbsplus;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld;
+use crate::provider::credential_formatter::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::{
     BbsDerivedProofComponents, CBOR_PREFIX_DERIVED,
 };
@@ -21,6 +22,18 @@ impl JsonLdBbsplus {
         let mut ld_credential: LdCredential = serde_json::from_str(credential).map_err(|e| {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
         })?;
+
+        if !json_ld::is_context_list_valid(
+            &ld_credential.context,
+            self.params.allowed_contexts.as_ref(),
+            &DEFAULT_ALLOWED_CONTEXTS,
+            ld_credential.credential_schema.as_ref(),
+            ld_credential.id.as_ref(),
+        ) {
+            return Err(FormatterError::CouldNotVerify(
+                "Used context is not allowed".to_string(),
+            ));
+        }
 
         let Some(mut ld_proof) = ld_credential.proof.clone() else {
             return Err(FormatterError::CouldNotVerify("Missing proof".to_string()));

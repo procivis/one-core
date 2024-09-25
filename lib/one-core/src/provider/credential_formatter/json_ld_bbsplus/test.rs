@@ -1,25 +1,30 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use indexmap::indexset;
+use indexmap::{indexset, IndexSet};
 use mockall::predicate::eq;
 use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::json;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
+use url::Url;
 
 use super::derived_proof::find_selective_indices;
 use super::model::{GroupEntry, TransformedEntry};
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
-use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdCredentialSubject};
+use crate::provider::credential_formatter::json_ld::is_context_list_valid;
+use crate::provider::credential_formatter::json_ld::model::{
+    ContextType, LdCredential, LdCredentialSubject,
+};
 use crate::provider::credential_formatter::json_ld::test_utilities::prepare_caching_loader;
 use crate::provider::credential_formatter::json_ld_bbsplus::remove_undisclosed_keys::remove_undisclosed_keys;
 use crate::provider::credential_formatter::json_ld_bbsplus::{JsonLdBbsplus, Params};
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchemaData, CredentialSchemaMetadata, Issuer, MockSignatureProvider,
-    PublishedClaim, PublishedClaimValue,
+    CredentialData, CredentialSchema, CredentialSchemaData, CredentialSchemaMetadata, Issuer,
+    MockSignatureProvider, PublishedClaim, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
@@ -40,6 +45,7 @@ async fn test_canonize_any() {
         Params {
             leeway: Duration::seconds(10),
             embed_layout_properties: None,
+            allowed_contexts: None,
         },
         Arc::new(crypto),
         Some("base".to_owned()),
@@ -78,6 +84,7 @@ async fn test_transform_canonized() {
         Params {
             leeway: Duration::seconds(10),
             embed_layout_properties: None,
+            allowed_contexts: None,
         },
         Arc::new(crypto),
         Some("base".to_owned()),
@@ -122,6 +129,7 @@ async fn test_transform_grouped() {
         Params {
             leeway: Duration::seconds(10),
             embed_layout_properties: None,
+            allowed_contexts: None,
         },
         Arc::new(crypto),
         Some("base".to_owned()),
@@ -523,6 +531,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
     let params = Params {
         leeway: Duration::seconds(60),
         embed_layout_properties: Some(include_layout),
+        allowed_contexts: None,
     };
     let algorithm = "BBS_PLUS";
 
@@ -594,4 +603,116 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
 
     let parsed_json: serde_json::Value = serde_json::from_str(&formatted_credential).unwrap();
     parsed_json
+}
+
+#[test]
+fn verify_context_params_valid() {
+    let context_list = IndexSet::from([ContextType::Url(
+        "https://www.example.com/v1".try_into().unwrap(),
+    )]);
+    let allowed_contexts = Some(vec![Url::from_str("https://www.example.com/v1").unwrap()]);
+    let default_allowed_contexts = ["https://www.example-default.com"];
+    let credential_schemas = None;
+
+    assert!(is_context_list_valid(
+        &context_list,
+        allowed_contexts.as_ref(),
+        &default_allowed_contexts,
+        credential_schemas.as_ref(),
+        None,
+    ));
+}
+
+#[test]
+fn verify_context_params_valid_in_schema() {
+    let context_list = IndexSet::from([ContextType::Url(
+        "https://www.example.com/v1/schema1".try_into().unwrap(),
+    )]);
+    let allowed_contexts = Some(vec![Url::from_str("https://www.example.com/v1").unwrap()]);
+    let default_allowed_contexts = ["https://www.example-default.com"];
+    let credential_schemas: Option<Vec<CredentialSchema>> = Some(vec![CredentialSchema {
+        id: "https://www.example.com/v1/schema1".to_string(),
+        r#type: String::new(),
+        metadata: None,
+    }]);
+
+    assert!(is_context_list_valid(
+        &context_list,
+        allowed_contexts.as_ref(),
+        &default_allowed_contexts,
+        credential_schemas.as_ref(),
+        None,
+    ));
+}
+
+#[test]
+fn verify_context_params_valid_in_default() {
+    let context_list = IndexSet::from([ContextType::Url(
+        "https://www.example-default.com/v1/default"
+            .try_into()
+            .unwrap(),
+    )]);
+    let allowed_contexts = None;
+    let default_allowed_contexts = ["https://www.example-default.com/v1/default"];
+    let credential_schemas: Option<Vec<CredentialSchema>> = Some(vec![CredentialSchema {
+        id: "https://www.example.com/v1/schema1".to_string(),
+        r#type: String::new(),
+        metadata: None,
+    }]);
+
+    assert!(is_context_list_valid(
+        &context_list,
+        allowed_contexts.as_ref(),
+        &default_allowed_contexts,
+        credential_schemas.as_ref(),
+        None,
+    ));
+}
+
+#[test]
+fn verify_context_params_invalid_with_default() {
+    let context_list = IndexSet::from([ContextType::Url(
+        "https://www.example-default.com/v1/invalid"
+            .try_into()
+            .unwrap(),
+    )]);
+    let allowed_contexts = None;
+    let default_allowed_contexts = ["https://www.example-default.com/v1/default"];
+    let credential_schemas: Option<Vec<CredentialSchema>> = Some(vec![CredentialSchema {
+        id: "https://www.example.com/v1/schema1".to_string(),
+        r#type: String::new(),
+        metadata: None,
+    }]);
+
+    assert!(!is_context_list_valid(
+        &context_list,
+        allowed_contexts.as_ref(),
+        &default_allowed_contexts,
+        credential_schemas.as_ref(),
+        None,
+    ));
+}
+
+#[test]
+fn verify_context_params_invalid_with_provided() {
+    let context_list = IndexSet::from([ContextType::Url(
+        "https://www.example-default.com/v1/invalid"
+            .try_into()
+            .unwrap(),
+    )]);
+    let allowed_contexts = Some(vec![Url::from_str("https://www.example.com/v1").unwrap()]);
+    let default_allowed_contexts = ["https://www.example-default.com/v1/default"];
+    let credential_schemas: Option<Vec<CredentialSchema>> = Some(vec![CredentialSchema {
+        id: "https://www.example.com/v1/schema1".to_string(),
+        r#type: String::new(),
+        metadata: None,
+    }]);
+
+    assert!(!is_context_list_valid(
+        &context_list,
+        allowed_contexts.as_ref(),
+        &default_allowed_contexts,
+        credential_schemas.as_ref(),
+        None,
+    ));
 }

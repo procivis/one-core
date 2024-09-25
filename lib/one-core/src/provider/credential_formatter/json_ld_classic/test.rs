@@ -129,6 +129,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
     let params = Params {
         leeway: Duration::seconds(60),
         embed_layout_properties: Some(include_layout),
+        allowed_contexts: None,
     };
     let algorithm = "ES256";
 
@@ -286,6 +287,7 @@ async fn test_format_presentation_multi_tokens() {
     let params = Params {
         leeway: Duration::seconds(60),
         embed_layout_properties: Some(true),
+        allowed_contexts: None,
     };
     let algorithm = "ES256";
 
@@ -495,6 +497,7 @@ async fn test_parse_presentation_multi_tokens() {
     let params = Params {
         leeway: Duration::seconds(60),
         embed_layout_properties: Some(true),
+        allowed_contexts: None,
     };
 
     let key_algorithm = MockKeyAlgorithm::new();

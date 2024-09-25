@@ -98,7 +98,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_BBSPLUS",
-            &schema_id.to_string(),
+            &format!("{base_url}/ssi/schema/v1/{schema_id}"),
         )
         .await;
 
@@ -255,18 +255,18 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
 
     let holder_remote_issuer_did = remote_issuer_did.unwrap();
 
-    let schema_id = Uuid::new_v4();
+    let holder_schema_id = Uuid::new_v4();
     let holder_credential_schema = holder_context
         .db
         .credential_schemas
         .create_with_claims(
-            &schema_id,
+            &holder_schema_id,
             "Test",
             &holder_organisation,
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_BBSPLUS",
-            &credential_schema.schema_id,
+            &format!("{base_url}/ssi/schema/v1/{schema_id}"),
         )
         .await;
 
@@ -526,7 +526,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_BBSPLUS",
-            &schema_id.to_string(),
+            &format!("{base_url}/ssi/schema/v1/{schema_id}"),
         )
         .await;
 
@@ -686,18 +686,18 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
 
     let holder_remote_issuer_did = remote_issuer_did.unwrap();
 
-    let schema_id = Uuid::new_v4();
+    let holder_schema_id = Uuid::new_v4();
     let holder_credential_schema = holder_context
         .db
         .credential_schemas
         .create_with_claims(
-            &schema_id,
+            &holder_schema_id,
             "Test",
             &holder_organisation,
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_BBSPLUS",
-            &credential_schema.schema_id,
+            &format!("{base_url}/ssi/schema/v1/{schema_id}"),
         )
         .await;
 
