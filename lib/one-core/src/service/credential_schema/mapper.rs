@@ -38,6 +38,7 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
             last_modified: value.last_modified,
             name: value.name,
             format: value.format,
+            imported_source_url: value.imported_source_url,
             revocation_method: value.revocation_method,
             organisation_id,
             claims: claim_schemas,

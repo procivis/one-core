@@ -51,10 +51,7 @@ async fn test_share_proof_schema() {
     assert_eq!(resp.status(), 200);
 
     let resp = resp.json_value().await;
-    assert!(resp["url"]
-        .as_str()
-        .unwrap()
-        .ends_with(&format!("/ssi/proof-schema/v1/{}", proof_schema.id)));
+    assert!(resp["url"].as_str().unwrap().eq("CORE_URL"));
 
     let list = context
         .db

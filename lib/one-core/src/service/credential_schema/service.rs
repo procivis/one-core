@@ -253,11 +253,6 @@ impl CredentialSchemaService {
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<CredentialSchemaShareResponseDTO, ServiceError> {
-        let core_base_url = self
-            .core_base_url
-            .as_ref()
-            .ok_or_else(|| ServiceError::Other("Missing core base_url".to_string()))?;
-
         let credential_schema = self
             .credential_schema_repository
             .get_credential_schema(
@@ -280,7 +275,7 @@ impl CredentialSchemaService {
         .await;
 
         Ok(CredentialSchemaShareResponseDTO {
-            url: format!("{core_base_url}/ssi/schema/v1/{credential_schema_id}"),
+            url: credential_schema.imported_source_url,
         })
     }
 }

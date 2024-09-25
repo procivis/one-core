@@ -25,9 +25,5 @@ async fn test_share_credential_schema_success() {
     // THEN
     assert_eq!(resp.status(), 200);
 
-    let expected_url = format!(
-        "{}/ssi/schema/v1/{}",
-        context.config.app.core_base_url, credential_schema.id
-    );
-    assert_eq!(resp.json_value().await["url"], expected_url);
+    assert_eq!(resp.json_value().await["url"], "CORE_URL");
 }

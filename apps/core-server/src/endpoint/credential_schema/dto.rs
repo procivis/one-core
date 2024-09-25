@@ -113,6 +113,7 @@ pub struct CredentialSchemaResponseRestDTO {
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
+    pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[from(with_fn = convert_inner)]

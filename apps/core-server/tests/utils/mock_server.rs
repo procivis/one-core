@@ -128,6 +128,7 @@ impl MockServer {
                         "lastModified": "2023-11-08T15:46:14.997Z",
                         "name": "detox-e2e-revocable-12a4212d-9b28-4bb0-9640-23c938f8a8b1",
                         "organisationId": "2476ebaa-0108-413d-aa72-c2a6babd423f",
+                        "importedSourceUrl": "CORE_URL",
                         "revocationMethod": "BITSTRINGSTATUSLIST",
                         "schemaId": schema_id.to_string(),
                         "schemaType": schema_type.unwrap_or("ProcivisOneSchema2024"),

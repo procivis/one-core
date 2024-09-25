@@ -28,6 +28,7 @@ pub(super) fn convert_proof_schema_to_response(
         created_date: value.created_date,
         last_modified: value.last_modified,
         name: value.name,
+        imported_source_url: value.imported_source_url,
         organisation_id: value
             .organisation
             .ok_or(ServiceError::MappingError(

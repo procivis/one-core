@@ -52,6 +52,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub claims: Vec<CredentialClaimSchemaDTO>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
+    pub imported_source_url: String,
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
