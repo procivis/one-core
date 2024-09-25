@@ -35,6 +35,9 @@ pub enum VcValidationError {
 
     #[error("Related resource MUST contain digestSRI or digestMultibase")]
     InvalidRelatedResource,
+
+    #[error(transparent)]
+    JsonLd(#[from] JsonLdError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -58,11 +61,21 @@ pub enum VpValidationError {
 
     #[error(transparent)]
     Vc(#[from] VcValidationError),
+
+    #[error(transparent)]
+    JsonLd(#[from] JsonLdError),
 }
 
-pub(super) fn validate_verifiable_credential(
+#[derive(Debug, thiserror::Error)]
+#[error("Invalid JSON-LD document")]
+pub struct JsonLdError(Box<dyn std::error::Error + Send + Sync + 'static>);
+
+pub(super) async fn validate_verifiable_credential(
     credential: &LdCredential,
+    document_loader: &impl json_ld_0_21::Loader,
 ) -> Result<(), VcValidationError> {
+    validate_json_ld(&serde_json::to_string(credential).unwrap(), document_loader).await?;
+
     match credential
         .context
         .iter()
@@ -125,9 +138,16 @@ pub(super) fn validate_verifiable_credential(
     Ok(())
 }
 
-pub(super) fn validate_verifiable_presentation(
+pub(super) async fn validate_verifiable_presentation(
     presentation: &LdPresentation,
+    document_loader: &impl json_ld_0_21::Loader,
 ) -> Result<(), VpValidationError> {
+    validate_json_ld(
+        &serde_json::to_string(presentation).unwrap(),
+        document_loader,
+    )
+    .await?;
+
     if presentation.verifiable_credential.is_empty() {
         return Err(VpValidationError::MissingVerifiableCredential);
     }
@@ -135,7 +155,7 @@ pub(super) fn validate_verifiable_presentation(
     for vc in &presentation.verifiable_credential {
         let vc =
             serde_json::from_value(vc.clone().into()).map_err(|_| VpValidationError::InvalidVc)?;
-        validate_verifiable_credential(&vc)?;
+        validate_verifiable_credential(&vc, document_loader).await?;
     }
 
     match presentation
@@ -155,6 +175,37 @@ pub(super) fn validate_verifiable_presentation(
     {
         return Err(VpValidationError::MissingVerifiablePresentationType);
     }
+
+    Ok(())
+}
+
+async fn validate_json_ld(
+    document: &str,
+    document_loader: &impl json_ld_0_21::Loader,
+) -> Result<(), JsonLdError> {
+    use json_ld_0_21::expansion::{Action, Policy};
+    use json_ld_0_21::rdf_types::vocabulary;
+    use json_ld_0_21::syntax::{Parse, Value};
+    use json_ld_0_21::{JsonLdProcessor, Options};
+
+    let (document, _) = Value::parse_str(document).map_err(|err| JsonLdError(err.into()))?;
+    let document = json_ld_0_21::RemoteDocument::new(None, None, document);
+
+    let _expanded_document = JsonLdProcessor::expand_full(
+        &document,
+        vocabulary::no_vocabulary_mut(),
+        document_loader,
+        Options {
+            expansion_policy: Policy {
+                invalid: Action::Reject,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        (),
+    )
+    .await
+    .map_err(|err| JsonLdError(err.into()))?;
 
     Ok(())
 }

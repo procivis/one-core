@@ -171,6 +171,36 @@ impl Loader<ArcIri, Location<ArcIri>> for ContextCache {
     }
 }
 
+impl json_ld_0_21::Loader for ContextCache {
+    async fn load(
+        &self,
+        url: &json_ld_0_21::Iri,
+    ) -> Result<json_ld_0_21::RemoteDocument<json_ld_0_21::IriBuf>, json_ld_0_21::LoadError> {
+        use json_ld_0_21::syntax::Parse;
+
+        let context = self
+            .loader
+            .get(url, self.resolver.clone())
+            .await
+            .map_err(|err| json_ld_0_21::LoadError::new(url.to_owned(), err))?;
+
+        let document = json_ld_0_21::syntax::Value::parse_slice(&context)
+            .map_err(|err| json_ld_0_21::LoadError::new(url.to_owned(), err))?
+            .0;
+
+        let content_type = "application/ld+json"
+            .parse()
+            .map(Some)
+            .map_err(|err| json_ld_0_21::LoadError::new(url.to_owned(), err))?;
+
+        Ok(json_ld_0_21::RemoteDocument::new(
+            Some(url.to_owned()),
+            content_type,
+            document,
+        ))
+    }
+}
+
 const RFC_2822_BUT_WITH_GMT: &[time::format_description::FormatItem<'static>] = time::macros::format_description!(
     "[weekday repr:short], [day] [month repr:short] [year] [hour]:[minute]:[second] GMT"
 );

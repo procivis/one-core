@@ -31,6 +31,7 @@ ignore = [
     { id = "RUSTSEC-2024-0363", reason = "will update sea-orm as soon as the fix is introduced to sqlx" },
     { id = "RUSTSEC-2024-0370", reason = "proc-macro-error crate unmaintained, indirect dependency of a few libs" },
     { id = "RUSTSEC-2023-0086", reason = "complex dependency upgrade path, will be revisited ASAP" },
+    { id = "RUSTSEC-2022-0040", reason = "`owning_ref` doesn't seem to be used anywhere inside json-ld" },
 ]
 
 # This section is considered when running `cargo deny check licenses`
@@ -66,6 +67,9 @@ exceptions = [
     { allow = ["MPL-2.0"], name = "uniffi_meta", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_testing", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_udl", version = "*" },
+    { allow = ["MPL-2.0"], name = "bitmaps", version = "*" },
+    { allow = ["MPL-2.0"], name = "im", version = "*" },
+    { allow = ["MPL-2.0"], name = "sized-chunks", version = "*" },
 
     # Allow OpenSSL for ring
     { allow = ["OpenSSL"], name = "ring", version = "*" },

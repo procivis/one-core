@@ -33,6 +33,7 @@ itertools             = { version = "0.13" }
 josekit               = { version = "0.8", features = ["vendored"] }
 json-ld               = { version = "0.15" }
 json-syntax           = { version = "0.9" }
+json_ld_0_21          = { version = "0.21", package = "json-ld" }
 jsonptr               = { version = "0.5" }
 locspan               = { version = "0.7" }
 mime                  = { version = "0.3" }
