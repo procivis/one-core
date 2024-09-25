@@ -9,6 +9,7 @@ mod create_proof;
 mod create_proof_schema;
 mod delete_credential;
 mod delete_credential_schema;
+mod delete_proof_claims;
 mod delete_proof_schema;
 mod finalize_import;
 mod generate_key;

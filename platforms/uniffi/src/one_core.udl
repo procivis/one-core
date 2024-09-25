@@ -1114,6 +1114,9 @@ interface OneCoreBinding {
   ShareProofResponseBindingDTO share_proof(string proof_id);
 
   [Throws=BindingError]
+  void delete_proof_claims(string proof_id);
+
+  [Throws=BindingError]
   ProofSchemaShareResponseBindingDTO share_proof_schema(string proof_schema_id);
 
   [Throws=BindingError]

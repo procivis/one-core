@@ -33,7 +33,6 @@ pub enum ErrorCode {
     BR_0018,
     BR_0019,
     BR_0020,
-    BR_0021,
     BR_0022,
     BR_0023,
     BR_0024,
