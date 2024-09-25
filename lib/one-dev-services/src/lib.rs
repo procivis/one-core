@@ -321,6 +321,7 @@ impl OneDevCore {
                                 config.formatter_config.leeway.try_into().unwrap(),
                             ),
                             embed_layout_properties: None,
+                            allowed_contexts: None,
                         },
                         crypto_provider.clone(),
                         None,

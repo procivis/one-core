@@ -76,7 +76,7 @@ async fn test_openid4vc_jsonld_flow(
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_CLASSIC",
-            &schema_id.to_string(),
+            &format!("{base_url}/ssi/schema/v1/{schema_id}"),
         )
         .await;
 
@@ -204,18 +204,18 @@ async fn test_openid4vc_jsonld_flow(
     )
     .await;
 
-    let schema_id = Uuid::new_v4();
+    let holder_schema_id = Uuid::new_v4();
     let holder_credential_schema = holder_context
         .db
         .credential_schemas
         .create_with_claims(
-            &schema_id,
+            &holder_schema_id,
             "Test",
             &holder_organisation,
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_CLASSIC",
-            &credential_schema.schema_id,
+            &format!("{base_url}/ssi/schema/v1/{schema_id}"),
         )
         .await;
 
@@ -425,7 +425,7 @@ async fn test_openid4vc_jsonld_flow_array(
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_CLASSIC",
-            &schema_id.to_string(),
+            &format!("{base_url}/ssi/schema/v1/{schema_id}"),
         )
         .await;
 
@@ -565,18 +565,18 @@ async fn test_openid4vc_jsonld_flow_array(
     )
     .await;
 
-    let schema_id = Uuid::new_v4();
+    let holder_schema_id = Uuid::new_v4();
     let holder_credential_schema = holder_context
         .db
         .credential_schemas
         .create_with_claims(
-            &schema_id,
+            &holder_schema_id,
             "Test",
             &holder_organisation,
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_CLASSIC",
-            &credential_schema.schema_id,
+            &format!("{base_url}/ssi/schema/v1/{schema_id}"),
         )
         .await;
 

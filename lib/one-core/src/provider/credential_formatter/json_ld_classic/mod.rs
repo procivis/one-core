@@ -11,8 +11,9 @@ use serde_json::json;
 use serde_with::{serde_as, DurationSeconds};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
+use url::Url;
 
-use super::json_ld::model::LdCredentialSubject;
+use super::json_ld::model::{LdCredentialSubject, DEFAULT_ALLOWED_CONTEXTS};
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
@@ -51,6 +52,7 @@ pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     leeway: Duration,
     embed_layout_properties: Option<bool>,
+    allowed_contexts: Option<Vec<Url>>,
 }
 
 #[async_trait]
@@ -448,6 +450,18 @@ impl JsonLdClassic {
         let credential: LdCredential = serde_json::from_str(credential)
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
 
+        if !json_ld::is_context_list_valid(
+            &credential.context,
+            self.params.allowed_contexts.as_ref(),
+            &DEFAULT_ALLOWED_CONTEXTS,
+            credential.credential_schema.as_ref(),
+            credential.id.as_ref(),
+        ) {
+            return Err(FormatterError::CouldNotVerify(
+                "Used context is not allowed".to_string(),
+            ));
+        }
+
         if let Some(verification_fn) = verification_fn {
             verify_credential_signature(
                 credential.clone(),
@@ -500,6 +514,18 @@ impl JsonLdClassic {
     ) -> Result<Presentation, FormatterError> {
         let presentation: LdPresentation = serde_json::from_str(json_ld)
             .map_err(|e| FormatterError::CouldNotExtractPresentation(e.to_string()))?;
+
+        if !json_ld::is_context_list_valid(
+            &presentation.context,
+            self.params.allowed_contexts.as_ref(),
+            &DEFAULT_ALLOWED_CONTEXTS,
+            None,
+            None,
+        ) {
+            return Err(FormatterError::CouldNotVerify(
+                "Used context is not allowed".to_string(),
+            ));
+        }
 
         if let Some(verification_fn) = verification_fn {
             verify_presentation_signature(

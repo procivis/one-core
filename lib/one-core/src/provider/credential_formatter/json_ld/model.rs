@@ -13,6 +13,13 @@ use crate::provider::credential_formatter::model::{
 
 pub type VerifiableCredential = Vec<serde_json::Map<String, serde_json::Value>>;
 
+pub static DEFAULT_ALLOWED_CONTEXTS: [&str; 4] = [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://www.w3.org/2018/credentials/v1",
+    "https://w3c.github.io/vc-bitstring-status-list/contexts/v1.jsonld",
+    "https://w3id.org/security/data-integrity/v2",
+];
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 #[serde(untagged)]
 pub enum ContextType {
