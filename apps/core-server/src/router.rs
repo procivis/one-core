@@ -171,6 +171,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(proof::controller::retract_proof),
         )
         .route(
+            "/api/proof-request/v1/:id/claims",
+            delete(proof::controller::delete_proof_claims),
+        )
+        .route(
             "/api/organisation/v1",
             get(organisation::controller::get_organisations)
                 .post(organisation::controller::post_organisation),
@@ -454,6 +458,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             proof::controller::share_proof,
             proof::controller::get_proof_presentation_definition,
             proof::controller::retract_proof,
+            proof::controller::delete_proof_claims,
 
             ssi::controller::ssi_verifier_connect,
             ssi::controller::ssi_verifier_submit_proof,

@@ -531,17 +531,14 @@ pub enum ErrorCode {
     #[strum(to_string = "Proof schema: no required claim")]
     BR_0017,
 
-    #[strum(to_string = "Proof schema: Duplicit claim schema")]
+    #[strum(to_string = "Proof schema: duplicate claim schema")]
     BR_0018,
 
-    #[strum(to_string = "The proof schema is deleted")]
+    #[strum(to_string = "Proof schema deleted")]
     BR_0019,
 
     #[strum(to_string = "Missing proof schema")]
     BR_0020,
-
-    #[strum(to_string = "The proof schema is deleted")]
-    BR_0021,
 
     #[strum(to_string = "Organisation not found")]
     BR_0022,
@@ -618,7 +615,7 @@ pub enum ErrorCode {
     #[strum(to_string = "Missing exchange protocol")]
     BR_0046,
 
-    #[strum(to_string = "Model mapping")]
+    #[strum(to_string = "Model mapping error")]
     BR_0047,
 
     #[strum(to_string = "OpenID4VCI error")]
@@ -660,7 +657,7 @@ pub enum ErrorCode {
     #[strum(to_string = "Missing signer algorithm")]
     BR_0060,
 
-    #[strum(to_string = "Provided datatype is not valid or value doesn't match the expected type")]
+    #[strum(to_string = "Provided datatype is invalid or value does not match the expected type")]
     BR_0061,
 
     #[strum(to_string = "Exchange protocol provider error")]
@@ -768,7 +765,7 @@ pub enum ErrorCode {
     #[strum(to_string = "Trust anchor not found")]
     BR_0115,
 
-    #[strum(to_string = "Invalid claim type (mdoc top level only objects allowed)")]
+    #[strum(to_string = "Invalid claim type (mdoc: root level claims must be objects)")]
     BR_0117,
 
     #[strum(to_string = "Attribute combination not allowed")]

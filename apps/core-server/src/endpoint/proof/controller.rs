@@ -12,7 +12,8 @@ use crate::dto::common::{
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, OkOrErrorResponse,
+    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
+    OkOrErrorResponse,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -146,4 +147,24 @@ pub(crate) async fn retract_proof(
         .map(|id| EntityResponseRestDTO { id: id.into() });
 
     OkOrErrorResponse::from_result(result, state, " retracting proof")
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/proof-request/v1/{id}/claims",
+    responses(EmptyOrErrorResponse),
+    params(
+    ("id" = ProofId, Path, description = "Proof id")
+    ),
+    tag = "proof_management",
+    security(
+    ("bearer" = [])
+    ),
+)]
+pub(crate) async fn delete_proof_claims(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
+) -> EmptyOrErrorResponse {
+    let result = state.core.proof_service.delete_proof_claims(id).await;
+    EmptyOrErrorResponse::from_result(result, state, " deleting proof claims")
 }

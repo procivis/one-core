@@ -509,6 +509,32 @@ impl ProofService {
         Ok(proof_id)
     }
 
+    pub async fn delete_proof_claims(&self, proof_id: ProofId) -> Result<(), ServiceError> {
+        let proof = self
+            .proof_repository
+            .get_proof(
+                &proof_id,
+                &ProofRelations {
+                    schema: Some(ProofSchemaRelations {
+                        organisation: Some(Default::default()),
+                        proof_inputs: Some(Default::default()),
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .ok_or(EntityNotFoundError::Proof(proof_id))?;
+
+        self.proof_repository.delete_proof_claims(&proof.id).await?;
+        log_history_event_proof(
+            &*self.history_repository,
+            &proof,
+            HistoryAction::ClaimsRemoved,
+        )
+        .await?;
+        Ok(())
+    }
+
     pub async fn propose_proof(
         &self,
         exchange: String,

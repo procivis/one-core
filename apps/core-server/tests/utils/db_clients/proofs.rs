@@ -8,7 +8,8 @@ use one_core::model::interaction::Interaction;
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::OrganisationRelations;
 use one_core::model::proof::{
-    Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
+    Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum,
+    ProofStateRelations,
 };
 use one_core::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -52,7 +53,18 @@ impl ProofsDB {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
             }]),
-            claims: None,
+            claims: Some(vec![ProofClaim {
+                claim: Claim {
+                    id: Default::default(),
+                    credential_id: Default::default(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    value: "test".to_string(),
+                    path: "test".to_string(),
+                    schema: None,
+                },
+                credential: None,
+            }]),
             schema: proof_schema.cloned(),
             verifier_did: Some(verifier_did.to_owned()),
             holder_did: holder_did.cloned(),
