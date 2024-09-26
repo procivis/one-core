@@ -418,6 +418,7 @@ pub struct CredentialSchemaBindingDTO {
     pub schema_id: String,
     pub schema_type: CredentialSchemaTypeBindingEnum,
     pub layout_type: Option<LayoutTypeBindingEnum>,
+    pub imported_source_url: String,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
 }
 
@@ -468,6 +469,7 @@ pub struct CredentialSchemaDetailBindingDTO {
     pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaTypeBindingEnum,
+    pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
     pub layout_type: Option<LayoutTypeBindingEnum>,
     #[from(with_fn = convert_inner)]

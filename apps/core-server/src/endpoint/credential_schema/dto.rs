@@ -37,6 +37,7 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub imported_source_url: String,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     #[from(with_fn = convert_inner)]

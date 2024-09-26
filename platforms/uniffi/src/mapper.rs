@@ -130,6 +130,7 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
             wallet_storage_type: convert_inner(value.wallet_storage_type),
             schema_id: value.schema_id,
             schema_type: value.schema_type.into(),
+            imported_source_url: value.imported_source_url,
             layout_type: convert_inner(value.layout_type),
             layout_properties: convert_inner(value.layout_properties),
         }
@@ -268,6 +269,7 @@ impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
             last_modified: value.last_modified.format_timestamp(),
             name: value.name,
             format: value.format,
+            imported_source_url: value.imported_source_url,
             revocation_method: value.revocation_method,
             wallet_storage_type: convert_inner(value.wallet_storage_type),
             schema_id: value.schema_id,
