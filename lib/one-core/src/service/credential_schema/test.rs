@@ -24,6 +24,9 @@ use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::revocation::model::RevocationMethodCapabilities;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -47,6 +50,7 @@ fn setup_service(
     history_repository: MockHistoryRepository,
     organisation_repository: MockOrganisationRepository,
     formatter_provider: MockCredentialFormatterProvider,
+    revocation_method_provider: MockRevocationMethodProvider,
     config: CoreConfig,
 ) -> CredentialSchemaService {
     CredentialSchemaService::new(
@@ -55,6 +59,7 @@ fn setup_service(
         Arc::new(history_repository),
         Arc::new(organisation_repository),
         Arc::new(formatter_provider),
+        Arc::new(revocation_method_provider),
         Arc::new(config),
     )
 }
@@ -91,6 +96,7 @@ fn generic_credential_schema() -> CredentialSchema {
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
+        allow_suspension: true,
     }
 }
 
@@ -120,6 +126,7 @@ async fn test_get_credential_schema_success() {
         history_repository,
         organisation_repository,
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -151,6 +158,7 @@ async fn test_get_credential_schema_deleted() {
         history_repository,
         organisation_repository,
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -188,6 +196,7 @@ async fn test_get_credential_schema_fail() {
         history_repository,
         organisation_repository,
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -224,6 +233,7 @@ async fn test_get_credential_schema_list_success() {
         history_repository,
         organisation_repository,
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -276,6 +286,7 @@ async fn test_delete_credential_schema() {
         history_repository,
         organisation_repository,
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -352,11 +363,26 @@ async fn test_create_credential_schema_success() {
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| RevocationMethodCapabilities {
+            operations: vec!["SUSPEND".to_string()],
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = setup_service(
         repository,
         history_repository,
         organisation_repository,
         formatter_provider,
+        revocation_method_provider,
         generic_config().core,
     );
 
@@ -377,6 +403,7 @@ async fn test_create_credential_schema_success() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await;
     assert!(result.is_ok());
@@ -465,11 +492,27 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
             params: None,
         },
     );
+
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| RevocationMethodCapabilities {
+            operations: vec!["SUSPEND".to_string()],
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = setup_service(
         repository,
         history_repository,
         organisation_repository,
         formatter_provider,
+        revocation_method_provider,
         config,
     );
 
@@ -496,6 +539,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: Some(custom_schema_id.to_string()),
+            allow_suspension: Some(true),
         })
         .await
         .unwrap();
@@ -565,11 +609,26 @@ async fn test_create_credential_schema_success_nested_claims() {
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| RevocationMethodCapabilities {
+            operations: vec!["SUSPEND".to_string()],
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = setup_service(
         repository,
         history_repository,
         organisation_repository,
         formatter_provider,
+        revocation_method_provider,
         generic_config().core,
     );
 
@@ -605,6 +664,7 @@ async fn test_create_credential_schema_success_nested_claims() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await
         .unwrap();
@@ -618,6 +678,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -638,6 +699,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await
         .unwrap_err();
@@ -656,6 +718,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -691,6 +754,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await
         .unwrap_err();
@@ -709,6 +773,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -729,6 +794,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await
         .unwrap_err();
@@ -745,6 +811,7 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -771,6 +838,7 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await
         .unwrap_err();
@@ -822,11 +890,26 @@ async fn test_create_credential_schema_unique_name_error() {
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| RevocationMethodCapabilities {
+            operations: vec!["SUSPEND".to_string()],
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = setup_service(
         repository,
         history_repository,
         MockOrganisationRepository::default(),
         formatter_provider,
+        revocation_method_provider,
         generic_config().core,
     );
 
@@ -847,6 +930,7 @@ async fn test_create_credential_schema_unique_name_error() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await;
     assert!(result.is_err_and(|e| matches!(
@@ -862,6 +946,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -891,6 +976,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await
         .unwrap_err();
@@ -931,6 +1017,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await
         .unwrap_err();
@@ -951,6 +1038,7 @@ async fn test_create_credential_schema_fail_validation() {
         history_repository,
         organisation_repository,
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -971,6 +1059,7 @@ async fn test_create_credential_schema_fail_validation() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await;
     assert!(non_existing_format.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_))));
@@ -992,6 +1081,7 @@ async fn test_create_credential_schema_fail_validation() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await;
     assert!(non_existing_revocation_method
@@ -1014,6 +1104,7 @@ async fn test_create_credential_schema_fail_validation() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await;
     assert!(wrong_datatype.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_))));
@@ -1029,6 +1120,7 @@ async fn test_create_credential_schema_fail_validation() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await;
     assert!(no_claims.is_err_and(|e| matches!(
@@ -1078,11 +1170,26 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| RevocationMethodCapabilities {
+            operations: vec!["SUSPEND".to_string()],
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = setup_service(
         repository,
         history_repository,
         organisation_repository,
         formatter_provider,
+        revocation_method_provider,
         generic_config().core,
     );
 
@@ -1103,6 +1210,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await;
 
@@ -1125,11 +1233,20 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
+    let revocation_method = MockRevocationMethod::default();
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
         formatter_provider,
+        revocation_method_provider,
         generic_config().core,
     );
 
@@ -1150,6 +1267,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await
         .unwrap_err();
@@ -1174,11 +1292,26 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| RevocationMethodCapabilities {
+            operations: vec!["SUSPEND".to_string()],
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
         formatter_provider,
+        revocation_method_provider,
         generic_config().core,
     );
 
@@ -1214,6 +1347,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: Some("schema.id".to_string()),
+            allow_suspension: Some(true),
         })
         .await
         .unwrap_err();
@@ -1251,11 +1385,27 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
             params: None,
         },
     );
+
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| RevocationMethodCapabilities {
+            operations: vec!["SUSPEND".to_string()],
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
         formatter_provider,
+        revocation_method_provider,
         config,
     );
 
@@ -1282,6 +1432,7 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: Some("".to_string()),
+            allow_suspension: Some(true),
         })
         .await
         .unwrap_err();
@@ -1318,11 +1469,27 @@ async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() 
             params: None,
         },
     );
+
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| RevocationMethodCapabilities {
+            operations: vec!["SUSPEND".to_string()],
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
         formatter_provider,
+        revocation_method_provider,
         config,
     );
 
@@ -1343,6 +1510,7 @@ async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() 
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: Some("test".to_string()),
+            allow_suspension: Some(true),
         })
         .await
         .unwrap_err();
@@ -1365,11 +1533,26 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| RevocationMethodCapabilities {
+            operations: vec!["SUSPEND".to_string()],
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
         formatter_provider,
+        revocation_method_provider,
         generic_config().core,
     );
 
@@ -1390,6 +1573,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: Some("schema.id".to_string()),
+            allow_suspension: Some(true),
         })
         .await
         .unwrap_err();
@@ -1402,6 +1586,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
 #[tokio::test]
 async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
     let service = setup_service(
+        Default::default(),
         Default::default(),
         Default::default(),
         Default::default(),
@@ -1430,6 +1615,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await;
     assert!(matches!(
@@ -1462,6 +1648,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await;
     assert!(matches!(
@@ -1488,6 +1675,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
+            allow_suspension: Some(true),
         })
         .await;
     assert!(matches!(
@@ -2366,6 +2554,7 @@ fn dummy_request() -> CreateCredentialSchemaRequestDTO {
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: None,
+        allow_suspension: Some(true),
     }
 }
 
@@ -2389,7 +2578,8 @@ async fn test_share_credential_schema_success() {
         repository,
         history_repository,
         organisation_repository,
-        MockCredentialFormatterProvider::default(),
+        Default::default(),
+        Default::default(),
         generic_config().core,
     );
 
@@ -2451,11 +2641,26 @@ async fn test_import_credential_schema_success() {
         .expect_create_history()
         .returning(|_| Ok(Uuid::new_v4().into()));
 
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| RevocationMethodCapabilities {
+            operations: vec!["SUSPEND".to_string()],
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = setup_service(
         repository,
         history_repository,
         organisation_repository,
         formatter_provider,
+        revocation_method_provider,
         generic_config().core,
     );
 
@@ -2487,6 +2692,7 @@ async fn test_import_credential_schema_success() {
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024.into(),
                 layout_type: None,
                 layout_properties: None,
+                allow_suspension: Some(true),
             },
         })
         .await

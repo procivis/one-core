@@ -182,6 +182,7 @@ fn generic_credential() -> Credential {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
+            allow_suspension: true,
         }),
         interaction: None,
         revocation_list: None,
@@ -237,6 +238,7 @@ fn generic_credential_list_entity() -> Credential {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
+            allow_suspension: true,
         }),
         interaction: None,
         revocation_list: None,
@@ -2548,6 +2550,7 @@ fn generate_credential_schema_with_claim_schemas(
         schema_id: "".to_string(),
         claim_schemas: Some(claim_schemas),
         organisation: None,
+        allow_suspension: true,
     }
 }
 
@@ -3121,6 +3124,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
+            allow_suspension: true,
         }),
         interaction: None,
         revocation_list: None,
@@ -3683,6 +3687,7 @@ async fn test_get_credential_success_array_index_sorting() {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
+            allow_suspension: true,
         }),
         interaction: None,
         revocation_list: None,
@@ -3993,6 +3998,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
+            allow_suspension: true,
         }),
         interaction: None,
         revocation_list: None,
@@ -4190,6 +4196,7 @@ async fn test_get_credential_success_array_single_element() {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
+            allow_suspension: true,
         }),
         interaction: None,
         revocation_list: None,
@@ -4323,6 +4330,7 @@ async fn test_create_credential_array(
                 .collect(),
         ),
         organisation: Some(organisation.to_owned()),
+        allow_suspension: true,
     };
 
     let mut formatter = MockCredentialFormatter::default();

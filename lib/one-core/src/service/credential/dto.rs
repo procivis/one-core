@@ -79,6 +79,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub layout_type: Option<LayoutType>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+    pub allow_suspension: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, From, Into, Display)]

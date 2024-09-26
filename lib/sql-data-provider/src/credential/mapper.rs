@@ -150,6 +150,7 @@ pub(super) fn credential_list_model_to_repository_model(
         layout_properties: credential
             .credential_schema_schema_layout_properties
             .map(|layout_properties| layout_properties.into()),
+        allow_suspension: true,
     };
 
     let issuer_did = match credential.issuer_did_id {

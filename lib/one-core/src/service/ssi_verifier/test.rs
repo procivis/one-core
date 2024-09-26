@@ -103,6 +103,7 @@ async fn test_connect_to_holder_succeeds() {
                             layout_properties: None,
                             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                             schema_id: "CredentialSchemaId".to_owned(),
+                            allow_suspension: true,
                         }),
                     }]),
                     ..dummy_proof_schema()
@@ -222,6 +223,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
                             layout_properties: None,
                             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                             schema_id: "CredentialSchemaId".to_owned(),
+                            allow_suspension: true,
                         }),
                     }]),
                     ..dummy_proof_schema()

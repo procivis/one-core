@@ -112,6 +112,7 @@ pub async fn insert_credential_schema_to_database(
         layout_properties: Set(None),
         schema_type: Set(CredentialSchemaType::ProcivisOneSchema2024),
         schema_id: Set(new_id.to_string()),
+        allow_suspension: Set(true),
     }
     .insert(database)
     .await?;

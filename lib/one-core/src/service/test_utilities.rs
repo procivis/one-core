@@ -225,6 +225,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
+            allow_suspension: true,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4(),
@@ -343,6 +344,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
+        allow_suspension: true,
     }
 }
 

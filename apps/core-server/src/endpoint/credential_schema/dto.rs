@@ -46,6 +46,7 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
+    pub allow_suspension: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, From, Into)]
@@ -119,6 +120,7 @@ pub struct CredentialSchemaResponseRestDTO {
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
+    pub allow_suspension: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -213,6 +215,7 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     #[into(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub schema_id: Option<String>,
+    pub allow_suspension: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From, Default)]
@@ -346,6 +349,7 @@ pub struct ImportCredentialSchemaRequestSchemaRestDTO {
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[into(with_fn = convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesRestDTO>,
+    pub allow_suspension: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Into, ToSchema)]

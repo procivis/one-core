@@ -9,6 +9,7 @@ use time::OffsetDateTime;
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 
 #[tokio::test]
 async fn test_suspend_credential_with_bitstring_status_list_success() {
@@ -140,4 +141,45 @@ async fn test_suspend_credential_with_lvvc_success() {
         suspend_end_date,
         credential.state.unwrap()[0].suspend_end_date.unwrap()
     );
+}
+
+#[tokio::test]
+async fn test_suspend_credential_with_none_fails() {
+    // GIVEN
+    let (context, organisation, issuer_did, _) = TestContext::new_with_did().await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                allow_suspension: Some(false),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_did,
+            "PROCIVIS_TEMPORARY",
+            TestingCredentialParams::default(),
+        )
+        .await;
+    context
+        .db
+        .revocation_lists
+        .create(&issuer_did, RevocationListPurpose::Revocation, None)
+        .await;
+    // WHEN
+    let resp = context.api.credentials.suspend(&credential.id, None).await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0162", resp.error_code().await);
 }

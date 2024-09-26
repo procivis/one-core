@@ -103,6 +103,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
+                allow_suspension: true,
             }),
             interaction: None,
             revocation_list: None,

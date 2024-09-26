@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::mapper::credential_detail_response_from_model;
+use super::validator::verify_suspension_support;
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::{
     get_latest_state, throw_if_latest_credential_state_eq, throw_if_state_not_in,
@@ -549,6 +550,15 @@ impl CredentialService {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
 
+        let credential_schema = credential
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "credential schema is None".to_string(),
+            ))?;
+
+        verify_suspension_support(credential_schema, &revocation_state)?;
+
         let latest_state = &get_latest_state(&credential)?.state;
 
         let valid_states: &[CredentialStateEnum] = match revocation_state {
@@ -561,13 +571,7 @@ impl CredentialService {
         };
         throw_if_state_not_in(latest_state, valid_states)?;
 
-        let revocation_method_key = &credential
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "credential schema is None".to_string(),
-            ))?
-            .revocation_method;
+        let revocation_method_key = &credential_schema.revocation_method;
 
         let revocation_method = self
             .revocation_method_provider

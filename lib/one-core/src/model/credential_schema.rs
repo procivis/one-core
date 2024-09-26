@@ -30,6 +30,7 @@ pub struct CredentialSchema {
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     pub imported_source_url: String,
+    pub allow_suspension: bool,
 
     // Relations
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,

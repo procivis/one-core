@@ -113,6 +113,7 @@ async fn setup_empty() -> TestSetup {
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
+        allow_suspension: true,
     };
 
     let did_id = &insert_did_key(

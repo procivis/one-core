@@ -37,6 +37,7 @@ impl CredentialSchemaService {
             &request,
             &self.config,
             &*self.formatter_provider,
+            &*self.revocation_method_provider,
             false,
         )?;
 
@@ -196,6 +197,7 @@ impl CredentialSchemaService {
             &create_request,
             &self.config,
             &*self.formatter_provider,
+            &*self.revocation_method_provider,
             true,
         )?;
 

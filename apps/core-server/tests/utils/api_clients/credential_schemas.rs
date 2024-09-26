@@ -10,19 +10,23 @@ pub struct CredentialSchemasApi {
     client: HttpClient,
 }
 
+#[derive(Default)]
+pub struct CreateSchemaParams {
+    pub name: String,
+    pub organisation_id: Uuid,
+    pub format: String,
+    pub claim_name: String,
+    pub schema_id: Option<String>,
+    pub revocation_method: Option<String>,
+    pub suspension_allowed: Option<bool>,
+}
+
 impl CredentialSchemasApi {
     pub fn new(client: HttpClient) -> Self {
         Self { client }
     }
 
-    pub async fn create(
-        &self,
-        name: &str,
-        organisation_id: impl Into<Uuid>,
-        format: &str,
-        claim_name: &str,
-        schema_id: Option<&str>,
-    ) -> Response {
+    pub async fn create(&self, params: CreateSchemaParams) -> Response {
         let body = json!({
           "claims": [
             {
@@ -32,25 +36,26 @@ impl CredentialSchemasApi {
               "claims": [
                 {
                   "datatype": "STRING",
-                  "key": claim_name,
+                  "key": params.claim_name,
                   "required": true
                 }
               ],
             }
           ],
-          "format": format,
-          "name": name,
-          "organisationId": organisation_id.into(),
-          "revocationMethod": "NONE",
+          "format": params.format,
+          "name": params.name,
+          "organisationId": params.organisation_id,
+          "revocationMethod": params.revocation_method.unwrap_or("NONE".into()),
           "layoutType": "CARD",
           "layoutProperties": {
             "backgroundColor": "bg-color",
             "backgroundImage": "bg-image",
             "labelColor": "label-color",
             "labelImage": "label-image",
-            "primaryAttribute": format!("firstObject/{claim_name}"),
+            "primaryAttribute": format!("firstObject/{claim_name}", claim_name = params.claim_name),
           },
-          "schemaId": schema_id,
+          "schemaId": params.schema_id,
+          "allowSuspension": params.suspension_allowed.unwrap_or(false),
         });
 
         self.client.post("/api/credential-schema/v1", body).await

@@ -10,6 +10,7 @@ use crate::config::validator::exchange::validate_exchange_type;
 use crate::config::ConfigValidationError;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::revocation::model::CredentialRevocationState;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
@@ -436,4 +437,19 @@ fn resolve_parent_claim_schemas<'a>(
     }
 
     Ok(result)
+}
+
+pub(super) fn verify_suspension_support(
+    credential_schema: &CredentialSchema,
+    revocation_state: &CredentialRevocationState,
+) -> Result<(), ServiceError> {
+    if !credential_schema.allow_suspension
+        && matches!(
+            revocation_state,
+            CredentialRevocationState::Suspended { .. }
+        )
+    {
+        return Err(BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod.into());
+    }
+    Ok(())
 }

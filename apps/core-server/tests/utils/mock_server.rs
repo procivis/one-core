@@ -133,6 +133,7 @@ impl MockServer {
                         "schemaId": schema_id.to_string(),
                         "schemaType": schema_type.unwrap_or("ProcivisOneSchema2024"),
                         "claims": claim_schemas,
+                        "allowSuspension": true,
                     },
                 }
             )))

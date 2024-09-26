@@ -139,6 +139,7 @@ async fn test_presentation_reject_ok() {
                     schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                     claim_schemas: None,
                     organisation: None,
+                    allow_suspension: true,
                 }),
             }]),
             organisation: None,
@@ -326,6 +327,7 @@ async fn test_get_presentation_definition_ok() {
         claim_schemas: Some(claim_schemas.values().cloned().collect()),
         wallet_storage_type: None,
         deleted_at: None,
+        allow_suspension: true,
     };
     let credential_state = CredentialState {
         created_date: OffsetDateTime::now_utc(),

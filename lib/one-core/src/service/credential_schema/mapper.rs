@@ -47,6 +47,7 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
             schema_type: value.schema_type.into(),
             layout_type: Some(value.layout_type),
             layout_properties: value.layout_properties.map(|item| item.into()),
+            allow_suspension: value.allow_suspension,
         })
     }
 }
@@ -153,6 +154,7 @@ pub(super) fn from_create_request_with_id(
         schema_type,
         imported_source_url: imported_source_url.unwrap_or(url),
         schema_id,
+        allow_suspension: request.allow_suspension.unwrap_or_default(),
     })
 }
 
@@ -262,6 +264,7 @@ impl From<ImportCredentialSchemaRequestSchemaDTO> for CreateCredentialSchemaRequ
             layout_type: value.layout_type.unwrap_or(LayoutType::Card),
             layout_properties: convert_inner(value.layout_properties),
             schema_id: Some(value.schema_id),
+            allow_suspension: value.allow_suspension,
         }
     }
 }
