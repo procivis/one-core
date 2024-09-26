@@ -980,6 +980,7 @@ dictionary ImportCredentialSchemaRequestSchemaBindingDTO {
   CredentialSchemaTypeBindingEnum schema_type;
   LayoutTypeBindingEnum? layout_type;
   ImportCredentialSchemaLayoutPropertiesBindingDTO? layout_properties;
+  boolean? allow_suspension;
 };
 
 dictionary ImportCredentialSchemaClaimSchemaBindingDTO {

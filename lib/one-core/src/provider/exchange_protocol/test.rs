@@ -950,6 +950,7 @@ fn dummy_credential() -> Credential {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
+            allow_suspension: true,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4(),

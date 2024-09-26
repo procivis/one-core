@@ -107,6 +107,7 @@ fn generic_credential_schema() -> CredentialSchema {
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
+        allow_suspension: true,
     }
 }
 
@@ -1361,6 +1362,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                                 layout_properties: None,
                                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                                 schema_id: "CredentialSchemaId".to_owned(),
+                                allow_suspension: true,
                             }),
                         }]),
                     }),

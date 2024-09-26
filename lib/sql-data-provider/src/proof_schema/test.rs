@@ -199,6 +199,7 @@ async fn test_create_proof_schema_already_exists() {
                     layout_properties: None,
                     schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                     schema_id: "CredentialSchemaId".to_owned(),
+                    allow_suspension: true,
                 }),
             }]),
         })
@@ -297,6 +298,7 @@ async fn test_create_proof_schema_success() {
                     layout_properties: None,
                     schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                     schema_id: "CredentialSchemaId".to_owned(),
+                    allow_suspension: true,
                 }),
             }]),
         })
@@ -509,6 +511,7 @@ async fn test_get_proof_schema_with_relations() {
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
+                allow_suspension: true,
             }))
         });
 
@@ -647,6 +650,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: id.to_string(),
+                allow_suspension: true,
             }))
         });
 

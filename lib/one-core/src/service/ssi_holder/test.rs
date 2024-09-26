@@ -857,6 +857,7 @@ fn dummy_credential() -> Credential {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
+            allow_suspension: true,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4(),

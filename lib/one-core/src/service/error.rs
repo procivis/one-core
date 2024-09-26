@@ -252,6 +252,9 @@ pub enum BusinessLogicError {
     #[error("Revocation method not compatible with selected format")]
     RevocationMethodNotCompatibleWithSelectedFormat,
 
+    #[error("Suspension not supported for revocation method")]
+    SuspensionNotAvailableForSelectedRevocationMethod,
+
     #[error("Incompatible issuance did method")]
     IncompatibleIssuanceDidMethod,
 
@@ -845,6 +848,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Key storage not supported for proof request")]
     BR_0158,
+
+    #[strum(to_string = "Suspension not supported for revocation method")]
+    BR_0162,
 }
 
 impl From<FormatError> for ServiceError {
@@ -982,6 +988,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::MissingMdocDoctype => ErrorCode::BR_0138,
             Self::SchemaIdNotAllowed => ErrorCode::BR_0139,
             Self::LayoutPropertiesNotSupported => ErrorCode::BR_0131,
+            Self::SuspensionNotAvailableForSelectedRevocationMethod => ErrorCode::BR_0162,
         }
     }
 }

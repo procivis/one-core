@@ -452,6 +452,7 @@ impl OneCore {
                 data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
                 formatter_provider.clone(),
+                revocation_method_provider.clone(),
                 config.clone(),
             ),
             history_service: HistoryService::new(data_provider.get_history_repository()),

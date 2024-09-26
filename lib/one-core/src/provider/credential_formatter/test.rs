@@ -43,6 +43,7 @@ fn generate_credential_detail_response(
             layout_type: None,
             schema_id: "".to_string(),
             layout_properties: None,
+            allow_suspension: true,
         },
         issuer_did: Some(DidListItemResponseDTO {
             id: Uuid::new_v4().into(),

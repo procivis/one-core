@@ -180,6 +180,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             claim_schemas: None,
             organisation: None,
+            allow_suspension: true,
         }),
     }
 }
@@ -244,6 +245,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                     layout_properties: None,
                     schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                     schema_id: "CredentialSchemaId".to_owned(),
+                    allow_suspension: true,
                 }),
             }]),
         }),
@@ -371,6 +373,7 @@ async fn test_get_proof_exists() {
                     layout_properties: None,
                     schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                     schema_id: "CredentialSchemaId".to_owned(),
+                    allow_suspension: true,
                 }),
             }]),
         }),
@@ -501,6 +504,7 @@ async fn test_get_proof_with_array_holder() {
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
+        allow_suspension: true,
     };
 
     let credential = Credential {
@@ -724,6 +728,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
+        allow_suspension: true,
     };
 
     let credential = Credential {
@@ -952,6 +957,7 @@ async fn test_get_proof_with_object_array_holder() {
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
+        allow_suspension: true,
     };
 
     let credential = Credential {
@@ -1162,6 +1168,7 @@ async fn test_get_proof_with_array() {
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
+        allow_suspension: true,
     };
 
     let credential = Credential {
@@ -1403,6 +1410,7 @@ async fn test_get_proof_with_array_in_object() {
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
+        allow_suspension: true,
     };
 
     let credential = Credential {
@@ -1650,6 +1658,7 @@ async fn test_get_proof_with_object_array() {
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
+        allow_suspension: true,
     };
 
     let credential = Credential {

@@ -380,6 +380,7 @@ mod tests {
                 claim_schemas: Some(claim_schemas.clone()),
                 organisation: None,
                 imported_source_url: "CORE_URL".to_string(),
+                allow_suspension: true,
             },
             vec![(json!({ "element": "Test" }), namespace_claim_schema)],
             Did {

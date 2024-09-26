@@ -10,6 +10,8 @@ use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::revocation::RevocationMethod;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO,
@@ -41,6 +43,7 @@ pub(crate) fn validate_create_request(
     request: &CreateCredentialSchemaRequestDTO,
     config: &CoreConfig,
     formatter_provider: &dyn CredentialFormatterProvider,
+    revocation_method_provider: &dyn RevocationMethodProvider,
     during_import: bool,
 ) -> Result<(), ServiceError> {
     // at least one claim must be declared
@@ -57,8 +60,15 @@ pub(crate) fn validate_create_request(
         .get_formatter(&request.format)
         .ok_or(MissingProviderError::Formatter(request.format.to_owned()))?;
 
+    let revocation_method = revocation_method_provider
+        .get_revocation_method(&request.revocation_method)
+        .ok_or(MissingProviderError::RevocationMethod(
+            request.revocation_method.to_owned(),
+        ))?;
+
     validate_claim_names(request, &*formatter)?;
     validate_revocation_method_is_compatible_with_format(request, config, &*formatter)?;
+    validate_revocation_method_is_compatible_with_suspension(request, &*revocation_method)?;
     validate_credential_design(request, &*formatter)?;
     validate_mdoc_claim_types(request, config)?;
     validate_schema_id(request, config, during_import)?;
@@ -310,6 +320,23 @@ fn gather_claim_schemas<'a>(
         .flat_map(|f| gather_claim_schemas(&f.claims));
 
     Box::new(claim_schemas.iter().chain(nested))
+}
+
+fn validate_revocation_method_is_compatible_with_suspension(
+    request: &CreateCredentialSchemaRequestDTO,
+    revocation_method: &dyn RevocationMethod,
+) -> Result<(), ServiceError> {
+    if request.allow_suspension == Some(true)
+        && !revocation_method
+            .get_capabilities()
+            .operations
+            .iter()
+            .any(|capability| capability == "SUSPEND")
+    {
+        return Err(BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod.into());
+    }
+
+    Ok(())
 }
 
 fn validate_revocation_method_is_compatible_with_format(

@@ -783,6 +783,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
             "schemaId": format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()),
             "schemaType": "ProcivisOneSchema2024",
             "layoutType": "CARD",
+            "allowSuspension": "true"
         })))
         .expect(1)
         .mount(&mock_server)

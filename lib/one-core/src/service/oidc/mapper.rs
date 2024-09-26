@@ -251,5 +251,6 @@ fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) ->
         schema_type: schema.schema_type,
         claim_schemas: convert_inner_of_inner(schema.claim_schemas),
         organisation: organisation.into(),
+        allow_suspension: true,
     }
 }

@@ -17,6 +17,7 @@ pub struct TestingCreateSchemaParams {
     pub format: Option<String>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_type: Option<CredentialSchemaType>,
+    pub allow_suspension: Option<bool>,
 }
 
 pub struct CredentialSchemasDB {
@@ -102,6 +103,7 @@ impl CredentialSchemasDB {
                 .schema_type
                 .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: id.to_string(),
+            allow_suspension: params.allow_suspension.unwrap_or(true),
         };
 
         let id = self
@@ -156,6 +158,7 @@ impl CredentialSchemasDB {
                 .schema_type
                 .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: id.to_string(),
+            allow_suspension: true,
         };
 
         let id = self
@@ -236,6 +239,7 @@ impl CredentialSchemasDB {
                 .schema_type
                 .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: format!("ssi/schema/{id}"),
+            allow_suspension: true,
         };
 
         let id = self
@@ -340,6 +344,7 @@ impl CredentialSchemasDB {
                 .schema_type
                 .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: format!("ssi/schema/{id}"),
+            allow_suspension: true,
         };
 
         let id = self
@@ -456,6 +461,7 @@ impl CredentialSchemasDB {
                 .schema_type
                 .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: format!("ssi/schema/{id}"),
+            allow_suspension: true,
         };
 
         let id = self
@@ -502,6 +508,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: new_id.to_string(),
+            allow_suspension: true,
         };
 
         let id = self
@@ -567,6 +574,7 @@ impl CredentialSchemasDB {
             }),
             schema_id: schema_id.to_owned(),
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            allow_suspension: true,
         };
 
         let id = self

@@ -121,6 +121,7 @@ pub struct CredentialDetailSchemaResponseRestDTO {
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
+    pub allow_suspension: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

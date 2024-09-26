@@ -153,6 +153,7 @@ fn generic_credential() -> Credential {
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             organisation: Some(generic_organisation()),
+            allow_suspension: true,
         }),
         interaction: Some(Interaction {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
@@ -735,6 +736,7 @@ fn generic_schema() -> CredentialSchema {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
         }),
+        allow_suspension: true,
     }
 }
 
@@ -848,6 +850,7 @@ fn generic_schema_array_object() -> CredentialSchema {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
         }),
+        allow_suspension: true,
     }
 }
 
@@ -928,6 +931,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
         }),
+        allow_suspension: true,
     }
 }
 

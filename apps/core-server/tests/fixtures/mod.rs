@@ -384,6 +384,7 @@ pub async fn create_credential_schema(
             .schema_type
             .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
         schema_id: params.schema_id.unwrap_or(id.to_string()),
+        allow_suspension: true,
     };
 
     data_layer
@@ -437,6 +438,7 @@ pub async fn create_credential_schema_with_claims(
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: id.to_string(),
+        allow_suspension: true,
     };
 
     data_layer

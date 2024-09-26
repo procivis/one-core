@@ -133,6 +133,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: credential_schema_id.to_string(),
+            allow_suspension: true,
         },
         organisation,
         repository,
@@ -192,6 +193,7 @@ async fn test_create_credential_schema_success() {
             layout_properties: None,
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
+            allow_suspension: true,
         })
         .await;
 

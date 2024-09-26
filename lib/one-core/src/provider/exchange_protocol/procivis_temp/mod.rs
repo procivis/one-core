@@ -529,6 +529,7 @@ async fn handle_credential_invitation(
                     "",
                 )?),
                 organisation: Some(organisation.to_owned()),
+                allow_suspension: true,
             };
 
             let _ = storage_access

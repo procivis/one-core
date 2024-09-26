@@ -1376,6 +1376,8 @@ pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     pub layout_type: Option<LayoutTypeBindingEnum>,
     #[try_into(infallible, with_fn = convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesBindingDTO>,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub allow_suspension: Option<bool>,
 }
 
 #[derive(Debug)]

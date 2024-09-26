@@ -395,6 +395,7 @@ async fn test_create_proof_schema_success() {
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
+                allow_suspension: true,
             };
 
             Ok(GetListResponse {
@@ -525,6 +526,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
+                allow_suspension: true,
             };
 
             let schema_2 = CredentialSchema {
@@ -546,6 +548,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
+                allow_suspension: true,
             };
 
             Ok(GetListResponse {
@@ -715,6 +718,7 @@ async fn test_create_proof_schema_array_object_fail() {
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
+                allow_suspension: true,
             };
 
             Ok(GetListResponse {
@@ -876,6 +880,7 @@ async fn test_create_proof_schema_array_success() {
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
+                allow_suspension: true,
             };
 
             Ok(GetListResponse {
@@ -1033,6 +1038,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
+                allow_suspension: true,
             };
 
             Ok(GetListResponse {
@@ -1498,6 +1504,7 @@ async fn test_import_proof_ok_existing_credential_schema_but_missing_claims() {
             required: true,
         }]),
         organisation: None,
+        allow_suspension: true,
     };
 
     let existing_schema_clone = existing_schema.clone();
@@ -1693,6 +1700,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                     required: true,
                 }]),
                 organisation: None,
+                allow_suspension: true,
             }))
         });
 
@@ -2067,6 +2075,7 @@ async fn test_get_proof_schema_success_nested_claims() {
                 },
             ]),
             organisation: None,
+            allow_suspension: true,
         }),
     }]);
 
@@ -2266,6 +2275,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
+                allow_suspension: true,
             };
 
             Ok(GetListResponse {

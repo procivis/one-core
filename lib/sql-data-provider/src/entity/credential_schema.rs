@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+use crate::common::bool_from_int;
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Deserialize)]
 #[sea_orm(table_name = "credential_schema")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -27,9 +29,11 @@ pub struct Model {
     pub schema_type: CredentialSchemaType,
     pub schema_id: String,
     pub imported_source_url: String,
+    #[serde(deserialize_with = "bool_from_int")]
+    pub allow_suspension: bool,
 }
 
-#[derive(Debug, Clone, EnumIter, From, Into, PartialEq, Eq)]
+#[derive(Debug, Clone, EnumIter, From, Into, PartialEq, Eq, Deserialize)]
 #[from(model::credential_schema::CredentialSchemaType)]
 #[into(model::credential_schema::CredentialSchemaType)]
 pub enum CredentialSchemaType {
@@ -147,7 +151,7 @@ pub enum WalletStorageType {
     Software,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
 #[sea_orm(
     rs_type = "String",
     db_type = "Enum",
