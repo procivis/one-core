@@ -302,6 +302,7 @@ dictionary CredentialSchemaBindingDTO {
   WalletStorageTypeBindingEnum? wallet_storage_type;
   string schema_id;
   CredentialSchemaTypeBindingEnum schema_type;
+  string imported_source_url;
   LayoutTypeBindingEnum? layout_type;
   CredentialSchemaLayoutPropertiesBindingDTO? layout_properties;
 };
@@ -316,6 +317,7 @@ dictionary CredentialSchemaDetailBindingDTO {
   sequence<CredentialClaimSchemaBindingDTO> claims;
   WalletStorageTypeBindingEnum? wallet_storage_type;
   string schema_id;
+  string imported_source_url;
   CredentialSchemaTypeBindingEnum schema_type;
   LayoutTypeBindingEnum? layout_type;
   CredentialSchemaLayoutPropertiesBindingDTO? layout_properties;
