@@ -39,16 +39,16 @@ pub enum DataLayerError {
 impl DataLayerError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            DataLayerError::Db(_) => ErrorCode::BR_0054,
-            DataLayerError::AlreadyExists
-            | DataLayerError::IncorrectParameters
-            | DataLayerError::RecordNotUpdated
-            | DataLayerError::MappingError
-            | DataLayerError::IncompleteClaimsList { .. }
-            | DataLayerError::IncompleteClaimsSchemaList { .. }
-            | DataLayerError::MissingProofState { .. }
-            | DataLayerError::MissingRequiredRelation { .. }
-            | DataLayerError::MissingClaimsSchemaForClaim(_, _) => ErrorCode::BR_0000,
+            Self::Db(_) => ErrorCode::BR_0054,
+            Self::AlreadyExists
+            | Self::IncorrectParameters
+            | Self::RecordNotUpdated
+            | Self::MappingError
+            | Self::IncompleteClaimsList { .. }
+            | Self::IncompleteClaimsSchemaList { .. }
+            | Self::MissingProofState { .. }
+            | Self::MissingRequiredRelation { .. }
+            | Self::MissingClaimsSchemaForClaim(_, _) => ErrorCode::BR_0000,
         }
     }
 }

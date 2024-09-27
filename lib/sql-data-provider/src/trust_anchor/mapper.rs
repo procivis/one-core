@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use one_core::model::trust_anchor::TrustAnchor;
 use one_core::repository::error::DataLayerError;
 use one_core::service::trust_anchor::dto::{SortableTrustAnchorColumn, TrustAnchorFilterValue};
+use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{IntoSimpleExpr, Set};
 
 use crate::entity::trust_anchor::{self, TrustAnchorRole};
@@ -51,7 +52,7 @@ impl From<trust_anchor::Model> for TrustAnchor {
 }
 
 impl IntoSortingColumn for SortableTrustAnchorColumn {
-    fn get_column(&self) -> migration::SimpleExpr {
+    fn get_column(&self) -> SimpleExpr {
         match self {
             Self::Name => trust_anchor::Column::Name.into_simple_expr(),
             Self::CreatedDate => trust_anchor::Column::CreatedDate.into_simple_expr(),

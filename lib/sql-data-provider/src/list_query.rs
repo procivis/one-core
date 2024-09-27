@@ -47,12 +47,10 @@ where
     FilterColumn: ColumnTrait,
 {
     fn with_list_query(
-        self,
+        mut self,
         query_params: &GetListQueryParams<SortableColumn>,
         filter_name_columns: &Option<Vec<FilterColumn>>,
     ) -> Select<T> {
-        let mut result = self;
-
         // filtering by name
         if let (Some(filter_name), Some(filter_columns)) =
             (&query_params.name, &filter_name_columns)
@@ -71,7 +69,7 @@ where
                                         .exact
                                         .as_ref()
                                         .map(|i| i.contains(&exact_col))
-                                        .unwrap_or_else(|| false)
+                                        .unwrap_or(false)
                                     {
                                         conditions = conditions.add(column.eq(filter_name));
                                     }
@@ -82,13 +80,13 @@ where
                     }
                     conditions = conditions.add(column.starts_with(filter_name));
                 }
-                result = result.filter(conditions);
+                self = self.filter(conditions);
             }
         }
 
         // sorting
         if let Some(sort_column) = &query_params.sort {
-            result = result.order_by(
+            self = self.order_by(
                 sort_column.get_simple_expr(),
                 order_from_sort_direction(
                     query_params
@@ -101,7 +99,7 @@ where
         // pagination
         let limit: u64 = query_params.page_size as u64;
         let offset: u64 = (query_params.page * query_params.page_size) as u64;
-        result.offset(offset).limit(limit)
+        self.offset(offset).limit(limit)
     }
 
     fn with_organisation_id(

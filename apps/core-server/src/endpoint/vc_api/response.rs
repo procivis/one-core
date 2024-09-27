@@ -52,7 +52,7 @@ struct VcApiErrorListResponseDTO {
 impl IntoResponse for VcApiError {
     fn into_response(self) -> axum::response::Response {
         match self {
-            VcApiError::UnmappedError(message) => (
+            Self::UnmappedError(message) => (
                 StatusCode::BAD_REQUEST,
                 Json(VcApiErrorListResponseDTO {
                     errors: vec![VcApiErrorRestDTO {
@@ -63,7 +63,7 @@ impl IntoResponse for VcApiError {
                 }),
             )
                 .into_response(),
-            VcApiError::DidResolverError(error) => error.into_response(),
+            Self::DidResolverError(error) => error.into_response(),
         }
     }
 }

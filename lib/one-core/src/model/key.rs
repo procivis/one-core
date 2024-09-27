@@ -1,8 +1,10 @@
-use shared_types::KeyId;
+use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
 
+use super::list_filter::{ListFilterValue, StringMatch};
+use super::list_query::ListQuery;
 use super::organisation::Organisation;
-use crate::model::common::{GetListQueryParams, GetListResponse};
+use crate::model::common::GetListResponse;
 use crate::model::organisation::OrganisationRelations;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -34,8 +36,20 @@ pub enum SortableKeyColumn {
     StorageType,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum KeyFilterValue {
+    Name(StringMatch),
+    OrganisationId(OrganisationId),
+    KeyType(String),
+    KeyStorage(String),
+    Ids(Vec<KeyId>),
+}
+
+impl ListFilterValue for KeyFilterValue {}
+
+pub type KeyListQuery = ListQuery<SortableKeyColumn, KeyFilterValue>;
+
 pub type GetKeyList = GetListResponse<Key>;
-pub type GetKeyQuery = GetListQueryParams<SortableKeyColumn>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PublicKeyJwk {

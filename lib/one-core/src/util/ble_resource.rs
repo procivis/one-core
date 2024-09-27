@@ -58,8 +58,8 @@ pub enum JoinResult<T> {
 impl<T> JoinResult<T> {
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
         match self {
-            JoinResult::Ok(v) => Ok(v),
-            JoinResult::Aborted => Err(err),
+            Self::Ok(v) => Ok(v),
+            Self::Aborted => Err(err),
         }
     }
 }

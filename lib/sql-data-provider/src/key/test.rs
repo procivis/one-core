@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use one_core::model::key::{GetKeyQuery, Key, KeyRelations};
+use one_core::model::key::{Key, KeyFilterValue, KeyListQuery, KeyRelations};
+use one_core::model::list_filter::ListFilterValue;
+use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::Organisation;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
@@ -166,18 +168,17 @@ async fn test_get_key_list_success() {
         organisation_repository: Arc::new(organisation_repository),
     };
 
-    let query_params = GetKeyQuery {
-        page: 0,
-        page_size: 5,
-        sort: None,
-        sort_direction: None,
-        name: None,
-        organisation_id: organisation.id,
-        exact: None,
-        ids: None,
+    let query = KeyListQuery {
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 5,
+        }),
+        sorting: None,
+        filtering: Some(KeyFilterValue::OrganisationId(organisation.id).condition()),
+        include: None,
     };
 
-    let result = provider.get_key_list(query_params).await;
+    let result = provider.get_key_list(query).await;
     assert!(result.is_ok());
 
     let data = result.unwrap();

@@ -1,10 +1,11 @@
 use autometrics::autometrics;
-use migration::{Alias, Expr, Func};
 use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::service::trust_anchor::dto::{GetTrustAnchorsResponseDTO, ListTrustAnchorsQueryDTO};
 use one_dto_mapper::convert_inner;
+use sea_orm::prelude::Expr;
+use sea_orm::sea_query::{Alias, Func};
 use sea_orm::{
     ActiveModelTrait, EntityTrait, JoinType, PaginatorTrait, QueryOrder, QuerySelect, Related,
 };

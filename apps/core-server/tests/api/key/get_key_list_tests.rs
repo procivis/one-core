@@ -1,72 +1,186 @@
 use reqwest::StatusCode;
-use serde_json::Value;
 use shared_types::KeyId;
 
-use crate::fixtures::{self, TestingKeyParams};
-use crate::utils;
+use crate::fixtures::TestingKeyParams;
+use crate::utils::api_clients::keys::KeyFilters;
+use crate::utils::context::TestContext;
 use crate::utils::field_match::FieldHelpers;
-use crate::utils::server::run_server;
 
 #[tokio::test]
 async fn test_get_keys_ok() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let key1 = fixtures::create_key(
-        &db_conn,
-        &organisation,
-        Some(TestingKeyParams {
-            name: Some("name123".to_string()),
-            ..Default::default()
-        }),
-    )
-    .await;
-    let key2 = fixtures::create_key(
-        &db_conn,
-        &organisation,
-        Some(TestingKeyParams {
-            name: Some("name321".to_string()),
-            ..Default::default()
-        }),
-    )
-    .await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
 
-    _ = fixtures::create_key(
-        &db_conn,
-        &organisation,
-        Some(TestingKeyParams {
-            name: Some("test123".to_string()),
-            ..Default::default()
-        }),
-    )
-    .await;
+    let key1 = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                name: Some("name123".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let key2 = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                name: Some("name321".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                name: Some("test123".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
-    let url = format!(
-        "{base_url}/api/key/v1?page=0&pageSize=10&organisationId={}&name=name&sort=name",
-        organisation.id
-    );
-
-    let resp = utils::client()
-        .get(url)
-        .bearer_auth("test")
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .keys
+        .list(KeyFilters {
+            page: 0,
+            page_size: 10,
+            organisation_id: organisation.id,
+            name: Some("name".to_string()),
+            key_type: None,
+            key_storage: None,
+            ids: None,
+        })
+        .await;
 
     // THEN
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let resp: Value = resp.json().await.unwrap();
+    let resp = resp.json_value().await;
     let values = resp["values"].as_array().unwrap();
 
     assert_eq!(2, values.len());
-    let key1_id: KeyId = values[0]["id"].parse();
-    let key2_name = &values[1]["name"];
+    let key2_id: KeyId = values[0]["id"].parse();
+    let key1_id: KeyId = values[1]["id"].parse();
     assert_eq!(key1.id, key1_id);
-    assert_eq!(&key2.name, key2_name);
+    assert_eq!(key2.id, key2_id);
+}
+
+#[tokio::test]
+async fn test_get_keys_filter_by_key_type() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let key = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                key_type: Some("EDDSA".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                key_type: Some("ES256".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .keys
+        .list(KeyFilters {
+            page: 0,
+            page_size: 10,
+            organisation_id: organisation.id,
+            name: None,
+            key_type: Some("EDDSA".to_string()),
+            key_storage: None,
+            ids: None,
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+
+    assert_eq!(1, values.len());
+    let key_id: KeyId = values[0]["id"].parse();
+    assert_eq!(key.id, key_id);
+}
+
+#[tokio::test]
+async fn test_get_keys_filter_by_key_storage() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let key = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                storage_type: Some("INTERNAL".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                storage_type: Some("SOMETHING_ELSE".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .keys
+        .list(KeyFilters {
+            page: 0,
+            page_size: 10,
+            organisation_id: organisation.id,
+            name: None,
+            key_type: None,
+            key_storage: Some("INTERNAL".to_string()),
+            ids: None,
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+
+    assert_eq!(1, values.len());
+    let key_id: KeyId = values[0]["id"].parse();
+    assert_eq!(key.id, key_id);
 }

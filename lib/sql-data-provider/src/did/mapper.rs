@@ -32,12 +32,12 @@ impl From<entity::did::Model> for Did {
 impl IntoSortingColumn for SortableDidColumn {
     fn get_column(&self) -> SimpleExpr {
         match self {
-            SortableDidColumn::Name => did::Column::Name,
-            SortableDidColumn::CreatedDate => did::Column::CreatedDate,
-            SortableDidColumn::Method => did::Column::Method,
-            SortableDidColumn::Type => did::Column::TypeField,
-            SortableDidColumn::Did => did::Column::Did,
-            SortableDidColumn::Deactivated => did::Column::Deactivated,
+            Self::Name => did::Column::Name,
+            Self::CreatedDate => did::Column::CreatedDate,
+            Self::Method => did::Column::Method,
+            Self::Type => did::Column::TypeField,
+            Self::Did => did::Column::Did,
+            Self::Deactivated => did::Column::Deactivated,
         }
         .into_simple_expr()
     }
@@ -46,29 +46,25 @@ impl IntoSortingColumn for SortableDidColumn {
 impl IntoFilterCondition for DidFilterValue {
     fn get_condition(self) -> sea_orm::Condition {
         match self {
-            DidFilterValue::Name(string_match) => {
-                get_string_match_condition(did::Column::Name, string_match)
-            }
-            DidFilterValue::Method(method) => get_equals_condition(did::Column::Method, method),
-            DidFilterValue::Type(r#type) => {
+            Self::Name(string_match) => get_string_match_condition(did::Column::Name, string_match),
+            Self::Method(method) => get_equals_condition(did::Column::Method, method),
+            Self::Type(r#type) => {
                 get_equals_condition(did::Column::TypeField, did::DidType::from(r#type))
             }
-            DidFilterValue::Did(string_match) => {
-                get_string_match_condition(did::Column::Did, string_match)
-            }
-            DidFilterValue::OrganisationId(organisation_id) => {
+            Self::Did(string_match) => get_string_match_condition(did::Column::Did, string_match),
+            Self::OrganisationId(organisation_id) => {
                 get_equals_condition(did::Column::OrganisationId, organisation_id.to_string())
             }
-            DidFilterValue::Deactivated(is_deactivated) => {
+            Self::Deactivated(is_deactivated) => {
                 get_equals_condition(did::Column::Deactivated, is_deactivated)
             }
-            DidFilterValue::KeyAlgorithms(key_algorithms) => {
+            Self::KeyAlgorithms(key_algorithms) => {
                 key::Column::KeyType.is_in(key_algorithms).into_condition()
             }
-            DidFilterValue::KeyStorages(key_storages) => key::Column::StorageType
+            Self::KeyStorages(key_storages) => key::Column::StorageType
                 .is_in(key_storages)
                 .into_condition(),
-            DidFilterValue::KeyRoles(key_roles) => key_did::Column::Role
+            Self::KeyRoles(key_roles) => key_did::Column::Role
                 .is_in(
                     key_roles
                         .into_iter()
@@ -76,9 +72,8 @@ impl IntoFilterCondition for DidFilterValue {
                         .collect::<Vec<_>>(),
                 )
                 .into_condition(),
-            DidFilterValue::DidMethods(methods) => {
-                did::Column::Method.is_in(methods).into_condition()
-            }
+            Self::KeyIds(key_ids) => key_did::Column::KeyId.is_in(key_ids).into_condition(),
+            Self::DidMethods(methods) => did::Column::Method.is_in(methods).into_condition(),
         }
     }
 }
@@ -86,7 +81,7 @@ impl IntoFilterCondition for DidFilterValue {
 impl IntoJoinCondition for DidFilterValue {
     fn get_join(self) -> Vec<JoinRelation> {
         match self {
-            DidFilterValue::KeyAlgorithms(_) => {
+            Self::KeyAlgorithms(_) | Self::KeyStorages(_) => {
                 vec![
                     JoinRelation {
                         join_type: JoinType::InnerJoin,
@@ -98,23 +93,11 @@ impl IntoJoinCondition for DidFilterValue {
                     },
                 ]
             }
-            DidFilterValue::KeyRoles(_) => {
+            Self::KeyRoles(_) | Self::KeyIds(_) => {
                 vec![JoinRelation {
                     join_type: JoinType::InnerJoin,
                     relation_def: did::Relation::KeyDid.def(),
                 }]
-            }
-            DidFilterValue::KeyStorages(_) => {
-                vec![
-                    JoinRelation {
-                        join_type: JoinType::InnerJoin,
-                        relation_def: did::Relation::KeyDid.def(),
-                    },
-                    JoinRelation {
-                        join_type: JoinType::InnerJoin,
-                        relation_def: key_did::Relation::Key.def(),
-                    },
-                ]
             }
             _ => vec![],
         }

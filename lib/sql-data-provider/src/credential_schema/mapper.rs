@@ -79,15 +79,9 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
 impl GetEntityColumn for SortableCredentialSchemaColumn {
     fn get_simple_expr(&self) -> SimpleExpr {
         match self {
-            SortableCredentialSchemaColumn::Name => {
-                credential_schema::Column::Name.into_simple_expr()
-            }
-            SortableCredentialSchemaColumn::Format => {
-                credential_schema::Column::Format.into_simple_expr()
-            }
-            SortableCredentialSchemaColumn::CreatedDate => {
-                credential_schema::Column::CreatedDate.into_simple_expr()
-            }
+            Self::Name => credential_schema::Column::Name.into_simple_expr(),
+            Self::Format => credential_schema::Column::Format.into_simple_expr(),
+            Self::CreatedDate => credential_schema::Column::CreatedDate.into_simple_expr(),
         }
     }
 }

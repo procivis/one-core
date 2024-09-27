@@ -1,7 +1,7 @@
 use shared_types::KeyId;
 
 use super::error::DataLayerError;
-use crate::model::key::{GetKeyList, GetKeyQuery, Key, KeyRelations};
+use crate::model::key::{GetKeyList, Key, KeyListQuery, KeyRelations};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -13,5 +13,5 @@ pub trait KeyRepository: Send + Sync {
         relations: &KeyRelations,
     ) -> Result<Option<Key>, DataLayerError>;
     async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError>;
-    async fn get_key_list(&self, query_params: GetKeyQuery) -> Result<GetKeyList, DataLayerError>;
+    async fn get_key_list(&self, query_params: KeyListQuery) -> Result<GetKeyList, DataLayerError>;
 }

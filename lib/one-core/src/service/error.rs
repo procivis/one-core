@@ -882,7 +882,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::ResponseMapping(_) => ErrorCode::BR_0055,
             Self::ExchangeProtocolError(error) => error.error_code(),
             Self::CryptoError(_) => ErrorCode::BR_0050,
-            Self::FormatterError(error) => error_code_formatter(error),
+            Self::FormatterError(error) => error.error_code(),
             Self::KeyStorageError(_) | Self::KeyStorageProvider(_) => ErrorCode::BR_0039,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::OpenID4VCError(_) | Self::OpenID4VCIError(_) => ErrorCode::BR_0048,
@@ -894,7 +894,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::KeyAlgorithmError(_) => ErrorCode::BR_0063,
             Self::KeyAlgorithmProviderError(_) => ErrorCode::BR_0063,
             Self::DidMethodError(_) => ErrorCode::BR_0064,
-            Self::DidMethodProviderError(error) => did_method_provider_error_code(error),
+            Self::DidMethodProviderError(error) => error.error_code(),
             Self::DidMdlValidationError(error) => error.error_code(),
             Self::ValidationError(_) | Self::Other(_) => ErrorCode::BR_0000,
             Self::Revocation(_) => ErrorCode::BR_0101,
@@ -1050,52 +1050,57 @@ impl ErrorCodeMixin for ExchangeProtocolError {
     }
 }
 
-pub fn error_code_formatter(error: &FormatterError) -> ErrorCode {
-    match error {
-        FormatterError::BBSOnly => ErrorCode::BR_0090,
-        FormatterError::Failed(_)
-        | FormatterError::CouldNotSign(_)
-        | FormatterError::CouldNotVerify(_)
-        | FormatterError::CouldNotFormat(_)
-        | FormatterError::CouldNotExtractCredentials(_)
-        | FormatterError::CouldNotExtractPresentation(_)
-        | FormatterError::CouldNotExtractClaimsFromPresentation(_)
-        | FormatterError::IncorrectSignature
-        | FormatterError::MissingPart
-        | FormatterError::MissingDisclosure
-        | FormatterError::MissingIssuer
-        | FormatterError::MissingHolder
-        | FormatterError::MissingClaim
-        | FormatterError::CryptoError(_)
-        | FormatterError::MissingBaseUrl { .. }
-        | FormatterError::JsonMapping(_)
-        | FormatterError::JsonPtrAssignError(_)
-        | FormatterError::JsonPtrParseError(_)
-        | FormatterError::FloatValueIsNaN => ErrorCode::BR_0057,
+impl ErrorCodeMixin for FormatterError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::BBSOnly => ErrorCode::BR_0090,
+            Self::Failed(_)
+            | Self::CouldNotSign(_)
+            | Self::CouldNotVerify(_)
+            | Self::CouldNotFormat(_)
+            | Self::CouldNotExtractCredentials(_)
+            | Self::CouldNotExtractPresentation(_)
+            | Self::CouldNotExtractClaimsFromPresentation(_)
+            | Self::IncorrectSignature
+            | Self::MissingPart
+            | Self::MissingDisclosure
+            | Self::MissingIssuer
+            | Self::MissingHolder
+            | Self::MissingClaim
+            | Self::CryptoError(_)
+            | Self::MissingBaseUrl { .. }
+            | Self::JsonMapping(_)
+            | Self::JsonPtrAssignError(_)
+            | Self::JsonPtrParseError(_)
+            | Self::FloatValueIsNaN => ErrorCode::BR_0057,
+        }
     }
 }
 
-pub fn did_method_provider_error_code(error: &DidMethodProviderError) -> ErrorCode {
-    match error {
-        DidMethodProviderError::DidMethod(_)
-        | DidMethodProviderError::CachingLoader(_)
-        | DidMethodProviderError::FailedToResolve(_)
-        | DidMethodProviderError::JsonParse(_)
-        | DidMethodProviderError::MissingDidMethodNameInDidValue
-        | DidMethodProviderError::RemoteEntityStorage(_)
-        | DidMethodProviderError::Other(_) => ErrorCode::BR_0064,
-        DidMethodProviderError::MissingProvider(_) => ErrorCode::BR_0031,
+impl ErrorCodeMixin for DidMethodProviderError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::DidMethod(_)
+            | Self::CachingLoader(_)
+            | Self::FailedToResolve(_)
+            | Self::JsonParse(_)
+            | Self::MissingDidMethodNameInDidValue
+            | Self::RemoteEntityStorage(_)
+            | Self::Other(_) => ErrorCode::BR_0064,
+            Self::MissingProvider(_) => ErrorCode::BR_0031,
+        }
     }
 }
 
 impl ErrorCodeMixin for DidMdlValidationError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            DidMdlValidationError::CertificateSignatureVerificationFailed(_)
-            | DidMdlValidationError::CertificateExpired => ErrorCode::BR_0157,
-            DidMdlValidationError::SubjectPublicKeyNotMatching
-            | DidMdlValidationError::KeyTypeNotSupported(_)
-            | DidMdlValidationError::SubjectPublicKeyInvalidDer(_) => ErrorCode::BR_0156,
+            Self::CertificateSignatureVerificationFailed(_) | Self::CertificateExpired => {
+                ErrorCode::BR_0157
+            }
+            Self::SubjectPublicKeyNotMatching
+            | Self::KeyTypeNotSupported(_)
+            | Self::SubjectPublicKeyInvalidDer(_) => ErrorCode::BR_0156,
         }
     }
 }

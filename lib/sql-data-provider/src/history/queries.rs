@@ -19,9 +19,9 @@ use crate::list_query_generic::{
 impl IntoSortingColumn for SortableHistoryColumn {
     fn get_column(&self) -> SimpleExpr {
         match self {
-            SortableHistoryColumn::CreatedDate => history::Column::CreatedDate,
-            SortableHistoryColumn::Action => history::Column::Action,
-            SortableHistoryColumn::EntityType => history::Column::EntityType,
+            Self::CreatedDate => history::Column::CreatedDate,
+            Self::Action => history::Column::Action,
+            Self::EntityType => history::Column::EntityType,
         }
         .into_simple_expr()
     }
@@ -30,7 +30,7 @@ impl IntoSortingColumn for SortableHistoryColumn {
 impl IntoFilterCondition for HistoryFilterValue {
     fn get_condition(self) -> sea_orm::Condition {
         match self {
-            HistoryFilterValue::EntityTypes(entity_types) => history::Column::EntityType
+            Self::EntityTypes(entity_types) => history::Column::EntityType
                 .is_in(
                     entity_types
                         .into_iter()
@@ -38,17 +38,15 @@ impl IntoFilterCondition for HistoryFilterValue {
                         .collect::<Vec<_>>(),
                 )
                 .into_condition(),
-            HistoryFilterValue::EntityId(entity_id) => {
-                get_equals_condition(history::Column::EntityId, entity_id)
-            }
-            HistoryFilterValue::Action(action) => get_equals_condition(
+            Self::EntityId(entity_id) => get_equals_condition(history::Column::EntityId, entity_id),
+            Self::Action(action) => get_equals_condition(
                 history::Column::Action,
                 history::HistoryAction::from(action),
             ),
-            HistoryFilterValue::CreatedDate(date_comparison) => {
+            Self::CreatedDate(date_comparison) => {
                 get_comparison_condition(history::Column::CreatedDate, date_comparison)
             }
-            HistoryFilterValue::DidId(did_id) => credential::Column::IssuerDidId
+            Self::DidId(did_id) => credential::Column::IssuerDidId
                 .eq(did_id)
                 .or(credential::Column::HolderDidId.eq(did_id))
                 .or(proof::Column::VerifierDidId.eq(did_id))
@@ -56,7 +54,7 @@ impl IntoFilterCondition for HistoryFilterValue {
                     .eq(did_id)
                     .and(history::Column::EntityType.eq(history::HistoryEntityType::Did)))
                 .into_condition(),
-            HistoryFilterValue::CredentialId(credential_id) => history::Column::EntityId
+            Self::CredentialId(credential_id) => history::Column::EntityId
                 .eq(credential_id)
                 .and(history::Column::EntityType.eq(history::HistoryEntityType::Credential))
                 .or(history::Column::EntityId.in_subquery(
@@ -72,19 +70,17 @@ impl IntoFilterCondition for HistoryFilterValue {
                         .to_owned(),
                 ))
                 .into_condition(),
-            HistoryFilterValue::CredentialSchemaId(credential_schema_id) => {
-                credential_schema_filter_condition(
-                    history::Column::EntityId.eq(credential_schema_id.to_string()),
-                    credential_schema::Column::Id.eq(credential_schema_id.to_string()),
-                )
-            }
-            HistoryFilterValue::SearchQuery(search_text, search_type) => {
+            Self::CredentialSchemaId(credential_schema_id) => credential_schema_filter_condition(
+                history::Column::EntityId.eq(credential_schema_id.to_string()),
+                credential_schema::Column::Id.eq(credential_schema_id.to_string()),
+            ),
+            Self::SearchQuery(search_text, search_type) => {
                 search_query_filter(search_text, search_type)
             }
-            HistoryFilterValue::OrganisationId(organisation_id) => {
+            Self::OrganisationId(organisation_id) => {
                 get_equals_condition(history::Column::OrganisationId, organisation_id.to_string())
             }
-            HistoryFilterValue::ProofSchemaId(proof_schema_id) => history::Column::EntityId
+            Self::ProofSchemaId(proof_schema_id) => history::Column::EntityId
                 .eq(proof_schema_id)
                 .and(history::Column::EntityType.eq(history::HistoryEntityType::ProofSchema))
                 .or(history::Column::EntityId.in_subquery(
@@ -369,7 +365,7 @@ fn credential_schema_filter_condition(
 impl IntoJoinCondition for HistoryFilterValue {
     fn get_join(self) -> Vec<JoinRelation> {
         match self {
-            HistoryFilterValue::DidId(_) => {
+            Self::DidId(_) => {
                 vec![
                     JoinRelation {
                         join_type: JoinType::LeftJoin,

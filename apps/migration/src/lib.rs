@@ -1,4 +1,4 @@
-pub use sea_orm_migration::prelude::*;
+pub(crate) use sea_orm_migration::prelude::*;
 
 mod m20240110_000001_initial;
 mod m20240115_093859_unique_did_name_and_key_name_in_org;
@@ -51,6 +51,7 @@ mod m20240905_114351_add_claims_removed_event;
 mod m20240920_115859_import_url;
 mod m20240925_130000_introduce_allow_suspension;
 
+pub use sea_orm_migration::migrator::MigratorTrait;
 pub struct Migrator;
 
 #[async_trait::async_trait]

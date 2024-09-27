@@ -2,6 +2,7 @@ use one_core::model::trust_entity::TrustEntity;
 use one_core::service::trust_entity::dto::{
     SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO, TrustEntityFilterValue,
 };
+use sea_orm::sea_query::SimpleExpr;
 use sea_orm::IntoSimpleExpr;
 
 use crate::entity::trust_anchor;
@@ -53,7 +54,7 @@ impl From<trust_entity::Model> for TrustEntity {
 }
 
 impl IntoSortingColumn for SortableTrustEntityColumnEnum {
-    fn get_column(&self) -> migration::SimpleExpr {
+    fn get_column(&self) -> SimpleExpr {
         match self {
             Self::Name => trust_entity::Column::Name.into_simple_expr(),
             Self::Role => trust_entity::Column::Role.into_simple_expr(),

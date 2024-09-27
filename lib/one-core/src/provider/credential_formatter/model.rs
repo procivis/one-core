@@ -125,10 +125,10 @@ impl TryFrom<PublishedClaimValue> for serde_json::Value {
 impl Display for PublishedClaimValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            PublishedClaimValue::Bool(value) => write!(f, "{}", value),
-            PublishedClaimValue::Float(value) => write!(f, "{}", value),
-            PublishedClaimValue::Integer(value) => write!(f, "{}", value),
-            PublishedClaimValue::String(value) => write!(f, "{}", value),
+            Self::Bool(value) => write!(f, "{}", value),
+            Self::Float(value) => write!(f, "{}", value),
+            Self::Integer(value) => write!(f, "{}", value),
+            Self::String(value) => write!(f, "{}", value),
         }
     }
 }
@@ -296,8 +296,8 @@ pub enum Issuer {
 impl Issuer {
     pub fn to_did_value(&self) -> DidValue {
         match self {
-            Issuer::Object { id, .. } => id.to_string().into(),
-            Issuer::Url(url) => url.to_string().into(),
+            Self::Object { id, .. } => id.to_string().into(),
+            Self::Url(url) => url.to_string().into(),
         }
     }
 }

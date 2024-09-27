@@ -180,6 +180,8 @@ pub struct DidFilterQueryParamsRest {
     pub key_roles: Option<Vec<KeyRoleRestEnum>>,
     #[param(inline, rename = "keyStorages[]")]
     pub key_storages: Option<Vec<String>>,
+    #[param(inline, rename = "keyIds[]")]
+    pub key_ids: Option<Vec<KeyId>>,
     #[param(inline, rename = "didMethods[]")]
     pub did_methods: Option<Vec<String>>,
 }
