@@ -102,11 +102,11 @@ pub enum PublicKeyJwkDTO {
 impl PublicKeyJwkDTO {
     pub fn get_use(&self) -> &Option<String> {
         match self {
-            PublicKeyJwkDTO::Ec(val) => &val.r#use,
-            PublicKeyJwkDTO::Rsa(val) => &val.r#use,
-            PublicKeyJwkDTO::Okp(val) => &val.r#use,
-            PublicKeyJwkDTO::Oct(val) => &val.r#use,
-            PublicKeyJwkDTO::Mlwe(val) => &val.r#use,
+            Self::Ec(val) => &val.r#use,
+            Self::Rsa(val) => &val.r#use,
+            Self::Okp(val) => &val.r#use,
+            Self::Oct(val) => &val.r#use,
+            Self::Mlwe(val) => &val.r#use,
         }
     }
 }

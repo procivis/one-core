@@ -102,8 +102,8 @@ impl<FV: ListFilterValue> std::ops::BitAnd<ListFilterCondition<FV>> for ListFilt
     type Output = Self;
     fn bitand(self, rhs: ListFilterCondition<FV>) -> Self::Output {
         match self {
-            ListFilterCondition::And(mut conditions) => match rhs {
-                ListFilterCondition::And(rhs) => Self::And({
+            Self::And(mut conditions) => match rhs {
+                Self::And(rhs) => Self::And({
                     conditions.extend(rhs);
                     conditions
                 }),
@@ -152,8 +152,8 @@ impl<FV: ListFilterValue> std::ops::BitOr<ListFilterCondition<FV>> for ListFilte
     type Output = Self;
     fn bitor(self, rhs: ListFilterCondition<FV>) -> Self::Output {
         match self {
-            ListFilterCondition::Or(mut conditions) => match rhs {
-                ListFilterCondition::Or(rhs) => Self::Or({
+            Self::Or(mut conditions) => match rhs {
+                Self::Or(rhs) => Self::Or({
                     conditions.extend(rhs);
                     conditions
                 }),

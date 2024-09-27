@@ -71,6 +71,7 @@ impl From<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
         });
 
         let did_methods = value.did_methods.map(DidFilterValue::DidMethods);
+        let key_ids = value.key_ids.map(DidFilterValue::KeyIds);
 
         organisation_id
             & r#type
@@ -80,5 +81,6 @@ impl From<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
             & key_roles
             & key_storages
             & did_methods
+            & key_ids
     }
 }

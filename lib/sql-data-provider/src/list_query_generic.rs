@@ -1,14 +1,14 @@
 use std::fmt::Write;
 
-use migration::{Expr, Func};
 use one_core::model::common::SortDirection;
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
 use one_core::model::list_query::ListQuery;
+use sea_orm::prelude::Expr;
 use sea_orm::query::*;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::sea_query::{Func, IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, EntityTrait, RelationDef};
 
 use crate::mapper::order_from_sort_direction;

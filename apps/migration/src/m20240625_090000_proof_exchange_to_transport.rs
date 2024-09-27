@@ -70,9 +70,9 @@ impl fmt::Display for Proof {
             f,
             "{}",
             match self {
-                Proof::Table => "proof",
-                Proof::Transport => "transport",
-                Proof::Exchange => "exchange",
+                Self::Table => "proof",
+                Self::Transport => "transport",
+                Self::Exchange => "exchange",
             }
         )
     }

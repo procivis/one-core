@@ -1,12 +1,14 @@
-use migration::SimpleExpr;
-use one_core::model::key::{GetKeyList, Key, SortableKeyColumn};
+use one_core::model::key::{GetKeyList, Key, KeyFilterValue, SortableKeyColumn};
 use one_core::model::organisation::Organisation;
 use one_dto_mapper::convert_inner;
-use sea_orm::IntoSimpleExpr;
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::{ColumnTrait, IntoSimpleExpr};
 
 use crate::common::calculate_pages_count;
 use crate::entity;
-use crate::list_query::GetEntityColumn;
+use crate::list_query_generic::{
+    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+};
 
 pub(super) fn from_model_and_relations(
     value: entity::key::Model,
@@ -25,26 +27,45 @@ pub(super) fn from_model_and_relations(
     }
 }
 
-impl GetEntityColumn for SortableKeyColumn {
-    fn get_simple_expr(&self) -> SimpleExpr {
+impl IntoSortingColumn for SortableKeyColumn {
+    fn get_column(&self) -> SimpleExpr {
         match self {
-            SortableKeyColumn::Name => entity::key::Column::Name.into_simple_expr(),
-            SortableKeyColumn::CreatedDate => entity::key::Column::CreatedDate.into_simple_expr(),
-            SortableKeyColumn::PublicKey => entity::key::Column::PublicKey.into_simple_expr(),
-            SortableKeyColumn::KeyType => entity::key::Column::KeyType.into_simple_expr(),
-            SortableKeyColumn::StorageType => entity::key::Column::StorageType.into_simple_expr(),
+            Self::Name => entity::key::Column::Name,
+            Self::CreatedDate => entity::key::Column::CreatedDate,
+            Self::PublicKey => entity::key::Column::PublicKey,
+            Self::KeyType => entity::key::Column::KeyType,
+            Self::StorageType => entity::key::Column::StorageType,
+        }
+        .into_simple_expr()
+    }
+}
+
+impl IntoFilterCondition for KeyFilterValue {
+    fn get_condition(self) -> sea_orm::Condition {
+        match self {
+            Self::Name(string_match) => {
+                get_string_match_condition(entity::key::Column::Name, string_match)
+            }
+            Self::OrganisationId(organisation_id) => {
+                get_equals_condition(entity::key::Column::OrganisationId, organisation_id)
+            }
+            Self::KeyType(r#type) => get_equals_condition(entity::key::Column::KeyType, r#type),
+            Self::KeyStorage(storage) => {
+                get_equals_condition(entity::key::Column::StorageType, storage)
+            }
+            Self::Ids(ids) => entity::key::Column::Id.is_in(ids).into_condition(),
         }
     }
 }
 
 pub(crate) fn create_list_response(
     keys: Vec<entity::key::Model>,
-    limit: u64,
+    limit: Option<u64>,
     items_count: u64,
 ) -> GetKeyList {
     GetKeyList {
         values: convert_inner(keys),
-        total_pages: calculate_pages_count(items_count, limit),
+        total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
         total_items: items_count,
     }
 }

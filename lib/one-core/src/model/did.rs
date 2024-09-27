@@ -112,6 +112,7 @@ pub enum DidFilterValue {
     KeyAlgorithms(Vec<String>),
     KeyRoles(Vec<KeyRole>),
     KeyStorages(Vec<String>),
+    KeyIds(Vec<KeyId>),
     DidMethods(Vec<String>),
 }
 

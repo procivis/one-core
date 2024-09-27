@@ -1,7 +1,18 @@
 use serde_json::json;
+use shared_types::{KeyId, OrganisationId};
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
+
+pub struct KeyFilters {
+    pub page: u64,
+    pub page_size: u64,
+    pub organisation_id: OrganisationId,
+    pub name: Option<String>,
+    pub key_type: Option<String>,
+    pub key_storage: Option<String>,
+    pub ids: Option<Vec<KeyId>>,
+}
 
 pub struct KeysApi {
     client: HttpClient,
@@ -28,6 +39,42 @@ impl KeysApi {
         });
 
         self.client.post("/api/key/v1", body).await
+    }
+
+    pub async fn list(
+        &self,
+        KeyFilters {
+            page,
+            page_size,
+            organisation_id,
+            name,
+            key_type,
+            key_storage,
+            ids,
+        }: KeyFilters,
+    ) -> Response {
+        let mut url = format!(
+            "/api/key/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}"
+        );
+
+        if let Some(name) = name {
+            url += &format!("&name={name}");
+        }
+
+        if let Some(key_type) = key_type {
+            url += &format!("&keyType={key_type}");
+        }
+
+        if let Some(key_storage) = key_storage {
+            url += &format!("&keyStorage={key_storage}");
+        }
+
+        url = ids
+            .into_iter()
+            .flatten()
+            .fold(url, |url, v| url + &format!("&ids[]={v}"));
+
+        self.client.get(&url).await
     }
 
     pub async fn check_certificate(&self, key_id: &str, certificate: &str) -> Response {

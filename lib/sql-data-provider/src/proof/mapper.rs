@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use migration::IntoCondition;
 use one_core::model::claim::Claim;
 use one_core::model::did::Did;
 use one_core::model::organisation::Organisation;
@@ -8,7 +7,7 @@ use one_core::model::proof::{GetProofList, Proof, ProofState, SortableProofColum
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::error::DataLayerError;
 use one_core::service::proof::dto::ProofFilterValue;
-use sea_orm::sea_query::SimpleExpr;
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
 use shared_types::ProofId;
 use time::OffsetDateTime;
@@ -164,10 +163,10 @@ impl TryFrom<Proof> for proof::ActiveModel {
 impl GetEntityColumn for SortableProofColumn {
     fn get_simple_expr(&self) -> SimpleExpr {
         match self {
-            SortableProofColumn::CreatedDate => proof::Column::CreatedDate.into_simple_expr(),
-            SortableProofColumn::SchemaName => proof_schema::Column::Name.into_simple_expr(),
-            SortableProofColumn::VerifierDid => did::Column::Did.into_simple_expr(),
-            SortableProofColumn::State => proof_state::Column::State.into_simple_expr(),
+            Self::CreatedDate => proof::Column::CreatedDate.into_simple_expr(),
+            Self::SchemaName => proof_schema::Column::Name.into_simple_expr(),
+            Self::VerifierDid => did::Column::Did.into_simple_expr(),
+            Self::State => proof_state::Column::State.into_simple_expr(),
         }
     }
 }

@@ -1,8 +1,9 @@
+use std::fmt::Write;
 use std::path::Path;
 
 use anyhow::Context;
-use migration::{Func, QueryStatementBuilder, SimpleExpr, Write};
 use one_core::repository::error::DataLayerError;
+use sea_orm::sea_query::{Func, QueryStatementBuilder, SimpleExpr};
 use sea_orm::{ColumnTrait, Database, DatabaseConnection, Iden};
 
 use crate::list_query_generic::Hex;

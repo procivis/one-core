@@ -5,11 +5,11 @@ use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
 use shared_types::KeyId;
 use uuid::Uuid;
 
-use super::dto::{GetKeyListResponseDTO, GetKeyQueryDTO, KeyCheckCertificateRequestDTO};
+use super::dto::{GetKeyListResponseDTO, KeyCheckCertificateRequestDTO};
 use super::mapper::request_to_certificate_params;
 use super::KeyService;
 use crate::model::history::{HistoryAction, HistoryEntityType};
-use crate::model::key::{Key, KeyRelations};
+use crate::model::key::{Key, KeyListQuery, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::did_method::mdl::{parse_pem, parse_x509_from_der, parse_x509_from_pem};
 use crate::provider::key_algorithm::es256::Es256;
@@ -110,7 +110,7 @@ impl KeyService {
     /// * `query` - query parameters
     pub async fn get_key_list(
         &self,
-        query: GetKeyQueryDTO,
+        query: KeyListQuery,
     ) -> Result<GetKeyListResponseDTO, ServiceError> {
         let result = self.key_repository.get_key_list(query).await?;
 

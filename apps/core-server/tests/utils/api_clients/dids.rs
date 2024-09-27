@@ -1,10 +1,21 @@
 use std::fmt::Display;
 
 use serde_json::json;
-use shared_types::KeyId;
+use shared_types::{KeyId, OrganisationId};
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
+
+pub struct DidFilters {
+    pub page: u64,
+    pub page_size: u64,
+    pub organisation_id: OrganisationId,
+    pub deactivated: Option<bool>,
+    pub key_algorithms: Option<Vec<String>>,
+    pub key_roles: Option<Vec<String>>,
+    pub did_methods: Option<Vec<String>>,
+    pub key_ids: Option<Vec<KeyId>>,
+}
 
 pub struct DidsApi {
     client: HttpClient,
@@ -40,27 +51,46 @@ impl DidsApi {
         self.client.post("/api/did/v1", body).await
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn list(
         &self,
-        page: u64,
-        page_size: u64,
-        organisation_id: &impl Display,
-        deactivated: bool,
-        key_algorithms: Option<String>,
-        key_roles: Option<String>,
-        did_methods: Option<String>,
+        DidFilters {
+            page,
+            page_size,
+            organisation_id,
+            deactivated,
+            key_algorithms,
+            key_roles,
+            did_methods,
+            key_ids,
+        }: DidFilters,
     ) -> Response {
-        let mut url = format!("/api/did/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}&deactivated={deactivated}");
-        if let Some(key_algorithms) = key_algorithms {
-            url.push_str(&format!("&keyAlgorithms[]={key_algorithms}"));
+        let mut url = format!(
+            "/api/did/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}"
+        );
+        if let Some(deactivated) = deactivated {
+            url += &format!("&deactivated={deactivated}");
         }
-        if let Some(key_roles) = key_roles {
-            url.push_str(&format!("&keyRoles[]={key_roles}"));
-        }
-        if let Some(did_methods) = did_methods {
-            url.push_str(&format!("&didMethods[]={did_methods}"));
-        }
+
+        url = key_algorithms
+            .into_iter()
+            .flatten()
+            .fold(url, |url, v| url + &format!("&keyAlgorithms[]={v}"));
+
+        url = key_roles
+            .into_iter()
+            .flatten()
+            .fold(url, |url, v| url + &format!("&keyRoles[]={v}"));
+
+        url = did_methods
+            .into_iter()
+            .flatten()
+            .fold(url, |url, v| url + &format!("&didMethods[]={v}"));
+
+        url = key_ids
+            .into_iter()
+            .flatten()
+            .fold(url, |url, v| url + &format!("&keyIds[]={v}"));
+
         self.client.get(&url).await
     }
 

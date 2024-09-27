@@ -1,8 +1,8 @@
 use anyhow::anyhow;
-use migration::SimpleExpr;
 use one_core::model::proof_schema::{GetProofSchemaList, ProofSchema, SortableProofSchemaColumn};
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
+use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{IntoSimpleExpr, Set};
 
 use crate::common::calculate_pages_count;
@@ -28,10 +28,8 @@ impl From<proof_schema::Model> for ProofSchema {
 impl GetEntityColumn for SortableProofSchemaColumn {
     fn get_simple_expr(&self) -> SimpleExpr {
         match self {
-            SortableProofSchemaColumn::Name => proof_schema::Column::Name.into_simple_expr(),
-            SortableProofSchemaColumn::CreatedDate => {
-                proof_schema::Column::CreatedDate.into_simple_expr()
-            }
+            Self::Name => proof_schema::Column::Name.into_simple_expr(),
+            Self::CreatedDate => proof_schema::Column::CreatedDate.into_simple_expr(),
         }
     }
 }

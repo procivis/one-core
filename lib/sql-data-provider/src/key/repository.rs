@@ -1,5 +1,5 @@
 use autometrics::autometrics;
-use one_core::model::key::{GetKeyList, GetKeyQuery, Key, KeyRelations};
+use one_core::model::key::{GetKeyList, Key, KeyListQuery, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
@@ -9,11 +9,10 @@ use sea_orm::{
 };
 use shared_types::KeyId;
 
-use super::mapper::create_list_response;
 use crate::entity::key;
-use crate::key::mapper::from_model_and_relations;
+use crate::key::mapper::{create_list_response, from_model_and_relations};
 use crate::key::KeyProvider;
-use crate::list_query::SelectWithListQuery;
+use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
 
 impl KeyProvider {
@@ -104,16 +103,16 @@ impl KeyRepository for KeyProvider {
             .collect())
     }
 
-    async fn get_key_list(&self, query_params: GetKeyQuery) -> Result<GetKeyList, DataLayerError> {
-        let limit: u64 = query_params.page_size as u64;
-
+    async fn get_key_list(&self, query_params: KeyListQuery) -> Result<GetKeyList, DataLayerError> {
         let query = key::Entity::find()
             .filter(key::Column::DeletedAt.is_null())
-            .with_organisation_id(&query_params, &key::Column::OrganisationId)
-            .with_ids(&query_params, &key::Column::Id)
-            .with_list_query(&query_params, &Some(vec![key::Column::Name]))
+            .with_list_query(&query_params)
             .order_by_desc(key::Column::CreatedDate)
             .order_by_desc(key::Column::Id);
+
+        let limit = query_params
+            .pagination
+            .map(|pagination| pagination.page_size as u64);
 
         let items_count = query
             .to_owned()

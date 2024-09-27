@@ -5,7 +5,9 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::KeyService;
-use crate::model::key::{GetKeyList, Key};
+use crate::model::key::{GetKeyList, Key, KeyFilterValue, KeyListQuery};
+use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
 use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
@@ -19,8 +21,8 @@ use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::key::dto::{
-    GetKeyQueryDTO, KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile,
-    KeyGenerateCSRRequestSubjectDTO, KeyRequestDTO,
+    KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
+    KeyRequestDTO,
 };
 use crate::service::test_utilities::generic_config;
 
@@ -192,15 +194,17 @@ async fn test_get_key_list() {
         key_algorithm_provider,
     );
 
-    let query = GetKeyQueryDTO {
-        page: 0,
-        page_size: 10,
-        sort: None,
-        sort_direction: None,
-        name: Some("NAME".to_owned()),
-        organisation_id: org_id.into(),
-        exact: None,
-        ids: None,
+    let query = KeyListQuery {
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 10,
+        }),
+        sorting: None,
+        filtering: Some(
+            KeyFilterValue::Name(StringMatch::contains("Name")).condition()
+                & KeyFilterValue::OrganisationId(org_id.into()),
+        ),
+        include: None,
     };
 
     let result = service.get_key_list(query).await;

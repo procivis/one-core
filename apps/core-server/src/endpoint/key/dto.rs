@@ -6,11 +6,12 @@ use one_core::service::key::dto::{
 };
 use one_dto_mapper::{From, Into, TryFrom};
 use serde::{Deserialize, Serialize};
+use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use crate::dto::common::GetListQueryParams;
+use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
@@ -91,7 +92,23 @@ pub enum SortableKeyColumnRestDTO {
     StorageType,
 }
 
-pub type GetKeyQuery = GetListQueryParams<SortableKeyColumnRestDTO>;
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyFilterQueryParamsRest {
+    pub organisation_id: OrganisationId,
+    pub name: Option<String>,
+
+    #[param(inline)]
+    pub key_type: Option<String>,
+    #[param(inline)]
+    pub key_storage: Option<String>,
+    #[param(inline, rename = "ids[]")]
+    pub ids: Option<Vec<KeyId>>,
+    #[param(inline, rename = "exact[]")]
+    pub exact: Option<Vec<ExactColumn>>,
+}
+
+pub type GetKeyQuery = ListQueryParamsRest<KeyFilterQueryParamsRest, SortableKeyColumnRestDTO>;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(KeyGenerateCSRRequestDTO)]
