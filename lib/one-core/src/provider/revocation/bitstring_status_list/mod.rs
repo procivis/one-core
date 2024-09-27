@@ -36,6 +36,9 @@ pub mod model;
 pub mod resolver;
 pub mod util;
 
+#[cfg(test)]
+mod test;
+
 const CREDENTIAL_STATUS_TYPE: &str = "BitstringStatusListEntry";
 const DEFAULT_CREDENTIAL_FORMAT: &str = "JWT";
 
@@ -117,31 +120,38 @@ impl RevocationMethod for BitstringStatusList {
                 "issuer did is None".to_string(),
             ))?;
 
+        let credential_schema = credential
+            .schema
+            .as_ref()
+            .ok_or(RevocationError::MappingError(
+                "issuer did is None".to_string(),
+            ))?;
+
         let index_on_status_list = self.get_credential_index_on_revocation_list(
             &data.credentials_by_issuer_did,
             &credential.id,
             &issuer_did.id,
         )?;
 
-        Ok((
-            None,
-            vec![
-                CredentialRevocationInfo {
-                    credential_status: self.create_credential_status(
-                        &data.revocation_list_id,
-                        index_on_status_list,
-                        "revocation",
-                    )?,
-                },
-                CredentialRevocationInfo {
-                    credential_status: self.create_credential_status(
-                        &data.suspension_list_id,
-                        index_on_status_list,
-                        "suspension",
-                    )?,
-                },
-            ],
-        ))
+        let mut revocation_info = vec![CredentialRevocationInfo {
+            credential_status: self.create_credential_status(
+                &data.revocation_list_id,
+                index_on_status_list,
+                "revocation",
+            )?,
+        }];
+
+        if credential_schema.allow_suspension {
+            revocation_info.push(CredentialRevocationInfo {
+                credential_status: self.create_credential_status(
+                    &data.suspension_list_id,
+                    index_on_status_list,
+                    "suspension",
+                )?,
+            });
+        }
+
+        Ok((None, revocation_info))
     }
 
     async fn mark_credential_as(
