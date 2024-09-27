@@ -1,4 +1,4 @@
-use dto_mapper::Into;
+use one_dto_mapper::Into;
 use serde::Deserialize;
 
 use crate::provider::exchange_protocol::openid4vc::model::SubmitIssuerResponse;

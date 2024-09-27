@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use dto_mapper::{convert_inner, convert_inner_of_inner};
+use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use shared_types::{CredentialSchemaId, DidId, DidValue, OrganisationId};
 
 use crate::model::claim::ClaimRelations;

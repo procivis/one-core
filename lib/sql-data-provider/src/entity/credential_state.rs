@@ -1,7 +1,7 @@
-use dto_mapper::{From, Into};
 use one_core::model::credential::{
     CredentialState as ModelCredentialState, CredentialStateEnum as ModelCredentialStateEnum,
 };
+use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use serde::Deserialize;
 use shared_types::CredentialId;

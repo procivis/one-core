@@ -16,7 +16,7 @@ test_utils = []
 anyhow.workspace      = true
 async-trait           = { version = "0.1" }
 autometrics.workspace = true
-dto_mapper.workspace  = true
+one-dto-mapper.workspace  = true
 futures               = { version = "0.3" }
 hex.workspace         = true
 itertools             = { version = "0.13" }

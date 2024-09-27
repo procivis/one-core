@@ -1,4 +1,4 @@
-use dto_mapper::{From, Into};
+use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId};
 use strum_macros::{AsRefStr, Display, EnumString};

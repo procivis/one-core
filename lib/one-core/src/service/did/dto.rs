@@ -1,4 +1,4 @@
-use dto_mapper::From;
+use one_dto_mapper::From;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;

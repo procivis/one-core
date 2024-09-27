@@ -1,9 +1,9 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use dto_mapper::convert_inner;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::credential::dto::GetCredentialQueryDTO;
+use one_dto_mapper::convert_inner;
 use shared_types::CredentialId;
 
 use super::dto::{

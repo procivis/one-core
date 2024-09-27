@@ -1,5 +1,5 @@
-use dto_mapper::{convert_inner, From, Into};
 use one_core::service::history::dto::HistoryResponseDTO;
+use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId, OrganisationId, ProofSchemaId,

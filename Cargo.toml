@@ -27,10 +27,10 @@ anyhow             = { version = "1.0" }
 autometrics        = { version = "2.0", features = ["prometheus-0_13"] }
 axum               = { version = "0.7", features = ["macros"] }
 ct-codecs          = { version = "1.1" }
-dto_mapper         = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git", tag = "0.1.6" }
 futures            = { version = "0.3" }
 hex                = { version = "0.4", features = ["serde"] }
 mockall            = { version = "0.13" }
+one-dto-mapper     = { version = "0.1" }
 p256               = { version = "0.13", features = ["arithmetic", "jwk"] }
 rand               = { version = "0.8" }
 reqwest            = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
@@ -55,7 +55,6 @@ utoipa             = { version = "4.2", default-features = false }
 uuid               = { version = "1.10", features = ["v4", "serde"] }
 validator          = { version = "0.18", features = ["derive"] }
 wiremock           = { version = "0.6" }
-
 
 [workspace.lints.clippy]
 dbg_macro       = "warn"

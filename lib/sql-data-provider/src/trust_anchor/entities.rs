@@ -1,5 +1,5 @@
-use dto_mapper::Into;
 use one_core::service::trust_anchor::dto::TrustAnchorsListItemResponseDTO;
+use one_dto_mapper::Into;
 use sea_orm::FromQueryResult;
 use shared_types::{OrganisationId, TrustAnchorId};
 use time::OffsetDateTime;

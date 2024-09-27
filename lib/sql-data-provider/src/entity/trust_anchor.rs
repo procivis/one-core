@@ -1,5 +1,5 @@
-use dto_mapper::{From, Into};
 use one_core::model::trust_anchor::TrustAnchor;
+use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use shared_types::{DidId, OrganisationId, TrustAnchorId};
 use time::OffsetDateTime;

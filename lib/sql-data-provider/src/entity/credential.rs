@@ -1,5 +1,5 @@
-use dto_mapper::{From, Into};
 use one_core::model::credential::CredentialRole as ModelCredentialRole;
+use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use shared_types::{CredentialId, CredentialSchemaId, DidId, KeyId};
 use time::OffsetDateTime;

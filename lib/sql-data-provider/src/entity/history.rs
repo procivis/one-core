@@ -1,7 +1,7 @@
-use dto_mapper::{From, Into};
 use one_core::model::history::{
     HistoryAction as ModelHistoryAction, HistoryEntityType as ModelHistoryEntityType,
 };
+use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;

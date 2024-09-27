@@ -1,9 +1,9 @@
-use dto_mapper::{convert_inner, From, Into};
 use one_core::model::trust_entity::TrustEntityRole;
 use one_core::service::trust_entity::dto::{
     CreateTrustEntityRequestDTO, GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
     TrustEntitiesResponseItemDTO,
 };
+use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;

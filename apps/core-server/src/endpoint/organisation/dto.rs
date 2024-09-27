@@ -1,5 +1,5 @@
-use dto_mapper::From;
 use one_core::service::organisation::dto::GetOrganisationDetailsResponseDTO;
+use one_dto_mapper::From;
 use serde::{Deserialize, Serialize};
 use shared_types::OrganisationId;
 use time::OffsetDateTime;

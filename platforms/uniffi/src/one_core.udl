@@ -82,7 +82,6 @@ interface ConnectionEventBindingEnum {
   Disconnected(string device_address);
 };
 
-
 dictionary DeviceInfoBindingDTO {
   string address;
   u16 mtu;

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 use one_core::model::common::GetListQueryParams;
 use one_core::model::did::DidType;
 use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
@@ -27,6 +26,7 @@ use one_core::service::proof_schema::dto::ImportProofSchemaClaimSchemaDTO;
 use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, ListTrustAnchorsQueryDTO, TrustAnchorFilterValue,
 };
+use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 use serde_json::json;
 use shared_types::KeyId;
 use time::OffsetDateTime;

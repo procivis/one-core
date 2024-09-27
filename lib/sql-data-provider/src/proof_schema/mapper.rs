@@ -1,8 +1,8 @@
 use anyhow::anyhow;
-use dto_mapper::convert_inner;
 use migration::SimpleExpr;
 use one_core::model::proof_schema::{GetProofSchemaList, ProofSchema, SortableProofSchemaColumn};
 use one_core::repository::error::DataLayerError;
+use one_dto_mapper::convert_inner;
 use sea_orm::{IntoSimpleExpr, Set};
 
 use crate::common::calculate_pages_count;

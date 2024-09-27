@@ -1,4 +1,3 @@
-use dto_mapper::{convert_inner, From, Into};
 use one_core::provider::credential_formatter::json_ld::model::{LdCredential, LdPresentation};
 use one_core::provider::did_method::model::DidDocument;
 use one_core::service::vc_api::dto::{
@@ -6,6 +5,7 @@ use one_core::service::vc_api::dto::{
     CredentialVerifiyRequest, CredentialVerifyResponse, PresentationVerifyRequest,
     PresentationVerifyResponse, VerifyOptions,
 };
+use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 

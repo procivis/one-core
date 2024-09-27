@@ -3,7 +3,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
 use axum_extra::typed_header::TypedHeaderRejection;
-use dto_mapper::From;
+use one_dto_mapper::From;
 use serde::Serialize;
 use utoipa::ToSchema;
 

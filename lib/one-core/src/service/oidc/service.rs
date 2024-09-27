@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use dto_mapper::convert_inner;
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
 use one_crypto::utilities;
+use one_dto_mapper::convert_inner;
 use shared_types::{CredentialId, CredentialSchemaId, KeyId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;

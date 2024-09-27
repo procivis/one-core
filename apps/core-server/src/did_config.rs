@@ -1,5 +1,5 @@
-use dto_mapper::{convert_inner, From, Into};
 use one_crypto::utilities::deserialize_base64;
+use one_dto_mapper::{convert_inner, From, Into};
 use serde::de::Error;
 use serde::{Deserialize, Serialize};
 

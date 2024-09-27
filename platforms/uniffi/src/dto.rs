@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 use one_core::model::common::{EntityShareResponseDTO, ExactColumn};
 use one_core::model::credential::SortableCredentialColumn;
 use one_core::model::credential_schema::{
@@ -59,6 +58,7 @@ use one_core::service::trust_anchor::dto::{
     GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO, SortableTrustAnchorColumn,
     TrustAnchorsListItemResponseDTO,
 };
+use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 
 use crate::error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
 use crate::mapper::{optional_did_string, optional_time, serialize_config_entity};

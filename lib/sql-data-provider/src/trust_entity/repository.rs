@@ -1,11 +1,11 @@
 use autometrics::autometrics;
-use dto_mapper::convert_inner;
 use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::service::trust_entity::dto::{
     GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO,
 };
+use one_dto_mapper::convert_inner;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, RelationTrait, Set,

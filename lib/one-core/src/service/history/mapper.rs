@@ -1,4 +1,4 @@
-use dto_mapper::{convert_inner, try_convert_inner};
+use one_dto_mapper::{convert_inner, try_convert_inner};
 
 use crate::model::history::{GetHistoryList, History};
 use crate::service::error::ServiceError;

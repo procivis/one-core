@@ -1,7 +1,7 @@
 use std::any::type_name;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use dto_mapper::{convert_inner, try_convert_inner};
+use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use shared_types::{CredentialId, DidId, DidValue, KeyId};

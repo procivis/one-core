@@ -1,6 +1,6 @@
 use anyhow::Context;
-use dto_mapper::{From, Into};
 use one_core::model;
+use one_dto_mapper::{From, Into};
 use sea_orm::prelude::{
     ActiveModelBehavior, BlobSize, DeriveEntityModel, DerivePrimaryKey, DeriveRelation,
     EntityTrait, EnumIter, PrimaryKeyTrait, Related, RelationDef, RelationTrait,

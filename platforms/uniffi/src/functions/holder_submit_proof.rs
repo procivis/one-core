@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use dto_mapper::try_convert_inner;
 use one_core::service::ssi_holder::dto::PresentationSubmitRequestDTO;
+use one_dto_mapper::try_convert_inner;
 
 use crate::dto::PresentationSubmitCredentialRequestBindingDTO;
 use crate::error::BindingError;

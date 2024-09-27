@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::time::Duration;
 
-use dto_mapper::convert_inner;
+use one_dto_mapper::convert_inner;
 use shared_types::{CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;

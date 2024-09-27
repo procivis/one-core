@@ -1,4 +1,3 @@
-use dto_mapper::{convert_inner, From, Into};
 use one_core::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO,
     GetProofSchemaResponseDTO, ImportProofSchemaClaimSchemaDTO,
@@ -6,6 +5,7 @@ use one_core::service::proof_schema::dto::{
     ImportProofSchemaRequestDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaRequestDTO,
     ProofInputSchemaResponseDTO, ProofSchemaShareResponseDTO,
 };
+use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;

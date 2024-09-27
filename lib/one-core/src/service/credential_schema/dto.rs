@@ -1,4 +1,4 @@
-use dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use strum_macros::{Display, EnumString};

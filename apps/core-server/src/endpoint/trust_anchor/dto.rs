@@ -1,9 +1,9 @@
-use dto_mapper::{From, Into};
 use one_core::model::trust_anchor::TrustAnchorRole;
 use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO, SortableTrustAnchorColumn,
     TrustAnchorsListItemResponseDTO,
 };
+use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, TrustAnchorId};
 use time::OffsetDateTime;

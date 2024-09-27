@@ -1,4 +1,4 @@
-use dto_mapper::convert_inner;
+use one_dto_mapper::convert_inner;
 
 use crate::dto::CredentialRevocationCheckResponseBindingDTO;
 use crate::error::BindingError;
