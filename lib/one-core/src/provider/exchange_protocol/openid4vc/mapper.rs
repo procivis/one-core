@@ -562,7 +562,7 @@ pub fn from_create_request_with_id(
         imported_source_url: url,
         schema_id,
         organisation: Some(organisation),
-        allow_suspension: true,
+        allow_suspension: false,
     })
 }
 
@@ -1425,7 +1425,7 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
             schema_id: value.schema_id,
             layout_type: value.layout_type.into(),
             layout_properties: value.layout_properties.map(Into::into),
-            allow_suspension: true,
+            allow_suspension: value.allow_suspension,
         })
     }
 }

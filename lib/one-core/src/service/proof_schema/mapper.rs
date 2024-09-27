@@ -92,7 +92,7 @@ pub(super) fn credential_schema_from_proof_input_schema(
         schema_type: input_schema.credential_schema.schema_type.clone().into(),
         claim_schemas: Some(claims),
         organisation: Some(organisation),
-        allow_suspension: true,
+        allow_suspension: false,
     }
 }
 

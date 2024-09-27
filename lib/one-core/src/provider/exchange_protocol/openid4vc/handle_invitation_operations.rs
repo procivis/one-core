@@ -293,7 +293,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     schema_type: CredentialSchemaType::Other(schema_data.schema_type.clone()),
                     schema_id: schema_data.schema_id.clone(),
                     organisation: Some(organisation),
-                    allow_suspension: true,
+                    allow_suspension: false,
                 };
 
                 BuildCredentialSchemaResponse {
