@@ -1,9 +1,9 @@
-use dto_mapper::{convert_inner, From, Into};
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaDetailResponseDTO, CredentialSchemaListIncludeEntityTypeEnum,
     CredentialSchemaListItemResponseDTO,
 };
+use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;

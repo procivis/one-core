@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use dto_mapper::{convert_inner, From, Into};
 use one_core::model::proof::{ProofStateEnum, SortableProofColumn};
 use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
@@ -11,6 +10,7 @@ use one_core::service::proof::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
     ProofInputDTO, ProofListItemResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
 };
+use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;

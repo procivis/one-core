@@ -3,7 +3,6 @@ use std::str::FromStr;
 
 use anyhow::anyhow;
 use autometrics::autometrics;
-use dto_mapper::convert_inner;
 use one_core::model::claim::{Claim, ClaimId};
 use one_core::model::did::Did;
 use one_core::model::interaction::InteractionId;
@@ -12,6 +11,7 @@ use one_core::model::proof::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::proof_repository::ProofRepository;
+use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::expr::Expr;
 use sea_orm::sea_query::{Alias, IntoCondition, Query};
 use sea_orm::{

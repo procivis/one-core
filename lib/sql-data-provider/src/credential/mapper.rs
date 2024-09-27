@@ -1,4 +1,3 @@
-use dto_mapper::convert_inner;
 use one_core::model::credential::{Credential, CredentialState, SortableCredentialColumn};
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::did::Did;
@@ -6,6 +5,7 @@ use one_core::model::interaction::InteractionId;
 use one_core::model::revocation_list::RevocationListId;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential::dto::CredentialFilterValue;
+use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};

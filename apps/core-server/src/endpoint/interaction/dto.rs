@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use dto_mapper::{convert_inner, From, Into};
 use one_core::service::proof::dto::ProposeProofResponseDTO;
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
+use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, KeyId, OrganisationId, ProofId};
 use url::Url;

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use dto_mapper::{convert_inner, Into};
+use one_dto_mapper::{convert_inner, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId};
 use strum::Display;

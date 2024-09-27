@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use dto_mapper::convert_inner;
+use one_dto_mapper::convert_inner;
 use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;

@@ -1,4 +1,3 @@
-use dto_mapper::convert_inner;
 use one_core::model::claim::Claim;
 use one_core::model::credential::Credential;
 use one_core::model::credential_schema::{
@@ -6,6 +5,7 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
+use one_dto_mapper::convert_inner;
 
 use super::models::{ClaimWithSchema, SchemaWithClaimSchema, UnexportableCredentialModel};
 use crate::entity::credential_state;

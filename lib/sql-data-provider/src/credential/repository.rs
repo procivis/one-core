@@ -2,7 +2,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use autometrics::autometrics;
-use dto_mapper::convert_inner;
 use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
 use one_core::model::credential::{
     Credential, CredentialRelations, CredentialState, GetCredentialList, GetCredentialQuery,
@@ -17,6 +16,7 @@ use one_core::repository::credential_schema_repository::CredentialSchemaReposito
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
+use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{Alias, Expr, IntoCondition, Query};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait,

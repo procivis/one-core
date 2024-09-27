@@ -1,4 +1,4 @@
-use dto_mapper::From;
+use one_dto_mapper::From;
 use serde::Deserialize;
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;

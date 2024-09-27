@@ -4,10 +4,10 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
-use dto_mapper::convert_inner;
 use one_core::provider::credential_formatter::error::FormatterError;
 use one_core::provider::did_method::error::DidMethodProviderError;
 use one_core::service::error::{self, MissingProviderError, ServiceError};
+use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use utoipa::ToSchema;
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use dto_mapper::convert_inner;
 use itertools::Itertools;
+use one_dto_mapper::convert_inner;
 use regex::Regex;
 use serde::{Deserialize, Deserializer};
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};

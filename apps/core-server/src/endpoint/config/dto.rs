@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use dto_mapper::From;
 use one_core::service::config::dto::ConfigDTO;
+use one_dto_mapper::From;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use utoipa::ToSchema;

@@ -94,7 +94,6 @@ abstract class AndroidBLEBase(val context: Context, val TAG: String) {
         }
     }
 
-
     /**
      * shared synchronization object
      * @sample

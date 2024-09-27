@@ -1,10 +1,10 @@
-use dto_mapper::convert_inner;
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, SortableCredentialSchemaColumn,
 };
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
+use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::ActiveValue::Set;

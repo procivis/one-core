@@ -1,7 +1,7 @@
 use std::fmt;
 
-use dto_mapper::{convert_inner, try_convert_inner};
 use one_core::model::common::GetListResponse;
+use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde::Serialize;
 use thiserror::Error;
 use utoipa::ToSchema;

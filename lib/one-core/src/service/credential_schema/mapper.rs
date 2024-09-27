@@ -1,4 +1,4 @@
-use dto_mapper::convert_inner;
+use one_dto_mapper::convert_inner;
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;

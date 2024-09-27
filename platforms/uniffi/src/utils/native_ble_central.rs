@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use dto_mapper::convert_inner_of_inner;
 use one_core::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicUUID, CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
     ServiceUUID,
 };
 use one_core::provider::bluetooth_low_energy::BleError;
+use one_dto_mapper::convert_inner_of_inner;
 
 pub struct BleCentralWrapper(pub Arc<dyn crate::BleCentral>);
 

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use one_core::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
 use one_core::provider::exchange_protocol::openid4vc::model::{
@@ -37,6 +36,7 @@ use one_core::service::ssi_issuer::dto::{
 use one_core::service::ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO};
 use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
 use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
+use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
 use shared_types::{CredentialId, DidValue, KeyId, ProofId, TrustAnchorId, TrustEntityId};

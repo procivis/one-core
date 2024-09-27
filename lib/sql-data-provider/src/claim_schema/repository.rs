@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use autometrics::autometrics;
-use dto_mapper::convert_inner;
 use itertools::Itertools;
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
+use one_dto_mapper::convert_inner;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use shared_types::ClaimSchemaId;
 

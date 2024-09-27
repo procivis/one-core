@@ -1,4 +1,4 @@
-use dto_mapper::convert_inner;
+use one_dto_mapper::convert_inner;
 
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};

@@ -1,6 +1,6 @@
-use dto_mapper::{convert_inner, From, Into};
 use one_core::model;
 use one_core::model::credential_schema::WalletStorageTypeEnum as ModelWalletStorageTypeEnum;
+use one_dto_mapper::{convert_inner, From, Into};
 use sea_orm::entity::prelude::*;
 use sea_orm::FromJsonQueryResult;
 use serde::{Deserialize, Serialize};

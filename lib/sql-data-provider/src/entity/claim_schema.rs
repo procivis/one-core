@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
-use dto_mapper::Into;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::repository::error::DataLayerError;
+use one_dto_mapper::Into;
 use sea_orm::entity::prelude::*;
 use serde::Deserialize;
 use shared_types::ClaimSchemaId;

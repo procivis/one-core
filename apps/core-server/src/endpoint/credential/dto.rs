@@ -1,4 +1,3 @@
-use dto_mapper::{convert_inner, From, Into};
 use one_core::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListIncludeEntityTypeEnum,
     CredentialListItemResponseDTO, CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO,
@@ -6,6 +5,7 @@ use one_core::service::credential::dto::{
     DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
     SuspendCredentialRequestDTO,
 };
+use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, CredentialSchemaId, KeyId, OrganisationId};
 use time::OffsetDateTime;

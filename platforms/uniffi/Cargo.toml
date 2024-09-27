@@ -14,21 +14,21 @@ crate-type = ["cdylib", "staticlib"]
 strict = []
 
 [dependencies]
-async-trait          = { version = "0.1" }
-dto_mapper.workspace = true
-one-core             = { version = "0.1.0", path = "../../lib/one-core" }
-one-crypto           = { version = "0.1.0", path = "../../lib/one-crypto" }
-reqwest              = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
-serde.workspace      = true
-serde_json.workspace = true
-shared-types         = { version = "0.1.0", path = "../../lib/shared-types" }
-sql-data-provider    = { version = "0.1.0", path = "../../lib/sql-data-provider" }
-thiserror.workspace  = true
-time.workspace       = true
-tokio                = { workspace = true, features = ['rt-multi-thread'] }
-uniffi.workspace     = true
-url.workspace        = true
-uuid.workspace       = true
+async-trait              = { version = "0.1" }
+one-core                 = { version = "0.1.0", path = "../../lib/one-core" }
+one-crypto               = { version = "0.1.0", path = "../../lib/one-crypto" }
+one-dto-mapper.workspace = true
+reqwest                  = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
+serde.workspace          = true
+serde_json.workspace     = true
+shared-types             = { version = "0.1.0", path = "../../lib/shared-types" }
+sql-data-provider        = { version = "0.1.0", path = "../../lib/sql-data-provider" }
+thiserror.workspace      = true
+time.workspace           = true
+tokio                    = { workspace = true, features = ['rt-multi-thread'] }
+uniffi.workspace         = true
+url.workspace            = true
+uuid.workspace           = true
 
 [target.'cfg(target_os = "android")'.dependencies]
 tracing-android    = { version = "0.2" }

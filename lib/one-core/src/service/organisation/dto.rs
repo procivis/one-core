@@ -1,4 +1,4 @@
-use dto_mapper::From;
+use one_dto_mapper::From;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
 

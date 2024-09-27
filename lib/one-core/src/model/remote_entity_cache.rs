@@ -1,4 +1,4 @@
-use dto_mapper::{From, Into};
+use one_dto_mapper::{From, Into};
 use shared_types::RemoteEntityCacheId;
 use time::OffsetDateTime;
 

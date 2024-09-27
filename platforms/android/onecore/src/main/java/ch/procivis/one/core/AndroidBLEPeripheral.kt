@@ -636,7 +636,6 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                 }
             }
 
-
             @SuppressLint("MissingPermission")
             override fun onDescriptorReadRequest(
                 device: BluetoothDevice,

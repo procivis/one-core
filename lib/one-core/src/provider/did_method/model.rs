@@ -1,6 +1,6 @@
 //! `struct`s and `enum`s for DID method provider.
 
-use dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{convert_inner, From, Into};
 use shared_types::DidValue;
 
 use super::dto::{DidDocumentDTO, DidVerificationMethodDTO};

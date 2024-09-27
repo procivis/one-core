@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use dto_mapper::{convert_inner, convert_inner_of_inner};
+use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
 use crate::common_mapper::{get_or_create_did, remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::model::credential::Credential;
