@@ -301,6 +301,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
         let (update, status) = revocation_method
             .add_issued_credential(&credential, credential_additional_data)
             .await?;
+
         if let Some(update) = update {
             process_update(
                 update,
