@@ -4,11 +4,14 @@ include:
   - project: "procivis/one/one-operations"
     file:
       - "gitlab/docker.gitlab-ci.yml"
+      - "gitlab/github.gitlab-ci.yml"
 
 variables:
   DOCKER_DRIVER: overlay2
   DEPENDENCY_TRACK_PROJECT_NAME: "ONE-Core"
   CI_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/
+  GITHUB_PROJECT: "procivis/one-core"
+  GITHUB_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/
 
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
@@ -41,6 +44,7 @@ stages:
   - sdk_build
   - sdk_artifact
   - e2e_tests
+  - github
 
 .app_settings: &app_settings
   - APP_FLAVOR=$(echo $CI_COMMIT_TAG | sed -n "s/^v.*-\(.*\)$/\1/p")
@@ -390,11 +394,11 @@ e2e:trigger_tests:
     - .run_e2e_tests
     - .manual_except_main_branch
 
-dependency_track:upload-bom:
+dtrack:upload-bom:
   stage: scan
   variables:
     D_TRACK_PATH: ${DEPENDENCY_TRACK_BASE_URL}/api/v1/bom
-    SBOM_FILE_PATH: "merged_sbom.json"
+    SBOM_FILE_PATH: "one-core.json"
     SBOM_FILES: >-
       apps/core-server/core-server.cdx.json
       apps/migration/migration.cdx.json
@@ -421,6 +425,13 @@ dependency_track:upload-bom:
         "bom": "${file_content}"
       }
       EOF
+  artifacts:
+    when: always
+    paths:
+      - ${SBOM_FILE_PATH}
+    reports:
+      cyclonedx:
+        - ${SBOM_FILE_PATH}
 
 .dTrack_metrics: &dTrack_metrics
   - base_url=${DEPENDENCY_TRACK_BASE_URL}/api/v1/project/lookup
@@ -433,11 +444,11 @@ dependency_track:upload-bom:
   - metrics=$(echo $result | jq -r .metrics)
   - echo "Dependency Track Project Version metrics=${metrics}"
 
-dependency_track:policy_violations:
+dtrack:policy_violations:
   stage: scan
   allow_failure: true
   needs:
-    - job: dependency_track:upload-bom
+    - job: dtrack:upload-bom
   extends:
     - .only_main_or_tag
   script:
@@ -450,11 +461,11 @@ dependency_track:policy_violations:
         exit 1;
       fi
 
-dependency_track:metrics:
+dtrack:metrics:
   stage: scan
   allow_failure: true
   needs:
-    - job: dependency_track:upload-bom
+    - job: dtrack:upload-bom
   extends:
     - .only_main_or_tag
   script:
@@ -468,3 +479,18 @@ dependency_track:metrics:
           echo "Lib vulnerabilities more that 0."
           exit 1;
       fi
+
+github:push:
+  extends:
+    - .github:push
+
+github:release:
+  variables:
+    FILES_TO_ATTACH: >-
+      one-core.json
+  extends:
+    - .github:release
+  needs:
+    - job: github:push
+    - job: dtrack:upload-bom
+      artifacts: true
