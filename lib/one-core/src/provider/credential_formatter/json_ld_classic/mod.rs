@@ -450,6 +450,17 @@ impl JsonLdClassic {
         let credential: LdCredential = serde_json::from_str(credential)
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
 
+        if let Some(verification_fn) = verification_fn {
+            verify_credential_signature(
+                credential.clone(),
+                verification_fn,
+                &*self.crypto,
+                self.caching_loader.to_owned(),
+                None,
+            )
+            .await?;
+        }
+
         if !json_ld::is_context_list_valid(
             &credential.context,
             self.params.allowed_contexts.as_ref(),
@@ -460,17 +471,6 @@ impl JsonLdClassic {
             return Err(FormatterError::CouldNotVerify(
                 "Used context is not allowed".to_string(),
             ));
-        }
-
-        if let Some(verification_fn) = verification_fn {
-            verify_credential_signature(
-                credential.clone(),
-                verification_fn,
-                &*self.crypto,
-                self.caching_loader.to_owned(),
-                None,
-            )
-            .await?;
         }
 
         // We only take first subject now as one credential only contains one credential schema
@@ -515,6 +515,16 @@ impl JsonLdClassic {
         let presentation: LdPresentation = serde_json::from_str(json_ld)
             .map_err(|e| FormatterError::CouldNotExtractPresentation(e.to_string()))?;
 
+        if let Some(verification_fn) = verification_fn {
+            verify_presentation_signature(
+                presentation.clone(),
+                verification_fn,
+                &*self.crypto,
+                self.caching_loader.to_owned(),
+            )
+            .await?;
+        }
+
         if !json_ld::is_context_list_valid(
             &presentation.context,
             self.params.allowed_contexts.as_ref(),
@@ -525,16 +535,6 @@ impl JsonLdClassic {
             return Err(FormatterError::CouldNotVerify(
                 "Used context is not allowed".to_string(),
             ));
-        }
-
-        if let Some(verification_fn) = verification_fn {
-            verify_presentation_signature(
-                presentation.clone(),
-                verification_fn,
-                &*self.crypto,
-                self.caching_loader.to_owned(),
-            )
-            .await?;
         }
 
         let credentials: Vec<String> = presentation
