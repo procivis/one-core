@@ -76,7 +76,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 layout_properties: None,
                 schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
-                allow_suspension: true,
+                allow_suspension: value.credential_schema_allow_suspension,
             }),
             interaction: None,
             revocation_list: None,

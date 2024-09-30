@@ -31,6 +31,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_revocation_method: RevocationMethod,
     pub credential_schema_wallet_storage_type: Option<WalletStorageType>,
     pub credential_schema_imported_source_url: String,
+    pub credential_schema_allow_suspension: bool,
 
     pub organisation_id: OrganisationId,
     pub organisation_created_date: OffsetDateTime,

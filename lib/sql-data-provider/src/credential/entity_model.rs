@@ -29,6 +29,7 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_imported_source_url: String,
     pub credential_schema_schema_layout_properties: Option<LayoutProperties>,
     pub credential_schema_schema_type: CredentialSchemaType,
+    pub credential_schema_allow_suspension: bool,
     pub credential_state_created_date: OffsetDateTime,
     pub credential_state_state: credential_state::CredentialState,
     pub credential_state_suspend_end_date: Option<OffsetDateTime>,
