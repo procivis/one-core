@@ -290,6 +290,10 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             "credential_schema_schema_type",
         )
         .column_as(
+            credential_schema::Column::AllowSuspension,
+            "credential_schema_allow_suspension",
+        )
+        .column_as(
             credential_state::Column::CreatedDate,
             "credential_state_created_date",
         )

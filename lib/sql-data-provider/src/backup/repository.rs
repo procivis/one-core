@@ -128,6 +128,10 @@ impl BackupRepository for BackupProvider {
                 credential_schema::Column::RevocationMethod,
                 "credential_schema_revocation_method",
             )
+            .column_as(
+                credential_schema::Column::AllowSuspension,
+                "credential_schema_allow_suspension",
+            )
             .column_as(organisation::Column::Id, "organisation_id")
             .column_as(
                 organisation::Column::CreatedDate,
