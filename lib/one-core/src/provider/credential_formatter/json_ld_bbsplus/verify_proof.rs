@@ -23,18 +23,6 @@ impl JsonLdBbsplus {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
         })?;
 
-        if !json_ld::is_context_list_valid(
-            &ld_credential.context,
-            self.params.allowed_contexts.as_ref(),
-            &DEFAULT_ALLOWED_CONTEXTS,
-            ld_credential.credential_schema.as_ref(),
-            ld_credential.id.as_ref(),
-        ) {
-            return Err(FormatterError::CouldNotVerify(
-                "Used context is not allowed".to_string(),
-            ));
-        }
-
         let Some(mut ld_proof) = ld_credential.proof.clone() else {
             return Err(FormatterError::CouldNotVerify("Missing proof".to_string()));
         };
@@ -121,6 +109,18 @@ impl JsonLdBbsplus {
 
         let _ = BBSSigner::verify_proof(&verify_proof_input, &public_key)
             .map_err(|e| FormatterError::CouldNotVerify(format!("Could not verify proof: {e}")));
+
+        if !json_ld::is_context_list_valid(
+            &ld_credential.context,
+            self.params.allowed_contexts.as_ref(),
+            &DEFAULT_ALLOWED_CONTEXTS,
+            ld_credential.credential_schema.as_ref(),
+            ld_credential.id.as_ref(),
+        ) {
+            return Err(FormatterError::CouldNotVerify(
+                "Used context is not allowed".to_string(),
+            ));
+        }
 
         ld_credential.try_into()
     }
