@@ -574,9 +574,13 @@ pub async fn read_presentation_submission(
     );
     tokio::pin!(summary_report_request);
 
-    tracing::info!("About to start reading data");
+    tracing::info!("About to start reading data, request_size: {request_size}");
+
+    let mut transfer_summary_dispatched = false;
     loop {
         tokio::select! {
+            biased;
+
             Some(chunk) = message_stream.next() => {
                 let chunk = Chunk::from_bytes(&chunk.map_err(|e| ExchangeProtocolError::Transport(e.into()))?).map_err(ExchangeProtocolError::Transport)?;
 
@@ -584,6 +588,9 @@ pub async fn read_presentation_submission(
                     continue;
                 } else {
                     received_chunks.push(chunk);
+                    if transfer_summary_dispatched && received_chunks.len() as u16 == request_size {
+                        break;
+                    }
                 }
             },
             _ = summary_report_request.next() => {
@@ -603,6 +610,8 @@ pub async fn read_presentation_submission(
                     .await
                     .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
+                transfer_summary_dispatched = true;
+
                 if missing_chunks.is_empty() {
                     break;
                 }
@@ -610,12 +619,13 @@ pub async fn read_presentation_submission(
         }
     }
 
-    tracing::info!("Received all chunks");
     if received_chunks.len() as u16 != request_size {
-        return Err(ExchangeProtocolError::Failed(
-            "not all chunks received".to_string(),
-        ));
+        return Err(ExchangeProtocolError::Failed(format!(
+            "not all chunks received, collected: {}/{request_size}",
+            received_chunks.len()
+        )));
     }
+    tracing::info!("Received all chunks");
 
     received_chunks.sort_by(|a, b| a.index.cmp(&b.index));
 

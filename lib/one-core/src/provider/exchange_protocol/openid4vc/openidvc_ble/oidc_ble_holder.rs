@@ -279,9 +279,17 @@ impl OpenID4VCBLEHolder {
                                 let missing_chunks = get_transfer_summary(&interaction.peer, &*cloned_central).await?;
 
                                 if !missing_chunks.is_empty() {
-                                    return Err(ExchangeProtocolError::Failed(
-                                        "did not send all chunks".to_string(),
-                                    ));
+                                    tracing::debug!("Resubmitting {} chunks", missing_chunks.len());
+                                    for chunk in chunks.iter().filter(|chunk| missing_chunks.contains(&chunk.index)) {
+                                        send(
+                                            SUBMIT_VC_UUID,
+                                            &chunk.to_bytes(),
+                                            &interaction.peer,
+                                            &*cloned_central,
+                                            CharacteristicWriteType::WithoutResponse,
+                                        )
+                                        .await?;
+                                    }
                                 }
                                 Ok::<_, ExchangeProtocolError>(())
                             } => result
