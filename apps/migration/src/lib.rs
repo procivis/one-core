@@ -1,4 +1,6 @@
-pub(crate) use sea_orm_migration::prelude::*;
+use sea_orm::{DatabaseBackend, TransactionError, TransactionTrait};
+use sea_orm_migration::migrator::MigratorTrait;
+use sea_orm_migration::prelude::*;
 
 mod m20240110_000001_initial;
 mod m20240115_093859_unique_did_name_and_key_name_in_org;
@@ -51,7 +53,6 @@ mod m20240905_114351_add_claims_removed_event;
 mod m20240920_115859_import_url;
 mod m20240925_130000_introduce_allow_suspension;
 
-pub use sea_orm_migration::migrator::MigratorTrait;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -107,5 +108,34 @@ impl MigratorTrait for Migrator {
             Box::new(m20240920_115859_import_url::Migration),
             Box::new(m20240925_130000_introduce_allow_suspension::Migration),
         ]
+    }
+}
+
+/// Wraps DB migrations into a single transaction
+/// to prevent problems with partially applied migrations
+///
+pub async fn run_migrations<'c, C>(db: C) -> Result<(), DbErr>
+where
+    C: IntoSchemaManagerConnection<'c>,
+{
+    let connection = db.into_schema_manager_connection();
+    match connection.get_database_backend() {
+        // sea-orm-migrations runs it atomic with Postgres
+        DatabaseBackend::Postgres => Migrator::up(connection, None).await,
+
+        // manual wrapping with transaction necessary for the others
+        DatabaseBackend::MySql | DatabaseBackend::Sqlite => {
+            let result = connection
+                .transaction::<_, (), DbErr>(|txn| {
+                    Box::pin(async move { Migrator::up(txn, None).await })
+                })
+                .await;
+
+            match result {
+                Ok(_) => Ok(()),
+                Err(TransactionError::Connection(e)) => Err(e),
+                Err(TransactionError::Transaction(e)) => Err(e),
+            }
+        }
     }
 }
