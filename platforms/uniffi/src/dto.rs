@@ -1282,6 +1282,8 @@ pub struct GetProofSchemaBindingDTO {
     pub expire_duration: u32,
     #[from(with_fn = convert_inner)]
     pub proof_input_schemas: Vec<ProofInputSchemaBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub imported_source_url: Option<String>,
 }
 
 #[derive(Debug, From)]

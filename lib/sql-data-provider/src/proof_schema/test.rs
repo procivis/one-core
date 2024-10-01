@@ -127,7 +127,7 @@ async fn test_create_proof_schema_invalid_params() {
     let result = repository
         .create_proof_schema(ProofSchema {
             id: proof_schema_id,
-            imported_source_url: "CORE_URL".to_string(),
+            imported_source_url: Some("CORE_URL".to_string()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
@@ -159,7 +159,7 @@ async fn test_create_proof_schema_already_exists() {
         .create_proof_schema(ProofSchema {
             id: proof_schema_id,
             created_date: get_dummy_date(),
-            imported_source_url: "CORE_URL".to_string(),
+            imported_source_url: Some("CORE_URL".to_string()),
             last_modified: get_dummy_date(),
             deleted_at: None,
             name: "test".to_string(),
@@ -259,7 +259,7 @@ async fn test_create_proof_schema_success() {
             id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            imported_source_url: "CORE_URL".to_string(),
+            imported_source_url: Some("CORE_URL".to_string()),
             deleted_at: None,
             name: "test".to_string(),
             expire_duration: 0,
@@ -873,7 +873,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
         id: Set(Uuid::new_v4().into()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
-        imported_source_url: Set("CORE_URL".to_string()),
+        imported_source_url: Set(Some("CORE_URL".to_string())),
         name: Set("schema-1".to_string()),
         expire_duration: Set(Default::default()),
         organisation_id: Set(organisation_id),
@@ -888,7 +888,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     let schema2_id = crate::entity::proof_schema::ActiveModel {
         id: Set(Uuid::new_v4().into()),
         created_date: Set(date_later),
-        imported_source_url: Set("CORE_URL".to_string()),
+        imported_source_url: Set(Some("CORE_URL".to_string())),
         last_modified: Set(date_later),
         name: Set("schema-2".to_string()),
         expire_duration: Set(Default::default()),

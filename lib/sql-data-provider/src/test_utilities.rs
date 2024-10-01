@@ -243,7 +243,7 @@ pub async fn insert_proof_schema_with_claims_to_database<'a>(
 ) -> Result<ProofSchemaId, DbErr> {
     let schema = proof_schema::ActiveModel {
         id: Set(Uuid::new_v4().into()),
-        imported_source_url: Set("CORE_URL".to_string()),
+        imported_source_url: Set(Some("CORE_URL".to_string())),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(name.to_owned()),
@@ -291,7 +291,7 @@ pub async fn insert_proof_schema_to_database(
     let schema = proof_schema::ActiveModel {
         id: Set(Uuid::new_v4().into()),
         created_date: Set(get_dummy_date()),
-        imported_source_url: Set("CORE_URL".to_string()),
+        imported_source_url: Set(Some("CORE_URL".to_string())),
         last_modified: Set(get_dummy_date()),
         name: Set(name.to_owned()),
         expire_duration: Set(Default::default()),

@@ -927,6 +927,7 @@ dictionary GetProofSchemaBindingDTO {
   string organisation_id;
   u32 expire_duration;
   sequence<ProofInputSchemaBindingDTO> proof_input_schemas;
+  string? imported_source_url;
 };
 
 dictionary ImportProofSchemaInputSchemaBindingDTO {

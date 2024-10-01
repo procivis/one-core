@@ -414,6 +414,9 @@ pub enum ValidationError {
 
     #[error("Invalid mdl parameters")]
     InvalidMdlParameters,
+
+    #[error("Sharing not supported for requested proof-schema")]
+    ProofSchemaSharingNotSupported,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -851,6 +854,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Suspension not supported for revocation method")]
     BR_0162,
+
+    #[strum(to_string = "Sharing not supported to this proof schema")]
+    BR_0163,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1029,6 +1035,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::OnlyOnePhysicalCardSchemaAllowedPerProof => ErrorCode::BR_0137,
             Self::ForbiddenClaimName => ErrorCode::BR_0145,
             Self::InvalidMdlParameters => ErrorCode::BR_0147,
+            Self::ProofSchemaSharingNotSupported => ErrorCode::BR_0163,
         }
     }
 }
