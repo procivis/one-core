@@ -5,7 +5,7 @@ use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
 use did::DidProvider;
 use interaction::InteractionProvider;
-use migration::{Migrator, MigratorTrait};
+use migration::run_migrations;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
@@ -256,7 +256,7 @@ pub async fn db_conn(
     let db = sea_orm::Database::connect(database_url).await?;
 
     if with_migration {
-        Migrator::up(&db, None).await?;
+        run_migrations(&db).await?;
     }
 
     Ok(db)
