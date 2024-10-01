@@ -732,7 +732,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         self.ble
             .as_ref()
             .ok_or_else(|| ExchangeProtocolError::Failed("BLE is missing in service".to_string()))?
-            .abort(Abort::Task(uuid::uuid!(SERVICE_UUID)))
+            .abort(Abort::Flow(*OIDC_BLE_FLOW))
             .await;
 
         Ok(())

@@ -207,6 +207,7 @@ impl OpenID4VCBLEVerifier {
                     Ok::<_, ExchangeProtocolError>(())
                 },
                 move |_, peripheral| async move {
+                    tracing::info!("cancelling proof sharing");
                     let Ok(interaction) = interaction_repository
                         .get_interaction(&interaction_id, &Default::default())
                         .await
