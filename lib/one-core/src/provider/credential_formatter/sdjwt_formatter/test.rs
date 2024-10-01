@@ -85,8 +85,6 @@ async fn test_format_credential_a() {
             vec![ContextType::Url("http://context.com".parse().unwrap())],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
-            None,
-            None,
         )
         .await;
 
@@ -236,8 +234,6 @@ async fn test_format_credential_with_array() {
             vec![ContextType::Url("http://context.com".parse().unwrap())],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
-            None,
-            None,
         )
         .await;
 

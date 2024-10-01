@@ -58,15 +58,12 @@ impl CredentialFormatter for JWTFormatter {
         additional_context: Vec<ContextType>,
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
-        _json_ld_context_url: Option<String>,
-        _custom_subject_name: Option<String>,
     ) -> Result<String, FormatterError> {
         let issued_at = credential.issuance_date;
         let expires_at = issued_at.checked_add(credential.valid_for);
         let credential_id = credential.id.clone();
 
         let issuer = credential.issuer_did.clone();
-        let holder_did = holder_did.as_ref().ok_or(FormatterError::MissingHolder)?;
 
         let vc = format_vc(
             credential,
@@ -81,7 +78,7 @@ impl CredentialFormatter for JWTFormatter {
             expires_at,
             invalid_before: issued_at.checked_sub(Duration::seconds(self.get_leeway() as i64)),
             issuer: Some(issuer.to_did_value().to_string()),
-            subject: Some(holder_did.to_string()),
+            subject: holder_did.clone().map(|did| did.to_string()),
             jwt_id: credential_id,
             custom: vc,
             nonce: None,

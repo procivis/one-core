@@ -150,8 +150,6 @@ async fn test_format_credential() {
             vec![ContextType::Url("http://context.com".parse().unwrap())],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
-            None,
-            None,
         )
         .await;
 
@@ -252,8 +250,6 @@ async fn test_format_credential_with_layout_properties() {
             )],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
-            None,
-            None,
         )
         .await;
 
@@ -352,8 +348,6 @@ async fn test_format_credential_nested_array() {
             vec![ContextType::Url("http://context.com".parse().unwrap())],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
-            None,
-            None,
         )
         .await;
 

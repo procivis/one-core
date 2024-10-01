@@ -658,8 +658,6 @@ impl OIDCService {
                 OpenID4VCIError::InvalidRequest,
             ))?;
 
-        validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &proof.exchange)?;
-
         let interaction = proof
             .interaction
             .as_ref()

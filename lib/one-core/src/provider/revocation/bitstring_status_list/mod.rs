@@ -28,6 +28,7 @@ use crate::provider::revocation::model::{
     RevocationUpdate,
 };
 use crate::provider::revocation::RevocationMethod;
+use crate::service::revocation_list::dto::SupportedBitstringCredentialFormat;
 use crate::util::key_verification::KeyVerification;
 use crate::util::params::convert_params;
 
@@ -40,24 +41,18 @@ pub mod util;
 mod test;
 
 const CREDENTIAL_STATUS_TYPE: &str = "BitstringStatusListEntry";
-const DEFAULT_CREDENTIAL_FORMAT: &str = "JWT";
-
-fn default_bitstring_credential_format() -> Option<String> {
-    // TODO Enum value instead of strings
-    Some("JWT".to_owned())
-}
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    #[serde(default = "default_bitstring_credential_format")]
-    pub bistring_credential_format: Option<String>,
+    #[serde(default)]
+    pub bitstring_credential_format: Option<SupportedBitstringCredentialFormat>,
 }
 
 impl Default for Params {
     fn default() -> Self {
         Self {
-            bistring_credential_format: default_bitstring_credential_format(),
+            bitstring_credential_format: Some(SupportedBitstringCredentialFormat::default()),
         }
     }
 }
@@ -296,10 +291,15 @@ impl BitstringStatusList {
     fn get_formatter_for_credential_format(
         &self,
     ) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
-        let format = DEFAULT_CREDENTIAL_FORMAT;
+        let format: String = self
+            .params
+            .bitstring_credential_format
+            .clone()
+            .unwrap_or_default()
+            .into();
 
         self.formatter_provider
-            .get_formatter(format)
+            .get_formatter(&format)
             .ok_or_else(|| RevocationError::FormatterNotFound(format.to_string()))
     }
 
@@ -354,6 +354,25 @@ impl BitstringStatusList {
             ))?
             .clone();
 
+        let did_document = self
+            .did_method_provider
+            .resolve(&issuer_did.did.to_string().into())
+            .await?;
+
+        let assertion_methods =
+            did_document
+                .assertion_method
+                .ok_or(RevocationError::MappingError(
+                    "Missing assertion_method keys".to_owned(),
+                ))?;
+
+        let issuer_jwk_key_id = assertion_methods
+            .first()
+            .ok_or(RevocationError::MappingError(
+                "Issuer has empty keys".to_owned(),
+            ))
+            .cloned()?;
+
         let encoded_list = generate_bitstring_from_credentials(
             &data.credentials_by_issuer_did,
             purpose_to_credential_state_enum(purpose.to_owned()),
@@ -372,8 +391,7 @@ impl BitstringStatusList {
             &self.key_provider,
             &self.core_base_url,
             &*self.get_formatter_for_credential_format()?,
-            // TODO: needs to be fixed to pass this when using json-ld formatter, for now we just use JSON-LD formatter for the VC-API tests
-            None,
+            issuer_jwk_key_id,
         )
         .await?;
 
@@ -439,8 +457,7 @@ pub async fn format_status_list_credential(
     key_provider: &Arc<dyn KeyProvider>,
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
-    // must be present if using JSON-LD formatter
-    key_id: Option<String>,
+    key_id: String,
 ) -> Result<String, RevocationError> {
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
@@ -458,7 +475,7 @@ pub async fn format_status_list_credential(
             KeyRole::AssertionMethod,
         ))?;
 
-    let auth_fn = key_provider.get_signature_provider(&key.key.to_owned(), key_id)?;
+    let auth_fn = key_provider.get_signature_provider(&key.key.to_owned(), Some(key_id))?;
 
     let status_list = formatter
         .format_bitstring_status_list(

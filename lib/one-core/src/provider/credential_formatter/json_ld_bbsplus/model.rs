@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::bail;
 use serde::{Deserialize, Serialize};
 
 pub(super) static CBOR_PREFIX_BASE: [u8; 3] = [0xd9, 0x5d, 0x02];
@@ -30,16 +31,9 @@ pub struct HashData {
     pub mandatory_hash: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-enum StringOrVec {
-    VecString(Vec<String>),
-    Bytes(Vec<u8>),
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(into = "Vec<StringOrVec>")]
-#[serde(from = "Vec<StringOrVec>")]
+#[serde(into = "ciborium::Value")]
+#[serde(try_from = "ciborium::Value")]
 pub struct BbsProofComponents {
     pub bbs_signature: Vec<u8>,
     pub bbs_header: Vec<u8>,
@@ -48,60 +42,80 @@ pub struct BbsProofComponents {
     pub mandatory_pointers: Vec<String>,
 }
 
-impl From<BbsProofComponents> for Vec<StringOrVec> {
+impl From<BbsProofComponents> for ciborium::Value {
     fn from(value: BbsProofComponents) -> Self {
-        vec![
-            StringOrVec::Bytes(value.bbs_signature),
-            StringOrVec::Bytes(value.bbs_header),
-            StringOrVec::Bytes(value.public_key),
-            StringOrVec::Bytes(value.hmac_key),
-            StringOrVec::VecString(value.mandatory_pointers),
-        ]
+        ciborium::Value::Array(vec![
+            ciborium::Value::Bytes(value.bbs_signature),
+            ciborium::Value::Bytes(value.bbs_header),
+            ciborium::Value::Bytes(value.public_key),
+            ciborium::Value::Bytes(value.hmac_key),
+            ciborium::Value::Array(
+                value
+                    .mandatory_pointers
+                    .into_iter()
+                    .map(ciborium::Value::Text)
+                    .collect(),
+            ),
+        ])
     }
 }
 
-impl From<Vec<StringOrVec>> for BbsProofComponents {
-    fn from(value: Vec<StringOrVec>) -> Self {
-        BbsProofComponents {
-            bbs_signature: if let StringOrVec::Bytes(value) = &value[0] {
-                value.clone()
-            } else {
-                vec![]
-            },
-            bbs_header: if let StringOrVec::Bytes(value) = &value[1] {
-                value.clone()
-            } else {
-                vec![]
-            },
-            public_key: if let StringOrVec::Bytes(value) = &value[2] {
-                value.clone()
-            } else {
-                vec![]
-            },
-            hmac_key: if let StringOrVec::Bytes(value) = &value[3] {
-                value.clone()
-            } else {
-                vec![]
-            },
-            mandatory_pointers: if let StringOrVec::VecString(value) = &value[4] {
-                value.clone()
-            } else {
-                vec![]
-            },
-        }
-    }
-}
+impl TryFrom<ciborium::Value> for BbsProofComponents {
+    type Error = anyhow::Error;
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(untagged)]
-pub enum DeriveProofComponent {
-    LabelMap(HashMap<usize, usize>),
-    NumberArray(Vec<usize>),
+    fn try_from(value: ciborium::Value) -> anyhow::Result<Self> {
+        let mut array = value
+            .into_array()
+            .map_err(|_| anyhow::anyhow!("Expected an array for bbs+ derivedProof"))?
+            .into_iter();
+
+        let bbs_signature = match array.next().map(|v| v.into_bytes()) {
+            Some(Ok(bytes)) => bytes,
+            Some(Err(_)) => {
+                bail!("Invalid value for `bbs_signature` property, expected byte array")
+            }
+            None => bail!("Missing `bbs_signature` property"),
+        };
+
+        let bbs_header = match array.next().map(|v| v.into_bytes()) {
+            Some(Ok(bytes)) => bytes,
+            Some(Err(_)) => bail!("Invalid value for `bbs_header` property, expected byte array"),
+            None => bail!("Missing `bbs_header` property"),
+        };
+
+        let public_key = match array.next().map(|v| v.into_bytes()) {
+            Some(Ok(bytes)) => bytes,
+            Some(Err(_)) => bail!("Invalid value for `public_key` property, expected byte array"),
+            None => bail!("Missing `public_key` property"),
+        };
+
+        let hmac_key = match array.next().map(|v| v.into_bytes()) {
+            Some(Ok(bytes)) => bytes,
+            Some(Err(_)) => bail!("Invalid value for `hmac_key` property, expected byte array"),
+            None => bail!("Missing `hmac_key` property"),
+        };
+
+        let mandatory_pointers = match array.next().map(|v| v.deserialized()) {
+            Some(Ok(pointers)) => pointers,
+            Some(Err(_)) => {
+                bail!("Invalid value for `mandatory_pointers` property, expected byte array")
+            }
+            None => bail!("Missing `mandatory_pointers` property"),
+        };
+
+        Ok(BbsProofComponents {
+            bbs_signature,
+            bbs_header,
+            public_key,
+            hmac_key,
+            mandatory_pointers,
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(into = "Vec<DeriveProofComponent>")]
-#[serde(from = "Vec<DeriveProofComponent>")]
+#[serde(into = "ciborium::Value")]
+#[serde(try_from = "ciborium::Value")]
 pub struct BbsDerivedProofComponents {
     pub bbs_proof: Vec<u8>,
     pub compressed_label_map: HashMap<usize, usize>,
@@ -110,54 +124,89 @@ pub struct BbsDerivedProofComponents {
     pub presentation_header: Vec<u8>,
 }
 
-impl From<BbsDerivedProofComponents> for Vec<DeriveProofComponent> {
+impl From<BbsDerivedProofComponents> for ciborium::Value {
     fn from(value: BbsDerivedProofComponents) -> Self {
-        vec![
-            DeriveProofComponent::NumberArray(
-                value.bbs_proof.into_iter().map(|v| v as usize).collect(),
-            ),
-            DeriveProofComponent::LabelMap(value.compressed_label_map),
-            DeriveProofComponent::NumberArray(value.mandatory_indices),
-            DeriveProofComponent::NumberArray(value.selective_indices),
-            DeriveProofComponent::NumberArray(
+        let compressed_label_map = value
+            .compressed_label_map
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    ciborium::Value::Integer(k.into()),
+                    ciborium::Value::Integer(v.into()),
+                )
+            })
+            .collect();
+
+        ciborium::Value::Array(vec![
+            ciborium::Value::Bytes(value.bbs_proof),
+            ciborium::Value::Map(compressed_label_map),
+            ciborium::Value::Array(
                 value
-                    .presentation_header
+                    .mandatory_indices
                     .into_iter()
-                    .map(|v| v as usize)
+                    .map(|i| ciborium::Value::Integer(i.into()))
                     .collect(),
             ),
-        ]
+            ciborium::Value::Array(
+                value
+                    .selective_indices
+                    .into_iter()
+                    .map(|i| ciborium::Value::Integer(i.into()))
+                    .collect(),
+            ),
+            ciborium::Value::Bytes(value.presentation_header),
+        ])
     }
 }
 
-impl From<Vec<DeriveProofComponent>> for BbsDerivedProofComponents {
-    fn from(value: Vec<DeriveProofComponent>) -> Self {
-        BbsDerivedProofComponents {
-            bbs_proof: if let DeriveProofComponent::NumberArray(value) = &value[0] {
-                value.iter().map(|v| *v as u8).collect()
-            } else {
-                vec![]
-            },
-            compressed_label_map: if let DeriveProofComponent::LabelMap(value) = &value[1] {
-                value.clone()
-            } else {
-                HashMap::new()
-            },
-            mandatory_indices: if let DeriveProofComponent::NumberArray(value) = &value[2] {
-                value.clone()
-            } else {
-                vec![]
-            },
-            selective_indices: if let DeriveProofComponent::NumberArray(value) = &value[3] {
-                value.clone()
-            } else {
-                vec![]
-            },
-            presentation_header: if let DeriveProofComponent::NumberArray(value) = &value[4] {
-                value.iter().map(|v| *v as u8).collect()
-            } else {
-                vec![]
-            },
-        }
+impl TryFrom<ciborium::Value> for BbsDerivedProofComponents {
+    type Error = anyhow::Error;
+
+    fn try_from(value: ciborium::Value) -> Result<Self, Self::Error> {
+        let mut array = value
+            .into_array()
+            .map_err(|_| anyhow::anyhow!("Expected an array for bbs+ derivedProof"))?
+            .into_iter();
+
+        let bbs_proof = match array.next().map(|v| v.into_bytes()) {
+            Some(Ok(bytes)) => bytes,
+            Some(Err(_)) => bail!("Invalid value for `bbs_proof` property, expected byte array"),
+            None => bail!("Missing `bbs_proof` property"),
+        };
+
+        let compressed_label_map: HashMap<usize, usize> =
+            match array.next().map(|v| v.deserialized()) {
+                Some(Ok(map)) => map,
+                Some(Err(err)) => bail!("Invalid value for `compressed_label_map` property: {err}"),
+                None => bail!("Missing `compressed_label_map` property"),
+            };
+
+        let mandatory_indices: Vec<usize> = match array.next().map(|v| v.deserialized()) {
+            Some(Ok(indices)) => indices,
+            Some(Err(err)) => bail!("Invalid value for `mandatory_indices` property: {err}"),
+            None => bail!("Missing `mandatory_indices` property"),
+        };
+
+        let selective_indices: Vec<usize> = match array.next().map(|v| v.deserialized()) {
+            Some(Ok(indices)) => indices,
+            Some(Err(err)) => bail!("Invalid value for `selective_indices` property: {err}"),
+            None => bail!("Missing `selective_indices` property"),
+        };
+
+        let presentation_header = match array.next().map(|v| v.into_bytes()) {
+            Some(Ok(bytes)) => bytes,
+            Some(Err(_)) => {
+                bail!("Invalid value for `presentation_header` property, expected byte array")
+            }
+            None => bail!("Missing `presentation_header` property"),
+        };
+
+        Ok(BbsDerivedProofComponents {
+            bbs_proof,
+            compressed_label_map,
+            mandatory_indices,
+            selective_indices,
+            presentation_header,
+        })
     }
 }

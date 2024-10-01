@@ -23,6 +23,7 @@ use super::model::{
     OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, PresentationSubmissionMappingDTO,
     ValidatedProofClaimDTO,
 };
+use crate::common_validator::is_lvvc;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
@@ -454,10 +455,6 @@ async fn extract_lvvcs(
     }
 
     Ok(result)
-}
-
-pub fn is_lvvc(credential: &DetailCredential) -> bool {
-    credential.claims.values.contains_key("id") && credential.claims.values.contains_key("status")
 }
 
 fn build_key_verification(

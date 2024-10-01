@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProviderExtra;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -31,6 +32,7 @@ pub struct CredentialService {
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     config: Arc<core_config::CoreConfig>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
@@ -50,6 +52,7 @@ impl CredentialService {
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<core_config::CoreConfig>,
         lvvc_repository: Arc<dyn ValidityCredentialRepository>,
@@ -66,6 +69,7 @@ impl CredentialService {
             revocation_method_provider,
             formatter_provider,
             protocol_provider,
+            did_method_provider,
             key_provider,
             config,
             validity_credential_repository: lvvc_repository,

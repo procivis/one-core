@@ -20,10 +20,31 @@ pub enum BitstringError {
     Decompression(std::io::Error),
     #[error("Index `{index}` out of bounds for provided bitstring")]
     IndexOutOfBounds { index: usize },
+    #[error("Encoded list has invalid prefix: {0}")]
+    InvalidPrefix(String),
 }
 
-pub fn extract_bitstring_index(input: String, index: usize) -> Result<bool, BitstringError> {
-    let compressed = Base64UrlSafeNoPadding::decode_to_vec(input, None)
+const MULTIBASE_PREFIX: char = 'u';
+const GZIP_PREFIX: &str = "H4s";
+
+pub fn extract_bitstring_index(
+    compressed_list: String,
+    index: usize,
+) -> Result<bool, BitstringError> {
+    // For backwards compatibility, we allow the compressed list to be passed without the 'u' multibase prefix.
+    // see ONE-3528
+    let compressed_list = compressed_list
+        .strip_prefix(MULTIBASE_PREFIX)
+        .unwrap_or(&compressed_list);
+
+    if !compressed_list.starts_with(GZIP_PREFIX) {
+        return Err(BitstringError::InvalidPrefix(format!(
+            "expected gzip header: {GZIP_PREFIX}, input: {}",
+            compressed_list
+        )));
+    }
+
+    let compressed = Base64UrlSafeNoPadding::decode_to_vec(compressed_list, None)
         .map_err(BitstringError::Base64Decoding)?;
 
     let bytes = gzip_decompress(compressed, index).map_err(|err| {
@@ -50,7 +71,9 @@ pub(super) fn generate_bitstring(input: Vec<bool>) -> Result<String, BitstringEr
     let bytes = bits.to_bytes();
     let compressed = gzip_compress(bytes).map_err(BitstringError::Compression)?;
 
-    Base64UrlSafeNoPadding::encode_to_string(compressed).map_err(BitstringError::Base64Encoding)
+    Base64UrlSafeNoPadding::encode_to_string(compressed)
+        .map_err(BitstringError::Base64Encoding)
+        .map(|s| format!("{MULTIBASE_PREFIX}{}", s))
 }
 
 fn gzip_compress(input: Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
@@ -81,7 +104,7 @@ mod test {
 
     // test vector, one revocation on index 1
     const BITSTRING_ONE_REVOCATION: &str =
-        "H4sIAAAAAAAA_-3AsQAAAAACsNDypwqjZ2sAAAAAAAAAAAAAAAAAAACAtwE3F1_NAEAAAA";
+        "uH4sIAAAAAAAA_-3AsQAAAAACsNDypwqjZ2sAAAAAAAAAAAAAAAAAAACAtwE3F1_NAEAAAA";
 
     #[test]
     fn test_generate_bitstring() {
@@ -103,6 +126,9 @@ mod test {
     #[test]
     fn test_extract_bitstring_invalid_base64() {
         let result = extract_bitstring_index("invalid".to_owned(), 1000000);
+        assert!(matches!(result, Err(BitstringError::InvalidPrefix(_))));
+
+        let result = extract_bitstring_index("uH4s3-3?10".to_owned(), 1000000);
         assert!(matches!(result, Err(BitstringError::Base64Decoding(_))));
     }
 

@@ -219,49 +219,33 @@ async fn test_get_json_ld_context_lvvc_success() {
             protected: true,
             id: "@id".to_string(),
             r#type: "@type".to_string(),
-            entities: HashMap::from([
-                (
-                    "LvvcCredential".to_string(),
-                    JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
-                        id: "http://127.0.0.1/ssi/context/v1/lvvc.json#LvvcCredential".to_string(),
-                        context: JsonLDContextDTO {
-                            version: 1.1,
-                            protected: true,
-                            id: "@id".to_string(),
-                            r#type: "@type".to_string(),
-                            entities: Default::default(),
-                        },
-                    }),
-                ),
-                (
-                    "LvvcSubject".to_string(),
-                    JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
-                        id: "http://127.0.0.1/ssi/context/v1/lvvc.json#LvvcSubject".to_string(),
-                        context: JsonLDContextDTO {
-                            version: 1.1,
-                            protected: true,
-                            id: "@id".to_string(),
-                            r#type: "@type".to_string(),
-                            entities: HashMap::from([
-                                (
-                                    "status".to_string(),
-                                    JsonLDEntityDTO::Reference(
-                                        "http://127.0.0.1/ssi/context/v1/lvvc.json#status"
-                                            .to_string(),
-                                    ),
+            entities: HashMap::from([(
+                "LvvcCredential".to_string(),
+                JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                    id: "http://127.0.0.1/ssi/context/v1/lvvc.json#LvvcCredential".to_string(),
+                    context: JsonLDContextDTO {
+                        version: 1.1,
+                        protected: true,
+                        id: "@id".to_string(),
+                        r#type: "@type".to_string(),
+                        entities: HashMap::from([
+                            (
+                                "status".to_string(),
+                                JsonLDEntityDTO::Reference(
+                                    "http://127.0.0.1/ssi/context/v1/lvvc.json#status".to_string(),
                                 ),
-                                (
-                                    "suspendEndDate".to_string(),
-                                    JsonLDEntityDTO::Reference(
-                                        "http://127.0.0.1/ssi/context/v1/lvvc.json#suspendEndDate"
-                                            .to_string(),
-                                    ),
+                            ),
+                            (
+                                "suspendEndDate".to_string(),
+                                JsonLDEntityDTO::Reference(
+                                    "http://127.0.0.1/ssi/context/v1/lvvc.json#suspendEndDate"
+                                        .to_string(),
                                 ),
-                            ]),
-                        },
-                    }),
-                ),
-            ]),
+                            ),
+                        ]),
+                    },
+                }),
+            )]),
         },
     };
 

@@ -287,8 +287,6 @@ async fn test_credential_formatting_ok_for_es256() {
             vec![],
             vec![],
             Box::new(auth_fn),
-            None,
-            None,
         )
         .await
         .unwrap();
@@ -490,8 +488,6 @@ async fn test_unverified_credential_extraction() {
             vec![],
             vec![],
             Box::new(auth_fn),
-            None,
-            None,
         )
         .await
         .unwrap();
@@ -691,8 +687,6 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
             vec![],
             vec![],
             Box::new(auth_fn),
-            None,
-            None,
         )
         .await
         .unwrap();

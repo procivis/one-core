@@ -13,6 +13,7 @@ use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 pub mod error;
 
 mod common;
+pub use common::nest_claims;
 
 // Implementation
 pub mod json_ld;
@@ -42,11 +43,9 @@ pub trait CredentialFormatter: Send + Sync {
         credential: CredentialData,
         holder_did: &Option<DidValue>,
         algorithm: &str,
-        additional_context: Vec<ContextType>,
-        additional_types: Vec<String>,
+        contexts: Vec<ContextType>,
+        types: Vec<String>,
         auth_fn: model::AuthenticationFn,
-        json_ld_context_url: Option<String>,
-        custom_subject_name: Option<String>,
     ) -> Result<String, error::FormatterError>;
 
     /// Formats BitStringStatusList credential

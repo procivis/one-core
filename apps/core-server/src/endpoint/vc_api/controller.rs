@@ -6,9 +6,9 @@ use one_core::service::error::{MissingProviderError, ServiceError};
 use shared_types::DidValue;
 
 use super::dto::{
-    CredentialIssueRequestDto, CredentialIssueResponseDTO, CredentialVerifiyRequestDto,
-    CredentialVerifyResponseDto, DidDocumentResolutionResponseDTO, PresentationVerifyRequestDto,
-    PresentationVerifyResponseDto,
+    CredentialIssueRequestDTO, CredentialIssueResponseDTO, CredentialVerifyRequestDTO,
+    CredentialVerifyResponseDTO, DidDocumentResolutionResponseDTO, PresentationVerifyRequestDTO,
+    PresentationVerifyResponseDTO,
 };
 use super::error::VcApiError;
 use crate::endpoint::vc_api::response::VcApiResponse;
@@ -18,13 +18,13 @@ use crate::router::AppState;
 #[utoipa::path(
     post,
     path = "/vc-api/credentials/issue",
-    request_body = CredentialIssueRequestDto,
+    request_body = CredentialIssueRequestDTO,
     responses(VcApiResponse<CredentialIssueResponseDTO>),
     tag = "vc_interop_testing",
 )]
 pub(crate) async fn issue_credential(
     state: State<AppState>,
-    WithRejection(Json(request), _): WithRejection<Json<CredentialIssueRequestDto>, VcApiError>,
+    WithRejection(Json(request), _): WithRejection<Json<CredentialIssueRequestDTO>, VcApiError>,
 ) -> VcApiResponse<CredentialIssueResponseDTO> {
     let issued = state
         .core
@@ -39,14 +39,14 @@ pub(crate) async fn issue_credential(
 #[utoipa::path(
     post,
     path = "/vc-api/credentials/verify",
-    request_body = CredentialVerifiyRequestDto,
-    responses(VcApiResponse<CredentialVerifyResponseDto>),
+    request_body = CredentialVerifiyRequestDTO,
+    responses(VcApiResponse<CredentialVerifyResponseDTO>),
     tag = "vc_interop_testing",
 )]
 pub(crate) async fn verify_credential(
     state: State<AppState>,
-    WithRejection(Json(request), _): WithRejection<Json<CredentialVerifiyRequestDto>, VcApiError>,
-) -> VcApiResponse<CredentialVerifyResponseDto> {
+    WithRejection(Json(request), _): WithRejection<Json<CredentialVerifyRequestDTO>, VcApiError>,
+) -> VcApiResponse<CredentialVerifyResponseDTO> {
     let result = state
         .core
         .vc_api_service
@@ -60,14 +60,14 @@ pub(crate) async fn verify_credential(
 #[utoipa::path(
     post,
     path = "/vc-api/presentations/verify",
-    request_body = PresentationVerifiyRequestDto,
-    responses(VcApiResponse<PresentationVerifyResponseDto>),
+    request_body = PresentationVerifiyRequestDTO,
+    responses(VcApiResponse<PresentationVerifyResponseDTO>),
     tag = "vc_interop_testing",
 )]
 pub(crate) async fn verify_presentation(
     state: State<AppState>,
-    WithRejection(Json(request), _): WithRejection<Json<PresentationVerifyRequestDto>, VcApiError>,
-) -> VcApiResponse<PresentationVerifyResponseDto> {
+    WithRejection(Json(request), _): WithRejection<Json<PresentationVerifyRequestDTO>, VcApiError>,
+) -> VcApiResponse<PresentationVerifyResponseDTO> {
     let result = state
         .core
         .vc_api_service

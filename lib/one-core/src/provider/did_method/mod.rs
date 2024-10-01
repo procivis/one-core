@@ -16,6 +16,7 @@ use shared_types::{DidId, DidValue};
 use crate::model::key::Key;
 
 pub mod common;
+pub mod did_document;
 pub mod dto;
 pub mod error;
 pub mod jwk;

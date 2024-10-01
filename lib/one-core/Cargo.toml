@@ -42,7 +42,7 @@ one-crypto               = { version = "0.1.0", path = "../one-crypto" }
 one-dto-mapper.workspace = true
 ouroboros                = { version = "0.18" }
 p256                     = { version = "0.13", features = ["jwk"] }
-pairing_crypto           = { version = "0.4", git = "https://github.com/Iskander508/pairing_crypto", rev = "517a424a989b57b987aacb3642bd7cd2c60b94d1" }
+pairing_crypto           = { version = "0.4.2", git = "https://github.com/mattrglobal/pairing_crypto", rev = "58519e5" }
 pqc_dilithium            = { version = "0.2.0", git = "https://github.com/ihor-rud/dilithium", rev = "e02a683" }
 rand.workspace           = true
 rcgen                    = { version = "0.13" }

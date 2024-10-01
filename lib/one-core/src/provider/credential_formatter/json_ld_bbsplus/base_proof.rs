@@ -6,7 +6,6 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_crypto::signer::bbs::BbsInput;
 use one_crypto::utilities;
 use shared_types::DidValue;
-use url::Url;
 
 use super::model::{BbsProofComponents, GroupedFormatDataDocument, HashData, CBOR_PREFIX_BASE};
 use super::{mapper, JsonLdBbsplus};
@@ -24,11 +23,9 @@ impl JsonLdBbsplus {
         credential: CredentialData,
         holder_did: Option<&DidValue>,
         algorithm: &str,
-        additional_context: Vec<ContextType>,
-        additional_types: Vec<String>,
+        contexts: Vec<ContextType>,
+        types: Vec<String>,
         auth_fn: AuthenticationFn,
-        json_ld_context_url: Option<Url>,
-        custom_subject_name: Option<String>,
         embed_layout_properties: bool,
     ) -> Result<String, FormatterError> {
         if algorithm != "BBS_PLUS" {
@@ -43,10 +40,8 @@ impl JsonLdBbsplus {
         let mut ld_credential = json_ld::prepare_credential(
             credential,
             holder_did,
-            additional_context,
-            additional_types,
-            json_ld_context_url,
-            custom_subject_name,
+            contexts,
+            types,
             embed_layout_properties,
         )?;
 
@@ -194,7 +189,11 @@ impl JsonLdBbsplus {
                     )?;
                     replacement.clone_into(object);
                 }
-                Ok(parts.join(" "))
+
+                let mut v = parts.join(" ");
+                v.push('\n');
+
+                Ok(v)
             })
             .collect();
 

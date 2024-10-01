@@ -27,9 +27,9 @@ impl Signer for BBSSigner {
         public_key: &[u8],
         private_key: &[u8],
     ) -> Result<Vec<u8>, SignerError> {
-        let secret_key = SecretKey::from_vec(&private_key.to_vec())
-            .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
-        let public_key = PublicKey::from_vec(&public_key.to_vec())
+        let secret_key =
+            SecretKey::from_vec(private_key).map_err(|_| SignerError::CouldNotExtractKeyPair)?;
+        let public_key = PublicKey::from_vec(public_key)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 
         // Here we accept BbsInput if serialization succeeded or try to use the input
@@ -55,7 +55,7 @@ impl Signer for BBSSigner {
     }
 
     fn verify(&self, input: &[u8], signature: &[u8], public_key: &[u8]) -> Result<(), SignerError> {
-        let public_key = PublicKey::from_vec(&public_key.to_vec())
+        let public_key = PublicKey::from_vec(public_key)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 
         let result = verify(&BbsVerifyRequest {
@@ -83,7 +83,7 @@ pub struct BbsDeriveInput {
     pub signature: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BbsProofInput {
     pub header: Vec<u8>,
     pub presentation_header: Option<Vec<u8>>,
@@ -93,7 +93,7 @@ pub struct BbsProofInput {
 
 impl BBSSigner {
     pub fn derive_proof(input: &BbsDeriveInput, public_key: &[u8]) -> Result<Vec<u8>, SignerError> {
-        let public_key = PublicKey::from_vec(&public_key.to_vec())
+        let public_key = PublicKey::from_vec(public_key)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 
         let header = input.header.clone();
@@ -128,7 +128,7 @@ impl BBSSigner {
     }
 
     pub fn verify_proof(input: &BbsProofInput, public_key: &[u8]) -> Result<(), SignerError> {
-        let public_key = PublicKey::from_vec(&public_key.to_vec())
+        let public_key = PublicKey::from_vec(public_key)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 
         let header = input.header.clone();
@@ -138,11 +138,11 @@ impl BBSSigner {
             proof: &input.proof,
             header: Some(header),
             messages: Some(input.messages.as_slice()),
-            presentation_header: None,
+            presentation_header: input.presentation_header.clone(),
         })
-        .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
+        .map_err(|e| SignerError::CouldNotVerify(e.to_string()));
 
-        if !verified {
+        if !(verified?) {
             return Err(SignerError::CouldNotVerify(
                 "Bbs proof verification error".to_owned(),
             ));

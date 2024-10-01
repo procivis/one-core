@@ -34,6 +34,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, RevocationMethodCapabilities,
 };
@@ -559,6 +560,21 @@ impl CredentialService {
 
         verify_suspension_support(credential_schema, &revocation_state)?;
 
+        let issuer = credential
+            .issuer_did
+            .as_ref()
+            .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
+
+        let did_document = self.did_method_provider.resolve(&issuer.did).await?;
+
+        let Some(verification_method) =
+            did_document.find_verification_method(None, Some(KeyRole::AssertionMethod))
+        else {
+            return Err(ServiceError::Revocation(
+                RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod),
+            ));
+        };
+
         let latest_state = &get_latest_state(&credential)?.state;
 
         let valid_states: &[CredentialStateEnum] = match revocation_state {
@@ -596,7 +612,6 @@ impl CredentialService {
                 .into(),
             );
         }
-
         let update = revocation_method
             .mark_credential_as(
                 &credential,
@@ -609,6 +624,7 @@ impl CredentialService {
                     &*self.formatter_provider,
                     &self.key_provider,
                     &self.base_url,
+                    verification_method.id.to_owned(),
                 )
                 .await?,
             )
