@@ -489,7 +489,7 @@ pub async fn create_proof_schema(
 
     let proof_schema = ProofSchema {
         id: Uuid::new_v4().into(),
-        imported_source_url: "CORE_URL".to_string(),
+        imported_source_url: Some("CORE_URL".to_string()),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: name.to_owned(),

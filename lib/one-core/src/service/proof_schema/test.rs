@@ -165,7 +165,7 @@ async fn test_get_proof_schema_list_success() {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
-        imported_source_url: "CORE_URL".to_string(),
+        imported_source_url: Some("CORE_URL".to_string()),
         deleted_at: None,
         name: "name".to_string(),
         expire_duration: 0,
@@ -257,7 +257,7 @@ async fn test_delete_proof_schema_success() {
         .returning(|_, _| {
             Ok(Some(ProofSchema {
                 id: Uuid::new_v4().into(),
-                imported_source_url: "CORE_URL".to_string(),
+                imported_source_url: Some("CORE_URL".to_string()),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -301,7 +301,7 @@ async fn test_delete_proof_schema_failure() {
             Ok(Some(ProofSchema {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
-                imported_source_url: "CORE_URL".to_string(),
+                imported_source_url: Some("CORE_URL".to_string()),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
                 name: "name".to_string(),
@@ -2006,7 +2006,7 @@ fn generic_proof_schema() -> ProofSchema {
     ProofSchema {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        imported_source_url: "CORE_URL".to_string(),
+        imported_source_url: Some("CORE_URL".to_string()),
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         name: "name".to_string(),

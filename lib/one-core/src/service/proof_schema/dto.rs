@@ -33,7 +33,7 @@ pub struct GetProofSchemaResponseDTO {
     pub id: ProofSchemaId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub imported_source_url: String,
+    pub imported_source_url: Option<String>,
     pub name: String,
     pub organisation_id: OrganisationId,
     pub expire_duration: u32,

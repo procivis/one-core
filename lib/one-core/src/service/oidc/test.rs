@@ -1322,7 +1322,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                     schema: Some(ProofSchema {
                         id: Uuid::default().into(),
                         created_date: now,
-                        imported_source_url: "CORE_URL".to_string(),
+                        imported_source_url: Some("CORE_URL".to_string()),
                         last_modified: now,
                         deleted_at: None,
                         name: "test".to_string(),

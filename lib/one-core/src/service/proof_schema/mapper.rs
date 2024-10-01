@@ -349,7 +349,7 @@ pub fn proof_schema_from_create_request(
     claim_schemas: Vec<ClaimSchema>,
     credential_schemas: Vec<CredentialSchema>,
     organisation: Organisation,
-    base_url: &str,
+    base_url: Option<&str>,
 ) -> Result<ProofSchema, BusinessLogicError> {
     let mut proof_schema_claims: HashMap<CredentialSchemaId, Vec<ProofInputClaimSchema>> =
         HashMap::new();
@@ -398,7 +398,7 @@ pub fn proof_schema_from_create_request(
         id,
         created_date: now,
         last_modified: now,
-        imported_source_url: format!("{base_url}/ssi/proof-schema/v1/{id}"),
+        imported_source_url: base_url.map(|url| format!("{url}/ssi/proof-schema/v1/{id}")),
         name: request.name,
         expire_duration: request.expire_duration.unwrap_or(0),
         organisation: Some(organisation),

@@ -36,7 +36,9 @@ use crate::model::proof_schema::{
 use crate::repository::error::DataLayerError;
 use crate::service::common_mapper::regenerate_credential_schema_uuids;
 use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
-use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
+};
 use crate::service::proof_schema::mapper::convert_proof_schema_to_response;
 use crate::service::proof_schema::validator::{
     throw_if_proof_schema_contains_physical_card_schema_with_other_schemas,
@@ -169,9 +171,6 @@ impl ProofSchemaService {
             &credential_schemas,
             &*self.formatter_provider,
         )?;
-        let base_url = self.base_url.as_ref().ok_or_else(|| {
-            ServiceError::Other("Missing core_base_url for sharing proof schema".to_string())
-        })?;
 
         let now = OffsetDateTime::now_utc();
         let proof_schema = proof_schema_from_create_request(
@@ -180,7 +179,7 @@ impl ProofSchemaService {
             claim_schemas,
             credential_schemas,
             organisation.clone(),
-            base_url,
+            self.base_url.as_deref(),
         )?;
 
         let id = self
@@ -260,6 +259,10 @@ impl ProofSchemaService {
             .await?
             .ok_or(EntityNotFoundError::ProofSchema(id))?;
 
+        let Some(url) = proof_schema.imported_source_url.clone() else {
+            return Err(ValidationError::ProofSchemaSharingNotSupported.into());
+        };
+
         let _ = log_history_event_proof_schema(
             &*self.history_repository,
             &proof_schema,
@@ -267,9 +270,7 @@ impl ProofSchemaService {
         )
         .await;
 
-        Ok(ProofSchemaShareResponseDTO {
-            url: proof_schema.imported_source_url,
-        })
+        Ok(ProofSchemaShareResponseDTO { url })
     }
 
     pub async fn import_proof_schema(
@@ -356,7 +357,7 @@ impl ProofSchemaService {
             expire_duration: schema.expire_duration,
             organisation: Some(organisation.clone()),
             input_schemas: Some(input_schemas),
-            imported_source_url: schema.imported_source_url,
+            imported_source_url: Some(schema.imported_source_url),
         };
 
         let proof_schema_id = self
