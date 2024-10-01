@@ -6,6 +6,7 @@ use serde_json::Value;
 
 use self::suspend_check::SuspendCheckProvider;
 use super::credential_formatter::provider::CredentialFormatterProvider;
+use super::did_method::provider::DidMethodProvider;
 use crate::config::core_config::{TaskConfig, TaskType};
 use crate::config::ConfigError;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -36,6 +37,7 @@ pub(crate) fn tasks_from_config(
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     proof_repository: Arc<dyn ProofRepository>,
     core_base_url: Option<String>,
@@ -55,6 +57,7 @@ pub(crate) fn tasks_from_config(
                 revocation_list_repository.to_owned(),
                 validity_credential_repository.to_owned(),
                 formatter_provider.to_owned(),
+                did_method_provider.to_owned(),
                 key_provider.to_owned(),
                 core_base_url.to_owned(),
             )) as _,

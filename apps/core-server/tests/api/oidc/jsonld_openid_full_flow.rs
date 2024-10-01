@@ -63,7 +63,10 @@ async fn test_openid4vc_jsonld_flow(
     )
     .await;
 
-    let new_claim_schemas = vec![(Uuid::new_v4(), "Key", true, "STRING", false)];
+    let new_claim_schemas = vec![
+        (Uuid::new_v4(), "TestSubject/Key", true, "STRING", false),
+        (Uuid::new_v4(), "TestSubject", true, "OBJECT", false),
+    ];
 
     let schema_id = Uuid::new_v4();
     let credential_schema = server_context
@@ -141,7 +144,7 @@ async fn test_openid4vc_jsonld_flow(
                         },
                         {
                             "id": new_claim_schemas[0].0,
-                            "path": ["$.vc.credentialSubject.Key"],
+                            "path": ["$.vc.credentialSubject.TestSubject/Key"],
                             "optional": false
                         }
                     ]
@@ -311,7 +314,7 @@ async fn test_openid4vc_jsonld_flow(
                         },
                         {
                             "id": new_claim_schemas[0].0,
-                            "path": ["$.vc.credentialSubject.Key"],
+                            "path": ["$.vc.credentialSubject.TestSubject/Key"],
                             "optional": false
                         }
                     ]

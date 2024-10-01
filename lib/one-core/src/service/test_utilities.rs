@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indoc::indoc;
 use serde::{Deserialize, Serialize};
+use shared_types::DidValue;
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -17,12 +19,13 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
+use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntity, RemoteEntityType};
 
@@ -193,7 +196,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                 array: false,
             }),
         }]),
-        issuer_did: None,
+        issuer_did: Some(dummy_did()),
         holder_did: None,
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -736,3 +739,27 @@ const W3_ORG_NS_CREDENTIALS_V2: &str = r#"{
     }
   }
 }"#;
+
+pub fn dummy_did_document(did: &DidValue) -> DidDocument {
+    DidDocument {
+        context: serde_json::json!({}),
+        id: did.clone(),
+        verification_method: vec![DidVerificationMethod {
+            id: "did-vm-id".to_string(),
+            r#type: "did-vm-type".to_string(),
+            controller: "did-vm-controller".to_string(),
+            public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                r#use: None,
+                crv: "P-256".to_string(),
+                x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
+                y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
+            }),
+        }],
+        authentication: None,
+        assertion_method: Some(vec!["did-vm-id".to_string()]),
+        key_agreement: None,
+        capability_invocation: None,
+        capability_delegation: None,
+        rest: Default::default(),
+    }
+}

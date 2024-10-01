@@ -12,10 +12,15 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::revocation::bitstring_status_list::Params;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
+use crate::service::revocation_list::dto::{
+    RevocationListResponse, SupportedBitstringCredentialFormat,
+};
 use crate::service::revocation_list::RevocationListService;
 use crate::service::test_utilities::generic_config;
 
@@ -51,6 +56,24 @@ fn setup_service(repositories: Repositories) -> RevocationListService {
 #[tokio::test]
 async fn test_get_revocation_list() {
     let mut revocation_list_repository = MockRevocationListRepository::default();
+    let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    let mut revocation_method = MockRevocationMethod::default();
+
+    revocation_method
+        .expect_get_params()
+        .once()
+        .returning(move || {
+            let params = serde_json::to_value(Params::default()).unwrap();
+            Ok(params)
+        });
+
+    let revocation_method = Arc::new(revocation_method);
+
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .returning(move |_| Some(revocation_method.clone()));
+
     let revocation_id = Uuid::new_v4();
     {
         let revocation = RevocationList {
@@ -73,6 +96,7 @@ async fn test_get_revocation_list() {
 
     let service = setup_service(Repositories {
         revocation_list_repository,
+        revocation_method_provider,
         ..Default::default()
     });
 
@@ -82,5 +106,12 @@ async fn test_get_revocation_list() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result, "revocation-list-credential");
+
+    assert_eq!(
+        result,
+        RevocationListResponse {
+            revocation_list: "revocation-list-credential".to_owned(),
+            format: SupportedBitstringCredentialFormat::default(),
+        }
+    );
 }

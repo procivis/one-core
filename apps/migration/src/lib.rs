@@ -53,6 +53,7 @@ mod m20240905_114351_add_claims_removed_event;
 mod m20240920_115859_import_url;
 mod m20240925_130000_introduce_allow_suspension;
 mod m20241001_102526_make_import_source_url_optional_proof_schema_table;
+mod m20241001_114629_soft_delete_bbsplus;
 
 pub struct Migrator;
 
@@ -109,6 +110,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240920_115859_import_url::Migration),
             Box::new(m20240925_130000_introduce_allow_suspension::Migration),
             Box::new(m20241001_102526_make_import_source_url_optional_proof_schema_table::Migration),
+            Box::new(m20241001_114629_soft_delete_bbsplus::Migration),
         ]
     }
 }

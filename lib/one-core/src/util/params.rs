@@ -3,7 +3,6 @@ use serde::Serialize;
 
 use crate::provider::credential_formatter::error::FormatterError;
 
-// TODO Replace with a trait impl or something a bit less tedious for conversion.
 pub fn convert_params<T, R>(input: T) -> Result<R, FormatterError>
 where
     T: Serialize,

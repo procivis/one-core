@@ -2,6 +2,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
+use super::dto::RevocationListResponse;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{Did, DidRelations};
@@ -9,6 +10,7 @@ use crate::model::key::KeyRelations;
 use crate::model::revocation_list::RevocationListRelations;
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::revocation::bitstring_status_list::Params;
 use crate::provider::revocation::lvvc::create_lvvc_with_status;
 use crate::provider::revocation::lvvc::dto::LvvcStatus;
 use crate::provider::revocation::lvvc::mapper::status_from_lvvc_claims;
@@ -16,6 +18,7 @@ use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceEr
 use crate::service::revocation_list::dto::RevocationListId;
 use crate::service::revocation_list::RevocationListService;
 use crate::service::ssi_issuer::dto::IssuerResponseDTO;
+use crate::util::params::convert_params;
 
 impl RevocationListService {
     pub async fn get_lvvc_by_credential_id(
@@ -160,7 +163,14 @@ impl RevocationListService {
     pub async fn get_revocation_list_by_id(
         &self,
         id: &RevocationListId,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<RevocationListResponse, ServiceError> {
+        let revocation_method = self
+            .revocation_method_provider
+            .get_revocation_method("BITSTRINGSTATUSLIST")
+            .ok_or(MissingProviderError::RevocationMethod(
+                "BITSTRINGSTATUSLIST".to_owned(),
+            ))?;
+
         let result = self
             .revocation_list_repository
             .get_revocation_list(id, &RevocationListRelations::default())
@@ -170,7 +180,12 @@ impl RevocationListService {
             return Err(EntityNotFoundError::RevocationList(*id).into());
         };
 
-        result.try_into()
+        let params: Params = convert_params(revocation_method.get_params()?)?;
+
+        Ok(RevocationListResponse {
+            revocation_list: result.try_into()?,
+            format: params.bitstring_credential_format.unwrap_or_default(),
+        })
     }
 
     async fn verify_signature_with_did(

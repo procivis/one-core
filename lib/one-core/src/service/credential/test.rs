@@ -30,6 +30,7 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::ShareResponse;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
@@ -57,7 +58,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
 use crate::service::test_utilities::{
-    generic_config, generic_formatter_capabilities, get_dummy_date,
+    dummy_did_document, generic_config, generic_formatter_capabilities, get_dummy_date,
 };
 
 #[derive(Default)]
@@ -71,6 +72,7 @@ struct Repositories {
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockExchangeProtocolProviderExtra,
+    pub did_method_provider: MockDidMethodProvider,
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
     pub lvvc_repository: MockValidityCredentialRepository,
@@ -87,6 +89,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.protocol_provider),
+        Arc::new(repositories.did_method_provider),
         Arc::new(repositories.key_provider),
         Arc::new(repositories.config),
         Arc::new(repositories.lvvc_repository),
@@ -2149,6 +2152,11 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     }]);
 
     let mut credential_repository = MockCredentialRepository::default();
+    let mut did_method_provider = MockDidMethodProvider::default();
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .returning(|did| Ok(dummy_did_document(did)));
     {
         let clone = credential.clone();
         credential_repository
@@ -2204,6 +2212,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
         credential_repository,
         history_repository,
         revocation_method_provider,
+        did_method_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2223,6 +2232,12 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     }]);
 
     let mut credential_repository = MockCredentialRepository::default();
+    let mut did_method_provider = MockDidMethodProvider::default();
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .returning(|did| Ok(dummy_did_document(did)));
+
     {
         let clone = credential.clone();
         credential_repository
@@ -2278,6 +2293,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
         credential_repository,
         history_repository,
         revocation_method_provider,
+        did_method_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2299,6 +2315,13 @@ async fn test_suspend_credential_success() {
     let suspend_end_date = now.add(Duration::days(1));
 
     let mut credential_repository = MockCredentialRepository::default();
+    let mut did_method_provider = MockDidMethodProvider::default();
+
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .returning(|did| Ok(dummy_did_document(did)));
+
     {
         let clone = credential.clone();
         credential_repository
@@ -2360,6 +2383,7 @@ async fn test_suspend_credential_success() {
         credential_repository,
         history_repository,
         revocation_method_provider,
+        did_method_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2396,8 +2420,15 @@ async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
+    let mut did_method_provider = MockDidMethodProvider::default();
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .returning(|did| Ok(dummy_did_document(did)));
+
     let service = setup_service(Repositories {
         credential_repository,
+        did_method_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2430,6 +2461,10 @@ async fn test_reactivate_credential_success() {
     }]);
 
     let mut credential_repository = MockCredentialRepository::default();
+    let mut did_method_provider = MockDidMethodProvider::default();
+    did_method_provider
+        .expect_resolve()
+        .returning(|did| Ok(dummy_did_document(did)));
     {
         let clone = credential.clone();
         credential_repository
@@ -2484,6 +2519,7 @@ async fn test_reactivate_credential_success() {
     let service = setup_service(Repositories {
         credential_repository,
         history_repository,
+        did_method_provider,
         revocation_method_provider,
         config: generic_config().core,
         ..Default::default()
@@ -2504,6 +2540,7 @@ async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential(
     }]);
 
     let mut credential_repository = MockCredentialRepository::default();
+    let mut did_method_provider = MockDidMethodProvider::default();
     {
         let clone = credential.clone();
         credential_repository
@@ -2511,10 +2548,16 @@ async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential(
             .times(1)
             .with(eq(clone.id), always())
             .returning(move |_, _| Ok(Some(clone.clone())));
+
+        did_method_provider
+            .expect_resolve()
+            .once()
+            .returning(|did| Ok(dummy_did_document(did)));
     }
 
     let service = setup_service(Repositories {
         credential_repository,
+        did_method_provider,
         config: generic_config().core,
         ..Default::default()
     });

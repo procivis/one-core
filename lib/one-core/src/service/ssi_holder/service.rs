@@ -320,7 +320,6 @@ impl SSIHolderService {
 
         let mut submitted_claims: Vec<Claim> = vec![];
         let mut credential_presentations: Vec<PresentedCredential> = vec![];
-
         for (requested_credential_id, credential_request) in submission.submit_credentials {
             let requested_credential = requested_credentials
                 .iter()
@@ -369,7 +368,6 @@ impl SSIHolderService {
                 .ok_or(EntityNotFoundError::Credential(
                     credential_request.credential_id,
                 ))?;
-
             let credential_data = credential.credential.as_slice();
             if credential_data.is_empty() {
                 return Err(BusinessLogicError::MissingCredentialData {

@@ -18,7 +18,7 @@ use one_core::provider::did_method::provider::DidMethodProvider;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use one_core::provider::key_storage::provider::KeyProvider;
 use one_core::util::key_verification::KeyVerification;
-use one_core::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
+use one_core::util::vcdm_jsonld_contexts::{vcdm_type, vcdm_v2_base_context};
 use shared_types::DidValue;
 
 use crate::model::{CredentialFormat, KeyAlgorithmType};
@@ -67,10 +67,8 @@ impl CredentialService {
                 &Some(holder_did),
                 &algorithm.to_string(),
                 vcdm_v2_base_context(None),
-                vec![],
+                vcdm_type(None),
                 auth_fn,
-                None,
-                None,
             )
             .await?;
 

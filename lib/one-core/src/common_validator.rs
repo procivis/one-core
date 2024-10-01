@@ -119,8 +119,11 @@ pub(crate) fn get_latest_state(credential: &Credential) -> Result<&CredentialSta
         .ok_or(ServiceError::MappingError("state is missing".to_string()))
 }
 
+// TODO - we maintain a backwards compatibility check here, see ONE-3528
 pub fn is_lvvc(credential: &DetailCredential) -> bool {
-    credential.claims.values.contains_key("id") && credential.claims.values.contains_key("status")
+    credential.subject.is_some()
+        && (credential.claims.values.contains_key("status")
+            || credential.claims.values.contains_key("LvvcSubject"))
 }
 
 #[cfg(test)]

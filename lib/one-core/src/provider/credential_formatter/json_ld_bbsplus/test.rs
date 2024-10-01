@@ -109,13 +109,9 @@ async fn test_transform_canonized() {
         .transform_canonical(&bnode_ident_map, CANONICAL)
         .unwrap();
 
-    assert_eq!(
-        result,
-        TRANSFORMED
-            .lines()
-            .map(|l| l.to_owned())
-            .collect::<Vec<String>>()
-    );
+    for (expected, received) in TRANSFORMED.lines().zip(result) {
+        assert_eq!(format!("{expected}\n"), received);
+    }
 }
 
 #[tokio::test]
@@ -272,7 +268,12 @@ fn generate_ld_credential(subject_claims: serde_json::Value) -> LdCredential {
         valid_from: Some(OffsetDateTime::now_utc()),
         credential_subject: vec![LdCredentialSubject {
             id: Some("did:key:1234".to_string().into()),
-            subject: HashMap::from([("credentialSubject".to_string(), subject_claims)]),
+            subject: subject_claims
+                .as_object()
+                .unwrap()
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_owned()))
+                .collect(),
         }],
         credential_status: vec![],
         proof: None,
@@ -345,17 +346,17 @@ fn test_remove_undisclosed_keys_group_allow_whole_object() {
 
     remove_undisclosed_keys(&mut test_cred, &["foo".to_string()]).unwrap();
 
-    let expected = serde_json::json!({
-        "foo": {
+    let expected: HashMap<_, _> = serde_json::Map::from_iter(vec![(
+        "foo".to_string(),
+        serde_json::json!({
             "bar": 10,
             "bar1": 11
-        }
-    });
+        }),
+    )])
+    .into_iter()
+    .collect();
 
-    assert_eq!(
-        expected,
-        test_cred.credential_subject[0].subject["credentialSubject"]
-    );
+    assert_eq!(expected, test_cred.credential_subject[0].subject);
 }
 
 #[test]
@@ -369,16 +370,16 @@ fn test_remove_undisclosed_keys_group_allow_separate_claims() {
 
     remove_undisclosed_keys(&mut test_cred, &["foo/bar".to_string()]).unwrap();
 
-    let expected = serde_json::json!({
-        "foo": {
+    let expected: HashMap<_, _> = serde_json::Map::from_iter(vec![(
+        "foo".to_string(),
+        serde_json::json!({
             "bar": 10
-        }
-    });
+        }),
+    )])
+    .into_iter()
+    .collect();
 
-    assert_eq!(
-        expected,
-        test_cred.credential_subject[0].subject["credentialSubject"]
-    );
+    assert_eq!(expected, test_cred.credential_subject[0].subject);
 }
 
 #[test]
@@ -392,12 +393,8 @@ fn test_remove_undisclosed_keys_group_allow_none() {
 
     remove_undisclosed_keys(&mut test_cred, &["some_unrelated_claim".to_string()]).unwrap();
 
-    let expected = serde_json::json!({});
-
-    assert_eq!(
-        expected,
-        test_cred.credential_subject[0].subject["credentialSubject"]
-    );
+    let expected = HashMap::new();
+    assert_eq!(expected, test_cred.credential_subject[0].subject);
 }
 
 #[test]
@@ -415,17 +412,17 @@ fn test_remove_undisclosed_keys_group_allow_multiple_claims() {
     )
     .unwrap();
 
-    let expected = serde_json::json!({
-        "foo": {
+    let expected: HashMap<_, _> = serde_json::Map::from_iter(vec![(
+        "foo".to_string(),
+        serde_json::json!({
             "bar": 10,
             "bar1": 11
-        }
-    });
+        }),
+    )])
+    .into_iter()
+    .collect();
 
-    assert_eq!(
-        expected,
-        test_cred.credential_subject[0].subject["credentialSubject"]
-    );
+    assert_eq!(expected, test_cred.credential_subject[0].subject);
 }
 
 #[tokio::test]
@@ -595,8 +592,6 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
             vec![],
             vec![],
             Box::new(auth_fn),
-            None,
-            None,
         )
         .await
         .unwrap();

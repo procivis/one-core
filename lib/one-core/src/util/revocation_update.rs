@@ -26,6 +26,7 @@ use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn generate_credential_additional_data(
     credential: &Credential,
     credential_repository: &dyn CredentialRepository,
@@ -34,15 +35,19 @@ pub(crate) async fn generate_credential_additional_data(
     formatter_provider: &dyn CredentialFormatterProvider,
     key_provider: &Arc<dyn KeyProvider>,
     core_base_url: &Option<String>,
+    issuer_key_id: String,
 ) -> Result<Option<CredentialAdditionalData>, ServiceError> {
     let status_type = revocation_method.get_status_type();
     if status_type != "BitstringStatusListEntry" && status_type != "StatusList2021Entry" {
         return Ok(None);
     }
 
-    let _params: Params = convert_params(revocation_method.get_params()?)?;
-    // ignore JSON-LD formatter for now
-    let bitstring_credential_format = "JWT";
+    let params: Params = convert_params(revocation_method.get_params()?)?;
+
+    let bitstring_credential_format: String = params
+        .bitstring_credential_format
+        .unwrap_or_default()
+        .into();
 
     let issuer_did = credential
         .issuer_did
@@ -62,7 +67,7 @@ pub(crate) async fn generate_credential_additional_data(
     );
 
     let formatter = formatter_provider
-        .get_formatter(bitstring_credential_format)
+        .get_formatter(&bitstring_credential_format)
         .ok_or_else(|| {
             ServiceError::MissingProvider(MissingProviderError::Formatter(
                 bitstring_credential_format.to_owned(),
@@ -77,7 +82,7 @@ pub(crate) async fn generate_credential_additional_data(
         key_provider,
         core_base_url,
         &*formatter,
-        None,
+        issuer_key_id.clone(),
     )
     .await?;
 
@@ -89,7 +94,7 @@ pub(crate) async fn generate_credential_additional_data(
         key_provider,
         core_base_url,
         &*formatter,
-        None,
+        issuer_key_id,
     )
     .await?;
 
@@ -128,7 +133,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
     key_provider: &Arc<dyn KeyProvider>,
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
-    key_id: Option<String>,
+    key_id: String,
 ) -> Result<RevocationListId, ServiceError> {
     let revocation_list = revocation_list_repository
         .get_revocation_by_issuer_did_id(

@@ -17,7 +17,7 @@ use crate::model::credential::{
     CredentialRelations, CredentialStateEnum, CredentialStateRelations,
 };
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
-use crate::model::did::{Did, DidRelations};
+use crate::model::did::{Did, DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::revocation_list::RevocationListPurpose;
@@ -25,13 +25,14 @@ use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
-use crate::provider::credential_formatter::model::Context;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
 use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
 use crate::provider::exchange_protocol::openid4vc::model::SubmitIssuerResponse;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::bitstring_status_list::Params;
+use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::CredentialAdditionalData;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
@@ -42,7 +43,9 @@ use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
+use crate::util::params::convert_params;
 use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
+use crate::util::vcdm_jsonld_contexts::{vcdm_type, vcdm_v2_base_context};
 
 pub trait ExchangeProtocol:
     ExchangeProtocolImpl<
@@ -263,13 +266,31 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                 credential_schema.revocation_method.clone(),
             ))?;
 
+        let did_document = self.did_method_provider.resolve(&issuer_did.did).await?;
+        let key_id = did_document
+            .find_verification_method(None, Some(KeyRole::AssertionMethod))
+            .ok_or(ServiceError::Revocation(
+                RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod),
+            ))?
+            .id
+            .to_owned();
+
         let mut credential_additional_data = None;
+
         // TODO: refactor this when refactoring the formatters as it makes no sense for to construct this for LVVC
         if &credential_schema.revocation_method == "BITSTRINGSTATUSLIST" {
+            let format: String = {
+                let Params {
+                    bitstring_credential_format,
+                } = convert_params(revocation_method.get_params()?)?;
+
+                bitstring_credential_format.unwrap_or_default().into()
+            };
+
             let formatter = self
                 .formatter_provider
-                .get_formatter("JWT")
-                .ok_or(ValidationError::InvalidFormatter("JWT".to_string()))?;
+                .get_formatter(&format)
+                .ok_or(ValidationError::InvalidFormatter(format))?;
 
             credential_additional_data = Some(CredentialAdditionalData {
                 credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
@@ -281,7 +302,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                     &self.key_provider,
                     &self.core_base_url,
                     &*formatter,
-                    None,
+                    key_id.clone(),
                 )
                 .await?,
                 suspension_list_id: get_or_create_revocation_list_id(
@@ -292,7 +313,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                     &self.key_provider,
                     &self.core_base_url,
                     &*formatter,
-                    None,
+                    key_id,
                 )
                 .await?,
             });
@@ -367,8 +388,16 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             credential_status,
         )?;
 
-        let json_ld_context = revocation_method.get_json_ld_context()?;
-        let contexts = vec![ContextType::Url(Context::CredentialsV2.to_url())];
+        let additional_contexts = revocation_method
+            .get_json_ld_context()?
+            .url
+            .map(|ctx| ctx.parse().map(|ctx| vec![ContextType::Url(ctx)]))
+            .transpose()
+            .map_err(|_err| {
+                ServiceError::Other("Provided JSON-LD context URL is not a valid URL".to_owned())
+            })?;
+
+        let contexts = vcdm_v2_base_context(additional_contexts);
 
         let token = self
             .formatter_provider
@@ -379,10 +408,8 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                 &Some(holder_did.did),
                 &key.key_type,
                 contexts,
-                vec![],
+                vcdm_type(None),
                 auth_fn,
-                json_ld_context.url,
-                None,
             )
             .await?;
 

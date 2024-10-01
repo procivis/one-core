@@ -6,6 +6,7 @@ use std::time::Duration;
 use time::OffsetDateTime;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_validator::is_lvvc;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -115,6 +116,12 @@ pub(super) async fn validate_presentation(
     Ok(presentation)
 }
 
+fn is_revocation_credential(credential: &DetailCredential) -> bool {
+    is_lvvc(credential)
+        || (credential.claims.values.contains_key("encodedList")
+            && credential.claims.values.contains_key("statusPurpose"))
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn validate_credential(
     presentation: Presentation,
@@ -166,6 +173,10 @@ pub(super) async fn validate_credential(
         .ok_or(OpenID4VCError::ValidationError(
             "Issuer DID missing".to_owned(),
         ))?;
+
+    if is_revocation_credential(&credential) {
+        return Ok(credential);
+    };
 
     for credential_status in credential.status.iter() {
         let (revocation_method, _) = revocation_method_provider

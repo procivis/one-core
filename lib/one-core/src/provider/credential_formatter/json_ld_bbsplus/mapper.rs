@@ -42,20 +42,7 @@ impl TryFrom<LdCredential> for DetailCredential {
             issuer_did: Some(value.issuer.to_did_value()),
             subject: credential_subject.id,
             claims: CredentialSubject {
-                values: credential_subject
-                    .subject
-                    .values()
-                    .next()
-                    .ok_or(FormatterError::JsonMapping(
-                        "subject is not defined".to_string(),
-                    ))?
-                    .as_object()
-                    .ok_or(FormatterError::JsonMapping(
-                        "subject is not an Object".to_string(),
-                    ))?
-                    .into_iter()
-                    .map(|(k, v)| (k.to_owned(), v.to_owned()))
-                    .collect(),
+                values: credential_subject.subject,
             },
             status: value.credential_status,
             credential_schema: value.credential_schema.map(|v| v[0].clone()),

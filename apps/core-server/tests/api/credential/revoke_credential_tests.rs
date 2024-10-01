@@ -25,6 +25,10 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
         .create(
             &organisation,
             TestingDidParams {
+                did: Some(
+                    DidValue::from_str("did:key:zDnaetpgFTTteRE2RWG8DtbNX6WNWxxgFs627d7z2JVjboM2L")
+                        .unwrap(),
+                ),
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key,

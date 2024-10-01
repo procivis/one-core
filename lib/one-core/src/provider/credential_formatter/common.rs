@@ -7,7 +7,7 @@ use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
 
-pub(super) fn nest_claims(
+pub fn nest_claims(
     claims: impl IntoIterator<Item = PublishedClaim>,
 ) -> Result<IndexMap<String, serde_json::Value>, FormatterError> {
     let mut data = serde_json::Value::Object(Default::default());

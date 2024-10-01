@@ -19,7 +19,6 @@ use crate::provider::credential_formatter::json_ld::context::caching_loader::Con
 use crate::provider::credential_formatter::json_ld::model::LdCredential;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchemaData, ExtractPresentationCtx, PublishedClaim,
-    PublishedClaimValue,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -109,24 +108,19 @@ impl VCAPIService {
 
         let credential_subject = create_request.credential.credential_subject[0].clone();
 
-        let mut claims: Vec<PublishedClaim> = credential_subject
+        let claims: Vec<PublishedClaim> = credential_subject
             .subject
             .into_iter()
             .flat_map(|claim| value_to_published_claim(claim, "", false))
             .collect();
 
-        if let Some(credential_subject) = credential_subject.id.clone() {
-            claims.push(PublishedClaim {
-                key: "id".to_string(),
-                value: PublishedClaimValue::String(credential_subject.as_str().into()),
-                datatype: Some("STRING".to_string()),
-                array_item: false,
-            });
-        }
-
         let formatter = self
             .credential_formatter
-            .get_formatter(&credential_format.unwrap_or("JSON_LD_CLASSIC".to_string()))
+            .get_formatter(
+                credential_format
+                    .as_ref()
+                    .unwrap_or(&"JSON_LD_CLASSIC".to_string()),
+            )
             .unwrap();
 
         let mut credential_status = create_request.credential.credential_status;
@@ -162,7 +156,7 @@ impl VCAPIService {
                 &self.key_provider,
                 &self.base_url,
                 &*formatter,
-                Some(key_id.to_owned()),
+                key_id.to_owned(),
             )
             .await
             .unwrap();
@@ -210,12 +204,14 @@ impl VCAPIService {
                 create_request.credential.context.into_iter().collect(),
                 create_request.credential.r#type,
                 auth_fn,
-                None,
-                None,
             )
             .await;
 
-        let mut verifiable_credential: LdCredential = serde_json::from_str(&test?).unwrap();
+        let mut verifiable_credential: LdCredential =
+            serde_json::from_str(&test?).map_err(|e: serde_json::Error| {
+                ServiceError::Other(format!("Failed to serialize verifiable credential: {e}"))
+            })?;
+
         verifiable_credential
             .credential_subject
             .iter_mut()
@@ -236,10 +232,20 @@ impl VCAPIService {
         )
         .await?;
 
-        let format = &verify_request
-            .options
-            .credential_format
-            .unwrap_or("JSON_LD_CLASSIC".to_string());
+        let format = if verify_request
+            .verifiable_credential
+            .proof
+            .as_ref()
+            .is_some_and(|proof| proof.cryptosuite == "bbs-2023")
+        {
+            "JSON_LD_BBSPLUS"
+        } else {
+            verify_request
+                .options
+                .credential_format
+                .as_deref()
+                .unwrap_or("JSON_LD_CLASSIC")
+        };
 
         let formatter =
             self.credential_formatter

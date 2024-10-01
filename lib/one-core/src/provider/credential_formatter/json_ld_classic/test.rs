@@ -190,8 +190,6 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
             vec![],
             vec![],
             Box::new(auth_fn),
-            None,
-            None,
         )
         .await
         .unwrap();

@@ -1,2 +1,11 @@
 app:
   insecureVcApiEndpointsEnabled: true
+revocation:
+  BITSTRINGSTATUSLIST:
+    display: "revocation.bitStringStatusList"
+    order: 1
+    disabled: false
+    type: "BITSTRINGSTATUSLIST"
+    params:
+      public:
+        bitstringCredentialFormat: "JSON_LD_CLASSIC"

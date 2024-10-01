@@ -1,11 +1,8 @@
 //! Implementation of JSON-LD credential format.
 
-use std::collections::HashMap;
-
 use context::caching_loader::ContextCache;
-use convert_case::{Case, Casing};
 use indexmap::IndexSet;
-use model::ContextType;
+use model::{ContextType, LdCredentialSubject};
 use serde::Serialize;
 use shared_types::DidValue;
 use sophia_api::quad::Spog;
@@ -18,12 +15,10 @@ use sophia_jsonld::{JsonLdOptions, JsonLdParser};
 use time::OffsetDateTime;
 use url::Url;
 
-use self::model::{LdCredential, LdCredentialSubject, LdProof};
-use super::common::nest_claims;
+use self::model::{LdCredential, LdProof};
+use super::nest_claims;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, PublishedClaim,
-};
+use crate::provider::credential_formatter::model::{CredentialData, CredentialSchema};
 
 pub mod context;
 pub mod model;
@@ -38,35 +33,10 @@ type LdDataset = std::collections::HashSet<Spog<SimpleTerm<'static>>>;
 pub fn prepare_credential(
     credential: CredentialData,
     holder_did: Option<&DidValue>,
-    additional_context: Vec<ContextType>,
-    additional_types: Vec<String>,
-    json_ld_context_url: Option<Url>,
-    custom_subject_name: Option<String>,
+    vc_context: Vec<ContextType>,
+    vc_type: Vec<String>,
     embed_layout_properties: bool,
 ) -> Result<LdCredential, FormatterError> {
-    let credential_schema = &credential.schema;
-
-    let mut context: IndexSet<ContextType> = additional_context.into_iter().collect();
-    if let Some(json_ld_context_url) = json_ld_context_url {
-        context.insert(ContextType::Url(json_ld_context_url));
-    }
-
-    if let Some(credential_schema_context) = &credential_schema.context {
-        let credential_schema_context: Url = credential_schema_context.parse().map_err(|_| {
-            FormatterError::CouldNotFormat("Credential schema context must be a URL".to_string())
-        })?;
-        context.insert(credential_schema_context.into());
-    }
-
-    let ld_type = prepare_credential_type(&credential_schema.name, additional_types);
-
-    let credential_subject = prepare_credential_subject(
-        &credential_schema.name,
-        credential.claims,
-        holder_did,
-        custom_subject_name,
-    )?;
-
     // Strip layout (whole metadata as it only contains layout)
     let mut credential_schema: Option<CredentialSchema> = credential.schema.into();
     if let Some(schema) = &mut credential_schema {
@@ -87,13 +57,16 @@ pub fn prepare_credential(
         })?;
 
     Ok(LdCredential {
-        context,
+        context: IndexSet::from_iter(vc_context),
         id,
-        r#type: ld_type,
+        r#type: vc_type,
         issuer: credential.issuer_did,
         valid_from: Some(OffsetDateTime::now_utc()),
         valid_until: None,
-        credential_subject: vec![credential_subject],
+        credential_subject: vec![LdCredentialSubject {
+            id: holder_did.cloned(),
+            subject: nest_claims(credential.claims)?.into_iter().collect(),
+        }],
         credential_status: credential.status,
         proof: None,
         credential_schema: credential_schema.map(|v| vec![v]),
@@ -134,42 +107,6 @@ pub async fn prepare_proof_config(
         nonce: None,
         challenge: None,
         domain: None,
-    })
-}
-
-pub fn prepare_credential_type(
-    credential_schema_name: &str,
-    additional_types: Vec<String>,
-) -> Vec<String> {
-    let credential_schema_name = credential_schema_name.to_case(Case::Pascal);
-
-    let mut types = vec![
-        "VerifiableCredential".to_string(),
-        format!("{}Subject", credential_schema_name),
-    ];
-
-    types.extend(additional_types);
-
-    types
-}
-
-pub fn prepare_credential_subject(
-    credential_schema_name: &str,
-    claims: Vec<PublishedClaim>,
-    holder_did: Option<&DidValue>,
-    custom_subject_name: Option<String>,
-) -> Result<LdCredentialSubject, FormatterError> {
-    let credential_schema_name = credential_schema_name.to_case(Case::Pascal);
-
-    let subject_name_base = custom_subject_name.unwrap_or(credential_schema_name);
-
-    Ok(LdCredentialSubject {
-        id: holder_did.cloned(),
-        subject: HashMap::from([(
-            format!("{subject_name_base}Subject"),
-            serde_json::to_value(nest_claims(claims)?)
-                .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?,
-        )]),
     })
 }
 

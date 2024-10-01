@@ -7,6 +7,7 @@ use super::SuspendCheckProvider;
 use crate::model::credential::{Credential, CredentialStateEnum, GetCredentialList};
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::model::{CredentialRevocationState, RevocationUpdate};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -17,7 +18,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
-use crate::service::test_utilities::dummy_credential;
+use crate::service::test_utilities::{dummy_credential, dummy_did_document};
 
 #[derive(Default)]
 struct TestDependencies {
@@ -27,6 +28,7 @@ struct TestDependencies {
     pub revocation_list_repository: MockRevocationListRepository,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
+    pub did_method_provider: MockDidMethodProvider,
     pub key_provider: MockKeyProvider,
     pub core_base_url: Option<String>,
 }
@@ -39,6 +41,7 @@ fn setup(dependencies: TestDependencies) -> impl Task {
         Arc::new(dependencies.revocation_list_repository),
         Arc::new(dependencies.validity_credential_repository),
         Arc::new(dependencies.formatter_provider),
+        Arc::new(dependencies.did_method_provider),
         Arc::new(dependencies.key_provider),
         dependencies.core_base_url,
     )
@@ -76,6 +79,12 @@ async fn test_run_one_update() {
     };
 
     let mut credential_repository = MockCredentialRepository::default();
+    let mut did_method_provider = MockDidMethodProvider::default();
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .return_once(|did| Ok(dummy_did_document(did)));
+
     credential_repository
         .expect_get_credential_list()
         .once()
@@ -164,6 +173,7 @@ async fn test_run_one_update() {
     let task = setup(TestDependencies {
         credential_repository,
         revocation_method_provider,
+        did_method_provider,
         history_repository,
         ..Default::default()
     });

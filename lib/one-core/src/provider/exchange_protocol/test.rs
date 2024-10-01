@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::{always, eq};
 use serde_json::{json, Value};
 use shared_types::CredentialId;
@@ -18,14 +17,13 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::revocation_list::{RevocationList, RevocationListPurpose};
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::dto::{CredentialGroup, CredentialGroupItem};
 use crate::provider::exchange_protocol::mapper::get_relevant_credentials_to_credential_schemas;
@@ -45,7 +43,9 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::ServiceError;
-use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
+use crate::service::test_utilities::{
+    dummy_did_document, dummy_organisation, generic_config, get_dummy_date,
+};
 
 #[tokio::test]
 async fn test_issuer_submit_succeeds() {
@@ -146,7 +146,7 @@ async fn test_issuer_submit_succeeds() {
     formatter
         .expect_format_credentials()
         .once()
-        .returning(|_, _, _, _, _, _, _, _| Ok("token".to_string()));
+        .returning(|_, _, _, _, _, _| Ok("token".to_string()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
@@ -169,30 +169,8 @@ async fn test_issuer_submit_succeeds() {
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
         .expect_resolve()
-        .once()
-        .returning(move |_| {
-            Ok(DidDocument {
-                context: json!({}),
-                id: dummy_did().did,
-                verification_method: vec![DidVerificationMethod {
-                    id: "did-vm-id".to_string(),
-                    r#type: "did-vm-type".to_string(),
-                    controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-                        r#use: None,
-                        crv: "P-256".to_string(),
-                        x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
-                        y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
-                    }),
-                }],
-                authentication: None,
-                assertion_method: Some(vec!["did-vm-id".to_string()]),
-                key_agreement: None,
-                capability_invocation: None,
-                capability_delegation: None,
-                rest: Default::default(),
-            })
-        });
+        .times(2)
+        .returning(move |did| Ok(dummy_did_document(did)));
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
@@ -544,7 +522,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     formatter
         .expect_format_credentials()
         .once()
-        .returning(|_, _, _, _, _, _, _, _| Ok("token".to_string()));
+        .returning(|_, _, _, _, _, _| Ok("token".to_string()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
@@ -568,8 +546,8 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
         .expect_resolve()
-        .once()
-        .returning(move |_| Ok(dummy_did_document()));
+        .times(2)
+        .returning(move |did| Ok(dummy_did_document(did)));
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
@@ -669,7 +647,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     formatter
         .expect_format_credentials()
         .once()
-        .returning(|_, _, _, _, _, _, _, _| Ok("token".to_string()));
+        .returning(|_, _, _, _, _, _| Ok("token".to_string()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
@@ -687,8 +665,8 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
         .expect_resolve()
-        .once()
-        .returning(move |_| Ok(dummy_did_document()));
+        .times(2)
+        .returning(move |did| Ok(dummy_did_document(did)));
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
@@ -976,30 +954,6 @@ fn dummy_did() -> Did {
         keys: None,
         organisation: None,
         deactivated: false,
-    }
-}
-
-fn dummy_did_document() -> DidDocument {
-    DidDocument {
-        context: json!({}),
-        id: dummy_did().did,
-        verification_method: vec![DidVerificationMethod {
-            id: "did-vm-id".to_string(),
-            r#type: "did-vm-type".to_string(),
-            controller: "did-vm-controller".to_string(),
-            public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-                r#use: None,
-                crv: "P-256".to_string(),
-                x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
-                y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
-            }),
-        }],
-        authentication: None,
-        assertion_method: Some(vec!["did-vm-id".to_string()]),
-        key_agreement: None,
-        capability_invocation: None,
-        capability_delegation: None,
-        rest: Default::default(),
     }
 }
 

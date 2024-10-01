@@ -15,15 +15,15 @@ use crate::endpoint::ssi::dto::DidDocumentRestDTO;
 #[derive(Debug, Serialize, Deserialize, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CredentialIssueRequest)]
-pub struct CredentialIssueRequestDto {
+pub struct CredentialIssueRequestDTO {
     pub credential: LdCredential,
-    pub options: IssueOptionsDto,
+    pub options: IssueOptionsDTO,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Into)]
 #[into(CredentialIssueOptions)]
 #[serde(rename_all = "camelCase")]
-pub struct IssueOptionsDto {
+pub struct IssueOptionsDTO {
     pub signature_algorithm: String,
     pub credential_format: String,
     pub revocation_method: Option<String>,
@@ -40,15 +40,15 @@ pub struct CredentialIssueResponseDTO {
 #[derive(Debug, Serialize, Deserialize, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CredentialVerifiyRequest)]
-pub struct CredentialVerifiyRequestDto {
+pub struct CredentialVerifyRequestDTO {
     pub verifiable_credential: LdCredential,
-    pub options: VerifyOptionsDto,
+    pub options: VerifyOptionsDTO,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(VerifyOptions)]
-pub struct VerifyOptionsDto {
+pub struct VerifyOptionsDTO {
     #[into(with_fn = convert_inner)]
     pub checks: Vec<String>,
     pub credential_format: Option<String>,
@@ -57,7 +57,7 @@ pub struct VerifyOptionsDto {
 #[derive(Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialVerifyResponse)]
-pub struct CredentialVerifyResponseDto {
+pub struct CredentialVerifyResponseDTO {
     pub checks: Vec<String>,
     pub warnings: Vec<String>,
     pub errors: Vec<String>,
@@ -67,22 +67,22 @@ pub struct CredentialVerifyResponseDto {
 #[derive(Debug, Serialize, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(PresentationVerifyRequest)]
-pub struct PresentationVerifyRequestDto {
+pub struct PresentationVerifyRequestDTO {
     pub verifiable_presentation: LdPresentation,
-    pub options: VerifyOptionsDto,
+    pub options: VerifyOptionsDTO,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationVerifyResponse)]
-pub struct PresentationVerifyResponseDto {
+pub struct PresentationVerifyResponseDTO {
     pub checks: Vec<String>,
     pub warnings: Vec<String>,
     pub errors: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct IdentifierResponseDto {
+pub struct IdentifierResponseDTO {
     pub result: VcApiDidDocumentRestDTO,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
@@ -107,12 +107,12 @@ pub struct DidDocumentResolutionResponseDTO {
     #[serde(rename = "@context")]
     pub context: Vec<String>,
     pub did_document: VcApiDidDocumentRestDTO,
-    pub did_document_metadata: Option<DidResolutionMetadataResponseDto>,
-    pub did_resolution_metadata: Option<DidResolutionMetadataResponseDto>,
+    pub did_document_metadata: Option<DidResolutionMetadataResponseDTO>,
+    pub did_resolution_metadata: Option<DidResolutionMetadataResponseDTO>,
 }
 
 #[derive(Serialize, ToSchema)]
-pub struct DidResolutionMetadataResponseDto {
+pub struct DidResolutionMetadataResponseDTO {
     pub(crate) content_type: String,
     pub(crate) error: Option<DidResolverError>,
 }
@@ -126,7 +126,7 @@ impl From<DidDocument> for DidDocumentResolutionResponseDTO {
             did_document: value.into(),
             context: vec!["https://w3id.org/did-resolution/v1".to_string()],
             did_document_metadata: None,
-            did_resolution_metadata: Some(DidResolutionMetadataResponseDto {
+            did_resolution_metadata: Some(DidResolutionMetadataResponseDTO {
                 content_type: "application/did+ld+json".to_string(),
                 error: None,
             }),
@@ -140,7 +140,7 @@ impl DidDocumentResolutionResponseDTO {
             context: vec!["https://w3id.org/did-resolution/v1".to_string()],
             did_document: VcApiDidDocumentRestDTO { document: None },
             did_document_metadata: None,
-            did_resolution_metadata: Some(DidResolutionMetadataResponseDto {
+            did_resolution_metadata: Some(DidResolutionMetadataResponseDTO {
                 content_type: "application/did+ld+json".to_string(),
                 error: Some(error),
             }),

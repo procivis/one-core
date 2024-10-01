@@ -3744,7 +3744,7 @@ dependencies = [
 [[package]]
 name = "pairing_crypto"
 version = "0.4.2"
-source = "git+https://github.com/Iskander508/pairing_crypto?rev=517a424a989b57b987aacb3642bd7cd2c60b94d1#517a424a989b57b987aacb3642bd7cd2c60b94d1"
+source = "git+https://github.com/mattrglobal/pairing_crypto?rev=58519e5#58519e556ad2a2f48ac02936c742d475a7d3b87d"
 dependencies = [
  "blstrs 0.6.1",
  "digest 0.9.0",

@@ -81,6 +81,9 @@ revocation:
     order: 1
     disabled: false
     type: "BITSTRINGSTATUSLIST"
+    params:
+      public:
+        bitstringCredentialFormat: "JWT"
   LVVC:
     display: "revocation.lvvc"
     order: 2

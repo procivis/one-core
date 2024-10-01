@@ -180,8 +180,6 @@ impl CredentialFormatter for MdocFormatter {
         _additional_context: Vec<ContextType>,
         _additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
-        _json_ld_context_url: Option<String>,
-        _custom_subject_name: Option<String>,
     ) -> Result<String, FormatterError> {
         let credential_schema_id = credential.schema.id.ok_or_else(|| {
             FormatterError::Failed(

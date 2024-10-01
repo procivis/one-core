@@ -65,30 +65,17 @@ impl CredentialFormatter for JsonLdBbsplus {
         credential: CredentialData,
         holder_did: &Option<DidValue>,
         algorithm: &str,
-        additional_context: Vec<ContextType>,
-        additional_types: Vec<String>,
+        contexts: Vec<ContextType>,
+        types: Vec<String>,
         auth_fn: AuthenticationFn,
-        json_ld_context_url: Option<String>,
-        custom_subject_name: Option<String>,
     ) -> Result<String, FormatterError> {
-        let json_ld_context_url = json_ld_context_url
-            .map(|ctx| ctx.parse())
-            .transpose()
-            .map_err(|_err| {
-                FormatterError::CouldNotFormat(
-                    "Provided JsonLD context needs to be a valid URL".to_string(),
-                )
-            })?;
-
         self.format(
             credential,
             holder_did.as_ref(),
             algorithm,
-            additional_context,
-            additional_types,
+            contexts,
+            types,
             auth_fn,
-            json_ld_context_url,
-            custom_subject_name,
             self.params.embed_layout_properties.unwrap_or_default(),
         )
         .await

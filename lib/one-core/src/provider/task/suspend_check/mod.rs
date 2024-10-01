@@ -10,12 +10,14 @@ use crate::model::credential::{
     UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::DidRelations;
+use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
@@ -36,6 +38,7 @@ pub(crate) struct SuspendCheckProvider {
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     core_base_url: Option<String>,
 }
@@ -49,6 +52,7 @@ impl SuspendCheckProvider {
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         core_base_url: Option<String>,
     ) -> Self {
@@ -58,6 +62,7 @@ impl SuspendCheckProvider {
             history_repository,
             revocation_list_repository,
             validity_credential_repository,
+            did_method_provider,
             key_provider,
             formatter_provider,
             core_base_url,
@@ -118,6 +123,21 @@ impl Task for SuspendCheckProvider {
                     "BITSTRINGSTATUSLIST".to_string(),
                 ))?;
 
+            let issuer = credential
+                .issuer_did
+                .as_ref()
+                .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
+
+            let did_document = self.did_method_provider.resolve(&issuer.did).await?;
+
+            let Some(verification_method) =
+                did_document.find_verification_method(None, Some(KeyRole::AssertionMethod))
+            else {
+                return Err(ServiceError::Revocation(
+                    RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod),
+                ));
+            };
+
             let update = revocation_method
                 .mark_credential_as(
                     &credential,
@@ -130,6 +150,7 @@ impl Task for SuspendCheckProvider {
                         &*self.formatter_provider,
                         &self.key_provider,
                         &self.core_base_url,
+                        verification_method.id.to_owned(),
                     )
                     .await?,
                 )

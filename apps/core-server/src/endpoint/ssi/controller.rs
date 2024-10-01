@@ -9,6 +9,7 @@ use headers::Authorization;
 use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
 use one_core::provider::exchange_protocol::openid4vc::model::OpenID4VCITokenRequestDTO;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use one_core::service::revocation_list::dto::SupportedBitstringCredentialFormat;
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, ProofId, ProofSchemaId, TrustAnchorId,
 };
@@ -98,7 +99,20 @@ pub(crate) async fn get_revocation_list_by_id(
         .await;
 
     match result {
-        Ok(result) => (StatusCode::OK, result).into_response(),
+        Ok(result) => {
+            let content_type = match result.format {
+                SupportedBitstringCredentialFormat::Jwt => "text/plain".to_owned(),
+                SupportedBitstringCredentialFormat::JsonLdClassic => {
+                    "application/ld+json".to_owned()
+                }
+            };
+            (
+                StatusCode::OK,
+                [(header::CONTENT_TYPE, content_type)],
+                result.revocation_list,
+            )
+                .into_response()
+        }
         Err(ServiceError::ConfigValidationError(error)) => {
             tracing::error!("Config validation error: {}", error);
             StatusCode::BAD_REQUEST.into_response()

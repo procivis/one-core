@@ -268,48 +268,33 @@ impl SSIIssuerService {
                 protected,
                 id: id.to_owned(),
                 r#type: r#type.to_owned(),
-                entities: HashMap::from([
-                    (
-                        "LvvcCredential".to_string(),
-                        JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
-                            id: get_url_with_fragment(&base_url, "LvvcCredential")?,
-                            context: JsonLDContextDTO {
-                                version,
-                                protected,
-                                id: id.to_owned(),
-                                r#type: r#type.to_owned(),
-                                entities: Default::default(),
-                            },
-                        }),
-                    ),
-                    (
-                        "LvvcSubject".to_string(),
-                        JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
-                            id: get_url_with_fragment(&base_url, "LvvcSubject")?,
-                            context: JsonLDContextDTO {
-                                version,
-                                protected,
-                                id: id.to_owned(),
-                                r#type: r#type.to_owned(),
-                                entities: HashMap::from([
-                                    (
-                                        "status".to_string(),
-                                        JsonLDEntityDTO::Reference(get_url_with_fragment(
-                                            &base_url, "status",
-                                        )?),
-                                    ),
-                                    (
-                                        "suspendEndDate".to_string(),
-                                        JsonLDEntityDTO::Reference(get_url_with_fragment(
-                                            &base_url,
-                                            "suspendEndDate",
-                                        )?),
-                                    ),
-                                ]),
-                            },
-                        }),
-                    ),
-                ]),
+                entities: HashMap::from([(
+                    "LvvcCredential".to_string(),
+                    JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                        id: get_url_with_fragment(&base_url, "LvvcCredential")?,
+                        context: JsonLDContextDTO {
+                            version,
+                            protected,
+                            id: id.to_owned(),
+                            r#type: r#type.to_owned(),
+                            entities: HashMap::from([
+                                (
+                                    "status".to_string(),
+                                    JsonLDEntityDTO::Reference(get_url_with_fragment(
+                                        &base_url, "status",
+                                    )?),
+                                ),
+                                (
+                                    "suspendEndDate".to_string(),
+                                    JsonLDEntityDTO::Reference(get_url_with_fragment(
+                                        &base_url,
+                                        "suspendEndDate",
+                                    )?),
+                                ),
+                            ]),
+                        },
+                    }),
+                )]),
             },
         })
     }

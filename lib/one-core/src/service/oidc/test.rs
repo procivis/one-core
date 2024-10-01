@@ -1776,7 +1776,7 @@ async fn test_submit_proof_incorrect_protocol() {
 
     assert!(result.is_err_and(|x| matches!(
         x,
-        ServiceError::ConfigValidationError(ConfigValidationError::InvalidType(_, _))
+        ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest)
     )));
 }
 

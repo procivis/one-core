@@ -69,26 +69,15 @@ impl CredentialFormatter for JsonLdClassic {
         credential: CredentialData,
         holder_did: &Option<DidValue>,
         algorithm: &str,
-        additional_context: Vec<ContextType>,
-        additional_types: Vec<String>,
+        contexts: Vec<ContextType>,
+        types: Vec<String>,
         auth_fn: AuthenticationFn,
-        json_ld_context_url: Option<String>,
-        custom_subject_name: Option<String>,
     ) -> Result<String, FormatterError> {
         let mut credential = json_ld::prepare_credential(
             credential,
             holder_did.as_ref(),
-            additional_context,
-            additional_types,
-            json_ld_context_url
-                .map(|u| u.parse())
-                .transpose()
-                .map_err(|_| {
-                    FormatterError::CouldNotFormat(
-                        "Provided context url is not a valid URL".to_string(),
-                    )
-                })?,
-            custom_subject_name,
+            contexts,
+            types,
             self.params.embed_layout_properties.unwrap_or_default(),
         )?;
 
@@ -474,23 +463,8 @@ impl JsonLdClassic {
         }
 
         // We only take first subject now as one credential only contains one credential schema
-        let subject = credential.credential_subject[0]
-            .subject
-            .values()
-            .next()
-            .ok_or(FormatterError::JsonMapping(
-                "subject is not defined".to_string(),
-            ))?
-            .as_object()
-            .ok_or(FormatterError::JsonMapping(
-                "subject is not an Object".to_string(),
-            ))?;
-
         let claims = CredentialSubject {
-            values: subject
-                .into_iter()
-                .map(|(k, v)| (k.to_owned(), v.to_owned()))
-                .collect(),
+            values: credential.credential_subject[0].subject.clone(),
         };
 
         Ok(DetailCredential {

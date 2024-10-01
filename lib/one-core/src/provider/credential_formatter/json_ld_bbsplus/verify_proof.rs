@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::signer::bbs::{BBSSigner, BbsProofInput};
+use sha2::Sha256;
 
 use super::super::json_ld::model::LdCredential;
 use super::JsonLdBbsplus;
@@ -23,11 +24,24 @@ impl JsonLdBbsplus {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
         })?;
 
-        let Some(mut ld_proof) = ld_credential.proof.clone() else {
+        if !json_ld::is_context_list_valid(
+            &ld_credential.context,
+            self.params.allowed_contexts.as_ref(),
+            &DEFAULT_ALLOWED_CONTEXTS,
+            ld_credential.credential_schema.as_ref(),
+            ld_credential.id.as_ref(),
+        ) {
+            return Err(FormatterError::CouldNotVerify(
+                "Used context is not allowed".to_string(),
+            ));
+        }
+
+        let Some(mut ld_proof) = ld_credential.proof.take() else {
             return Err(FormatterError::CouldNotVerify("Missing proof".to_string()));
         };
+        ld_proof.context = Some(ld_credential.context.clone());
 
-        let Some(ld_proof_value) = &ld_proof.proof_value.clone() else {
+        let Some(ld_proof_value) = ld_proof.proof_value.take() else {
             return Err(FormatterError::CouldNotVerify(
                 "Missing proof value".to_string(),
             ));
@@ -38,9 +52,6 @@ impl JsonLdBbsplus {
                 "Incorrect cryptosuite".to_string(),
             ));
         }
-
-        ld_credential.proof = None;
-        ld_proof.proof_value = None;
 
         let canonical_proof_config =
             json_ld::canonize_any(&ld_proof, self.caching_loader.to_owned()).await?;
@@ -54,7 +65,7 @@ impl JsonLdBbsplus {
             .hash(canonical_proof_config.as_bytes())
             .map_err(|e| FormatterError::CouldNotVerify(format!("Hasher error: `{}`", e)))?;
 
-        let proof_components = extract_proof_value_components(ld_proof_value)?;
+        let proof_components = extract_proof_value_components(&ld_proof_value)?;
 
         let identifier_map: HashMap<String, String> =
             decompress_label_map(&proof_components.compressed_label_map);
@@ -79,11 +90,12 @@ impl JsonLdBbsplus {
                 }
             });
 
-        let joined_mandatory_nquads = mandatory_nquads.concat();
-
-        let mandatory_nquads_hash = hasher
-            .hash(joined_mandatory_nquads.as_bytes())
-            .map_err(|e| FormatterError::CouldNotVerify(format!("Hasher error: `{}`", e)))?;
+        use sha2::Digest;
+        let mut h = Sha256::new();
+        for quad in mandatory_nquads {
+            h.update(quad.as_bytes());
+        }
+        let mandatory_nquads_hash = h.finalize().to_vec();
 
         let bbs_header = [transformed_proof_config_hash, mandatory_nquads_hash].concat();
 
@@ -93,33 +105,19 @@ impl JsonLdBbsplus {
 
         let verify_proof_input = BbsProofInput {
             header: bbs_header,
-            presentation_header: None,
+            presentation_header: Some(proof_components.presentation_header),
             proof: proof_components.bbs_proof,
             messages: non_mandatory_nquads
                 .into_iter()
                 .enumerate()
-                .map(|(i, value)| {
-                    (
-                        proof_components.selective_indices[i],
-                        value.as_bytes().to_vec(),
-                    )
-                })
+                .map(|(i, value)| (proof_components.selective_indices[i], value.into_bytes()))
                 .collect(),
         };
 
-        let _ = BBSSigner::verify_proof(&verify_proof_input, &public_key)
-            .map_err(|e| FormatterError::CouldNotVerify(format!("Could not verify proof: {e}")));
-
-        if !json_ld::is_context_list_valid(
-            &ld_credential.context,
-            self.params.allowed_contexts.as_ref(),
-            &DEFAULT_ALLOWED_CONTEXTS,
-            ld_credential.credential_schema.as_ref(),
-            ld_credential.id.as_ref(),
-        ) {
-            return Err(FormatterError::CouldNotVerify(
-                "Used context is not allowed".to_string(),
-            ));
+        if let Err(error) = BBSSigner::verify_proof(&verify_proof_input, &public_key) {
+            return Err(FormatterError::CouldNotVerify(format!(
+                "Could not verify proof: {error}"
+            )));
         }
 
         ld_credential.try_into()
@@ -174,28 +172,23 @@ fn decompress_label_map(compressed_label_map: &HashMap<usize, usize>) -> HashMap
 fn extract_proof_value_components(
     proof_value: &str,
 ) -> Result<BbsDerivedProofComponents, FormatterError> {
-    if !proof_value.starts_with('u') {
+    let Some(proof_value) = proof_value.strip_prefix('u') else {
         return Err(FormatterError::CouldNotVerify(
             "Only base64url multibase encoding is supported for proof".to_string(),
         ));
-    }
+    };
 
-    let proof_decoded = Base64UrlSafeNoPadding::decode_to_vec(
-        proof_value.bytes().skip(1).collect::<Vec<u8>>(),
-        None,
-    )
-    .map_err(|e| FormatterError::CouldNotVerify(format!("Base64url decoding failed: {}", e)))?;
+    let proof_decoded = Base64UrlSafeNoPadding::decode_to_vec(proof_value, None)
+        .map_err(|e| FormatterError::CouldNotVerify(format!("Base64url decoding failed: {}", e)))?;
 
-    if proof_decoded.as_slice()[0..3] != CBOR_PREFIX_DERIVED {
+    let Some(proof_decoded) = proof_decoded.strip_prefix(&CBOR_PREFIX_DERIVED) else {
         return Err(FormatterError::CouldNotVerify(
-            "Expected base proof prefix".to_string(),
+            "Expected derived proof prefix".to_string(),
         ));
-    }
+    };
 
-    let components: BbsDerivedProofComponents =
-        ciborium::de::from_reader(&proof_decoded.as_slice()[3..]).map_err(|e| {
-            FormatterError::CouldNotVerify(format!("CBOR deserialization failed: {}", e))
-        })?;
+    let components = ciborium::de::from_reader(proof_decoded)
+        .map_err(|e| FormatterError::CouldNotVerify(format!("CBOR deserialization failed: {e}")))?;
 
     Ok(components)
 }
