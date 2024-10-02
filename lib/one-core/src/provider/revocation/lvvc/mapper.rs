@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
-use shared_types::CredentialId;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
-use uuid::fmt::Urn;
 
 use super::dto::LvvcStatus;
 use crate::provider::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
@@ -56,15 +54,6 @@ pub fn status_from_lvvc_claims(
             )))
         }
     })
-}
-
-pub(super) fn create_id_claim(credential_id: CredentialId) -> PublishedClaim {
-    PublishedClaim {
-        key: "id".into(),
-        value: PublishedClaimValue::String(Urn::from_uuid(credential_id.into()).to_string()),
-        datatype: None,
-        array_item: false,
-    }
 }
 
 pub(super) fn create_status_claims(

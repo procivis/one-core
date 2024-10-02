@@ -378,7 +378,7 @@ async fn test_unverified_credential_extraction() {
     let valid_for = time::Duration::seconds(10);
 
     let credential_data = CredentialData {
-        id: None,
+        id: Some(Uuid::new_v4().urn().to_string()),
         issuance_date,
         valid_for,
         claims: vec![PublishedClaim {
