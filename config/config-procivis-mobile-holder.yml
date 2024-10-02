@@ -21,6 +21,14 @@ transport:
     display: "transport.ble"
     disabled: false
     order: 1
+  MQTT:
+    type: "MQTT"
+    display: "transport.mqtt"
+    disabled: false
+    order: 2
+    params:
+      private:
+        brokerUrl: "https://desk.dev.procivis-one.com/"
 exchange:
   ISO_MDL:
     type: "ISO_MDL"

@@ -40,7 +40,8 @@ use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::dto::{
-    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
+    CredentialGroup, CredentialGroupItem, ExchangeProtocolCapabilities,
+    PresentationDefinitionResponseDTO,
 };
 use crate::provider::exchange_protocol::mapper::{
     get_relevant_credentials_to_credential_schemas, proof_from_handle_invitation,
@@ -736,5 +737,9 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             .await;
 
         Ok(())
+    }
+
+    fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
+        unimplemented!()
     }
 }

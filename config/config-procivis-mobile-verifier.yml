@@ -1,6 +1,8 @@
 app:
   allowInsecureHttpTransport: false
 transport:
+  HTTP:
+    disabled: true
   BLE:
     type: "BLE"
     display: "transport.ble"
@@ -9,8 +11,14 @@ transport:
     params:
       private:
         verifierName: "OneVerifier"
-  HTTP:
-    disabled: true
+  MQTT:
+    type: "MQTT"
+    display: "transport.mqtt"
+    disabled: false
+    order: 2
+    params:
+      private:
+        brokerUrl: "https://desk.dev.procivis-one.com/"
 keyStorage:
   SECURE_ELEMENT:
     display: "keyStorage.secureElement"

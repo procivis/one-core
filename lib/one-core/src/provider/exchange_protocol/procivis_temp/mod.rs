@@ -16,7 +16,7 @@ use self::mapper::{
     remote_did_from_value,
 };
 use super::dto::{
-    ConnectVerifierResponse, CredentialGroup, CredentialGroupItem,
+    ConnectVerifierResponse, CredentialGroup, CredentialGroupItem, ExchangeProtocolCapabilities,
     PresentationDefinitionResponseDTO, ProofClaimSchema,
 };
 use super::mapper::get_relevant_credentials_to_credential_schemas;
@@ -468,6 +468,12 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
     async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         Ok(())
+    }
+
+    fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
+        ExchangeProtocolCapabilities {
+            supported_transports: vec!["HTTP".to_owned()],
+        }
     }
 }
 

@@ -10,7 +10,8 @@ use shared_types::KeyId;
 use url::Url;
 
 use super::dto::{
-    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+    ExchangeProtocolCapabilities, PresentationDefinitionFieldDTO,
+    PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
@@ -439,5 +440,11 @@ impl ExchangeProtocolImpl for IsoMdl {
         _submission: &[u8],
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
         todo!()
+    }
+
+    fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
+        ExchangeProtocolCapabilities {
+            supported_transports: vec!["BLE".to_owned()],
+        }
     }
 }

@@ -56,7 +56,8 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
 use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::dto::{
-    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
+    CredentialGroup, CredentialGroupItem, ExchangeProtocolCapabilities,
+    PresentationDefinitionResponseDTO,
 };
 use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::get_relevant_credentials_to_credential_schemas;
@@ -830,6 +831,10 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
 
     async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         Ok(())
+    }
+
+    fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
+        unimplemented!()
     }
 }
 

@@ -7,7 +7,7 @@ use serde_json::json;
 use shared_types::KeyId;
 use url::Url;
 
-use super::dto::PresentationDefinitionResponseDTO;
+use super::dto::{ExchangeProtocolCapabilities, PresentationDefinitionResponseDTO};
 use super::{
     ExchangeProtocol, ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper,
     HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
@@ -284,6 +284,12 @@ impl ExchangeProtocolImpl for OpenID4VC {
         }
 
         Ok(())
+    }
+
+    fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
+        ExchangeProtocolCapabilities {
+            supported_transports: vec!["HTTP".to_owned(), "BLE".to_owned(), "MQTT".to_owned()],
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use dto::PresentationDefinitionResponseDTO;
+use dto::{ExchangeProtocolCapabilities, PresentationDefinitionResponseDTO};
 use error::ExchangeProtocolError;
 use openid4vc::error::OpenID4VCError;
 use openid4vc::model::{
@@ -353,6 +353,8 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         proof: &Proof,
         submission: &[u8],
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError>;
+
+    fn get_capabilities(&self) -> ExchangeProtocolCapabilities;
 }
 
 #[cfg(any(test, feature = "mock"))]
@@ -530,6 +532,10 @@ where
         submission: &[u8],
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
         self.inner.verifier_handle_proof(proof, submission).await
+    }
+
+    fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
+        self.inner.get_capabilities()
     }
 }
 

@@ -6,7 +6,7 @@ use dto::ScanToVerifyCredentialDTO;
 use shared_types::KeyId;
 use url::Url;
 
-use super::dto::PresentationDefinitionResponseDTO;
+use super::dto::{ExchangeProtocolCapabilities, PresentationDefinitionResponseDTO};
 use super::{
     ExchangeProtocolError, ExchangeProtocolImpl, FnMapExternalFormatToExternalDetailed,
     FormatMapper, HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
@@ -205,5 +205,11 @@ impl ExchangeProtocolImpl for ScanToVerify {
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         Ok(vec![credential])
+    }
+
+    fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
+        ExchangeProtocolCapabilities {
+            supported_transports: vec!["HTTP".to_owned()],
+        }
     }
 }
