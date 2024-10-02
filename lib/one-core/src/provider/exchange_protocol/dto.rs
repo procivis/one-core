@@ -121,3 +121,8 @@ pub struct CredentialGroupItem {
     pub key: String,
     pub required: bool,
 }
+
+#[derive(Clone, Debug)]
+pub struct ExchangeProtocolCapabilities {
+    pub supported_transports: Vec<String>,
+}

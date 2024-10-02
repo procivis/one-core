@@ -187,6 +187,9 @@ pub enum TransportType {
     #[serde(rename = "HTTP")]
     #[strum(serialize = "HTTP")]
     Http,
+    #[serde(rename = "MQTT")]
+    #[strum(serialize = "MQTT")]
+    Mqtt,
 }
 
 pub type ExchangeConfig = ConfigBlock<ExchangeType>;
