@@ -429,7 +429,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         key: &Key,
         jwk_key_id: Option<String>,
         format_map: HashMap<String, String>,
-        _presentation_format_map: HashMap<String, String>,
+        presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         let ble = self.ble.clone().ok_or_else(|| {
             ExchangeProtocolError::Failed("Missing BLE central for submit proof".to_string())
@@ -482,9 +482,16 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         let (_, format, oidc_format) =
             map_credential_formats_to_presentation_format(&formats, &format_map)?;
 
+        let presentation_format =
+            presentation_format_map
+                .get(&oidc_format)
+                .ok_or(ExchangeProtocolError::Failed(format!(
+                    "Missing presentation format for `{oidc_format}`"
+                )))?;
+
         let presentation_formatter = self
             .formatter_provider
-            .get_formatter(&format)
+            .get_formatter(presentation_format)
             .ok_or_else(|| ExchangeProtocolError::Failed("Formatter not found".to_string()))?;
 
         let auth_fn = self
