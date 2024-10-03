@@ -27,6 +27,7 @@ use super::mapper::{
     presentation_definition_from_interaction_data,
 };
 use super::model::BLEOpenID4VPInteractionData;
+use super::openidvc_http::mappers::map_credential_formats_to_presentation_format;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{self, TransportType};
 use crate::model::credential::Credential;
@@ -37,12 +38,16 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::provider::bluetooth_low_energy::BleError;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
+    OID4VPHandover, SessionTranscript,
+};
 use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::dto::{
     CredentialGroup, CredentialGroupItem, ExchangeProtocolCapabilities,
     PresentationDefinitionResponseDTO,
 };
+use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::{
     get_relevant_credentials_to_credential_schemas, proof_from_handle_invitation,
 };
@@ -459,31 +464,27 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
             .collect();
 
-        let formats: HashSet<_> = token_formats.iter().map(|f| f.as_str()).collect();
+        let formats: HashMap<&str, &str> = credential_presentations
+            .iter()
+            .map(|presented_credential| {
+                format_map
+                    .get(presented_credential.credential_schema.format.as_str())
+                    .map(|mapped| {
+                        (
+                            mapped.as_str(),
+                            presented_credential.credential_schema.format.as_str(),
+                        )
+                    })
+            })
+            .collect::<Option<_>>()
+            .ok_or_else(|| ExchangeProtocolError::Failed("missing format mapping".into()))?;
 
-        let (format, oidc_format) = match () {
-            _ if formats.contains("MDOC") => {
-                if formats.len() > 1 {
-                    return Err(ExchangeProtocolError::Failed(
-                        "Currently for a proof MDOC cannot be used with other formats".to_string(),
-                    ));
-                };
-
-                ("MDOC", "mso_mdoc")
-            }
-            _ if formats.contains("JSON_LD_CLASSIC")
-            || formats.contains("JSON_LD_BBSPLUS")
-            // Workaround for missing cryptosuite information in openid4vc
-            || formats.contains("JSON_LD") =>
-            {
-                ("JSON_LD_CLASSIC", "ldp_vp")
-            }
-            _ => ("JWT", "jwt_vp_json"),
-        };
+        let (_, format, oidc_format) =
+            map_credential_formats_to_presentation_format(&formats, &format_map)?;
 
         let presentation_formatter = self
             .formatter_provider
-            .get_formatter(format)
+            .get_formatter(&format)
             .ok_or_else(|| ExchangeProtocolError::Failed("Formatter not found".to_string()))?;
 
         let auth_fn = self
@@ -502,23 +503,48 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         let presentation_submission = create_presentation_submission(
             presentation_definition_id,
             credential_presentations,
-            oidc_format,
+            &oidc_format,
             create_core_to_oicd_format_map(),
         )?;
 
-        if format == "MDOC" {
-            return Err(ExchangeProtocolError::Failed(
-                "Mdoc over BLE not available".to_string(),
-            ));
-        }
-
-        let nonce = interaction_data.nonce.to_owned();
-        let ctx = FormatPresentationCtx {
-            nonce,
+        let mut ctx = FormatPresentationCtx {
+            nonce: interaction_data.nonce.clone(),
             token_formats: Some(token_formats),
             vc_format_map: format_map,
             ..Default::default()
         };
+
+        if format == "MDOC" {
+            let mdoc_generated_nonce = interaction_data
+                .identity_request_nonce
+                .as_deref()
+                .ok_or_else(|| {
+                    ExchangeProtocolError::Failed(
+                        "Cannot format MDOC - missing identity request nonce".to_string(),
+                    )
+                })?;
+            let client_id = interaction_data.client_id.as_deref().ok_or_else(|| {
+                ExchangeProtocolError::Failed("Cannot format MDOC - missing client_id".to_string())
+            })?;
+            let nonce = interaction_data.nonce.as_deref().ok_or_else(|| {
+                ExchangeProtocolError::Failed("Cannot format MDOC - missing nonce".to_string())
+            })?;
+
+            ctx.mdoc_session_transcript = Some(
+                to_cbor(&SessionTranscript {
+                    handover: OID4VPHandover::compute(
+                        client_id,
+                        client_id,
+                        nonce,
+                        mdoc_generated_nonce,
+                    )
+                    .into(),
+                    device_engagement_bytes: None,
+                    e_reader_key_bytes: None,
+                })
+                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
+            );
+        }
 
         let vp_token = presentation_formatter
             .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)

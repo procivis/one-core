@@ -203,6 +203,8 @@ pub struct ExtractPresentationCtx {
     pub issuance_date: Option<OffsetDateTime>,
     pub expiration_date: Option<OffsetDateTime>,
     pub mdoc_session_transcript: Option<Vec<u8>>,
+    pub client_id: Option<String>,
+    pub response_uri: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
