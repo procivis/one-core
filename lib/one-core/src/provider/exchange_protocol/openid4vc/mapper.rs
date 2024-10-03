@@ -1041,7 +1041,9 @@ pub fn create_presentation_submission(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
-    base_url: Option<String>,
+    base_url: &str,
+    client_id: String,
+    response_uri: String,
     interaction_id: InteractionId,
     nonce: String,
     proof: &Proof,
@@ -1067,17 +1069,15 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
             format_to_type_mapper,
         )?)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-    let base_url = get_url(base_url)?;
-    let callback_url = format!("{}/ssi/oidc-verifier/v1/response", base_url);
 
     let mut params: Vec<(&str, String)> = vec![
         ("response_type", "vp_token".to_string()),
         ("state", interaction_id.to_string()),
         ("nonce", nonce),
         ("client_id_scheme", "redirect_uri".to_string()),
-        ("client_id", callback_url.to_owned()),
+        ("client_id", client_id),
         ("response_mode", "direct_post".to_string()),
-        ("response_uri", callback_url),
+        ("response_uri", response_uri),
     ];
 
     match client_metadata_by_value {
@@ -1175,6 +1175,8 @@ pub fn extract_presentation_ctx_from_interaction_content(
 ) -> ExtractPresentationCtx {
     ExtractPresentationCtx {
         nonce: Some(content.nonce),
+        client_id: content.client_id,
+        response_uri: content.response_uri,
         ..Default::default()
     }
 }

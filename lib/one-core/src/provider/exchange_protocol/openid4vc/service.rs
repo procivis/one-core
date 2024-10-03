@@ -312,13 +312,10 @@ async fn process_proof_submission(
             .ok_or(OpenID4VCIError::InvalidRequest)?;
 
         let context = if &presentation_submitted.format == "mso_mdoc" {
-            let mut ctx =
-                extract_presentation_ctx_from_interaction_content(interaction_data.clone());
-            if let Some(mdoc_generated_nonce) = submission.mdoc_generated_nonce.clone() {
-                ctx.format_nonce = Some(mdoc_generated_nonce);
+            ExtractPresentationCtx {
+                format_nonce: submission.mdoc_generated_nonce.clone(),
+                ..extract_presentation_ctx_from_interaction_content(interaction_data.clone())
             }
-
-            ctx
         } else {
             ExtractPresentationCtx::default()
         };

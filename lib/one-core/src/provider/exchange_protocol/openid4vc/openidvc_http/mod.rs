@@ -281,8 +281,8 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
                 mdoc_session_transcript: Some(
                     to_cbor(&SessionTranscript {
                         handover: OID4VPHandover::compute(
-                            &interaction_data.client_id,
-                            &interaction_data.response_uri,
+                            interaction_data.client_id.as_str().trim_end_matches('/'),
+                            interaction_data.response_uri.as_str().trim_end_matches('/'),
                             &interaction_data.nonce,
                             &mdoc_generated_nonce,
                         )
@@ -696,13 +696,23 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
             format_to_type_mapper.clone(),
         )?;
 
+        let Some(base_url) = &self.base_url else {
+            return Err(ExchangeProtocolError::Failed("Missing base_url".into()));
+        };
+        let client_id = format!("{base_url}/ssi/oidc-verifier/v1/response");
+        let response_uri = client_id.clone();
+
         let interaction_content = OpenID4VPInteractionContent {
             nonce: utilities::generate_alphanumeric(32),
             presentation_definition,
+            client_id: Some(client_id.clone()),
+            response_uri: Some(response_uri.clone()),
         };
 
         let encoded_offer = create_open_id_for_vp_sharing_url_encoded(
-            self.base_url.clone(),
+            base_url,
+            client_id,
+            response_uri,
             interaction_id,
             interaction_content.nonce.clone(),
             proof,

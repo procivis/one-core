@@ -34,6 +34,14 @@ pub struct BleOpenId4VpResponse {
     pub presentation_submission: PresentationSubmissionMappingDTO,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BleOpenId4VpRequest {
+    #[serde(rename = "iss")]
+    pub verifier_client_id: String,
+    pub nonce: String,
+    pub presentation_definition: OpenID4VPPresentationDefinition,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OpenID4VCInteractionContent {
     pub pre_authorized_code_used: bool,
@@ -67,8 +75,12 @@ pub struct BLEOpenID4VPInteractionData {
     pub task_id: Uuid,
     pub peer: BLEPeer,
     pub nonce: Option<String>,
+    #[serde(default)]
+    pub identity_request_nonce: Option<String>,
     pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
     pub presentation_submission: Option<BleOpenId4VpResponse>,
+    #[serde(default)]
+    pub client_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -335,6 +347,8 @@ pub struct OpenID4VPInteractionContent {
     pub nonce: String,
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub presentation_definition: OpenID4VPPresentationDefinition,
+    pub client_id: Option<String>,
+    pub response_uri: Option<String>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]

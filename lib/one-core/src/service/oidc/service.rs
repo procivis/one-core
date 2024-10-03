@@ -589,7 +589,7 @@ impl OIDCService {
                             presentation_submission: ble_response.presentation_submission,
                             vp_token: ble_response.vp_token,
                             state,
-                            mdoc_generated_nonce: None,
+                            mdoc_generated_nonce: interaction_data.identity_request_nonce,
                         };
 
                         break Ok((proof, request_data)) as Result<_, ServiceError>;
