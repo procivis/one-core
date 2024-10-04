@@ -66,7 +66,6 @@ impl CredentialService {
     /// # Arguments
     ///
     /// * `request` - create credential request
-
     pub async fn create_credential(
         &self,
         request: CreateCredentialRequestDTO,

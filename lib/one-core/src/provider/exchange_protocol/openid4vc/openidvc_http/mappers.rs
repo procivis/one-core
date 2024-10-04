@@ -459,7 +459,7 @@ pub(super) fn renest_arrays(
                     if schema.array
                         && values.first().is_some_and(|f| match &f.value {
                             DetailCredentialClaimValueResponseDTO::Nested(value) => {
-                                f.schema.array && value.first().is_none()
+                                f.schema.array && value.is_empty()
                             }
                             _ => f.schema.array,
                         })

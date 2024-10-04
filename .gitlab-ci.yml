@@ -1,4 +1,4 @@
-image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.80.0-0.3
+image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.81.0-0.1
 
 include:
   - project: "procivis/one/one-operations"
@@ -160,13 +160,8 @@ tests:sqlite:
 linter:clippy:
   stage: test
   script:
-    - cargo clippy --all-targets --message-format=json -- -D warnings > clippy.json
-    - cargo clippy --package sql-data-provider --message-format=json -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used >> clippy.json
-  artifacts:
-    expire_in: 1 day
-    when: always
-    paths:
-      - clippy.json
+    - cargo clippy --all-targets -- -D warnings
+    - cargo clippy --package sql-data-provider -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used
 
 linter:rustfmt:
   stage: test
