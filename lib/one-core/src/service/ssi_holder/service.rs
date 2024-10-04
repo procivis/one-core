@@ -13,6 +13,9 @@ use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
 use crate::config::core_config::{ExchangeType, Fields, RevocationType};
+use crate::config::validator::transport::{
+    validate_and_select_transport_type, SelectedTransportType,
+};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -53,6 +56,7 @@ impl SSIHolderService {
         &self,
         url: Url,
         organisation_id: OrganisationId,
+        transport: Option<Vec<String>>,
     ) -> Result<InvitationResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
@@ -79,8 +83,22 @@ impl SSIHolderService {
             self.config.clone(),
         );
 
+        let transport =
+            validate_and_select_transport_type(&transport, &self.config.transport, &*protocol)?;
+        let transport = match transport {
+            SelectedTransportType::Single(s) => vec![s],
+            // workaround for the moment
+            SelectedTransportType::Multiple(vec) => vec,
+        };
+
         let response = protocol
-            .handle_invitation(url, organisation, &storage_access, &handle_operations)
+            .handle_invitation(
+                url,
+                organisation,
+                &storage_access,
+                &handle_operations,
+                transport,
+            )
             .await?;
         match &response {
             InvitationResponseDTO::Credential { credentials, .. } => {

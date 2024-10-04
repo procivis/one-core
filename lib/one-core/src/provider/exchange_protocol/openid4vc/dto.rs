@@ -9,6 +9,13 @@ pub struct OpenID4VPBleData {
     pub name: String,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VPMqttData {
+    pub broker_url: String,
+    pub key: String,
+}
+
 #[derive(Debug)]
 pub struct Chunk {
     pub index: MessageSize,

@@ -127,6 +127,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         organisation: Organisation,
         storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
+        _transport: Vec<String>,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         let invitation_type = categorize_url(&url)?;
 
@@ -788,6 +789,7 @@ async fn handle_proof_invitation(
         now,
         verifier_key,
         "HTTP",
+        ProofStateEnum::Pending,
     );
 
     Ok(InvitationResponseDTO::ProofRequest {

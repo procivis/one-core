@@ -355,7 +355,7 @@ impl ProofService {
         };
 
         let transport = validate_and_select_transport_type(
-            &request,
+            &request.transport,
             &self.config.transport,
             &*exchange_protocol,
         )?;

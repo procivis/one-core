@@ -33,11 +33,13 @@ use crate::service::proof::dto::CreateProofInteractionData;
 pub mod dto;
 pub mod error;
 pub mod handle_invitation_operations;
+mod key_agreement_key;
 pub(crate) mod mapper;
 pub mod model;
 pub(crate) mod openidvc_ble;
 pub mod openidvc_http;
 pub(crate) mod openidvc_mqtt;
+mod peer_encryption;
 pub mod proof_formatter;
 pub mod service;
 pub mod validator;
@@ -77,30 +79,65 @@ impl ExchangeProtocolImpl for OpenID4VC {
         organisation: Organisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
+        transport: Vec<String>,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
-        if self.openid_http.can_handle(&url) {
-            self.openid_http
-                .handle_invitation(
-                    url,
-                    organisation,
-                    storage_access,
-                    handle_invitation_operations,
-                )
-                .await
-        } else if self.openid_ble.can_handle(&url) {
-            self.openid_ble
-                .handle_invitation(
-                    url,
-                    organisation,
-                    storage_access,
-                    handle_invitation_operations,
-                )
-                .await
-        } else {
-            Err(ExchangeProtocolError::Failed(
-                "No OpenID4VC query params detected".to_string(),
-            ))
+        for transport in transport {
+            let transport = TransportType::try_from(transport.as_str()).map_err(|err| {
+                ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
+            })?;
+
+            match transport {
+                TransportType::Ble => {
+                    if self.openid_ble.can_handle(&url) {
+                        return self
+                            .openid_ble
+                            .handle_invitation(
+                                url,
+                                organisation,
+                                storage_access,
+                                handle_invitation_operations,
+                                vec![],
+                            )
+                            .await;
+                    }
+                }
+                TransportType::Http => {
+                    if self.openid_http.can_handle(&url) {
+                        return self
+                            .openid_http
+                            .handle_invitation(
+                                url,
+                                organisation,
+                                storage_access,
+                                handle_invitation_operations,
+                                vec![],
+                            )
+                            .await;
+                    }
+                }
+                TransportType::Mqtt => {
+                    let client = self.openid_mqtt.as_ref().ok_or_else(|| {
+                        ExchangeProtocolError::Failed("MQTT client not configured".to_string())
+                    })?;
+
+                    if client.can_handle(&url) {
+                        return client
+                            .handle_invitation(
+                                url,
+                                organisation,
+                                storage_access,
+                                handle_invitation_operations,
+                                vec![],
+                            )
+                            .await;
+                    }
+                }
+            }
         }
+
+        Err(ExchangeProtocolError::Failed(
+            "No OpenID4VC query params detected".to_string(),
+        ))
     }
 
     async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {

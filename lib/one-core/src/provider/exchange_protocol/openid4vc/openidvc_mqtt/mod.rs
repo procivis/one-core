@@ -1,9 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use anyhow::Context;
 use async_trait::async_trait;
+use rand::rngs::OsRng;
+use rand::Rng;
 use serde::Deserialize;
 use shared_types::KeyId;
+use time::OffsetDateTime;
 use tokio::sync::RwLock;
 use tracing::Instrument;
 use url::Url;
@@ -14,32 +18,48 @@ use super::model::{
     DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
     SubmitIssuerResponse, UpdateResponse,
 };
-use super::openidvc_ble::KeyAgreementKey;
 use super::service::FnMapExternalFormatToExternalDetailed;
 use super::validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::Credential;
 use crate::model::did::Did;
+use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::exchange_protocol::dto::{
     ExchangeProtocolCapabilities, PresentationDefinitionResponseDTO,
 };
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
+use crate::provider::exchange_protocol::mapper::proof_from_handle_invitation;
+use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPMqttData;
+use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    MQTTOpenID4VPInteractionData, MQTTSessionKeys, OpenID4VPPresentationDefinition,
+};
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest;
+use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
 use crate::provider::exchange_protocol::{
     ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess, StorageAccess,
     TypeToDescriptorMapper,
 };
 use crate::provider::mqtt_client::MqttClient;
+use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::proof_repository::ProofRepository;
 use crate::service::key::dto::PublicKeyJwkDTO;
+
+#[cfg(test)]
+mod test;
 
 pub struct OpenId4VcMqtt {
     mqtt_client: Arc<dyn MqttClient>,
     config: Arc<CoreConfig>,
     params: ConfigParams,
     handle: RwLock<Option<SubscriptionHandle>>,
+
+    interaction_repository: Arc<dyn InteractionRepository>,
+    proof_repository: Arc<dyn ProofRepository>,
 }
 
 pub struct ConfigParams {
@@ -87,17 +107,53 @@ struct SubscriptionHandle {
     _task_handle: tokio::task::JoinHandle<anyhow::Result<()>>,
 }
 
+fn generate_session_keys(
+    verifier_public_key: [u8; 32],
+) -> Result<MQTTSessionKeys, ExchangeProtocolError> {
+    let key_agreement_key = KeyAgreementKey::new_random();
+    let public_key = key_agreement_key.public_key_bytes();
+    let nonce: [u8; 12] = OsRng.gen();
+
+    let (receiver_key, sender_key) = key_agreement_key
+        .derive_session_secrets(verifier_public_key, nonce)
+        .map_err(ExchangeProtocolError::Transport)?;
+
+    Ok(MQTTSessionKeys {
+        public_key,
+        receiver_key,
+        sender_key,
+        nonce,
+    })
+}
+
+fn parse_mqtt_address(address: &str) -> Result<(&str, u16), ExchangeProtocolError> {
+    match address.rsplit_once(':') {
+        Some((broker_url, port_str)) => {
+            let port = port_str
+                .parse::<u16>()
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+            Ok((broker_url, port))
+        }
+        None => Ok((address, 1883)),
+    }
+}
+
 impl OpenId4VcMqtt {
     pub fn new(
         mqtt_client: Arc<dyn MqttClient>,
         config: Arc<CoreConfig>,
         params: ConfigParams,
+        interaction_repository: Arc<dyn InteractionRepository>,
+        proof_repository: Arc<dyn ProofRepository>,
     ) -> OpenId4VcMqtt {
         OpenId4VcMqtt {
             mqtt_client,
             config,
             params,
             handle: RwLock::new(None),
+            interaction_repository,
+            proof_repository,
         }
     }
 
@@ -152,12 +208,180 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
 
     async fn handle_invitation(
         &self,
-        _url: Url,
+        url: Url,
         _organisation: Organisation,
         _storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
+        _transport: Vec<String>,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
-        unimplemented!()
+        if !self.can_handle(&url) {
+            return Err(ExchangeProtocolError::Failed(
+                "No OpenID4VC over MQTT query params detected".to_string(),
+            ));
+        }
+
+        let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
+            "Query cannot be empty".to_string(),
+        ))?;
+
+        let OpenID4VPMqttData { broker_url, key } = serde_qs::from_str(query)
+            .map_err(|e| ExchangeProtocolError::InvalidRequest(e.to_string()))?;
+
+        let (broker_url, port) = parse_mqtt_address(&broker_url)?;
+
+        let verifier_public_key = hex::decode(&key)
+            .context("Failed to decode verifier public key")
+            .map_err(ExchangeProtocolError::Transport)?
+            .as_slice()
+            .try_into()
+            .context("Invalid verifier public key length")
+            .map_err(ExchangeProtocolError::Transport)?;
+
+        let now = OffsetDateTime::now_utc();
+        let interaction = Interaction {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            host: None,
+            data: None,
+        };
+        let interaction_id = self
+            .interaction_repository
+            .create_interaction(interaction.clone())
+            .await
+            .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
+
+        let proof_id = Uuid::new_v4().into();
+        let proof = proof_from_handle_invitation(
+            &proof_id,
+            "OPENID4VC",
+            None,
+            None,
+            interaction,
+            now,
+            None,
+            "MQTT",
+            ProofStateEnum::Created,
+        );
+        self.proof_repository
+            .create_proof(proof)
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let mut presentation_definition_topic = self
+            .mqtt_client
+            .subscribe(
+                broker_url.to_string(),
+                port,
+                format!("/proof/{}/presentation-definition", proof_id),
+            )
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let session_keys = generate_session_keys(verifier_public_key)?;
+        let encryption = PeerEncryption::new(
+            session_keys.sender_key,
+            session_keys.receiver_key,
+            session_keys.nonce,
+        );
+
+        {
+            let identify_topic = self
+                .mqtt_client
+                .subscribe(
+                    broker_url.to_string(),
+                    port,
+                    format!("/proof/{}/presentation-submission/identify", proof_id),
+                )
+                .await
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+            let identity_request = IdentityRequest {
+                key: session_keys.public_key.to_owned(),
+                nonce: session_keys.nonce.to_owned(),
+            };
+
+            identify_topic
+                .send(identity_request.clone().encode())
+                .await
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+        }
+
+        let interaction_data = MQTTOpenID4VPInteractionData {
+            session_keys: session_keys.to_owned(),
+            presentation_definition: None,
+        };
+
+        self.interaction_repository
+            .update_interaction(Interaction {
+                id: interaction_id,
+                created_date: now,
+                last_modified: now,
+                host: None,
+                data: Some(
+                    serde_json::to_vec(&interaction_data)
+                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
+                ),
+            })
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let presentation_definition_bytes = presentation_definition_topic
+            .recv()
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let presentation_definition: OpenID4VPPresentationDefinition = encryption
+            .decrypt(&presentation_definition_bytes)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let interaction_data = MQTTOpenID4VPInteractionData {
+            session_keys: session_keys.to_owned(),
+            presentation_definition: Some(presentation_definition),
+        };
+        self.interaction_repository
+            .update_interaction(Interaction {
+                id: interaction_id,
+                created_date: now,
+                last_modified: now,
+                host: None,
+                data: Some(
+                    serde_json::to_vec(&interaction_data)
+                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
+                ),
+            })
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        self.proof_repository
+            .update_proof(UpdateProofRequest {
+                id: proof_id,
+                holder_did_id: None,
+                verifier_did_id: None,
+                state: Some(ProofState {
+                    created_date: now,
+                    last_modified: now,
+                    state: ProofStateEnum::Pending,
+                }),
+                interaction: None,
+                redirect_uri: None,
+            })
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let proof = self
+            .proof_repository
+            .get_proof(&proof_id, &ProofRelations::default())
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+            .ok_or(ExchangeProtocolError::Failed(
+                "Missing proof in data layer".to_string(),
+            ))?;
+
+        Ok(InvitationResponseDTO::ProofRequest {
+            interaction_id,
+            proof: Box::new(proof),
+        })
     }
 
     async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {

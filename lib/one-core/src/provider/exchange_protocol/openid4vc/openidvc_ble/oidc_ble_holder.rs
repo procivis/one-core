@@ -12,9 +12,9 @@ use tokio::select;
 use uuid::Uuid;
 
 use super::{
-    BLEParse, BLEPeer, IdentityRequest, KeyAgreementKey, MessageSize, TransferSummaryReport,
-    CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, OIDC_BLE_FLOW, REQUEST_SIZE_UUID,
-    SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
+    BLEParse, BLEPeer, IdentityRequest, MessageSize, TransferSummaryReport, CONTENT_SIZE_UUID,
+    DISCONNECT_UUID, IDENTITY_UUID, OIDC_BLE_FLOW, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID,
+    TRANSFER_SUMMARY_REPORT_UUID,
 };
 use crate::model::interaction::Interaction;
 use crate::model::proof::{ProofState, ProofStateEnum};
@@ -22,6 +22,7 @@ use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
+use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::model::{
     BLEOpenID4VPInteractionData, BleOpenId4VpRequest, BleOpenId4VpResponse,
     PresentationSubmissionMappingDTO,
