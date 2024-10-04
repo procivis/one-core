@@ -4,11 +4,11 @@ use std::collections::HashMap;
 use std::ops::Sub;
 use std::sync::Arc;
 
+use mapper::create_id_claim;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
-use url::Url;
 use uuid::Uuid;
 
 use self::dto::LvvcStatus;
@@ -391,6 +391,9 @@ pub async fn create_lvvc_with_status(
             .to_owned(),
     };
 
+    let mut claims = vec![create_id_claim(credential.id)];
+    claims.extend(create_status_claims(&status)?);
+
     let auth_fn = key_provider.get_signature_provider(&key.to_owned(), Some(issuer_jwk_key_id))?;
 
     let lvvc_credential_id = Uuid::new_v4();
@@ -399,7 +402,7 @@ pub async fn create_lvvc_with_status(
         id: Some(format!("{base_url}/ssi/lvvc/v1/{lvvc_credential_id}")),
         issuance_date: OffsetDateTime::now_utc(),
         valid_for: credential_expiry,
-        claims: create_status_claims(&status)?,
+        claims,
         issuer_did: issuer_did
             .did
             .as_str()
@@ -430,24 +433,10 @@ pub async fn create_lvvc_with_status(
         None => None,
     };
 
-    let lvvc_subject_id = {
-        let credential_id: Uuid = credential.id.into();
-        credential_id
-            .urn()
-            .to_string()
-            .parse::<Url>()
-            .map_err(|_| {
-                RevocationError::MappingError(format!(
-                    "Credential ID must be an URI for LVVC support, received {}",
-                    credential.id
-                ))
-            })?
-    };
-
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
-            &Some(DidValue::from(lvvc_subject_id)),
+            &None,
             &key.key_type,
             vcdm_v2_base_context(additional_context),
             vcdm_type(Some(vec![json_ld_context.revokable_credential_type])),
