@@ -10,5 +10,10 @@ pub trait MqttTopic: Send + Sync {
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait MqttClient: Send + Sync {
-    async fn subscribe(&self, topic: String) -> anyhow::Result<Box<dyn MqttTopic>>;
+    async fn subscribe(
+        &self,
+        url: String,
+        port: u16,
+        topic: String,
+    ) -> anyhow::Result<Box<dyn MqttTopic>>;
 }

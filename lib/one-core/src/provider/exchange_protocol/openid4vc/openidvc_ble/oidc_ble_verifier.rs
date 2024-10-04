@@ -127,10 +127,10 @@ impl OpenID4VCBLEVerifier {
 
                         let nonce = utilities::generate_nonce();
                         let request = BleOpenId4VpRequest {
-                                    verifier_client_id: verifier_name.clone(),
-                                    nonce: nonce.clone(),
-                                    presentation_definition: presentation_definition.clone(),
-                                };
+                            verifier_client_id: verifier_name.clone(),
+                            nonce: nonce.clone(),
+                            presentation_definition: presentation_definition.clone(),
+                        };
                         let presentation_submission = select! {
                             biased;
 
