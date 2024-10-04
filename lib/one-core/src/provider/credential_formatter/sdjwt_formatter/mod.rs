@@ -69,7 +69,6 @@ impl CredentialFormatter for SDJWTFormatter {
         let id = credential.id.clone();
         let issued_at = credential.issuance_date;
         let expires_at = issued_at.checked_add(credential.valid_for);
-        let holder_did = holder_did.as_ref().ok_or(FormatterError::MissingHolder)?;
 
         let (vc, disclosures) = self.format_hashed_credential(
             credential,
@@ -82,7 +81,7 @@ impl CredentialFormatter for SDJWTFormatter {
             issued_at: Some(issued_at),
             expires_at,
             invalid_before: issued_at.checked_sub(Duration::seconds(self.get_leeway() as i64)),
-            subject: Some(holder_did.to_string()),
+            subject: holder_did.as_ref().map(|did| did.to_string()),
             issuer: Some(issuer),
             jwt_id: id,
             custom: vc,
