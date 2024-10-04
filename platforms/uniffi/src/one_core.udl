@@ -1076,7 +1076,7 @@ interface OneCoreBinding {
   DidListBindingDTO get_dids(DidListQueryBindingDTO query);
 
   [Throws=BindingError]
-  HandleInvitationResponseBindingEnum handle_invitation(string url, string organisation_id);
+  HandleInvitationResponseBindingEnum handle_invitation(string url, string organisation_id, sequence<string>? transport);
 
   [Throws=BindingError]
   void holder_accept_credential(string interaction_id, string did_id, string? key_id);

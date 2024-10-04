@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::{anyhow, Context};
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
 use regex::Regex;
@@ -54,6 +55,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     OpenID4VPPresentationDefinitionInputDescriptorFormat, PresentationSubmissionDescriptorDTO,
     PresentationSubmissionMappingDTO, PresentedCredential,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest;
 use crate::provider::exchange_protocol::openid4vc::{
     ExchangeProtocolError, FormatMapper, TypeToDescriptorMapper,
 };
@@ -1445,6 +1447,23 @@ impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
             claims: vec![],
         }
     }
+}
+
+pub fn parse_identity_request(data: Vec<u8>) -> anyhow::Result<IdentityRequest> {
+    let arr: [u8; 44] = data
+        .try_into()
+        .map_err(|_| anyhow!("Failed to convert vec to [u8; 44]"))?;
+
+    let (key, nonce) = arr.split_at(32);
+
+    Ok(IdentityRequest {
+        key: key
+            .try_into()
+            .context("Failed to parse key from identity request")?,
+        nonce: nonce
+            .try_into()
+            .context("Failed to parse nonce from identity request")?,
+    })
 }
 
 #[cfg(test)]

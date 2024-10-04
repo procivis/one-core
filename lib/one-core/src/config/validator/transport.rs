@@ -3,7 +3,6 @@ use std::collections::BTreeSet;
 use crate::config::core_config::{Fields, TransportConfig, TransportType};
 use crate::provider::exchange_protocol::provider::ExchangeProtocol;
 use crate::service::error::ValidationError;
-use crate::service::proof::dto::CreateProofRequestDTO;
 
 pub enum SelectedTransportType {
     Single(String),
@@ -20,7 +19,7 @@ pub fn get_available_transport_type(
 }
 
 pub fn validate_and_select_transport_type(
-    request: &CreateProofRequestDTO,
+    transport: &Option<Vec<String>>,
     config: &TransportConfig,
     exchange_protocol: &dyn ExchangeProtocol,
 ) -> Result<SelectedTransportType, ValidationError> {
@@ -33,7 +32,7 @@ pub fn validate_and_select_transport_type(
         Ok(())
     };
 
-    match request.transport.as_deref() {
+    match transport.as_deref() {
         // transport not provided in request, we select the first in order from the config
         None | Some([]) => {
             let (selected_transport, _) = get_available_transport_type(config)?;

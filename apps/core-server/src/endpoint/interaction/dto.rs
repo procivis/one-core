@@ -16,6 +16,7 @@ use uuid::Uuid;
 pub struct HandleInvitationRequestRestDTO {
     pub url: Url,
     pub organisation_id: OrganisationId,
+    pub transport: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema)]

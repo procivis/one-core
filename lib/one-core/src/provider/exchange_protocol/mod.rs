@@ -148,6 +148,8 @@ pub(crate) fn exchange_protocol_providers_from_config(
                         mqtt_client.clone(),
                         config.clone(),
                         params,
+                        data_provider.get_interaction_repository(),
+                        data_provider.get_proof_repository(),
                     ));
                 }
                 let protocol = Arc::new(OpenID4VC::new(http, ble, mqtt));
@@ -281,6 +283,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         organisation: Organisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
+        transport: Vec<String>,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError>;
 
     /// Rejects a verifier's request for credential presentation.
@@ -404,6 +407,7 @@ where
         organisation: Organisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
+        transport: Vec<String>,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         self.inner
             .handle_invitation(
@@ -411,6 +415,7 @@ where
                 organisation,
                 storage_access,
                 handle_invitation_operations,
+                transport,
             )
             .await
     }

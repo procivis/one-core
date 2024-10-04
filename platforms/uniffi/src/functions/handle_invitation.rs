@@ -10,6 +10,7 @@ impl OneCoreBinding {
         &self,
         url: String,
         organisation_id: String,
+        transport: Option<Vec<String>>,
     ) -> Result<HandleInvitationResponseBindingEnum, BindingError> {
         let url = Url::parse(&url).map_err(|e| BindingError::ValidationError(e.to_string()))?;
 
@@ -19,7 +20,7 @@ impl OneCoreBinding {
             let core = self.use_core().await?;
             let invitation_response = core
                 .ssi_holder_service
-                .handle_invitation(url, organisation_id)
+                .handle_invitation(url, organisation_id, transport)
                 .await?;
 
             Ok(invitation_response.into())

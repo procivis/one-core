@@ -91,6 +91,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         _organisation: Organisation,
         _storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
+        _transport: Vec<String>,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         unimplemented!()
     }

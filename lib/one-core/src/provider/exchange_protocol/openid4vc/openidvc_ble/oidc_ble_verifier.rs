@@ -12,10 +12,9 @@ use time::OffsetDateTime;
 use tokio::select;
 
 use super::{
-    BLEPeer, IdentityRequest, KeyAgreementKey, MessageSize, TransferSummaryReport,
-    CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, OIDC_BLE_FLOW, PRESENTATION_REQUEST_UUID,
-    REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
-    TRANSFER_SUMMARY_REQUEST_UUID,
+    BLEPeer, IdentityRequest, MessageSize, TransferSummaryReport, CONTENT_SIZE_UUID,
+    DISCONNECT_UUID, IDENTITY_UUID, OIDC_BLE_FLOW, PRESENTATION_REQUEST_UUID, REQUEST_SIZE_UUID,
+    SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{self, ProofState, ProofStateEnum};
@@ -26,13 +25,13 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
 };
 use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
+use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
+use crate::provider::exchange_protocol::openid4vc::mapper::parse_identity_request;
 use crate::provider::exchange_protocol::openid4vc::model::{
     BLEOpenID4VPInteractionData, BleOpenId4VpRequest, BleOpenId4VpResponse,
     OpenID4VPPresentationDefinition,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
-    parse_identity_request, BLEParse,
-};
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEParse;
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;

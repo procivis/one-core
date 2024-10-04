@@ -160,6 +160,7 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
         organisation: Organisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
+        _transport: Vec<String>,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         let invitation_type =
             self.detect_invitation_type(&url)

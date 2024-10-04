@@ -83,6 +83,20 @@ pub struct BLEOpenID4VPInteractionData {
     pub client_id: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct MQTTSessionKeys {
+    pub public_key: [u8; 32],
+    pub receiver_key: [u8; 32],
+    pub sender_key: [u8; 32],
+    pub nonce: [u8; 12],
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MQTTOpenID4VPInteractionData {
+    pub session_keys: MQTTSessionKeys,
+    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwePayload {
     pub aud: Url,
