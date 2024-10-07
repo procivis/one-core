@@ -206,10 +206,11 @@ publish:
     - .docker_publish
     - .only_main_or_tag
 
-bitrise_ios_sdk:
+sdk:ios:bitrise:
   stage: sdk_build
   image: registry.gitlab.procivis.ch/procivis/one/one-operations/bitrise-builder:0.1.0
   needs: []
+  when: manual
   variables:
     # ONE-wallet project on Bitrise
     BITRISE_PROJECT_SLUG: 6ee8c26f-6d7b-4bcb-8ddc-be1ba3cd2687
@@ -223,31 +224,34 @@ bitrise_ios_sdk:
       --commit "$CI_COMMIT_SHA"
       --env "CI_PIPELINE_ID:$CI_PIPELINE_ID"
       --output "artifacts"
-  when: manual
   artifacts:
     paths:
       - artifacts
     expire_in: 10 days
 
-build_android_sdk:
+sdk:android:bitrise:
   services:
     - docker:dind
   stage: sdk_build
   needs: []
+  when: manual
   script:
     - export HOSTNAME=$(docker ps -ql)
     - export CROSS_CONTAINER_OPTS='--env="CI_PIPELINE_ID='$CI_PIPELINE_ID'"'
     - makers build_android
-  when: manual
   artifacts:
     paths:
       - target/bindings/android
     expire_in: 5 days
 
-upload_sdk_artifacts:
+sdk:upload_artifacts:
   stage: sdk_artifact
   image: mcr.microsoft.com/azure-cli
-  needs: [build_android_sdk, bitrise_ios_sdk]
+  needs:
+    - job: sdk:android:bitrise
+      artifacts: true
+    - job: sdk:ios:bitrise
+      artifacts: true
   variables:
     AZURE_CONTAINER_NAME: "core-sdk"
     ANDROID_BUILD_SOURCE_PATH: "target/bindings/android"
@@ -257,6 +261,7 @@ upload_sdk_artifacts:
     IOS_CONTAINER_PATH: "ios/${CI_PIPELINE_ID}"
     IOS_BUILD_SOURCE_PATH: "artifacts"
     IOS_BUILD_FILE: "deploy.zip"
+    AZURE_STORAGE_URL: "https://onetfstatestorage.blob.core.windows.net"
   script:
     # https://learn.microsoft.com/en-us/cli/azure/storage/blob?view=azure-cli-latest#az-storage-blob-download
     - ANDROID_CONTAINER_PATH_DEBUG=$ANDROID_CONTAINER_PATH/$ANDROID_SDK_DEBUG_FILE
@@ -268,23 +273,60 @@ upload_sdk_artifacts:
     - az storage blob upload --overwrite -c $AZURE_CONTAINER_NAME -n $ANDROID_CONTAINER_PATH_RELEASE -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE
     # Upload IOS zip file
     - az storage blob upload --overwrite -c $AZURE_CONTAINER_NAME -n $IOS_CONTAINER_PATH -f $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE
+    # Prepare variables
+    - |
+      ANDROID_DEBUG_LINK=${AZURE_STORAGE_URL}/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_DEBUG
+      ANDROID_DEBUG_SHA1=$(sha1sum -b $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_DEBUG_FILE | cut -d " " -f1)
+      ANDROID_RELEASE_LINK=${AZURE_STORAGE_URL}/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_RELEASE
+      ANDROID_RELEASE_SHA1=$(sha1sum -b $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE | cut -d " " -f1)
+      IOS_LINK=${AZURE_STORAGE_URL}/$AZURE_CONTAINER_NAME/$IOS_CONTAINER_PATH
+      IOS_SHA1=$(sha1sum -b $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE | cut -d " " -f1)
     - >
       cat <<-EOM
         =========================
         SDK Download links:
         -------------------------
-        Android DEBUG: https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_DEBUG
-        SHA-1: $(sha1sum -b $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_DEBUG_FILE | cut -d " " -f1)
+        Android DEBUG: ${ANDROID_DEBUG_LINK}
+        SHA-1: ${ANDROID_DEBUG_SHA1}
         -------------------------
-        Android RELEASE: https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_RELEASE
-        SHA-1: $(sha1sum -b $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE | cut -d " " -f1)
+        Android RELEASE: ${ANDROID_RELEASE_LINK}
+        SHA-1: ${ANDROID_RELEASE_SHA1}
         -------------------------
-        iOS: https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$IOS_CONTAINER_PATH
-        SHA-1: $(sha1sum -b $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE | cut -d " " -f1)
+        iOS: ${IOS_LINK}
+        SHA-1: ${IOS_SHA1}
         =========================
       EOM
+    - |
+      echo "ANDROID_DEBUG_LINK=${ANDROID_DEBUG_LINK}" > sdk_env_variables.env
+      echo "ANDROID_DEBUG_SHA1=${ANDROID_DEBUG_SHA1}" >> sdk_env_variables.env
+      echo "ANDROID_RELEASE_LINK=${ANDROID_RELEASE_LINK}" >> sdk_env_variables.env
+      echo "ANDROID_RELEASE_SHA1=${ANDROID_RELEASE_SHA1}" >> sdk_env_variables.env
+      echo "IOS_LINK=${IOS_LINK}" >> sdk_env_variables.env
+      echo "IOS_SHA1=${IOS_SHA1}" >> sdk_env_variables.env
+  artifacts:
+    paths:
+      - sdk_env_variables.env
+    reports:
+      dotenv: sdk_env_variables.env
 
-generate_binding_files:
+
+sdk:react-native:
+  stage: sdk_artifact
+  needs:
+    - job: sdk:upload_artifacts
+      artifacts: true
+  variables:
+    NEW_VERSION: "1.$CI_PIPELINE_ID.0"
+    CI_COMMIT_REF_NAME: $CI_COMMIT_REF_NAME
+  trigger:
+    project: procivis/one/react-native-one-core
+    branch: main
+    strategy: depend
+    forward:
+      pipeline_variables: true
+
+
+sdk:generate_binding_files:
   stage: sdk_build
   needs:
     - build
