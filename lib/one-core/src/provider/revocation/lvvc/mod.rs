@@ -38,6 +38,7 @@ use crate::util::params::convert_params;
 use crate::util::vcdm_jsonld_contexts::{vcdm_type, vcdm_v2_base_context};
 pub mod dto;
 pub mod mapper;
+pub mod util;
 
 #[cfg(test)]
 mod test;

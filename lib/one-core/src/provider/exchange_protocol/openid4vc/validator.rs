@@ -6,7 +6,6 @@ use std::time::Duration;
 use time::OffsetDateTime;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::common_validator::is_lvvc;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -24,6 +23,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCITokenRequestDTO, ValidatedProofClaimDTO,
 };
 use crate::provider::exchange_protocol::openid4vc::service::FnMapOidcFormatToExternalDetailed;
+use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
@@ -117,7 +117,7 @@ pub(super) async fn validate_presentation(
 }
 
 fn is_revocation_credential(credential: &DetailCredential) -> bool {
-    is_lvvc(credential)
+    is_lvvc_credential(credential)
         || (credential.claims.values.contains_key("encodedList")
             && credential.claims.values.contains_key("statusPurpose"))
 }

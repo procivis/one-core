@@ -23,7 +23,6 @@ use super::model::{
     OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, PresentationSubmissionMappingDTO,
     ValidatedProofClaimDTO,
 };
-use crate::common_validator::is_lvvc;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
@@ -49,6 +48,7 @@ use crate::provider::exchange_protocol::openid4vc::validator::{
     validate_credential, validate_presentation, validate_refresh_token,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::key_verification::KeyVerification;
@@ -382,7 +382,7 @@ async fn process_proof_submission(
         )
         .await?;
 
-        if is_lvvc(&credential) {
+        if is_lvvc_credential(&credential) {
             continue;
         }
 
@@ -446,7 +446,7 @@ async fn extract_lvvcs(
                 }
             })?;
 
-        if is_lvvc(&credential) {
+        if is_lvvc_credential(&credential) {
             result.push(credential);
         }
     }
