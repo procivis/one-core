@@ -5,7 +5,6 @@ use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
 use crate::model::proof::{Proof, ProofStateEnum};
-use crate::provider::credential_formatter::model::DetailCredential;
 use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub(crate) fn throw_if_latest_credential_state_eq(
@@ -117,13 +116,6 @@ pub(crate) fn get_latest_state(credential: &Credential) -> Result<&CredentialSta
         .ok_or(ServiceError::MappingError("state is None".to_string()))?
         .first()
         .ok_or(ServiceError::MappingError("state is missing".to_string()))
-}
-
-// TODO - we maintain a backwards compatibility check here, see ONE-3528
-pub fn is_lvvc(credential: &DetailCredential) -> bool {
-    credential.subject.is_some()
-        && (credential.claims.values.contains_key("status")
-            || credential.claims.values.contains_key("LvvcSubject"))
 }
 
 #[cfg(test)]

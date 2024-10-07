@@ -4,7 +4,7 @@ use std::sync::Arc;
 use shared_types::CredentialSchemaId;
 
 use super::dto::ValidatedProofClaimDTO;
-use crate::common_validator::{is_lvvc, validate_expiration_time, validate_issuance_time};
+use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::{Did, KeyRole};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
@@ -12,6 +12,7 @@ use crate::provider::credential_formatter::model::{DetailCredential, ExtractPres
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
@@ -168,7 +169,7 @@ pub async fn validate_proof(
         )?;
         validate_expiration_time(&credential.valid_until, credential_formatter.get_leeway())?;
 
-        if is_lvvc(&credential) {
+        if is_lvvc_credential(&credential) {
             continue;
         }
 
@@ -341,7 +342,7 @@ async fn extract_lvvcs(
         let credential = credential_formatter
             .extract_credentials_unverified(credential)
             .await?;
-        if is_lvvc(&credential) {
+        if is_lvvc_credential(&credential) {
             result.push(credential);
         }
     }
