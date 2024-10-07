@@ -1,14 +1,14 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::credential_schema::CredentialSchema;
-use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::proof::ProofStateEnum;
 use serde_json::{json, Value};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::fixtures::{
-    self, TestingCredentialParams, TestingCredentialSchemaParams, TestingDidParams,
-};
+use crate::fixtures::{self, TestingCredentialParams, TestingCredentialSchemaParams};
 use crate::utils;
+use crate::utils::context::TestContext;
+use crate::utils::field_match::FieldHelpers;
 use crate::utils::server::run_server;
 
 fn get_procivis_temporary_interaction_data(
@@ -563,93 +563,132 @@ fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8>
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_with_match() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let key = fixtures::create_key(&db_conn, &organisation, None).await;
-    let did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::KeyAgreement,
-                key,
-            }]),
-            ..Default::default()
-        }),
-    )
-    .await;
+    let (context, organisation, did, key) = TestContext::new_with_did().await;
 
-    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
 
-    let credential = fixtures::create_credential(
-        &db_conn,
-        &credential_schema,
-        CredentialStateEnum::Accepted,
-        &did,
-        "PROCIVIS_TEMPORARY",
-        TestingCredentialParams::default(),
-    )
-    .await;
-    let interaction = fixtures::create_interaction(
-        &db_conn,
-        "http://localhost",
-        &get_open_id_interaction_data(&credential_schema),
-    )
-    .await;
-    let proof = fixtures::create_proof(
-        &db_conn,
-        &did,
-        Some(&did),
-        None,
-        ProofStateEnum::Pending,
-        "OPENID4VC",
-        Some(&interaction),
-    )
-    .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &did,
+            "OPENID4VC",
+            Default::default(),
+        )
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            "http://localhost",
+            &get_open_id_interaction_data(&credential_schema),
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &did,
+            Some(&did),
+            None,
+            ProofStateEnum::Pending,
+            "OPENID4VC",
+            Some(&interaction),
+            key,
+        )
+        .await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
-    let url = format!(
-        "{base_url}/api/proof-request/v1/{}/presentation-definition",
-        proof.id
-    );
-
-    let resp = utils::client()
-        .get(url)
-        .bearer_auth("test")
-        .send()
-        .await
-        .unwrap();
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
 
     // THEN
-
     assert_eq!(resp.status(), 200);
-    let resp: Value = resp.json().await.unwrap();
+    let resp = resp.json_value().await;
 
-    assert_eq!(
-        resp["requestGroups"][0]["id"].as_str().unwrap(),
-        proof.id.to_string()
-    );
-    assert_eq!(
-        resp["credentials"][0]["id"].as_str().unwrap(),
-        credential.id.to_string()
-    );
-    assert_eq!(
-        resp["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"][0]
-            .as_str()
-            .unwrap(),
-        credential.id.to_string()
-    );
+    resp["requestGroups"][0]["id"].assert_eq(&proof.id);
+    resp["credentials"][0]["id"].assert_eq(&credential.id);
+    resp["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"][0]
+        .assert_eq(&credential.id);
+
     assert_eq!(
         resp["requestGroups"][0]["requestedCredentials"][0]["fields"][0]["keyMap"]
             [credential.id.to_string()]
         .as_str()
         .unwrap(),
-        "firstName".to_string()
+        "firstName"
     );
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
+    // GIVEN
+    let (context, organisation, did, key) = TestContext::new_with_did().await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                deleted_at: Some(OffsetDateTime::now_utc()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            "http://localhost",
+            &get_open_id_interaction_data(&credential_schema),
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &did,
+            Some(&did),
+            None,
+            ProofStateEnum::Pending,
+            "OPENID4VC",
+            Some(&interaction),
+            key,
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp["requestGroups"][0]["id"].assert_eq(&proof.id);
+    assert_eq!(resp["credentials"].as_array().unwrap().len(), 0);
 }
 
 #[tokio::test]
