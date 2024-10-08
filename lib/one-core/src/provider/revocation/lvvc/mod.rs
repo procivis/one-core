@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
+use util::get_lvvc_credential_subject;
 use uuid::Uuid;
 
 use self::dto::LvvcStatus;
@@ -189,12 +190,7 @@ impl LvvcProvider {
         let lvvc = data
             .extracted_lvvcs
             .iter()
-            .find(|lvvc| {
-                lvvc.subject
-                    .as_ref()
-                    .map(|subj| subj.as_str() == credential_id)
-                    .unwrap_or(false)
-            })
+            .find(|lvvc| get_lvvc_credential_subject(lvvc).is_some_and(|id| id == credential_id))
             .ok_or(RevocationError::ValidationError(
                 "no matching LVVC found among credentials".to_string(),
             ))?;
@@ -480,10 +476,12 @@ pub async fn prepare_bearer_token(
             "cannot prepare bearer_token for verifier".to_string(),
         )),
     }?;
+
     let keys = did
         .keys
         .as_ref()
         .ok_or(RevocationError::MappingError("keys is None".to_string()))?;
+
     let authentication_key = keys
         .iter()
         .find(|key| key.role == KeyRole::Authentication)
