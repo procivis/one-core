@@ -11,6 +11,17 @@ pub fn is_lvvc_credential(credential: &DetailCredential) -> bool {
             || credential.claims.values.contains_key("LvvcSubject"))
 }
 
+pub fn get_lvvc_credential_subject(credential: &DetailCredential) -> Option<&str> {
+    match credential.subject.as_ref() {
+        Some(subject) => Some(subject.as_str()),
+        None => credential
+            .claims
+            .values
+            .get("id")
+            .and_then(|id| id.as_str()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;

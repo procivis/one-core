@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use time::macros::format_description;
@@ -15,16 +15,29 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 #[tokio::test]
-async fn test_openid4vc_jwt_flow_eddsa() {
-    test_openid4vc_jwt_flow(ecdsa_key_1(), eddsa_key_2()).await
+async fn test_openid4vc_jwt_flow_eddsa_no_revocation() {
+    test_openid4vc_jwt_flow(ecdsa_key_1(), eddsa_key_2(), "NONE").await
 }
 
+#[tokio::test]
+async fn test_openid4vc_jwt_flow_eddsa_bitstring_revocation() {
+    test_openid4vc_jwt_flow(ecdsa_key_1(), eddsa_key_2(), "BITSTRINGSTATUSLIST").await
+}
+
+#[tokio::test]
+async fn test_openid4vc_jwt_flow_eddsa_lvvc_revocation() {
+    test_openid4vc_jwt_flow(ecdsa_key_1(), eddsa_key_2(), "LVVC").await
+}
 #[tokio::test]
 async fn test_openid4vc_jwt_flow_eddsa_array() {
     test_openid4vc_jwt_flow_array(ecdsa_key_1(), eddsa_key_2()).await
 }
 
-async fn test_openid4vc_jwt_flow(server_key: TestKey, holder_key: TestKey) {
+async fn test_openid4vc_jwt_flow(
+    server_key: TestKey,
+    holder_key: TestKey,
+    revocation_method: &str,
+) {
     // GIVEN
     let interaction_id = Uuid::new_v4();
     let server_context = TestContext::new_with_token(&format!("{}.test", interaction_id)).await;
@@ -57,7 +70,7 @@ async fn test_openid4vc_jwt_flow(server_key: TestKey, holder_key: TestKey) {
             &schema_id,
             "Test",
             &server_organisation,
-            "NONE",
+            revocation_method,
             &new_claim_schemas,
             "JWT",
             "schema_id",
@@ -157,14 +170,12 @@ async fn test_openid4vc_jwt_flow(server_key: TestKey, holder_key: TestKey) {
         )
         .await;
 
-    let holder_did_value = holder_did.did;
-
     let jwt = [
         &json!(
             {
             "alg": "EDDSA",
             "typ": "JWT",
-            "kid": holder_did_value
+            "kid": holder_did.did
         })
         .to_string(),
         r#"{"aud":"test123"}"#,
@@ -209,7 +220,7 @@ async fn test_openid4vc_jwt_flow(server_key: TestKey, holder_key: TestKey) {
             &schema_id,
             "Test",
             &holder_organisation,
-            "NONE",
+            revocation_method,
             &new_claim_schemas,
             "JWT",
             &credential_schema.schema_id,
@@ -227,6 +238,7 @@ async fn test_openid4vc_jwt_flow(server_key: TestKey, holder_key: TestKey) {
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 credential: Some(credential_token),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )
