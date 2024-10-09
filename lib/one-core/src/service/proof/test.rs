@@ -40,6 +40,7 @@ use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::{CredentialFormatter, MockCredentialFormatter};
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
 use crate::provider::exchange_protocol::openid4vc::model::{
     BLEOpenID4VPInteractionData, OpenID4VPPresentationDefinition, ShareResponse,
 };
@@ -1967,6 +1968,7 @@ async fn test_create_proof_without_related_key() {
         verifier_key: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
+        transport: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2050,11 +2052,27 @@ async fn test_create_proof_without_related_key() {
         .withf(move |proof| proof.exchange == exchange)
         .returning(move |_| Ok(proof_id));
 
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockExchangeProtocol::default();
+
+        protocol
+            .inner
+            .expect_get_capabilities()
+            .times(1)
+            .returning(|| ExchangeProtocolCapabilities {
+                supported_transports: vec!["HTTP".to_owned()],
+            });
+
+        Some(Arc::new(protocol))
+    });
+
     let service = setup_service(Repositories {
         proof_repository,
         did_repository,
         proof_schema_repository,
         credential_formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2075,6 +2093,7 @@ async fn test_create_proof_with_related_key() {
         verifier_key: Some(verifier_key_id),
         scan_to_verify: None,
         iso_mdl_engagement: None,
+        transport: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2156,11 +2175,27 @@ async fn test_create_proof_with_related_key() {
         .withf(move |proof| proof.exchange == exchange)
         .returning(move |_| Ok(proof_id));
 
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockExchangeProtocol::default();
+
+        protocol
+            .inner
+            .expect_get_capabilities()
+            .times(1)
+            .returning(|| ExchangeProtocolCapabilities {
+                supported_transports: vec!["HTTP".to_owned()],
+            });
+
+        Some(Arc::new(protocol))
+    });
+
     let service = setup_service(Repositories {
         proof_repository,
         did_repository,
         proof_schema_repository,
         credential_formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2180,6 +2215,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
         verifier_key: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
+        transport: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2262,6 +2298,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         verifier_key: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
+        transport: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2319,6 +2356,7 @@ async fn test_create_proof_did_deactivated_error() {
         verifier_key: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
+        transport: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2428,6 +2466,7 @@ async fn test_create_proof_schema_deleted() {
             verifier_key: None,
             scan_to_verify: None,
             iso_mdl_engagement: None,
+            transport: None,
         })
         .await;
     assert2::assert!(
@@ -2489,6 +2528,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
                 barcode_type: ScanToVerifyBarcodeTypeEnum::MRZ,
             }),
             iso_mdl_engagement: None,
+            transport: None,
         })
         .await;
     assert2::assert!(
@@ -2507,6 +2547,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         verifier_key: None,
         scan_to_verify: None,
         iso_mdl_engagement: None,
+        transport: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2633,7 +2674,7 @@ async fn test_share_proof_created_success() {
         .returning(move |_, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
-                id: interaction_id,
+                interaction_id,
                 context: (),
             })
         });
@@ -2739,7 +2780,7 @@ async fn test_share_proof_pending_success() {
         .returning(move |_, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
-                id: interaction_id,
+                interaction_id,
                 context: (),
             })
         });

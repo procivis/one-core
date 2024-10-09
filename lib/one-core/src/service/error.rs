@@ -315,6 +315,18 @@ pub enum ValidationError {
         source: anyhow::Error,
     },
 
+    #[error("Invalid transport type {value}: {source}")]
+    InvalidTransportType {
+        value: String,
+        source: anyhow::Error,
+    },
+
+    #[error("Transport combination not allowed")]
+    TransportsCombinationNotAllowed,
+
+    #[error("No suitable transport found for exchange")]
+    TransportNotAllowedForExchange,
+
     #[error("No default transport specified")]
     MissingDefaultTransport,
 
@@ -852,6 +864,12 @@ pub enum ErrorCode {
     #[strum(to_string = "Key storage not supported for proof request")]
     BR_0158,
 
+    #[strum(to_string = "Transport combination not allowed for exchange protocol")]
+    BR_0159,
+
+    #[strum(to_string = "No suitable transport protocol found on verifier/holder")]
+    BR_0160,
+
     #[strum(to_string = "Suspension not supported for revocation method")]
     BR_0162,
 
@@ -1036,6 +1054,9 @@ impl ErrorCodeMixin for ValidationError {
             Self::ForbiddenClaimName => ErrorCode::BR_0145,
             Self::InvalidMdlParameters => ErrorCode::BR_0147,
             Self::ProofSchemaSharingNotSupported => ErrorCode::BR_0163,
+            Self::TransportNotAllowedForExchange => ErrorCode::BR_0160,
+            Self::TransportsCombinationNotAllowed => ErrorCode::BR_0159,
+            Self::InvalidTransportType { .. } => ErrorCode::BR_0112,
         }
     }
 }

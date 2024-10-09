@@ -1012,6 +1012,7 @@ dictionary CreateProofRequestBindingDTO {
   string? verifier_key;
   ScanToVerifyRequestBindingDTO? scan_to_verify;
   string? iso_mdl_engagement;
+  sequence<string>? transport;
 };
 
 dictionary ScanToVerifyRequestBindingDTO {

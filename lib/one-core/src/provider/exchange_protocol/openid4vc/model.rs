@@ -522,7 +522,7 @@ pub struct PresentedCredential {
 #[derive(Clone, Debug)]
 pub struct ShareResponse<T> {
     pub url: String,
-    pub id: Uuid,
+    pub interaction_id: Uuid,
     pub context: T,
 }
 

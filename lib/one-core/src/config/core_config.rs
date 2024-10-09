@@ -13,6 +13,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use serde_with::{serde_as, DurationSeconds};
+use strum::AsRefStr;
 use strum_macros::{Display, EnumString};
 
 use super::{ConfigParsingError, ConfigValidationError};
@@ -178,7 +179,18 @@ pub type FormatConfig = ConfigBlock<String>;
 pub type TransportConfig = ConfigBlock<TransportType>;
 
 #[derive(
-    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
 )]
 pub enum TransportType {
     #[serde(rename = "BLE")]
@@ -383,6 +395,13 @@ where
         Ok(fields)
     }
 
+    pub fn get_first_enabled(&self) -> Option<(&str, &Fields<T>)> {
+        let mut enabled: Vec<_> = self.iter().filter(|(_, f)| !f.disabled()).collect();
+        enabled.sort_by_key(|(_, fields)| fields.order);
+
+        enabled.into_iter().next()
+    }
+
     #[cfg(test)]
     pub fn insert(&mut self, key: String, fields: Fields<T>) {
         self.0.insert(key, fields);
@@ -391,9 +410,17 @@ where
 
 impl ConfigBlock<TransportType> {
     pub fn ble_enabled_for(&self, key: &str) -> bool {
+        self.transport_enabled_for(key, &TransportType::Ble)
+    }
+
+    pub fn mqtt_enabled_for(&self, key: &str) -> bool {
+        self.transport_enabled_for(key, &TransportType::Mqtt)
+    }
+
+    fn transport_enabled_for(&self, key: &str, transport: &TransportType) -> bool {
         self.get_fields(key)
             .ok()
-            .is_some_and(|fields| fields.r#type() == &TransportType::Ble && !fields.disabled())
+            .is_some_and(|fields| fields.r#type() == transport && !fields.disabled())
     }
 }
 

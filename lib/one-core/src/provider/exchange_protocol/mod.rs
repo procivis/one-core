@@ -11,12 +11,14 @@ use openid4vc::model::{
 };
 use openid4vc::openidvc_ble::OpenID4VCBLE;
 use openid4vc::openidvc_http::OpenID4VCHTTP;
+use openid4vc::openidvc_mqtt::OpenId4VcMqtt;
 use procivis_temp::ProcivisTemp;
 use serde::de::{Deserialize, DeserializeOwned};
 use serde::Serialize;
 use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId};
 use url::Url;
 
+use super::mqtt_client::MqttClient;
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::config::ConfigValidationError;
 use crate::model::claim::Claim;
@@ -94,6 +96,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
     did_method_provider: Arc<dyn DidMethodProvider>,
     ble: Option<BleWaiter>,
     client: Arc<dyn HttpClient>,
+    mqtt_client: Option<Arc<dyn MqttClient>>,
 ) -> Result<HashMap<String, Arc<dyn ExchangeProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn ExchangeProtocol>> = HashMap::new();
 
@@ -137,7 +140,17 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     client.clone(),
                     params,
                 );
-                let protocol = Arc::new(OpenID4VC::new(http, ble));
+
+                let mut mqtt = None;
+                if let Some(mqtt_client) = mqtt_client.clone() {
+                    let params = config.transport.get("MQTT")?;
+                    mqtt = Some(OpenId4VcMqtt::new(
+                        mqtt_client.clone(),
+                        config.clone(),
+                        params,
+                    ));
+                }
+                let protocol = Arc::new(OpenID4VC::new(http, ble, mqtt));
                 providers.insert(name.to_string(), protocol);
             }
             ExchangeType::IsoMdl => {
@@ -491,7 +504,7 @@ where
             .await
             .map(|resp| ShareResponse {
                 url: resp.url,
-                id: resp.id,
+                interaction_id: resp.interaction_id,
                 context: serde_json::json!(resp.context),
             })
     }
@@ -521,7 +534,7 @@ where
             .await
             .map(|resp| ShareResponse {
                 url: resp.url,
-                id: resp.id,
+                interaction_id: resp.interaction_id,
                 context: serde_json::json!(resp.context),
             })
     }

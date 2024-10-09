@@ -672,7 +672,7 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
 
         Ok(ShareResponse {
             url: query.finish().to_string(),
-            id: interaction_id,
+            interaction_id,
             context: interaction_content,
         })
     }
@@ -731,7 +731,7 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
 
         Ok(ShareResponse {
             url: format!("openid4vp://?{encoded_offer}"),
-            id: interaction_id,
+            interaction_id,
             context: interaction_content,
         })
     }

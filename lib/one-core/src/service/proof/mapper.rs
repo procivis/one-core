@@ -624,7 +624,7 @@ pub fn proof_from_create_request(
     request: CreateProofRequestDTO,
     now: OffsetDateTime,
     schema: ProofSchema,
-    transport: &str,
+    transport: String,
     verifier_did: Did,
     verifier_key: Option<Key>,
 ) -> Proof {
@@ -641,7 +641,7 @@ pub fn proof_from_create_request(
             state: ProofStateEnum::Created,
         }]),
         schema: Some(schema),
-        transport: transport.to_owned(),
+        transport,
         claims: None,
         verifier_did: Some(verifier_did),
         holder_did: None,
