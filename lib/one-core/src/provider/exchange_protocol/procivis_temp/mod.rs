@@ -364,7 +364,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
         Ok(ShareResponse {
             url: pairs.finish().to_string(),
-            id: Uuid::new_v4(),
+            interaction_id: Uuid::new_v4(),
             context: (),
         })
     }
@@ -396,7 +396,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
 
         Ok(ShareResponse {
             url: pairs.finish().to_string(),
-            id: Uuid::new_v4(),
+            interaction_id: Uuid::new_v4(),
             context: vec![],
         })
     }

@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
+use anyhow::Context;
 use async_trait::async_trait;
 use openidvc_ble::OpenID4VCBLE;
 use openidvc_http::OpenID4VCHTTP;
+use openidvc_mqtt::OpenId4VcMqtt;
 use serde_json::json;
 use shared_types::KeyId;
 use url::Url;
@@ -26,6 +28,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 };
 use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::service::proof::dto::CreateProofInteractionData;
 
 pub mod dto;
 pub mod error;
@@ -34,6 +37,7 @@ pub(crate) mod mapper;
 pub mod model;
 pub(crate) mod openidvc_ble;
 pub mod openidvc_http;
+pub(crate) mod openidvc_mqtt;
 pub mod proof_formatter;
 pub mod service;
 pub mod validator;
@@ -41,13 +45,19 @@ pub mod validator;
 pub(crate) struct OpenID4VC {
     openid_http: OpenID4VCHTTP,
     openid_ble: OpenID4VCBLE,
+    openid_mqtt: Option<OpenId4VcMqtt>,
 }
 
 impl OpenID4VC {
-    pub fn new(openid_http: OpenID4VCHTTP, openid_ble: OpenID4VCBLE) -> Self {
+    pub fn new(
+        openid_http: OpenID4VCHTTP,
+        openid_ble: OpenID4VCBLE,
+        mqtt: Option<OpenId4VcMqtt>,
+    ) -> Self {
         Self {
             openid_http,
             openid_ble,
+            openid_mqtt: mqtt,
         }
     }
 }
@@ -186,7 +196,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
             .await
             .map(|context| ShareResponse {
                 url: context.url,
-                id: context.id,
+                interaction_id: context.interaction_id,
                 context: json!(context.context),
             })
     }
@@ -200,24 +210,37 @@ impl ExchangeProtocolImpl for OpenID4VC {
         vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
-        if proof.transport == TransportType::Ble.to_string() {
-            self.openid_ble
-                .share_proof(
-                    proof,
-                    format_to_type_mapper,
-                    key_id,
-                    encryption_key_jwk,
-                    vp_formats,
-                    type_to_descriptor,
-                )
-                .await
-                .map(|context| ShareResponse {
-                    url: context.url,
-                    id: context.id,
-                    context: json!(context.context),
+        let transport = if proof.transport.is_empty() {
+            let data: CreateProofInteractionData = proof
+                .interaction
+                .as_ref()
+                .context("Missing interaction for proof")
+                .and_then(|interaction| {
+                    let interaction_data = interaction
+                        .data
+                        .as_ref()
+                        .context("Missing interaction data")?;
+
+                    serde_json::from_slice(interaction_data).context("Interaction deserialization")
                 })
+                .map_err(ExchangeProtocolError::Other)?;
+
+            data.transport
         } else {
-            self.openid_http
+            vec![proof.transport.clone()]
+        };
+
+        let transport = transport
+            .into_iter()
+            .map(|t| TransportType::try_from(t.as_str()))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| {
+                ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
+            })?;
+
+        match transport.as_slice() {
+            [TransportType::Ble] => self
+                .openid_ble
                 .share_proof(
                     proof,
                     format_to_type_mapper,
@@ -229,9 +252,98 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 .await
                 .map(|context| ShareResponse {
                     url: context.url,
-                    id: context.id,
+                    interaction_id: context.interaction_id,
                     context: json!(context.context),
+                }),
+            [TransportType::Http] => self
+                .openid_http
+                .share_proof(
+                    proof,
+                    format_to_type_mapper,
+                    key_id,
+                    encryption_key_jwk,
+                    vp_formats,
+                    type_to_descriptor,
+                )
+                .await
+                .map(|context| ShareResponse {
+                    url: context.url,
+                    interaction_id: context.interaction_id,
+                    context: json!(context.context),
+                }),
+            [TransportType::Mqtt] => {
+                let client = self.openid_mqtt.as_ref().ok_or_else(|| {
+                    ExchangeProtocolError::Failed("MQTT client not configured".to_string())
+                })?;
+
+                client
+                    .share_proof(
+                        proof,
+                        format_to_type_mapper,
+                        key_id,
+                        encryption_key_jwk,
+                        vp_formats,
+                        type_to_descriptor,
+                    )
+                    .await
+                    .map(|context| ShareResponse {
+                        url: context.url,
+                        interaction_id: context.interaction_id,
+                        context: json!(context.context),
+                    })
+            }
+
+            [TransportType::Ble, TransportType::Mqtt]
+            | [TransportType::Mqtt, TransportType::Ble] => {
+                let client = self.openid_mqtt.as_ref().ok_or_else(|| {
+                    ExchangeProtocolError::Failed("MQTT client not configured".to_string())
+                })?;
+
+                let mqtt_response = client
+                    .share_proof(
+                        proof,
+                        format_to_type_mapper.clone(),
+                        key_id,
+                        encryption_key_jwk.clone(),
+                        vp_formats.clone(),
+                        type_to_descriptor.clone(),
+                    )
+                    .await?;
+
+                let ble_response = self
+                    .openid_ble
+                    .share_proof(
+                        proof,
+                        format_to_type_mapper,
+                        key_id,
+                        encryption_key_jwk,
+                        vp_formats,
+                        type_to_descriptor,
+                    )
+                    .await?;
+
+                let mqtt_url: Url = mqtt_response
+                    .url
+                    .parse()
+                    .map_err(|err| ExchangeProtocolError::Failed(format!("Invalid URL: {err}")))?;
+
+                let mut url: Url = ble_response
+                    .url
+                    .parse()
+                    .map_err(|err| ExchangeProtocolError::Failed(format!("Invalid URL: {err}")))?;
+
+                url.query_pairs_mut().extend_pairs(mqtt_url.query_pairs());
+
+                Ok(ShareResponse {
+                    url: format!("{url}"),
+                    // only for BLE we need the interaction_id
+                    interaction_id: ble_response.interaction_id,
+                    context: json!({}),
                 })
+            }
+            other => Err(ExchangeProtocolError::Failed(format!(
+                "Invalid transport: {other:?}",
+            ))),
         }
     }
 

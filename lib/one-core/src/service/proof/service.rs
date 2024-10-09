@@ -6,8 +6,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
-    ProposeProofResponseDTO,
+    CreateProofInteractionData, CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO,
+    ProofDetailResponseDTO, ProposeProofResponseDTO,
 };
 use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
@@ -18,7 +18,9 @@ use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{ExchangeType, TransportType};
 use crate::config::validator::exchange::validate_exchange_type;
-use crate::config::validator::transport::get_available_transport_type;
+use crate::config::validator::transport::{
+    get_available_transport_type, validate_and_select_transport_type, SelectedTransportType,
+};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
@@ -348,9 +350,42 @@ impl ProofService {
             &*self.credential_formatter_provider,
         )?;
 
-        let (transport, _) = get_available_transport_type(&self.config.transport)?;
+        let Some(exchange_protocol) = self.protocol_provider.get_protocol(&request.exchange) else {
+            return Err(MissingProviderError::ExchangeProtocol(request.exchange.to_owned()).into());
+        };
 
-        self.proof_repository
+        let transport = validate_and_select_transport_type(
+            &request,
+            &self.config.transport,
+            &*exchange_protocol,
+        )?;
+
+        let mut maybe_interaction_id = None;
+        let transport = match transport {
+            SelectedTransportType::Single(single) => single,
+            // for multiple transports we store them in interaction data and set the transport=""
+            SelectedTransportType::Multiple(multiple) => {
+                let interaction_id = Uuid::new_v4();
+                let data = CreateProofInteractionData {
+                    transport: multiple,
+                };
+
+                add_new_interaction(
+                    interaction_id,
+                    &self.base_url,
+                    &*self.interaction_repository,
+                    serde_json::to_vec(&data).ok(),
+                )
+                .await?;
+
+                maybe_interaction_id = Some(interaction_id);
+
+                String::new()
+            }
+        };
+
+        let proof_id = self
+            .proof_repository
             .create_proof(proof_from_create_request(
                 request,
                 now,
@@ -359,8 +394,13 @@ impl ProofService {
                 verifier_did,
                 Some(verifier_key),
             ))
-            .await
-            .map_err(ServiceError::from)
+            .await?;
+
+        if let Some(interaction_id) = maybe_interaction_id {
+            update_proof_interaction(proof_id, interaction_id, &*self.proof_repository).await?;
+        }
+
+        Ok(proof_id)
     }
 
     /// Request proof
@@ -413,7 +453,7 @@ impl ProofService {
 
         let ShareResponse {
             url,
-            id: interaction_id,
+            interaction_id,
             context,
         } = exchange
             .share_proof(

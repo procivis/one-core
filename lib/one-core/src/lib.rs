@@ -11,6 +11,7 @@ use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderCoreImpl;
 use provider::exchange_protocol::ExchangeProtocolProviderImpl;
+use provider::mqtt_client::MqttClient;
 use provider::task::provider::TaskProviderImpl;
 use provider::task::tasks_from_config;
 use provider::trust_management::provider::TrustManagementProviderImpl;
@@ -137,6 +138,7 @@ pub struct OneCoreBuilder {
     providers: OneCoreBuilderProviders,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     ble_central: Option<Arc<dyn BleCentral>>,
+    mqtt_client: Option<Arc<dyn MqttClient>>,
     data_provider_creator: Option<DataProviderCreator>,
     jsonld_caching_loader: Option<JsonLdCachingLoader>,
     client: Option<Arc<dyn HttpClient>>,
@@ -208,6 +210,11 @@ impl OneCoreBuilder {
         self
     }
 
+    pub fn with_mqtt_client(mut self, client: Arc<dyn MqttClient>) -> Self {
+        self.mqtt_client = Some(client);
+        self
+    }
+
     // Temporary
     pub fn with_data_provider_creator(mut self, data_provider: DataProviderCreator) -> Self {
         self.data_provider_creator = Some(data_provider);
@@ -241,6 +248,7 @@ impl OneCoreBuilder {
             self.core_config,
             self.ble_peripheral,
             self.ble_central,
+            self.mqtt_client,
             self.providers,
             self.jsonld_caching_loader,
             self.client.unwrap_or(Arc::new(ReqwestClient::default())),
@@ -255,6 +263,7 @@ impl OneCore {
         mut core_config: CoreConfig,
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         ble_central: Option<Arc<dyn BleCentral>>,
+        mqtt_client: Option<Arc<dyn MqttClient>>,
         providers: OneCoreBuilderProviders,
         jsonld_caching_loader: Option<JsonLdCachingLoader>,
         client: Arc<dyn HttpClient>,
@@ -348,6 +357,7 @@ impl OneCore {
             did_method_provider.clone(),
             ble_waiter.clone(),
             client.clone(),
+            mqtt_client,
         )?;
 
         let protocol_provider = Arc::new(ExchangeProtocolProviderCoreImpl::new(

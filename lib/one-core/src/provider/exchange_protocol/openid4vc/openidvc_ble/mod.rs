@@ -342,7 +342,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         if !self
             .config
             .transport
-            .ble_enabled_for(&TransportType::Ble.to_string())
+            .ble_enabled_for(TransportType::Ble.as_ref())
         {
             return Err(ExchangeProtocolError::Disabled(
                 "BLE transport is disabled".to_string(),
@@ -645,7 +645,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             .await
             .map(|url| ShareResponse {
                 url,
-                id: interaction_id,
+                interaction_id,
                 context: None,
             })
     }

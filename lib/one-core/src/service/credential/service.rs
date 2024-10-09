@@ -454,7 +454,7 @@ impl CredentialService {
 
         let ShareResponse {
             url,
-            id: interaction_id,
+            interaction_id,
             context,
         } = exchange.share_credential(&credential, &format).await?;
 

@@ -1425,6 +1425,8 @@ pub struct CreateProofRequestBindingDTO {
     pub scan_to_verify: Option<ScanToVerifyRequestBindingDTO>,
     #[try_into(with_fn = convert_inner, infallible)]
     pub iso_mdl_engagement: Option<String>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub transport: Option<Vec<String>>,
 }
 
 #[derive(Into)]

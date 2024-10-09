@@ -613,7 +613,7 @@ async fn test_share_credential_success() {
         .returning(move |_, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
-                id: interaction_id,
+                interaction_id,
                 context: (),
             })
         });

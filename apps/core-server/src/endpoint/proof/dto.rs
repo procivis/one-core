@@ -55,6 +55,8 @@ pub struct CreateProofRequestRestDTO {
     pub scan_to_verify: Option<ScanToVerifyRequestRestDTO>,
     #[into(with_fn = convert_inner)]
     pub iso_mdl_engagement: Option<String>,
+    #[into(with_fn = convert_inner)]
+    pub transport: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]

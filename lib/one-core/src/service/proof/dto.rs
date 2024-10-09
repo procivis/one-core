@@ -21,6 +21,7 @@ pub struct CreateProofRequestDTO {
     pub verifier_key: Option<KeyId>,
     pub scan_to_verify: Option<ScanToVerifyRequestDTO>,
     pub iso_mdl_engagement: Option<String>,
+    pub transport: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -122,4 +123,9 @@ pub struct ProposeProofResponseDTO {
     pub proof_id: ProofId,
     pub interaction_id: InteractionId,
     pub url: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateProofInteractionData {
+    pub transport: Vec<String>,
 }
