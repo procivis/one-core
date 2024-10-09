@@ -14,10 +14,12 @@ use uuid::Uuid;
 
 #[derive(Debug, Default, Clone)]
 pub struct TestingCreateSchemaParams {
+    pub id: Option<CredentialSchemaId>,
     pub format: Option<String>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_type: Option<CredentialSchemaType>,
     pub allow_suspension: Option<bool>,
+    pub imported_source_url: Option<String>,
 }
 
 pub struct CredentialSchemasDB {
@@ -36,7 +38,6 @@ impl CredentialSchemasDB {
         revocation_method: &str,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
-        let id = Uuid::new_v4();
         let claim_schema = ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "firstName".to_string(),
@@ -64,9 +65,10 @@ impl CredentialSchemasDB {
             },
         ];
 
+        let id = params.id.unwrap_or(Uuid::new_v4().into());
         let credential_schema = CredentialSchema {
-            id: id.into(),
-            imported_source_url: "CORE_URL".to_string(),
+            id,
+            imported_source_url: params.imported_source_url.unwrap_or("CORE_URL".to_string()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),

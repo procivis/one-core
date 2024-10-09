@@ -473,8 +473,10 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 data_provider.get_history_repository(),
                 formatter_provider.clone(),
+                revocation_method_provider.clone(),
                 config.clone(),
                 providers.core_base_url.clone(),
+                client.clone(),
             ),
             proof_service: ProofService::new(
                 data_provider.get_proof_repository(),

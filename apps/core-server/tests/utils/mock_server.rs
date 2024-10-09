@@ -95,6 +95,15 @@ impl MockServer {
             .await;
     }
 
+    pub async fn ssi_credential_schema_endpoint(&self, id: impl Display, body: serde_json::Value) {
+        Mock::given(method(Method::GET))
+            .and(path(format!("/ssi/schema/v1/{id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .expect(1)
+            .mount(&self.mock)
+            .await;
+    }
+
     pub async fn temporary_issuer_connect(
         &self,
         credential_id: impl Display,

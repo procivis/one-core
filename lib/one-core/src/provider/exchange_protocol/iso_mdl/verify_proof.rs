@@ -5,7 +5,7 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId, DidValue};
 use time::OffsetDateTime;
 
 use super::common::to_cbor;
-use crate::common_mapper::{extracted_credential_to_model, get_or_create_did};
+use crate::common_mapper::{extracted_credential_to_model, get_or_create_did, NESTED_CLAIM_MARKER};
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -181,10 +181,22 @@ pub async fn validate_proof(
 
         let mut collected_proved_claims: Vec<ValidatedProofClaimDTO> = vec![];
         for requested_proof_claim in requested_proof_claims {
+            let (namespace, element_identifier) = requested_proof_claim
+                .schema
+                .key
+                .split_once(NESTED_CLAIM_MARKER)
+                .ok_or_else(|| {
+                    ServiceError::MappingError(format!(
+                        "Invalid requested claim key: {}",
+                        requested_proof_claim.schema.key
+                    ))
+                })?;
             let found = credential
                 .claims
                 .values
-                .get(&requested_proof_claim.schema.key);
+                .get(namespace)
+                .and_then(|elements| elements.as_object())
+                .and_then(|elements| elements.get(element_identifier));
 
             // missing optional claim
             if !requested_proof_claim.required && found.is_none() {
@@ -233,23 +245,29 @@ fn extract_matching_requested_schema(
     received_credential: &DetailCredential,
     remaining_requested_claims: &mut HashMap<CredentialSchemaId, Vec<ProofInputClaimSchema>>,
 ) -> Result<(CredentialSchemaId, Vec<ProofInputClaimSchema>), ServiceError> {
-    let (matching_credential_schema_id, matching_claim_schemas) = remaining_requested_claims
-        .iter()
-        .find(|(_, requested_claim_schemas)| {
-            requested_claim_schemas
-                .iter()
-                .filter(|schema| schema.required)
-                .all(|required_claim_schema| {
-                    received_credential
-                        .claims
-                        .values
-                        .iter()
-                        .any(|(key, _)| key == &required_claim_schema.schema.key)
-                })
-        })
-        .ok_or(ServiceError::ValidationError(
-            "Could not find matching requested credential schema".to_owned(),
-        ))?;
+    let (matching_credential_schema_id, matching_claim_schemas) =
+        remaining_requested_claims
+            .iter()
+            .find(|(_, requested_claim_schemas)| {
+                requested_claim_schemas
+                    .iter()
+                    .filter(|schema| schema.required)
+                    .all(|required_claim_schema| {
+                        received_credential.claims.values.iter().any(
+                            |(namespace, element_value)| {
+                                element_value.as_object().is_some_and(|value| {
+                                    value.keys().any(|key| {
+                                        format!("{namespace}{NESTED_CLAIM_MARKER}{key}")
+                                            == required_claim_schema.schema.key
+                                    })
+                                })
+                            },
+                        )
+                    })
+            })
+            .ok_or(ServiceError::ValidationError(
+                "Could not find matching requested credential schema".to_owned(),
+            ))?;
 
     let result = (
         matching_credential_schema_id.to_owned(),

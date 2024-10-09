@@ -131,6 +131,8 @@ impl OpenID4VCBLEVerifier {
                             nonce: nonce.clone(),
                             presentation_definition: presentation_definition.clone(),
                         };
+                        tracing::info!("presentation request: {request:#?}");
+
                         let presentation_submission = select! {
                             biased;
 

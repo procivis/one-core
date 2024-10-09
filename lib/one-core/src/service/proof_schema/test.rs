@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use mockall::predicate::*;
 use mockall::PredicateBooleanExt;
+use serde_json::json;
 use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -11,7 +12,7 @@ use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutType, WalletStorageTypeEnum,
+    GetCredentialSchemaList, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -19,8 +20,12 @@ use crate::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
     ProofSchema, ProofSchemaRelations,
 };
+use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::http_client::{Method, MockHttpClient, RequestBuilder, Response, StatusCode};
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -46,6 +51,7 @@ fn setup_service(
     credential_schema_repository: MockCredentialSchemaRepository,
     organisation_repository: MockOrganisationRepository,
     formatter_provider: MockCredentialFormatterProvider,
+    revocation_method_provider: MockRevocationMethodProvider,
 ) -> ProofSchemaService {
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -58,8 +64,10 @@ fn setup_service(
         organisation_repository: Arc::new(organisation_repository),
         history_repository: Arc::new(history_repository),
         formatter_provider: Arc::new(formatter_provider),
+        revocation_method_provider: Arc::new(revocation_method_provider),
         config: Arc::new(generic_config().core),
         base_url: Some("BASE_URL".to_string()),
+        client: Arc::new(MockHttpClient::new()),
     }
 }
 
@@ -94,6 +102,7 @@ async fn test_get_proof_schema_exists() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service.get_proof_schema(&proof_schema.id).await;
@@ -125,6 +134,7 @@ async fn test_get_proof_schema_deleted() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service.get_proof_schema(&proof_schema.id).await;
@@ -148,6 +158,7 @@ async fn test_get_proof_schema_missing() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service.get_proof_schema(&Uuid::new_v4().into()).await;
@@ -191,6 +202,7 @@ async fn test_get_proof_schema_list_success() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let query = GetProofSchemaQueryDTO {
@@ -228,6 +240,7 @@ async fn test_get_proof_schema_list_failure() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let query = GetProofSchemaQueryDTO {
@@ -285,6 +298,7 @@ async fn test_delete_proof_schema_success() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service.delete_proof_schema(&proof_schema_id).await;
@@ -321,6 +335,7 @@ async fn test_delete_proof_schema_failure() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service.delete_proof_schema(&Uuid::new_v4().into()).await;
@@ -456,6 +471,7 @@ async fn test_create_proof_schema_success() {
         credential_schema_repository,
         organisation_repository,
         formatter_provider,
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service.create_proof_schema(create_request).await;
@@ -601,6 +617,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
         credential_schema_repository,
         organisation_repository,
         formatter_provider,
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service.create_proof_schema(create_request).await;
@@ -762,6 +779,7 @@ async fn test_create_proof_schema_array_object_fail() {
         credential_schema_repository,
         organisation_repository,
         formatter_provider,
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service.create_proof_schema(create_request).await;
@@ -941,6 +959,7 @@ async fn test_create_proof_schema_array_success() {
         credential_schema_repository,
         organisation_repository,
         formatter_provider,
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service.create_proof_schema(create_request).await;
@@ -986,6 +1005,7 @@ async fn test_create_proof_schema_unique_name_error() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service.create_proof_schema(create_request).await;
@@ -1080,6 +1100,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
         credential_schema_repository,
         organisation_repository,
         formatter_provider,
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service
@@ -1113,6 +1134,7 @@ async fn test_create_proof_schema_no_claims() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service
@@ -1142,6 +1164,7 @@ async fn test_create_proof_schema_no_required_claims() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service
@@ -1174,6 +1197,7 @@ async fn test_create_proof_schema_duplicit_claims() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let claim_schema = CreateProofSchemaClaimRequestDTO {
@@ -1237,7 +1261,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         .expect_get_by_schema_id_and_organisation()
         .withf(move |schema_id, schema_type, org, relations| {
             schema_id == "iso-org-test123"
-                && *schema_type == CredentialSchemaType::Mdoc
+                && *schema_type == CredentialSchemaType::ProcivisOneSchema2024
                 && org == &organisation_id
                 && relations.claim_schemas.is_some()
         })
@@ -1247,6 +1271,16 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         .expect_create_credential_schema()
         .once()
         .returning(|_| Ok(Uuid::new_v4().into()));
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .once()
+        .returning(|_, _| {
+            Ok(GetCredentialSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -1277,7 +1311,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
                 required: true,
-                key: "root/name".to_string(),
+                key: "field".to_string(),
                 data_type: "STRING".to_string(),
                 claims: vec![],
                 array: false,
@@ -1285,14 +1319,14 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
             credential_schema: ImportProofSchemaCredentialSchemaDTO {
                 id: Uuid::new_v4().into(),
                 created_date: now,
-                imported_source_url: "CORE_URL".to_string(),
+                imported_source_url: "http://import.credential.schema".to_string(),
                 last_modified: now,
                 name: "test-credential-schema".to_string(),
-                format: "MDOC".to_string(),
+                format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
-                schema_type: CredentialSchemaType::Mdoc.into(),
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024.into(),
                 layout_type: None,
                 layout_properties: None,
             },
@@ -1300,14 +1334,82 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         }],
     };
 
+    let mut http_client = MockHttpClient::new();
+    http_client
+        .expect_get()
+        .once()
+        .with(eq("http://import.credential.schema"))
+        .returning(|url| {
+            let mut inner_client = MockHttpClient::new();
+            inner_client.expect_send().once().returning(|_, _, _, _| {
+                Ok(Response {
+                    body: json!({
+                        "createdDate": "2023-06-09T14:19:57.000Z",
+                        "lastModified": "2023-06-09T14:19:57.000Z",
+                        "format": "JWT",
+                        "id": Uuid::new_v4(),
+                        "importedSourceUrl": "http://import.credential.schema",
+                        "name": "test-credential-schema",
+                        "organisationId": Uuid::new_v4(),
+                        "revocationMethod": "NONE",
+                        "schemaId": "iso-org-test123",
+                        "schemaType": "ProcivisOneSchema2024",
+                        "walletStorageType": "HARDWARE",
+                        "allowSuspension": false,
+                        "claims": [{
+                            "array": false,
+                            "createdDate": "2023-06-09T14:19:57.000Z",
+                            "lastModified": "2023-06-09T14:19:57.000Z",
+                            "datatype": "STRING",
+                            "id": Uuid::new_v4(),
+                            "key": "field",
+                            "required": true
+                        }]
+
+                    })
+                    .to_string()
+                    .as_bytes()
+                    .to_vec(),
+                    headers: Default::default(),
+                    status: StatusCode(200),
+                })
+            });
+
+            RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
+        });
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_get_capabilities()
+        .returning(|| FormatterCapabilities {
+            revocation_methods: vec!["NONE".to_string()],
+            ..Default::default()
+        });
+
+    let formatter = Arc::new(formatter);
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_formatter()
+        .with(eq("JWT"))
+        .returning(move |_| Some(formatter.clone()));
+
+    let revocation_method = MockRevocationMethod::new();
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .with(eq("NONE"))
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
     let service = ProofSchemaService {
         proof_schema_repository: Arc::new(proof_schema_repository),
         credential_schema_repository: Arc::new(credential_schema_repository),
         organisation_repository: Arc::new(organisation_repository),
         history_repository: Arc::new(history_repository),
-        formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
+        formatter_provider: Arc::new(formatter_provider),
+        revocation_method_provider: Arc::new(revocation_method_provider),
         config: Arc::new(generic_config().core),
         base_url: None,
+        client: Arc::new(http_client),
     };
 
     service
@@ -1356,7 +1458,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         .expect_get_by_schema_id_and_organisation()
         .withf(move |schema_id, schema_type, org, relations| {
             schema_id == "iso-org-test123"
-                && *schema_type == CredentialSchemaType::Mdoc
+                && *schema_type == CredentialSchemaType::ProcivisOneSchema2024
                 && org == &organisation_id
                 && relations.claim_schemas.is_some()
         })
@@ -1371,6 +1473,16 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         .expect_create_credential_schema()
         .once()
         .returning(|_| Ok(Uuid::new_v4().into()));
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .once()
+        .returning(|_, _| {
+            Ok(GetCredentialSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -1401,7 +1513,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
                 required: true,
-                key: "root/name".to_string(),
+                key: "field".to_string(),
                 data_type: "STRING".to_string(),
                 claims: vec![],
                 array: false,
@@ -1409,14 +1521,14 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
             credential_schema: ImportProofSchemaCredentialSchemaDTO {
                 id: Uuid::new_v4().into(),
                 created_date: now,
-                imported_source_url: "CORE_URL".to_string(),
+                imported_source_url: "http://import.credential.schema".to_string(),
                 last_modified: now,
                 name: "test-credential-schema".to_string(),
-                format: "MDOC".to_string(),
+                format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
-                schema_type: CredentialSchemaType::Mdoc.into(),
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024.into(),
                 layout_type: None,
                 layout_properties: None,
             },
@@ -1424,199 +1536,82 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         }],
     };
 
-    let service = ProofSchemaService {
-        proof_schema_repository: Arc::new(proof_schema_repository),
-        credential_schema_repository: Arc::new(credential_schema_repository),
-        organisation_repository: Arc::new(organisation_repository),
-        history_repository: Arc::new(history_repository),
-        formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
-        config: Arc::new(generic_config().core),
-        base_url: None,
-    };
+    let mut http_client = MockHttpClient::new();
+    http_client
+        .expect_get()
+        .once()
+        .with(eq("http://import.credential.schema"))
+        .returning(|url| {
+            let mut inner_client = MockHttpClient::new();
+            inner_client.expect_send().once().returning(|_, _, _, _| {
+                Ok(Response {
+                    body: json!({
+                        "createdDate": "2023-06-09T14:19:57.000Z",
+                        "lastModified": "2023-06-09T14:19:57.000Z",
+                        "format": "JWT",
+                        "id": Uuid::new_v4(),
+                        "importedSourceUrl": "http://import.credential.schema",
+                        "name": "test-credential-schema",
+                        "organisationId": Uuid::new_v4(),
+                        "revocationMethod": "NONE",
+                        "schemaId": "iso-org-test123",
+                        "schemaType": "ProcivisOneSchema2024",
+                        "walletStorageType": "HARDWARE",
+                        "allowSuspension": false,
+                        "claims": [{
+                            "array": false,
+                            "createdDate": "2023-06-09T14:19:57.000Z",
+                            "lastModified": "2023-06-09T14:19:57.000Z",
+                            "datatype": "STRING",
+                            "id": Uuid::new_v4(),
+                            "key": "field",
+                            "required": true
+                        }]
 
-    service
-        .import_proof_schema(ImportProofSchemaRequestDTO {
-            schema,
-            organisation_id,
-        })
-        .await
-        .unwrap();
-}
+                    })
+                    .to_string()
+                    .as_bytes()
+                    .to_vec(),
+                    headers: Default::default(),
+                    status: StatusCode(200),
+                })
+            });
 
-#[tokio::test]
-async fn test_import_proof_ok_existing_credential_schema_but_missing_claims() {
-    let now = OffsetDateTime::now_utc();
-    let organisation_id: OrganisationId = Uuid::new_v4().into();
-
-    let mut organisation_repository = MockOrganisationRepository::new();
-    organisation_repository
-        .expect_get_organisation()
-        .with(eq(organisation_id), always())
-        .return_once(move |_, _| {
-            Ok(Some(Organisation {
-                id: organisation_id,
-                created_date: now,
-                last_modified: now,
-            }))
+            RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
         });
 
-    let mut proof_schema_repository = MockProofSchemaRepository::new();
-    proof_schema_repository
-        .expect_get_proof_schema_list()
-        .returning(|_| {
-            Ok(GetProofSchemaList {
-                values: vec![],
-                total_pages: 0,
-                total_items: 0,
-            })
-        });
-    proof_schema_repository
-        .expect_create_proof_schema()
-        .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
-    let mut credential_schema_repository = MockCredentialSchemaRepository::new();
-
-    let existing_schema_id = Uuid::new_v4().into();
-    let existing_schema = CredentialSchema {
-        id: existing_schema_id,
-        deleted_at: None,
-        imported_source_url: "CORE_URL".to_string(),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-        name: "test-credential-schema".to_string(),
-        format: "MDOC".to_string(),
-        revocation_method: "NONE".to_string(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        schema_id: "iso-org-test123".to_string(),
-        schema_type: CredentialSchemaType::Mdoc,
-        claim_schemas: Some(vec![CredentialSchemaClaim {
-            schema: ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "root/name".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: get_dummy_date(),
-                array: false,
-                last_modified: get_dummy_date(),
-            },
-            required: true,
-        }]),
-        organisation: None,
-        allow_suspension: true,
-    };
-
-    let existing_schema_clone = existing_schema.clone();
-    credential_schema_repository
-        .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, schema_type, org, relations| {
-            schema_id == "iso-org-test123"
-                && *schema_type == CredentialSchemaType::Mdoc
-                && org == &organisation_id
-                && relations.claim_schemas.is_some()
-        })
-        .once()
-        .returning(move |_, _, _, _| Ok(Some(existing_schema_clone.clone())));
-    let existing_schema_clone = existing_schema.clone();
-    credential_schema_repository
-        .expect_update_credential_schema()
-        .withf(move |schema| {
-            schema.id == existing_schema_id
-                && schema
-                    .claim_schemas
-                    .as_ref()
-                    .is_some_and(|claim_schemas| claim_schemas.len() == 1)
-        })
-        .once()
-        .returning(|_| Ok(()));
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .with(eq(existing_schema_id), always())
-        .once()
-        .returning(move |_, _| {
-            let mut result = existing_schema_clone.clone();
-            result
-                .claim_schemas
-                .as_mut()
-                .unwrap()
-                .push(CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: "root/lastname".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: get_dummy_date(),
-                        array: false,
-                        last_modified: get_dummy_date(),
-                    },
-                    required: true,
-                });
-
-            Ok(Some(result))
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_get_capabilities()
+        .returning(|| FormatterCapabilities {
+            revocation_methods: vec!["NONE".to_string()],
+            ..Default::default()
         });
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|h| {
-            h.entity_type == HistoryEntityType::ProofSchema && h.action == HistoryAction::Imported
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
+    let formatter = Arc::new(formatter);
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_formatter()
+        .with(eq("JWT"))
+        .returning(move |_| Some(formatter.clone()));
 
-    let schema = ImportProofSchemaDTO {
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        imported_source_url: "CORE_URL".to_string(),
-        last_modified: now,
-        name: "test-proof-schema".to_string(),
-        organisation_id,
-        expire_duration: 1000,
-        proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
-            claim_schemas: vec![
-                ImportProofSchemaClaimSchemaDTO {
-                    id: Uuid::new_v4().into(),
-                    required: true,
-                    key: "root/name".to_string(),
-                    data_type: "STRING".to_string(),
-                    claims: vec![],
-                    array: false,
-                },
-                ImportProofSchemaClaimSchemaDTO {
-                    id: Uuid::new_v4().into(),
-                    required: true,
-                    key: "root/lastname".to_string(),
-                    data_type: "STRING".to_string(),
-                    claims: vec![],
-                    array: false,
-                },
-            ],
-            credential_schema: ImportProofSchemaCredentialSchemaDTO {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                imported_source_url: "CORE_URL".to_string(),
-                last_modified: now,
-                name: "test-credential-schema".to_string(),
-                format: "MDOC".to_string(),
-                revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
-                schema_id: "iso-org-test123".to_string(),
-                schema_type: CredentialSchemaType::Mdoc.into(),
-                layout_type: None,
-                layout_properties: None,
-            },
-            validity_constraint: None,
-        }],
-    };
+    let revocation_method = MockRevocationMethod::new();
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .with(eq("NONE"))
+        .return_once(move |_| Some(Arc::new(revocation_method)));
 
     let service = ProofSchemaService {
         proof_schema_repository: Arc::new(proof_schema_repository),
         credential_schema_repository: Arc::new(credential_schema_repository),
         organisation_repository: Arc::new(organisation_repository),
         history_repository: Arc::new(history_repository),
-        formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
+        formatter_provider: Arc::new(formatter_provider),
+        revocation_method_provider: Arc::new(revocation_method_provider),
         config: Arc::new(generic_config().core),
         base_url: None,
+        client: Arc::new(http_client),
     };
 
     service
@@ -1725,9 +1720,16 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
                 required: true,
-                key: "root/name".to_string(),
-                data_type: "STRING".to_string(),
-                claims: vec![],
+                key: "root".to_string(),
+                data_type: "OBJECT".to_string(),
+                claims: vec![ImportProofSchemaClaimSchemaDTO {
+                    id: Uuid::new_v4().into(),
+                    required: true,
+                    key: "name".to_string(),
+                    data_type: "STRING".to_string(),
+                    claims: vec![],
+                    array: false,
+                }],
                 array: false,
             }],
             credential_schema: ImportProofSchemaCredentialSchemaDTO {
@@ -1748,14 +1750,32 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         }],
     };
 
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_get_capabilities()
+        .returning(|| FormatterCapabilities {
+            revocation_methods: vec!["NONE".to_string()],
+            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
+            selective_disclosure: vec!["SECOND_LEVEL".to_string()],
+            ..Default::default()
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_formatter()
+        .with(eq("MDOC"))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
     let service = ProofSchemaService {
         proof_schema_repository: Arc::new(proof_schema_repository),
         credential_schema_repository: Arc::new(credential_schema_repository),
         organisation_repository: Arc::new(organisation_repository),
         history_repository: Arc::new(history_repository),
-        formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
+        formatter_provider: Arc::new(formatter_provider),
+        revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
         config: Arc::new(generic_config().core),
         base_url: None,
+        client: Arc::new(MockHttpClient::new()),
     };
 
     service
@@ -1836,8 +1856,10 @@ async fn test_import_proof_failed_existing_proof_schema() {
         organisation_repository: Arc::new(organisation_repository),
         history_repository: Arc::new(MockHistoryRepository::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
+        revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
         config: Arc::new(generic_config().core),
         base_url: None,
+        client: Arc::new(MockHttpClient::new()),
     };
 
     let result = service
@@ -1910,6 +1932,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
         MockCredentialSchemaRepository::default(),
         organisation_repo,
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let err = service
@@ -1984,6 +2007,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
         MockCredentialSchemaRepository::default(),
         organisation_repo,
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let err = service
@@ -2105,6 +2129,7 @@ async fn test_get_proof_schema_success_nested_claims() {
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
     );
 
     let result = service.get_proof_schema(&proof_schema.id).await.unwrap();
@@ -2326,6 +2351,7 @@ async fn test_create_proof_schema_verify_nested_generic(
         credential_schema_repository,
         organisation_repository,
         formatter_provider,
+        MockRevocationMethodProvider::default(),
     );
 
     service.create_proof_schema(create_request).await
