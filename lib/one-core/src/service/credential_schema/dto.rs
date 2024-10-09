@@ -199,10 +199,13 @@ pub struct ImportCredentialSchemaRequestDTO {
     pub schema: ImportCredentialSchemaRequestSchemaDTO,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub id: Uuid,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: String,
@@ -218,28 +221,39 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub allow_suspension: Option<bool>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaClaimSchemaDTO {
     pub id: Uuid,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub key: String,
     pub datatype: String,
     pub required: bool,
     pub array: Option<bool>,
+    #[serde(default)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, Deserialize)]
 #[into(CredentialSchemaLayoutPropertiesRequestDTO)]
+#[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaLayoutPropertiesDTO {
+    #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub background: Option<CredentialSchemaBackgroundPropertiesRequestDTO>,
+    #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub logo: Option<CredentialSchemaLogoPropertiesRequestDTO>,
+    #[serde(default)]
     pub primary_attribute: Option<String>,
+    #[serde(default)]
     pub secondary_attribute: Option<String>,
+    #[serde(default)]
     pub picture_attribute: Option<String>,
+    #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub code: Option<CredentialSchemaCodePropertiesRequestDTO>,
 }

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -15,7 +15,6 @@ use super::common::{
 use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::common_mapper::{encode_cbor_base64, NESTED_CLAIM_MARKER};
-use crate::config::core_config::{self, DatatypeType};
 use crate::model::proof::{Proof, ProofState, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
@@ -46,7 +45,6 @@ pub(crate) struct VerifierSession {
 pub(crate) fn setup_verifier_session(
     device_engagement: EmbeddedCbor<DeviceEngagement>,
     schema: &ProofSchema,
-    config: &core_config::CoreConfig,
 ) -> Result<VerifierSession, ExchangeProtocolError> {
     let key_pair = KeyAgreement::<EReaderKey>::new();
 
@@ -76,7 +74,7 @@ pub(crate) fn setup_verifier_session(
             .context("missing input_schemas")
             .map_err(ExchangeProtocolError::Other)?
             .iter()
-            .map(|schema| proof_input_schema_to_doc_request(schema.to_owned(), config))
+            .map(|schema| proof_input_schema_to_doc_request(schema.to_owned()))
             .collect::<anyhow::Result<_>>()
             .map_err(ExchangeProtocolError::Other)?,
     };
@@ -119,7 +117,7 @@ pub(crate) async fn start_client(
     ble.schedule(
         *ISO_MDL_FLOW,
         move |_, central, _| async move {
-            if let Err(_error) = verifier_flow(
+            if let Err(error) = verifier_flow(
                 ble_options,
                 verifier_session,
                 &proof,
@@ -134,6 +132,7 @@ pub(crate) async fn start_client(
             )
             .await
             {
+                tracing::info!("mDL verifier failure: {error:#?}");
                 let _ = proof_repository
                     .update_proof(update_proof_request(proof.id, ProofStateEnum::Error))
                     .await;
@@ -141,6 +140,7 @@ pub(crate) async fn start_client(
             }
         },
         move |central, _| async move {
+            tracing::info!("Cancelling mDL verifier flow");
             if let Ok(true) = central.is_scanning().await {
                 let _ = central.stop_scan().await;
             }
@@ -278,9 +278,10 @@ async fn process_proof(
         (false, true) => ProofStateEnum::Rejected,
         (_, _) => ProofStateEnum::Error,
     };
+    tracing::info!("mDL verification state: {new_state}");
 
     if new_state == ProofStateEnum::Accepted {
-        if let Err(_error) = fill_proof_claims_and_credentials(
+        if let Err(error) = fill_proof_claims_and_credentials(
             device_response,
             proof,
             verifier_session.session_transcript,
@@ -293,7 +294,7 @@ async fn process_proof(
         )
         .await
         {
-            // todo: log error?
+            tracing::info!("mDL proof parsing failure: {error:#?}");
             new_state = ProofStateEnum::Error;
         }
     }
@@ -504,38 +505,25 @@ async fn read_response(
     }
 }
 
-fn proof_input_schema_to_doc_request(
-    input: ProofInputSchema,
-    config: &core_config::CoreConfig,
-) -> anyhow::Result<DocRequest> {
+fn proof_input_schema_to_doc_request(input: ProofInputSchema) -> anyhow::Result<DocRequest> {
+    let claim_schemas = input.claim_schemas.context("claim_schemas is missing")?;
+
     let credential_schema = input
         .credential_schema
         .context("credential_schema is missing")?;
 
-    let claim_schemas = credential_schema
-        .claim_schemas
-        .context("claim_schemas is missing")?;
-
-    let object_datatypes = config
-        .datatype
-        .iter()
-        .filter_map(|(key, field)| (field.r#type == DatatypeType::Object).then_some(key))
-        .collect::<HashSet<_>>();
-
     let mut name_spaces = HashMap::new();
-
-    // TODO: revisit proof-schema claims nesting representation
-    for claim_schema in claim_schemas.iter().filter(|schema| {
-        !object_datatypes.contains(&schema.schema.data_type.as_str())
-            || schema.schema.key.contains(NESTED_CLAIM_MARKER)
-    }) {
-        let (namespace, element_identifier) = claim_schema
+    for claim_schema in claim_schemas
+        .iter()
+        .filter(|schema| schema.schema.key.contains(NESTED_CLAIM_MARKER))
+    {
+        let (namespace, claim_path) = claim_schema
             .schema
             .key
             .split_once(NESTED_CLAIM_MARKER)
             .context("missing root object")?;
 
-        let element_identifier: String = element_identifier
+        let element_identifier: String = claim_path
             .chars()
             .take_while(|c| *c != NESTED_CLAIM_MARKER)
             .collect();

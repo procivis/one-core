@@ -1,13 +1,12 @@
 use shared_types::CredentialSchemaId;
 
-use super::mapper::from_create_request_with_id;
+use super::import::import_credential_schema;
 use crate::common_mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::history::HistoryAction;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
-use crate::service::common_mapper::regenerate_credential_schema_uuids;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
     CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
@@ -190,51 +189,15 @@ impl CredentialSchemaService {
                 BusinessLogicError::MissingOrganisation(request.organisation_id),
             ))?;
 
-        let credential_schema_id = request.schema.id.into();
-        let create_request = request.schema.to_owned().into();
-
-        super::validator::validate_create_request(
-            &create_request,
+        let credential_schema = import_credential_schema(
+            request.schema,
+            organisation,
             &self.config,
+            &*self.credential_schema_repository,
             &*self.formatter_provider,
             &*self.revocation_method_provider,
-            true,
-        )?;
-
-        super::validator::credential_schema_already_exists(
-            &*self.credential_schema_repository,
-            &create_request.name,
-            create_request.schema_id.clone(),
-            organisation.id,
         )
         .await?;
-
-        super::validator::check_claims_presence_in_layout_properties(&create_request)?;
-        super::validator::check_background_properties(&create_request)?;
-        super::validator::check_logo_properties(&create_request)?;
-
-        let format_type = &self
-            .config
-            .format
-            .get_fields(&request.schema.format)?
-            .r#type;
-        let credential_schema = from_create_request_with_id(
-            credential_schema_id,
-            create_request,
-            organisation,
-            "", // importing credential schema will always contain the schema_id
-            format_type,
-            Some(request.schema.schema_type.to_owned().into()),
-            Some(request.schema.imported_source_url),
-        )?;
-
-        let credential_schema = regenerate_credential_schema_uuids(credential_schema);
-
-        let result = self
-            .credential_schema_repository
-            .create_credential_schema(credential_schema.to_owned())
-            .await
-            .map_err(ServiceError::from)?;
 
         let _ = log_history_event_credential_schema(
             &*self.history_repository,
@@ -243,7 +206,7 @@ impl CredentialSchemaService {
         )
         .await;
 
-        Ok(result)
+        Ok(credential_schema.id)
     }
 
     /// Creates share credential schema URL

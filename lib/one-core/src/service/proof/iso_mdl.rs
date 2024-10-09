@@ -42,7 +42,7 @@ impl ProofService {
             .ok_or_else(|| ServiceError::Other("no device retrival method".into()))?
             .clone();
 
-        let verifier_session = setup_verifier_session(device_engagement, &schema, &self.config)?;
+        let verifier_session = setup_verifier_session(device_engagement, &schema)?;
 
         let now = OffsetDateTime::now_utc();
         let proof = Proof {

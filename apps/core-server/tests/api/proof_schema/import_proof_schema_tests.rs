@@ -7,13 +7,71 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 
 #[tokio::test]
 async fn test_import_proof_schema_ok() {
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
+
+    let (context, source_organisation) = TestContext::new_with_organisation().await;
+    let original_credential_schema_id = Uuid::new_v4().into();
+    let original_credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test-credential-schema",
+            &source_organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                id: Some(original_credential_schema_id),
+                imported_source_url: Some(format!(
+                    "{}/ssi/schema/v1/{}",
+                    context.server_mock.uri(),
+                    original_credential_schema_id
+                )),
+                allow_suspension: Some(false),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let mut claim_schemas = original_credential_schema.claim_schemas.clone().unwrap();
+
+    context
+        .server_mock
+        .ssi_credential_schema_endpoint(
+            original_credential_schema_id,
+            json!({
+              "createdDate": now,
+              "lastModified": now,
+              "format": original_credential_schema.format,
+              "id": original_credential_schema_id,
+              "importedSourceUrl": original_credential_schema.imported_source_url,
+              "name": original_credential_schema.name,
+              "organisationId": source_organisation.id,
+              "revocationMethod": original_credential_schema.revocation_method,
+              "schemaId": original_credential_schema.schema_id,
+              "schemaType": original_credential_schema.schema_type,
+              "walletStorageType": original_credential_schema.wallet_storage_type,
+              "allowSuspension": original_credential_schema.allow_suspension,
+              "claims": claim_schemas.iter().map(|schema| json!({
+                  "array": schema.schema.array,
+                  "createdDate": now,
+                  "lastModified": now,
+                  "datatype": schema.schema.data_type,
+                  "id": schema.schema.id,
+                  "key": schema.schema.key,
+                  "required": schema.required
+              })).collect::<Vec<_>>()
+            }),
+        )
+        .await;
+
+    let requested_claim_schema = claim_schemas.swap_remove(0);
+
+    let target_organisation = context.db.organisations.create().await;
 
     let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
-    let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
 
     let proof_schema = json!({
         "id": old_proof_schema_id,
@@ -28,30 +86,21 @@ async fn test_import_proof_schema_ok() {
                 "claimSchemas": [{
                     "id": Uuid::new_v4(),
                     "required": true,
-                    "key": "root/name",
-                    "dataType": "STRING",
-                    "claims": [],
-                    "array": false,
-                },
-                {
-                    "id": Uuid::new_v4(),
-                    "required": true,
-                    "key": "root/age",
-                    "dataType": "NUMBER",
-                    "claims": [],
+                    "key": requested_claim_schema.schema.key,
+                    "dataType": requested_claim_schema.schema.data_type,
                     "array": false,
                 }],
                 "credentialSchema": {
                     "id": Uuid::new_v4(),
                     "createdDate": now,
                     "lastModified": now,
-                    "importedSourceUrl": "test",
-                    "name": "test-credential-schema",
-                    "format": "MDOC",
-                    "revocationMethod": "NONE",
-                    "walletStorageType": "HARDWARE",
-                    "schemaId": "iso-org-test123",
-                    "schemaType": "ProcivisOneSchema2024",
+                    "importedSourceUrl": original_credential_schema.imported_source_url,
+                    "name": original_credential_schema.name,
+                    "format": original_credential_schema.format,
+                    "revocationMethod": original_credential_schema.format,
+                    "walletStorageType": original_credential_schema.wallet_storage_type,
+                    "schemaId": original_credential_schema.schema_id,
+                    "schemaType": original_credential_schema.schema_type,
                 }
             }
         ]
@@ -60,7 +109,7 @@ async fn test_import_proof_schema_ok() {
     let resp = context
         .api
         .proof_schemas
-        .import(proof_schema, organisation.id)
+        .import(proof_schema, target_organisation.id)
         .await;
 
     assert_eq!(201, resp.status());
@@ -85,9 +134,8 @@ async fn test_import_proof_schema_ok() {
     assert_eq!("test-credential-schema", credential_schema.name);
 
     let claims = proof_input_schemas[0].claim_schemas.as_ref().unwrap();
-    assert_eq!(2, claims.len());
-    assert_eq!("root/name", &claims[0].schema.key);
-    assert_eq!("root/age", &claims[1].schema.key);
+    assert_eq!(1, claims.len());
+    assert_eq!(requested_claim_schema.schema.key, claims[0].schema.key);
 }
 
 #[tokio::test]
@@ -97,7 +145,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
     let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
 
-    let credential_schema = context
+    let original_credential_schema = context
         .db
         .credential_schemas
         .create(
@@ -108,10 +156,10 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         )
         .await;
 
-    let mut claim_schema = credential_schema.claim_schemas.unwrap();
-    assert_eq!(2, claim_schema.len());
+    let mut claim_schemas = original_credential_schema.claim_schemas.clone().unwrap();
+    assert_eq!(2, claim_schemas.len());
 
-    let claim_schema = claim_schema.swap_remove(0);
+    let requested_claim_schema = claim_schemas.swap_remove(0);
 
     let proof_schema = json!({
         "id": old_proof_schema_id,
@@ -124,40 +172,24 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         "proofInputSchemas": [
             {
                 "claimSchemas": [{
-                    "id": Uuid::new_v4(),
-                    "required": true,
-                    "key": "root/name",
-                    "dataType": "STRING",
-                    "claims": [],
-                    "array": false,
-                },
-                {
-                    "id": Uuid::new_v4(),
-                    "required": true,
-                    "key": "root/age",
-                    "dataType": "NUMBER",
-                    "claims": [],
-                    "array": false,
-                },
-                {
-                    "id": claim_schema.schema.id,
-                    "required": claim_schema.required,
-                    "key": claim_schema.schema.key,
-                    "dataType": claim_schema.schema.data_type,
+                    "id": requested_claim_schema.schema.id,
+                    "required": requested_claim_schema.required,
+                    "key": requested_claim_schema.schema.key,
+                    "dataType": requested_claim_schema.schema.data_type,
                     "claims": [],
                     "array": false,
                 }],
                 "credentialSchema": {
-                    "id": credential_schema.id,
+                    "id": original_credential_schema.id,
                     "createdDate": now,
                     "lastModified": now,
-                    "importedSourceUrl": "TEST",
-                    "name": credential_schema.name,
-                    "format": credential_schema.format,
-                    "revocationMethod": credential_schema.format,
-                    "walletStorageType": credential_schema.wallet_storage_type,
-                    "schemaId": credential_schema.schema_id,
-                    "schemaType": credential_schema.schema_type,
+                    "importedSourceUrl": "invalid_should_not_be_needed",
+                    "name": original_credential_schema.name,
+                    "format": original_credential_schema.format,
+                    "revocationMethod": original_credential_schema.format,
+                    "walletStorageType": original_credential_schema.wallet_storage_type,
+                    "schemaId": original_credential_schema.schema_id,
+                    "schemaType": original_credential_schema.schema_type,
                 }
             }
         ]
@@ -196,14 +228,12 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         .iter()
         .map(|c| c.schema.key.as_str())
         .collect();
-    assert_eq!(4, claim_schemas.len());
-    assert!(claim_schemas.contains("root/name"));
-    assert!(claim_schemas.contains("root/age"));
-    assert!(claim_schemas.contains(claim_schema.schema.key.as_str()));
+    assert_eq!(
+        original_credential_schema.claim_schemas.unwrap().len(),
+        claim_schemas.len()
+    );
 
     let claims = proof_input_schemas[0].claim_schemas.as_ref().unwrap();
-    assert_eq!(3, claims.len());
-    assert_eq!("root/name", &claims[0].schema.key);
-    assert_eq!("root/age", &claims[1].schema.key);
-    assert_eq!("firstName", &claims[2].schema.key);
+    assert_eq!(1, claims.len());
+    assert_eq!(requested_claim_schema.schema.key, claims[0].schema.key);
 }
