@@ -133,10 +133,9 @@ tests:mariadb:
   extends:
     - .cargo_tests
   variables:
-    MYSQL_PASSWORD: core_test
-    MYSQL_USER: core_user
     MYSQL_DATABASE: core_db
-    ONE_app__databaseUrl: "mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mariadb:3306/${MYSQL_DATABASE}"
+    MARIADB_ROOT_PASSWORD: root_password
+    ONE_app__databaseUrl: "mysql://root:${MARIADB_ROOT_PASSWORD}@mariadb:3306/${MYSQL_DATABASE}"
   services:
     - alias: mariadb
       name: mariadb:10.9
