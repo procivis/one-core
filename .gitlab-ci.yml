@@ -1,4 +1,4 @@
-image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.81.0-0.1
+image: $CI_REGISTRY/procivis/one/one-operations/core-base:1.81.0-0.1
 
 include:
   - project: "procivis/one/one-operations"
@@ -209,7 +209,7 @@ publish:
 
 sdk:ios:bitrise:
   stage: sdk_build
-  image: registry.gitlab.procivis.ch/procivis/one/one-operations/bitrise-builder:0.1.0
+  image: $CI_REGISTRY/procivis/one/one-operations/bitrise-builder:0.2.0
   needs: []
   when: manual
   variables:
@@ -230,7 +230,7 @@ sdk:ios:bitrise:
       - artifacts
     expire_in: 10 days
 
-sdk:android:bitrise:
+sdk:android:build:
   services:
     - docker:dind
   stage: sdk_build
@@ -249,7 +249,7 @@ sdk:upload_artifacts:
   stage: sdk_artifact
   image: mcr.microsoft.com/azure-cli
   needs:
-    - job: sdk:android:bitrise
+    - job: sdk:android:build
       artifacts: true
     - job: sdk:ios:bitrise
       artifacts: true
