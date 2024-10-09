@@ -44,6 +44,7 @@ stages:
   - sdk_build
   - sdk_artifact
   - e2e_tests
+  - api_tests
   - github
 
 .app_settings: &app_settings
@@ -531,3 +532,21 @@ github:release:
     - job: github:push
     - job: dtrack:upload-bom
       artifacts: true
+
+
+tests:api:
+  stage: api_tests
+  needs:
+    - job: deploy:dev
+  variables:
+    API_TEST_RUN_CORE: true
+    API_TEST_RUN_BFF: false
+    ALLOW_FAILURES: false
+    THREADS: 1
+    LOOP_COUNT: 1
+  trigger:
+    project: procivis/one/one-performance-test
+    branch: main
+    strategy: depend
+  extends:
+    - .only_main_or_tag
