@@ -143,6 +143,11 @@ impl ExchangeProtocolImpl for OpenID4VC {
     async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
         if proof.transport == TransportType::Ble.to_string() {
             self.openid_ble.reject_proof(proof).await
+        } else if proof.transport == TransportType::Mqtt.to_string() {
+            let client = self.openid_mqtt.as_ref().ok_or_else(|| {
+                ExchangeProtocolError::Failed("MQTT client not configured".to_string())
+            })?;
+            client.reject_proof(proof).await
         } else {
             self.openid_http.reject_proof(proof).await
         }

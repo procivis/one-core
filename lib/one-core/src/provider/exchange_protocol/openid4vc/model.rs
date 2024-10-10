@@ -93,8 +93,18 @@ pub struct MQTTSessionKeys {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MQTTOpenID4VPInteractionData {
+    pub broker_url: String,
+    pub broker_port: u16,
+    pub client_id: String,
+    pub nonce: String,
     pub session_keys: MQTTSessionKeys,
     pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MQTTOpenId4VpResponse {
+    pub vp_token: String,
+    pub presentation_submission: PresentationSubmissionMappingDTO,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

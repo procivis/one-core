@@ -1,12 +1,18 @@
 use std::sync::{Arc, Mutex};
 
+use mockall::predicate::eq;
 use serde_json::json;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::model::interaction::Interaction;
+use crate::model::proof::Proof;
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::mapper::parse_identity_request;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, OpenID4VPPresentationDefinition,
+    InvitationResponseDTO, MQTTOpenID4VPInteractionData, MQTTSessionKeys,
+    OpenID4VPPresentationDefinition,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest;
 use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::{
@@ -16,6 +22,7 @@ use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncrypti
 use crate::provider::exchange_protocol::{
     ExchangeProtocolImpl, MockHandleInvitationOperations, MockStorageProxy,
 };
+use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::mqtt_client::{MockMqttClient, MockMqttTopic};
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
@@ -29,6 +36,8 @@ struct TestInputs<'a> {
     pub mqtt_client: MockMqttClient,
     pub interaction_repository: MockInteractionRepository,
     pub proof_repository: MockProofRepository,
+    pub formatter_provider: MockCredentialFormatterProvider,
+    pub key_provider: MockKeyProvider,
 }
 
 fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
@@ -47,6 +56,8 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
         },
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.proof_repository),
+        Arc::new(inputs.formatter_provider),
+        Arc::new(inputs.key_provider),
     )
 }
 
@@ -187,7 +198,7 @@ async fn test_handle_invitation_success() {
     let handle_invitation_operations_proxy = Arc::new(MockHandleInvitationOperations::default());
 
     let valid =
-        format!("openid4vp://proof?brokerUrl=mqtt://somewhere.com:1234&key={verifier_public_key}")
+        format!("openid4vp://proof?brokerUrl=mqtt://somewhere.com:1234&key={verifier_public_key}&clientId=123&nonce=456")
             .parse()
             .unwrap();
 
@@ -208,4 +219,86 @@ async fn test_handle_invitation_success() {
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
+}
+
+#[tokio::test]
+async fn test_presentation_reject_success() {
+    let (verifier_key, _verifier_public_key) = generate_verifier_key();
+
+    let holder_session_keys = generate_session_keys(verifier_key.public_key_bytes()).unwrap();
+
+    let mut reject_topic = MockMqttTopic::default();
+    reject_topic.expect_send().return_once(move |data| {
+        let verifier_encryption = generate_verifier_encryption(
+            verifier_key,
+            IdentityRequest {
+                key: holder_session_keys.public_key,
+                nonce: holder_session_keys.nonce,
+            },
+        );
+
+        let timestamp: i64 = verifier_encryption.decrypt(&data).unwrap();
+        let now = OffsetDateTime::now_utc();
+        let timestamp_date = OffsetDateTime::from_unix_timestamp(timestamp).unwrap();
+        let diff = now - timestamp_date;
+        assert!(diff < Duration::minutes(5));
+
+        Ok(())
+    });
+
+    let mut mqtt_client = MockMqttClient::default();
+
+    let proof_id = Uuid::new_v4();
+    let expected_url = format!("/proof/{proof_id}/presentation-submission/reject");
+    let broker_url = "test_url".to_string();
+    let broker_port = 1234;
+
+    mqtt_client
+        .expect_subscribe()
+        .with(eq(broker_url.clone()), eq(broker_port), eq(expected_url))
+        .return_once(move |_, _, _| Ok(Box::new(reject_topic)));
+
+    let interaction_data = MQTTOpenID4VPInteractionData {
+        broker_url,
+        broker_port,
+        client_id: "client_id".to_string(),
+        nonce: "nonce".to_string(),
+        session_keys: MQTTSessionKeys {
+            public_key: [0; 32],
+            receiver_key: holder_session_keys.receiver_key,
+            sender_key: holder_session_keys.sender_key,
+            nonce: holder_session_keys.nonce,
+        },
+        presentation_definition: None,
+    };
+
+    let now = OffsetDateTime::now_utc();
+    let proof = Proof {
+        id: proof_id.into(),
+        created_date: now,
+        last_modified: now,
+        issuance_date: now,
+        exchange: "OPENID4VC".to_string(),
+        transport: "MQTT".to_string(),
+        redirect_uri: None,
+        state: None,
+        schema: None,
+        claims: None,
+        verifier_did: None,
+        holder_did: None,
+        verifier_key: None,
+        interaction: Some(Interaction {
+            id: Default::default(),
+            created_date: now,
+            last_modified: now,
+            host: None,
+            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        }),
+    };
+
+    let protocol = setup_protocol(TestInputs {
+        mqtt_client,
+        ..Default::default()
+    });
+    protocol.reject_proof(&proof).await.unwrap();
 }

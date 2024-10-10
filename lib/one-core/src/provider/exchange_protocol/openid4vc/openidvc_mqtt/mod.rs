@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
+use one_crypto::utilities;
 use rand::rngs::OsRng;
 use rand::Rng;
 use serde::Deserialize;
@@ -13,10 +14,12 @@ use tracing::Instrument;
 use url::Url;
 use uuid::Uuid;
 
-use super::mapper::create_open_id_for_vp_presentation_definition;
+use super::mapper::{
+    create_open_id_for_vp_presentation_definition, create_presentation_submission,
+};
 use super::model::{
-    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
-    SubmitIssuerResponse, UpdateResponse,
+    DatatypeType, InvitationResponseDTO, MQTTOpenId4VpResponse, OpenID4VPFormat,
+    PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use super::service::FnMapExternalFormatToExternalDetailed;
 use super::validator::throw_if_latest_proof_state_not_eq;
@@ -27,11 +30,16 @@ use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, UpdateProofRequest};
-use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
+    OID4VPHandover, SessionTranscript,
+};
+use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::dto::{
     ExchangeProtocolCapabilities, PresentationDefinitionResponseDTO,
 };
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
+use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPMqttData;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
@@ -39,15 +47,18 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     MQTTOpenID4VPInteractionData, MQTTSessionKeys, OpenID4VPPresentationDefinition,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::mappers::map_credential_formats_to_presentation_format;
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
 use crate::provider::exchange_protocol::{
-    ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess, StorageAccess,
-    TypeToDescriptorMapper,
+    deserialize_interaction_data, ExchangeProtocolImpl, FormatMapper,
+    HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
 };
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::mqtt_client::MqttClient;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::util::oidc::create_core_to_oicd_format_map;
 
 #[cfg(test)]
 mod test;
@@ -60,6 +71,9 @@ pub struct OpenId4VcMqtt {
 
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
+
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    key_provider: Arc<dyn KeyProvider>,
 }
 
 pub struct ConfigParams {
@@ -146,6 +160,8 @@ impl OpenId4VcMqtt {
         params: ConfigParams,
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        key_provider: Arc<dyn KeyProvider>,
     ) -> OpenId4VcMqtt {
         OpenId4VcMqtt {
             mqtt_client,
@@ -154,6 +170,8 @@ impl OpenId4VcMqtt {
             handle: RwLock::new(None),
             interaction_repository,
             proof_repository,
+            formatter_provider,
+            key_provider,
         }
     }
 
@@ -224,7 +242,12 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
             "Query cannot be empty".to_string(),
         ))?;
 
-        let OpenID4VPMqttData { broker_url, key } = serde_qs::from_str(query)
+        let OpenID4VPMqttData {
+            broker_url,
+            key,
+            nonce,
+            client_id,
+        } = serde_qs::from_str(query)
             .map_err(|e| ExchangeProtocolError::InvalidRequest(e.to_string()))?;
 
         let (broker_url, port) = parse_mqtt_address(&broker_url)?;
@@ -308,6 +331,10 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
         }
 
         let interaction_data = MQTTOpenID4VPInteractionData {
+            broker_url: broker_url.to_string(),
+            broker_port: port,
+            client_id: client_id.clone(),
+            nonce: nonce.clone(),
             session_keys: session_keys.to_owned(),
             presentation_definition: None,
         };
@@ -336,6 +363,10 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let interaction_data = MQTTOpenID4VPInteractionData {
+            broker_url: broker_url.to_string(),
+            broker_port: port,
+            client_id,
+            nonce,
             session_keys: session_keys.to_owned(),
             presentation_definition: Some(presentation_definition),
         };
@@ -384,23 +415,205 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
         })
     }
 
-    async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
-        Err(ExchangeProtocolError::OperationNotSupported)
+    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
+        let interaction_data: MQTTOpenID4VPInteractionData = deserialize_interaction_data(
+            proof
+                .interaction
+                .as_ref()
+                .and_then(|interaction| interaction.data.as_ref()),
+        )?;
+
+        let now = OffsetDateTime::now_utc().unix_timestamp();
+        let encryption = PeerEncryption::new(
+            interaction_data.session_keys.sender_key,
+            interaction_data.session_keys.receiver_key,
+            interaction_data.session_keys.nonce,
+        );
+
+        let encrypted = encryption
+            .encrypt(now)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let reject_topic_name = format!("/proof/{}/presentation-submission/reject", proof.id);
+        let reject_topic = self
+            .mqtt_client
+            .subscribe(
+                interaction_data.broker_url,
+                interaction_data.broker_port,
+                reject_topic_name,
+            )
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+        reject_topic
+            .send(encrypted)
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        Ok(())
     }
 
     async fn submit_proof(
         &self,
-        _proof: &Proof,
-        _credential_presentations: Vec<PresentedCredential>,
-        _holder_did: &Did,
-        _key: &Key,
-        _jwk_key_id: Option<String>,
-        // LOCAL_CREDENTIAL_FORMAT -> oidc_vc_format
-        _format_map: HashMap<String, String>,
-        // oidc_vp_format -> LOCAL_PRESENTATION_FORMAT
-        _presentation_format_map: HashMap<String, String>,
+        proof: &Proof,
+        credential_presentations: Vec<PresentedCredential>,
+        holder_did: &Did,
+        key: &Key,
+        jwk_key_id: Option<String>,
+        format_map: HashMap<String, String>,
+        presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
-        unimplemented!()
+        let interaction_data: MQTTOpenID4VPInteractionData = deserialize_interaction_data(
+            proof
+                .interaction
+                .as_ref()
+                .and_then(|interaction| interaction.data.as_ref()),
+        )?;
+
+        let tokens: Vec<String> = credential_presentations
+            .iter()
+            .map(|presented_credential| presented_credential.presentation.to_owned())
+            .collect();
+
+        let token_formats: Vec<String> = credential_presentations
+            .iter()
+            .map(|presented_credential| presented_credential.credential_schema.format.to_owned())
+            .collect();
+
+        let formats: HashMap<&str, &str> = credential_presentations
+            .iter()
+            .map(|presented_credential| {
+                format_map
+                    .get(presented_credential.credential_schema.format.as_str())
+                    .map(|mapped| {
+                        (
+                            mapped.as_str(),
+                            presented_credential.credential_schema.format.as_str(),
+                        )
+                    })
+            })
+            .collect::<Option<_>>()
+            .ok_or_else(|| ExchangeProtocolError::Failed("missing format mapping".into()))?;
+
+        let (_, format, oidc_format) =
+            map_credential_formats_to_presentation_format(&formats, &format_map)?;
+
+        let presentation_format =
+            presentation_format_map
+                .get(&oidc_format)
+                .ok_or(ExchangeProtocolError::Failed(format!(
+                    "Missing presentation format for `{oidc_format}`"
+                )))?;
+
+        let presentation_formatter = self
+            .formatter_provider
+            .get_formatter(presentation_format)
+            .ok_or_else(|| ExchangeProtocolError::Failed("Formatter not found".to_string()))?;
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(key, jwk_key_id)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let presentation_definition_id = interaction_data
+            .presentation_definition
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "Missing presentation definition".into(),
+            ))?
+            .id;
+
+        let presentation_submission = create_presentation_submission(
+            presentation_definition_id,
+            credential_presentations,
+            &oidc_format,
+            create_core_to_oicd_format_map(),
+        )?;
+
+        let mut ctx = FormatPresentationCtx {
+            nonce: Some(interaction_data.nonce.clone()),
+            token_formats: Some(token_formats),
+            vc_format_map: format_map,
+            ..Default::default()
+        };
+
+        if format == "MDOC" {
+            let mdoc_generated_nonce = utilities::generate_nonce();
+
+            ctx.mdoc_session_transcript = Some(
+                to_cbor(&SessionTranscript {
+                    handover: OID4VPHandover::compute(
+                        &interaction_data.client_id,
+                        &interaction_data.client_id,
+                        &interaction_data.nonce,
+                        &mdoc_generated_nonce,
+                    )
+                    .into(),
+                    device_engagement_bytes: None,
+                    e_reader_key_bytes: None,
+                })
+                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
+            );
+        }
+
+        let vp_token = presentation_formatter
+            .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let response = MQTTOpenId4VpResponse {
+            vp_token,
+            presentation_submission,
+        };
+
+        let encryption = PeerEncryption::new(
+            interaction_data.session_keys.sender_key,
+            interaction_data.session_keys.receiver_key,
+            interaction_data.session_keys.nonce,
+        );
+
+        let encrypted = encryption
+            .encrypt(response)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let presentation_submission_topic = self
+            .mqtt_client
+            .subscribe(
+                interaction_data.broker_url.to_string(),
+                interaction_data.broker_port,
+                format!("/proof/{}/presentation-submission/accept", proof.id),
+            )
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        presentation_submission_topic
+            .send(encrypted)
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let now = OffsetDateTime::now_utc();
+        self.proof_repository
+            .update_proof(UpdateProofRequest {
+                id: proof.id,
+                holder_did_id: None,
+                verifier_did_id: None,
+                state: Some(ProofState {
+                    created_date: now,
+                    last_modified: now,
+                    state: ProofStateEnum::Accepted,
+                }),
+                interaction: None,
+                redirect_uri: None,
+            })
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        Ok(UpdateResponse {
+            result: (),
+            update_proof: None,
+            create_did: None,
+            update_credential: None,
+            update_credential_schema: None,
+        })
     }
 
     async fn accept_credential(

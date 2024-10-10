@@ -13,7 +13,9 @@ pub struct OpenID4VPBleData {
 #[serde(rename_all = "camelCase")]
 pub struct OpenID4VPMqttData {
     pub broker_url: String,
+    pub client_id: String,
     pub key: String,
+    pub nonce: String,
 }
 
 #[derive(Debug)]
