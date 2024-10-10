@@ -89,13 +89,12 @@ pub struct ProofClaimRelations {
     pub credential: Option<CredentialRelations>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateProofRequest {
-    pub id: ProofId,
-
     pub holder_did_id: Option<DidId>,
     pub verifier_did_id: Option<DidId>,
     pub state: Option<ProofState>,
     pub interaction: Option<Option<InteractionId>>,
     pub redirect_uri: Option<Option<String>>,
+    pub transport: Option<String>,
 }

@@ -64,15 +64,11 @@ pub async fn update_proof_interaction(
     proof_repository: &dyn ProofRepository,
 ) -> Result<(), ServiceError> {
     let update = UpdateProofRequest {
-        id: proof_id,
         interaction: Some(Some(interaction_id)),
-        holder_did_id: None,
-        verifier_did_id: None,
-        state: None,
-        redirect_uri: None,
+        ..Default::default()
     };
 
-    proof_repository.update_proof(update).await?;
+    proof_repository.update_proof(&proof_id, update).await?;
     Ok(())
 }
 

@@ -3,11 +3,12 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
+use oidc_mqtt_verifier::{mqtt_verifier_flow, Topics};
 use one_crypto::utilities;
 use rand::rngs::OsRng;
 use rand::Rng;
 use serde::Deserialize;
-use shared_types::KeyId;
+use shared_types::{KeyId, ProofId};
 use time::OffsetDateTime;
 use tokio::sync::RwLock;
 use tracing::Instrument;
@@ -26,7 +27,7 @@ use super::validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::Credential;
 use crate::model::did::Did;
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, UpdateProofRequest};
@@ -54,11 +55,13 @@ use crate::provider::exchange_protocol::{
     HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
 };
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::mqtt_client::MqttClient;
+use crate::provider::mqtt_client::{MqttClient, MqttTopic};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::oidc::create_core_to_oicd_format_map;
+
+mod oidc_mqtt_verifier;
 
 #[cfg(test)]
 mod test;
@@ -141,16 +144,15 @@ fn generate_session_keys(
 }
 
 fn parse_mqtt_address(address: &str) -> Result<(&str, u16), ExchangeProtocolError> {
-    match address.rsplit_once(':') {
-        Some((broker_url, port_str)) => {
-            let port = port_str
-                .parse::<u16>()
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+    let Some((broker_url, port_str)) = address.rsplit_once(':') else {
+        return Ok((address, 1883));
+    };
 
-            Ok((broker_url, port))
-        }
-        None => Ok((address, 1883)),
-    }
+    let port = port_str
+        .parse::<u16>()
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    Ok((broker_url, port))
 }
 
 impl OpenId4VcMqtt {
@@ -175,34 +177,58 @@ impl OpenId4VcMqtt {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip_all)]
-    async fn start_detached_subscriber(&self, topic: String) -> Result<(), ExchangeProtocolError> {
-        let subscription_handle = self
+    async fn subscribe_to_topic(
+        &self,
+        topic: String,
+    ) -> Result<Box<dyn MqttTopic>, ExchangeProtocolError> {
+        self
             .mqtt_client
             .subscribe(
                 self.params.broker_addr.clone(),
                 self.params.broker_port,
-                topic,
+                topic.clone(),
             )
             .await
-            .map_err(|error| {
-                tracing::error!(%error, "Failed to subscribe to topic during proof sharing");
+            .map_err(move |error| {
+                tracing::error!(%error, "Failed to subscribe to `{topic}` topic during proof sharing");
+                ExchangeProtocolError::Failed(format!("Failed to subscribe to `{topic}` topic"))
+            })
+    }
 
-                ExchangeProtocolError::Failed("Failed to subscribe to topic".to_owned())
-            })?;
+    #[tracing::instrument(level = "debug", skip_all, err(Debug))]
+    async fn start_detached_subscriber(
+        &self,
+        topic_prefix: String,
+        keypair: KeyAgreementKey,
+        proof_id: ProofId,
+        presentation_definition: OpenID4VPPresentationDefinition,
+        interaction_id: InteractionId,
+    ) -> Result<(), ExchangeProtocolError> {
+        let (identify, presentation_definition_topic, accept, reject) = tokio::try_join!(
+            self.subscribe_to_topic(topic_prefix.clone() + "/presentation-submission/identify"),
+            self.subscribe_to_topic(topic_prefix.clone() + "/presentation-definition"),
+            self.subscribe_to_topic(topic_prefix.clone() + "/presentation-submission/accept"),
+            self.subscribe_to_topic(topic_prefix + "/presentation-submission/reject"),
+        )?;
 
-        let current_span = tracing::Span::current();
+        let topics = Topics {
+            identify,
+            presentation_definition: presentation_definition_topic,
+            accept,
+            reject,
+        };
+
         let handle = tokio::spawn(
-            async move {
-                let mut subscription_handle = subscription_handle;
-
-                let _res = subscription_handle.recv().await;
-
-                tracing::debug!("Result: {_res:?}");
-
-                Ok(())
-            }
-            .instrument(current_span),
+            mqtt_verifier_flow(
+                topics,
+                keypair,
+                proof_id,
+                presentation_definition,
+                self.proof_repository.clone(),
+                self.interaction_repository.clone(),
+                interaction_id,
+            )
+            .in_current_span(),
         );
 
         self.handle.write().await.replace(SubscriptionHandle {
@@ -325,7 +351,7 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
             };
 
             identify_topic
-                .send(identity_request.clone().encode())
+                .send(identity_request.encode())
                 .await
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
         }
@@ -385,18 +411,17 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         self.proof_repository
-            .update_proof(UpdateProofRequest {
-                id: proof_id,
-                holder_did_id: None,
-                verifier_did_id: None,
-                state: Some(ProofState {
-                    created_date: now,
-                    last_modified: now,
-                    state: ProofStateEnum::Pending,
-                }),
-                interaction: None,
-                redirect_uri: None,
-            })
+            .update_proof(
+                &proof_id,
+                UpdateProofRequest {
+                    state: Some(ProofState {
+                        created_date: now,
+                        last_modified: now,
+                        state: ProofStateEnum::Pending,
+                    }),
+                    ..Default::default()
+                },
+            )
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -592,18 +617,17 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
 
         let now = OffsetDateTime::now_utc();
         self.proof_repository
-            .update_proof(UpdateProofRequest {
-                id: proof.id,
-                holder_did_id: None,
-                verifier_did_id: None,
-                state: Some(ProofState {
-                    created_date: now,
-                    last_modified: now,
-                    state: ProofStateEnum::Accepted,
-                }),
-                interaction: None,
-                redirect_uri: None,
-            })
+            .update_proof(
+                &proof.id,
+                UpdateProofRequest {
+                    state: Some(ProofState {
+                        created_date: now,
+                        last_modified: now,
+                        state: ProofStateEnum::Accepted,
+                    }),
+                    ..Default::default()
+                },
+            )
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -652,7 +676,7 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
         unimplemented!()
     }
 
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[tracing::instrument(level = "debug", skip_all, err(Debug))]
     async fn share_proof(
         &self,
         proof: &Proof,
@@ -672,7 +696,7 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
             self.params.broker_url
         );
 
-        let _presentation_definition = create_open_id_for_vp_presentation_definition(
+        let presentation_definition = create_open_id_for_vp_presentation_definition(
             interaction_id,
             proof,
             type_to_descriptor,
@@ -685,9 +709,15 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
             ));
         }
 
-        // note that the "+" means single-level wildcard i.e. only one string can be put in it's place
-        let topic = format!("/proof/{}/presentation-submission/+", proof.id);
-        self.start_detached_subscriber(topic).await?;
+        let topic_prefix = format!("/proof/{}", proof.id);
+        self.start_detached_subscriber(
+            topic_prefix,
+            keypair,
+            proof.id,
+            presentation_definition,
+            interaction_id,
+        )
+        .await?;
 
         Ok(ShareResponse {
             url,

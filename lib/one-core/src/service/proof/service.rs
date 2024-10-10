@@ -528,18 +528,18 @@ impl ProofService {
         exchange_protocol.retract_proof(&proof).await?;
 
         self.proof_repository
-            .update_proof(UpdateProofRequest {
-                id: proof_id,
-                holder_did_id: None,
-                verifier_did_id: None,
-                state: Some(ProofState {
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    state: ProofStateEnum::Created,
-                }),
-                interaction: Some(None),
-                redirect_uri: None,
-            })
+            .update_proof(
+                &proof_id,
+                UpdateProofRequest {
+                    state: Some(ProofState {
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                        state: ProofStateEnum::Created,
+                    }),
+                    interaction: Some(None),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         self.interaction_repository

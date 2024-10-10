@@ -2716,10 +2716,10 @@ async fn test_share_proof_created_success() {
         .expect_update_proof()
         .once()
         .in_sequence(&mut seq)
-        .withf(move |update| {
-            update.id == proof_id && update.interaction == Some(Some(interaction_id))
+        .withf(move |id, update| {
+            id == &proof_id && update.interaction == Some(Some(interaction_id))
         })
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -2811,10 +2811,10 @@ async fn test_share_proof_pending_success() {
     proof_repository
         .expect_update_proof()
         .once()
-        .withf(move |update| {
-            update.id == proof_id && update.interaction == Some(Some(interaction_id))
+        .withf(move |id, update| {
+            id == &proof_id && update.interaction == Some(Some(interaction_id))
         })
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -2916,11 +2916,11 @@ async fn test_retract_proof_ok_for_allowed_state(
     proof_repository
         .expect_update_proof()
         .once()
-        .withf(|update_proof| {
+        .withf(|_, update_proof| {
             update_proof.interaction == Some(None)
                 && update_proof.state.as_ref().unwrap().state == ProofStateEnum::Created
         })
-        .returning(move |_| Ok(()));
+        .returning(move |_, _| Ok(()));
 
     let mut interaction_repository = MockInteractionRepository::new();
 
@@ -3072,11 +3072,11 @@ async fn test_retract_proof_with_bluetooth_ok() {
     proof_repository
         .expect_update_proof()
         .once()
-        .withf(|update_proof| {
+        .withf(|_, update_proof| {
             update_proof.interaction == Some(None)
                 && update_proof.state.as_ref().unwrap().state == ProofStateEnum::Created
         })
-        .returning(move |_| Ok(()));
+        .returning(move |_, _| Ok(()));
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
