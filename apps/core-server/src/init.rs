@@ -172,7 +172,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                             params.into(),
                         )
                         .map_err(|_| {
-                            ConfigError::Validation(ConfigValidationError::KeyNotFound(
+                            ConfigError::Validation(ConfigValidationError::EntryNotFound(
                                 "Base url".to_string(),
                             ))
                         })

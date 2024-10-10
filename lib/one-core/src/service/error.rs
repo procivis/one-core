@@ -930,12 +930,10 @@ impl ErrorCodeMixin for ConfigValidationError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::TypeNotFound(_) => ErrorCode::BR_0089,
-            Self::InvalidKey(_)
-            | Self::KeyDisabled(_)
-            | Self::KeyNotFound(_)
+            Self::EntryDisabled(_)
+            | Self::EntryNotFound(_)
             | Self::FieldsDeserialization { .. }
             | Self::InvalidType(_, _)
-            | Self::Failed(_)
             | Self::DatatypeValidation(_) => ErrorCode::BR_0051,
         }
     }

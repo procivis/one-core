@@ -85,7 +85,7 @@ pub(super) fn validate_config_entity_presence(
         .iter()
         .any(|(_, v)| v.r#type == ExchangeType::OpenId4Vc)
     {
-        Err(ConfigValidationError::KeyNotFound(
+        Err(ConfigValidationError::EntryNotFound(
             "No exchange method with type OPENID4VC".to_string(),
         ))
     } else {

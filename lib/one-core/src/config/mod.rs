@@ -25,17 +25,13 @@ pub enum ConfigParsingError {
 
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigValidationError {
-    #[error("invalid configuration key: {0}")]
-    InvalidKey(String),
-    #[error("configuration key `{0}` is disabled")]
-    KeyDisabled(String),
-    #[error("Failed `{0}`")]
-    Failed(String),
-    #[error("configuration key `{0}` not found")]
-    KeyNotFound(String),
-    #[error("configuration type `{0}` not found")]
+    #[error("configuration entry `{0}` is disabled in config")]
+    EntryDisabled(String),
+    #[error("configuration entry `{0}` is not found in config")]
+    EntryNotFound(String),
+    #[error("configuration for type `{0}` not found")]
     TypeNotFound(String),
-    #[error("fields deserialization for key: {key}. error: {source}")]
+    #[error("fields deserialization for entry: {key}. error: {source}")]
     FieldsDeserialization {
         key: String,
         source: serde_json::Error,
