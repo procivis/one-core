@@ -107,6 +107,11 @@ pub struct MQTTOpenId4VpResponse {
     pub presentation_submission: PresentationSubmissionMappingDTO,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MQTTOpenID4VPInteractionDataVerifier {
+    pub presentation_submission: MQTTOpenId4VpResponse,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwePayload {
     pub aud: Url,

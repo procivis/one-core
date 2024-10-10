@@ -376,12 +376,8 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
             Ok(UpdateResponse {
                 result: (),
                 update_proof: Some(UpdateProofRequest {
-                    id: proof.id,
                     redirect_uri: Some(value.redirect_uri),
-                    holder_did_id: None,
-                    verifier_did_id: None,
-                    state: None,
-                    interaction: None,
+                    ..Default::default()
                 }),
                 create_did: None,
                 update_credential: None,

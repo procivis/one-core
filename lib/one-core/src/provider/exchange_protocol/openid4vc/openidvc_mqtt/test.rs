@@ -142,7 +142,7 @@ async fn test_handle_invitation_success() {
     proof_repository
         .expect_update_proof()
         .once()
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
     proof_repository
         .expect_get_proof()
         .once()

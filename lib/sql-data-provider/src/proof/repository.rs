@@ -231,9 +231,11 @@ impl ProofRepository for ProofProvider {
         Ok(())
     }
 
-    async fn update_proof(&self, proof: UpdateProofRequest) -> Result<(), DataLayerError> {
-        let id = &proof.id;
-
+    async fn update_proof(
+        &self,
+        proof_id: &ProofId,
+        proof: UpdateProofRequest,
+    ) -> Result<(), DataLayerError> {
         let holder_did_id = match proof.holder_did_id {
             None => Unchanged(Default::default()),
             Some(holder_did) => Set(Some(holder_did)),
@@ -248,23 +250,30 @@ impl ProofRepository for ProofProvider {
             None => Unchanged(Default::default()),
             Some(interaction_id) => Set(interaction_id.map(Into::into)),
         };
+
         let redirect_uri = match proof.redirect_uri {
             None => Unchanged(Default::default()),
             Some(redirect_uri) => Set(redirect_uri),
         };
 
+        let transport = match proof.transport {
+            None => Unchanged(Default::default()),
+            Some(transport) => Set(transport),
+        };
+
         let update_model = proof::ActiveModel {
-            id: Unchanged(*id),
+            id: Unchanged(*proof_id),
             last_modified: Set(OffsetDateTime::now_utc()),
             holder_did_id,
             verifier_did_id,
             interaction_id,
             redirect_uri,
+            transport,
             ..Default::default()
         };
 
         if let Some(state) = proof.state {
-            proof_state::Entity::insert(get_proof_state_active_model(id, state))
+            proof_state::Entity::insert(get_proof_state_active_model(proof_id, state))
                 .exec(&self.db)
                 .await
                 .map_err(|e| DataLayerError::Db(e.into()))?;

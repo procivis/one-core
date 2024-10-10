@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use futures::TryFutureExt;
-use shared_types::{DidId, KeyId, OrganisationId};
+use shared_types::{DidId, KeyId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use url::Url;
 
@@ -516,7 +516,10 @@ impl SSIHolderService {
                 create_core_to_oicd_presentation_format_map(),
             )
             .map_err(ServiceError::from)
-            .and_then(|submit_result| async { self.resolve_update_response(submit_result).await })
+            .and_then(|submit_result| async {
+                self.resolve_update_response(Some(proof.id), submit_result)
+                    .await
+            })
             .await;
 
         self.proof_repository
@@ -691,7 +694,7 @@ impl SSIHolderService {
                 }
             }
 
-            let issuer_response = self.resolve_update_response(issuer_response).await?;
+            let issuer_response = self.resolve_update_response(None, issuer_response).await?;
 
             self.credential_repository
                 .update_credential(UpdateCredentialRequest {
@@ -795,10 +798,15 @@ impl SSIHolderService {
 
     async fn resolve_update_response<T>(
         &self,
+        proof_id: Option<ProofId>,
         update_response: UpdateResponse<T>,
     ) -> Result<T, ServiceError> {
         if let Some(update_proof) = update_response.update_proof {
-            self.proof_repository.update_proof(update_proof).await?;
+            if let Some(proof_id) = proof_id {
+                self.proof_repository
+                    .update_proof(&proof_id, update_proof)
+                    .await?;
+            }
         }
         if let Some(create_did) = update_response.create_did {
             self.did_repository.create_did(create_did).await?;

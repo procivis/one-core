@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::sync::oneshot;
 use uuid::Uuid;
@@ -134,7 +133,7 @@ pub(crate) async fn start_client(
             {
                 tracing::info!("mDL verifier failure: {error:#?}");
                 let _ = proof_repository
-                    .update_proof(update_proof_request(proof.id, ProofStateEnum::Error))
+                    .update_proof(&proof.id, update_proof_request(ProofStateEnum::Error))
                     .await;
                 // TODO: log error?
             }
@@ -151,7 +150,7 @@ pub(crate) async fn start_client(
             }
 
             let _ = proof_repository_clone
-                .update_proof(update_proof_request(proof_id, ProofStateEnum::Error))
+                .update_proof(&proof_id, update_proof_request(ProofStateEnum::Error))
                 .await;
         },
         OnConflict::ReplaceIfSameFlow,
@@ -236,7 +235,7 @@ async fn process_proof(
     .await?;
 
     proof_repository
-        .update_proof(update_proof_request(proof.id, ProofStateEnum::Requested))
+        .update_proof(&proof.id, update_proof_request(ProofStateEnum::Requested))
         .await?;
 
     let session_data = read_response(
@@ -300,7 +299,7 @@ async fn process_proof(
     }
 
     proof_repository
-        .update_proof(update_proof_request(proof.id, new_state))
+        .update_proof(&proof.id, update_proof_request(new_state))
         .await?;
 
     Ok::<_, anyhow::Error>(())
@@ -380,19 +379,15 @@ async fn fill_proof_claims_and_credentials(
     Ok(())
 }
 
-fn update_proof_request(id: ProofId, new_state: ProofStateEnum) -> UpdateProofRequest {
+fn update_proof_request(new_state: ProofStateEnum) -> UpdateProofRequest {
     let now = OffsetDateTime::now_utc();
     UpdateProofRequest {
-        id,
-        holder_did_id: None,
-        verifier_did_id: None,
         state: Some(ProofState {
             created_date: now,
             last_modified: now,
             state: new_state,
         }),
-        interaction: None,
-        redirect_uri: None,
+        ..Default::default()
     }
 }
 
