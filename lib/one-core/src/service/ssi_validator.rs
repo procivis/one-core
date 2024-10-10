@@ -9,7 +9,7 @@ pub(super) fn validate_config_entity_presence(
         .iter()
         .any(|(_, v)| v.r#type == ExchangeType::ProcivisTemporary)
     {
-        Err(ConfigValidationError::KeyNotFound(
+        Err(ConfigValidationError::EntryNotFound(
             "No exchange method with type PROCIVIS_TEMPORARY".to_string(),
         ))
     } else {

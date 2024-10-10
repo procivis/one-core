@@ -844,7 +844,7 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
         .unwrap_err();
     assert!(matches!(
         result,
-        ServiceError::ConfigValidationError(ConfigValidationError::KeyNotFound(_))
+        ServiceError::ConfigValidationError(ConfigValidationError::EntryNotFound(_))
     ));
 }
 

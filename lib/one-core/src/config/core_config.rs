@@ -342,7 +342,7 @@ where
         let fields = self
             .0
             .get(key)
-            .ok_or_else(|| ConfigValidationError::KeyNotFound(key.to_owned()))?;
+            .ok_or_else(|| ConfigValidationError::EntryNotFound(key.to_owned()))?;
 
         fields
             .deserialize()
@@ -372,7 +372,7 @@ where
         let fields = self
             .0
             .get(key)
-            .ok_or(ConfigValidationError::KeyNotFound(key.to_string()))?;
+            .ok_or(ConfigValidationError::EntryNotFound(key.to_string()))?;
 
         Ok(fields)
     }
@@ -389,7 +389,7 @@ where
         let fields = self.get_fields(key)?;
 
         if fields.disabled() {
-            return Err(ConfigValidationError::KeyDisabled(key.to_owned()));
+            return Err(ConfigValidationError::EntryDisabled(key.to_owned()));
         }
 
         Ok(fields)

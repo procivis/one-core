@@ -274,7 +274,7 @@ fn initialize_core(
                                     params.into(),
                                 )
                                 .map_err(|_| {
-                                    ConfigError::Validation(ConfigValidationError::KeyNotFound(
+                                    ConfigError::Validation(ConfigValidationError::EntryNotFound(
                                         "Base url".to_string(),
                                     ))
                                 })
