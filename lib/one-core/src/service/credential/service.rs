@@ -458,11 +458,24 @@ impl CredentialService {
             context,
         } = exchange.share_credential(&credential, &format).await?;
 
+        let organisation = if let Some(organisation) = credential
+            .schema
+            .as_ref()
+            .and_then(|schema| schema.organisation.as_ref())
+        {
+            organisation
+        } else {
+            return Err(ServiceError::MappingError(
+                "Missing organisation".to_string(),
+            ));
+        };
+
         add_new_interaction(
             interaction_id,
             &self.base_url,
             &*self.interaction_repository,
             serde_json::to_vec(&context).ok(),
+            Some(organisation.to_owned()),
         )
         .await?;
         update_credentials_interaction(credential.id, interaction_id, &*self.credential_repository)
@@ -691,7 +704,9 @@ impl CredentialService {
                         keys: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
                     key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
@@ -1013,7 +1028,6 @@ async fn update_mso_interaction_access_token(
     client: &dyn HttpClient,
 ) -> Result<(), ServiceError> {
     let now = OffsetDateTime::now_utc();
-
     let access_token_expires_at =
         interaction_data
             .access_token_expires_at
@@ -1066,7 +1080,6 @@ async fn update_mso_interaction_access_token(
             serde_json::to_vec(&interaction_data)
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?,
         );
-
         // Update in database
         interactions.update_interaction(interaction.clone()).await?;
 

@@ -20,7 +20,7 @@ async fn test_get_credential_offer_success_jwt() {
     let interaction = context
         .db
         .interactions
-        .create(None, "http://test.com", "NONE".as_bytes())
+        .create(None, "http://test.com", "NONE".as_bytes(), &organisation)
         .await;
 
     let credential = context
@@ -92,7 +92,7 @@ async fn test_get_credential_offer_success_mdoc() {
     let interaction = context
         .db
         .interactions
-        .create(None, "http://test.com", "NONE".as_bytes())
+        .create(None, "http://test.com", "NONE".as_bytes(), &organisation)
         .await;
 
     let credential = context

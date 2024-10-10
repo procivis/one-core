@@ -10,6 +10,7 @@ pub(crate) fn order_from_sort_direction(direction: SortDirection) -> Order {
 }
 
 pub(crate) fn to_data_layer_error(e: DbErr) -> DataLayerError {
+    println!("{:?}", e);
     match e.sql_err() {
         Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
         Some(SqlErr::ForeignKeyConstraintViolation(_)) => DataLayerError::IncorrectParameters,

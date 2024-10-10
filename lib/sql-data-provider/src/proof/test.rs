@@ -132,8 +132,12 @@ async fn setup(
         .await
         .unwrap();
 
-    let interaction_id =
-        Uuid::parse_str(&insert_interaction(&db, "host", &[1, 2, 3]).await.unwrap()).unwrap();
+    let interaction_id = Uuid::parse_str(
+        &insert_interaction(&db, "host", &[1, 2, 3], organisation_id)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
 
     TestSetup {
         repository: Box::new(ProofProvider {
@@ -372,6 +376,7 @@ async fn test_get_proof_list() {
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
+    println!("{:?}", result);
     assert_eq!(result.total_items, 1);
     assert_eq!(result.total_pages, 1);
     assert_eq!(result.values.len(), 1);
@@ -454,6 +459,7 @@ async fn test_get_proof_with_relations() {
                 last_modified: get_dummy_date(),
                 data: Some(vec![1, 2, 3]),
                 host: Some("http://www.host.co".parse().unwrap()),
+                organisation: None,
             }))
         });
 
@@ -692,6 +698,7 @@ async fn test_get_proof_by_interaction_id_success() {
                 last_modified: get_dummy_date(),
                 data: Some(vec![1, 2, 3]),
                 host: Some("http://www.host.co/".parse().unwrap()),
+                organisation: None,
             }))
         });
 

@@ -232,7 +232,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
     async fn handle_invitation(
         &self,
         url: Url,
-        _organisation: Organisation,
+        organisation: Organisation,
         _storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
         _transport: Vec<String>,
@@ -283,6 +283,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             last_modified: now,
             host: None,
             data: None,
+            organisation: Some(organisation.clone()),
         };
         let interaction_id = self
             .interaction_repository
@@ -304,7 +305,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         );
 
         ble_holder
-            .handle_invitation(name, key, proof.id, interaction_id)
+            .handle_invitation(name, key, proof.id, interaction_id, organisation)
             .await?;
 
         Ok(InvitationResponseDTO::ProofRequest {

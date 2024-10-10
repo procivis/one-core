@@ -33,6 +33,7 @@ use uuid::Uuid;
 
 use super::CredentialProvider;
 use crate::entity::claim;
+use crate::test_utilities;
 use crate::test_utilities::*;
 
 struct TestSetup {
@@ -978,6 +979,7 @@ async fn test_update_credential_success() {
                 last_modified: get_dummy_date(),
                 host: Some("https://host.co".parse().unwrap()),
                 data: None,
+                organisation: None,
             }))
         });
 
@@ -1001,8 +1003,16 @@ async fn test_update_credential_success() {
     let token = vec![1, 2, 3];
     assert_ne!(token, credential_before_update.credential);
 
-    let interaction_id =
-        Uuid::parse_str(&insert_interaction(&db, "host", &[]).await.unwrap()).unwrap();
+    let organisation_id = test_utilities::insert_organisation_to_database(&db, None)
+        .await
+        .unwrap();
+
+    let interaction_id = Uuid::parse_str(
+        &insert_interaction(&db, "host", &[], organisation_id)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
 
     assert!(provider
         .update_credential(UpdateCredentialRequest {

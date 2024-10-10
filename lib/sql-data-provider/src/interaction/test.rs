@@ -1,28 +1,41 @@
 use std::str::FromStr;
+use std::sync::Arc;
 use std::vec;
 
 use one_core::model::interaction::{Interaction, InteractionRelations};
+use one_core::model::organisation::Organisation;
 use one_core::repository::interaction_repository::InteractionRepository;
+use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
 use url::Url;
 use uuid::Uuid;
 
 use super::InteractionProvider;
+use crate::test_utilities;
 use crate::test_utilities::{
-    get_dummy_date, get_interaction, insert_interaction, setup_test_data_layer_and_connection,
+    get_dummy_date, get_interaction, insert_interaction, insert_organisation_to_database,
+    setup_test_data_layer_and_connection,
 };
+
+#[derive(Default)]
+struct Repositories {
+    pub organisation_repository: MockOrganisationRepository,
+}
 
 struct TestSetup {
     pub provider: InteractionProvider,
     pub db: sea_orm::DatabaseConnection,
 }
 
-async fn setup() -> TestSetup {
+async fn setup(repositories: Repositories) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
     TestSetup {
-        provider: InteractionProvider { db: db.clone() },
+        provider: InteractionProvider {
+            db: db.clone(),
+            organisation_repository: Arc::from(repositories.organisation_repository),
+        },
         db,
     }
 }
@@ -36,12 +49,16 @@ struct TestSetupWithInteraction {
 }
 
 async fn setup_with_interaction() -> TestSetupWithInteraction {
-    let setup = setup().await;
+    let setup = setup(Repositories::default()).await;
 
     let host: Url = "http://www.host.co".parse().unwrap();
     let data = vec![1, 2, 3];
 
-    let id = insert_interaction(&setup.db, host.as_str(), &data)
+    let organisation_id = test_utilities::insert_organisation_to_database(&setup.db, None)
+        .await
+        .unwrap();
+
+    let id = insert_interaction(&setup.db, host.as_str(), &data, organisation_id)
         .await
         .unwrap();
 
@@ -58,7 +75,16 @@ async fn setup_with_interaction() -> TestSetupWithInteraction {
 
 #[tokio::test]
 async fn test_create_interaction() {
-    let setup = setup().await;
+    let setup = setup(Repositories::default()).await;
+    let organisation_id = insert_organisation_to_database(&setup.db, None)
+        .await
+        .unwrap();
+
+    let organisation = Organisation {
+        id: organisation_id,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+    };
 
     let id = Uuid::new_v4();
     let interaction = Interaction {
@@ -67,6 +93,7 @@ async fn test_create_interaction() {
         last_modified: get_dummy_date(),
         host: Some("http://www.host.co".parse().unwrap()),
         data: Some(vec![1, 2, 3]),
+        organisation: Some(organisation),
     };
 
     let result = setup.provider.create_interaction(interaction).await;

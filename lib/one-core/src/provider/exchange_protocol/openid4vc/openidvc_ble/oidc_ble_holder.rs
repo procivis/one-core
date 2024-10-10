@@ -17,6 +17,7 @@ use super::{
     TRANSFER_SUMMARY_REPORT_UUID,
 };
 use crate::model::interaction::Interaction;
+use crate::model::organisation::Organisation;
 use crate::model::proof::{ProofState, ProofStateEnum};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
@@ -70,6 +71,7 @@ impl OpenID4VCBLEHolder {
         x25519_public_key_hex: String,
         proof_id: ProofId,
         interaction_id: Uuid,
+        organisation: Organisation,
     ) -> Result<(), ExchangeProtocolError> {
         let interaction_repository = self.interaction_repository.clone();
 
@@ -130,6 +132,7 @@ impl OpenID4VCBLEHolder {
                                 created_date: now,
                                 last_modified: now,
                                 host: None,
+                                organisation: Some(organisation),
                                 data: Some(
                                     serde_json::to_vec(&BLEOpenID4VPInteractionData {
                                         task_id,

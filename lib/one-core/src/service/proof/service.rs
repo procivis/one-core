@@ -375,6 +375,7 @@ impl ProofService {
                     &self.base_url,
                     &*self.interaction_repository,
                     serde_json::to_vec(&data).ok(),
+                    proof_schema.organisation.clone(),
                 )
                 .await?;
 
@@ -466,11 +467,18 @@ impl ProofService {
             )
             .await?;
 
+        let organisation = proof
+            .schema
+            .as_ref()
+            .and_then(|schema| schema.organisation.as_ref())
+            .ok_or_else(|| ExchangeProtocolError::Failed("Missing organisation".to_string()))?;
+
         add_new_interaction(
             interaction_id,
             &self.base_url,
             &*self.interaction_repository,
             serde_json::to_vec(&context).ok(),
+            Some(organisation.to_owned()),
         )
         .await?;
         update_proof_interaction(proof.id, interaction_id, &*self.proof_repository).await?;
@@ -631,11 +639,17 @@ impl ProofService {
         .context("interaction serialization error")
         .map_err(ExchangeProtocolError::Other)?;
 
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&organisation_id, &OrganisationRelations::default())
+            .await?;
+
         let interaction = add_new_interaction(
             interaction_id,
             &self.base_url,
             &*self.interaction_repository,
             Some(interaction_data),
+            organisation,
         )
         .await?;
 

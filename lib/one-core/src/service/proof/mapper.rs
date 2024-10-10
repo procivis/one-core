@@ -669,7 +669,7 @@ pub fn proof_for_scan_to_verify(
             last_modified: now,
             state: ProofStateEnum::Created,
         }]),
-        schema: Some(schema),
+        schema: Some(schema.clone()),
         transport: transport.to_owned(),
         claims: None,
         verifier_did: None,
@@ -681,6 +681,7 @@ pub fn proof_for_scan_to_verify(
             last_modified: now,
             host: None,
             data: Some(interaction_data),
+            organisation: schema.organisation,
         }),
     }
 }

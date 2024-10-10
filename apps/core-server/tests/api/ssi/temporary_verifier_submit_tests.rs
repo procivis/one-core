@@ -89,7 +89,8 @@ async fn test_correct() {
     let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
     let holder_did = "did:key:z6MkttiJVZB4dwWkF9ALwaELUDq5Jj9j1BhZHNzNcLVNam6n";
 
-    let interaction = fixtures::create_interaction(&db_conn, &base_url, "123".as_bytes()).await;
+    let interaction =
+        fixtures::create_interaction(&db_conn, &base_url, "123".as_bytes(), &organisation).await;
 
     let proof = fixtures::create_proof(
         &db_conn,

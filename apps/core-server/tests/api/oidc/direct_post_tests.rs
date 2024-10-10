@@ -118,9 +118,13 @@ async fn test_direct_post_one_credential_correct() {
         }
     });
 
-    let interaction =
-        fixtures::create_interaction(&db_conn, &base_url, interaction_data.to_string().as_bytes())
-            .await;
+    let interaction = fixtures::create_interaction(
+        &db_conn,
+        &base_url,
+        interaction_data.to_string().as_bytes(),
+        &organisation,
+    )
+    .await;
 
     let proof = create_proof(
         &db_conn,
@@ -257,9 +261,13 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         }
     });
 
-    let interaction =
-        fixtures::create_interaction(&db_conn, &base_url, interaction_data.to_string().as_bytes())
-            .await;
+    let interaction = fixtures::create_interaction(
+        &db_conn,
+        &base_url,
+        interaction_data.to_string().as_bytes(),
+        &organisation,
+    )
+    .await;
 
     let proof = create_proof(
         &db_conn,
@@ -488,9 +496,13 @@ async fn test_direct_post_multiple_presentations() {
         }
     });
 
-    let interaction =
-        fixtures::create_interaction(&db_conn, &base_url, interaction_data.to_string().as_bytes())
-            .await;
+    let interaction = fixtures::create_interaction(
+        &db_conn,
+        &base_url,
+        interaction_data.to_string().as_bytes(),
+        &organisation,
+    )
+    .await;
 
     let proof = create_proof(
         &db_conn,

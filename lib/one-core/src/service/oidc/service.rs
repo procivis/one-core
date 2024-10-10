@@ -426,7 +426,9 @@ impl OIDCService {
             .get_credentials_by_interaction_id(
                 &interaction_id,
                 &CredentialRelations {
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
                     state: Some(CredentialStateRelations::default()),
                     ..Default::default()
                 },

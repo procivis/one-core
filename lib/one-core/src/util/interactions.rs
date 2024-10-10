@@ -3,6 +3,7 @@ use time::OffsetDateTime;
 
 use crate::model::credential::UpdateCredentialRequest;
 use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::organisation::Organisation;
 use crate::model::proof::UpdateProofRequest;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::interaction_repository::InteractionRepository;
@@ -14,6 +15,7 @@ pub async fn add_new_interaction(
     base_url: &Option<String>,
     interaction_repository: &dyn InteractionRepository,
     data: Option<Vec<u8>>,
+    organisation: Option<Organisation>,
 ) -> Result<Interaction, ServiceError> {
     let now = OffsetDateTime::now_utc();
     let host = base_url
@@ -30,6 +32,7 @@ pub async fn add_new_interaction(
         last_modified: now,
         host,
         data,
+        organisation,
     };
 
     interaction_repository

@@ -55,6 +55,7 @@ use crate::repository::credential_schema_repository::MockCredentialSchemaReposit
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::error::{
@@ -84,6 +85,7 @@ struct Repositories {
     pub did_method_provider: MockDidMethodProvider,
     pub ble_peripheral: Option<MockBlePeripheral>,
     pub config: CoreConfig,
+    pub organisation_repository: MockOrganisationRepository,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -105,6 +107,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
             .map(|p| BleWaiter::new(Arc::new(MockBleCentral::new()), Arc::new(p))),
         Arc::new(repositories.config),
         None,
+        Arc::new(repositories.organisation_repository),
     )
 }
 
@@ -122,7 +125,21 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             last_modified: OffsetDateTime::now_utc(),
             state,
         }]),
-        schema: None,
+        schema: Some(ProofSchema {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
+            name: "".to_string(),
+            expire_duration: 0,
+            imported_source_url: None,
+            organisation: Some(Organisation {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
+            input_schemas: None,
+        }),
         claims: None,
         verifier_did: Some(Did {
             id: Uuid::new_v4().into(),
@@ -2881,6 +2898,7 @@ async fn test_retract_proof_ok_for_allowed_state(
         last_modified: OffsetDateTime::now_utc(),
         host: None,
         data: Some(vec![]),
+        organisation: None,
     });
 
     let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
@@ -2966,6 +2984,7 @@ async fn test_retract_proof_fails_for_invalid_state(
         last_modified: OffsetDateTime::now_utc(),
         host: None,
         data: None,
+        organisation: None,
     });
 
     let mut proof_repository = MockProofRepository::default();
@@ -3016,6 +3035,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         host: None,
+        organisation: None,
         data: Some({
             let data = BLEOpenID4VPInteractionData {
                 task_id: Uuid::new_v4(),

@@ -154,6 +154,7 @@ async fn test_presentation_reject_ok() {
             host: None,
             data: Some(interaction_data),
             last_modified: OffsetDateTime::now_utc(),
+            organisation: None,
         }),
     };
 

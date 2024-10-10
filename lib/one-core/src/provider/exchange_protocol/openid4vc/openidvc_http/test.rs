@@ -161,6 +161,7 @@ fn generic_credential() -> Credential {
             host: Some("http://host.co".parse().unwrap()),
             data: Some(vec![1, 2, 3]),
             last_modified: now,
+            organisation: None,
         }),
         key: None,
         revocation_list: None,

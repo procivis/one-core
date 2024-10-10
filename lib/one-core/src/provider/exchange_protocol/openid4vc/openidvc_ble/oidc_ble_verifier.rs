@@ -17,7 +17,9 @@ use super::{
     SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
 use crate::model::interaction::InteractionId;
-use crate::model::proof::{self, ProofState, ProofStateEnum};
+use crate::model::organisation::OrganisationRelations;
+use crate::model::proof::{self, ProofRelations, ProofState, ProofStateEnum};
+use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
@@ -168,12 +170,35 @@ impl OpenID4VCBLEVerifier {
                             presentation_submission: Some(presentation_submission),
                         };
 
+                        let proof = self.proof_repository.get_proof(&proof_id, &ProofRelations {
+                            state: None,
+                            schema:  Some(ProofSchemaRelations {
+                                organisation: Some(OrganisationRelations::default()),
+                                proof_inputs: Some(ProofInputSchemaRelations::default()),
+                            }),
+                            claims: None,
+                            verifier_did: None,
+                            holder_did: None,
+                            verifier_key: None,
+                            interaction: None,
+                        })
+                            .await
+                            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
+                            .ok_or(ExchangeProtocolError::Failed("No proof found".to_string()))?;
+
+                        let organisation = proof
+                            .schema
+                            .as_ref()
+                            .and_then(|schema| schema.organisation.as_ref())
+                            .ok_or_else(|| ExchangeProtocolError::Failed("Missing organisation".to_string()))?;
+
                         let new_interaction = uuid::Uuid::new_v4();
                         add_new_interaction(
                             new_interaction,
                             &None,
                             &*self.interaction_repository,
                             serde_json::to_vec(&new_data).ok(),
+                            Some(organisation.to_owned()),
                         )
                         .await
                         .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;

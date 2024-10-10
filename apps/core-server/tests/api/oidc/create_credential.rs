@@ -94,7 +94,7 @@ async fn test_post_issuer_credential_with(revocation_method: &str) -> (TestConte
     let interaction = context
         .db
         .interactions
-        .create(Some(interaction_id), base_url, &data)
+        .create(Some(interaction_id), base_url, &data, &organisation)
         .await;
 
     let credential = context
@@ -200,7 +200,7 @@ async fn test_post_issuer_credential_mdoc() {
     let interaction = context
         .db
         .interactions
-        .create(Some(interaction_id), base_url, &data)
+        .create(Some(interaction_id), base_url, &data, &organisation)
         .await;
 
     let credential = context

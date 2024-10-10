@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use one_core::model::interaction::{Interaction, InteractionId};
+use one_core::model::organisation::Organisation;
 use one_core::repository::interaction_repository::InteractionRepository;
 use time::OffsetDateTime;
 use url::Url;
@@ -15,13 +16,20 @@ impl InteractionsDB {
         Self { repository }
     }
 
-    pub async fn create(&self, id: Option<Uuid>, host: &str, data: &[u8]) -> Interaction {
+    pub async fn create(
+        &self,
+        id: Option<Uuid>,
+        host: &str,
+        data: &[u8],
+        organisation: &Organisation,
+    ) -> Interaction {
         let interaction = Interaction {
             id: id.unwrap_or_else(Uuid::new_v4),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             host: Some(Url::parse(host).unwrap()),
             data: Some(data.into()),
+            organisation: Some(organisation.to_owned()),
         };
 
         self.repository

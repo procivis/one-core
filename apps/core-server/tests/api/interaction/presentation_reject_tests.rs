@@ -19,7 +19,8 @@ async fn test_presentation_reject_endpoint_for_procivis_temp() {
 
     let verifier_url = mock_server.uri();
 
-    let interaction = fixtures::create_interaction(&db_conn, &verifier_url, "".as_bytes()).await;
+    let interaction =
+        fixtures::create_interaction(&db_conn, &verifier_url, "".as_bytes(), &organisation).await;
 
     let proof = fixtures::create_proof(
         &db_conn,

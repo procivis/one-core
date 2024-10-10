@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use one_core::model::interaction::Interaction;
+use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use sea_orm::Set;
 use url::Url;
@@ -8,34 +9,37 @@ use uuid::Uuid;
 
 use crate::entity::interaction;
 
-impl From<Interaction> for interaction::ActiveModel {
-    fn from(value: Interaction) -> Self {
-        Self {
+impl TryFrom<Interaction> for interaction::ActiveModel {
+    type Error = DataLayerError;
+
+    fn try_from(value: Interaction) -> Result<Self, DataLayerError> {
+        let organisation_id = value.organisation.ok_or(DataLayerError::MappingError)?.id;
+        Ok(Self {
             id: Set(value.id.to_string()),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             host: Set(value.host.as_ref().map(ToString::to_string)),
             data: Set(value.data),
-        }
+            organisation_id: Set(organisation_id),
+        })
     }
 }
 
-impl TryFrom<interaction::Model> for Interaction {
-    type Error = DataLayerError;
-
-    fn try_from(value: interaction::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id)?;
-        let host = value
-            .host
-            .map(|host| Url::parse(&host).map_err(|_| DataLayerError::MappingError))
-            .transpose()?;
-
-        Ok(Self {
-            id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            host,
-            data: value.data,
-        })
-    }
+pub(super) fn interaction_from_models(
+    interaction: interaction::Model,
+    organisation: Option<Organisation>,
+) -> Result<Interaction, DataLayerError> {
+    let id = Uuid::from_str(&interaction.id)?;
+    let host = interaction
+        .host
+        .map(|host| Url::parse(&host).map_err(|_| DataLayerError::MappingError))
+        .transpose()?;
+    Ok(Interaction {
+        id,
+        created_date: interaction.created_date,
+        last_modified: interaction.last_modified,
+        host,
+        data: interaction.data,
+        organisation,
+    })
 }

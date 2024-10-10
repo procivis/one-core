@@ -7,7 +7,6 @@ use regex::Regex;
 use serde::{Deserialize, Deserializer};
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};
 use time::OffsetDateTime;
-use url::Url;
 use uuid::Uuid;
 
 use super::error::OpenID4VCIError;
@@ -814,20 +813,6 @@ pub fn proof_from_handle_invitation(
         holder_did: None,
         interaction: Some(interaction),
         verifier_key,
-    }
-}
-
-pub fn interaction_from_handle_invitation(
-    host: Url,
-    data: Option<Vec<u8>>,
-    now: OffsetDateTime,
-) -> Interaction {
-    Interaction {
-        id: Uuid::new_v4(),
-        created_date: now,
-        host: Some(host),
-        data,
-        last_modified: now,
     }
 }
 
