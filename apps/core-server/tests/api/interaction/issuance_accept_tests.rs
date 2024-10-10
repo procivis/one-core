@@ -26,7 +26,12 @@ async fn test_issuance_accept_procivis_temp() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), "".as_bytes())
+        .create(
+            None,
+            &context.server_mock.uri(),
+            "".as_bytes(),
+            &organisation,
+        )
         .await;
     let credential = context
         .db
@@ -101,7 +106,12 @@ async fn test_issuance_accept_procivis_temp_with_key_id() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), "".as_bytes())
+        .create(
+            None,
+            &context.server_mock.uri(),
+            "".as_bytes(),
+            &organisation,
+        )
         .await;
     let credential = context
         .db
@@ -177,7 +187,12 @@ async fn test_fail_issuance_accept_procivis_temp_unknown_did() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), "".as_bytes())
+        .create(
+            None,
+            &context.server_mock.uri(),
+            "".as_bytes(),
+            &organisation,
+        )
         .await;
     context
         .db
@@ -223,7 +238,12 @@ async fn test_fail_issuance_accept_procivis_temp_unknown_key() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), "".as_bytes())
+        .create(
+            None,
+            &context.server_mock.uri(),
+            "".as_bytes(),
+            &organisation,
+        )
         .await;
     context
         .db
@@ -288,7 +308,12 @@ async fn test_fail_issuance_accept_procivis_temp_wrong_key_role() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), "".as_bytes())
+        .create(
+            None,
+            &context.server_mock.uri(),
+            "".as_bytes(),
+            &organisation,
+        )
         .await;
     context
         .db
@@ -353,7 +378,12 @@ async fn test_fail_issuance_accept_procivis_temp_no_key_with_auth_role() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), "".as_bytes())
+        .create(
+            None,
+            &context.server_mock.uri(),
+            "".as_bytes(),
+            &organisation,
+        )
         .await;
     context
         .db
@@ -426,7 +456,12 @@ async fn test_fail_issuance_accept_procivis_temp_wallet_storage_type_not_met() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), "".as_bytes())
+        .create(
+            None,
+            &context.server_mock.uri(),
+            "".as_bytes(),
+            &organisation,
+        )
         .await;
     context
         .db
@@ -525,7 +560,12 @@ async fn test_issuance_accept_openid4vc() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
 
     let credential = context
@@ -618,7 +658,12 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
 
     let credential = context
@@ -688,7 +733,12 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
 
     context
@@ -769,7 +819,12 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
 
     context
@@ -850,7 +905,12 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
 
     context
@@ -931,7 +991,12 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
 
     context
@@ -1020,7 +1085,12 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
 
     context

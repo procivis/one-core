@@ -51,7 +51,12 @@ async fn test_delete_proof_claims_success() {
     let interaction = context
         .db
         .interactions
-        .create(Some(interaction_id), "https://www.procivis.ch", &[])
+        .create(
+            Some(interaction_id),
+            "https://www.procivis.ch",
+            &[],
+            &organisation,
+        )
         .await;
 
     let proof = context

@@ -94,8 +94,6 @@ pub struct DataLayer {
 
 impl DataLayer {
     pub fn build(db: DbConn, exportable_storages: Vec<String>) -> Self {
-        let interaction_repository = Arc::new(InteractionProvider { db: db.clone() });
-
         let claim_schema_repository = Arc::new(ClaimSchemaProvider { db: db.clone() });
 
         let claim_repository = Arc::new(ClaimProvider {
@@ -104,6 +102,11 @@ impl DataLayer {
         });
 
         let organisation_repository = Arc::new(OrganisationProvider { db: db.clone() });
+
+        let interaction_repository = Arc::new(InteractionProvider {
+            db: db.clone(),
+            organisation_repository: organisation_repository.clone(),
+        });
 
         let credential_schema_repository = Arc::new(CredentialSchemaProvider {
             db: db.clone(),

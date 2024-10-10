@@ -293,6 +293,7 @@ async fn test_presentation_reject_success() {
             last_modified: now,
             host: None,
             data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+            organisation: None,
         }),
     };
 

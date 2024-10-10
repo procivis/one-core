@@ -160,6 +160,7 @@ async fn test_openid4vc_jsonld_flow(
             Some(interaction_id),
             &base_url,
             interaction_data.to_string().as_bytes(),
+            &server_organisation,
         )
         .await;
 
@@ -330,6 +331,7 @@ async fn test_openid4vc_jsonld_flow(
             None,
             &base_url,
             holder_interaction_data.to_string().as_bytes(),
+            &holder_organisation,
         )
         .await;
 
@@ -521,6 +523,7 @@ async fn test_openid4vc_jsonld_flow_array(
             Some(interaction_id),
             &base_url,
             interaction_data.to_string().as_bytes(),
+            &server_organisation,
         )
         .await;
 
@@ -701,6 +704,7 @@ async fn test_openid4vc_jsonld_flow_array(
             None,
             &base_url,
             holder_interaction_data.to_string().as_bytes(),
+            &holder_organisation,
         )
         .await;
 

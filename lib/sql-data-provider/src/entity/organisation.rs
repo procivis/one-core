@@ -25,6 +25,8 @@ pub enum Relation {
     Did,
     #[sea_orm(has_many = "super::proof_schema::Entity")]
     ProofSchema,
+    #[sea_orm(has_many = "super::interaction::Entity")]
+    Interaction,
 }
 
 impl Related<super::credential_schema::Entity> for Entity {
@@ -42,6 +44,12 @@ impl Related<super::did::Entity> for Entity {
 impl Related<super::proof_schema::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProofSchema.def()
+    }
+}
+
+impl Related<super::interaction::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Interaction.def()
     }
 }
 

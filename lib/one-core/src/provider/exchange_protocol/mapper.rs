@@ -15,6 +15,7 @@ use crate::model::did::Did;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
+use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential::mapper::credential_detail_response_from_model;
@@ -44,6 +45,7 @@ pub fn interaction_from_handle_invitation(
     host: Url,
     data: Option<Vec<u8>>,
     now: OffsetDateTime,
+    organisation: Option<Organisation>,
 ) -> Interaction {
     Interaction {
         id: Uuid::new_v4(),
@@ -51,6 +53,7 @@ pub fn interaction_from_handle_invitation(
         last_modified: now,
         host: Some(host),
         data,
+        organisation,
     }
 }
 

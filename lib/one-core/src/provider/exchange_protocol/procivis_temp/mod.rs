@@ -558,7 +558,8 @@ async fn handle_credential_invitation(
     let issuer_did = match did {
         Some(did) => did,
         None => {
-            let issuer_did = remote_did_from_value(issuer_did_value.to_owned(), organisation);
+            let issuer_did =
+                remote_did_from_value(issuer_did_value.to_owned(), organisation.clone());
             let _ = storage_access
                 .create_did(issuer_did.clone())
                 .await
@@ -567,7 +568,8 @@ async fn handle_credential_invitation(
         }
     };
 
-    let interaction = interaction_from_handle_invitation(base_url, None, now);
+    let interaction =
+        interaction_from_handle_invitation(base_url, None, now, Some(organisation.to_owned()));
     let interaction_id = storage_access
         .create_interaction(interaction.clone())
         .await
@@ -743,7 +745,7 @@ async fn handle_proof_invitation(
                 did_method: "KEY".to_owned(),
                 keys: None,
                 deactivated: false,
-                organisation: Some(organisation),
+                organisation: Some(organisation.clone()),
             };
             storage_access
                 .create_did(new_did.clone())
@@ -769,7 +771,8 @@ async fn handle_proof_invitation(
         .as_bytes()
         .to_vec();
 
-    let interaction = interaction_from_handle_invitation(base_url, Some(data), now);
+    let interaction =
+        interaction_from_handle_invitation(base_url, Some(data), now, Some(organisation));
 
     let interaction_id = storage_access
         .create_interaction(interaction.clone())

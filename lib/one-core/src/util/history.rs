@@ -47,6 +47,12 @@ pub(crate) async fn log_history_event_credential(
     {
         id
     } else if let Some(id) = credential
+        .interaction
+        .as_ref()
+        .and_then(|interaction| interaction.organisation.as_ref().map(|org| org.id))
+    {
+        id
+    } else if let Some(id) = credential
         .holder_did
         .as_ref()
         .and_then(|did| did.organisation.as_ref().map(|org| org.id))
@@ -144,6 +150,12 @@ pub(crate) async fn log_history_event_proof(
         .schema
         .as_ref()
         .and_then(|schema| schema.organisation.as_ref().map(|org| org.id))
+    {
+        id
+    } else if let Some(id) = proof
+        .interaction
+        .as_ref()
+        .and_then(|interaction| interaction.organisation.as_ref().map(|org| org.id))
     {
         id
     } else if let Some(id) = proof

@@ -236,6 +236,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             host: Some("http://www.host.co".parse().unwrap()),
             data: Some(b"interaction data".to_vec()),
+            organisation: None,
         }),
         revocation_list: None,
         key: None,

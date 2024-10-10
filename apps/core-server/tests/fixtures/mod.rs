@@ -513,6 +513,7 @@ pub async fn create_interaction_with_id(
     db_conn: &DbConn,
     host: &str,
     data: &[u8],
+    organisation: &Organisation,
 ) -> Interaction {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
@@ -522,6 +523,7 @@ pub async fn create_interaction_with_id(
         last_modified: OffsetDateTime::now_utc(),
         host: Some(Url::parse(host).unwrap()),
         data: Some(data.into()),
+        organisation: Some(organisation.to_owned()),
     };
 
     data_layer
@@ -533,8 +535,13 @@ pub async fn create_interaction_with_id(
     interaction
 }
 
-pub async fn create_interaction(db_conn: &DbConn, host: &str, data: &[u8]) -> Interaction {
-    create_interaction_with_id(Uuid::new_v4(), db_conn, host, data).await
+pub async fn create_interaction(
+    db_conn: &DbConn,
+    host: &str,
+    data: &[u8],
+    organisation: &Organisation,
+) -> Interaction {
+    create_interaction_with_id(Uuid::new_v4(), db_conn, host, data, organisation).await
 }
 
 pub async fn create_revocation_list(
@@ -716,7 +723,7 @@ pub async fn get_credential(db_conn: &DbConn, credential_id: &CredentialId) -> C
                     organisation: Some(OrganisationRelations::default()),
                 }),
                 holder_did: Some(DidRelations::default()),
-                interaction: Some(InteractionRelations {}),
+                interaction: Some(InteractionRelations { organisation: None }),
                 revocation_list: None,
                 issuer_did: None,
                 key: None,
@@ -751,7 +758,7 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
                 verifier_key: Some(KeyRelations::default()),
-                interaction: Some(InteractionRelations {}),
+                interaction: Some(InteractionRelations { organisation: None }),
             },
         )
         .await

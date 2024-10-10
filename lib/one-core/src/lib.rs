@@ -504,6 +504,7 @@ impl OneCore {
                 ble_waiter,
                 config.clone(),
                 providers.core_base_url.clone(),
+                data_provider.get_organisation_repository().clone(),
             ),
             ssi_verifier_service: SSIVerifierService::new(
                 data_provider.get_credential_repository(),

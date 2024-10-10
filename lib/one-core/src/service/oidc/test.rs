@@ -143,6 +143,7 @@ fn dummy_interaction(
         last_modified: OffsetDateTime::now_utc(),
         host: Some("http://host-base-url".parse().unwrap()),
         data: Some(data.to_string().into_bytes()),
+        organisation: None,
     }
 }
 
@@ -1378,6 +1379,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                         last_modified: get_dummy_date(),
                         host: None,
                         data: Some(interaction_data),
+                        organisation: None,
                     }),
                 }))
             });
@@ -1426,6 +1428,7 @@ async fn test_oidc_verifier_presentation_definition_incorrect_protocol() {
                     last_modified: get_dummy_date(),
                     host: None,
                     data: None,
+                    organisation: None,
                 }),
             }))
         });
@@ -1519,6 +1522,7 @@ async fn test_submit_proof_failed_credential_suspended() {
         last_modified: now,
         host: None,
         data: Some(interaction_data_serialized),
+        organisation: None,
     };
 
     let interaction_id_copy = interaction_id.to_owned();

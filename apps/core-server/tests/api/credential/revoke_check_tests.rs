@@ -364,7 +364,12 @@ async fn test_revoke_check_mdoc_update() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
 
     let credential = context
@@ -477,7 +482,12 @@ async fn test_revoke_check_token_update() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
 
     let credential = context
@@ -590,7 +600,12 @@ async fn test_revoke_check_mdoc_revoked() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
 
     let credential = context
@@ -702,7 +717,12 @@ async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
 
     let credential = context

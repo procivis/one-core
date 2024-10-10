@@ -22,8 +22,8 @@ use uuid::Uuid;
 use super::mapper::{
     create_credential, create_open_id_for_vp_presentation_definition,
     create_open_id_for_vp_sharing_url_encoded, get_claim_name_by_json_path,
-    get_credential_offer_url, interaction_from_handle_invitation,
-    map_offered_claims_to_credential_schema, proof_from_handle_invitation,
+    get_credential_offer_url, map_offered_claims_to_credential_schema,
+    proof_from_handle_invitation,
 };
 use super::model::{
     DatatypeType, HolderInteractionData, InvitationResponseDTO, JwePayload, OpenID4VCICredential,
@@ -60,7 +60,9 @@ use crate::provider::exchange_protocol::dto::{
     PresentationDefinitionResponseDTO,
 };
 use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
-use crate::provider::exchange_protocol::mapper::get_relevant_credentials_to_credential_schemas;
+use crate::provider::exchange_protocol::mapper::{
+    get_relevant_credentials_to_credential_schemas, interaction_from_handle_invitation,
+};
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCICredentialOfferClaimValue;
 use crate::provider::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
 use crate::provider::http_client::HttpClient;
@@ -187,6 +189,7 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
                         .is_some_and(|value| value),
                     &self.client,
                     storage_access,
+                    Some(organisation),
                 )
                 .await
             }
@@ -910,8 +913,13 @@ async fn handle_credential_invitation(
     };
     let data = serialize_interaction_data(&holder_data)?;
 
-    let interaction =
-        create_and_store_interaction(storage_access, credential_issuer_endpoint, data).await?;
+    let interaction = create_and_store_interaction(
+        storage_access,
+        credential_issuer_endpoint,
+        data,
+        Some(organisation.clone()),
+    )
+    .await?;
     let interaction_id = interaction.id;
 
     let claim_keys: HashMap<String, OpenID4VCICredentialValueDetails> =
@@ -949,7 +957,7 @@ async fn handle_credential_invitation(
                     credential,
                     &issuer_metadata,
                     &credential_schema_name,
-                    organisation,
+                    organisation.clone(),
                 )
                 .await?;
             (response.claims, response.schema)
@@ -1023,6 +1031,7 @@ async fn handle_proof_invitation(
     allow_insecure_http_transport: bool,
     client: &Arc<dyn HttpClient>,
     storage_access: &StorageAccess,
+    organisation: Option<Organisation>,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
         "Query cannot be empty".to_string(),
@@ -1034,8 +1043,13 @@ async fn handle_proof_invitation(
     let data = serialize_interaction_data(&interaction_data)?;
 
     let now = OffsetDateTime::now_utc();
-    let interaction =
-        create_and_store_interaction(storage_access, interaction_data.response_uri, data).await?;
+    let interaction = create_and_store_interaction(
+        storage_access,
+        interaction_data.response_uri,
+        data,
+        organisation,
+    )
+    .await?;
 
     let interaction_id = interaction.id.to_owned();
 
@@ -1100,11 +1114,16 @@ async fn create_and_store_interaction(
     storage_access: &StorageAccess,
     credential_issuer_endpoint: Url,
     data: Vec<u8>,
+    organisation: Option<Organisation>,
 ) -> Result<Interaction, ExchangeProtocolError> {
     let now = OffsetDateTime::now_utc();
 
-    let interaction =
-        interaction_from_handle_invitation(credential_issuer_endpoint, Some(data), now);
+    let interaction = interaction_from_handle_invitation(
+        credential_issuer_endpoint,
+        Some(data),
+        now,
+        organisation,
+    );
 
     let _ = storage_access
         .create_interaction(interaction.clone())

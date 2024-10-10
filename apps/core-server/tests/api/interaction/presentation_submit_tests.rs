@@ -99,6 +99,7 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
         )
         .to_string()
         .as_bytes(),
+        &organisation,
     )
     .await;
 
@@ -328,6 +329,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         )
         .to_string()
         .as_bytes(),
+        &organisation,
     )
     .await;
 
@@ -570,6 +572,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         )
         .to_string()
         .as_bytes(),
+        &organisation,
     )
     .await;
 

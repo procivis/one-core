@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use super::InteractionProvider;
 use crate::entity::interaction;
+use crate::interaction::mapper::interaction_from_models;
 use crate::mapper::to_data_layer_error;
 
 #[autometrics]
@@ -18,17 +19,15 @@ impl InteractionRepository for InteractionProvider {
         &self,
         request: Interaction,
     ) -> Result<InteractionId, DataLayerError> {
-        let interaction = interaction::ActiveModel::from(request)
+        let interaction = interaction::ActiveModel::try_from(request)?
             .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
-
         Ok(Uuid::from_str(&interaction.id)?)
     }
 
     async fn update_interaction(&self, request: Interaction) -> Result<(), DataLayerError> {
-        let model: interaction::ActiveModel = request.into();
-
+        let model: interaction::ActiveModel = request.try_into()?;
         model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
             _ => DataLayerError::Db(e.into()),
@@ -39,7 +38,7 @@ impl InteractionRepository for InteractionProvider {
     async fn get_interaction(
         &self,
         id: &InteractionId,
-        _relations: &InteractionRelations,
+        relations: &InteractionRelations,
     ) -> Result<Option<Interaction>, DataLayerError> {
         let interaction = interaction::Entity::find_by_id(id.to_string())
             .one(&self.db)
@@ -50,7 +49,23 @@ impl InteractionRepository for InteractionProvider {
             return Ok(None);
         };
 
-        let interaction = interaction.try_into()?;
+        let organisation_id = interaction.organisation_id.to_owned();
+
+        let organisation = if let Some(interaction_relations) = &relations.organisation {
+            Some(
+                self.organisation_repository
+                    .get_organisation(&organisation_id, interaction_relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "interaction-organisation",
+                        id: organisation_id.to_string(),
+                    })?,
+            )
+        } else {
+            None
+        };
+
+        let interaction = interaction_from_models(interaction, organisation)?;
 
         Ok(Some(interaction))
     }

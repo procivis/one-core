@@ -49,7 +49,12 @@ async fn test_retract_existing_proof_for_http_transport() {
     let interaction = context
         .db
         .interactions
-        .create(Some(interaction_id), "https://www.procivis.ch", &[])
+        .create(
+            Some(interaction_id),
+            "https://www.procivis.ch",
+            &[],
+            &organisation,
+        )
         .await;
 
     let proof = context

@@ -62,6 +62,7 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
         &db_conn,
         "http://localhost",
         &get_procivis_temporary_interaction_data("firstName".to_string(), &credential_schema),
+        &organisation,
     )
     .await;
     let proof = fixtures::create_proof(
@@ -171,6 +172,7 @@ async fn test_get_presentation_definition_procivis_temporary_with_match_multiple
         &db_conn,
         "http://localhost",
         &get_procivis_temporary_interaction_data("firstName".to_string(), &credential_schema_1),
+        &organisation,
     )
     .await;
     let proof = fixtures::create_proof(
@@ -243,6 +245,7 @@ async fn test_get_presentation_definition_procivis_temporary_no_match() {
         &db_conn,
         "http://localhost",
         &get_procivis_temporary_interaction_data("test".to_string(), &credential_schema),
+        &organisation,
     )
     .await;
     let proof = fixtures::create_proof(
@@ -403,6 +406,7 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
         }])
         .to_string()
         .into_bytes(),
+        &organisation,
     )
     .await;
     let proof = fixtures::create_proof(
@@ -590,6 +594,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
             None,
             "http://localhost",
             &get_open_id_interaction_data(&credential_schema),
+            &organisation,
         )
         .await;
 
@@ -662,6 +667,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
             None,
             "http://localhost",
             &get_open_id_interaction_data(&credential_schema),
+            &organisation,
         )
         .await;
 
@@ -705,6 +711,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
         &db_conn,
         "http://localhost",
         &get_open_id_interaction_data(&credential_schema),
+        &organisation,
     )
     .await;
     let proof = fixtures::create_proof(
@@ -944,6 +951,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         })
         .to_string()
         .into_bytes(),
+        &organisation,
     )
     .await;
     let proof = fixtures::create_proof(

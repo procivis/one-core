@@ -16,7 +16,12 @@ async fn test_issuance_reject_procivis_temp() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), "".as_bytes())
+        .create(
+            None,
+            &context.server_mock.uri(),
+            "".as_bytes(),
+            &organisation,
+        )
         .await;
     let credential = context
         .db
@@ -78,7 +83,12 @@ async fn test_issuance_reject_openid4vc() {
     let interaction = context
         .db
         .interactions
-        .create(None, &context.server_mock.uri(), &interaction_data)
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
         .await;
     let credential = context
         .db

@@ -125,6 +125,7 @@ pub(super) async fn mqtt_verifier_flow(
                         serde_json::to_vec(&MQTTOpenID4VPInteractionDataVerifier { presentation_submission })
                             .context("failed to serialize presentation_submission")?
                     ),
+                    organisation: None,
                 }).await?;
 
                 let _ = proof_repository

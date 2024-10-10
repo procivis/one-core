@@ -936,6 +936,7 @@ fn dummy_credential() -> Credential {
             host: Some("https://core.dev.one-trust-solution.com".parse().unwrap()),
             data: Some(b"interaction data".to_vec()),
             last_modified: OffsetDateTime::now_utc(),
+            organisation: None,
         }),
         key: None,
         revocation_list: None,

@@ -136,7 +136,12 @@ async fn test_openid4vc_jwt_flow(
     let interaction = server_context
         .db
         .interactions
-        .create(Some(interaction_id), &base_url, &interaction_data)
+        .create(
+            Some(interaction_id),
+            &base_url,
+            &interaction_data,
+            &server_organisation,
+        )
         .await;
 
     let _credential = server_context
@@ -329,6 +334,7 @@ async fn test_openid4vc_jwt_flow(
             None,
             &base_url,
             holder_interaction_data.to_string().as_bytes(),
+            &holder_organisation,
         )
         .await;
 
@@ -497,7 +503,12 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
     let interaction = server_context
         .db
         .interactions
-        .create(Some(interaction_id), &base_url, &interaction_data)
+        .create(
+            Some(interaction_id),
+            &base_url,
+            &interaction_data,
+            &server_organisation,
+        )
         .await;
 
     let _credential = server_context
@@ -719,6 +730,7 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
             None,
             &base_url,
             holder_interaction_data.to_string().as_bytes(),
+            &holder_organisation,
         )
         .await;
 

@@ -253,7 +253,7 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
     async fn handle_invitation(
         &self,
         url: Url,
-        _organisation: Organisation,
+        organisation: Organisation,
         _storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
         _transport: Vec<String>,
@@ -293,6 +293,7 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
             last_modified: now,
             host: None,
             data: None,
+            organisation: Some(organisation.clone()),
         };
         let interaction_id = self
             .interaction_repository
@@ -375,6 +376,7 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
                     serde_json::to_vec(&interaction_data)
                         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
                 ),
+                organisation: Some(organisation.clone()),
             })
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
@@ -406,6 +408,7 @@ impl ExchangeProtocolImpl for OpenId4VcMqtt {
                     serde_json::to_vec(&interaction_data)
                         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
                 ),
+                organisation: Some(organisation),
             })
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;

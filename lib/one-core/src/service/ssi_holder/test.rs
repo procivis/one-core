@@ -83,6 +83,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                     last_modified: OffsetDateTime::now_utc(),
                     host: Some("http://www.host.co".parse().unwrap()),
                     data: None,
+                    organisation: None,
                 }),
                 ..dummy_proof()
             }))
@@ -166,6 +167,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
                         last_modified: OffsetDateTime::now_utc(),
                         host: Some("http://www.host.co".parse().unwrap()),
                         data: None,
+                        organisation: None,
                     }),
                     ..dummy_proof()
                 }))
@@ -241,6 +243,7 @@ async fn test_submit_proof_succeeds() {
                     last_modified: OffsetDateTime::now_utc(),
                     host: Some("http://www.host.co".parse().unwrap()),
                     data: Some(serde_json::to_vec(&()).unwrap()),
+                    organisation: None,
                 }),
                 ..dummy_proof()
             }))
@@ -448,6 +451,7 @@ async fn test_submit_proof_repeating_claims() {
                     last_modified: OffsetDateTime::now_utc(),
                     host: Some("http://www.host.co".parse().unwrap()),
                     data: Some(serde_json::to_vec(&()).unwrap()),
+                    organisation: None,
                 }),
                 ..dummy_proof()
             }))
@@ -865,6 +869,7 @@ fn dummy_credential() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             host: Some("http://www.host.co".parse().unwrap()),
             data: Some(b"interaction data".to_vec()),
+            organisation: None,
         }),
         revocation_list: None,
         key: None,

@@ -11,10 +11,10 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::util::ble_resource::BleWaiter;
-
 pub mod dto;
 mod iso_mdl;
 mod mapper;
@@ -39,6 +39,7 @@ pub struct ProofService {
     ble: Option<BleWaiter>,
     config: Arc<core_config::CoreConfig>,
     base_url: Option<String>,
+    organisation_repository: Arc<dyn OrganisationRepository>,
 }
 
 impl ProofService {
@@ -59,6 +60,7 @@ impl ProofService {
         ble: Option<BleWaiter>,
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
+        organisation_repository: Arc<dyn OrganisationRepository>,
     ) -> Self {
         Self {
             proof_repository,
@@ -76,6 +78,7 @@ impl ProofService {
             ble,
             config,
             base_url,
+            organisation_repository,
         }
     }
 }

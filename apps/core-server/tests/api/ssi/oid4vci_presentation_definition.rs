@@ -104,6 +104,7 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
             None,
             &context.server_mock.uri(),
             interaction_data.to_string().as_bytes(),
+            &organisation,
         )
         .await;
 
