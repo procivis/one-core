@@ -262,6 +262,7 @@ async fn test_presentation_reject_success() {
         },
         presentation_definition: None,
         identity_request_nonce: "identity_request_nonce".to_string(),
+        proof_id: proof_id.into(),
     };
 
     let now = OffsetDateTime::now_utc();

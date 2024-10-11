@@ -79,7 +79,10 @@ impl RumqttcClient {
                     };
 
                     let p = match event {
-                        Event::Outgoing(Outgoing::Disconnect) => break,
+                        Event::Outgoing(Outgoing::Disconnect) => {
+                            tokio::time::sleep(Duration::from_millis(500)).await;
+                            break;
+                        }
                         Event::Incoming(Packet::Disconnect) => break,
                         Event::Incoming(Packet::Publish(p)) => p,
                         _ => continue,

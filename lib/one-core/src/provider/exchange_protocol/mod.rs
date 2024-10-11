@@ -154,7 +154,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                         key_provider.clone(),
                     ));
                 }
-                let protocol = Arc::new(OpenID4VC::new(http, ble, mqtt));
+                let protocol = Arc::new(OpenID4VC::new(config.clone(), http, ble, mqtt));
                 providers.insert(name.to_string(), protocol);
             }
             ExchangeType::IsoMdl => {

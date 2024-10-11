@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
@@ -17,16 +18,17 @@ use super::{
     HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
 };
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
-use crate::config::core_config::TransportType;
+use crate::config::core_config::{CoreConfig, TransportType};
 use crate::model::credential::Credential;
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::exchange_protocol::openid4vc::mapper::holder_ble_mqtt_get_presentation_definition;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
-    SubmitIssuerResponse, UpdateResponse,
+    BLEOpenID4VPInteractionData, DatatypeType, InvitationResponseDTO, MQTTOpenID4VPInteractionData,
+    OpenID4VPFormat, PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -47,6 +49,7 @@ pub mod service;
 pub mod validator;
 
 pub(crate) struct OpenID4VC {
+    config: Arc<CoreConfig>,
     openid_http: OpenID4VCHTTP,
     openid_ble: OpenID4VCBLE,
     openid_mqtt: Option<OpenId4VcMqtt>,
@@ -54,11 +57,13 @@ pub(crate) struct OpenID4VC {
 
 impl OpenID4VC {
     pub fn new(
+        config: Arc<CoreConfig>,
         openid_http: OpenID4VCHTTP,
         openid_ble: OpenID4VCBLE,
         mqtt: Option<OpenId4VcMqtt>,
     ) -> Self {
         Self {
+            config,
             openid_http,
             openid_ble,
             openid_mqtt: mqtt,
@@ -128,15 +133,19 @@ impl ExchangeProtocolImpl for OpenID4VC {
     }
 
     async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
-        if proof.transport == TransportType::Ble.to_string() {
-            self.openid_ble.reject_proof(proof).await
-        } else if proof.transport == TransportType::Mqtt.to_string() {
-            let client = self.openid_mqtt.as_ref().ok_or_else(|| {
-                ExchangeProtocolError::Failed("MQTT client not configured".to_string())
-            })?;
-            client.reject_proof(proof).await
-        } else {
-            self.openid_http.reject_proof(proof).await
+        let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
+            ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
+        })?;
+
+        match transport {
+            TransportType::Ble => self.openid_ble.reject_proof(proof).await,
+            TransportType::Http => self.openid_http.reject_proof(proof).await,
+            TransportType::Mqtt => {
+                let client = self.openid_mqtt.as_ref().ok_or_else(|| {
+                    ExchangeProtocolError::Failed("MQTT client not configured".to_string())
+                })?;
+                client.reject_proof(proof).await
+            }
         }
     }
 
@@ -405,16 +414,50 @@ impl ExchangeProtocolImpl for OpenID4VC {
         format_map: HashMap<String, String>,
         types: HashMap<String, DatatypeType>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
-        if proof.transport == TransportType::Ble.to_string() {
-            let interaction_data = serde_json::from_value(interaction_data)
-                .map_err(ExchangeProtocolError::JsonError)?;
-            self.openid_ble
-                .get_presentation_definition(proof, interaction_data, storage_access)
+        let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
+            ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
+        })?;
+
+        match transport {
+            TransportType::Ble => {
+                let interaction_data: BLEOpenID4VPInteractionData =
+                    serde_json::from_value(interaction_data)
+                        .map_err(ExchangeProtocolError::JsonError)?;
+
+                holder_ble_mqtt_get_presentation_definition(
+                    &self.config,
+                    proof,
+                    interaction_data.presentation_definition.ok_or(
+                        ExchangeProtocolError::Failed(
+                            "presentation_definition is None".to_string(),
+                        ),
+                    )?,
+                    storage_access,
+                )
                 .await
-        } else {
-            self.openid_http
-                .get_presentation_definition(proof, storage_access, format_map, types)
+            }
+            TransportType::Http => {
+                self.openid_http
+                    .get_presentation_definition(proof, storage_access, format_map, types)
+                    .await
+            }
+            TransportType::Mqtt => {
+                let interaction_data: MQTTOpenID4VPInteractionData =
+                    serde_json::from_value(interaction_data)
+                        .map_err(ExchangeProtocolError::JsonError)?;
+
+                holder_ble_mqtt_get_presentation_definition(
+                    &self.config,
+                    proof,
+                    interaction_data.presentation_definition.ok_or(
+                        ExchangeProtocolError::Failed(
+                            "presentation_definition is None".to_string(),
+                        ),
+                    )?,
+                    storage_access,
+                )
                 .await
+            }
         }
     }
 
@@ -427,11 +470,15 @@ impl ExchangeProtocolImpl for OpenID4VC {
     }
 
     async fn retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
-        if proof.transport == TransportType::Ble.to_string() {
-            self.openid_ble.retract_proof().await?;
-        }
+        let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
+            ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
+        })?;
 
-        Ok(())
+        match transport {
+            TransportType::Ble => self.openid_ble.retract_proof().await,
+            TransportType::Http => Ok(()),
+            TransportType::Mqtt => unimplemented!(),
+        }
     }
 
     fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
