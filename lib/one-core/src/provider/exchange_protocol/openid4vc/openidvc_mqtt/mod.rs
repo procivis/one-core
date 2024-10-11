@@ -9,7 +9,7 @@ use rand::rngs::OsRng;
 use rand::Rng;
 use serde::Deserialize;
 use time::OffsetDateTime;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Notify};
 use tracing::Instrument;
 use url::Url;
 use uuid::Uuid;
@@ -486,6 +486,7 @@ impl OpenId4VcMqtt {
         type_to_descriptor: TypeToDescriptorMapper,
         interaction_id: InteractionId,
         key_agreement: KeyAgreementKey,
+        notification: Arc<Notify>,
     ) -> Result<Url, ExchangeProtocolError> {
         let url = {
             let mut url: Url = "openid4vp://".parse().unwrap();
@@ -525,6 +526,7 @@ impl OpenId4VcMqtt {
             proof.clone(),
             presentation_request,
             interaction_id,
+            notification,
         )
         .await?;
 
@@ -559,6 +561,7 @@ impl OpenId4VcMqtt {
         proof: Proof,
         presentation_request: MqttOpenId4VpRequest,
         interaction_id: InteractionId,
+        notification: Arc<Notify>,
     ) -> Result<(), ExchangeProtocolError> {
         let (identify, presentation_definition_topic, accept, reject) = tokio::try_join!(
             self.subscribe_to_topic(topic_prefix.clone() + "/presentation-submission/identify"),
@@ -583,6 +586,7 @@ impl OpenId4VcMqtt {
                 self.proof_repository.clone(),
                 self.interaction_repository.clone(),
                 interaction_id,
+                notification,
             )
             .in_current_span(),
         );

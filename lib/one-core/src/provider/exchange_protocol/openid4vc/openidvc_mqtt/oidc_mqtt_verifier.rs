@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use time::{Duration, OffsetDateTime};
+use tokio::sync::Notify;
 
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::proof::{Proof, ProofState, ProofStateEnum, UpdateProofRequest};
@@ -24,6 +25,7 @@ pub(super) struct Topics {
 }
 
 #[tracing::instrument(level = "debug", skip_all, err(Debug))]
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn mqtt_verifier_flow(
     mut topics: Topics,
     keypair: KeyAgreementKey,
@@ -32,9 +34,22 @@ pub(super) async fn mqtt_verifier_flow(
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     interaction_id: InteractionId,
+    notification: Arc<Notify>,
 ) -> anyhow::Result<()> {
     let result = async {
-        let identify_bytes = topics.identify.recv().await?;
+        let identify_bytes = tokio::select! {
+            resp = topics.identify.recv() => {
+                resp?
+            },
+            // stop the flow if other transport was selected
+            _ = notification.notified() => {
+                tracing::debug!("Stopping MQTT verifier flow, other transport selected");
+
+                return Ok(());
+            }
+        };
+
+        notification.notify_waiters();
 
         tracing::debug!("got identify message");
 

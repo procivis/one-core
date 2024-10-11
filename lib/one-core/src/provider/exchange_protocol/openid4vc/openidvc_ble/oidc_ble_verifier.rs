@@ -10,6 +10,7 @@ use one_crypto::utilities;
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::select;
+use tokio::sync::Notify;
 
 use super::{
     BLEPeer, IdentityRequest, MessageSize, TransferSummaryReport, CONTENT_SIZE_UUID,
@@ -77,6 +78,7 @@ impl OpenID4VCBLEVerifier {
         proof_id: ProofId,
         interaction_id: InteractionId,
         keypair: KeyAgreementKey,
+        notification: Arc<Notify>,
     ) -> Result<String, ExchangeProtocolError> {
         let proof_repository = self.proof_repository.clone();
 
@@ -108,11 +110,14 @@ impl OpenID4VCBLEVerifier {
                     let mut connection_event_stream =
                         get_connection_event_stream(peripheral.clone()).await;
                     let result: Result<(), ExchangeProtocolError> = async {
-                        let (wallet, identity_request) = wait_for_wallet_identify_request(
+                        let Some((wallet, identity_request)) = wait_for_wallet_identify_request(
                             peripheral.clone(),
                             &mut connection_event_stream,
+                            notification
                         )
-                        .await?;
+                        .await? else {
+                            return Ok(());
+                        };
 
                         let (sender_key, receiver_key) = keypair
                             .derive_session_secrets(identity_request.key, identity_request.nonce)
@@ -400,7 +405,8 @@ async fn get_connection_event_stream(
 async fn wait_for_wallet_identify_request(
     ble_peripheral: Arc<dyn BlePeripheral>,
     connection_event_stream: &mut ConnectionEventStream,
-) -> Result<(DeviceInfo, IdentityRequest), ExchangeProtocolError> {
+    notification: Arc<Notify>,
+) -> Result<Option<(DeviceInfo, IdentityRequest)>, ExchangeProtocolError> {
     let mut connected_devices: HashMap<String, DeviceInfo> = HashMap::new();
     let mut identify_futures = FuturesUnordered::new();
 
@@ -410,7 +416,7 @@ async fn wait_for_wallet_identify_request(
                 let wallet_info: Result<(String, Vec<u8>), ExchangeProtocolError> = wallet_info;
                 if let Ok((address, data)) = wallet_info {
                     let identity_request = parse_identity_request(data).map_err(ExchangeProtocolError::Transport)?;
-                    break Ok((address, identity_request));
+                    break Ok(Some((address, identity_request)));
                 }
             },
             connection_events = connection_event_stream.next() => {
@@ -434,6 +440,10 @@ async fn wait_for_wallet_identify_request(
                     }
                 }
             },
+            _ = notification.notified() => {
+                tracing::debug!("Stopping OpenID4VP BLE flow, other transport selected");
+                break Ok(None);
+            }
         };
     };
 
@@ -443,14 +453,20 @@ async fn wait_for_wallet_identify_request(
         .context("Failed to stop advertisement")
         .map_err(ExchangeProtocolError::Transport)?;
 
-    let (address, identity_request) = identified_wallet?;
+    let Some((address, identity_request)) = identified_wallet? else {
+        return Ok(None);
+    };
+
+    // notify other transport that this flow was selected
+    notification.notify_waiters();
+
     let device_info = connected_devices
         .remove(&address)
         .ok_or(ExchangeProtocolError::Failed(
             "Could not find connected device info".to_string(),
         ))?;
 
-    Ok((device_info, identity_request))
+    Ok(Some((device_info, identity_request)))
 }
 
 pub fn read(

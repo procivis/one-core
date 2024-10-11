@@ -8,6 +8,7 @@ use oidc_ble_verifier::OpenID4VCBLEVerifier;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use tokio::sync::Notify;
 use url::Url;
 use uuid::Uuid;
 
@@ -455,6 +456,7 @@ impl OpenID4VCBLE {
         type_to_descriptor: TypeToDescriptorMapper,
         interaction_id: InteractionId,
         key_agreement: KeyAgreementKey,
+        notification: Arc<Notify>,
     ) -> Result<String, ExchangeProtocolError> {
         // Pass the expected presentation content to interaction for verification
         let presentation_definition = create_open_id_for_vp_presentation_definition(
@@ -492,6 +494,7 @@ impl OpenID4VCBLE {
                 proof.id,
                 interaction_id,
                 key_agreement,
+                notification,
             )
             .await
     }
