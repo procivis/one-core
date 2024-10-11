@@ -8,7 +8,6 @@ use one_crypto::utilities;
 use rand::rngs::OsRng;
 use rand::Rng;
 use serde::Deserialize;
-use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 use tracing::Instrument;
@@ -523,7 +522,7 @@ impl OpenId4VcMqtt {
         self.start_detached_subscriber(
             topic_prefix,
             key_agreement,
-            proof.id,
+            proof.clone(),
             presentation_request,
             interaction_id,
         )
@@ -557,7 +556,7 @@ impl OpenId4VcMqtt {
         &self,
         topic_prefix: String,
         keypair: KeyAgreementKey,
-        proof_id: ProofId,
+        proof: Proof,
         presentation_request: MqttOpenId4VpRequest,
         interaction_id: InteractionId,
     ) -> Result<(), ExchangeProtocolError> {
@@ -579,7 +578,7 @@ impl OpenId4VcMqtt {
             mqtt_verifier_flow(
                 topics,
                 keypair,
-                proof_id,
+                proof,
                 presentation_request,
                 self.proof_repository.clone(),
                 self.interaction_repository.clone(),
