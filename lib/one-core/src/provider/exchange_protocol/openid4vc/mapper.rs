@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Context};
@@ -20,7 +21,7 @@ use super::model::{
     OpenID4VPPresentationDefinitionInputDescriptor, ProvedCredential, Timestamp,
 };
 use super::service::create_open_id_for_vp_client_metadata;
-use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR};
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -177,10 +178,9 @@ pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VPFormat
 
 pub(crate) fn credentials_format_mdoc(
     credential_schema: &CredentialSchema,
-    claims: &[Claim],
-    config: &CoreConfig,
+    claims: Vec<Claim>,
 ) -> Result<Vec<OpenID4VCICredentialOfferCredentialDTO>, OpenID4VCError> {
-    let claims = prepare_claims(credential_schema, claims, config)?;
+    let claims = from_vec_claim(claims, credential_schema)?;
 
     Ok(vec![OpenID4VCICredentialOfferCredentialDTO {
         wallet_storage_type: credential_schema.wallet_storage_type.clone(),
@@ -192,118 +192,142 @@ pub(crate) fn credentials_format_mdoc(
     }])
 }
 
-pub(super) fn prepare_claims(
+pub(crate) fn from_vec_claim(
+    claims: Vec<Claim>,
     credential_schema: &CredentialSchema,
-    claims: &[Claim],
-    config: &CoreConfig,
 ) -> Result<HashMap<String, OpenID4VCICredentialOfferClaim>, OpenID4VCError> {
-    let object_types = config
-        .datatype
-        .iter()
-        .filter_map(|(name, fields)| {
-            if fields.r#type == DatatypeType::Object {
-                Some(name)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<&str>>();
-
-    // Copy value claims to result
-    let mut result = claims
-        .iter()
-        .map(|claim| {
-            let schema = claim
-                .schema
-                .as_ref()
-                .ok_or(OpenID4VCError::Other("claim_schema is None".to_string()))?;
-            Ok((
-                schema.key.to_owned(),
-                OpenID4VCICredentialOfferClaim {
-                    value: OpenID4VCICredentialOfferClaimValue::String(claim.value.to_owned()),
-                    value_type: schema.data_type.to_owned(),
-                },
-            ))
-        })
-        .collect::<Result<HashMap<String, OpenID4VCICredentialOfferClaim>, OpenID4VCError>>()?;
-
-    // Copy object claims from credential schema
-    let object_claims = credential_schema
+    let claim_schemas = credential_schema
         .claim_schemas
         .as_ref()
-        .ok_or(OpenID4VCError::Other("claim_schemas is None".to_string()))?
-        .iter()
-        .filter_map(|schema| {
-            let is_object = object_types.contains(&schema.schema.data_type.as_str());
-            if is_object {
-                Some(Ok((
-                    schema.schema.key.to_owned(),
-                    OpenID4VCICredentialOfferClaim {
-                        value: OpenID4VCICredentialOfferClaimValue::Nested(Default::default()),
-                        value_type: schema.schema.data_type.to_owned(),
-                    },
-                )))
-            } else {
-                None
-            }
-        })
-        .collect::<Result<HashMap<String, OpenID4VCICredentialOfferClaim>, OpenID4VCError>>()?;
-    result.extend(object_claims);
+        .ok_or(OpenID4VCError::Other("claim_schema is None".to_string()))?;
 
-    nest_claims(result)
+    claims
+        .into_iter()
+        .try_fold(Default::default(), |state, claim| {
+            insert_claim(state, claim, claim_schemas)
+        })
 }
 
-fn nest_claims(
-    claims: HashMap<String, OpenID4VCICredentialOfferClaim>,
+fn insert_claim(
+    mut root: HashMap<String, OpenID4VCICredentialOfferClaim>,
+    claim: Claim,
+    claim_schemas: &[CredentialSchemaClaim],
 ) -> Result<HashMap<String, OpenID4VCICredentialOfferClaim>, OpenID4VCError> {
-    // Copy unnested claims
-    let mut result = claims
-        .iter()
-        .filter_map(|(key, value)| {
-            if key.find(NESTED_CLAIM_MARKER).is_none() {
-                Some((key.to_owned(), value.to_owned()))
-            } else {
-                None
-            }
-        })
-        .collect::<HashMap<String, OpenID4VCICredentialOfferClaim>>();
+    match claim.path.rsplit_once(NESTED_CLAIM_MARKER) {
+        Some((head, tail)) => {
+            let claim_schema = claim
+                .schema
+                .as_ref()
+                .ok_or_else(|| OpenID4VCError::Other("claim.schema is missing".into()))?;
 
-    // Copy nested claims into parent claims
-    claims.into_iter().try_for_each(|(key, value)| {
-        if let Some(index) = key.find(NESTED_CLAIM_MARKER) {
-            let prefix = &key[0..index];
-            let entry = result.get_mut(prefix).ok_or(OpenID4VCError::Other(
-                "failed to find parent claim".to_string(),
-            ))?;
-            match &mut entry.value {
-                OpenID4VCICredentialOfferClaimValue::Nested(map) => {
-                    map.insert(remove_first_nesting_layer(&key), value);
-                }
-                OpenID4VCICredentialOfferClaimValue::String(_) => {
-                    return Err(OpenID4VCError::Other(
-                        "found parent OBJECT claim of String value type".to_string(),
-                    ));
-                }
-            }
-        }
+            let parent_claim = get_or_insert(&mut root, head, claim_schemas, &claim_schema.key)?;
 
-        Ok::<(), OpenID4VCError>(())
-    })?;
+            let OpenID4VCICredentialOfferClaimValue::Nested(claims) = &mut parent_claim.value
+            else {
+                return Err(OpenID4VCError::Other(
+                    "Parent claim should be nested".into(),
+                ));
+            };
 
-    // Repeat for each nested claim
-    result
-        .into_iter()
-        .map(|(key, value)| match value.value {
-            OpenID4VCICredentialOfferClaimValue::Nested(map) => Ok((
-                key,
+            let credential_claim_schema = claim_schemas
+                .iter()
+                .find(|value| value.schema.key == claim_schema.key)
+                .ok_or_else(|| OpenID4VCError::Other("claim.schema is unknown".into()))?;
+
+            claims.insert(
+                tail.to_owned(),
                 OpenID4VCICredentialOfferClaim {
-                    value: OpenID4VCICredentialOfferClaimValue::Nested(nest_claims(map)?),
-                    value_type: value.value_type,
+                    value_type: credential_claim_schema.schema.data_type.clone(),
+                    value: OpenID4VCICredentialOfferClaimValue::String(claim.value.to_owned()),
                 },
-            )),
-            OpenID4VCICredentialOfferClaimValue::String(_) => Ok((key, value)),
+            );
+        }
+        None => {
+            let claim_schema = claim
+                .schema
+                .as_ref()
+                .ok_or_else(|| OpenID4VCError::Other("claim.schema is missing".into()))?;
+
+            let claim_schema = claim_schemas
+                .iter()
+                .find(|value| value.schema.key == claim_schema.key)
+                .ok_or_else(|| OpenID4VCError::Other("claim.schema is unknown".into()))?;
+
+            root.insert(
+                claim.path.to_owned(),
+                OpenID4VCICredentialOfferClaim {
+                    value_type: claim_schema.schema.data_type.clone(),
+                    value: OpenID4VCICredentialOfferClaimValue::String(claim.value.to_owned()),
+                },
+            );
+        }
+    };
+
+    Ok(root)
+}
+
+fn get_or_insert<'a>(
+    root: &'a mut HashMap<String, OpenID4VCICredentialOfferClaim>,
+    path: &str,
+    claim_schemas: &[CredentialSchemaClaim],
+    original_key: &str,
+) -> Result<&'a mut OpenID4VCICredentialOfferClaim, OpenID4VCError> {
+    match path.rsplit_once(NESTED_CLAIM_MARKER) {
+        Some((head, tail)) => {
+            let parent_claim = get_or_insert(root, head, claim_schemas, original_key)?;
+
+            let OpenID4VCICredentialOfferClaimValue::Nested(claims) = &mut parent_claim.value
+            else {
+                return Err(OpenID4VCError::MappingError(
+                    "Parent claim should be nested".into(),
+                ));
+            };
+
+            Ok(match claims.entry(tail.to_string()) {
+                Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
+                Entry::Vacant(vacant_entry) => {
+                    let key = from_path_to_key(path, original_key);
+                    let item_schema = claim_schemas
+                        .iter()
+                        .find(|schema| schema.schema.key == key)
+                        .ok_or_else(|| OpenID4VCError::Other("missing claim schema".into()))?;
+
+                    vacant_entry.insert(OpenID4VCICredentialOfferClaim {
+                        value_type: item_schema.schema.data_type.to_owned(),
+                        value: OpenID4VCICredentialOfferClaimValue::Nested(Default::default()),
+                    })
+                }
+            })
+        }
+        None => Ok(match root.entry(path.to_string()) {
+            Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
+            Entry::Vacant(vacant_entry) => vacant_entry.insert(OpenID4VCICredentialOfferClaim {
+                value_type: claim_schemas
+                    .iter()
+                    .find(|schema| schema.schema.key == path)
+                    .ok_or_else(|| OpenID4VCError::Other("missing claim schema".into()))?
+                    .schema
+                    .data_type
+                    .to_owned(),
+                value: OpenID4VCICredentialOfferClaimValue::Nested(Default::default()),
+            }),
+        }),
+    }
+}
+
+fn from_path_to_key(path: &str, original_key: &str) -> String {
+    let mut key_parts = original_key.split(NESTED_CLAIM_MARKER).peekable();
+
+    path.split(NESTED_CLAIM_MARKER)
+        .filter(move |part| {
+            if Some(part) == key_parts.peek() {
+                key_parts.next();
+                true
+            } else {
+                false
+            }
         })
-        .collect::<Result<HashMap<_, _>, _>>()
+        .join(NESTED_CLAIM_MARKER_STR)
 }
 
 pub(super) fn create_claims_from_credential_definition(

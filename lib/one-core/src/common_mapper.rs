@@ -26,6 +26,7 @@ use crate::repository::did_repository::DidRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub const NESTED_CLAIM_MARKER: char = '/';
+pub const NESTED_CLAIM_MARKER_STR: &str = "/";
 
 pub(crate) fn remove_first_nesting_layer(name: &str) -> String {
     match name.find(NESTED_CLAIM_MARKER) {
