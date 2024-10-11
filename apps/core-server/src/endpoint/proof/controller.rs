@@ -154,11 +154,11 @@ pub(crate) async fn retract_proof(
     path = "/api/proof-request/v1/{id}/claims",
     responses(EmptyOrErrorResponse),
     params(
-    ("id" = ProofId, Path, description = "Proof id")
+        ("id" = ProofId, Path, description = "Proof id")
     ),
     tag = "proof_management",
     security(
-    ("bearer" = [])
+        ("bearer" = [])
     ),
 )]
 pub(crate) async fn delete_proof_claims(

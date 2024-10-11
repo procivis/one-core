@@ -266,7 +266,7 @@ impl OIDCService {
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         let credentials = match format_type.as_str() {
-            "MDOC" => credentials_format_mdoc(credential_schema, &claims, &self.config),
+            "MDOC" => credentials_format_mdoc(credential_schema, claims),
             _ => credentials_format(wallet_storage_type, &oidc_format, &claims),
         }?;
 
