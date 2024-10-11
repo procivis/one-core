@@ -70,16 +70,15 @@ impl OpenID4VCBLEVerifier {
             .map_err(|err| ExchangeProtocolError::Transport(err.into()))
     }
 
-    #[tracing::instrument(level = "debug", skip(self), err(Debug))]
+    #[tracing::instrument(level = "debug", skip(self, keypair), err(Debug))]
     pub async fn share_proof(
         self,
         presentation_definition: OpenID4VPPresentationDefinition,
         proof_id: ProofId,
         interaction_id: InteractionId,
+        keypair: KeyAgreementKey,
     ) -> Result<String, ExchangeProtocolError> {
         let proof_repository = self.proof_repository.clone();
-
-        let keypair = KeyAgreementKey::new_random();
 
         // https://openid.bitbucket.io/connect/openid-4-verifiable-presentations-over-ble-1_0.html#section-5.1.1
         // The verifier can advertise via BLE only or via BLE + QR.

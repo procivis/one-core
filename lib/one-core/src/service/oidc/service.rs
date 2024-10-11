@@ -42,8 +42,8 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_open_id_for_vp_formats, credentials_format_mdoc,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, JwePayload, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCIDiscoveryResponseDTO,
+    BLEOpenID4VPInteractionData, JwePayload, MQTTOpenID4VPInteractionDataVerifier,
+    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCIDiscoveryResponseDTO,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
     OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
     OpenID4VPPresentationDefinition, RequestData,
@@ -514,7 +514,7 @@ impl OIDCService {
     // TODO (Eugeniu) - this method is used as part of the OIDC BLE flow
     // as soon as ONE-2754 is finalized, we should remove this method, and move
     // all logic to the provider instead. This is a temporary solution.
-    pub async fn oidc_verifier_ble_presentation(
+    pub async fn oidc_verifier_ble_mqtt_presentation(
         &self,
         proof_id: &ProofId,
     ) -> Result<(), ServiceError> {
@@ -596,6 +596,29 @@ impl OIDCService {
 
                         break Ok((proof, request_data)) as Result<_, ServiceError>;
                     }
+                }
+
+                if let Ok(interaction_data) =
+                    serde_json::from_slice::<MQTTOpenID4VPInteractionDataVerifier>(data)
+                {
+                    let mqtt_response = interaction_data.presentation_submission;
+                    let state =
+                        Uuid::from_str(&mqtt_response.presentation_submission.definition_id)
+                            .map_err(|e| {
+                                ServiceError::MappingError(format!(
+                                    "Failed to parse BLE interaction data: {:?}",
+                                    e.to_string()
+                                ))
+                            })?;
+
+                    let request_data = RequestData {
+                        presentation_submission: mqtt_response.presentation_submission,
+                        vp_token: mqtt_response.vp_token,
+                        state,
+                        mdoc_generated_nonce: Some(interaction_data.identity_request_nonce),
+                    };
+
+                    break Ok((proof, request_data)) as Result<_, ServiceError>;
                 }
             }
         }?;

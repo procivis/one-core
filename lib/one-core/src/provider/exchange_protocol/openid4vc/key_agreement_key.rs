@@ -3,17 +3,18 @@ use anyhow::anyhow;
 use hkdf::Hkdf;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
-use x25519_dalek::{EphemeralSecret, PublicKey};
+use x25519_dalek::{PublicKey, ReusableSecret};
 
 // Ephemeral x25519 key pair, discarded after the symmetric keys are derived
+#[derive(Clone)]
 pub struct KeyAgreementKey {
-    secret_key: EphemeralSecret,
+    secret_key: ReusableSecret,
 }
 
 impl KeyAgreementKey {
     pub fn new_random() -> Self {
         Self {
-            secret_key: EphemeralSecret::random_from_rng(OsRng),
+            secret_key: ReusableSecret::random_from_rng(OsRng),
         }
     }
 

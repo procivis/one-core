@@ -33,7 +33,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 use crate::provider::exchange_protocol::openid4vc::service::{
     create_credential_offer, credentials_format,
 };
-use crate::provider::exchange_protocol::openid4vc::{ExchangeProtocolError, ExchangeProtocolImpl};
+use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::provider::exchange_protocol::{MockHandleInvitationOperations, MockStorageProxy};
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -297,13 +297,7 @@ async fn test_handle_invitation_proof_success() {
     let operations = MockHandleInvitationOperations::default();
 
     let result = protocol
-        .handle_invitation(
-            url,
-            generic_organisation(),
-            &storage_proxy,
-            &operations,
-            vec![],
-        )
+        .handle_invitation(url, generic_organisation(), &storage_proxy, &operations)
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -340,7 +334,6 @@ async fn test_handle_invitation_proof_success() {
             generic_organisation(),
             &storage_proxy,
             &operations,
-            vec![],
         )
         .await
         .unwrap();
@@ -386,7 +379,6 @@ async fn test_handle_invitation_proof_failed() {
             generic_organisation(),
             &storage_proxy,
             &operations,
-            vec![],
         )
         .await
         .unwrap_err();
@@ -400,7 +392,6 @@ async fn test_handle_invitation_proof_failed() {
             generic_organisation(),
             &storage_proxy,
             &operations,
-            vec![],
         )
         .await
         .unwrap_err();
@@ -414,7 +405,6 @@ async fn test_handle_invitation_proof_failed() {
             generic_organisation(),
             &storage_proxy,
             &operations,
-            vec![],
         )
         .await
         .unwrap_err();
@@ -428,7 +418,6 @@ async fn test_handle_invitation_proof_failed() {
             generic_organisation(),
             &storage_proxy,
             &operations,
-            vec![],
         )
         .await
         .unwrap_err();
@@ -442,7 +431,6 @@ async fn test_handle_invitation_proof_failed() {
             generic_organisation(),
             &storage_proxy,
             &operations,
-            vec![],
         )
         .await
         .unwrap_err();
@@ -463,7 +451,6 @@ async fn test_handle_invitation_proof_failed() {
             generic_organisation(),
             &storage_proxy,
             &operations,
-            vec![],
         )
         .await
         .unwrap_err();
@@ -477,7 +464,6 @@ async fn test_handle_invitation_proof_failed() {
             generic_organisation(),
             &storage_proxy,
             &operations,
-            vec![],
         )
         .await
         .unwrap_err();
@@ -491,7 +477,6 @@ async fn test_handle_invitation_proof_failed() {
             generic_organisation(),
             &storage_proxy,
             &operations,
-            vec![],
         )
         .await
         .unwrap_err();
@@ -519,7 +504,6 @@ async fn test_handle_invitation_proof_failed() {
             generic_organisation(),
             &storage_proxy,
             &operations,
-            vec![],
         )
         .await
         .unwrap_err();
@@ -534,7 +518,6 @@ async fn test_handle_invitation_proof_failed() {
             generic_organisation(),
             &storage_proxy,
             &operations,
-            vec![],
         )
         .await
         .unwrap_err();

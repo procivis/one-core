@@ -28,7 +28,7 @@ transport:
     order: 2
     params:
       private:
-        brokerUrl: "https://desk.dev.procivis-one.com/"
+        brokerUrl: "mqtt://rabbitmq.dev.procivis-one.com:1883"
 exchange:
   ISO_MDL:
     type: "ISO_MDL"

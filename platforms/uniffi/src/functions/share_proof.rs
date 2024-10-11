@@ -23,7 +23,9 @@ impl OneCoreBinding {
                 // We only do this now because all logic related to handling OpenID presentations
                 // is centralized in the oidc service.
                 tokio::spawn(async move {
-                    let _ = oidc_service.oidc_verifier_ble_presentation(&request).await;
+                    let _ = oidc_service
+                        .oidc_verifier_ble_mqtt_presentation(&request)
+                        .await;
                 });
             }
 

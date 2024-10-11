@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use anyhow::Context;
-use async_trait::async_trait;
 pub use mappers::create_presentation_submission;
 use mappers::{
     map_credential_formats_to_presentation_format, presentation_definition_from_interaction_data,
@@ -40,8 +39,8 @@ use super::service::{
     create_credential_offer, credentials_format, FnMapExternalFormatToExternalDetailed,
 };
 use super::{
-    ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper, HandleInvitationOperationsAccess,
-    StorageAccess, TypeToDescriptorMapper,
+    ExchangeProtocolError, FormatMapper, HandleInvitationOperationsAccess, StorageAccess,
+    TypeToDescriptorMapper,
 };
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::UpdateCredentialSchemaRequest;
@@ -145,24 +144,17 @@ impl OpenID4VCHTTP {
 
         None
     }
-}
 
-#[async_trait]
-impl ExchangeProtocolImpl for OpenID4VCHTTP {
-    type VCInteractionContext = OpenID4VCInteractionContent;
-    type VPInteractionContext = OpenID4VPInteractionContent;
-
-    fn can_handle(&self, url: &Url) -> bool {
+    pub fn can_handle(&self, url: &Url) -> bool {
         self.detect_invitation_type(url).is_some()
     }
 
-    async fn handle_invitation(
+    pub async fn handle_invitation(
         &self,
         url: Url,
         organisation: Organisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
-        _transport: Vec<String>,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         let invitation_type =
             self.detect_invitation_type(&url)
@@ -196,11 +188,12 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
         }
     }
 
-    async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    pub async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         Err(ExchangeProtocolError::OperationNotSupported)
     }
 
-    async fn submit_proof(
+    #[allow(clippy::too_many_arguments)]
+    pub async fn submit_proof(
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
@@ -397,7 +390,8 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
         }
     }
 
-    async fn accept_credential(
+    #[allow(clippy::too_many_arguments)]
+    pub async fn accept_credential(
         &self,
         credential: &Credential,
         holder_did: &Did,
@@ -586,14 +580,14 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
         })
     }
 
-    async fn reject_credential(
+    pub async fn reject_credential(
         &self,
         _credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         Err(ExchangeProtocolError::OperationNotSupported)
     }
 
-    async fn validate_proof_for_submission(
+    pub async fn validate_proof_for_submission(
         &self,
         proof: &Proof,
     ) -> Result<(), ExchangeProtocolError> {
@@ -601,11 +595,11 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
-    async fn share_credential(
+    pub async fn share_credential(
         &self,
         credential: &Credential,
         credential_format: &str,
-    ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
+    ) -> Result<ShareResponse<OpenID4VCInteractionContent>, ExchangeProtocolError> {
         let interaction_id = Uuid::new_v4();
         let interaction_content = OpenID4VCInteractionContent {
             pre_authorized_code_used: false,
@@ -677,7 +671,7 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
         })
     }
 
-    async fn share_proof(
+    pub async fn share_proof(
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper, // Credential schema format to format type mapper
@@ -685,7 +679,7 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
         encryption_key_jwk: PublicKeyJwkDTO,
         vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
-    ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
+    ) -> Result<ShareResponse<OpenID4VPInteractionContent>, ExchangeProtocolError> {
         let interaction_id = Uuid::new_v4();
 
         // Pass the expected presentation content to interaction for verification
@@ -736,10 +730,9 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
         })
     }
 
-    async fn get_presentation_definition(
+    pub async fn get_presentation_definition(
         &self,
         proof: &Proof,
-        _interaction_data: Self::VPInteractionContext,
         storage_access: &StorageAccess,
         format_map: HashMap<String, String>,
         types: HashMap<String, DatatypeType>,
@@ -831,7 +824,7 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
         )
     }
 
-    async fn verifier_handle_proof(
+    pub async fn verifier_handle_proof(
         &self,
         _proof: &Proof,
         _submission: &[u8],
@@ -839,11 +832,11 @@ impl ExchangeProtocolImpl for OpenID4VCHTTP {
         Err(ExchangeProtocolError::OperationNotSupported)
     }
 
-    async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    pub async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         Ok(())
     }
 
-    fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
+    pub fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
         unimplemented!()
     }
 }

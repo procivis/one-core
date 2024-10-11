@@ -285,7 +285,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         organisation: Organisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
-        transport: Vec<String>,
+        transport: String,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError>;
 
     /// Rejects a verifier's request for credential presentation.
@@ -409,7 +409,7 @@ where
         organisation: Organisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
-        transport: Vec<String>,
+        transport: String,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         self.inner
             .handle_invitation(

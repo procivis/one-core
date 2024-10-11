@@ -127,7 +127,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
         organisation: Organisation,
         storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
-        _transport: Vec<String>,
+        _transport: String,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         let invitation_type = categorize_url(&url)?;
 
