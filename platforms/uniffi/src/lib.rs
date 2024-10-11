@@ -37,6 +37,7 @@ use one_core::provider::key_storage::internal::InternalKeyProvider;
 use one_core::provider::key_storage::provider::KeyProviderImpl;
 use one_core::provider::key_storage::secure_element::SecureElementKeyProvider;
 use one_core::provider::key_storage::KeyStorage;
+use one_core::provider::mqtt_client::rumqttc_client::RumqttcClient;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use one_core::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 use one_core::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
@@ -556,6 +557,7 @@ fn initialize_core(
                 .with_did_method_provider(did_method_creator)
                 .with_formatter_provider(formatter_provider_creator)
                 .with_ble(ble_peripheral, ble_central)
+                .with_mqtt_client(Arc::new(RumqttcClient::default()))
                 .with_revocation_method_provider(revocation_method_creator)
                 .with_client(client)
                 .build()

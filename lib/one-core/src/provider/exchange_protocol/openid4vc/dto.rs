@@ -1,5 +1,7 @@
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
+use shared_types::ProofId;
+use url::Url;
 
 use super::openidvc_ble::MessageSize;
 
@@ -11,11 +13,10 @@ pub struct OpenID4VPBleData {
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct OpenID4VPMqttData {
-    pub broker_url: String,
-    pub client_id: String,
+pub struct OpenID4VPMqttQueryParams {
+    pub broker_url: Url,
     pub key: String,
-    pub nonce: String,
+    pub proof_id: ProofId,
 }
 
 #[derive(Debug)]

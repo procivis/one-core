@@ -42,6 +42,13 @@ pub struct BleOpenId4VpRequest {
     pub presentation_definition: OpenID4VPPresentationDefinition,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MqttOpenId4VpRequest {
+    pub client_id: String,
+    pub nonce: String,
+    pub presentation_definition: OpenID4VPPresentationDefinition,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OpenID4VCInteractionContent {
     pub pre_authorized_code_used: bool,
@@ -97,6 +104,7 @@ pub struct MQTTOpenID4VPInteractionData {
     pub broker_port: u16,
     pub client_id: String,
     pub nonce: String,
+    pub identity_request_nonce: String,
     pub session_keys: MQTTSessionKeys,
     pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
 }
@@ -110,6 +118,9 @@ pub struct MQTTOpenId4VpResponse {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MQTTOpenID4VPInteractionDataVerifier {
     pub presentation_submission: MQTTOpenId4VpResponse,
+    pub nonce: String,
+    pub identity_request_nonce: String,
+    pub client_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

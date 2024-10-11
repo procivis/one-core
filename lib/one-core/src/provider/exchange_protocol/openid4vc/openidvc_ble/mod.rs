@@ -2,30 +2,27 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, LazyLock};
 
 use anyhow::{anyhow, Result};
-use async_trait::async_trait;
 use futures::{Stream, TryStreamExt};
 use oidc_ble_holder::OpenID4VCBLEHolder;
 use oidc_ble_verifier::OpenID4VCBLEVerifier;
 use one_dto_mapper::convert_inner;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use shared_types::KeyId;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
 use super::dto::OpenID4VPBleData;
+use super::key_agreement_key::KeyAgreementKey;
 use super::mapper::{
     create_presentation_submission, get_claim_name_by_json_path,
     presentation_definition_from_interaction_data,
 };
 use super::model::BLEOpenID4VPInteractionData;
 use super::openidvc_http::mappers::map_credential_formats_to_presentation_format;
-use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{self, TransportType};
-use crate::model::credential::Credential;
 use crate::model::did::Did;
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -34,11 +31,10 @@ use crate::provider::bluetooth_low_energy::BleError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
 };
-use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
+use crate::provider::credential_formatter::model::FormatPresentationCtx;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::dto::{
-    CredentialGroup, CredentialGroupItem, ExchangeProtocolCapabilities,
-    PresentationDefinitionResponseDTO,
+    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
 };
 use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::{
@@ -46,22 +42,17 @@ use crate::provider::exchange_protocol::mapper::{
 };
 use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_presentation_definition;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
-    SubmitIssuerResponse, UpdateResponse,
+    InvitationResponseDTO, PresentedCredential, UpdateResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
-use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
-use crate::provider::exchange_protocol::openid4vc::{
-    FormatMapper, HandleInvitationOperationsAccess, TypeToDescriptorMapper,
-};
+use crate::provider::exchange_protocol::openid4vc::{FormatMapper, TypeToDescriptorMapper};
 use crate::provider::exchange_protocol::{
-    deserialize_interaction_data, ExchangeProtocolError, ExchangeProtocolImpl, StorageAccess,
+    deserialize_interaction_data, ExchangeProtocolError, StorageAccess,
 };
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
-use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::ble_resource::{Abort, BleWaiter};
 use crate::util::oidc::{create_core_to_oicd_format_map, map_from_oidc_format_to_core};
 
@@ -214,14 +205,8 @@ impl OpenID4VCBLE {
             config,
         }
     }
-}
 
-#[async_trait]
-impl ExchangeProtocolImpl for OpenID4VCBLE {
-    type VCInteractionContext = ();
-    type VPInteractionContext = Option<BLEOpenID4VPInteractionData>;
-
-    fn can_handle(&self, url: &Url) -> bool {
+    pub fn can_handle(&self, url: &Url) -> bool {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
         url.scheme() == "openid4vp"
@@ -229,13 +214,10 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             && query_has_key(PRESENTATION_DEFINITION_BLE_KEY)
     }
 
-    async fn handle_invitation(
+    pub async fn handle_invitation(
         &self,
         url: Url,
         organisation: Organisation,
-        _storage_access: &StorageAccess,
-        _handle_invitation_operations: &HandleInvitationOperationsAccess,
-        _transport: Vec<String>,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         if !self.can_handle(&url) {
             return Err(ExchangeProtocolError::Failed(
@@ -314,7 +296,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         })
     }
 
-    async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    pub async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let ble_holder = OpenID4VCBLEHolder::new(
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
@@ -327,7 +309,8 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         Ok(())
     }
 
-    async fn submit_proof(
+    #[allow(clippy::too_many_arguments)]
+    pub async fn submit_proof(
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
@@ -477,45 +460,14 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         })
     }
 
-    async fn accept_credential(
-        &self,
-        _credential: &Credential,
-        _holder_did: &Did,
-        _key: &Key,
-        _jwk_key_id: Option<String>,
-        _format: &str,
-        _storage_access: &StorageAccess,
-        _map_oidc_format_to_external: FnMapExternalFormatToExternalDetailed,
-    ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
-        Err(ExchangeProtocolError::OperationNotSupported)
-    }
-
-    async fn reject_credential(
-        &self,
-        _credential: &Credential,
-    ) -> Result<(), ExchangeProtocolError> {
-        Err(ExchangeProtocolError::OperationNotSupported)
-    }
-
-    async fn share_credential(
-        &self,
-        _credential: &Credential,
-        _credential_format: &str,
-    ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
-        Err(ExchangeProtocolError::OperationNotSupported)
-    }
-
-    async fn share_proof(
+    pub async fn share_proof(
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        _key_id: KeyId,
-        _encryption_key_jwk: PublicKeyJwkDTO,
-        _vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
-    ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
-        let interaction_id = Uuid::new_v4();
-
+        interaction_id: InteractionId,
+        key_agreement: KeyAgreementKey,
+    ) -> Result<String, ExchangeProtocolError> {
         // Pass the expected presentation content to interaction for verification
         let presentation_definition = create_open_id_for_vp_presentation_definition(
             interaction_id,
@@ -547,26 +499,25 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         }
 
         ble_verifier
-            .share_proof(presentation_definition, proof.id, interaction_id)
-            .await
-            .map(|url| ShareResponse {
-                url,
+            .share_proof(
+                presentation_definition,
+                proof.id,
                 interaction_id,
-                context: None,
-            })
+                key_agreement,
+            )
+            .await
     }
 
-    async fn get_presentation_definition(
+    pub async fn get_presentation_definition(
         &self,
         proof: &Proof,
-        interaction_data: Self::VPInteractionContext,
+        interaction_data: BLEOpenID4VPInteractionData,
         storage_access: &StorageAccess,
-        _format_map: HashMap<String, String>,
-        _types: HashMap<String, DatatypeType>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
-        let presentation_definition = interaction_data
-            .and_then(|i| i.presentation_definition)
-            .ok_or_else(|| ExchangeProtocolError::Failed("missing interaction data".to_owned()))?;
+        let presentation_definition =
+            interaction_data.presentation_definition.ok_or_else(|| {
+                ExchangeProtocolError::Failed("missing presentation definition".to_owned())
+            })?;
 
         let mut credential_groups: Vec<CredentialGroup> = vec![];
         let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
@@ -652,23 +603,7 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
         .map(Into::into)
     }
 
-    async fn validate_proof_for_submission(
-        &self,
-        proof: &Proof,
-    ) -> std::result::Result<(), ExchangeProtocolError> {
-        throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Pending)
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
-    }
-
-    async fn verifier_handle_proof(
-        &self,
-        _proof: &Proof,
-        _submission: &[u8],
-    ) -> Result<Vec<DetailCredential>, ExchangeProtocolError> {
-        unimplemented!()
-    }
-
-    async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    pub async fn retract_proof(&self) -> Result<(), ExchangeProtocolError> {
         self.ble
             .as_ref()
             .ok_or_else(|| ExchangeProtocolError::Failed("BLE is missing in service".to_string()))?
@@ -676,9 +611,5 @@ impl ExchangeProtocolImpl for OpenID4VCBLE {
             .await;
 
         Ok(())
-    }
-
-    fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
-        unimplemented!()
     }
 }

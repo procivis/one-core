@@ -86,9 +86,11 @@ impl SSIHolderService {
         let transport =
             validate_and_select_transport_type(&transport, &self.config.transport, &*protocol)?;
         let transport = match transport {
-            SelectedTransportType::Single(s) => vec![s],
-            // workaround for the moment
-            SelectedTransportType::Multiple(vec) => vec,
+            SelectedTransportType::Single(s) => s,
+            SelectedTransportType::Multiple(vec) => vec
+                .into_iter()
+                .next()
+                .ok_or_else(|| ValidationError::TransportNotAllowedForExchange)?,
         };
 
         let response = protocol

@@ -9,7 +9,7 @@ use crate::model::proof::{ProofState, ProofStateEnum, UpdateProofRequest};
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::mapper::parse_identity_request;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    MQTTOpenID4VPInteractionDataVerifier, MQTTOpenId4VpResponse, OpenID4VPPresentationDefinition,
+    MQTTOpenID4VPInteractionDataVerifier, MQTTOpenId4VpResponse, MqttOpenId4VpRequest,
 };
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
 use crate::provider::mqtt_client::MqttTopic;
@@ -28,7 +28,7 @@ pub(super) struct Topics {
     skip(
         topics,
         keypair,
-        presentation_definition,
+        presentation_request,
         proof_repository,
         interaction_repository,
     ),
@@ -38,7 +38,7 @@ pub(super) async fn mqtt_verifier_flow(
     mut topics: Topics,
     keypair: KeyAgreementKey,
     proof_id: ProofId,
-    presentation_definition: OpenID4VPPresentationDefinition,
+    presentation_request: MqttOpenId4VpRequest,
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     interaction_id: InteractionId,
@@ -65,7 +65,11 @@ pub(super) async fn mqtt_verifier_flow(
         let shared_key =
             PeerEncryption::new(encryption_key, decryption_key, identity_request.nonce);
 
-        let bytes = shared_key.encrypt(presentation_definition)?;
+        let client_id = presentation_request.client_id.clone();
+        let nonce = presentation_request.nonce.clone();
+        let identity_request_nonce = hex::encode(identity_request.nonce);
+
+        let bytes = shared_key.encrypt(presentation_request)?;
 
         topics.presentation_definition.send(bytes).await?;
 
@@ -122,7 +126,7 @@ pub(super) async fn mqtt_verifier_flow(
                     last_modified: now,
                     host: None,
                     data: Some(
-                        serde_json::to_vec(&MQTTOpenID4VPInteractionDataVerifier { presentation_submission })
+                        serde_json::to_vec(&MQTTOpenID4VPInteractionDataVerifier { presentation_submission, nonce, client_id, identity_request_nonce })
                             .context("failed to serialize presentation_submission")?
                     ),
                     organisation: None,

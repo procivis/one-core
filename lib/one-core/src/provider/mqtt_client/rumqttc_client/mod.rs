@@ -1,6 +1,7 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Context;
 use rumqttc::{AsyncClient, Event, MqttOptions, Outgoing, Packet, QoS};
@@ -31,7 +32,7 @@ type Topics = Arc<RwLock<HashMap<String, Topic>>>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct BrokerAddr {
-    url: String,
+    host: String,
     port: u16,
 }
 
@@ -55,9 +56,10 @@ impl RumqttcClient {
 
         let mqttoptions = MqttOptions::new(
             format!("one-core-rumqttc-async-{id}"),
-            broker_addr.url.clone(),
+            &broker_addr.host,
             broker_addr.port,
         );
+
         let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
 
         let topics = Topics::default();
@@ -67,8 +69,13 @@ impl RumqttcClient {
 
             async move {
                 loop {
-                    let Ok(event) = eventloop.poll().await else {
-                        continue;
+                    let event = match eventloop.poll().await {
+                        Ok(event) => event,
+                        Err(error) => {
+                            tracing::error!(%error, "MQTT connection error");
+                            tokio::time::sleep(Duration::from_millis(500)).await;
+                            continue;
+                        }
                     };
 
                     let p = match event {
@@ -107,11 +114,11 @@ impl MqttClient for RumqttcClient {
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     async fn subscribe(
         &self,
-        url: String,
+        host: String,
         port: u16,
         topic: String,
     ) -> anyhow::Result<Box<dyn MqttTopic>> {
-        let broker_addr = BrokerAddr { url, port };
+        let broker_addr = BrokerAddr { host, port };
 
         let mut brokers = self.brokers.write().await;
         let broker = match brokers.entry(broker_addr.clone()) {
