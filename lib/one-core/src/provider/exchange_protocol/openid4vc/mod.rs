@@ -9,6 +9,7 @@ use openidvc_http::OpenID4VCHTTP;
 use openidvc_mqtt::OpenId4VcMqtt;
 use serde_json::json;
 use shared_types::KeyId;
+use tokio::sync::Notify;
 use url::Url;
 use uuid::Uuid;
 
@@ -311,6 +312,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         type_to_descriptor,
                         interaction_id,
                         key_agreement,
+                        Arc::new(Notify::new()),
                     )
                     .await
                     .map(|url| ShareResponse {
@@ -349,6 +351,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         type_to_descriptor,
                         interaction_id,
                         key_agreement,
+                        Arc::new(Notify::new()),
                     )
                     .await
                     .map(|url| ShareResponse {
@@ -367,6 +370,9 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 let interaction_id = Uuid::new_v4();
                 let key_agreement = KeyAgreementKey::new_random();
 
+                // notification to cancel the other flow when one is selected
+                let flow_selection_notification = Arc::new(Notify::new());
+
                 let mqtt_url = client
                     .share_proof(
                         proof,
@@ -374,6 +380,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         type_to_descriptor.clone(),
                         interaction_id,
                         key_agreement.clone(),
+                        flow_selection_notification.clone(),
                     )
                     .await?;
 
@@ -385,6 +392,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         type_to_descriptor,
                         interaction_id,
                         key_agreement,
+                        flow_selection_notification,
                     )
                     .await?;
 

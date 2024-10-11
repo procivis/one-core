@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use mockall::predicate::eq;
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
+use tokio::sync::Notify;
 use uuid::Uuid;
 
 use crate::config::core_config::{Fields, TransportType};
@@ -365,6 +366,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
             type_to_descriptor_mapper,
             interaction_id,
             key_agreement,
+            Arc::new(Notify::new()),
         )
         .await
         .unwrap();
