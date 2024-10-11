@@ -10,7 +10,7 @@ use rand::Rng;
 use serde::Deserialize;
 use shared_types::ProofId;
 use time::OffsetDateTime;
-use tokio::sync::RwLock;
+use tokio::sync::Mutex;
 use tracing::Instrument;
 use url::Url;
 use uuid::Uuid;
@@ -62,7 +62,7 @@ pub struct OpenId4VcMqtt {
     mqtt_client: Arc<dyn MqttClient>,
     config: Arc<CoreConfig>,
     params: ConfigParams,
-    handle: RwLock<Option<SubscriptionHandle>>,
+    handle: Mutex<Option<SubscriptionHandle>>,
 
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
@@ -78,7 +78,7 @@ pub struct ConfigParams {
 }
 
 struct SubscriptionHandle {
-    _task_handle: tokio::task::JoinHandle<anyhow::Result<()>>,
+    task_handle: tokio::task::JoinHandle<anyhow::Result<()>>,
 }
 
 impl OpenId4VcMqtt {
@@ -95,7 +95,7 @@ impl OpenId4VcMqtt {
             mqtt_client,
             config,
             params,
-            handle: RwLock::new(None),
+            handle: Mutex::new(None),
             interaction_repository,
             proof_repository,
             formatter_provider,
@@ -588,11 +588,21 @@ impl OpenId4VcMqtt {
             .in_current_span(),
         );
 
-        self.handle.write().await.replace(SubscriptionHandle {
-            _task_handle: handle,
+        let old = self.handle.lock().await.replace(SubscriptionHandle {
+            task_handle: handle,
         });
 
+        if let Some(old) = old {
+            old.task_handle.abort()
+        };
+
         Ok(())
+    }
+
+    pub async fn retract_proof(&self) {
+        if let Some(old) = self.handle.lock().await.take() {
+            old.task_handle.abort()
+        };
     }
 }
 

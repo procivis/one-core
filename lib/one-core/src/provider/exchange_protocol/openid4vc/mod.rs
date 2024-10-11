@@ -477,7 +477,13 @@ impl ExchangeProtocolImpl for OpenID4VC {
         match transport {
             TransportType::Ble => self.openid_ble.retract_proof().await,
             TransportType::Http => Ok(()),
-            TransportType::Mqtt => unimplemented!(),
+            TransportType::Mqtt => {
+                if let Some(mqtt) = &self.openid_mqtt {
+                    mqtt.retract_proof().await;
+                }
+
+                Ok(())
+            }
         }
     }
 
