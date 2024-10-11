@@ -302,7 +302,7 @@ pub fn get_verifier_proof_detail(
                     None => ProofClaimDTO {
                         schema: claim_schema.clone().into(),
                         path: claim_schema.schema.key.to_string(),
-                        value: Some(ProofClaimValueDTO::Claims(vec![])),
+                        value: None,
                     },
                 }
             })
