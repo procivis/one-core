@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::ProofId;
 use time::{Duration, OffsetDateTime};
 
 use crate::model::interaction::{Interaction, InteractionId};
-use crate::model::proof::{ProofState, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofState, ProofStateEnum, UpdateProofRequest};
+use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::mapper::parse_identity_request;
 use crate::provider::exchange_protocol::openid4vc::model::{
@@ -23,21 +23,11 @@ pub(super) struct Topics {
     pub(super) reject: Box<dyn MqttTopic>,
 }
 
-#[tracing::instrument(
-    level = "debug",
-    skip(
-        topics,
-        keypair,
-        presentation_request,
-        proof_repository,
-        interaction_repository,
-    ),
-    err(Debug)
-)]
+#[tracing::instrument(level = "debug", skip_all, err(Debug))]
 pub(super) async fn mqtt_verifier_flow(
     mut topics: Topics,
     keypair: KeyAgreementKey,
-    proof_id: ProofId,
+    proof: Proof,
     presentation_request: MqttOpenId4VpRequest,
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
@@ -50,7 +40,7 @@ pub(super) async fn mqtt_verifier_flow(
 
         proof_repository
             .update_proof(
-                &proof_id,
+                &proof.id,
                 UpdateProofRequest {
                     transport: Some("MQTT".into()),
                     ..Default::default()
@@ -78,7 +68,7 @@ pub(super) async fn mqtt_verifier_flow(
         let now = OffsetDateTime::now_utc();
         proof_repository
             .set_proof_state(
-                &proof_id,
+                &proof.id,
                 ProofState {
                     created_date: now,
                     last_modified: now,
@@ -93,9 +83,7 @@ pub(super) async fn mqtt_verifier_flow(
                     continue;
                 };
 
-                let Ok(timestamp) = shared_key
-                    .decrypt::<i64>(&reject)
-                else {
+                let Ok(timestamp) = shared_key.decrypt::<i64>(&reject) else {
                     continue;
                 };
 
@@ -109,6 +97,14 @@ pub(super) async fn mqtt_verifier_flow(
             }
         };
 
+        let organisation = proof
+            .schema
+            .as_ref()
+            .and_then(|schema| schema.organisation.as_ref())
+            .ok_or(ExchangeProtocolError::Failed(
+                "organisation is None".to_string(),
+            ))?;
+
         tokio::select! {
             credential = topics.accept.recv() => {
                 tracing::debug!("got accept message");
@@ -120,21 +116,29 @@ pub(super) async fn mqtt_verifier_flow(
                     .context("Failed to decrypt presentation request")?;
 
                 let now = OffsetDateTime::now_utc();
-                interaction_repository.update_interaction(Interaction {
-                    id: interaction_id,
-                    created_date: now,
-                    last_modified: now,
-                    host: None,
-                    data: Some(
-                        serde_json::to_vec(&MQTTOpenID4VPInteractionDataVerifier { presentation_submission, nonce, client_id, identity_request_nonce })
-                            .context("failed to serialize presentation_submission")?
-                    ),
-                    organisation: None,
-                }).await?;
+
+                interaction_repository
+                    .update_interaction(Interaction {
+                        id: interaction_id,
+                        created_date: now,
+                        last_modified: now,
+                        host: None,
+                        data: Some(
+                            serde_json::to_vec(&MQTTOpenID4VPInteractionDataVerifier {
+                                presentation_submission,
+                                nonce,
+                                client_id,
+                                identity_request_nonce,
+                            })
+                            .context("failed to serialize presentation_submission")?,
+                        ),
+                        organisation: Some(organisation.clone()),
+                    })
+                    .await?;
 
                 let _ = proof_repository
                     .set_proof_state(
-                        &proof_id,
+                        &proof.id,
                         ProofState {
                             created_date: now,
                             last_modified: now,
@@ -149,7 +153,7 @@ pub(super) async fn mqtt_verifier_flow(
                 let now = OffsetDateTime::now_utc();
                 let _ = proof_repository
                     .set_proof_state(
-                        &proof_id,
+                        &proof.id,
                         ProofState {
                             created_date: now,
                             last_modified: now,
@@ -168,7 +172,7 @@ pub(super) async fn mqtt_verifier_flow(
         let now = OffsetDateTime::now_utc();
         let _ = proof_repository
             .set_proof_state(
-                &proof_id,
+                &proof.id,
                 ProofState {
                     created_date: now,
                     last_modified: now,
