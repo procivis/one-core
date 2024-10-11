@@ -232,6 +232,7 @@ impl OpenId4VcMqtt {
                     session_keys: session_keys.to_owned(),
                     presentation_definition: Some(presentation_request.presentation_definition),
                     identity_request_nonce,
+                    proof_id,
                 };
 
                 let now = OffsetDateTime::now_utc();
