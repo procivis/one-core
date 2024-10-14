@@ -9,7 +9,7 @@ pub enum SelectedTransportType {
     Multiple(Vec<String>),
 }
 
-pub fn get_available_transport_type(
+pub fn get_first_available_transport_type(
     config: &TransportConfig,
 ) -> Result<(&str, TransportType), ValidationError> {
     config
@@ -35,7 +35,7 @@ pub fn validate_and_select_transport_type(
     match transport.as_deref() {
         // transport not provided in request, we select the first in order from the config
         None | Some([]) => {
-            let (selected_transport, _) = get_available_transport_type(config)?;
+            let (selected_transport, _) = get_first_available_transport_type(config)?;
             check_transport_capabilities(selected_transport)?;
 
             Ok(SelectedTransportType::Single(selected_transport.to_owned()))

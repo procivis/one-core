@@ -352,18 +352,18 @@ where
             })
     }
 
-    pub fn get_by_type<U>(&self, key: T) -> Result<U, ConfigValidationError>
+    pub fn get_by_type<U>(&self, r#type: T) -> Result<U, ConfigValidationError>
     where
         U: DeserializeOwned,
         T: PartialEq + std::fmt::Display,
     {
         self.iter()
-            .find(|(_, v)| v.r#type == key)
-            .ok_or_else(|| ConfigValidationError::TypeNotFound(key.to_string()))?
+            .find(|(_, v)| v.r#type == r#type)
+            .ok_or_else(|| ConfigValidationError::TypeNotFound(r#type.to_string()))?
             .1
             .deserialize()
             .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                key: key.to_string(),
+                key: r#type.to_string(),
                 source,
             })
     }
@@ -421,6 +421,17 @@ impl ConfigBlock<TransportType> {
         self.get_fields(key)
             .ok()
             .is_some_and(|fields| fields.r#type() == transport && !fields.disabled())
+    }
+
+    pub fn get_enabled_transport_type(
+        &self,
+        r#type: TransportType,
+    ) -> Result<&str, ConfigValidationError> {
+        Ok(self
+            .iter()
+            .find(|(_, fields)| fields.r#type == r#type && !fields.disabled())
+            .ok_or_else(|| ConfigValidationError::TypeNotFound(r#type.to_string()))?
+            .0)
     }
 }
 

@@ -19,7 +19,7 @@ use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{ExchangeType, TransportType};
 use crate::config::validator::exchange::validate_exchange_type;
 use crate::config::validator::transport::{
-    get_available_transport_type, validate_and_select_transport_type, SelectedTransportType,
+    validate_and_select_transport_type, SelectedTransportType,
 };
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -598,10 +598,11 @@ impl ProofService {
             .into());
         }
 
-        let (transport, transport_type) = get_available_transport_type(&self.config.transport)?;
-        if transport_type != TransportType::Ble {
-            return Err(ServiceError::Other("BLE transport not available".into()));
-        }
+        let transport = self
+            .config
+            .transport
+            .get_enabled_transport_type(TransportType::Ble)
+            .map_err(|_| ServiceError::Other("BLE transport not available".into()))?;
 
         let ble = self
             .ble

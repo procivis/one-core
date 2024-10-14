@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use super::ProofService;
 use crate::config::core_config::TransportType;
-use crate::config::validator::transport::get_available_transport_type;
 use crate::model::proof::{self, Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::exchange_protocol::iso_mdl::ble_verifier::{
@@ -25,10 +24,11 @@ impl ProofService {
         let device_engagement = DeviceEngagement::parse_qr_code(&iso_mdl_engagement)
             .map_err(|err| ServiceError::Other(err.to_string()))?;
 
-        let (transport, transport_type) = get_available_transport_type(&self.config.transport)?;
-        if transport_type != TransportType::Ble {
-            return Err(ServiceError::Other("BLE transport not available".into()));
-        }
+        let transport = self
+            .config
+            .transport
+            .get_enabled_transport_type(TransportType::Ble)
+            .map_err(|_| ServiceError::Other("BLE transport not available".into()))?;
 
         let ble = self
             .ble
