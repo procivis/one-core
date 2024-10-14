@@ -33,6 +33,8 @@ workflow:
   rules:
     - if: $CI_COMMIT_BRANCH
     - if: $CI_COMMIT_TAG
+  auto_cancel:
+    on_new_commit: conservative
 
 stages:
   - build
@@ -130,6 +132,7 @@ build:
     - .only_main_or_tag
 
 tests:mariadb:
+  interruptible: true
   extends:
     - .cargo_tests
   variables:
@@ -149,6 +152,7 @@ tests:mariadb:
       when: manual
 
 tests:sqlite:
+  interruptible: true
   extends:
     - .cargo_tests
   rules:
@@ -158,18 +162,21 @@ tests:sqlite:
       when: always
 
 linter:clippy:
+  interruptible: true
   stage: test
   script:
     - cargo clippy --all-targets -- -D warnings
     - cargo clippy --package sql-data-provider -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used
 
 linter:rustfmt:
+  interruptible: true
   stage: test
   script:
     - TOOLCHAIN_VERSION=$(rustup toolchain list | grep nightly | head -n1 | awk '{print $1}')
     - cargo +$TOOLCHAIN_VERSION fmt --all -- --check
 
 linter:dependencies:
+  interruptible: true
   stage: test
   script:
     - cargo deny --format json check 2> deny.json || true
