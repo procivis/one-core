@@ -155,6 +155,7 @@ fn order_mdoc_claims(
                     value: order_mdoc_claims(claim.claims),
                     value_type: claim.schema.schema.data_type,
                     mandatory: Some(claim.schema.required),
+                    array: Some(claim.schema.schema.array),
                     order,
                 },
             )

@@ -444,7 +444,7 @@ fn parse_mdoc_schema_elements(
                 key,
                 datatype: claim.value_type,
                 required: claim.mandatory.unwrap_or(false),
-                array: Some(false), // TODO: Needs to be covered with ONE-2261
+                array: Some(claim.array.unwrap_or(false)),
                 claims,
             }
         })
@@ -461,7 +461,7 @@ pub(crate) fn parse_mdoc_schema_claims(
             key: namespace,
             datatype: "OBJECT".to_string(),
             required: true,
-            array: Some(false), // TODO: Needs to be covered with ONE-2261
+            array: Some(false),
             claims: parse_mdoc_schema_elements(elements),
         })
         .collect();

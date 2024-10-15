@@ -187,6 +187,7 @@ pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
     pub value_type: String,
     pub mandatory: Option<bool>,
     pub order: Option<Vec<String>>,
+    pub array: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

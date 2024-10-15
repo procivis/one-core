@@ -168,6 +168,8 @@ pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO {
     pub mandatory: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub array: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

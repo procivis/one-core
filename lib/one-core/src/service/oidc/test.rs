@@ -311,7 +311,8 @@ async fn test_get_issuer_metadata_mdoc() {
                     value: Default::default(),
                     value_type: "STRING".to_string(),
                     mandatory: Some(true),
-                    order: None
+                    order: None,
+                    array: Some(false),
                 }
             )])
         )]),
