@@ -1,6 +1,112 @@
-# One Core
+![Procivis](docs/assets/logo_dark_One_Core.png#gh-light-mode-only)
+![Procivis](docs/assets/logo_light_One_Core.png#gh-dark-mode-only)
 
-## Build
+<!-- TOC ignore:true -->
+## Table of Contents
+<!-- TOC -->
+
+- [Key features](#key-features)
+- [Architecture](#architecture)
+- [Getting started](#getting-started)
+- [Background](#background)
+- [eIDAS 2.0](#eidas-20)
+- [Interoperability and conformance](#interoperability-and-conformance)
+- [Supported standards](#supported-standards)
+- [Support](#support)
+- [License](#license)
+
+<!-- /TOC -->
+
+The Procivis One Core is a robust solution capable of powering every element of the
+digital identity credential lifecycle, flexibly handling a broad array of different
+protocols and trust models, ensuring compatibility with different digital identity
+regulations, and can be installed and operated almost anywhere, ensuring seamless
+integration through a powerful API.
+
+Procivis One is built to connect your organization to the SSI ecosystem, become
+compatible with regulations such as **eIDAS 2.0**, and be extensible as new regulations
+and requirements emerge.
+
+## Key features
+
+- **Interoperable**
+  - Uses standardized protocols for credential lifecycles for maximum compatability with
+    software from other vendors. See the results of [interoperability](#interoperability-and-conformance)
+    testing.
+- **Flexible**
+  - Supports a wide range of credential formats, interaction protocols and trust infrastructures,
+    with more being added as standardization processes mature and regulatory requirements develop.
+    This includes all standards within the [**eIDAS 2.0 regulation**](#eidas-20), the
+    **Swiss eID infrastructure**, and more. See the [supported standards](#supported-standards).
+- **End-to-end**
+  - Provides the infrastructure and tooling for every stakeholder in the digital identity
+    and credential lifecycle — issuer, holder and verifier — via the powerful API, wherever
+    it is installed and deployed.
+- **Private**
+  - Enables a high level of privacy for all stakeholders with decentralized data storage,
+    selective disclosure, privacy-preserving revocation and many more privacy-focused features.
+- **Performant**
+  - Built with Rust to power all aspects of the digital identity and credential lifecycle
+    with maximum efficiency, allowing you to reliably scale to millions of credential lifecycle
+    events with ease.
+- **Deployable**
+  - Can be deployed wherever you need digital identity and credential capabilities, from
+    large data centers or cloud providers to smart devices and IoT; the same code base can
+    be used for server components and for mobile apps via the SDK.
+
+## Architecture
+
+The **Procivis One Core** integrates into business and IT applications via REST, SDK or
+mobile SDK and powers use cases for issuance, holding and verification.
+
+![Procivis One Core - Architecture](docs/assets/architecture_one_core.png)
+
+Use the Procivis One Core to build components for your own use case, or use one of the
+existing components built on the Core.
+
+### Procivis One components
+
+The following graphic represents a **component view** of Procivis One. All components
+are built from the Procivis One Core and share the same code base.
+
+![Procivis One Components](docs/assets/Procivis_One_components.png)
+
+#### Open source
+
+The **Procivis One Wallet** is a digital wallet solution that includes the SSI functionality
+of the Core and is available with an open source license. See the [Procivis One Wallet][pow]
+for a free-standing solution that can be white-labelled, see the [React Native One Core][rncore]
+to embed wallet capabilities into an existing app, and see the [components][comp] library
+for UI elements for your digital wallet app.
+
+#### Enterprise
+
+The **Procivis One Desk** is a server-based solution that includes the SSI functionality
+of the Core and adds enterprise functionality such as user and session management, and a
+dashboard for no-code issuance and verification. [Sign up for the trial][trial].
+
+The **Procivis One Mobile Verifier** is a mobile verifying solution that includes the SSI
+functionality of the Core and enables offline verification in both OID4VP and ISO mdoc flows
+over Bluetooth Low Energy (BLE). See the trial version in the iOS and Android app stores.
+
+## Getting started
+
+### Trial
+
+The fastest way to get started with Procivis One is to [join our Trial Environment][trial].
+Here you are given control of an organization on our server solution, the Procivis
+One Desk, and can quickly begin issuing and verifying credentials.
+
+### Documentation
+
+See our documentation:
+
+- [API Docs home][apidocs]
+- [Core API Reference][apiref]
+- [Core SDK Reference][sdkref]
+- [Docs home][docs]
+
+### Build
 
 You can build the project with cargo build as well as build certain target using cargo-make.
 Cargo-make will include dev.env file in the runtime. This makes env config convenient
@@ -26,7 +132,7 @@ makers run
 
 We can use `Makefile.toml` to add and fine tune build/run targets later in the project.
 
-## Tests
+### Tests
 
 To run only the unit tests
 
@@ -51,7 +157,7 @@ makers dbstart
 ONE_app__databaseUrl="mysql://root:Qpq5nDb5MKD6v9bt8dPD@localhost/core" makers integration-tests
 ```
 
-## Run Wallet
+### Run Wallet
 
 You can start a separate instance of a service that will play wallet role. This instance is accessible on port 3001.
 
@@ -81,7 +187,7 @@ Run compiled application (Local env)
 ./target/debug/core-server --config config/config-procivis-base.yml --config config/config-local.yml
 ```
 
-## Docker
+### Docker
 
 - Run MariaDB for local developing
 
@@ -141,7 +247,7 @@ docker run --init -p 3000:3000 -it --rm \
 docker run -it --rm --entrypoint="" one-core bash
 ```
 
-# SBOM
+### SBOM
 
 Source:
 
@@ -204,7 +310,7 @@ FILES="apps/core-server/bom.json apps/migration/bom.json lib/one-core/bom.json l
 cyclonedx-cli merge --input-files ${FILES} --input-format=json --output-format=json > merged_sbom.json
 ```
 
-### Testing
+#### Testing
 
 ##### Run tests
 
@@ -225,3 +331,168 @@ cargo llvm-cov report --release --cobertura --output-path cobertura.xml
 ```shell
 cargo llvm-cov report --release --lcov --output-path lcov.info
 ```
+
+## Background
+
+Decentralized digital identities and credentials is an approach to identity that relocates
+digital credentials from the possession and control of centralized authorities to the
+digital wallet of the credentials holder. This architecture eliminates the need for the
+user to "phone home" to use their credentials as well as the verifier to communicate to
+the issuer via back-channels, keeping the wallet holder's interactions private between only
+those parties directly involved in each interaction. This model of digital identity is
+often referred to as Self-Sovereign Identity, or SSI.
+
+## eIDAS 2.0
+
+Whether you want to
+
+- issue into a EUDI Wallet
+- provide a EUDI Wallet
+- offer services to a EUDI Wallet holder
+
+Procivis One provides production grade open source components to get certified and
+connect your organization to the eIDAS 2.0 ecosystem.
+
+![Procivis One in the eIDAS ARF](docs/assets/eIDAS_Architecture.png)
+
+Use the Procivis One Core for Issuer or Verifier solutions. For an EUDI Wallet, use the
+[react-native-one-core][rncore] SDK for embedding into an existing app, or use the
+[Procivis One Wallet][pow] with adaptations to fit your needs.
+
+## Interoperability and conformance
+
+Procivis One is built using [open standards](#supported-standards) and tested to ensure
+interoperability with different software vendors and across different international
+regulatory ecosystems.
+
+- W3C standards
+  - The W3C offers several test suites for standards conformance. See
+    the latest test results for Procivis One at [canivc.com][canivc].
+- ISO/IEC 18013-5 mDL
+  - The OpenWallet Foundation offers [libraries][owf] for working with ISO mdoc/mDL credentials.
+    Procivis One can successfully issue mDL credentials to a Procivis One Wallet on Android,
+    and these credentials can successfully be verified by the OpenWallet Foundation's libraries.
+- eIDAS 2.0; EUDI Wallet
+  - The EU Digital Wallet is developing [issuer][eudiwi] and [verifier][eudiwv] testing for
+    interoperability in mdoc and SD-JWT formats using OID4VC protocols. We follow the ongoing
+    development of the testing platform and regularly test against it.
+
+We continue to look for more opportunities for interoperability testing as the standards
+and regulations mature and harden.
+
+## Supported standards
+
+### Credential data models
+
+#### Verifiable Credentials
+
+- [W3C Verifiable Credentials Data Model 2.0][vcdm] in the following variations:
+
+| Securing mechanism                           | Supported representations                           | Supported proof/signature types                                                          |
+| -------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------ |
+| [W3C Data Integrity Proofs][vcdi] (embedded) | [JSON-LD][jld] in Compacted Document Form | <ul><li>[W3C Data Integrity ECDSA Cryptosuites v1.0][ecd] / [ecdsa-rdfc-2019][ecd2019]</li><li>[W3C Data Integrity EdDSA Cryptosuites v1.0][edd] / [eddsa-rdfc-2022][edd2022]</li><li>[W3C Data Integrity BBS Cryptosuites v1.0][bbs] / [bbs-2023][bbs2023]</li></ul> |
+| [W3C VC-JOSE-COSE][jose] (enveloping)        | <ul><li>[SD-JWT][sdjwt]</li><li>[JWT][jw]</li></ul> | <ul><li>JOSE / ECDSA [ES256][es2]</li><li>JOSE / EdDSA [Ed25519][ed255]</li><li>JOSE / CRYSTALS-DILITHIUM 3 [CRYDI3][crydi3]* |
+
+\* CRYSTALS-DILITHIUM is a post-quantum resistant signature scheme, selected by NIST for [Post-Quantum Cryptography Standardization][pqc].
+Support for the recently published [FIPS-204][fips] is planned for the near future.
+
+Additionally, Procivis One supports verification of proofs which use VCDM 1.1.
+
+#### ISO mdocs
+
+- [ISO/IEC 18013-5:2021][iso] standard for mdoc credentials.
+  - [COSE][cose] proofs
+    - ECDSA [ES256][es2]
+    - EdDSA [Ed25519][ed255]
+
+### Exchange and transport
+
+- OpenID for Verifiable Credentials
+  - [OID4VCI][vci]; ID-1
+  - [OID4VP][vp]; ID-2
+    - [OID4VP over BLE][ble]; optimized version of Draft 00
+    - [OID4VP over MQTT][mqtt]; proprietary adaptation of OID4VP over BLE via MQTT channel
+- [ISO/IEC 18013-5][iso]
+  - Offline device retrieval over BLE
+
+### Key storage
+
+- Secure Element on Mobile (HSM)
+- Azure Key Vault (HSM)
+- Internal encrypted database
+
+### Revocation methods
+
+- [Bitstring Status List v1.0][sl]
+- [Linked Validity Verifiable Credentials (LVVC)][lvvc]
+
+### DID methods
+
+- [Decentralized Identifiers (DIDs) v1.0][did]
+  - [did:key][dk]
+  - [did:web][dw]
+  - [did:jwk][djw]
+- [Universal DID resolution][univ]
+
+See our [supported technology][supptech] page for more details.
+
+## Support
+
+Need support or have feedback? [Contact us](https://www.procivis.ch/en/contact).
+
+## License
+
+Some rights reserved. This library is published under the [Apache License
+Version 2.0](./LICENSE).
+
+![Procivis AG](assets/logo_light_mode_Procivis.svg#gh-light-mode-only)
+![Procivis AG](assets/logo_dark_mode_Procivis.svg#gh-dark-mode-only)
+
+© Procivis AG, [https://www.procivis.ch](https://www.procivis.ch).
+
+[apidocs]: https://docs.procivis.ch/guides/api/overview
+[apiref]: https://docs.procivis.ch/docs/core-api
+[bbs]: https://www.w3.org/TR/vc-di-bbs/
+[bbs2023]: https://www.w3.org/TR/vc-di-bbs/#bbs-2023
+[ble]: https://openid.net/specs/openid-4-verifiable-presentations-over-ble-1_0.html
+[canivc]: https://canivc.com/implementations/procivis-one-core/
+[comp]: https://github.com/procivis/one-react-native-components
+[cose]: https://www.rfc-editor.org/rfc/rfc9052
+[crydi3]: https://datatracker.ietf.org/doc/html/draft-ietf-cose-dilithium-01
+[did]: https://www.w3.org/TR/did-core/
+[djw]: https://github.com/quartzjer/did-jwk/blob/main/spec.md
+[dk]: https://w3c-ccg.github.io/did-method-key/
+[docs]: https://docs.procivis.ch/
+[dw]: https://w3c-ccg.github.io/did-method-web/
+[ecd]: https://www.w3.org/TR/vc-di-ecdsa/
+[ecd2019]: https://www.w3.org/TR/vc-di-ecdsa/#ecdsa-rdfc-2019
+[edd]: https://www.w3.org/TR/vc-di-eddsa/
+[edd2022]: https://www.w3.org/TR/vc-di-eddsa/#eddsa-rdfc-2022
+[ed255]: https://datatracker.ietf.org/doc/html/rfc8037
+[es2]: https://datatracker.ietf.org/doc/html/rfc7518
+[eudiwi]: https://issuer.eudiw.dev/
+[eudiwv]: https://verifier.eudiw.dev/home
+[fips]: https://csrc.nist.gov/pubs/fips/204/final
+[iso]: https://www.iso.org/standard/69084.html
+[jld]: https://www.w3.org/TR/json-ld11/
+[jose]: https://w3c.github.io/vc-jose-cose/
+[jw]: https://datatracker.ietf.org/doc/html/rfc7519
+[jwe]: https://datatracker.ietf.org/doc/rfc7516/
+[jwk]: https://datatracker.ietf.org/doc/rfc7517/
+[jws]: https://datatracker.ietf.org/doc/rfc7515/
+[lvvc]: https://eprint.iacr.org/2022/1658.pdf
+[mqtt]: https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html
+[owf]: https://github.com/openwallet-foundation-labs/identity-credential
+[pow]: https://github.com/procivis/one-wallet
+[pqc]: https://csrc.nist.gov/pqc-standardization
+[rncore]: https://github.com/procivis/react-native-one-core
+[sdjwt]: https://www.ietf.org/archive/id/draft-terbu-oauth-sd-jwt-vc-00.html
+[sdkref]: https://docs.procivis.ch/sdk/overview
+[sl]: https://www.w3.org/TR/vc-bitstring-status-list/
+[supptech]: https://docs.procivis.ch/product/supported_tech
+[trial]: https://docs.procivis.ch/trial/intro
+[univ]: https://dev.uniresolver.io
+[vcdi]: https://www.w3.org/TR/vc-data-integrity/
+[vcdm]: https://www.w3.org/TR/vc-data-model-2.0/
+[vci]: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-12.html
+[vp]: https://openid.net/specs/openid-4-verifiable-presentations-1_0.html
