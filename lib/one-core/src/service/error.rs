@@ -375,7 +375,7 @@ pub enum ValidationError {
     #[error("Proof schema: Missing proof input schemas")]
     ProofSchemaMissingProofInputSchemas,
 
-    #[error("Proof schema: Missing claims")]
+    #[error("Proof schema: Claim schemas must not be empty")]
     ProofSchemaMissingClaims,
 
     #[error("Proof schema: No required claim")]
@@ -542,9 +542,6 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Proof schema already exists")]
     BR_0015,
-
-    #[strum(to_string = "Proof schema: missing claims ")]
-    BR_0016,
 
     #[strum(to_string = "Proof schema: no required claim")]
     BR_0017,
@@ -875,6 +872,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Sharing not supported to this proof schema")]
     BR_0163,
+
+    #[strum(to_string = "Proof schema: claim schemas empty")]
+    BR_0164,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1026,7 +1026,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::CredentialSchemaMissingClaims => ErrorCode::BR_0008,
             Self::CredentialMissingClaim { .. } => ErrorCode::BR_0003,
             Self::CredentialSchemaDuplicitClaim => ErrorCode::BR_0133,
-            Self::ProofSchemaMissingClaims => ErrorCode::BR_0016,
+            Self::ProofSchemaMissingClaims => ErrorCode::BR_0164,
             Self::ProofSchemaNoRequiredClaim => ErrorCode::BR_0017,
             Self::ProofSchemaDuplicitClaim => ErrorCode::BR_0018,
             Self::InvalidFormatter(_) => ErrorCode::BR_0056,
