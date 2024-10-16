@@ -78,7 +78,7 @@ pub fn validate_create_request(
     request: &CreateProofSchemaRequestDTO,
 ) -> Result<(), ValidationError> {
     if request.proof_input_schemas.is_empty() {
-        return Err(ValidationError::ProofSchemaMissingClaims);
+        return Err(ValidationError::ProofSchemaMissingProofInputSchemas);
     }
 
     let mut uniq = HashSet::new();
