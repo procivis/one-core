@@ -376,7 +376,6 @@ async fn test_get_proof_list() {
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    println!("{:?}", result);
     assert_eq!(result.total_items, 1);
     assert_eq!(result.total_pages, 1);
     assert_eq!(result.values.len(), 1);

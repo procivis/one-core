@@ -1845,6 +1845,7 @@ async fn test_get_proof_with_object_array() {
     });
 
     let result = service.get_proof(&proof.id).await.unwrap();
+
     assert_eq!(result.id, proof.id);
 
     assert_eq!(result.proof_inputs[0].claims[0].path, "key");
@@ -1854,14 +1855,26 @@ async fn test_get_proof_with_object_array() {
         _ => panic!("not array field"),
     };
 
-    assert_eq!(claims[0].path, "key/0/address");
+    assert_eq!(claims[0].path, "key/0");
+    let claim_0 = match &claims[0].value {
+        Some(ProofClaimValueDTO::Claims(values)) => values,
+        _ => panic!("not array field"),
+    };
+
+    assert_eq!(claim_0[0].path, "key/0/address");
     assert!(matches!(
-        &claims[0].value,
+        &claim_0[0].value,
         Some(ProofClaimValueDTO::Value(val)) if val == "foo1"
     ));
-    assert_eq!(claims[1].path, "key/1/address");
+
+    assert_eq!(claims[1].path, "key/1");
+    let claim_1 = match &claims[1].value {
+        Some(ProofClaimValueDTO::Claims(values)) => values,
+        _ => panic!("not array field"),
+    };
+    assert_eq!(claim_1[0].path, "key/1/address");
     assert!(matches!(
-        &claims[1].value,
+        &claim_1[0].value,
         Some(ProofClaimValueDTO::Value(val)) if val == "foo2"
     ));
 }

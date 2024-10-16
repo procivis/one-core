@@ -204,7 +204,6 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
         .schema
         .id;
 
-    // WHEN
     let credential = context
         .db
         .credentials
