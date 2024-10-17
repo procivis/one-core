@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Context;
-use rumqttc::{AsyncClient, Event, MqttOptions, Outgoing, Packet, QoS};
+use rumqttc::{AsyncClient, Event, MqttOptions, Outgoing, Packet, QoS, Transport};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
@@ -54,11 +54,12 @@ impl RumqttcClient {
     fn subscribe_to_broker(&self, broker_addr: &BrokerAddr) -> Broker {
         let id = Uuid::new_v4();
 
-        let mqttoptions = MqttOptions::new(
+        let mut mqttoptions = MqttOptions::new(
             format!("one-core-rumqttc-async-{id}"),
             &broker_addr.host,
             broker_addr.port,
         );
+        mqttoptions.set_transport(Transport::Tls(Default::default()));
 
         let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
 
