@@ -286,8 +286,21 @@ impl CredentialService {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         }
 
-        let mut response = credential_detail_response_from_model(credential, &self.config)
-            .map_err(|err| ServiceError::ResponseMapping(err.to_string()))?;
+        let mdoc_validity_credentials = match &credential.schema {
+            Some(schema) if schema.format == "MDOC" => {
+                self.validity_credential_repository
+                    .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
+                    .await?
+            }
+            _ => None,
+        };
+
+        let mut response = credential_detail_response_from_model(
+            credential,
+            &self.config,
+            mdoc_validity_credentials,
+        )
+        .map_err(|err| ServiceError::ResponseMapping(err.to_string()))?;
 
         if response.schema.revocation_method == "LVVC" {
             let latest_lvvc = self

@@ -55,6 +55,18 @@ pub struct CredentialDetailResponseDTO {
     pub lvvc_issuance_date: Option<OffsetDateTime>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub suspend_end_date: Option<OffsetDateTime>,
+    pub mdoc_mso_validity: Option<MdocMsoValidityResponseDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MdocMsoValidityResponseDTO {
+    #[serde(with = "time::serde::rfc3339")]
+    pub expiration: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub next_update: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub last_update: OffsetDateTime,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

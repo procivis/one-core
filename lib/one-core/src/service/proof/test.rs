@@ -58,6 +58,7 @@ use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
+use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
@@ -86,6 +87,7 @@ struct Repositories {
     pub ble_peripheral: Option<MockBlePeripheral>,
     pub config: CoreConfig,
     pub organisation_repository: MockOrganisationRepository,
+    pub validity_credential_repository: MockValidityCredentialRepository,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -108,6 +110,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.config),
         None,
         Arc::new(repositories.organisation_repository),
+        Arc::new(repositories.validity_credential_repository),
     )
 }
 

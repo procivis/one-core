@@ -14,6 +14,7 @@ use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::util::ble_resource::BleWaiter;
 pub mod dto;
 mod iso_mdl;
@@ -40,6 +41,7 @@ pub struct ProofService {
     config: Arc<core_config::CoreConfig>,
     base_url: Option<String>,
     organisation_repository: Arc<dyn OrganisationRepository>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
 }
 
 impl ProofService {
@@ -61,6 +63,7 @@ impl ProofService {
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
         organisation_repository: Arc<dyn OrganisationRepository>,
+        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     ) -> Self {
         Self {
             proof_repository,
@@ -79,6 +82,7 @@ impl ProofService {
             config,
             base_url,
             organisation_repository,
+            validity_credential_repository,
         }
     }
 }

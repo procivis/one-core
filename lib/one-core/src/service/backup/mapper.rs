@@ -14,7 +14,7 @@ pub(super) fn unexportable_entities_to_response_dto(
         credentials: entities
             .credentials
             .into_iter()
-            .map(|credential| credential_detail_response_from_model(credential, config))
+            .map(|credential| credential_detail_response_from_model(credential, config, None))
             .collect::<Result<Vec<_>, _>>()?,
         keys: convert_inner(entities.keys),
         dids: convert_inner(entities.dids),

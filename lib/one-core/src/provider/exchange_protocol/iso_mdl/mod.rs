@@ -393,13 +393,12 @@ impl ExchangeProtocolImpl for IsoMdl {
                     applicable_credentials.push(credential.id.to_string());
 
                     let credential =
-                        credential_detail_response_from_model(credential, &self.config).map_err(
-                            |err| {
+                        credential_detail_response_from_model(credential, &self.config, None)
+                            .map_err(|err| {
                                 ExchangeProtocolError::Failed(format!(
                                     "Credential model mapping error: {err}"
                                 ))
-                            },
-                        )?;
+                            })?;
                     relevant_credentials.push(credential);
                 }
             }

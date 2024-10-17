@@ -10,7 +10,7 @@ use one_core::provider::exchange_protocol::openid4vc::model::InvitationResponseD
 use one_core::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialSchemaType,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
-    DetailCredentialSchemaResponseDTO,
+    DetailCredentialSchemaResponseDTO, MdocMsoValidityResponseDTO,
 };
 use one_core::service::credential_schema::dto::{
     CredentialSchemaListItemResponseDTO, ImportCredentialSchemaClaimSchemaDTO,
@@ -35,7 +35,7 @@ use super::dto::{ClaimBindingDTO, ClaimValueBindingDTO, CredentialSchemaBindingD
 use crate::dto::{
     CredentialDetailBindingDTO, CredentialListItemBindingDTO, DidRequestBindingDTO,
     DidRequestKeysBindingDTO, HandleInvitationResponseBindingEnum, KeyRequestBindingDTO,
-    ProofRequestBindingDTO,
+    MdocMsoValidityResponseBindingDTO, ProofRequestBindingDTO,
 };
 use crate::error::BindingError;
 use crate::utils::{into_id, into_timestamp, TimestampFormat};
@@ -76,6 +76,17 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
             suspend_end_date: value
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
+            mdoc_mso_validity: value.mdoc_mso_validity.map(|inner| inner.into()),
+        }
+    }
+}
+
+impl From<MdocMsoValidityResponseDTO> for MdocMsoValidityResponseBindingDTO {
+    fn from(value: MdocMsoValidityResponseDTO) -> Self {
+        Self {
+            expiration: value.expiration.format_timestamp(),
+            next_update: value.next_update.format_timestamp(),
+            last_update: value.last_update.format_timestamp(),
         }
     }
 }

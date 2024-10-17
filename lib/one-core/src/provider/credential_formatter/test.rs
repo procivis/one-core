@@ -60,6 +60,7 @@ fn generate_credential_detail_response(
         role: CredentialRole::Holder,
         lvvc_issuance_date: None,
         suspend_end_date: None,
+        mdoc_mso_validity: None,
     }
 }
 

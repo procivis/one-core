@@ -3,7 +3,7 @@ use one_core::service::credential::dto::{
     CredentialListItemResponseDTO, CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO,
     CredentialRole, CredentialStateEnum, DetailCredentialClaimResponseDTO,
     DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
-    SuspendCredentialRequestDTO,
+    MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO,
 };
 use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
@@ -50,6 +50,21 @@ pub struct CredentialListItemResponseRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(MdocMsoValidityResponseDTO)]
+pub struct MdocMsoValidityResponseRestDTO {
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub expiration: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub next_update: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_update: OffsetDateTime,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(CredentialDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct GetCredentialResponseRestDTO {
@@ -80,6 +95,8 @@ pub struct GetCredentialResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
+    #[from(with_fn = convert_inner)]
+    pub mdoc_mso_validity: Option<MdocMsoValidityResponseRestDTO>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]

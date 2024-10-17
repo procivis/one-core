@@ -98,7 +98,7 @@ pub fn credential_model_to_credential_dto(
     // Missing organisation here.
     credentials
         .into_iter()
-        .map(|credential| credential_detail_response_from_model(credential, config))
+        .map(|credential| credential_detail_response_from_model(credential, config, None))
         .collect::<Result<Vec<CredentialDetailResponseDTO>, _>>()
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
 }
