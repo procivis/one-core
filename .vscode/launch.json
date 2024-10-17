@@ -1,60 +1,52 @@
 {
-    // VS-code integrated debugger targets
-    "version": "0.2.0",
-    "configurations": [
-        {
-            // Default local core-server (port 3000)
-            "name": "Debug core-server",
-            "type": "lldb",
-            "request": "launch",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=core-server",
-                    "--package=core-server"
-                ],
-                "filter": {
-                    "name": "core-server",
-                    "kind": "bin"
-                }
-            },
-            "envFile": "./dev.env",
-            "args": [
-                "--config",
-                "config/config-procivis-base.yml",
-                "--config",
-                "config/config-local.yml",
-            ],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            // Local Wallet-setup core-server (port 3001)
-            "name": "Debug as Wallet",
-            "type": "lldb",
-            "request": "launch",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=core-server",
-                    "--package=core-server"
-                ],
-                "filter": {
-                    "name": "core-server",
-                    "kind": "bin"
-                }
-            },
-            "env": {
-                "ONE_app__serverPort": "3001",
-                "ONE_app__databaseUrl": "mysql://core:886eOqVMmlHsayu6Vyxw@localhost:3307/core",
-                "ONE_app__coreBaseUrl": "http://0.0.0.0:3001"
-            },
-            "args": [
-                "--config",
-                "config/config-procivis-base.yml",
-                "--config",
-                "config/config-local.yml",
-            ],
-            "cwd": "${workspaceFolder}"
+  // VS-code integrated debugger targets
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Default local core-server (port 3000)
+      "name": "Debug core-server",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["build", "--bin=core-server", "--package=core-server"],
+        "filter": {
+          "name": "core-server",
+          "kind": "bin"
         }
-    ]
+      },
+      "envFile": "./dev.env",
+      "args": [
+        "--config",
+        "config/config-procivis-base.yml",
+        "--config",
+        "config/config-local.yml"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      // Local Wallet-setup core-server (port 3001)
+      "name": "Debug as Wallet",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["build", "--bin=core-server", "--package=core-server"],
+        "filter": {
+          "name": "core-server",
+          "kind": "bin"
+        }
+      },
+      "env": {
+        "ONE_app__serverPort": "3001",
+        "ONE_app__databaseUrl": "mysql://core:886eOqVMmlHsayu6Vyxw@localhost:3307/core",
+        "ONE_app__coreBaseUrl": "http://0.0.0.0:3001"
+      },
+      "args": [
+        "--config",
+        "config/config-procivis-base.yml",
+        "--config",
+        "config/config-local.yml"
+      ],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
 }

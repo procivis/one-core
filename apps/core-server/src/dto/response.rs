@@ -6,7 +6,7 @@ use axum::response::IntoResponse;
 use axum::Json;
 use one_core::provider::credential_formatter::error::FormatterError;
 use one_core::provider::did_method::error::DidMethodProviderError;
-use one_core::service::error::{self, MissingProviderError, ServiceError};
+use one_core::service::error::{MissingProviderError, ServiceError, ValidationError};
 use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -43,7 +43,7 @@ impl ErrorResponse {
             ServiceError::EntityNotFound(_) => Self::NotFound(response),
             ServiceError::MissingProvider(MissingProviderError::DidMethod(_))
             | ServiceError::DidMethodProviderError(DidMethodProviderError::MissingProvider(_))
-            | ServiceError::Validation(error::ValidationError::MissingLayoutAttribute(_)) => {
+            | ServiceError::Validation(ValidationError::MissingLayoutAttribute(_)) => {
                 Self::NotFound(response)
             }
             ServiceError::Validation(_)
@@ -97,26 +97,6 @@ impl<T, F: Into<T>> From<Vec<F>> for VecResponse<T> {
     }
 }
 
-/// Marker trait for utoipa schema aliases
-pub trait WithUtoipaAlias {
-    fn alias() -> &'static str;
-}
-
-/// one-line declaration of an utoipa aliased schema
-macro_rules! declare_utoipa_alias {
-    ($dto: ty) => {
-        impl crate::dto::response::WithUtoipaAlias for $dto {
-            fn alias() -> &'static str {
-                stringify!($dto)
-            }
-        }
-    };
-}
-pub(crate) use declare_utoipa_alias;
-
-/// Wrapper for Swagger responses using aliased utoipa schema
-pub struct AliasResponse<T: WithUtoipaAlias>(T);
-
 pub enum OkOrErrorResponse<T> {
     Ok(T),
     Error(ErrorResponse),
@@ -166,55 +146,27 @@ impl<T: Serialize> IntoResponse for OkOrErrorResponse<VecResponse<T>> {
     }
 }
 
-impl<T: for<'a> ToSchema<'a>> utoipa::IntoResponses for OkOrErrorResponse<T> {
+impl<T: ToSchema> utoipa::IntoResponses for OkOrErrorResponse<T> {
     fn responses() -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
         #[derive(utoipa::IntoResponses)]
         #[response(status = 200, description = "OK")]
-        struct SuccessResponse<T: for<'a> ToSchema<'a>>(#[to_schema] T);
+        struct SuccessResponse<T: ToSchema>(#[to_schema] T);
 
         with_error_responses::<SuccessResponse<T>>()
     }
 }
 
-impl<T: for<'a> ToSchema<'a>> utoipa::IntoResponses for OkOrErrorResponse<VecResponse<T>> {
+impl<T: ToSchema> utoipa::IntoResponses for OkOrErrorResponse<VecResponse<T>> {
     fn responses() -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
         #[derive(utoipa::IntoResponses)]
         #[response(status = 200, description = "OK")]
-        struct SuccessResponse<T: for<'a> ToSchema<'a>>(
+        struct SuccessResponse<T: ToSchema>(
             #[to_schema]
             #[allow(dead_code)]
             Vec<T>,
         );
 
         with_error_responses::<SuccessResponse<T>>()
-    }
-}
-
-/// Custom builder for responses using utoipa schema aliases
-impl<T: WithUtoipaAlias + for<'a> ToSchema<'a>> utoipa::IntoResponses
-    for OkOrErrorResponse<AliasResponse<T>>
-{
-    fn responses() -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
-        use utoipa::openapi::*;
-
-        let content = T::aliases()
-            .into_iter()
-            .find(|(alias, _)| alias == &T::alias())
-            .map(|(_, schema)| Content::new(schema));
-
-        let mut responses: BTreeMap<String, RefOr<Response>> = ResponsesBuilder::new()
-            .response(
-                "200",
-                ResponseBuilder::new().description("OK").content(
-                    "application/json",
-                    content.unwrap_or(Content::new(T::schema().1)),
-                ),
-            )
-            .build()
-            .into();
-
-        responses.append(&mut ErrorResponse::responses());
-        responses
     }
 }
 
@@ -258,11 +210,11 @@ impl<T: Serialize> IntoResponse for CreatedOrErrorResponse<T> {
     }
 }
 
-impl<T: for<'a> ToSchema<'a>> utoipa::IntoResponses for CreatedOrErrorResponse<T> {
+impl<T: ToSchema> utoipa::IntoResponses for CreatedOrErrorResponse<T> {
     fn responses() -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
         #[derive(utoipa::IntoResponses)]
         #[response(status = 201, description = "Created")]
-        struct SuccessResponse<T: for<'a> ToSchema<'a>>(#[to_schema] T);
+        struct SuccessResponse<T: ToSchema>(#[to_schema] T);
 
         with_error_responses::<SuccessResponse<T>>()
     }

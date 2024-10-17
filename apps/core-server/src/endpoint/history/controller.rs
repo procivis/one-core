@@ -5,17 +5,15 @@ use shared_types::HistoryId;
 use super::dto::GetHistoryQuery;
 use crate::dto::common::GetHistoryListResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{declare_utoipa_alias, AliasResponse, OkOrErrorResponse};
+use crate::dto::response::OkOrErrorResponse;
 use crate::endpoint::history::dto::HistoryResponseRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
 
-declare_utoipa_alias!(GetHistoryListResponseRestDTO);
-
 #[utoipa::path(
     get,
     path = "/api/history/v1",
-    responses(OkOrErrorResponse<AliasResponse<GetHistoryListResponseRestDTO>>),
+    responses(OkOrErrorResponse<GetHistoryListResponseRestDTO>),
     params(
         GetHistoryQuery
     ),

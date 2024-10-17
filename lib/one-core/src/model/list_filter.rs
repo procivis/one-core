@@ -68,26 +68,26 @@ pub trait ListFilterValue {
 }
 
 #[derive(Clone, Debug)]
-pub enum ListFilterCondition<FV: ListFilterValue> {
+pub enum ListFilterCondition<FV> {
     And(Vec<ListFilterCondition<FV>>),
     Or(Vec<ListFilterCondition<FV>>),
     Value(FV),
 }
 
 // default implemented as an empty filter - ignored when constructing final combined query condition
-impl<FV: ListFilterValue> Default for ListFilterCondition<FV> {
+impl<FV> Default for ListFilterCondition<FV> {
     fn default() -> Self {
         Self::And(vec![])
     }
 }
 
-impl<FV: ListFilterValue> From<FV> for ListFilterCondition<FV> {
+impl<FV> From<FV> for ListFilterCondition<FV> {
     fn from(value: FV) -> Self {
         ListFilterCondition::Value(value)
     }
 }
 
-impl<FV: ListFilterValue> From<Option<FV>> for ListFilterCondition<FV> {
+impl<FV> From<Option<FV>> for ListFilterCondition<FV> {
     fn from(value: Option<FV>) -> Self {
         if let Some(filter) = value {
             ListFilterCondition::Value(filter)
@@ -98,7 +98,7 @@ impl<FV: ListFilterValue> From<Option<FV>> for ListFilterCondition<FV> {
 }
 
 // implement shorthand operators:  &, |
-impl<FV: ListFilterValue> std::ops::BitAnd<ListFilterCondition<FV>> for ListFilterCondition<FV> {
+impl<FV> std::ops::BitAnd<ListFilterCondition<FV>> for ListFilterCondition<FV> {
     type Output = Self;
     fn bitand(self, rhs: ListFilterCondition<FV>) -> Self::Output {
         match self {
@@ -117,16 +117,14 @@ impl<FV: ListFilterValue> std::ops::BitAnd<ListFilterCondition<FV>> for ListFilt
     }
 }
 
-impl<FV: ListFilterValue> std::ops::BitAnd<FV> for ListFilterCondition<FV> {
+impl<FV> std::ops::BitAnd<FV> for ListFilterCondition<FV> {
     type Output = Self;
     fn bitand(self, rhs: FV) -> Self::Output {
         self & Self::Value(rhs)
     }
 }
 
-impl<FV: ListFilterValue> std::ops::BitAnd<Option<ListFilterCondition<FV>>>
-    for ListFilterCondition<FV>
-{
+impl<FV> std::ops::BitAnd<Option<ListFilterCondition<FV>>> for ListFilterCondition<FV> {
     type Output = Self;
     fn bitand(self, rhs: Option<ListFilterCondition<FV>>) -> Self::Output {
         if let Some(rhs) = rhs {
@@ -137,7 +135,7 @@ impl<FV: ListFilterValue> std::ops::BitAnd<Option<ListFilterCondition<FV>>>
     }
 }
 
-impl<FV: ListFilterValue> std::ops::BitAnd<Option<FV>> for ListFilterCondition<FV> {
+impl<FV> std::ops::BitAnd<Option<FV>> for ListFilterCondition<FV> {
     type Output = Self;
     fn bitand(self, rhs: Option<FV>) -> Self::Output {
         if let Some(rhs) = rhs {
@@ -148,7 +146,7 @@ impl<FV: ListFilterValue> std::ops::BitAnd<Option<FV>> for ListFilterCondition<F
     }
 }
 
-impl<FV: ListFilterValue> std::ops::BitOr<ListFilterCondition<FV>> for ListFilterCondition<FV> {
+impl<FV> std::ops::BitOr<ListFilterCondition<FV>> for ListFilterCondition<FV> {
     type Output = Self;
     fn bitor(self, rhs: ListFilterCondition<FV>) -> Self::Output {
         match self {
@@ -167,16 +165,14 @@ impl<FV: ListFilterValue> std::ops::BitOr<ListFilterCondition<FV>> for ListFilte
     }
 }
 
-impl<FV: ListFilterValue> std::ops::BitOr<FV> for ListFilterCondition<FV> {
+impl<FV> std::ops::BitOr<FV> for ListFilterCondition<FV> {
     type Output = Self;
     fn bitor(self, rhs: FV) -> Self::Output {
         self | Self::Value(rhs)
     }
 }
 
-impl<FV: ListFilterValue> std::ops::BitOr<Option<ListFilterCondition<FV>>>
-    for ListFilterCondition<FV>
-{
+impl<FV> std::ops::BitOr<Option<ListFilterCondition<FV>>> for ListFilterCondition<FV> {
     type Output = Self;
     fn bitor(self, rhs: Option<ListFilterCondition<FV>>) -> Self::Output {
         if let Some(rhs) = rhs {
@@ -187,7 +183,7 @@ impl<FV: ListFilterValue> std::ops::BitOr<Option<ListFilterCondition<FV>>>
     }
 }
 
-impl<FV: ListFilterValue> std::ops::BitOr<Option<FV>> for ListFilterCondition<FV> {
+impl<FV> std::ops::BitOr<Option<FV>> for ListFilterCondition<FV> {
     type Output = Self;
     fn bitor(self, rhs: Option<FV>) -> Self::Output {
         if let Some(rhs) = rhs {

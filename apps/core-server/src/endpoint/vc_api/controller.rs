@@ -15,13 +15,6 @@ use crate::endpoint::vc_api::response::VcApiResponse;
 use crate::router::AppState;
 
 #[tracing::instrument(level = "debug", skip(state))]
-#[utoipa::path(
-    post,
-    path = "/vc-api/credentials/issue",
-    request_body = CredentialIssueRequestDTO,
-    responses(VcApiResponse<CredentialIssueResponseDTO>),
-    tag = "vc_interop_testing",
-)]
 pub(crate) async fn issue_credential(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<Json<CredentialIssueRequestDTO>, VcApiError>,
@@ -36,13 +29,6 @@ pub(crate) async fn issue_credential(
 }
 
 #[tracing::instrument(level = "debug", skip(state))]
-#[utoipa::path(
-    post,
-    path = "/vc-api/credentials/verify",
-    request_body = CredentialVerifiyRequestDTO,
-    responses(VcApiResponse<CredentialVerifyResponseDTO>),
-    tag = "vc_interop_testing",
-)]
 pub(crate) async fn verify_credential(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<Json<CredentialVerifyRequestDTO>, VcApiError>,
@@ -57,13 +43,6 @@ pub(crate) async fn verify_credential(
 }
 
 #[tracing::instrument(level = "debug", skip(state))]
-#[utoipa::path(
-    post,
-    path = "/vc-api/presentations/verify",
-    request_body = PresentationVerifiyRequestDTO,
-    responses(VcApiResponse<PresentationVerifyResponseDTO>),
-    tag = "vc_interop_testing",
-)]
 pub(crate) async fn verify_presentation(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<Json<PresentationVerifyRequestDTO>, VcApiError>,
@@ -78,15 +57,6 @@ pub(crate) async fn verify_presentation(
 }
 
 #[tracing::instrument(level = "debug", skip(state))]
-#[utoipa::path(
-    get,
-    path = "/vc-api/identifiers/{identifier}",
-    responses(VcApiResponse<DidDocumentResolutionResponseDTO>),
-    params(
-        ("identifier" = String, Path, description = "Identifier")
-    ),
-    tag = "vc_interop_testing",
-)]
 pub(crate) async fn resolve_identifier(
     state: State<AppState>,
     WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, VcApiError>,

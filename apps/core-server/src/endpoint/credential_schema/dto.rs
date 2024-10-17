@@ -72,27 +72,26 @@ impl From<String> for CredentialSchemaType {
     }
 }
 
-impl<'a> utoipa::ToSchema<'a> for CredentialSchemaType {
-    fn schema() -> (
-        &'a str,
-        utoipa::openapi::RefOr<utoipa::openapi::schema::Schema>,
-    ) {
+impl utoipa::PartialSchema for CredentialSchemaType {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
         let known = utoipa::openapi::ObjectBuilder::new()
-            .schema_type(utoipa::openapi::SchemaType::String)
+            .schema_type(utoipa::openapi::schema::SchemaType::Type(
+                utoipa::openapi::Type::String,
+            ))
             .enum_values(Some([
                 "ProcivisOneSchema2024",
                 "FallbackSchema2024",
                 "mdoc",
             ]));
 
-        let schema = utoipa::openapi::schema::OneOfBuilder::new()
+        utoipa::openapi::schema::OneOfBuilder::new()
             .item(known)
             .item(utoipa::schema!(String))
-            .into();
-
-        ("CredentialSchemaType", schema)
+            .into()
     }
 }
+
+impl utoipa::ToSchema for CredentialSchemaType {}
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(CredentialSchemaDetailResponseDTO)]
@@ -140,6 +139,7 @@ pub struct CredentialClaimSchemaResponseRestDTO {
     pub array: bool,
     #[from(with_fn = convert_inner)]
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[schema(no_recursion)]
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
 }
 
@@ -238,6 +238,7 @@ pub struct CredentialClaimSchemaRequestRestDTO {
     pub array: Option<bool>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[into(with_fn = convert_inner)]
+    #[schema(no_recursion)]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
 }
 
@@ -369,6 +370,7 @@ pub struct ImportCredentialSchemaClaimSchemaRestDTO {
     pub array: Option<bool>,
     #[into(with_fn = convert_inner)]
     #[serde(default)]
+    #[schema(no_recursion)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
 }
 

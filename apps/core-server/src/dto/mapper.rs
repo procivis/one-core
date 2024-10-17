@@ -1,9 +1,10 @@
-use one_core::model::list_filter::{ListFilterCondition, ListFilterValue};
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::list_query::{ListPagination, ListQuery, ListSorting};
 use one_core::service::error::{ErrorCodeMixin, ServiceError};
 use one_dto_mapper::convert_inner;
 use serde::Deserialize;
 use utoipa::openapi::path::ParameterIn;
+use utoipa::openapi::schema::ArrayItems;
 use utoipa::openapi::{RefOr, Schema};
 use utoipa::{IntoParams, ToSchema};
 
@@ -11,19 +12,13 @@ use super::common::SortDirection;
 use super::error::{Cause, ErrorCode, ErrorResponseRestDTO};
 use crate::dto::common::ListQueryParamsRest;
 
-impl<
-        FilterRest,
-        SortableColumnRest,
-        SortableColumn,
-        Filter: ListFilterValue,
-        IncludeRest,
-        Include,
-    > From<ListQueryParamsRest<FilterRest, SortableColumnRest, IncludeRest>>
+impl<FilterRest, SortableColumnRest, SortableColumn, Filter, IncludeRest, Include>
+    From<ListQueryParamsRest<FilterRest, SortableColumnRest, IncludeRest>>
     for ListQuery<SortableColumn, Filter, Include>
 where
-    FilterRest: IntoParams + Into<ListFilterCondition<Filter>>,
-    SortableColumnRest: for<'a> ToSchema<'a> + Into<SortableColumn>,
-    IncludeRest: for<'a> ToSchema<'a> + Into<Include>,
+    FilterRest: Into<ListFilterCondition<Filter>>,
+    SortableColumnRest: Into<SortableColumn>,
+    IncludeRest: Into<Include>,
 {
     fn from(value: ListQueryParamsRest<FilterRest, SortableColumnRest, IncludeRest>) -> Self {
         Self {
@@ -45,8 +40,8 @@ where
 impl<Filter, SortColumn, Include> IntoParams for ListQueryParamsRest<Filter, SortColumn, Include>
 where
     Filter: IntoParams,
-    SortColumn: for<'a> ToSchema<'a>,
-    Include: for<'a> ToSchema<'a>,
+    SortColumn: ToSchema,
+    Include: ToSchema,
 {
     fn into_params(
         _parameter_in_provider: impl Fn() -> Option<ParameterIn>,
@@ -57,8 +52,10 @@ where
         // remove empty include[] params
         params.retain(|param| {
             if let Some(RefOr::T(Schema::Array(array))) = &param.schema {
-                if let RefOr::T(Schema::Object(obj)) = array.items.as_ref() {
-                    return obj.enum_values.is_some();
+                if let ArrayItems::RefOrSchema(ref_or) = &array.items {
+                    if let RefOr::T(Schema::Object(obj)) = ref_or.as_ref() {
+                        return obj.enum_values.is_some();
+                    }
                 }
             }
             true
@@ -73,7 +70,7 @@ where
 #[derive(Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
-struct PartialQueryParamsRest<SortColumn: for<'a> ToSchema<'a>, Include: for<'a> ToSchema<'a>> {
+struct PartialQueryParamsRest<SortColumn: ToSchema, Include: ToSchema> {
     pub page: u32,
     pub page_size: u32,
 

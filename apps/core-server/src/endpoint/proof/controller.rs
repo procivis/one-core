@@ -11,10 +11,7 @@ use crate::dto::common::{
     EntityResponseRestDTO, EntityShareResponseRestDTO, GetProofsResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{
-    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
-    OkOrErrorResponse,
-};
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -62,12 +59,10 @@ pub(crate) async fn get_proof_details(
     OkOrErrorResponse::from_result(result, state, "getting proof")
 }
 
-declare_utoipa_alias!(GetProofsResponseRestDTO);
-
 #[utoipa::path(
     get,
     path = "/api/proof-request/v1",
-    responses(OkOrErrorResponse<AliasResponse<GetProofsResponseRestDTO>>),
+    responses(OkOrErrorResponse<GetProofsResponseRestDTO>),
     params(GetProofQuery),
     tag = "proof_management",
     security(

@@ -465,7 +465,6 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             ssi::controller::ssi_verifier_reject_proof,
             ssi::controller::ssi_issuer_reject,
             ssi::controller::ssi_issuer_connect,
-            ssi::controller::ssi_issuer_reject,
             ssi::controller::ssi_issuer_submit,
             ssi::controller::get_lvvc_by_credential_id,
             ssi::controller::get_revocation_list_by_id,
@@ -691,14 +690,6 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
 
                 jsonld::dto::ResolveJsonLDContextResponseRestDTO,
 
-                dto::common::GetDidsResponseRestDTO,
-                dto::common::GetProofSchemaListResponseRestDTO,
-
-                dto::common::GetCredentialsResponseDTO,
-                dto::common::GetCredentialSchemasResponseDTO,
-                dto::common::GetProofsResponseRestDTO,
-                dto::common::GetKeyListResponseRestDTO,
-
                 dto::common::EntityResponseRestDTO,
                 dto::common::EntityShareResponseRestDTO,
                 dto::common::SortDirection,
@@ -706,21 +697,6 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 dto::error::ErrorResponseRestDTO,
                 dto::error::ErrorCode,
                 dto::error::Cause,
-
-                shared_types::ClaimId,
-                shared_types::ClaimSchemaId,
-                shared_types::CredentialId,
-                shared_types::CredentialSchemaId,
-                shared_types::DidId,
-                shared_types::DidValue,
-                shared_types::EntityId,
-                shared_types::HistoryId,
-                shared_types::KeyId,
-                shared_types::OrganisationId,
-                shared_types::ProofSchemaId,
-                shared_types::ProofId,
-                shared_types::TrustAnchorId,
-                shared_types::TrustEntityId,
             )
         ),
         tags(

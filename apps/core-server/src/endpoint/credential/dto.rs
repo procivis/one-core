@@ -141,6 +141,7 @@ pub enum CredentialDetailClaimValueResponseRestDTO {
     Float(f64),
     Integer(i64),
     String(String),
+    #[schema(no_recursion)]
     Nested(#[from(with_fn = convert_inner)] Vec<CredentialDetailClaimResponseRestDTO>),
 }
 

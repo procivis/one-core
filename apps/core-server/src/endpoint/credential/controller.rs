@@ -14,8 +14,7 @@ use crate::dto::common::{
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
-    OkOrErrorResponse, VecResponse,
+    CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse, VecResponse,
 };
 use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, GetCredentialQuery, GetCredentialResponseRestDTO,
@@ -64,12 +63,10 @@ pub(crate) async fn get_credential(
     OkOrErrorResponse::from_result(result, state, "getting credential")
 }
 
-declare_utoipa_alias!(GetCredentialsResponseDTO);
-
 #[utoipa::path(
     get,
     path = "/api/credential/v1",
-    responses(OkOrErrorResponse<AliasResponse<GetCredentialsResponseDTO>>),
+    responses(OkOrErrorResponse<GetCredentialsResponseDTO>),
     params(
         GetCredentialQuery
     ),

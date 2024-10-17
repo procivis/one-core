@@ -6,10 +6,7 @@ use shared_types::TrustEntityId;
 use super::dto::{CreateTrustEntityRequestRestDTO, ListTrustEntitiesQuery};
 use crate::dto::common::{EntityResponseRestDTO, GetTrustEntityListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{
-    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
-    OkOrErrorResponse,
-};
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -85,12 +82,10 @@ pub(crate) async fn get_trust_entity_details(
     OkOrErrorResponse::from_result(result, state, "getting trust entity")
 }
 
-declare_utoipa_alias!(GetTrustEntityListResponseRestDTO);
-
 #[utoipa::path(
     get,
     path = "/api/trust-entity/v1",
-    responses(OkOrErrorResponse<AliasResponse<GetTrustEntityListResponseRestDTO>>),
+    responses(OkOrErrorResponse<GetTrustEntityListResponseRestDTO>),
     params(ListTrustEntitiesQuery),
     tag = "trust_entity",
     security(

@@ -7,7 +7,6 @@ use one_core::service::vc_api::dto::{
 };
 use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use super::error::DidResolverError;
 use crate::endpoint::ssi::dto::DidDocumentRestDTO;
@@ -29,7 +28,7 @@ pub struct IssueOptionsDTO {
     pub revocation_method: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Debug, Serialize, Deserialize, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialIssueResponse)]
 pub struct CredentialIssueResponseDTO {
@@ -54,7 +53,7 @@ pub struct VerifyOptionsDTO {
     pub credential_format: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Debug, Serialize, Deserialize, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialVerifyResponse)]
 pub struct CredentialVerifyResponseDTO {
@@ -64,7 +63,7 @@ pub struct CredentialVerifyResponseDTO {
     pub credential: LdCredential,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema, Into)]
+#[derive(Debug, Serialize, Deserialize, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(PresentationVerifyRequest)]
 pub struct PresentationVerifyRequestDTO {
@@ -72,7 +71,7 @@ pub struct PresentationVerifyRequestDTO {
     pub options: VerifyOptionsDTO,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Debug, Serialize, Deserialize, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationVerifyResponse)]
 pub struct PresentationVerifyResponseDTO {
@@ -81,14 +80,14 @@ pub struct PresentationVerifyResponseDTO {
     pub errors: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IdentifierResponseDTO {
     pub result: VcApiDidDocumentRestDTO,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct VcApiDidDocumentRestDTO {
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub document: Option<DidDocumentRestDTO>,
@@ -101,7 +100,7 @@ impl From<DidDocument> for VcApiDidDocumentRestDTO {
         }
     }
 }
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DidDocumentResolutionResponseDTO {
     #[serde(rename = "@context")]
@@ -111,13 +110,13 @@ pub struct DidDocumentResolutionResponseDTO {
     pub did_resolution_metadata: Option<DidResolutionMetadataResponseDTO>,
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize)]
 pub struct DidResolutionMetadataResponseDTO {
     pub(crate) content_type: String,
     pub(crate) error: Option<DidResolverError>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DidDocumentMetadataRestDTO {}
 
 impl From<DidDocument> for DidDocumentResolutionResponseDTO {

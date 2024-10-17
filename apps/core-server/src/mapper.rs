@@ -44,7 +44,7 @@ where
 impl<T, K> From<GetListQueryParams<T>> for one_core::model::common::GetListQueryParams<K>
 where
     K: From<T>,
-    T: for<'a> ToSchema<'a>,
+    T: ToSchema,
 {
     fn from(value: GetListQueryParams<T>) -> Self {
         Self {

@@ -90,3 +90,20 @@ impl From<PublicKeyJwk> for PublicKeyJwkRestDTO {
         PublicKeyJwkDTO::from(value).into()
     }
 }
+
+impl utoipa::PartialSchema for OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO {
+    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+        utoipa::openapi::ObjectBuilder::new().property("value",utoipa::openapi::ObjectBuilder::new().property_names(Some(utoipa::openapi::ObjectBuilder::new().schema_type(utoipa::openapi::schema::SchemaType::new(utoipa::openapi::schema::Type::String)))).additional_properties(Some(utoipa::openapi::schema::RefBuilder::new().ref_location_from_schema_name(format!("{}", <OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO as utoipa::ToSchema> ::name()))))).property("value_type",utoipa::openapi::ObjectBuilder::new().schema_type(utoipa::openapi::schema::SchemaType::new(utoipa::openapi::schema::Type::String))).required("value_type").property("mandatory",utoipa::openapi::ObjectBuilder::new().schema_type({
+            use std::iter::FromIterator;
+            utoipa::openapi::schema::SchemaType::from_iter([utoipa::openapi::schema::Type::Boolean,utoipa::openapi::schema::Type::Null])
+        })).property("order",utoipa::openapi::schema::ArrayBuilder::new().schema_type({
+            use std::iter::FromIterator;
+            utoipa::openapi::schema::SchemaType::from_iter([utoipa::openapi::schema::Type::Array,utoipa::openapi::schema::Type::Null])
+        }).items(utoipa::openapi::ObjectBuilder::new().schema_type(utoipa::openapi::schema::SchemaType::new(utoipa::openapi::schema::Type::String)))).property("array",utoipa::openapi::ObjectBuilder::new().schema_type({
+            use std::iter::FromIterator;
+            utoipa::openapi::schema::SchemaType::from_iter([utoipa::openapi::schema::Type::Boolean,utoipa::openapi::schema::Type::Null])
+        })).into()
+    }
+}
+
+impl utoipa::ToSchema for OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO {}
