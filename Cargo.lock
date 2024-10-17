@@ -6569,6 +6569,7 @@ dependencies = [
  "indexmap 2.6.0",
  "serde",
  "serde_json",
+ "serde_yaml",
  "utoipa-gen",
 ]
 
