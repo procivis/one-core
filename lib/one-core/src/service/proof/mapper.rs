@@ -21,6 +21,8 @@ use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::proof::{self, Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
+use crate::model::validity_credential::ValidityCredentialType;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
@@ -148,10 +150,11 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
     }
 }
 
-pub fn get_verifier_proof_detail(
+pub async fn get_verifier_proof_detail(
     proof: Proof,
     config: &CoreConfig,
     claims_removed_event: Option<History>,
+    validity_credential_repository: &dyn ValidityCredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
     let holder_did_id = proof.holder_did.as_ref().map(|did| did.id);
 
@@ -174,27 +177,46 @@ pub fn get_verifier_proof_detail(
 
     let organisation_id = organisation.id;
 
-    let credential_for_credential_schema: HashMap<CredentialSchemaId, CredentialDetailResponseDTO> =
-        claims
-            .iter()
-            .map(|proof_claim| {
-                let credential = proof_claim.credential.clone().ok_or_else(|| {
-                    ServiceError::MappingError(format!(
-                        "Missing credential for proof claim {}",
-                        proof_claim.claim.id
-                    ))
-                })?;
-                let credential_schema = credential.schema.clone().ok_or_else(|| {
-                    ServiceError::MappingError(format!(
-                        "Missing credential schema for credential {}",
-                        credential.id
-                    ))
-                })?;
-                let credential = credential_detail_response_from_model(credential, config)?;
+    let mut credential_for_credential_schema: HashMap<
+        CredentialSchemaId,
+        CredentialDetailResponseDTO,
+    > = HashMap::new();
 
-                Ok((credential_schema.id, credential))
-            })
-            .collect::<Result<_, ServiceError>>()?;
+    for proof_claim in claims.iter() {
+        let credential = match proof_claim.credential.clone() {
+            Some(cred) => cred,
+            None => {
+                return Err(ServiceError::MappingError(format!(
+                    "Missing credential for proof claim {}",
+                    proof_claim.claim.id
+                )));
+            }
+        };
+
+        let credential_schema = match credential.schema.clone() {
+            Some(schema) => schema,
+            None => {
+                return Err(ServiceError::MappingError(format!(
+                    "Missing credential schema for credential {}",
+                    credential.id
+                )));
+            }
+        };
+
+        let mdoc_validity_credentials = match &credential.schema {
+            Some(schema) if schema.format == "MDOC" => {
+                validity_credential_repository
+                    .get_latest_by_credential_id(credential.id, ValidityCredentialType::Mdoc)
+                    .await?
+            }
+            _ => None,
+        };
+
+        let credential_detail =
+            credential_detail_response_from_model(credential, config, mdoc_validity_credentials)?;
+
+        credential_for_credential_schema.insert(credential_schema.id, credential_detail);
+    }
 
     let proof_input_schemas = match schema.input_schemas.as_ref() {
         Some(proof_input_schemas) if !proof_input_schemas.is_empty() => proof_input_schemas,
@@ -485,10 +507,11 @@ fn renest_proof_claims(claims: Vec<ProofClaimDTO>, prefix: &str) -> Vec<ProofCla
     result
 }
 
-pub fn get_holder_proof_detail(
+pub async fn get_holder_proof_detail(
     value: Proof,
     config: &CoreConfig,
     claims_removed_event: Option<History>,
+    validity_credential_repository: &dyn ValidityCredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
     let organisation_id = value
         .holder_did
@@ -554,9 +577,24 @@ pub fn get_holder_proof_detail(
                 entry.get_mut().0.push(claim);
             }
             Entry::Vacant(entry) => {
+                let mdoc_validity_credentials = match &credential.schema {
+                    Some(schema) if schema.format == "MDOC" => {
+                        validity_credential_repository
+                            .get_latest_by_credential_id(
+                                credential.id,
+                                ValidityCredentialType::Mdoc,
+                            )
+                            .await?
+                    }
+                    _ => None,
+                };
                 entry.insert((
                     vec![claim],
-                    credential_detail_response_from_model(credential.clone(), config)?,
+                    credential_detail_response_from_model(
+                        credential.clone(),
+                        config,
+                        mdoc_validity_credentials,
+                    )?,
                     credential_schema.clone().into(),
                 ));
             }

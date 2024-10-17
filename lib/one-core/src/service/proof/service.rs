@@ -145,9 +145,21 @@ impl ProofService {
             .next();
 
         if proof.schema.is_some() {
-            get_verifier_proof_detail(proof, &self.config, history_event)
+            get_verifier_proof_detail(
+                proof,
+                &self.config,
+                history_event,
+                &*self.validity_credential_repository,
+            )
+            .await
         } else {
-            get_holder_proof_detail(proof, &self.config, history_event)
+            get_holder_proof_detail(
+                proof,
+                &self.config,
+                history_event,
+                &*self.validity_credential_repository,
+            )
+            .await
         }
     }
 

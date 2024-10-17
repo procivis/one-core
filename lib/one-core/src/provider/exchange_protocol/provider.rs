@@ -381,7 +381,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
 
         // TODO - remove organisation usage from here when moved to open core
         let credential_detail =
-            credential_detail_response_from_model(credential.clone(), &self.config)?;
+            credential_detail_response_from_model(credential.clone(), &self.config, None)?;
         let credential_data = credential_data_from_credential_detail_response(
             credential_detail,
             core_base_url,

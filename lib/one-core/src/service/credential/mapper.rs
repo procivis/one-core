@@ -11,17 +11,20 @@ use crate::model::credential::{Credential, CredentialRole, CredentialState, Cred
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::did::Did;
 use crate::model::key::Key;
+use crate::model::validity_credential::ValidityCredential;
+use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
     CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
-    DetailCredentialClaimValueResponseDTO,
+    DetailCredentialClaimValueResponseDTO, MdocMsoValidityResponseDTO,
 };
 use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
+    validity_credential: Option<ValidityCredential>,
 ) -> Result<CredentialDetailResponseDTO, ServiceError> {
     let schema = value.schema.ok_or(ServiceError::MappingError(
         "credential_schema is None".to_string(),
@@ -40,6 +43,17 @@ pub fn credential_detail_response_from_model(
         ))?
         .to_owned();
 
+    let mdoc_mso_validity = if let Some(validity_credential) = validity_credential {
+        let params = config.format.get::<mdoc_formatter::Params>("MDOC")?;
+        Some(MdocMsoValidityResponseDTO {
+            expiration: validity_credential.created_date + params.mso_expires_in,
+            next_update: validity_credential.created_date + params.mso_expected_update_in,
+            last_update: validity_credential.created_date,
+        })
+    } else {
+        None
+    };
+
     Ok(CredentialDetailResponseDTO {
         id: value.id,
         created_date: value.created_date,
@@ -54,6 +68,7 @@ pub fn credential_detail_response_from_model(
         role: value.role.into(),
         lvvc_issuance_date: None,
         suspend_end_date: latest_state.suspend_end_date,
+        mdoc_mso_validity,
     })
 }
 

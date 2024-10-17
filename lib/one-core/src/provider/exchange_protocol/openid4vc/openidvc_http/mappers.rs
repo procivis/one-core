@@ -197,6 +197,7 @@ pub fn credential_detail_response_from_model(
         role: value.role.into(),
         lvvc_issuance_date: None,
         suspend_end_date: latest_state.suspend_end_date,
+        mdoc_mso_validity: None,
     })
 }
 

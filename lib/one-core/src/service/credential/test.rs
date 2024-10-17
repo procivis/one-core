@@ -25,6 +25,7 @@ use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
+use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential,
 };
@@ -3955,6 +3956,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
+    let mut validity_credential_repository = MockValidityCredentialRepository::default();
 
     let now = get_dummy_date();
 
@@ -4025,7 +4027,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             last_modified: now,
             name: "schema".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            format: "JWT".to_string(),
+            format: "MDOC".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
                 claim_schemas
@@ -4055,6 +4057,20 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             .times(1)
             .with(eq(clone.id), always())
             .returning(move |_, _| Ok(Some(clone.clone())));
+
+        validity_credential_repository
+            .expect_get_latest_by_credential_id()
+            .once()
+            .with(eq(credential.id), eq(ValidityCredentialType::Mdoc))
+            .return_once(move |_, _| {
+                Ok(Some(ValidityCredential {
+                    id: Uuid::new_v4(),
+                    created_date: now,
+                    credential: vec![1, 2, 3],
+                    linked_credential_id: credential.id,
+                    r#type: ValidityCredentialType::Mdoc,
+                }))
+            });
     }
 
     let service = setup_service(Repositories {
@@ -4063,6 +4079,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         did_repository,
         revocation_method_provider,
         config: generic_config().core,
+        lvvc_repository: validity_credential_repository,
         ..Default::default()
     });
 
@@ -4139,6 +4156,8 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
       }
     ]);
 
+    assert!(result.mdoc_mso_validity.is_some());
+    assert_eq!(now, result.mdoc_mso_validity.unwrap().last_update);
     assert_eq!(
         expected_claims,
         serde_json::to_value(result.claims).unwrap()

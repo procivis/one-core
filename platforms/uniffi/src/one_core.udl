@@ -402,6 +402,13 @@ dictionary CredentialDetailBindingDTO {
   CredentialRoleBindingDTO role;
   string? lvvc_issuance_date;
   string? suspend_end_date;
+  MdocMsoValidityResponseBindingDTO? mdoc_mso_validity;
+};
+
+dictionary MdocMsoValidityResponseBindingDTO {
+  string expiration;
+  string next_update;
+  string last_update;
 };
 
 [Enum]

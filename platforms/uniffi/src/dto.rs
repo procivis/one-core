@@ -359,6 +359,14 @@ pub struct CredentialDetailBindingDTO {
     pub role: CredentialRoleBindingDTO,
     pub lvvc_issuance_date: Option<String>,
     pub suspend_end_date: Option<String>,
+    pub mdoc_mso_validity: Option<MdocMsoValidityResponseBindingDTO>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MdocMsoValidityResponseBindingDTO {
+    pub expiration: String,
+    pub next_update: String,
+    pub last_update: String,
 }
 
 pub struct CredentialListItemBindingDTO {

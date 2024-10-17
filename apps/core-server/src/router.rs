@@ -531,6 +531,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 credential::dto::CredentialRoleRestEnum,
                 credential::dto::CredentialDetailClaimValueResponseRestDTO,
                 credential::dto::SuspendCredentialRequestRestDTO,
+                credential::dto::MdocMsoValidityResponseRestDTO,
 
                 credential_schema::dto::CreateCredentialSchemaRequestRestDTO,
                 credential_schema::dto::CredentialClaimSchemaRequestRestDTO,
