@@ -1,4 +1,4 @@
-//! The **Procivis One Open Core** is a library for issuing, holding and verifying
+//! The **Procivis One Core** is a library for issuing, holding and verifying
 //! verifiable credentials.
 //!
 //! Self-sovereign identity (SSI) is a model of digital identity that enables individuals
@@ -16,28 +16,14 @@
 //!
 //! See the README for a complete list of supported technologies and standards.
 //!
-//! ## Repository structure
+//! The **Providers** of the one-core, and one-crypto (delimited in its own directory to
+//! enable future certification, e.g. in
+//! the [NIST Cryptographic Module Validation Program (CMVP)][cmvp]), are modular
+//! implementations of the complete range of functionality. Developers can use providers
+//! — or implementations of individual technologies from within a provider — for modular
+//! functionality.
 //!
-//! The library consists of three crates:
-//!
-//! * **Providers**
-//!   * Credential formatter provider
-//!   * Key algorithm provider
-//!   * Key storage provider
-//!  * Revocation provider
-//!   * DID method provider
-//!   * Exchange protocol provider
-//! * **Crypto**: This provider is delimited in its own directory to enable future certification
-//!   of the cryptographic components of this library, e.g. in the [NIST Cryptographic Module Validation Program (CMVP)][cmvp].
-//!   * Crypto provider
-//! * **Core**
-//!   * Services
-//!
-//! The **Providers** (including Crypto provider) are modular implementations of the complete
-//! range of functionality. Developers can use providers — or implementations of individual
-//! technologies from within a provider — for modular functionality.
-//!
-//! The **Core** is a service layer that offers developer APIs for orchestrating the whole
+//! **one-dev-services** is a service layer that offers developer APIs for orchestrating the whole
 //! suite of providers for simplified workflows in issuing, holding, or verifying. Services
 //! return provider implementations.
 //!
@@ -45,7 +31,7 @@
 //!
 //! ### Providers
 //!
-//! See **/examples** in the [repository][repo]for a few iterations of using the provider
+//! See **/examples** in the [repository][repo] for a few iterations of using the provider
 //! implementations:
 //!
 //! - `examples/signature_example`: Issuing, presenting as a holder, and verifying a credential via the credentials service
@@ -53,17 +39,13 @@
 //! - `examples/did_resolution_example`: Resolving DIDs via the DID service or using the
 //!   implementations directly
 //!
-//! ### Core
+//! ### One dev services
 //!
-//! The **Core** provides developer APIs for simple and easy-to-use functionalities
+//! Dev services provides developer APIs for simple and easy-to-use functionalities
 //! of the library and its supported technologies. As an orchestration
 //! layer, it provides the simplest access to related functions with
 //! the least amount of effort. Use the provided [services][serv] to get started.
 //! Additional services will be added.
-//!
-//! - [Credentials service][cs] for issuing, presenting as a holder, and verifying credentials
-//! - [Signature service][ss] for signing and verifying credentals
-//! - [DID resolver service][dresolv] for resolving DIDs
 //!
 //! To get started with the provided services, initialize the core:
 //!
@@ -97,7 +79,7 @@
 //! [cs]: ..//one_core/service/credential_service/struct.CredentialService.html
 //! [docs]: https://docs.procivis.ch/
 //! [dresolv]: ..//one_core/service/did_service/struct.DidService.html
-//! [repo]: https://github.com/procivis/one-open-core
+//! [repo]: https://github.com/procivis/one-core
 //! [serv]: ..//one_core/service/index.html
 //! [sl]: https://w3c.github.io/vc-bitstring-status-list/
 //! [ss]: ..//one_core/service/signature_service/struct.SignatureService.html
