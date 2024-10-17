@@ -18,7 +18,7 @@ transport:
     order: 2
     params:
       private:
-        brokerUrl: "mqtt://rabbitmq.dev.procivis-one.com:1883"
+        brokerUrl: "mqtts://mqtt.dev.procivis-one.com:8883"
 keyStorage:
   SECURE_ELEMENT:
     display: "keyStorage.secureElement"
