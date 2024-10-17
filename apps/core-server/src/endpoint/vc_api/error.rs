@@ -1,29 +1,23 @@
 use one_core::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use one_core::service::error::{MissingProviderError, ServiceError};
 use serde::Serialize;
-use utoipa::{IntoResponses, ToSchema};
 
-#[derive(Serialize, IntoResponses, ToSchema, Debug)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum VcApiError {
-    #[response(status = 400)]
     UnmappedError(String),
-    #[response(status = 400)]
     DidResolverError(DidResolverError),
 }
 
-#[derive(Serialize, IntoResponses, Debug)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum DidResolverError {
-    #[response(status = 400)]
     MethodNotSupported(#[serde(skip_serializing)] String),
-    #[response(status = 400)]
     InvalidDid(#[serde(skip_serializing)] String),
-    #[response(status = 400)]
     InvalidPublicKeyLength(#[serde(skip_serializing)] String),
 }
 
-#[derive(Serialize, Debug, ToSchema)]
+#[derive(Serialize, Debug)]
 pub struct VcApiErrorRestDTO {
     pub status: Option<u16>,
     pub title: String,

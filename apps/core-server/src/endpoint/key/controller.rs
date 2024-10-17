@@ -8,10 +8,7 @@ use shared_types::KeyId;
 use super::dto::{GetKeyQuery, KeyCheckCertificateRequestRestDTO};
 use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{
-    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
-    OkOrErrorResponse,
-};
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::key::dto::{
     KeyGenerateCSRRequestRestDTO, KeyGenerateCSRResponseRestDTO, KeyListItemResponseRestDTO,
     KeyRequestRestDTO, KeyResponseRestDTO,
@@ -74,12 +71,10 @@ pub(crate) async fn post_key(
     CreatedOrErrorResponse::from_result(result, state, "creating key")
 }
 
-declare_utoipa_alias!(GetKeyListResponseRestDTO);
-
 #[utoipa::path(
     get,
     path = "/api/key/v1",
-    responses(OkOrErrorResponse<AliasResponse<GetKeyListResponseRestDTO>>),
+    responses(OkOrErrorResponse<GetKeyListResponseRestDTO>),
     params(GetKeyQuery),
     tag = "key",
     security(

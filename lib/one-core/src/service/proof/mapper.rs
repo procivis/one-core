@@ -328,9 +328,6 @@ pub fn get_verifier_proof_detail(
             .try_for_each(|input_claim| {
                 match input_claim.schema.key.rsplit_once(NESTED_CLAIM_MARKER) {
                     Some((prefix, _)) => {
-                        tracing::info!("here1 input_claim = {:?}", input_claim);
-                        tracing::info!("here2 proof_input_claims = {:?}", proof_input_claims);
-                        tracing::info!("here2 prefix = {:?}", prefix);
                         let parent_proof_claim = get_or_insert_proof_claim(
                             &mut proof_input_claims,
                             prefix,
@@ -345,7 +342,6 @@ pub fn get_verifier_proof_detail(
                         let Some(ProofClaimValueDTO::Claims(parent_proof_claims)) =
                             &mut parent_proof_claim.value
                         else {
-                            tracing::info!("here3");
                             return Err(ServiceError::MappingError(
                                 "Parent claim can not have a text value or be empty".to_string(),
                             ));

@@ -157,7 +157,7 @@ pub struct OpenID4VCIIssuerMetadataCredentialSchemaRestDTO {
     pub r#type: CredentialSchemaType,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Deserialize, Serialize, From)]
 #[from(OpenID4VCIIssuerMetadataMdocClaimsValuesDTO)]
 pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO {
     #[from(with_fn = convert_inner)]
@@ -505,6 +505,7 @@ pub struct OpenID4VCICredentialOfferCredentialRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCICredentialOfferClaim)]
 pub struct OpenID4VCICredentialOfferClaimDTO {
+    #[schema(no_recursion)]
     pub value: OpenID4VCICredentialOfferClaimValueDTO,
     pub value_type: String,
 }

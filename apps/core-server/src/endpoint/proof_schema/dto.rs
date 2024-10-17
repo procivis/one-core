@@ -102,6 +102,7 @@ pub struct ImportProofSchemaClaimSchemaRestDTO {
     pub data_type: String,
     #[into(with_fn = convert_inner)]
     #[serde(default)]
+    #[schema(no_recursion)]
     pub claims: Vec<ImportProofSchemaClaimSchemaRestDTO>,
     pub array: bool,
 }
@@ -194,6 +195,7 @@ pub struct ProofClaimSchemaResponseRestDTO {
     pub data_type: String,
     #[from(with_fn = convert_inner)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[schema(no_recursion)]
     pub claims: Vec<ProofClaimSchemaResponseRestDTO>,
     pub array: bool,
 }

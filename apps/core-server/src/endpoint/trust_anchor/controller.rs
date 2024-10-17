@@ -5,10 +5,7 @@ use shared_types::TrustAnchorId;
 
 use crate::dto::common::{EntityResponseRestDTO, GetTrustAnchorListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{
-    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
-    OkOrErrorResponse,
-};
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::trust_anchor::dto::{
     CreateTrustAnchorRequestRestDTO, GetTrustAnchorResponseRestDTO, ListTrustAnchorsQuery,
 };
@@ -60,12 +57,10 @@ pub(crate) async fn get_trust_anchor(
     OkOrErrorResponse::from_result(result, state, "fetching trust anchor")
 }
 
-declare_utoipa_alias!(GetTrustAnchorListResponseRestDTO);
-
 #[utoipa::path(
     get,
     path = "/api/trust-anchor/v1",
-    responses(OkOrErrorResponse<AliasResponse<GetTrustAnchorListResponseRestDTO>>),
+    responses(OkOrErrorResponse<GetTrustAnchorListResponseRestDTO>),
     params(ListTrustAnchorsQuery),
     tag = "trust_anchor",
     security(

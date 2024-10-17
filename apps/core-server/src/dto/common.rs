@@ -18,18 +18,6 @@ use crate::endpoint::trust_entity::dto::ListTrustEntitiesResponseItemRestDTO;
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-// ToSchema is properly generated thanks to that
-#[aliases(
-    GetProofsResponseRestDTO = GetListResponseRestDTO<ProofListItemResponseRestDTO>,
-    GetCredentialSchemasResponseDTO = GetListResponseRestDTO<CredentialSchemaListItemResponseRestDTO>,
-    GetDidsResponseRestDTO = GetListResponseRestDTO<DidListItemResponseRestDTO>,
-    GetCredentialsResponseDTO = GetListResponseRestDTO<CredentialListItemResponseRestDTO>,
-    GetProofSchemaListResponseRestDTO = GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>,
-    GetKeyListResponseRestDTO = GetListResponseRestDTO<KeyListItemResponseRestDTO>,
-    GetHistoryListResponseRestDTO = GetListResponseRestDTO<HistoryResponseRestDTO>,
-    GetTrustAnchorListResponseRestDTO = GetListResponseRestDTO<ListTrustAnchorsResponseItemRestDTO>,
-    GetTrustEntityListResponseRestDTO = GetListResponseRestDTO<ListTrustEntitiesResponseItemRestDTO>,
-)]
 pub struct GetListResponseRestDTO<T>
 where
     T: Clone + fmt::Debug + Serialize,
@@ -39,10 +27,24 @@ where
     pub total_items: u64,
 }
 
+pub type GetProofsResponseRestDTO = GetListResponseRestDTO<ProofListItemResponseRestDTO>;
+pub type GetCredentialSchemasResponseDTO =
+    GetListResponseRestDTO<CredentialSchemaListItemResponseRestDTO>;
+pub type GetDidsResponseRestDTO = GetListResponseRestDTO<DidListItemResponseRestDTO>;
+pub type GetCredentialsResponseDTO = GetListResponseRestDTO<CredentialListItemResponseRestDTO>;
+pub type GetProofSchemaListResponseRestDTO =
+    GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>;
+pub type GetKeyListResponseRestDTO = GetListResponseRestDTO<KeyListItemResponseRestDTO>;
+pub type GetHistoryListResponseRestDTO = GetListResponseRestDTO<HistoryResponseRestDTO>;
+pub type GetTrustAnchorListResponseRestDTO =
+    GetListResponseRestDTO<ListTrustAnchorsResponseItemRestDTO>;
+pub type GetTrustEntityListResponseRestDTO =
+    GetListResponseRestDTO<ListTrustEntitiesResponseItemRestDTO>;
+
 #[derive(Clone, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
-pub struct GetListQueryParams<T: for<'a> ToSchema<'a>> {
+pub struct GetListQueryParams<T: ToSchema> {
     // pagination
     pub page: u32,
     pub page_size: u32,
@@ -74,11 +76,7 @@ impl From<NoIncludesSupported> for one_core::model::list_query::NoInclude {
 
 #[derive(Clone, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListQueryParamsRest<
-    Filter: IntoParams,
-    SortColumn: for<'a> ToSchema<'a>,
-    Include: for<'a> ToSchema<'a> = NoIncludesSupported,
-> {
+pub struct ListQueryParamsRest<Filter, SortColumn, Include = NoIncludesSupported> {
     // pagination
     pub page: u32,
     pub page_size: u32,

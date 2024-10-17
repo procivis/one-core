@@ -1,16 +1,12 @@
-use std::collections::BTreeMap;
-
 use axum::extract::rejection::{FormRejection, JsonRejection, PathRejection, QueryRejection};
 use axum::response::IntoResponse;
 use axum::Json;
 use one_core::service::error::ServiceError;
 use reqwest::StatusCode;
 use serde::Serialize;
-use utoipa::ToSchema;
 
 use super::dto::DidDocumentResolutionResponseDTO;
 use super::error::{DidResolverError, VcApiError, VcApiErrorRestDTO};
-use crate::dto::response::ErrorResponse;
 
 pub enum VcApiResponse<T: Serialize> {
     Error(VcApiError),
@@ -76,27 +72,6 @@ impl IntoResponse for DidResolverError {
         )
             .into_response()
     }
-}
-
-impl<T: for<'a> ToSchema<'a>> utoipa::IntoResponses for VcApiResponse<T>
-where
-    T: Serialize,
-{
-    fn responses() -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
-        #[derive(utoipa::IntoResponses)]
-        #[response(status = 200, description = "Ok")]
-        struct SuccessResponse<T: for<'a> ToSchema<'a>>(#[to_schema] T);
-
-        with_error_responses::<SuccessResponse<T>>()
-    }
-}
-
-fn with_error_responses<SuccessResponse: utoipa::IntoResponses>(
-) -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
-    use utoipa::IntoResponses;
-    let mut responses = SuccessResponse::responses();
-    responses.append(&mut ErrorResponse::responses());
-    responses
 }
 
 macro_rules! gen_from_rejection {

@@ -9,10 +9,7 @@ use super::dto::{
 };
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemasResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{
-    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
-    OkOrErrorResponse,
-};
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -65,12 +62,10 @@ pub(crate) async fn get_credential_schema(
     OkOrErrorResponse::from_result(result, state, "getting credential schema")
 }
 
-declare_utoipa_alias!(GetCredentialSchemasResponseDTO);
-
 #[utoipa::path(
     get,
     path = "/api/credential-schema/v1",
-    responses(OkOrErrorResponse<AliasResponse<GetCredentialSchemasResponseDTO>>),
+    responses(OkOrErrorResponse<GetCredentialSchemasResponseDTO>),
     params(GetCredentialSchemaQuery),
     tag = "credential_schema_management",
     security(

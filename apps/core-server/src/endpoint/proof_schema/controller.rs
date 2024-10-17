@@ -9,10 +9,7 @@ use super::dto::{
 };
 use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{
-    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
-    OkOrErrorResponse,
-};
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -41,12 +38,10 @@ pub(crate) async fn post_proof_schema(
     CreatedOrErrorResponse::from_result(result, state, "creating proof schema")
 }
 
-declare_utoipa_alias!(GetProofSchemaListResponseRestDTO);
-
 #[utoipa::path(
     get,
     path = "/api/proof-schema/v1",
-    responses(OkOrErrorResponse<AliasResponse<GetProofSchemaListResponseRestDTO>>),
+    responses(OkOrErrorResponse<GetProofSchemaListResponseRestDTO>),
     params(GetProofSchemaQuery),
     tag = "proof_schema_management",
     security(

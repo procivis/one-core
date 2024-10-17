@@ -296,6 +296,7 @@ pub struct ProofClaimRestDTO {
 #[serde(untagged)]
 pub enum ProofClaimValueRestDTO {
     Value(String),
+    #[schema(no_recursion)]
     Claims(#[from(with_fn = convert_inner)] Vec<ProofClaimRestDTO>),
 }
 
