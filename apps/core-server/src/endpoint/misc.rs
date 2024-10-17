@@ -1,3 +1,6 @@
+use std::future;
+
+use axum::handler::Handler;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -58,5 +61,12 @@ pub(crate) async fn get_metrics() -> Response {
             format!("Metrics encoding error: {:?}", error),
         )
             .into_response(),
+    }
+}
+
+pub(crate) fn get_openapi_yaml<S>(openapi: utoipa::openapi::OpenApi) -> impl Handler<((),), S> {
+    move || {
+        let yaml = openapi.to_yaml().unwrap();
+        future::ready((StatusCode::OK, yaml).into_response())
     }
 }

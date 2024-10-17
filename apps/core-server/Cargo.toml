@@ -41,7 +41,7 @@ tower-http                   = { version = "0.6", features = ["trace", "catch-pa
 tracing-subscriber.workspace = true
 tracing.workspace            = true
 url.workspace                = true
-utoipa                       = { workspace = true, features = ["uuid", "axum_extras", "url", "time"] }
+utoipa                       = { workspace = true, features = ["uuid", "axum_extras", "url", "time", "yaml"] }
 utoipa-swagger-ui            = { version = "8.0", features = ["axum"] }
 uuid.workspace               = true
 validator.workspace          = true

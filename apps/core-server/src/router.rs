@@ -337,7 +337,11 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
     let technical_endpoints = Router::new()
         .route("/build-info", get(misc::get_build_info))
         .route("/health", get(misc::health_check))
-        .route("/metrics", get(misc::get_metrics));
+        .route("/metrics", get(misc::get_metrics))
+        .route(
+            "/api-docs/openapi.yaml",
+            get(misc::get_openapi_yaml(openapi_documentation.clone())),
+        );
 
     let router = {
         if config.insecure_vc_api_endpoints_enabled {
@@ -697,6 +701,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 dto::error::ErrorResponseRestDTO,
                 dto::error::ErrorCode,
                 dto::error::Cause,
+
+                shared_types::EntityId,
             )
         ),
         tags(
