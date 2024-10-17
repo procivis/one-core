@@ -5,6 +5,7 @@ include:
     file:
       - "gitlab/docker.gitlab-ci.yml"
       - "gitlab/github.gitlab-ci.yml"
+      - "gitlab/rules.gitlab-ci.yml"
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -555,4 +556,4 @@ tests:api:
     branch: main
     strategy: depend
   extends:
-    - .only_main_or_tag
+    - .only_main
