@@ -1,6 +1,7 @@
 image: $CI_REGISTRY/procivis/one/one-operations/core-base:1.81.0-0.1
 
 include:
+  - local: "docs/docs.gitlab-ci.yml"
   - project: "procivis/one/one-operations"
     file:
       - "gitlab/docker.gitlab-ci.yml"
@@ -40,6 +41,7 @@ workflow:
 stages:
   - build
   - test
+  - docs
   - manual_e2e_tests
   - scan
   - publish
@@ -51,7 +53,7 @@ stages:
   - github
 
 .app_settings: &app_settings
-  - APP_FLAVOR=$(echo $CI_COMMIT_TAG | sed -n "s/^v.*-\(.*\)$/\1/p")
+  - APP_FLAVOR=${APP_FLAVOR:-$(echo $CI_COMMIT_TAG | sed -n "s/^v.*-\(.*\)$/\1/p")}
   - APP_FLAVOR=${APP_FLAVOR:-procivis}
   - APP_VERSION=$(echo $CI_COMMIT_TAG | sed -n "s/^\(v.*\)-.*$/\1/p")
   - APP_VERSION=${APP_VERSION:-$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA}
