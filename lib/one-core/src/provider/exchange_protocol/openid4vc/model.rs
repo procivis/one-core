@@ -4,9 +4,7 @@ use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_dto_mapper::{convert_inner, Into};
 use serde::{Deserialize, Serialize};
-use shared_types::{
-    ClaimSchemaId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId, ProofId,
-};
+use shared_types::{ClaimSchemaId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId};
 use strum::Display;
 use time::OffsetDateTime;
 use url::Url;
@@ -109,7 +107,7 @@ pub struct MQTTOpenID4VPInteractionData {
     pub identity_request_nonce: String,
     pub session_keys: MQTTSessionKeys,
     pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
-    pub proof_id: ProofId,
+    pub topic_id: Uuid,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

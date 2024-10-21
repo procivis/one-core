@@ -200,6 +200,7 @@ impl SSIHolderService {
             }
             _ => throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?,
         }
+
         let state = if (self
             .protocol_provider
             .get_protocol(&proof.exchange)

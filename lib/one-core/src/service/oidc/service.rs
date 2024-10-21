@@ -577,6 +577,7 @@ impl OIDCService {
                 if let Ok(interaction_data) =
                     serde_json::from_slice::<BLEOpenID4VPInteractionData>(data)
                 {
+                    tracing::debug!("Got BLE interaction data");
                     if let Some(ble_response) = interaction_data.presentation_submission {
                         let state =
                             Uuid::from_str(&ble_response.presentation_submission.definition_id)
@@ -601,6 +602,7 @@ impl OIDCService {
                 if let Ok(interaction_data) =
                     serde_json::from_slice::<MQTTOpenID4VPInteractionDataVerifier>(data)
                 {
+                    tracing::debug!("Got MQTT interaction data");
                     let mqtt_response = interaction_data.presentation_submission;
                     let state =
                         Uuid::from_str(&mqtt_response.presentation_submission.definition_id)
