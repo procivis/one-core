@@ -250,7 +250,6 @@ impl CredentialFormatter for JWTFormatter {
             ],
             revocation_methods: vec![
                 "NONE".to_string(),
-                "MDOC_MSO_UPDATE_SUSPENSION".to_string(),
                 "BITSTRINGSTATUSLIST".to_string(),
                 "LVVC".to_string(),
             ],
