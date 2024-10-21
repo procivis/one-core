@@ -44,6 +44,7 @@ use one_core::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntit
 use one_core::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
 use one_core::provider::revocation::bitstring_status_list::BitstringStatusList;
 use one_core::provider::revocation::lvvc::LvvcProvider;
+use one_core::provider::revocation::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
 use one_core::provider::revocation::none::NoneRevocation;
 use one_core::provider::revocation::provider::RevocationMethodProviderImpl;
 use one_core::provider::revocation::status_list_2021::StatusList2021;
@@ -451,6 +452,9 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
 
                 let revocation_method = match fields.r#type {
                     RevocationType::None => Arc::new(NoneRevocation {}) as _,
+                    RevocationType::MdocMsoUpdateSuspension => {
+                        Arc::new(MdocMsoUpdateSuspensionRevocation {}) as _
+                    }
                     RevocationType::BitstringStatusList => {
                         let params = config
                             .get(key)

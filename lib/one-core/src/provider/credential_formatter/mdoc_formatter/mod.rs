@@ -516,7 +516,7 @@ impl CredentialFormatter for MdocFormatter {
             issuance_did_methods: vec!["MDL".to_string()],
             issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
             proof_exchange_protocols: vec!["OPENID4VC".to_string(), "ISO_MDL".to_string()],
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec!["NONE".to_string(), "MDOC_MSO_UPDATE_SUSPENSION".to_string()],
             signing_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
             verification_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
             verification_key_storages: vec!["INTERNAL".to_string()],

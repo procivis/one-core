@@ -78,6 +78,7 @@ use binding::OneCoreBinding;
 use dto::*;
 use one_core::config::core_config::{CacheEntitiesConfig, RevocationType};
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
+use one_core::provider::revocation::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
 use one_core::provider::revocation::none::NoneRevocation;
 use one_core::provider::revocation::status_list_2021::StatusList2021;
 
@@ -494,6 +495,9 @@ fn initialize_core(
 
                         let revocation_method = match fields.r#type {
                             RevocationType::None => Arc::new(NoneRevocation {}) as _,
+                            RevocationType::MdocMsoUpdateSuspension => {
+                                Arc::new(MdocMsoUpdateSuspensionRevocation {}) as _
+                            }
                             RevocationType::BitstringStatusList => {
                                 Arc::new(BitstringStatusList::new(
                                     None,

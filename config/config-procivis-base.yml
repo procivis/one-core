@@ -84,6 +84,12 @@ revocation:
     params:
       public:
         bitstringCredentialFormat: "JWT"
+  MDOC_MSO_UPDATE_SUSPENSION:
+    display: "revocation.mdocMsoUpdateSuspension"
+    order: 3
+    disabled: false
+    type: "MDOC_MSO_UPDATE_SUSPENSION"
+    params: null
   LVVC:
     display: "revocation.lvvc"
     order: 2
