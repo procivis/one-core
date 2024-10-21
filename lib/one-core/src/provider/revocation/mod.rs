@@ -11,6 +11,7 @@ use crate::provider::revocation::model::{
 pub mod bitstring_status_list;
 pub mod error;
 pub mod lvvc;
+pub mod mdoc_mso_update_suspension;
 pub mod model;
 pub mod none;
 pub mod provider;
