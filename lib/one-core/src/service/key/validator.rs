@@ -1,10 +1,8 @@
-use time::Duration;
-
 use crate::config::core_config::CoreConfig;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
-use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyRequestDTO};
+use crate::service::key::dto::KeyRequestDTO;
 
 pub(super) fn validate_generate_request(
     request: &KeyRequestDTO,
@@ -21,8 +19,7 @@ pub(super) fn validate_generate_request(
     Ok(())
 }
 
-pub(super) fn validate_generate_csr_request(
-    request: &KeyGenerateCSRRequestDTO,
+pub(super) fn validate_key_algorithm_for_csr(
     key_type: &str,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), ServiceError> {
@@ -36,13 +33,5 @@ pub(super) fn validate_generate_csr_request(
     {
         return Err(BusinessLogicError::UnsupportedKeyTypeForCSR.into());
     }
-
-    const MAXIMUM_DAYS: i64 = 457;
-    let difference = request.expires_at - request.not_before;
-
-    if difference >= Duration::days(MAXIMUM_DAYS) {
-        return Err(ValidationError::CertificateRequestedForMoreThan457Days.into());
-    }
-
     Ok(())
 }
