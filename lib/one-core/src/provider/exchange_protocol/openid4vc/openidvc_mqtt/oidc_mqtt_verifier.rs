@@ -2,10 +2,12 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use time::{Duration, OffsetDateTime};
-use tokio::sync::Notify;
+use tokio_util::sync::CancellationToken;
 
+use super::set_proof_state;
+use crate::config::core_config::TransportType;
 use crate::model::interaction::{Interaction, InteractionId};
-use crate::model::proof::{Proof, ProofState, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::mapper::parse_identity_request;
@@ -14,6 +16,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 };
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
 use crate::provider::mqtt_client::MqttTopic;
+use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 
@@ -33,8 +36,9 @@ pub(super) async fn mqtt_verifier_flow(
     presentation_request: MqttOpenId4VpRequest,
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
+    history_repository: Arc<dyn HistoryRepository>,
     interaction_id: InteractionId,
-    notification: Arc<Notify>,
+    cancellation_token: CancellationToken,
 ) -> anyhow::Result<()> {
     let result = async {
         let identify_bytes = tokio::select! {
@@ -42,14 +46,15 @@ pub(super) async fn mqtt_verifier_flow(
                 resp?
             },
             // stop the flow if other transport was selected
-            _ = notification.notified() => {
+            _ = cancellation_token.cancelled() => {
                 tracing::debug!("Stopping MQTT verifier flow, other transport selected");
 
                 return Ok(());
             }
         };
 
-        notification.notify_waiters();
+        // we notify other transport that this was selected so they can cancel their work
+        cancellation_token.cancel();
 
         tracing::debug!("got identify message");
 
@@ -57,7 +62,7 @@ pub(super) async fn mqtt_verifier_flow(
             .update_proof(
                 &proof.id,
                 UpdateProofRequest {
-                    transport: Some("MQTT".into()),
+                    transport: Some(TransportType::Mqtt.to_string()),
                     ..Default::default()
                 },
             )
@@ -80,17 +85,7 @@ pub(super) async fn mqtt_verifier_flow(
 
         tracing::debug!("presentation_definition is sent");
 
-        let now = OffsetDateTime::now_utc();
-        proof_repository
-            .set_proof_state(
-                &proof.id,
-                ProofState {
-                    created_date: now,
-                    last_modified: now,
-                    state: ProofStateEnum::Requested,
-                },
-            )
-            .await?;
+        set_proof_state(&proof, ProofStateEnum::Requested, &*proof_repository, &*history_repository).await?;
 
         let reject = async {
             loop {
@@ -131,7 +126,6 @@ pub(super) async fn mqtt_verifier_flow(
                     .context("Failed to decrypt presentation request")?;
 
                 let now = OffsetDateTime::now_utc();
-
                 interaction_repository
                     .update_interaction(Interaction {
                         id: interaction_id,
@@ -151,31 +145,11 @@ pub(super) async fn mqtt_verifier_flow(
                     })
                     .await?;
 
-                let _ = proof_repository
-                    .set_proof_state(
-                        &proof.id,
-                        ProofState {
-                            created_date: now,
-                            last_modified: now,
-                            state: ProofStateEnum::Accepted,
-                        },
-                    )
-                    .await;
+                set_proof_state(&proof, ProofStateEnum::Accepted, &*proof_repository, &*history_repository).await?;
             },
             _ = reject => {
-                tracing::debug!("got reject message");
-
-                let now = OffsetDateTime::now_utc();
-                let _ = proof_repository
-                    .set_proof_state(
-                        &proof.id,
-                        ProofState {
-                            created_date: now,
-                            last_modified: now,
-                            state: ProofStateEnum::Rejected,
-                        },
-                    )
-                    .await;
+                tracing::debug!("got reject message");                
+                set_proof_state(&proof, ProofStateEnum::Rejected, &*proof_repository, &*history_repository).await?;
             }
         }
 
@@ -184,17 +158,13 @@ pub(super) async fn mqtt_verifier_flow(
     .await;
 
     if result.is_err() {
-        let now = OffsetDateTime::now_utc();
-        let _ = proof_repository
-            .set_proof_state(
-                &proof.id,
-                ProofState {
-                    created_date: now,
-                    last_modified: now,
-                    state: ProofStateEnum::Rejected,
-                },
-            )
-            .await;
+        set_proof_state(
+            &proof,
+            ProofStateEnum::Error,
+            &*proof_repository,
+            &*history_repository,
+        )
+        .await?;
     }
 
     result

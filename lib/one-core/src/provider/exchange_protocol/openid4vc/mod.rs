@@ -9,7 +9,7 @@ use openidvc_http::OpenID4VCHTTP;
 use openidvc_mqtt::OpenId4VcMqtt;
 use serde_json::json;
 use shared_types::KeyId;
-use tokio::sync::Notify;
+use tokio_util::sync::CancellationToken;
 use url::Url;
 use uuid::Uuid;
 
@@ -272,33 +272,9 @@ impl ExchangeProtocolImpl for OpenID4VC {
         vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
-        let transport = if proof.transport.is_empty() {
-            let data: CreateProofInteractionData = proof
-                .interaction
-                .as_ref()
-                .context("Missing interaction for proof")
-                .and_then(|interaction| {
-                    let interaction_data = interaction
-                        .data
-                        .as_ref()
-                        .context("Missing interaction data")?;
+        let transport = get_transport(proof)?;
 
-                    serde_json::from_slice(interaction_data).context("Interaction deserialization")
-                })
-                .map_err(ExchangeProtocolError::Other)?;
-
-            data.transport
-        } else {
-            vec![proof.transport.clone()]
-        };
-
-        let transport = transport
-            .into_iter()
-            .map(|t| TransportType::try_from(t.as_str()))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| {
-                ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
-            })?;
+        tracing::debug!("Transports: {}", proof.transport);
 
         match transport.as_slice() {
             [TransportType::Ble] => {
@@ -312,7 +288,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         type_to_descriptor,
                         interaction_id,
                         key_agreement,
-                        Arc::new(Notify::new()),
+                        CancellationToken::new(),
                     )
                     .await
                     .map(|url| ShareResponse {
@@ -338,32 +314,31 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     context: json!(context.context),
                 }),
             [TransportType::Mqtt] => {
-                let client = self.openid_mqtt.as_ref().ok_or_else(|| {
+                let mqtt = self.openid_mqtt.as_ref().ok_or_else(|| {
                     ExchangeProtocolError::Failed("MQTT client not configured".to_string())
                 })?;
                 let interaction_id = Uuid::new_v4();
                 let key_agreement = KeyAgreementKey::new_random();
 
-                client
-                    .share_proof(
-                        proof,
-                        format_to_type_mapper,
-                        type_to_descriptor,
-                        interaction_id,
-                        key_agreement,
-                        Arc::new(Notify::new()),
-                    )
-                    .await
-                    .map(|url| ShareResponse {
-                        url: url.to_string(),
-                        interaction_id,
-                        context: json!({}),
-                    })
+                mqtt.share_proof(
+                    proof,
+                    format_to_type_mapper,
+                    type_to_descriptor,
+                    interaction_id,
+                    key_agreement,
+                    CancellationToken::new(),
+                )
+                .await
+                .map(|url| ShareResponse {
+                    url: url.to_string(),
+                    interaction_id,
+                    context: json!({}),
+                })
             }
 
             [TransportType::Ble, TransportType::Mqtt]
             | [TransportType::Mqtt, TransportType::Ble] => {
-                let client = self.openid_mqtt.as_ref().ok_or_else(|| {
+                let mqtt = self.openid_mqtt.as_ref().ok_or_else(|| {
                     ExchangeProtocolError::Failed("MQTT client not configured".to_string())
                 })?;
 
@@ -371,18 +346,20 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 let key_agreement = KeyAgreementKey::new_random();
 
                 // notification to cancel the other flow when one is selected
-                let flow_selection_notification = Arc::new(Notify::new());
+                let cancellation_token = CancellationToken::new();
 
-                let mqtt_url = client
+                let mqtt_url = mqtt
                     .share_proof(
                         proof,
                         format_to_type_mapper.clone(),
                         type_to_descriptor.clone(),
                         interaction_id,
                         key_agreement.clone(),
-                        flow_selection_notification.clone(),
+                        cancellation_token.clone(),
                     )
                     .await?;
+
+                tracing::debug!("Got mqtt url: {mqtt_url}");
 
                 let ble_response = self
                     .openid_ble
@@ -392,24 +369,29 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         type_to_descriptor,
                         interaction_id,
                         key_agreement,
-                        flow_selection_notification,
+                        cancellation_token,
                     )
                     .await?;
 
-                let mut url: Url = ble_response
+                tracing::debug!("Got ble url: {ble_response}");
+
+                let ble_url: Url = ble_response
                     .parse()
                     .map_err(|err| ExchangeProtocolError::Failed(format!("Invalid URL: {err}")))?;
 
-                url.query_pairs_mut().extend_pairs(mqtt_url.query_pairs());
+                let url = merge_query_params(mqtt_url, ble_url);
 
                 Ok(ShareResponse {
                     url: format!("{url}"),
                     interaction_id,
-                    context: json!({}),
+                    context: serde_json::to_value(CreateProofInteractionData {
+                        transport: transport.iter().map(ToString::to_string).collect(),
+                    })
+                    .unwrap(),
                 })
             }
             other => Err(ExchangeProtocolError::Failed(format!(
-                "Invalid transport: {other:?}",
+                "Invalid transport selection: {other:?}",
             ))),
         }
     }
@@ -450,6 +432,8 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     .await
             }
             TransportType::Mqtt => {
+                tracing::debug!("Getting presentation definition");
+
                 let interaction_data: MQTTOpenID4VPInteractionData =
                     serde_json::from_value(interaction_data)
                         .map_err(ExchangeProtocolError::JsonError)?;
@@ -478,21 +462,25 @@ impl ExchangeProtocolImpl for OpenID4VC {
     }
 
     async fn retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
-        let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
-            ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
-        })?;
-
-        match transport {
-            TransportType::Ble => self.openid_ble.retract_proof().await,
-            TransportType::Http => Ok(()),
-            TransportType::Mqtt => {
-                if let Some(mqtt) = &self.openid_mqtt {
-                    mqtt.retract_proof().await;
+        for transport in get_transport(proof)? {
+            match transport {
+                TransportType::Http => {}
+                TransportType::Ble => self.openid_ble.retract_proof().await?,
+                TransportType::Mqtt => {
+                    self.openid_mqtt
+                        .as_ref()
+                        .ok_or_else(|| {
+                            ExchangeProtocolError::Failed(
+                                "MQTT not configured for retract proof".to_string(),
+                            )
+                        })?
+                        .retract_proof()
+                        .await;
                 }
-
-                Ok(())
             }
         }
+
+        Ok(())
     }
 
     fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
@@ -503,3 +491,43 @@ impl ExchangeProtocolImpl for OpenID4VC {
 }
 
 impl ExchangeProtocol for OpenID4VC {}
+
+fn get_transport(proof: &Proof) -> Result<Vec<TransportType>, ExchangeProtocolError> {
+    let transport = if proof.transport.is_empty() {
+        let data: CreateProofInteractionData = proof
+            .interaction
+            .as_ref()
+            .context("Missing interaction data for proof transport selection")
+            .and_then(|interaction| {
+                let interaction_data = interaction
+                    .data
+                    .as_ref()
+                    .context("Missing interaction data")?;
+
+                serde_json::from_slice(interaction_data).context("Interaction deserialization")
+            })
+            .map_err(ExchangeProtocolError::Other)?;
+
+        data.transport
+    } else {
+        vec![proof.transport.clone()]
+    };
+
+    transport
+        .into_iter()
+        .map(|t| TransportType::try_from(t.as_str()))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| ExchangeProtocolError::Failed(format!("Invalid transport type: {err}")))
+}
+
+fn merge_query_params(mut first: Url, second: Url) -> Url {
+    let mut query_params: HashMap<_, _> = second.query_pairs().into_owned().collect();
+
+    query_params.extend(first.query_pairs().into_owned());
+
+    first.query_pairs_mut().clear();
+
+    first.query_pairs_mut().extend_pairs(query_params);
+
+    first
+}

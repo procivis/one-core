@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use mockall::predicate::eq;
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
-use tokio::sync::Notify;
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::config::core_config::{Fields, TransportType};
@@ -28,6 +28,7 @@ use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncrypti
 use crate::provider::exchange_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::mqtt_client::{MockMqttClient, MockMqttTopic};
+use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::test_utilities::{dummy_proof, generic_config};
@@ -38,6 +39,7 @@ struct TestInputs<'a> {
     pub mqtt_client: MockMqttClient,
     pub interaction_repository: MockInteractionRepository,
     pub proof_repository: MockProofRepository,
+    pub history_repository: MockHistoryRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub key_provider: MockKeyProvider,
 }
@@ -69,6 +71,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
         },
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.proof_repository),
+        Arc::new(inputs.history_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.key_provider),
     )
@@ -84,7 +87,7 @@ fn test_can_handle() {
     let missing_parameters = "openid4vp://proof".parse().unwrap();
     assert!(!protocol.can_handle(&missing_parameters));
 
-    let valid = "openid4vp://proof?brokerUrl=mqtt%3A%2F%2Fsomewhere.com%3A1234&key=abcdef&proofId=F25591B1-DB46-4606-8068-ADF986C3A2BD"
+    let valid = "openid4vp://proof?brokerUrl=mqtt%3A%2F%2Fsomewhere.com%3A1234&key=abcdef&topicId=F25591B1-DB46-4606-8068-ADF986C3A2BD"
         .parse()
         .unwrap();
     assert!(protocol.can_handle(&valid));
@@ -196,7 +199,7 @@ async fn test_handle_invitation_success() {
         .return_once(move |_, _, _| Ok(Box::new(presentation_definition_topic)));
 
     let valid =
-        format!("openid4vp://proof?brokerUrl=mqtt%3A%2F%2Fsomewhere.com%3A1234&key={verifier_public_key}&proofId={}", Uuid::new_v4())
+        format!("openid4vp://proof?brokerUrl=mqtt%3A%2F%2Fsomewhere.com%3A1234&key={verifier_public_key}&topicId={}", Uuid::new_v4())
             .parse()
             .unwrap();
 
@@ -240,8 +243,8 @@ async fn test_presentation_reject_success() {
 
     let mut mqtt_client = MockMqttClient::default();
 
-    let proof_id = Uuid::new_v4();
-    let expected_url = format!("/proof/{proof_id}/presentation-submission/reject");
+    let topic_id = Uuid::new_v4();
+    let expected_url = format!("/proof/{topic_id}/presentation-submission/reject");
     let broker_url = "test_url".to_string();
     let broker_port = 1234;
 
@@ -263,12 +266,12 @@ async fn test_presentation_reject_success() {
         },
         presentation_definition: None,
         identity_request_nonce: "identity_request_nonce".to_string(),
-        proof_id: proof_id.into(),
+        topic_id,
     };
 
     let now = OffsetDateTime::now_utc();
     let proof = Proof {
-        id: proof_id.into(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         issuance_date: now,
@@ -366,14 +369,14 @@ async fn test_share_proof_for_mqtt_returns_url() {
             type_to_descriptor_mapper,
             interaction_id,
             key_agreement,
-            Arc::new(Notify::new()),
+            CancellationToken::new(),
         )
         .await
         .unwrap();
 
     let proof_id_query_value = url
         .query_pairs()
-        .find_map(|(key, value)| (key == "proofId").then_some(value))
+        .find_map(|(key, value)| (key == "topicId").then_some(value))
         .unwrap();
     let broker_url_query_value = url
         .query_pairs()
@@ -384,7 +387,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
         .unwrap();
 
     assert_eq!("openid4vp", url.scheme());
-    assert_eq!(proof_id.to_string(), proof_id_query_value);
+    assert_eq!(interaction_id.to_string(), proof_id_query_value);
     assert_eq!(broker_url, broker_url_query_value);
 }
 

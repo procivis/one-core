@@ -19,7 +19,7 @@ use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue, KeyId, Org
 use url::Url;
 
 use super::mqtt_client::MqttClient;
-use crate::config::core_config::{CoreConfig, ExchangeType};
+use crate::config::core_config::{CoreConfig, ExchangeType, TransportType};
 use crate::config::ConfigValidationError;
 use crate::model::claim::Claim;
 use crate::model::credential::Credential;
@@ -143,13 +143,14 @@ pub(crate) fn exchange_protocol_providers_from_config(
 
                 let mut mqtt = None;
                 if let Some(mqtt_client) = mqtt_client.clone() {
-                    let params = config.transport.get("MQTT")?;
+                    let params = config.transport.get(TransportType::Mqtt.as_ref())?;
                     mqtt = Some(OpenId4VcMqtt::new(
                         mqtt_client.clone(),
                         config.clone(),
                         params,
                         data_provider.get_interaction_repository(),
                         data_provider.get_proof_repository(),
+                        data_provider.get_history_repository(),
                         formatter_provider.clone(),
                         key_provider.clone(),
                     ));

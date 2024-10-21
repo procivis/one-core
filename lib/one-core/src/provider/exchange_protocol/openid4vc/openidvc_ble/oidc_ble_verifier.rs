@@ -10,16 +10,17 @@ use one_crypto::utilities;
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::select;
-use tokio::sync::Notify;
+use tokio_util::sync::CancellationToken;
 
 use super::{
     BLEPeer, IdentityRequest, MessageSize, TransferSummaryReport, CONTENT_SIZE_UUID,
     DISCONNECT_UUID, IDENTITY_UUID, OIDC_BLE_FLOW, PRESENTATION_REQUEST_UUID, REQUEST_SIZE_UUID,
     SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
+use crate::config::core_config::TransportType;
 use crate::model::interaction::InteractionId;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{self, ProofRelations, ProofState, ProofStateEnum};
+use crate::model::proof::{self, ProofRelations, ProofState, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
@@ -78,7 +79,7 @@ impl OpenID4VCBLEVerifier {
         proof_id: ProofId,
         interaction_id: InteractionId,
         keypair: KeyAgreementKey,
-        notification: Arc<Notify>,
+        cancellation_token: CancellationToken,
     ) -> Result<String, ExchangeProtocolError> {
         let proof_repository = self.proof_repository.clone();
 
@@ -113,11 +114,23 @@ impl OpenID4VCBLEVerifier {
                         let Some((wallet, identity_request)) = wait_for_wallet_identify_request(
                             peripheral.clone(),
                             &mut connection_event_stream,
-                            notification
+                            cancellation_token
                         )
                         .await? else {
+                            // other transport was selected, so we can finish this task
                             return Ok(());
                         };
+
+                        proof_repository
+                        .update_proof(
+                            &proof_id,
+                            UpdateProofRequest {
+                                transport: Some(TransportType::Ble.to_string()),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
                         let (sender_key, receiver_key) = keypair
                             .derive_session_secrets(identity_request.key, identity_request.nonce)
@@ -405,7 +418,7 @@ async fn get_connection_event_stream(
 async fn wait_for_wallet_identify_request(
     ble_peripheral: Arc<dyn BlePeripheral>,
     connection_event_stream: &mut ConnectionEventStream,
-    notification: Arc<Notify>,
+    cancellation_token: CancellationToken,
 ) -> Result<Option<(DeviceInfo, IdentityRequest)>, ExchangeProtocolError> {
     let mut connected_devices: HashMap<String, DeviceInfo> = HashMap::new();
     let mut identify_futures = FuturesUnordered::new();
@@ -440,7 +453,7 @@ async fn wait_for_wallet_identify_request(
                     }
                 }
             },
-            _ = notification.notified() => {
+            _ = cancellation_token.cancelled() => {
                 tracing::debug!("Stopping OpenID4VP BLE flow, other transport selected");
                 break Ok(None);
             }
@@ -458,7 +471,7 @@ async fn wait_for_wallet_identify_request(
     };
 
     // notify other transport that this flow was selected
-    notification.notify_waiters();
+    cancellation_token.cancel();
 
     let device_info = connected_devices
         .remove(&address)

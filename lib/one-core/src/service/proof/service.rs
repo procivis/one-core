@@ -529,7 +529,7 @@ impl ProofService {
 
         if !matches!(
             last_state,
-            ProofStateEnum::Pending | ProofStateEnum::Requested,
+            ProofStateEnum::Pending | ProofStateEnum::Requested
         ) {
             return Err(BusinessLogicError::InvalidProofState {
                 state: last_state.clone(),
@@ -537,8 +537,8 @@ impl ProofService {
             .into());
         }
 
-        let interaction_id = proof.interaction.as_ref().map(|i| i.id).ok_or_else(|| {
-            ServiceError::MappingError(format!("Missing interaction data in proof {proof_id}"))
+        let interaction = proof.interaction.as_ref().ok_or_else(|| {
+            ServiceError::MappingError(format!("Missing interaction in proof {proof_id}"))
         })?;
 
         let exchange_protocol = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
@@ -546,6 +546,9 @@ impl ProofService {
         )?;
 
         exchange_protocol.retract_proof(&proof).await?;
+
+        // we keep the interaction data if the transport hasn't been established
+        let can_remove_interaction = !proof.transport.is_empty();
 
         self.proof_repository
             .update_proof(
@@ -556,15 +559,17 @@ impl ProofService {
                         last_modified: OffsetDateTime::now_utc(),
                         state: ProofStateEnum::Created,
                     }),
-                    interaction: Some(None),
+                    interaction: can_remove_interaction.then_some(None),
                     ..Default::default()
                 },
             )
             .await?;
 
-        self.interaction_repository
-            .delete_interaction(&interaction_id)
-            .await?;
+        if can_remove_interaction {
+            self.interaction_repository
+                .delete_interaction(&interaction.id)
+                .await?;
+        }
 
         Ok(proof_id)
     }

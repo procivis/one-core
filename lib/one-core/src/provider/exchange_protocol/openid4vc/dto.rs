@@ -1,7 +1,7 @@
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
-use shared_types::ProofId;
 use url::Url;
+use uuid::Uuid;
 
 use super::openidvc_ble::MessageSize;
 
@@ -16,7 +16,7 @@ pub struct OpenID4VPBleData {
 pub struct OpenID4VPMqttQueryParams {
     pub broker_url: Url,
     pub key: String,
-    pub proof_id: ProofId,
+    pub topic_id: Uuid,
 }
 
 #[derive(Debug)]
