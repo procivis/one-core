@@ -71,14 +71,9 @@ pub(super) fn request_to_certificate_params(
 ) -> CertificateParams {
     let mut params = CertificateParams::default();
 
-    params.not_before = request.not_before;
-    params.not_after = request.expires_at;
-
     let mut dn = DistinguishedName::new();
-
     dn.push(DnType::CommonName, request.subject.common_name);
     dn.push(DnType::CountryName, request.subject.country_name);
-
     if let Some(organisation_name) = request.subject.organisation_name {
         dn.push(DnType::OrganizationName, organisation_name);
     }

@@ -22,7 +22,7 @@ use crate::service::key::dto::{
     KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO, KeyRequestDTO, KeyResponseDTO,
 };
 use crate::service::key::mapper::from_create_request;
-use crate::service::key::validator::{validate_generate_csr_request, validate_generate_request};
+use crate::service::key::validator::{validate_generate_request, validate_key_algorithm_for_csr};
 use crate::util::history::history_event;
 
 impl KeyService {
@@ -117,11 +117,12 @@ impl KeyService {
         Ok(result.into())
     }
 
-    /// Check certificate in PEM or DER format
+    /// Check if subject of certificate corresponds to key
     ///
     /// # Arguments
     ///
     /// * `KeyId` - Id of an existing key
+    /// * `request` - request with certificate in PEM or DER format
     pub async fn check_certificate(
         &self,
         key_id: &KeyId,
@@ -177,7 +178,7 @@ impl KeyService {
             return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
         };
 
-        validate_generate_csr_request(&request, &key.key_type, &*self.key_algorithm_provider)?;
+        validate_key_algorithm_for_csr(&key.key_type, &*self.key_algorithm_provider)?;
 
         let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(
             ServiceError::MissingProvider(MissingProviderError::KeyStorage(

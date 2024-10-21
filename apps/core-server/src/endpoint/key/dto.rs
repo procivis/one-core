@@ -115,12 +115,6 @@ pub type GetKeyQuery = ListQueryParamsRest<KeyFilterQueryParamsRest, SortableKey
 #[serde(rename_all = "camelCase")]
 pub struct KeyGenerateCSRRequestRestDTO {
     pub profile: KeyGenerateCSRRequestProfileRest,
-    #[serde(rename = "nbf", with = "time::serde::rfc3339")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub not_before: OffsetDateTime,
-    #[serde(rename = "exp", with = "time::serde::rfc3339")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub expires_at: OffsetDateTime,
     pub subject: KeyGenerateCSRRequestSubjectRestDTO,
 }
 

@@ -403,9 +403,6 @@ pub enum ValidationError {
     #[error("Attribute combination not allowed")]
     AttributeCombinationNotAllowed,
 
-    #[error("Certificate requested for more than 457 days of validity")]
-    CertificateRequestedForMoreThan457Days,
-
     #[error("Nested claims in arrays cannot be requested")]
     NestedClaimInArrayRequested,
 
@@ -1046,7 +1043,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
             Self::ValidityConstraintMissingForLvvc => ErrorCode::BR_0140,
             Self::InvalidScanToVerifyParameters => ErrorCode::BR_0144,
-            Self::CertificateRequestedForMoreThan457Days => ErrorCode::BR_0084,
             Self::NestedClaimInArrayRequested => ErrorCode::BR_0125,
             Self::OnlyOnePhysicalCardSchemaAllowedPerProof => ErrorCode::BR_0137,
             Self::ForbiddenClaimName => ErrorCode::BR_0145,

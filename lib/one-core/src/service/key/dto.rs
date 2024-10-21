@@ -50,8 +50,6 @@ pub type GetKeyQueryDTO = GetListQueryParams<SortableKeyColumn>;
 #[derive(Debug)]
 pub struct KeyGenerateCSRRequestDTO {
     pub profile: KeyGenerateCSRRequestProfile,
-    pub not_before: OffsetDateTime,
-    pub expires_at: OffsetDateTime,
     pub subject: KeyGenerateCSRRequestSubjectDTO,
 }
 
