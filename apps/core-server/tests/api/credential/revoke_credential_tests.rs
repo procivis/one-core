@@ -4,6 +4,7 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::revocation_list::RevocationListPurpose;
 use shared_types::DidValue;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
@@ -84,6 +85,77 @@ async fn test_revoke_credential_not_found() {
 
     // WHEN
     let resp = context.api.credentials.revoke(&Uuid::new_v4()).await;
+
+    // THEN
+    assert_eq!(resp.status(), 404);
+}
+
+#[tokio::test]
+async fn test_revoke_credential_deleted() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: key.clone(),
+                }]),
+                did: Some(
+                    DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: key.clone(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "LVVC", Default::default())
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                holder_did: Some(holder_did),
+                key: Some(key),
+                deleted_at: Some(OffsetDateTime::now_utc()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.credentials.revoke(&credential.id).await;
 
     // THEN
     assert_eq!(resp.status(), 404);
