@@ -38,7 +38,7 @@ use crate::provider::exchange_protocol::{MockHandleInvitationOperations, MockSto
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::service::test_utilities::get_dummy_date;
+use crate::service::test_utilities::{generic_config, get_dummy_date};
 
 #[derive(Default)]
 struct TestInputs {
@@ -64,6 +64,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
             allow_insecure_http_transport: Some(true),
             refresh_expires_in: 1000,
         }),
+        Arc::new(generic_config().core),
     )
 }
 

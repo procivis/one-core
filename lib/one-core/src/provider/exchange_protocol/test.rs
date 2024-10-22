@@ -218,6 +218,10 @@ async fn test_issuer_submit_succeeds() {
     assert!(result.is_ok());
 }
 
+fn object_datatypes() -> HashSet<&'static str> {
+    HashSet::from(["OBJECT"])
+}
+
 #[tokio::test]
 async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
     let mut storage = MockStorageProxy::new();
@@ -251,12 +255,82 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["JWT"]),
+        &object_datatypes(),
     )
     .await
     .unwrap();
 
     assert_eq!(1, result_credentials.len());
     assert_eq!(credential.id, result_credentials[0].id);
+}
+
+#[tokio::test]
+async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_required_claims_simple()
+{
+    let mut storage = MockStorageProxy::new();
+    let mut credential = dummy_credential();
+
+    credential
+        .schema
+        .as_mut()
+        .unwrap()
+        .claim_schemas
+        .as_mut()
+        .unwrap()
+        .push(CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "optkey".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                array: false,
+            },
+            required: false,
+        });
+
+    credential
+        .state
+        .as_mut()
+        .unwrap()
+        .first_mut()
+        .unwrap()
+        .state = CredentialStateEnum::Accepted;
+
+    let credential_copy = credential.to_owned();
+    storage
+        .expect_get_credentials_by_credential_schema_id()
+        .return_once(|_| Ok(vec![credential_copy]));
+
+    let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
+        &storage,
+        vec![CredentialGroup {
+            id: "input_0".to_string(),
+            name: None,
+            purpose: None,
+            claims: vec![
+                CredentialGroupItem {
+                    id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
+                    key: "key".to_string(),
+                    required: true,
+                },
+                CredentialGroupItem {
+                    id: "4ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
+                    key: "optkey".to_string(),
+                    required: true,
+                },
+            ],
+            applicable_credentials: vec![],
+            validity_credential_nbf: None,
+        }],
+        HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
+        &HashSet::from(["JWT"]),
+        &object_datatypes(),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(0, result_credentials.len());
 }
 
 #[tokio::test]
@@ -285,6 +359,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["JWT"]),
+        &object_datatypes(),
     )
     .await
     .unwrap();
@@ -325,6 +400,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["SDJWT"]),
+        &object_datatypes(),
     )
     .await
     .unwrap();
@@ -438,6 +514,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["MDOC"]),
+        &object_datatypes(),
     )
     .await
     .unwrap();
@@ -471,6 +548,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_se
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["MDOC"]),
+        &object_datatypes(),
     )
     .await
     .unwrap();

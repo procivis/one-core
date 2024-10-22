@@ -1043,3 +1043,190 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         ])
     );
 }
+
+#[tokio::test]
+async fn test_get_presentation_definition_open_id_vp_matched_only_complete_credential() {
+    // GIVEN
+    let (context, organisation, did, key) = TestContext::new_with_did().await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let first_claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0];
+    let second_claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[1];
+
+    let _incomplete_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                claims_data: Some(vec![(
+                    first_claim_schema.schema.id.into(),
+                    &first_claim_schema.schema.key,
+                    "value",
+                )]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let complete_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                claims_data: Some(vec![
+                    (
+                        first_claim_schema.schema.id.into(),
+                        &first_claim_schema.schema.key,
+                        "value",
+                    ),
+                    (
+                        second_claim_schema.schema.id.into(),
+                        &second_claim_schema.schema.key,
+                        "true",
+                    ),
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            "http://localhost",
+            &json!({
+                "response_type": "vp_token",
+                "state": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
+                "nonce": "xKpt9wiB4apJ1MVTzQv1zdDty2dVWkl7",
+                "client_id_scheme": "redirect_uri",
+                "client_id": "http://0.0.0.0:3000/ssi/oidc-verifier/v1/response",
+                "client_metadata": {
+                    "jwks": [
+                        {
+                            "crv": "P-256",
+                            "kid": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
+                            "kty": "EC",
+                            "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
+                            "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA",
+                            "use": "enc"
+                        }
+                    ],
+                    "vp_formats": {
+                        "vc+sd-jwt": {
+                            "alg": [
+                                "EdDSA"
+                            ]
+                        },
+                        "jwt_vp_json": {
+                            "alg": [
+                                "EdDSA"
+                            ]
+                        },
+                        "jwt_vc_json": {
+                            "alg": [
+                                "EdDSA"
+                            ]
+                        },
+                        "mso_mdoc": {
+                            "alg": [
+                                "EdDSA"
+                            ]
+                        }
+                    },
+                    "client_id_scheme": "redirect_uri"
+                },
+                "response_mode": "direct_post",
+                "response_uri": "http://0.0.0.0:3000/ssi/oidc-verifier/v1/response",
+                "presentation_definition": {
+                    "id": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
+                    "input_descriptors": [
+                        {
+                            "format": {
+                                "jwt_vc_json": {
+                                    "alg": ["EdDSA", "ES256"]
+                                }
+                            },
+                            "id": "input_0",
+                            "constraints": {
+                                "fields": [
+                                    {
+                                        "path":["$.credentialSchema.id"],
+                                        "filter": {
+                                            "type": "string",
+                                            "const": credential_schema.schema_id
+                                        }
+                                    },
+                                    {
+                                        "id": first_claim_schema.schema.id,
+                                        "path": [
+                                            "$.vc.credentialSubject.firstName"
+                                        ],
+                                        "optional": false
+                                    },
+                                                                    {
+                                        "id": second_claim_schema.schema.id,
+                                        "path": [
+                                            "$.vc.credentialSubject.isOver18"
+                                        ],
+                                        "optional": false
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            })
+            .to_string()
+            .into_bytes(),
+            &organisation,
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &did,
+            Some(&did),
+            None,
+            ProofStateEnum::Pending,
+            "OPENID4VC",
+            Some(&interaction),
+            key,
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp["requestGroups"][0]["id"].assert_eq(&proof.id);
+    let credentials = resp["credentials"].as_array().unwrap();
+    assert_eq!(1, credentials.len());
+    credentials[0]["id"].assert_eq(&complete_credential.id);
+
+    let applicable_credentials = resp["requestGroups"][0]["requestedCredentials"][0]
+        ["applicableCredentials"]
+        .as_array()
+        .unwrap();
+    assert_eq!(1, applicable_credentials.len());
+    applicable_credentials[0].assert_eq(&complete_credential.id);
+}

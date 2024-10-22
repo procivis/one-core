@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use super::dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionFieldDTO};
 use super::{ExchangeProtocolError, StorageAccess};
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, DatatypeConfig, DatatypeType};
 use crate::model::credential::{
     Credential, CredentialState, CredentialStateEnum, UpdateCredentialRequest,
 };
@@ -108,6 +108,7 @@ pub async fn get_relevant_credentials_to_credential_schemas(
     mut credential_groups: Vec<CredentialGroup>,
     group_id_to_schema_id_mapping: HashMap<String, String>,
     allowed_schema_formats: &HashSet<&str>,
+    object_datatypes: &HashSet<&str>,
 ) -> Result<(Vec<Credential>, Vec<CredentialGroup>), ExchangeProtocolError> {
     let mut relevant_credentials: Vec<Credential> = Vec::new();
     for group in &mut credential_groups {
@@ -193,6 +194,44 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                     ));
                 }
 
+                let claims = credential
+                    .claims
+                    .as_ref()
+                    .ok_or(ExchangeProtocolError::Failed("claims are None".to_string()))?;
+
+                // For each requested claim
+                if group.claims.iter().any(|requested_claim| {
+                    // Check if all required claims are present
+                    if !requested_claim.required {
+                        return false;
+                    }
+
+                    let schema = claim_schemas.iter().find(|claim_schema| {
+                        // Find the claim schema
+                        claim_schema.schema.key == requested_claim.key
+                    });
+
+                    if let Some(schema) = schema {
+                        if object_datatypes.contains(schema.schema.data_type.as_str()) {
+                            return false;
+                        }
+
+                        // Find if claim is present
+                        !claims.iter().any(|claim| {
+                            if let Some(schema) = claim.schema.as_ref() {
+                                schema.key == requested_claim.key
+                            } else {
+                                false
+                            }
+                        })
+                    } else {
+                        false
+                    }
+                }) {
+                    // If not then skip this credential
+                    continue;
+                }
+
                 group.applicable_credentials.push(credential.to_owned());
                 relevant_credentials.push(credential.to_owned());
             }
@@ -247,4 +286,17 @@ pub(super) fn credential_accepted_history_event(
         metadata: None,
         organisation: credential.schema.and_then(|s| s.organisation),
     }
+}
+
+pub fn gather_object_datatypes_from_config(config: &DatatypeConfig) -> HashSet<&str> {
+    config
+        .iter()
+        .filter_map(|(name, fields)| {
+            if fields.r#type == DatatypeType::Object {
+                Some(name)
+            } else {
+                None
+            }
+        })
+        .collect()
 }

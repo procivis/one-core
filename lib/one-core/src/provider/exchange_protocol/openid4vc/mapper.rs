@@ -44,7 +44,7 @@ use crate::provider::exchange_protocol::dto::{
 };
 use crate::provider::exchange_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
-    get_relevant_credentials_to_credential_schemas,
+    gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
 };
 use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
 use crate::provider::exchange_protocol::openid4vc::model::{
@@ -1560,6 +1560,7 @@ pub async fn holder_ble_mqtt_get_presentation_definition(
         convert_inner(credential_groups),
         group_id_to_schema_id,
         &allowed_schema_formats,
+        &gather_object_datatypes_from_config(&config.datatype),
     )
     .await?;
     presentation_definition_from_interaction_data(
