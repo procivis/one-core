@@ -22,7 +22,7 @@ use super::model::{
     InvitationResponseDTO, MQTTOpenId4VpResponse, MqttOpenId4VpRequest, PresentedCredential,
     UpdateResponse,
 };
-use crate::config::core_config::{CoreConfig, TransportType};
+use crate::config::core_config::{CoreConfig, ExchangeType, TransportType};
 use crate::model::did::Did;
 use crate::model::history::HistoryAction;
 use crate::model::interaction::{Interaction, InteractionId};
@@ -153,15 +153,82 @@ impl OpenId4VcMqtt {
             .context("Invalid verifier public key length")
             .map_err(ExchangeProtocolError::Transport)?;
 
+        let session_keys = generate_session_keys(verifier_public_key)?;
+        let encryption = PeerEncryption::new(
+            session_keys.sender_key,
+            session_keys.receiver_key,
+            session_keys.nonce,
+        );
+
+        let identity_request = IdentityRequest {
+            key: session_keys.public_key.to_owned(),
+            nonce: session_keys.nonce.to_owned(),
+        };
+        let identity_request_nonce = hex::encode(identity_request.nonce);
+
+        tracing::debug!("Identity request");
+
+        let identify_topic = self
+            .mqtt_client
+            .subscribe(
+                host.to_string(),
+                port,
+                format!("/proof/{topic_id}/presentation-submission/identify"),
+            )
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        identify_topic
+            .send(identity_request.encode())
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        tracing::debug!("Presentation request");
+
+        let mut presentation_definition_topic = self
+            .mqtt_client
+            .subscribe(
+                host.to_string(),
+                port,
+                format!("/proof/{topic_id}/presentation-definition"),
+            )
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let presentation_request_bytes = presentation_definition_topic
+            .recv()
+            .await
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        tracing::debug!("Presentation request received");
+
+        let presentation_request: MqttOpenId4VpRequest = encryption
+            .decrypt(&presentation_request_bytes)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let interaction_data = MQTTOpenID4VPInteractionData {
+            broker_url: host.to_string(),
+            broker_port: port,
+            client_id: presentation_request.client_id,
+            nonce: presentation_request.nonce,
+            session_keys: session_keys.to_owned(),
+            presentation_definition: Some(presentation_request.presentation_definition),
+            identity_request_nonce,
+            topic_id,
+        };
+
         let now = OffsetDateTime::now_utc();
         let interaction = Interaction {
             id: Uuid::new_v4(),
             created_date: now,
             last_modified: now,
             host: None,
-            data: None,
+            data: Some(serde_json::to_vec(&interaction_data).map_err(|err| {
+                ExchangeProtocolError::Failed(format!("Interaction data: {err}"))
+            })?),
             organisation: Some(organisation.clone()),
         };
+
         let interaction_id = self
             .interaction_repository
             .create_interaction(interaction.clone())
@@ -171,130 +238,15 @@ impl OpenId4VcMqtt {
         let proof_id: ProofId = Uuid::new_v4().into();
         let proof = proof_from_handle_invitation(
             &proof_id,
-            "OPENID4VC",
+            ExchangeType::OpenId4Vc.as_ref(),
             None,
             None,
             interaction,
             OffsetDateTime::now_utc(),
             None,
-            "MQTT",
+            TransportType::Mqtt.as_ref(),
             ProofStateEnum::Pending,
         );
-
-        let handle = tokio::spawn({
-            let mqtt_client = self.mqtt_client.clone();
-            let interaction_repository = self.interaction_repository.clone();
-            let proof_repository = self.proof_repository.clone();
-            let history_repository = self.history_repository.clone();
-            let proof = proof.clone();
-
-            async move {
-                let result = async {
-                    let session_keys = generate_session_keys(verifier_public_key)?;
-                    let encryption = PeerEncryption::new(
-                        session_keys.sender_key,
-                        session_keys.receiver_key,
-                        session_keys.nonce,
-                    );
-
-                    let identity_request = IdentityRequest {
-                        key: session_keys.public_key.to_owned(),
-                        nonce: session_keys.nonce.to_owned(),
-                    };
-                    let identity_request_nonce = hex::encode(identity_request.nonce);
-
-                    tracing::debug!("Identity request");
-
-                    let identify_topic = mqtt_client
-                        .subscribe(
-                            host.to_string(),
-                            port,
-                            format!("/proof/{topic_id}/presentation-submission/identify"),
-                        )
-                        .await
-                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-                    identify_topic
-                        .send(identity_request.encode())
-                        .await
-                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-                    tracing::debug!("Presentation request");
-
-                    let mut presentation_definition_topic = mqtt_client
-                        .subscribe(
-                            host.to_string(),
-                            port,
-                            format!("/proof/{topic_id}/presentation-definition"),
-                        )
-                        .await
-                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-                    let presentation_request_bytes = presentation_definition_topic
-                        .recv()
-                        .await
-                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-                    tracing::debug!("Presentation request received");
-
-                    let presentation_request: MqttOpenId4VpRequest = encryption
-                        .decrypt(&presentation_request_bytes)
-                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-                    let interaction_data = MQTTOpenID4VPInteractionData {
-                        broker_url: host.to_string(),
-                        broker_port: port,
-                        client_id: presentation_request.client_id,
-                        nonce: presentation_request.nonce,
-                        session_keys: session_keys.to_owned(),
-                        presentation_definition: Some(presentation_request.presentation_definition),
-                        identity_request_nonce,
-                        topic_id,
-                    };
-
-                    let now = OffsetDateTime::now_utc();
-                    interaction_repository
-                        .update_interaction(Interaction {
-                            id: interaction_id,
-                            created_date: now,
-                            last_modified: now,
-                            host: None,
-                            data: Some(
-                                serde_json::to_vec(&interaction_data)
-                                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
-                            ),
-                            organisation: Some(organisation),
-                        })
-                        .await
-                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-                    Ok::<_, ExchangeProtocolError>(())
-                };
-
-                match result.await {
-                    Ok(_) => tracing::debug!("Done with handle invitation"),
-                    Err(error) => {
-                        tracing::error!(%error, "Error during handle invitation");
-
-                        let _ = set_proof_state(
-                            &proof,
-                            ProofStateEnum::Error,
-                            &*proof_repository,
-                            &*history_repository,
-                        )
-                        .await;
-                    }
-                }
-
-                Ok(())
-            }
-        });
-
-        if let Some(old_handle) = self.handle.lock().await.replace(SubscriptionHandle {
-            task_handle: handle,
-        }) {
-            old_handle.task_handle.abort();
-        }
 
         Ok(InvitationResponseDTO::ProofRequest {
             interaction_id,

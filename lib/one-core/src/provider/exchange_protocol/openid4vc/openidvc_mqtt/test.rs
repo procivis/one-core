@@ -31,7 +31,7 @@ use crate::provider::mqtt_client::{MockMqttClient, MockMqttTopic};
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
-use crate::service::test_utilities::{dummy_proof, generic_config};
+use crate::service::test_utilities::generic_config;
 
 #[derive(Default)]
 struct TestInputs<'a> {
@@ -126,25 +126,6 @@ async fn test_handle_invitation_success() {
         .expect_create_interaction()
         .once()
         .returning(|_| Ok(Uuid::new_v4()));
-    interaction_repository
-        .expect_update_interaction()
-        .once()
-        .returning(|_| Ok(()));
-
-    let proof_id = Uuid::new_v4();
-    let mut proof_repository = MockProofRepository::default();
-    proof_repository
-        .expect_create_proof()
-        .once()
-        .returning(move |_| Ok(proof_id.to_owned().into()));
-    proof_repository
-        .expect_update_proof()
-        .once()
-        .returning(|_, _| Ok(()));
-    proof_repository
-        .expect_get_proof()
-        .once()
-        .returning(|_, _| Ok(Some(dummy_proof())));
 
     let (verifier_key, verifier_public_key) = generate_verifier_key();
     let holder_identity_request = Arc::new(Mutex::new(None));
@@ -206,7 +187,6 @@ async fn test_handle_invitation_success() {
     let protocol = setup_protocol(TestInputs {
         mqtt_client,
         interaction_repository,
-        proof_repository,
         ..Default::default()
     });
     let result = protocol
