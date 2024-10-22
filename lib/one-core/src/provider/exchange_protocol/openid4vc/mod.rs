@@ -274,8 +274,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         let transport = get_transport(proof)?;
 
-        tracing::debug!("Transports: {}", proof.transport);
-
         match transport.as_slice() {
             [TransportType::Ble] => {
                 let interaction_id = Uuid::new_v4();
