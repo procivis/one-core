@@ -139,6 +139,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     key_provider.clone(),
                     client.clone(),
                     params,
+                    config.clone(),
                 );
 
                 let mut mqtt = None;

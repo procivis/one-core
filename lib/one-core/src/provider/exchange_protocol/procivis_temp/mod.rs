@@ -19,7 +19,9 @@ use super::dto::{
     ConnectVerifierResponse, CredentialGroup, CredentialGroupItem, ExchangeProtocolCapabilities,
     PresentationDefinitionResponseDTO, ProofClaimSchema,
 };
-use super::mapper::get_relevant_credentials_to_credential_schemas;
+use super::mapper::{
+    gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
+};
 use super::{
     ExchangeProtocolImpl, FnMapExternalFormatToExternalDetailed, FormatMapper,
     HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
@@ -453,6 +455,7 @@ impl ExchangeProtocolImpl for ProcivisTemp {
             credential_groups,
             group_id_to_schema_id,
             &allowed_formats,
+            &gather_object_datatypes_from_config(&self.config.datatype),
         )
         .await?;
 

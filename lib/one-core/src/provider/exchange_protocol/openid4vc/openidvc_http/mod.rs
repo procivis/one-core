@@ -42,6 +42,7 @@ use super::{
     ExchangeProtocolError, FormatMapper, HandleInvitationOperationsAccess, StorageAccess,
     TypeToDescriptorMapper,
 };
+use crate::config::core_config::CoreConfig;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::UpdateCredentialSchemaRequest;
 use crate::model::did::{Did, DidType};
@@ -60,7 +61,8 @@ use crate::provider::exchange_protocol::dto::{
 };
 use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::{
-    get_relevant_credentials_to_credential_schemas, interaction_from_handle_invitation,
+    gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
+    interaction_from_handle_invitation,
 };
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCICredentialOfferClaimValue;
 use crate::provider::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
@@ -89,6 +91,7 @@ pub struct OpenID4VCHTTP {
     key_provider: Arc<dyn KeyProvider>,
     base_url: Option<String>,
     params: OpenID4VCParams,
+    config: Arc<CoreConfig>,
 }
 
 enum InvitationType {
@@ -116,6 +119,7 @@ impl OpenID4VCHTTP {
         key_provider: Arc<dyn KeyProvider>,
         client: Arc<dyn HttpClient>,
         params: OpenID4VCParams,
+        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             base_url,
@@ -124,6 +128,7 @@ impl OpenID4VCHTTP {
             key_provider,
             client,
             params,
+            config,
         }
     }
 
@@ -814,6 +819,7 @@ impl OpenID4VCHTTP {
             credential_groups,
             group_id_to_schema_id,
             &allowed_schema_formats,
+            &gather_object_datatypes_from_config(&self.config.datatype),
         )
         .await?;
         presentation_definition_from_interaction_data(
