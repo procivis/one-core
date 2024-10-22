@@ -207,7 +207,18 @@ pub enum TransportType {
 pub type ExchangeConfig = ConfigBlock<ExchangeType>;
 
 #[derive(
-    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
 )]
 pub enum ExchangeType {
     #[serde(rename = "PROCIVIS_TEMPORARY")]
