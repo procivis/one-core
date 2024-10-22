@@ -15,13 +15,13 @@
 
 <!-- /TOC -->
 
-The Procivis One Core is a robust solution capable of powering every element of the
+The *Procivis One Core* is a robust solution capable of powering every element of the
 digital identity credential lifecycle, flexibly handling a broad array of different
 protocols and trust models, ensuring compatibility with different digital identity
 regulations, and can be installed and operated almost anywhere, ensuring seamless
 integration through a powerful API.
 
-Procivis One is built to connect your organization to the SSI ecosystem, become
+*Procivis One* is built to connect your organization to the SSI ecosystem, become
 compatible with regulations such as [**eIDAS 2.0**](#eidas-20), and be extensible as
 new regulations and requirements emerge.
 
@@ -282,24 +282,24 @@ often referred to as Self-Sovereign Identity, or SSI.
 
 ## eIDAS 2.0
 
-Whether you want to
+Whether you want to:
 
 - issue into an EUDI Wallet
 - provide an EUDI Wallet
 - offer services to an EUDI Wallet holder
 
-Procivis One provides production grade open source components to get certified and
+*Procivis One* provides production grade open source components to get certified and
 connect your organization to the eIDAS 2.0 ecosystem.
 
 ![Procivis One in the eIDAS ARF](docs/assets/eIDAS_Architecture.png)
 
-Use the Procivis One Core for Issuer or Verifier solutions. For an EUDI Wallet, use the
-[react-native-one-core][rncore] SDK for embedding into an existing app, or use the
+Use the *Procivis One Core* for Issuer or Verifier solutions. For an EUDI Wallet, use the
+[One Core React Native SDK][rncore] for embedding into an existing app, or use the
 [Procivis One Wallet][pow] with adaptations to fit your needs.
 
 ## Interoperability and conformance
 
-Procivis One is built using [open standards](#supported-standards) and tested to ensure
+*Procivis One* is built using [open standards](#supported-standards) and tested to ensure
 interoperability with different software vendors and across different international
 regulatory ecosystems.
 
@@ -307,9 +307,9 @@ regulatory ecosystems.
   - The W3C offers several test suites for standards conformance. See
     the latest test results for Procivis One at [canivc.com][canivc].
 - ISO/IEC 18013-5 mDL
-  - Procivis One's implementation of the ISO mDL standard is compatible with the
-    OpenWallet Foundation's verifier: Procivis One can successfully issue mDL
-    credentials to a Procivis One Wallet, and these credentials can successfully
+  - *Procivis One*'s implementation of the ISO mDL standard is compatible with the
+    OpenWallet Foundation's verifier: *Procivis One* can successfully issue mDL
+    credentials to a *Procivis One Wallet*, and these credentials can successfully
     be verified by the OpenWallet Foundation's verifier. See the [OpenWallet Foundation libraries][owf].
 - eIDAS 2.0; EUDI Wallet
   - The EU Digital Wallet is developing [issuer][eudiwi] and [verifier][eudiwv] testing for
@@ -335,7 +335,10 @@ and regulations mature and harden.
 \* CRYSTALS-DILITHIUM is a post-quantum resistant signature scheme, selected by NIST for [Post-Quantum Cryptography Standardization][pqc].
 Support for the recently published [FIPS-204][fips] is planned for the near future.
 
-Additionally, Procivis One supports verification of proofs which use VCDM 1.1.
+- **Backwards compatibility**: Procivis One supports verification of proofs which use VCDM 1.1.
+
+- **Additional VC formats**: Procivis One supports verification of VCs embedded in optical barcodes.
+See [Verifiable Credentials Barcode v0.7][vcbarcode].
 
 #### ISO mdocs
 
@@ -350,7 +353,7 @@ Additionally, Procivis One supports verification of proofs which use VCDM 1.1.
   - [OID4VCI][vci]; ID-1
   - [OID4VP][vp]; ID-2
     - [OID4VP over BLE][ble]; optimized version of Draft 00
-    - [OID4VP over MQTT][mqtt]; proprietary adaptation of OID4VP over BLE via MQTT channel
+    - OID4VP over MQTT; proprietary adaptation of OID4VP over BLE via MQTT channel
 - [ISO/IEC 18013-5][iso]
   - QR code engagement and offline device retrieval over BLE
 
@@ -418,7 +421,6 @@ Version 2.0](./LICENSE).
 [jw]: https://datatracker.ietf.org/doc/html/rfc7519
 [key]: https://github.com/procivis#key-features
 [lvvc]: https://eprint.iacr.org/2022/1658.pdf
-[mqtt]: https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html
 [owf]: https://github.com/openwallet-foundation-labs/identity-credential
 [pow]: https://github.com/procivis/one-wallet
 [pqc]: https://csrc.nist.gov/pqc-standardization
@@ -429,7 +431,8 @@ Version 2.0](./LICENSE).
 [supptech]: https://docs.procivis.ch/product/supported_tech
 [trial]: https://docs.procivis.ch/trial/intro
 [univ]: https://dev.uniresolver.io
+[vcbarcode]: https://w3c-ccg.github.io/vc-barcodes/
 [vcdi]: https://www.w3.org/TR/vc-data-integrity/
 [vcdm]: https://www.w3.org/TR/vc-data-model-2.0/
-[vci]: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-12.html
-[vp]: https://openid.net/specs/openid-4-verifiable-presentations-1_0.html
+[vci]: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html
+[vp]: https://openid.net/specs/openid-4-verifiable-presentations-1_0-ID2.html
