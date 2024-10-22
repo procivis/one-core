@@ -16,7 +16,13 @@ impl OneCoreBinding {
             let response = core.proof_service.share_proof(&request).await?;
             let proof = core.proof_service.get_proof(&request).await?;
 
-            if proof.transport == TransportType::Ble.to_string() {
+            if [
+                TransportType::Ble.as_ref(),
+                TransportType::Mqtt.as_ref(),
+                "",
+            ]
+            .contains(&proof.transport.as_str())
+            {
                 let oidc_service = core.oidc_service.clone();
 
                 // TODO (Eugeniu) - revisit once ONE-2754 is finalized

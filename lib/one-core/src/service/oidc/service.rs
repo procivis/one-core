@@ -548,7 +548,13 @@ impl OIDCService {
                     *proof_id,
                 )))?;
 
-            if proof.transport != TransportType::Ble.to_string() {
+            if ![
+                TransportType::Ble.as_ref(),
+                TransportType::Mqtt.as_ref(),
+                "",
+            ]
+            .contains(&proof.transport.as_str())
+            {
                 return Err(OpenID4VCIError::InvalidRequest.into());
             };
 

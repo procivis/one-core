@@ -467,6 +467,10 @@ async fn wait_for_wallet_identify_request(
         .map_err(ExchangeProtocolError::Transport)?;
 
     let Some((address, identity_request)) = identified_wallet? else {
+        if let Err(error) = ble_peripheral.stop_server().await {
+            tracing::warn!(%error, "Error while stopping BLE server");
+        }
+
         return Ok(None);
     };
 
