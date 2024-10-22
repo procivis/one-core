@@ -234,3 +234,48 @@ async fn test_suspend_credential_with_none_fails() {
     assert_eq!(resp.status(), 400);
     assert_eq!("BR_0162", resp.error_code().await);
 }
+
+#[tokio::test]
+async fn test_suspend_credential_fails_credential_deleted() {
+    // GIVEN
+    let (context, organisation, issuer_did, _) = TestContext::new_with_did().await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "BITSTRINGSTATUSLIST",
+            Default::default(),
+        )
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                deleted_at: Some(OffsetDateTime::now_utc()),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .revocation_lists
+        .create(&issuer_did, RevocationListPurpose::Revocation, None)
+        .await;
+    let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .suspend(&credential.id, Some(suspend_end_date_str.to_string()))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 404);
+}

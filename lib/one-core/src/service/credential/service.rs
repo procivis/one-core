@@ -407,6 +407,10 @@ impl CredentialService {
     ) -> Result<EntityShareResponseDTO, ServiceError> {
         let (credential, credential_state) = self.get_credential_with_state(credential_id).await?;
 
+        if credential.deleted_at.is_some() {
+            return Err(EntityNotFoundError::Credential(*credential_id).into());
+        }
+
         let now = OffsetDateTime::now_utc();
 
         match credential_state {
@@ -576,6 +580,10 @@ impl CredentialService {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
 
+        if credential.deleted_at.is_some() {
+            return Err(EntityNotFoundError::Credential(*credential_id).into());
+        }
+
         let credential_schema = credential
             .schema
             .as_ref()
@@ -728,6 +736,10 @@ impl CredentialService {
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::Credential(credential_id),
             ))?;
+
+        if credential.deleted_at.is_some() {
+            return Err(EntityNotFoundError::Credential(credential_id).into());
+        }
 
         let credential_schema = credential
             .schema
