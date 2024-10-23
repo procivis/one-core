@@ -3410,7 +3410,6 @@ dependencies = [
  "coset",
  "crc",
  "ct-codecs",
- "ed25519-compact",
  "figment",
  "flate2",
  "futures",
@@ -3519,6 +3518,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.8",
  "thiserror",
+ "zeroize",
 ]
 
 [[package]]

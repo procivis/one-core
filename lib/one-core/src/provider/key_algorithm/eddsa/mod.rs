@@ -1,6 +1,5 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use ed25519_compact::{KeyPair, PublicKey};
-use one_crypto::SignerError;
+use one_crypto::signer::eddsa::EDDSASigner;
 use serde::Deserialize;
 use zeroize::Zeroizing;
 
@@ -40,17 +39,17 @@ impl KeyAlgorithm for Eddsa {
 
     fn get_multibase(&self, public_key: &[u8]) -> Result<String, KeyAlgorithmError> {
         let codec = &[0xed, 0x1];
-        let key = PublicKey::from_slice(public_key).map_err(|_| SignerError::MissingKey)?;
-        let data = [codec, key.as_ref()].concat();
+        let key = EDDSASigner::check_public_key(public_key)?;
+        let data = [codec, key.as_slice()].concat();
         Ok(format!("z{}", bs58::encode(data).into_string()))
     }
 
     fn generate_key_pair(&self) -> GeneratedKey {
-        let key_pair = KeyPair::generate();
+        let key_pair = EDDSASigner::generate_key_pair();
 
         GeneratedKey {
-            public: key_pair.pk.to_vec(),
-            private: key_pair.sk.to_vec(),
+            public: key_pair.public,
+            private: key_pair.private.to_vec(),
         }
     }
 
@@ -83,15 +82,12 @@ impl KeyAlgorithm for Eddsa {
         &self,
         secret_key: Zeroizing<Vec<u8>>,
     ) -> Result<Zeroizing<String>, KeyAlgorithmError> {
-        // automatically gets zeroized when dropped
-        let secret_key = ed25519_compact::SecretKey::from_slice(&secret_key)
-            .map_err(|_err| KeyAlgorithmError::Failed("Invalid secret key".to_string()))?;
-        let public_key = secret_key.public_key();
+        let key_pair = EDDSASigner::parse_private_key(&secret_key)?;
 
-        let x = Base64UrlSafeNoPadding::encode_to_string(public_key.as_slice())
+        let x = Base64UrlSafeNoPadding::encode_to_string(key_pair.public.as_slice())
             .map_err(|err| KeyAlgorithmError::Failed(err.to_string()))?;
 
-        let d = Base64UrlSafeNoPadding::encode_to_string(secret_key.as_slice())
+        let d = Base64UrlSafeNoPadding::encode_to_string(key_pair.private.as_slice())
             .map(Zeroizing::new)
             .map_err(|err| KeyAlgorithmError::Failed(err.to_string()))?;
 
@@ -107,10 +103,7 @@ impl KeyAlgorithm for Eddsa {
     }
 
     fn public_key_from_der(&self, public_key_der: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
-        let pk = ed25519_compact::PublicKey::from_der(public_key_der)
-            .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
-
-        Ok(pk.to_vec())
+        Ok(EDDSASigner::public_key_from_der(public_key_der)?)
     }
 
     fn get_capabilities(&self) -> KeyAlgorithmCapabilities {
@@ -133,19 +126,15 @@ impl JwkEddsaExt for josekit::jwk::Jwk {
 
             if let Some(x) = self.parameter("x").and_then(|x| x.as_str()) {
                 let key = Base64UrlSafeNoPadding::decode_to_vec(x, None)?;
-                let key = ed25519_compact::PublicKey::from_slice(&key)?;
-                let key = ed25519_compact::x25519::PublicKey::from_ed25519(&key)?;
+                let key = EDDSASigner::public_key_into_x25519(&key)?;
                 let key = Base64UrlSafeNoPadding::encode_to_string(key.as_slice())?;
-
                 self.set_parameter("x", Some(key.into()))?;
             }
 
             if let Some(d) = self.parameter("d").and_then(|d| d.as_str()) {
                 let key =
                     Base64UrlSafeNoPadding::decode_to_vec(d, None).map(zeroize::Zeroizing::new)?;
-
-                let key = ed25519_compact::SecretKey::from_slice(&key)?;
-                let key = ed25519_compact::x25519::SecretKey::from_ed25519(&key)?;
+                let key = EDDSASigner::private_key_into_x25519(&key)?;
                 let key = Base64UrlSafeNoPadding::encode_to_string(key.as_slice())
                     .map(zeroize::Zeroizing::new)?;
 
