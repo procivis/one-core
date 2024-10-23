@@ -4,7 +4,6 @@ use std::collections::{HashMap, HashSet};
 use anyhow::{anyhow, Context};
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use regex::Regex;
 use serde::{Deserialize, Deserializer};
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};
 use time::OffsetDateTime;
@@ -27,8 +26,10 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
-    BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, CredentialSchemaClaim,
-    LayoutProperties, LogoProperties,
+    Arrayed, BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema,
+    CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
+    CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView, LayoutProperties,
+    LogoProperties,
 };
 use crate::model::did::Did;
 use crate::model::interaction::{Interaction, InteractionId};
@@ -670,144 +671,236 @@ pub fn map_offered_claims_to_credential_schema(
             ))?;
 
     let now = OffsetDateTime::now_utc();
-    let mut claims = vec![];
 
-    let claim_schemas = adapt_required_state_based_on_claim_presence(claim_schemas, claim_keys)?;
+    let nested_schema_claim_view: CredentialSchemaClaimsNestedView = claim_schemas
+        .clone()
+        .try_into()
+        .map_err(|err: ServiceError| ExchangeProtocolError::Other(err.into()))?;
 
-    for claim_schema in claim_schemas
-        .iter()
-        .filter(|claim| claim.schema.data_type != "OBJECT")
-    {
-        let matcher = claim_schema_key_to_claim_matcher(&claim_schema.schema.key, &claim_schemas)?;
+    let nested_claim_view: ClaimsNestedView = claim_keys.clone().try_into()?;
 
-        let credential_value_details = claim_keys
-            .iter()
-            .filter(|(claim_key, _)| matcher.is_match(claim_key))
-            .collect::<Vec<(_, _)>>();
-
-        if credential_value_details.is_empty() && claim_schema.required {
-            return Err(ExchangeProtocolError::Failed(format!(
-                "Validation Error. Claim key {} missing",
-                &claim_schema.schema.key
-            )));
-        }
-
-        for (key, value_details) in credential_value_details {
-            let claim = Claim {
-                id: Uuid::new_v4(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value: value_details.value.to_owned(),
-                path: key.to_string(),
-                schema: Some(claim_schema.schema.to_owned()),
-            };
-
-            claims.push(claim);
-        }
-    }
-
-    Ok(claims)
+    validate_and_collect_claims(
+        credential_id,
+        now,
+        &nested_schema_claim_view,
+        &nested_claim_view,
+    )
 }
 
-fn adapt_required_state_based_on_claim_presence(
-    claim_schemas: &[CredentialSchemaClaim],
-    claims: &HashMap<String, OpenID4VCICredentialValueDetails>,
-) -> Result<Vec<CredentialSchemaClaim>, ExchangeProtocolError> {
-    let claim_schema_matchers = claim_schemas
+fn validate_and_collect_claims(
+    credential_id: CredentialId,
+    now: OffsetDateTime,
+    nested_schema_claim_view: &CredentialSchemaClaimsNestedView,
+    nested_claim_view: &ClaimsNestedView,
+) -> Result<Vec<Claim>, ExchangeProtocolError> {
+    nested_schema_claim_view
+        .fields
         .iter()
-        .map(|schema| {
-            Ok((
-                schema.schema.key.to_owned(),
-                claim_schema_key_to_claim_matcher(&schema.schema.key, claim_schemas)?,
-            ))
-        })
-        .collect::<Result<HashMap<_, _>, ExchangeProtocolError>>()?;
+        .try_fold(vec![], |claims, (key, field)| {
+            let nested_claim = nested_claim_view.claims.get(key);
 
-    let claims_with_names = claims
-        .iter()
-        .map(|(key, claim)| {
-            let matching_claim_schema = claim_schemas
-                .iter()
-                .find(|claim_schema| {
-                    let matcher = claim_schema_matchers.get(&claim_schema.schema.key);
-                    matcher.is_some_and(|matcher| matcher.is_match(key))
-                })
-                .ok_or(ExchangeProtocolError::Failed(
-                    "Credential schema missing claims".to_string(),
-                ))?;
-            Ok((claim, matching_claim_schema.schema.key.to_owned()))
-        })
-        .collect::<Result<Vec<(&OpenID4VCICredentialValueDetails, String)>, ExchangeProtocolError>>(
-        )?;
-
-    let mut result = claim_schemas.to_vec();
-    claim_schemas.iter().try_for_each(|claim_schema| {
-        let prefix = format!("{}/", claim_schema.schema.key);
-
-        let is_parent_schema_of_provided_claim = claims_with_names
-            .iter()
-            .any(|(_, claim_name)| claim_name.starts_with(&prefix));
-
-        let is_object = !claim_schema.schema.array && claim_schema.schema.data_type == "OBJECT";
-
-        let should_make_all_child_claims_non_required =
-            !is_parent_schema_of_provided_claim && is_object && !claim_schema.required;
-
-        if should_make_all_child_claims_non_required {
-            result.iter_mut().for_each(|result_schema| {
-                if result_schema.schema.key.starts_with(&prefix) {
-                    result_schema.required = false;
+            match nested_claim {
+                Some(nested_claim) => {
+                    let nested_claims = match field {
+                        Arrayed::Single(CredentialSchemaClaimsNestedTypeView::Field(claim)) => {
+                            visit_nested_field_field(credential_id, now, claim, nested_claim)
+                        }
+                        Arrayed::Single(CredentialSchemaClaimsNestedTypeView::Object(object)) => {
+                            visit_nested_object_field(credential_id, now, object, nested_claim)
+                        }
+                        Arrayed::InArray(array) => {
+                            visit_nested_array_field(credential_id, now, array, nested_claim)
+                        }
+                    }?;
+                    Ok([claims, nested_claims].concat())
                 }
-            });
-        }
-
-        Ok::<(), ExchangeProtocolError>(())
-    })?;
-
-    Ok(result)
-}
-
-/// Construct a regex matcher that will match all claim keys that are based on the specified claim schema
-///
-/// Params:
-/// * `claim_schema_key` key of the specific claim schema to construct the regex for
-/// * `all_claim_schemas` all claim schemas inside the credential schema
-fn claim_schema_key_to_claim_matcher(
-    claim_schema_key: &str,
-    all_claim_schemas: &[CredentialSchemaClaim],
-) -> Result<Regex, ExchangeProtocolError> {
-    // collect all array claim schema keys related to the target
-    let related_array_claim_keys = all_claim_schemas
-        .iter()
-        .filter_map(|schema| {
-            if schema.schema.array
-                && (
-                    // either itself
-                    claim_schema_key == schema.schema.key
-                    // or parent
-                    || claim_schema_key.starts_with(&format!("{}/", schema.schema.key))
-                )
-            {
-                Some(regex::escape(&schema.schema.key))
-            } else {
-                None
+                None if field.required() => Err(ExchangeProtocolError::Failed(format!(
+                    "Validation Error. Claim key {} missing",
+                    field.key(),
+                ))),
+                None => Ok(claims),
             }
         })
-        // sorted from the deepest
-        .sorted()
-        .rev()
-        .collect::<Vec<_>>();
+}
 
-    let mut pattern = regex::escape(claim_schema_key);
-    for related_array_claim_key in related_array_claim_keys {
-        pattern = format!(
-            "{related_array_claim_key}/\\d+{}",
-            pattern.split_at(related_array_claim_key.len()).1
-        );
+fn visit_nested_field_field(
+    credential_id: CredentialId,
+    now: OffsetDateTime,
+    claim: &CredentialSchemaClaim,
+    nested_claim_view: &ClaimsNestedFieldView,
+) -> Result<Vec<Claim>, ExchangeProtocolError> {
+    match nested_claim_view {
+        ClaimsNestedFieldView::Leaf { key, value } => Ok(vec![Claim {
+            id: Uuid::new_v4(),
+            credential_id,
+            created_date: now,
+            last_modified: now,
+            value: value.value.clone(),
+            path: key.clone(),
+            schema: Some(claim.schema.clone()),
+        }]),
+        ClaimsNestedFieldView::Nodes(_) => Err(ExchangeProtocolError::Failed(format!(
+            "Validation Error. Claim key {} has wrong type",
+            claim.schema.key,
+        ))),
+    }
+}
+
+fn visit_nested_object_field(
+    credential_id: CredentialId,
+    now: OffsetDateTime,
+    object: &CredentialSchemaClaimsNestedObjectView,
+    nested_claim_view: &ClaimsNestedFieldView,
+) -> Result<Vec<Claim>, ExchangeProtocolError> {
+    let claims_view = match nested_claim_view {
+        ClaimsNestedFieldView::Leaf { .. } => {
+            return Err(ExchangeProtocolError::Failed(format!(
+                "Validation Error. Claim key {} has wrong type",
+                object.claim.schema.key,
+            )))
+        }
+        ClaimsNestedFieldView::Nodes(claims) => claims,
+    };
+
+    object
+        .fields
+        .iter()
+        .try_fold(vec![], |claims, (key, field)| {
+            let claim = claims_view.get(key);
+
+            match &claim {
+                Some(nested_claim) => {
+                    let nested_claims = match field {
+                        Arrayed::Single(CredentialSchemaClaimsNestedTypeView::Field(claim)) => {
+                            visit_nested_field_field(credential_id, now, claim, nested_claim)
+                        }
+                        Arrayed::Single(CredentialSchemaClaimsNestedTypeView::Object(object)) => {
+                            visit_nested_object_field(credential_id, now, object, nested_claim)
+                        }
+                        Arrayed::InArray(array) => {
+                            visit_nested_array_field(credential_id, now, array, nested_claim)
+                        }
+                    }?;
+                    Ok([claims, nested_claims].concat())
+                }
+                None if field.required() => Err(ExchangeProtocolError::Failed(format!(
+                    "Validation Error. Claim key {} missing",
+                    field.key(),
+                ))),
+                None => Ok(claims),
+            }
+        })
+}
+
+fn visit_nested_array_field(
+    credential_id: CredentialId,
+    now: OffsetDateTime,
+    array: &CredentialSchemaClaimsNestedTypeView,
+    nested_claim_view: &ClaimsNestedFieldView,
+) -> Result<Vec<Claim>, ExchangeProtocolError> {
+    let claims_view = match nested_claim_view {
+        ClaimsNestedFieldView::Leaf { .. } => {
+            return Err(ExchangeProtocolError::Failed(format!(
+                "Validation Error. Claim key {} has wrong type",
+                array.key(),
+            )))
+        }
+        ClaimsNestedFieldView::Nodes(claims) => claims,
+    };
+
+    if claims_view.is_empty() && array.required() {
+        return Err(ExchangeProtocolError::Failed(format!(
+            "Validation Error. Required array claim key {} has no elements",
+            array.key(),
+        )));
     }
 
-    Regex::new(&format!("^{pattern}$")).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
+    (0..claims_view.len()).try_fold(vec![], |claims, index| {
+        let claim = claims_view
+            .get(&index.to_string())
+            .ok_or(ExchangeProtocolError::Failed(format!(
+                "Validation Error. Index {index} is missing for claim key {}",
+                array.key(),
+            )))?;
+
+        let nested_claims = match array {
+            CredentialSchemaClaimsNestedTypeView::Field(field) => {
+                visit_nested_field_field(credential_id, now, field, claim)
+            }
+            CredentialSchemaClaimsNestedTypeView::Object(object) => {
+                visit_nested_object_field(credential_id, now, object, claim)
+            }
+        }?;
+        Ok([claims, nested_claims].concat())
+    })
+}
+
+#[derive(Debug)]
+struct ClaimsNestedView {
+    claims: HashMap<String, ClaimsNestedFieldView>,
+}
+
+#[derive(Debug)]
+enum ClaimsNestedFieldView {
+    Leaf {
+        key: String,
+        value: OpenID4VCICredentialValueDetails,
+    },
+    Nodes(HashMap<String, ClaimsNestedFieldView>),
+}
+
+impl TryFrom<HashMap<String, OpenID4VCICredentialValueDetails>> for ClaimsNestedView {
+    type Error = ExchangeProtocolError;
+
+    fn try_from(
+        value: HashMap<String, OpenID4VCICredentialValueDetails>,
+    ) -> Result<Self, Self::Error> {
+        let mut claims = HashMap::<String, ClaimsNestedFieldView>::new();
+
+        for (key, value) in value {
+            match key.rsplit_once(NESTED_CLAIM_MARKER) {
+                Some((head, tail)) => {
+                    let parent = get_or_insert_view(&mut claims, head)?;
+                    let ClaimsNestedFieldView::Nodes(nodes) = parent else {
+                        return Err(ExchangeProtocolError::Failed(
+                            "Parent claim should be nested".into(),
+                        ));
+                    };
+
+                    nodes.insert(tail.to_owned(), ClaimsNestedFieldView::Leaf { key, value });
+                }
+                None => {
+                    claims.insert(key.clone(), ClaimsNestedFieldView::Leaf { key, value });
+                }
+            }
+        }
+
+        Ok(ClaimsNestedView { claims })
+    }
+}
+
+fn get_or_insert_view<'a>(
+    root: &'a mut HashMap<String, ClaimsNestedFieldView>,
+    path: &str,
+) -> Result<&'a mut ClaimsNestedFieldView, ExchangeProtocolError> {
+    match path.split_once(NESTED_CLAIM_MARKER) {
+        Some((head, tail)) => {
+            let value = root
+                .entry(head.to_owned())
+                .or_insert_with(|| ClaimsNestedFieldView::Nodes(Default::default()));
+
+            let ClaimsNestedFieldView::Nodes(nodes) = value else {
+                return Err(ExchangeProtocolError::Failed(
+                    "Parent claim should be nested".into(),
+                ));
+            };
+
+            get_or_insert_view(nodes, tail)
+        }
+        None => Ok(root
+            .entry(path.to_owned())
+            .or_insert_with(|| ClaimsNestedFieldView::Nodes(Default::default()))),
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1570,122 +1663,4 @@ pub async fn holder_ble_mqtt_get_presentation_definition(
         config,
     )
     .map(Into::into)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_claim_schema_key_to_claim_matcher() {
-        // single non-array claim
-        let matcher = claim_schema_key_to_claim_matcher(
-            "key",
-            &[CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "key".to_string(),
-                    data_type: "irrelevant".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    array: false,
-                },
-                required: false,
-            }],
-        )
-        .unwrap();
-        assert!(matcher.is_match("key"));
-        assert!(!matcher.is_match("key/0"));
-
-        // single array claim
-        let matcher = claim_schema_key_to_claim_matcher(
-            "key",
-            &[CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "key".to_string(),
-                    data_type: "irrelevant".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    array: true,
-                },
-                required: false,
-            }],
-        )
-        .unwrap();
-        assert!(!matcher.is_match("key"));
-        assert!(matcher.is_match("key/0"));
-        assert!(matcher.is_match("key/11"));
-
-        // nested claim, no arrays
-        let matcher = claim_schema_key_to_claim_matcher(
-            "root/nested",
-            &[
-                CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: "root".to_string(),
-                        data_type: "OBJECT".to_string(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        array: false,
-                    },
-                    required: true,
-                },
-                CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: "root/nested".to_string(),
-                        data_type: "irrelevant".to_string(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        array: false,
-                    },
-                    required: true,
-                },
-            ],
-        )
-        .unwrap();
-        assert!(!matcher.is_match("root"));
-        assert!(!matcher.is_match("nested"));
-        assert!(matcher.is_match("root/nested"));
-        assert!(!matcher.is_match("root/nested/0"));
-
-        // nested claim, with arrays
-        let matcher = claim_schema_key_to_claim_matcher(
-            "root/nested",
-            &[
-                CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: "root".to_string(),
-                        data_type: "OBJECT".to_string(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        array: true,
-                    },
-                    required: true,
-                },
-                CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: "root/nested".to_string(),
-                        data_type: "irrelevant".to_string(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        array: true,
-                    },
-                    required: true,
-                },
-            ],
-        )
-        .unwrap();
-        assert!(!matcher.is_match("root"));
-        assert!(!matcher.is_match("nested"));
-        assert!(!matcher.is_match("root/nested"));
-        assert!(!matcher.is_match("root/nested/0"));
-        assert!(!matcher.is_match("root/0/nested"));
-        assert!(matcher.is_match("root/0/nested/0"));
-        assert!(matcher.is_match("root/1/nested/10"));
-    }
 }

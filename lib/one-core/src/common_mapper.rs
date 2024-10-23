@@ -1,4 +1,5 @@
 use std::any::type_name;
+use std::collections::HashMap;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_dto_mapper::{convert_inner, try_convert_inner};
@@ -13,7 +14,10 @@ use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::model::credential_schema::{
+    Arrayed, CredentialSchema, CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
+    CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
+};
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
 use crate::model::key::PublicKeyJwk;
 use crate::model::organisation::Organisation;
@@ -321,6 +325,107 @@ pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, Form
             "CBOR deserialization into `{type_name}` failed: {err}"
         ))
     })
+}
+
+impl TryFrom<Vec<CredentialSchemaClaim>> for CredentialSchemaClaimsNestedView {
+    type Error = ServiceError;
+
+    fn try_from(claims: Vec<CredentialSchemaClaim>) -> Result<Self, Self::Error> {
+        let fields = claims
+            .iter()
+            .filter(|claim| !claim.schema.key.contains(NESTED_CLAIM_MARKER))
+            .try_fold(HashMap::default(), |mut state, claim| {
+                state.insert(
+                    claim.schema.key.clone(),
+                    Arrayed::from_claims_and_prefix(&claims, claim.clone())?,
+                );
+                Ok::<_, Self::Error>(state)
+            })?;
+
+        Ok(Self { fields })
+    }
+}
+
+impl Arrayed<CredentialSchemaClaimsNestedTypeView> {
+    pub fn from_claims_and_prefix(
+        claims: &[CredentialSchemaClaim],
+        claim: CredentialSchemaClaim,
+    ) -> Result<Self, ServiceError> {
+        if claim.schema.array {
+            CredentialSchemaClaimsNestedTypeView::from_claims_and_prefix(claims, claim)
+                .map(Self::InArray)
+        } else {
+            CredentialSchemaClaimsNestedTypeView::from_claims_and_prefix(claims, claim)
+                .map(Self::Single)
+        }
+    }
+
+    pub fn required(&self) -> bool {
+        match self {
+            Self::InArray(n) => n,
+            Self::Single(n) => n,
+        }
+        .required()
+    }
+
+    pub fn key(&self) -> &str {
+        match self {
+            Self::InArray(n) => n,
+            Self::Single(n) => n,
+        }
+        .key()
+    }
+}
+
+impl CredentialSchemaClaimsNestedTypeView {
+    pub fn from_claims_and_prefix(
+        claims: &[CredentialSchemaClaim],
+        claim: CredentialSchemaClaim,
+    ) -> Result<Self, ServiceError> {
+        if claims.iter().any(|other_claim| {
+            other_claim.schema.key.starts_with(&claim.schema.key)
+                && other_claim.schema.id != claim.schema.id
+        }) {
+            Ok(Self::Object(CredentialSchemaClaimsNestedObjectView {
+                fields: claims
+                    .iter()
+                    .filter_map(|other_claim| {
+                        other_claim
+                            .schema
+                            .key
+                            .strip_prefix(&claim.schema.key)
+                            .and_then(|v| v.strip_prefix(NESTED_CLAIM_MARKER))
+                            .and_then(|v| {
+                                (!v.contains(NESTED_CLAIM_MARKER)).then_some((v, other_claim))
+                            })
+                    })
+                    .try_fold(HashMap::default(), |mut state, (key, other_claim)| {
+                        state.insert(
+                            key.to_owned(),
+                            Arrayed::from_claims_and_prefix(claims, other_claim.clone())?,
+                        );
+                        Ok::<_, ServiceError>(state)
+                    })?,
+                claim,
+            }))
+        } else {
+            Ok(Self::Field(claim))
+        }
+    }
+
+    pub fn required(&self) -> bool {
+        match self {
+            Self::Field(claim) => claim.required,
+            Self::Object(object) => object.claim.required,
+        }
+    }
+
+    pub fn key(&self) -> &str {
+        match self {
+            Self::Field(claim) => &claim.schema.key,
+            Self::Object(object) => &object.claim.schema.key,
+        }
+    }
 }
 
 #[cfg(test)]
