@@ -963,8 +963,13 @@ fn test_map_offered_claims_to_credential_schema_success_missing_optional_object(
             .unwrap();
     assert_eq!(2, result.len());
 
-    assert_eq!(claim_keys["First Name"].value, result[0].value);
-    assert_eq!(claim_keys["Last Name"].value, result[1].value);
+    let result = result
+        .into_iter()
+        .map(|v| (v.path, v.value))
+        .collect::<HashMap<_, _>>();
+
+    assert_eq!(claim_keys["First Name"].value, result["First Name"]);
+    assert_eq!(claim_keys["Last Name"].value, result["Last Name"]);
 }
 
 #[test]

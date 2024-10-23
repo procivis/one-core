@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use shared_types::CredentialSchemaId;
 use strum::Display;
@@ -65,6 +67,29 @@ impl From<String> for CredentialSchemaType {
 pub struct CredentialSchemaClaim {
     pub schema: ClaimSchema,
     pub required: bool,
+}
+
+#[derive(Debug)]
+pub struct CredentialSchemaClaimsNestedView {
+    pub fields: HashMap<String, Arrayed<CredentialSchemaClaimsNestedTypeView>>,
+}
+
+#[derive(Debug)]
+pub enum Arrayed<T> {
+    InArray(T),
+    Single(T),
+}
+
+#[derive(Debug)]
+pub enum CredentialSchemaClaimsNestedTypeView {
+    Field(CredentialSchemaClaim),
+    Object(CredentialSchemaClaimsNestedObjectView),
+}
+
+#[derive(Debug)]
+pub struct CredentialSchemaClaimsNestedObjectView {
+    pub claim: CredentialSchemaClaim,
+    pub fields: HashMap<String, Arrayed<CredentialSchemaClaimsNestedTypeView>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
