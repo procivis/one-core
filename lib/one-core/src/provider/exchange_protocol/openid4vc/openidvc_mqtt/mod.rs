@@ -388,15 +388,13 @@ impl OpenId4VcMqtt {
         };
 
         if format == "MDOC" {
-            let mdoc_generated_nonce = utilities::generate_nonce();
-
             ctx.mdoc_session_transcript = Some(
                 to_cbor(&SessionTranscript {
                     handover: OID4VPHandover::compute(
                         &interaction_data.client_id,
                         &interaction_data.client_id,
                         &interaction_data.nonce,
-                        &mdoc_generated_nonce,
+                        &interaction_data.identity_request_nonce,
                     )
                     .into(),
                     device_engagement_bytes: None,
