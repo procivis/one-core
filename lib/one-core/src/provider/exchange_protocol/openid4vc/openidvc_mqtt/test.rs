@@ -113,7 +113,7 @@ fn test_encryption_verifier_to_holder() {
     );
 
     let message = json!({ "message": "hello world" });
-    let encrypted = verifier_encryption.encrypt(message.clone()).unwrap();
+    let encrypted = verifier_encryption.encrypt(&message).unwrap();
 
     let decrypted: serde_json::Value = holder_encryption.decrypt(&encrypted).unwrap();
     assert_eq!(decrypted, message);
@@ -160,7 +160,7 @@ async fn test_handle_invitation_success() {
             };
 
             Ok(encryption
-                .encrypt(MqttOpenId4VpRequest {
+                .encrypt(&MqttOpenId4VpRequest {
                     client_id: "client-id".to_string(),
                     nonce: "nonce".to_string(),
                     presentation_definition,

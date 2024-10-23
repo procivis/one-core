@@ -1,6 +1,6 @@
 use std::convert::TryInto;
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use ciborium::cbor;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use serde::{de, ser, Deserialize, Serialize, Serializer};
@@ -69,7 +69,7 @@ impl DeviceEngagement {
 
         let qr_code_content = Base64UrlSafeNoPadding::encode_to_string(&embedded_cbor)
             .map(|content| format!("{}{content}", Self::QR_CODE_PREFIX))
-            .map_err(|e| anyhow!(e))?;
+            .context("QR code base64 encoding")?;
 
         Ok(GeneratedQRCode {
             qr_code_content,

@@ -153,7 +153,7 @@ impl BLEPeer {
     where
         T: Serialize,
     {
-        self.peer_encryption.encrypt(data)
+        self.peer_encryption.encrypt(&data)
     }
 
     pub fn decrypt<T>(&self, ciphertext: &[u8]) -> anyhow::Result<T>
