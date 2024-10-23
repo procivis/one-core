@@ -55,6 +55,7 @@ utoipa             = { version = "5.1", default-features = false, features = ["m
 uuid               = { version = "1.11", features = ["v4", "serde"] }
 validator          = { version = "0.18", features = ["derive"] }
 wiremock           = { version = "0.6" }
+zeroize            = { version = "1.8" }
 
 [workspace.lints.clippy]
 dbg_macro       = "warn"

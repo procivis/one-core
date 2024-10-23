@@ -21,7 +21,6 @@ convert_case             = { version = "0.6" }
 coset                    = { version = "0.3", features = ["std"] }
 crc                      = { version = "3.2.1" }
 ct-codecs.workspace      = true
-ed25519-compact          = { version = "2.1" }
 figment                  = { version = "0.10", default-features = false }
 flate2                   = { version = "1.0" }
 futures.workspace        = true
@@ -78,7 +77,7 @@ uuid                     = { workspace = true, features = ["serde"] }
 x25519-dalek             = { version = "2.0", features = ["reusable_secrets", "serde"] }
 x509-parser              = { version = "0.16", features = ["verify"] }
 yasna                    = { version = "0.5" }
-zeroize                  = { version = "1.8", features = ["serde"] }
+zeroize                  = { workspace = true, features = ["serde"] }
 zip                      = { version = "2.1" }
 
 [dev-dependencies]
