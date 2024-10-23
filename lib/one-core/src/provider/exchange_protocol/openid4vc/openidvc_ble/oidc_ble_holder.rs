@@ -138,10 +138,10 @@ impl OpenID4VCBLEHolder {
                                         task_id,
                                         peer: ble_peer,
                                         nonce: Some(request.nonce),
-                                identity_request_nonce: Some(hex::encode(identity_request.nonce)),
+                                        identity_request_nonce: Some(hex::encode(identity_request.nonce)),
                                         presentation_definition: Some(request.presentation_definition),
                                         presentation_submission: None,
-                                client_id: Some(request.verifier_client_id),
+                                        client_id: Some(request.verifier_client_id),
                                     })
                                     .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
                                 ),
