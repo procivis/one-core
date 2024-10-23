@@ -55,6 +55,7 @@ impl MockServer {
         schema_id: impl Display,
         bearer_auth: impl Display,
         credential: impl Display,
+        format: impl Display,
     ) {
         Mock::given(method(Method::POST))
             .and(path(format!(
@@ -64,7 +65,7 @@ impl MockServer {
             .and(header(AUTHORIZATION, format!("Bearer {bearer_auth}")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "credential": credential.to_string(),
-                "format": "JWT"
+                "format": format.to_string(),
             })))
             .expect(1)
             .mount(&self.mock)

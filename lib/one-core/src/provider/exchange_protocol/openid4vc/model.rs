@@ -371,7 +371,7 @@ pub(super) struct ValidatedProofClaimDTO {
     pub value: serde_json::Value,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredential {
     pub format: String,
     pub credential_definition: Option<OpenID4VCICredentialDefinition>,

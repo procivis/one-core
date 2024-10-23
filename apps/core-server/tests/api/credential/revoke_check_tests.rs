@@ -297,8 +297,8 @@ async fn test_revoke_check_success_lvvc() {
     assert!(resp[0]["reason"].is_null());
 }
 
-static CREDENTIAL_CONTENT_OUTDATED: &str = "ompuYW1lU3BhY2VzoWRyb290gdgYWFykaGRpZ2VzdElEAGZyYW5kb21YILRDxI9MRD1_2dvxXCU632DA3ncWDvcQSlxWUAyV86dxcWVsZW1lbnRJZGVudGlmaWVyY0tleWxlbGVtZW50VmFsdWVkdGVzdGppc3N1ZXJBdXRohEOhASehGCFZA2UwggNhMIIDB6ADAgECAhQ5-tBbtXe3UN_nAXngcyNriNdKKjAKBggqhkjOPQQDAjBiMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMREwDwYDVQQKDAhQcm9jaXZpczERMA8GA1UECwwIUHJvY2l2aXMxHDAaBgNVBAMME2NhLmRldi5tZGwtcGx1cy5jb20wHhcNMjQwNTE0MDcyNzAwWhcNMjQwODEyMDAwMDAwWjBKMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMRQwEgYDVQQKDAtQcm9jaXZpcyBBRzEUMBIGA1UEAwwLcHJvY2l2aXMuY2gwKjAFBgMrZXADIQDcs4rEHmKT1aKSBCao0W2a680LQUwUVVevoBNWgv6RPqOCAeAwggHcMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAWBgNVHREEDzANggtwcm9jaXZpcy5jaDAdBgNVHQ4EFgQUrPuMkGVyPhaWk6AzOMrCKUNn-iAwCgYIKoZIzj0EAwIDSAAwRQIgOPbDm85Bpw0B8h0eZ-qWyfScGkGVsF0LvzhVPSWoDUUCIQC0IYp_093p07LPqR7fR8Vv5h8po6ZsOeBnd2VkiHh2-FkBT9gYWQFKpmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOhZHJvb3ShAFggVfmUvisRWHv6FqlLnkNIuNBqB5L3LuBp9CwjkW4D6R9tZGV2aWNlS2V5SW5mb6FpZGV2aWNlS2V5owEBIAYhWCA1Kez7uQnJEmT8FJmDjtpJbe1EI88UDydsvJkucktW4Gdkb2NUeXBlc29yZy5pc28uMjMyMjAuMS5tSURsdmFsaWRpdHlJbmZvpGZzaWduZWTAdDIwMjQtMDYtMDRUMDY6NDc6MjBaaXZhbGlkRnJvbcB0MjAyNC0wNi0wNFQwNjo0NzoyMFpqdmFsaWRVbnRpbMB0MjAyNC0wNi0wNFQwNjo0Nzo1MFpuZXhwZWN0ZWRVcGRhdGXAdDIwMjQtMDYtMDRUMDY6NDc6NDBaWECqz879-uP6BF3OlGrJ0kv48Oux-V_jgx-7oTSDbNSGRcaTXlFzilqxF92e9vvTyVx-ay46z9_LU2Hjcmhk7REC";
-static CREDENTIAL_CONTENT_VALID: &str = "ompuYW1lU3BhY2VzoWRyb290gdgYWFykaGRpZ2VzdElEAGZyYW5kb21YIJUToekj2hzGwDn2XaufO2ElxqPd-E0jJEP2Z8kg1XGscWVsZW1lbnRJZGVudGlmaWVyY0tleWxlbGVtZW50VmFsdWVkdGVzdGppc3N1ZXJBdXRohEOhASehGCFZA2UwggNhMIIDB6ADAgECAhQ5-tBbtXe3UN_nAXngcyNriNdKKjAKBggqhkjOPQQDAjBiMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMREwDwYDVQQKDAhQcm9jaXZpczERMA8GA1UECwwIUHJvY2l2aXMxHDAaBgNVBAMME2NhLmRldi5tZGwtcGx1cy5jb20wHhcNMjQwNTE0MDcyNzAwWhcNMjQwODEyMDAwMDAwWjBKMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMRQwEgYDVQQKDAtQcm9jaXZpcyBBRzEUMBIGA1UEAwwLcHJvY2l2aXMuY2gwKjAFBgMrZXADIQDcs4rEHmKT1aKSBCao0W2a680LQUwUVVevoBNWgv6RPqOCAeAwggHcMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAWBgNVHREEDzANggtwcm9jaXZpcy5jaDAdBgNVHQ4EFgQUrPuMkGVyPhaWk6AzOMrCKUNn-iAwCgYIKoZIzj0EAwIDSAAwRQIgOPbDm85Bpw0B8h0eZ-qWyfScGkGVsF0LvzhVPSWoDUUCIQC0IYp_093p07LPqR7fR8Vv5h8po6ZsOeBnd2VkiHh2-FkBT9gYWQFKpmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOhZHJvb3ShAFggYGdZDIVhTtWtniCgGGSlIDYkXv6RXvQ6XM1-hxjCUuVtZGV2aWNlS2V5SW5mb6FpZGV2aWNlS2V5owEBIAYhWCA1Kez7uQnJEmT8FJmDjtpJbe1EI88UDydsvJkucktW4Gdkb2NUeXBlc29yZy5pc28uMjMyMjAuMS5tSURsdmFsaWRpdHlJbmZvpGZzaWduZWTAdDIwMjQtMDUtMzBUMTE6MDc6MTNaaXZhbGlkRnJvbcB0MjAyNC0wNS0zMFQxMTowNzoxM1pqdmFsaWRVbnRpbMB0MjQyNC0wMi0yM1QxMTowNzoxM1puZXhwZWN0ZWRVcGRhdGXAdDI0MjQtMDItMjNUMTE6MDc6MTNaWEACbTPgPnsWMlj3aUA7bqzpymbHbciXGBQu26JND2aiDKRAuzmJNlyb2nZp8NN0Rf-pI1enHPh-WMXuaT1MYpMG";
+static CREDENTIAL_CONTENT_OUTDATED: &str = "ompuYW1lU3BhY2VzomRyb290gdgYWFykaGRpZ2VzdElEAGZyYW5kb21YIJjSKig920Ai2ntgdAfGnRb-s0TORYA9W8b4mYjhw3u5cWVsZW1lbnRJZGVudGlmaWVyY0tleWxlbGVtZW50VmFsdWVkdGVzdHgZY2gucHJvY2l2aXMubWRvY19sYXlvdXQuMYPYGFhqpGhkaWdlc3RJRAFmcmFuZG9tWCBKbY7V0w4TKYTcJrmG_d1W6VU5Jb4_HCvN9RblZeaECXFlbGVtZW50SWRlbnRpZmllcmJpZGxlbGVtZW50VmFsdWVzb3JnLmlzby4yMzIyMC4xLm1JRNgYWMikaGRpZ2VzdElEAmZyYW5kb21YIG2uLPgrFExjiexjLUr5tMOSlDeiUnlxfyOLHuWUn6mVcWVsZW1lbnRJZGVudGlmaWVycGxheW91dFByb3BlcnRpZXNsZWxlbWVudFZhbHVlpmpiYWNrZ3JvdW5komVjb2xvcmVjb2xvcmVpbWFnZfZkbG9nb_ZwcHJpbWFyeUF0dHJpYnV0ZfZyc2Vjb25kYXJ5QXR0cmlidXRl9nBwaWN0dXJlQXR0cmlidXRl9mRjb2Rl9tgYWGOkaGRpZ2VzdElEA2ZyYW5kb21YIO7RwQ0lUbZZQPJ-2o4eru1n4Z3u1-KxfZvj5uo8dM_bcWVsZW1lbnRJZGVudGlmaWVyamxheW91dFR5cGVsZWxlbWVudFZhbHVlZENBUkRqaXNzdWVyQXV0aIRDoQEmoRghWQOLMIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0LhlkB99gYWQHypmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOiZHJvb3ShAFggNe0Hk1dWKLOZJepp994MYA8ysT8FjnF2-z2Rl1jr9yB4GWNoLnByb2NpdmlzLm1kb2NfbGF5b3V0LjGjAVgg9LozcGRnhO0Oo_YkKFP00rQFY3TDzA9YoGXLs2iK_U0CWCBA6eF3OEgUB0VRtK3wxZX51_vkkvuI_gptomPDOPL8tANYILkTzzl3N4tq_nfykJWMmem_zZg7RYhR20zigE0ax8grbWRldmljZUtleUluZm-haWRldmljZUtleaQBAiABIVggcd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yciWCCJpCY9SCKvzQjZcIWqfb8o-p1YfQ_EzMII_xbe4_GVQGdkb2NUeXBlc29yZy5pc28uMjMyMjAuMS5tSURsdmFsaWRpdHlJbmZvpGZzaWduZWTAdDIwMjQtMTAtMjNUMDY6NTQ6MTZaaXZhbGlkRnJvbcB0MjAyNC0xMC0yM1QwNjo1NDoxNlpqdmFsaWRVbnRpbMB0MjAyNC0xMC0yM1QwNjo1NDozNlpuZXhwZWN0ZWRVcGRhdGXAdDIwMjQtMTAtMjNUMDY6NTQ6MjZaWEATHzcmg9pVWNf_lExfcVRKLYWmDTKMpX6iDAvVWYmDRadG0dgLntcyufhqWZi6J7DO_wfbpFgS6YNVEUjkRhO5";
+static CREDENTIAL_CONTENT_VALID: &str = "ompuYW1lU3BhY2VzomRyb290gdgYWFykaGRpZ2VzdElEAGZyYW5kb21YIA_N3wZ1v23KZ6f1llv4FOZ4P8h47vj94DhJWc8_5JjdcWVsZW1lbnRJZGVudGlmaWVyY0tleWxlbGVtZW50VmFsdWVkdGVzdHgZY2gucHJvY2l2aXMubWRvY19sYXlvdXQuMYPYGFhqpGhkaWdlc3RJRAFmcmFuZG9tWCD4SPq4-b9E62xRK-mSF5Iw4u__mlHEKctXQr5rkzjfh3FlbGVtZW50SWRlbnRpZmllcmJpZGxlbGVtZW50VmFsdWVzb3JnLmlzby4yMzIyMC4xLm1JRNgYWMikaGRpZ2VzdElEAmZyYW5kb21YIOLNTtn9i_sVQ7hUG9Rb1Jgo6S2XByWgHCGP0dBEuARwcWVsZW1lbnRJZGVudGlmaWVycGxheW91dFByb3BlcnRpZXNsZWxlbWVudFZhbHVlpmpiYWNrZ3JvdW5komVjb2xvcmVjb2xvcmVpbWFnZfZkbG9nb_ZwcHJpbWFyeUF0dHJpYnV0ZfZyc2Vjb25kYXJ5QXR0cmlidXRl9nBwaWN0dXJlQXR0cmlidXRl9mRjb2Rl9tgYWGOkaGRpZ2VzdElEA2ZyYW5kb21YIAT_On_5m4XZQY-kx-dKRPUSYZpvBuShHI1KeyLTs-tZcWVsZW1lbnRJZGVudGlmaWVyamxheW91dFR5cGVsZWxlbWVudFZhbHVlZENBUkRqaXNzdWVyQXV0aIRDoQEmoRghWQOLMIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNVBAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMBBwMiAAJx38tO0JCdq3ZecMSW6a-BAAzllydQxVOQ-KDjnwLXJ6OCAeswggHnMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3_AoQxNFemFp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s_EI1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0LhlkB99gYWQHypmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOiZHJvb3ShAFggRpYenHUnzSbQbKmWIZI_BCwvghl1sOB4sGHxVx8fONt4GWNoLnByb2NpdmlzLm1kb2NfbGF5b3V0LjGjAVgg1FiRNnOwf8ZYKpkmqI4RRPhuK7kBp-SnGp7C0ylDCYMCWCDNDYNNvIsdmDH4g3DoO6nPvr6cs24w6dj22JIzKtVe8wNYIGKZcKRVQqvsWWTlF6M_IlV6Mj0sbORb9teoHlNfUE76bWRldmljZUtleUluZm-haWRldmljZUtleaQBAiABIVggcd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yciWCCJpCY9SCKvzQjZcIWqfb8o-p1YfQ_EzMII_xbe4_GVQGdkb2NUeXBlc29yZy5pc28uMjMyMjAuMS5tSURsdmFsaWRpdHlJbmZvpGZzaWduZWTAdDIwMjQtMTAtMjNUMDk6MDY6MzdaaXZhbGlkRnJvbcB0MjAyNC0xMC0yM1QwOTowNjozN1pqdmFsaWRVbnRpbMB0NTE5My0wOS0wN1QxODo1MzoxNlpuZXhwZWN0ZWRVcGRhdGXAdDUxOTMtMDktMDdUMTg6NTM6MTZaWEA9xMH7syX8sOtOp9cdJ-fAxqqTkgH5dae4Uq8-hm0KOwBqAQnHtIEZdNoouEAQ3OAfQULMPCe-osTG432uvNJO";
 
 #[tokio::test]
 async fn test_revoke_check_mdoc_update() {
@@ -343,7 +343,7 @@ async fn test_revoke_check_mdoc_update() {
 
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     // Token is up to date
-    let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
+    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
         .format(&format)
         .unwrap();
     let issuer_url = format!(
@@ -355,9 +355,9 @@ async fn test_revoke_check_mdoc_update() {
         "issuer_url": issuer_url,
         "credential_endpoint": format!("{}/credential", issuer_url),
         "access_token": "123",
-        "access_token_expires_at": a_couple_of_seconds_ago,
+        "access_token_expires_at": a_couple_of_seconds_in_future,
         "refresh_token": "123",
-        "refresh_token_expires_at": a_couple_of_seconds_ago,
+        "refresh_token_expires_at": a_couple_of_seconds_in_future,
     }))
     .unwrap();
 
@@ -392,7 +392,12 @@ async fn test_revoke_check_mdoc_update() {
 
     context
         .server_mock
-        .ssi_credential_endpoint(&credential_schema.id, "123", CREDENTIAL_CONTENT_VALID)
+        .ssi_credential_endpoint(
+            &credential_schema.id,
+            "123",
+            CREDENTIAL_CONTENT_VALID,
+            "mso_mdoc",
+        )
         .await;
 
     // WHEN
@@ -569,7 +574,7 @@ async fn test_revoke_check_mdoc_revoked() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            "MDOC_MSO_UPDATE_SUSPENSION",
             TestingCreateSchemaParams {
                 format: Some("MDOC".to_string()),
                 ..Default::default()
@@ -638,7 +643,7 @@ async fn test_revoke_check_mdoc_revoked() {
     let resp = resp.json_value().await;
 
     resp[0]["credentialId"].assert_eq(&credential.id);
-    assert_eq!("REVOKED", resp[0]["status"]);
+    assert_eq!("SUSPENDED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
 
@@ -649,7 +654,7 @@ async fn test_revoke_check_mdoc_revoked() {
     );
     assert_eq!(
         updated_credentials.state.unwrap()[0].state,
-        CredentialStateEnum::Revoked,
+        CredentialStateEnum::Suspended,
     );
 }
 
@@ -680,6 +685,7 @@ async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
             },
         )
         .await;
+
     let credential_schema = context
         .db
         .credential_schemas
@@ -763,5 +769,267 @@ async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
     assert_eq!(
         updated_credentials.state.unwrap()[0].state,
         CredentialStateEnum::Accepted,
+    );
+}
+
+#[tokio::test]
+async fn test_suspended_to_valid() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let local_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "MDOC_MSO_UPDATE_SUSPENSION",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    // Token is up outdated
+    let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
+        .format(&format)
+        .unwrap();
+    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
+        .format(&format)
+        .unwrap();
+    let issuer_url = format!(
+        "{}/ssi/oidc-issuer/v1/{}",
+        context.server_mock.uri(),
+        credential_schema.id,
+    );
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": issuer_url,
+        "credential_endpoint": format!("{}/credential", issuer_url),
+        "access_token": "invalid",
+        "access_token_expires_at": a_couple_of_seconds_ago,
+        "refresh_token": "valid",
+        "refresh_token_expires_at": a_couple_of_seconds_in_future,
+    }))
+    .unwrap();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Suspended,
+            &issuer_did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                credential: Some(CREDENTIAL_CONTENT_OUTDATED),
+                interaction: Some(interaction),
+                key: Some(local_key),
+                holder_did: Some(issuer_did.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .server_mock
+        .refresh_token(&credential_schema.id)
+        .await;
+
+    context
+        .server_mock
+        .ssi_credential_endpoint(
+            &credential_schema.id,
+            "321",
+            CREDENTIAL_CONTENT_VALID,
+            "mso_mdoc",
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("ACCEPTED", resp[0]["status"]);
+    assert_eq!(true, resp[0]["success"]);
+    assert!(resp[0]["reason"].is_null());
+
+    let updated_credentials = context.db.credentials.get(&credential.id).await;
+    assert_eq!(
+        updated_credentials.credential,
+        CREDENTIAL_CONTENT_VALID.as_bytes()
+    );
+    assert_eq!(
+        updated_credentials.state.unwrap()[0].state,
+        CredentialStateEnum::Accepted,
+    );
+}
+
+#[tokio::test]
+async fn test_suspended_to_suspended_update_failed() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let local_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "MDOC_MSO_UPDATE_SUSPENSION",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    // Token is up outdated
+    let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
+        .format(&format)
+        .unwrap();
+    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
+        .format(&format)
+        .unwrap();
+    let issuer_url = format!(
+        "{}/ssi/oidc-issuer/v1/{}",
+        context.server_mock.uri(),
+        credential_schema.id,
+    );
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": issuer_url,
+        "credential_endpoint": format!("{}/credential", issuer_url),
+        "access_token": "invalid",
+        "access_token_expires_at": a_couple_of_seconds_ago,
+        "refresh_token": "valid",
+        "refresh_token_expires_at": a_couple_of_seconds_in_future,
+    }))
+    .unwrap();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Suspended,
+            &issuer_did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                credential: Some(CREDENTIAL_CONTENT_OUTDATED),
+                interaction: Some(interaction),
+                key: Some(local_key),
+                holder_did: Some(issuer_did.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .server_mock
+        .refresh_token(&credential_schema.id)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("SUSPENDED", resp[0]["status"]);
+    assert_eq!(true, resp[0]["success"]);
+    assert!(resp[0]["reason"].is_null());
+
+    let updated_credentials = context.db.credentials.get(&credential.id).await;
+    assert_eq!(
+        updated_credentials.credential,
+        CREDENTIAL_CONTENT_OUTDATED.as_bytes()
+    );
+    assert_eq!(
+        updated_credentials.state.unwrap()[0].state,
+        CredentialStateEnum::Suspended,
     );
 }
