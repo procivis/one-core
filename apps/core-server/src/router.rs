@@ -294,30 +294,6 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(ssi::controller::get_did_web_document),
         )
         .route(
-            "/ssi/temporary-issuer/v1/connect",
-            post(ssi::controller::ssi_issuer_connect),
-        )
-        .route(
-            "/ssi/temporary-issuer/v1/reject",
-            post(ssi::controller::ssi_issuer_reject),
-        )
-        .route(
-            "/ssi/temporary-issuer/v1/submit",
-            post(ssi::controller::ssi_issuer_submit),
-        )
-        .route(
-            "/ssi/temporary-verifier/v1/connect",
-            post(ssi::controller::ssi_verifier_connect),
-        )
-        .route(
-            "/ssi/temporary-verifier/v1/submit",
-            post(ssi::controller::ssi_verifier_submit_proof),
-        )
-        .route(
-            "/ssi/temporary-verifier/v1/reject",
-            post(ssi::controller::ssi_verifier_reject_proof),
-        )
-        .route(
             "/ssi/context/v1/:id",
             get(ssi::controller::get_json_ld_context),
         )
@@ -464,12 +440,6 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             proof::controller::retract_proof,
             proof::controller::delete_proof_claims,
 
-            ssi::controller::ssi_verifier_connect,
-            ssi::controller::ssi_verifier_submit_proof,
-            ssi::controller::ssi_verifier_reject_proof,
-            ssi::controller::ssi_issuer_reject,
-            ssi::controller::ssi_issuer_connect,
-            ssi::controller::ssi_issuer_submit,
             ssi::controller::get_lvvc_by_credential_id,
             ssi::controller::get_revocation_list_by_id,
             ssi::controller::get_did_web_document,
@@ -607,9 +577,6 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 proof_schema::dto::ImportProofSchemaClaimSchemaRestDTO,
                 proof_schema::dto::ImportProofSchemaCredentialSchemaRestDTO,
 
-                ssi::dto::ConnectIssuerResponseRestDTO,
-                ssi::dto::ConnectVerifierResponseRestDTO,
-                ssi::dto::ProofRequestClaimRestDTO,
                 ssi::dto::IssuerResponseRestDTO,
                 ssi::dto::OpenID4VCIIssuerMetadataResponseRestDTO,
                 ssi::dto::OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO,

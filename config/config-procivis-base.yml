@@ -49,11 +49,6 @@ format:
         leeway: 60
         embedLayoutProperties: true
 exchange:
-  PROCIVIS_TEMPORARY:
-    display: "exchange.procivis"
-    type: "PROCIVIS_TEMPORARY"
-    order: 0
-    params: null
   OPENID4VC:
     display: "exchange.openid"
     order: 1

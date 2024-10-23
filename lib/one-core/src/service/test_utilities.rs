@@ -76,11 +76,6 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                   msoExpectedUpdateIn: 86400 # 24h in seconds
                   leeway: 60
         exchange:
-            PROCIVIS_TEMPORARY:
-                display: 'display'
-                type: 'PROCIVIS_TEMPORARY'
-                order: 0
-                params: null
             OPENID4VC:
                 display: 'display'
                 order: 1
@@ -376,11 +371,8 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
             "JWK".to_string(),
             "X509".to_string(),
         ],
-        issuance_exchange_protocols: vec![
-            "OPENID4VC".to_string(),
-            "PROCIVIS_TEMPORARY".to_string(),
-        ],
-        proof_exchange_protocols: vec!["OPENID4VC".to_string(), "PROCIVIS_TEMPORARY".to_string()],
+        issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
+        proof_exchange_protocols: vec!["OPENID4VC".to_string()],
         revocation_methods: vec![
             "NONE".to_string(),
             "BITSTRINGSTATUSLIST".to_string(),

@@ -70,7 +70,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         &db,
         credential_schema_id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did_id.to_owned(),
         None,
     )

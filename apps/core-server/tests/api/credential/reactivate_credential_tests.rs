@@ -29,7 +29,7 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &issuer_did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams::default(),
         )
         .await;
@@ -94,7 +94,7 @@ async fn test_reactivate_credential_with_lvvc_success() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &issuer_did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams {
                 holder_did: Some(holder_did),
                 key: Some(issuer_key),

@@ -1,22 +1,6 @@
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::config::ConfigValidationError;
 
-pub(super) fn validate_config_entity_presence(
-    config: &CoreConfig,
-) -> Result<(), ConfigValidationError> {
-    if !config
-        .exchange
-        .iter()
-        .any(|(_, v)| v.r#type == ExchangeType::ProcivisTemporary)
-    {
-        Err(ConfigValidationError::EntryNotFound(
-            "No exchange method with type PROCIVIS_TEMPORARY".to_string(),
-        ))
-    } else {
-        Ok(())
-    }
-}
-
 pub(super) fn validate_exchange_type(
     expected_exchange_type: ExchangeType,
     config: &CoreConfig,

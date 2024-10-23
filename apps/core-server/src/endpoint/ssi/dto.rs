@@ -30,76 +30,24 @@ use one_core::service::key::dto::{
 };
 use one_core::service::oidc::dto::OpenID4VCICredentialResponseDTO;
 use one_core::service::ssi_issuer::dto::{
-    ConnectIssuerResponseDTO, IssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO,
-    JsonLDEntityDTO, JsonLDInlineEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
+    IssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO,
+    JsonLDInlineEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
 };
-use one_core::service::ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO};
 use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
 use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
-use shared_types::{CredentialId, DidValue, KeyId, ProofId, TrustAnchorId, TrustEntityId};
+use shared_types::{CredentialId, DidValue, KeyId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use super::mapper::convert_mdoc_claims;
-use crate::endpoint::credential::dto::CredentialDetailClaimResponseRestDTO;
-use crate::endpoint::credential_schema::dto::{
-    CredentialSchemaListItemResponseRestDTO, CredentialSchemaResponseRestDTO, CredentialSchemaType,
-    WalletStorageTypeRestEnum,
-};
-use crate::endpoint::did::dto::DidListItemResponseRestDTO;
+use crate::endpoint::credential_schema::dto::{CredentialSchemaType, WalletStorageTypeRestEnum};
 use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
 use crate::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use crate::serialize::{front_time, front_time_option};
-
-#[derive(Deserialize, IntoParams)]
-#[into_params(parameter_in = Query)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ProofRejectQueryParams {
-    pub proof: ProofId,
-}
-
-#[derive(Deserialize, IntoParams)]
-#[into_params(parameter_in = Query)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ProofSubmitQueryParams {
-    pub proof: ProofId,
-    pub did_value: DidValue,
-}
-
-// verifier specific
-#[derive(Deserialize, IntoParams)]
-#[into_params(parameter_in = Query)]
-#[serde(rename_all = "camelCase")]
-pub struct PostSsiVerifierConnectQueryParams {
-    pub protocol: String,
-    pub proof: ProofId,
-    pub redirect_uri: Option<String>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[from(ConnectVerifierResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub struct ConnectVerifierResponseRestDTO {
-    #[from(with_fn = convert_inner)]
-    pub claims: Vec<ProofRequestClaimRestDTO>,
-    pub verifier_did: DidValue,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(ConnectIssuerResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub struct ConnectIssuerResponseRestDTO {
-    pub id: CredentialId,
-    pub schema: CredentialSchemaResponseRestDTO,
-    pub issuer_did: DidListItemResponseRestDTO,
-    #[from(with_fn = convert_inner)]
-    pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
-    pub redirect_uri: Option<String>,
-}
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(OpenID4VCIIssuerMetadataResponseDTO)]
@@ -403,23 +351,6 @@ pub struct NestedPresentationSubmissionDescriptorRestDTO {
 #[from(OpenID4VPDirectPostResponseDTO)]
 pub struct OpenID4VPDirectPostResponseRestDTO {
     pub redirect_uri: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
-#[serde(rename_all = "camelCase")]
-#[from(ProofRequestClaimDTO)]
-pub struct ProofRequestClaimRestDTO {
-    pub id: Uuid,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub created_date: OffsetDateTime,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub last_modified: OffsetDateTime,
-    pub key: String,
-    pub datatype: String,
-    pub required: bool,
-    pub credential_schema: CredentialSchemaListItemResponseRestDTO,
 }
 
 // issuer specific

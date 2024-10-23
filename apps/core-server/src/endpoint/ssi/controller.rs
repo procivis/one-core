@@ -1,4 +1,4 @@
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::{Form, Json};
@@ -16,47 +16,20 @@ use shared_types::{
 use uuid::Uuid;
 
 use super::dto::{
-    ConnectIssuerResponseRestDTO, ConnectVerifierResponseRestDTO, DidDocumentRestDTO,
-    GetTrustAnchorResponseRestDTO, IssuerResponseRestDTO, JsonLDContextResponseRestDTO,
-    OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
-    OpenID4VCICredentialResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
-    OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
+    DidDocumentRestDTO, GetTrustAnchorResponseRestDTO, IssuerResponseRestDTO,
+    JsonLDContextResponseRestDTO, OpenID4VCICredentialOfferRestDTO,
+    OpenID4VCICredentialRequestRestDTO, OpenID4VCICredentialResponseRestDTO,
+    OpenID4VCIDiscoveryResponseRestDTO, OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
     OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
     OpenID4VCITokenResponseRestDTO, OpenID4VPClientMetadataResponseRestDTO,
     OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
-    OpenID4VPPresentationDefinitionResponseRestDTO, PostSsiIssuerConnectQueryParams,
-    PostSsiIssuerRejectQueryParams, PostSsiIssuerSubmitQueryParams,
-    PostSsiVerifierConnectQueryParams, ProofRejectQueryParams, ProofSubmitQueryParams,
+    OpenID4VPPresentationDefinitionResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::OkOrErrorResponse;
 use crate::endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO;
 use crate::endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO;
 use crate::router::AppState;
-
-#[utoipa::path(
-    post,
-    path = "/ssi/temporary-verifier/v1/connect",
-    responses(OkOrErrorResponse<ConnectVerifierResponseRestDTO>),
-    params(
-        PostSsiVerifierConnectQueryParams
-    ),
-    tag = "ssi",
-)]
-pub(crate) async fn ssi_verifier_connect(
-    state: State<AppState>,
-    WithRejection(Query(query), _): WithRejection<
-        Query<PostSsiVerifierConnectQueryParams>,
-        ErrorResponseRestDTO,
-    >,
-) -> OkOrErrorResponse<ConnectVerifierResponseRestDTO> {
-    let result = state
-        .core
-        .ssi_verifier_service
-        .connect_to_holder(&query.proof, &query.redirect_uri)
-        .await;
-    OkOrErrorResponse::from_result(result, state, "connecting verifier")
-}
 
 #[utoipa::path(
     get,
@@ -613,118 +586,6 @@ pub(crate) async fn oidc_client_metadata(
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
-}
-
-#[utoipa::path(
-    post,
-    path = "/ssi/temporary-verifier/v1/reject",
-    responses(EmptyOrErrorResponse),
-    params(ProofRejectQueryParams),
-    tag = "ssi"
-)]
-pub(crate) async fn ssi_verifier_reject_proof(
-    state: State<AppState>,
-    WithRejection(Query(query), _): WithRejection<
-        Query<ProofRejectQueryParams>,
-        ErrorResponseRestDTO,
-    >,
-) -> EmptyOrErrorResponse {
-    let result = state
-        .core
-        .ssi_verifier_service
-        .reject_proof(&query.proof)
-        .await;
-    EmptyOrErrorResponse::from_result(result, state, "rejecting proof")
-}
-
-#[utoipa::path(
-    post,
-    path = "/ssi/temporary-verifier/v1/submit",
-    request_body = String, // signed JWT
-    responses(EmptyOrErrorResponse),
-    params(ProofSubmitQueryParams ),
-    tag = "ssi",
-)]
-pub(crate) async fn ssi_verifier_submit_proof(
-    state: State<AppState>,
-    WithRejection(Query(query), _): WithRejection<
-        Query<ProofSubmitQueryParams>,
-        ErrorResponseRestDTO,
-    >,
-    request: String,
-) -> EmptyOrErrorResponse {
-    let result = state
-        .core
-        .ssi_verifier_service
-        .submit_proof(query.proof, query.did_value, &request)
-        .await;
-    EmptyOrErrorResponse::from_result(result, state, "submitting proof")
-}
-
-#[utoipa::path(
-    post,
-    path = "/ssi/temporary-issuer/v1/connect",
-    responses(OkOrErrorResponse<ConnectIssuerResponseRestDTO>),
-    params(PostSsiIssuerConnectQueryParams),
-    tag = "ssi",
-)]
-pub(crate) async fn ssi_issuer_connect(
-    state: State<AppState>,
-    WithRejection(Query(query), _): WithRejection<
-        Query<PostSsiIssuerConnectQueryParams>,
-        ErrorResponseRestDTO,
-    >,
-) -> OkOrErrorResponse<ConnectIssuerResponseRestDTO> {
-    let result = state
-        .core
-        .ssi_issuer_service
-        .issuer_connect(&query.protocol, &query.credential)
-        .await;
-    OkOrErrorResponse::from_result(result, state, "connecting to issuer")
-}
-
-#[utoipa::path(
-    post,
-    path = "/ssi/temporary-issuer/v1/reject",
-    responses(EmptyOrErrorResponse),
-    params(PostSsiIssuerRejectQueryParams),
-    tag = "ssi"
-)]
-pub(crate) async fn ssi_issuer_reject(
-    state: State<AppState>,
-    WithRejection(Query(query), _): WithRejection<
-        Query<PostSsiIssuerRejectQueryParams>,
-        ErrorResponseRestDTO,
-    >,
-) -> EmptyOrErrorResponse {
-    let result = state
-        .core
-        .ssi_issuer_service
-        .issuer_reject(&query.credential_id)
-        .await;
-    EmptyOrErrorResponse::from_result(result, state, "rejecting proof")
-}
-
-#[utoipa::path(
-    post,
-    path = "/ssi/temporary-issuer/v1/submit",
-    responses(OkOrErrorResponse<IssuerResponseRestDTO>),
-    params(PostSsiIssuerSubmitQueryParams),
-    tag = "ssi",
-)]
-pub(crate) async fn ssi_issuer_submit(
-    state: State<AppState>,
-    WithRejection(Query(query), _): WithRejection<
-        Query<PostSsiIssuerSubmitQueryParams>,
-        ErrorResponseRestDTO,
-    >,
-) -> OkOrErrorResponse<IssuerResponseRestDTO> {
-    let result = state
-        .core
-        .ssi_issuer_service
-        .issuer_submit(&query.credential_id, query.did_value)
-        .await;
-    OkOrErrorResponse::from_result(result, state, "accepting credential")
 }
 
 #[utoipa::path(

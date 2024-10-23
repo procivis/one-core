@@ -54,7 +54,7 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams::default(),
         )
         .await;
@@ -143,7 +143,7 @@ async fn test_revoke_credential_with_lvvc_success() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams {
                 holder_did: Some(holder_did),
                 key: Some(key),

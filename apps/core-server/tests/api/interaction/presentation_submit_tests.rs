@@ -1,13 +1,10 @@
-use std::str::FromStr;
-
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
-use shared_types::DidValue;
 use uuid::Uuid;
 use wiremock::http::Method;
-use wiremock::matchers::{body_string_contains, method, path, query_param};
+use wiremock::matchers::{body_string_contains, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::fixtures::{
@@ -16,156 +13,6 @@ use crate::fixtures::{
 };
 use crate::utils;
 use crate::utils::server::run_server;
-
-#[tokio::test]
-async fn test_presentation_submit_endpoint_for_procivis_temp() {
-    // GIVEN
-    let mock_server = MockServer::start().await;
-    let config = fixtures::create_config(mock_server.uri(), None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let issuer_did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
-
-    let key = fixtures::create_eddsa_key(&db_conn, &organisation).await;
-    let holder_did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::Authentication,
-                key,
-            }]),
-            did: Some(
-                DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")
-                    .unwrap(),
-            ),
-            ..Default::default()
-        }),
-    )
-    .await;
-
-    let credential_schema = fixtures::create_credential_schema(
-        &db_conn,
-        &organisation,
-        Some(TestingCredentialSchemaParams {
-            name: Some("Schema1".to_string()),
-            ..Default::default()
-        }),
-    )
-    .await;
-
-    let credential = fixtures::create_credential(
-        &db_conn,
-        &credential_schema,
-        CredentialStateEnum::Accepted,
-        &issuer_did,
-        "PROCIVIS_TEMPORARY",
-        TestingCredentialParams {
-            holder_did: Some(holder_did.clone()),
-            credential: Some("TOKEN"),
-            ..Default::default()
-        },
-    )
-    .await;
-
-    let verifier_url = mock_server.uri();
-    let claims = credential.claims.clone().unwrap();
-
-    let interaction = fixtures::create_interaction(
-        &db_conn,
-        &verifier_url,
-        json!(
-            [
-                {
-                    "id": claims.first().unwrap().id.clone(),
-                    "createdDate": "2023-11-15T11:59:13.924Z",
-                    "lastModified": "2023-11-15T11:59:13.924Z",
-                    "key": "firstName",
-                    "datatype": "STRING",
-                    "required": true,
-                    "credentialSchema": {
-                        "id": credential_schema.id,
-                        "createdDate": "2023-11-15T11:59:13.924Z",
-                        "lastModified": "2023-11-15T11:59:13.924Z",
-                        "name": "Schema1",
-                        "format": "JWT",
-                        "revocationMethod": "NONE",
-                        "schemaType": "ProcivisOneSchema2024",
-                        "schemaId": credential_schema.schema_id
-                    }
-                }
-            ]
-        )
-        .to_string()
-        .as_bytes(),
-        &organisation,
-    )
-    .await;
-
-    let proof = fixtures::create_proof(
-        &db_conn,
-        &verifier_did,
-        None,
-        None,
-        ProofStateEnum::Pending,
-        "PROCIVIS_TEMPORARY",
-        Some(&interaction),
-    )
-    .await;
-
-    Mock::given(method(Method::POST))
-        .and(path("/ssi/temporary-verifier/v1/submit"))
-        .and(query_param("proof", proof.id.to_string()))
-        .respond_with(ResponseTemplate::new(200))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    // WHEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let _handle = run_server(listener, config, &db_conn);
-
-    let url = format!("{base_url}/api/interaction/v1/presentation-submit");
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "interactionId": interaction.id,
-          "didId": holder_did.id,
-          "submitCredentials": {
-            "input_0": {
-              "credentialId": credential.id,
-              "submitClaims": [
-                credential.claims.unwrap().first().unwrap().id
-              ]
-            }
-          }
-        }))
-        .send()
-        .await
-        .unwrap();
-
-    // THEN
-    assert_eq!(resp.status(), 204);
-    let proof = fixtures::get_proof(&db_conn, &proof.id).await;
-    assert!(proof
-        .state
-        .as_ref()
-        .unwrap()
-        .iter()
-        .any(|p| p.state == ProofStateEnum::Accepted));
-    assert!(proof
-        .claims
-        .as_ref()
-        .unwrap()
-        .iter()
-        .any(|c| c.claim.value == "test"));
-    assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
-    assert_eq!(proof.holder_did.unwrap().did, holder_did.did);
-}
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vc() {

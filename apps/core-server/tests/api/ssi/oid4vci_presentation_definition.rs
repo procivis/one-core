@@ -222,7 +222,7 @@ async fn test_get_presentation_definition_failed_wrong_exchange_type() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             Some(&interaction),
             verifier_key,
         )

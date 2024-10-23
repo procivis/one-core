@@ -51,11 +51,6 @@ rusty_fork_test! {
                     order: 0
                     params: {}
             exchange:
-                PROCIVIS_TEMPORARY:
-                    display: 'display'
-                    type: 'PROCIVIS_TEMPORARY'
-                    order: 0
-                    params: null
                 OPENID4VC:
                     display: 'display'
                     order: 1
@@ -159,7 +154,6 @@ rusty_fork_test! {
         }
         "};
 
-        env::set_var("ONE_exchange__PROCIVIS_TEMPORARY__order", "10");
         env::set_var("ONE_keyAlgorithm__BBS_PLUS__display", "NewDisplay");
         env::set_var("ONE_app__serverIp", "192.168.1.1");
 
@@ -223,14 +217,6 @@ rusty_fork_test! {
             bbs_plus.params.as_ref().unwrap().private,
             Some(json!({ "test_array": ["4", "5", "6"] })) // via config 5
         );
-
-        let temporary = config
-            .core
-            .exchange
-            .get_fields("PROCIVIS_TEMPORARY")
-            .unwrap();
-
-        assert_eq!(temporary.order, Some(10)); // via env 1
 
         assert_eq!(bbs_plus.display, "NewDisplay"); // via env 2
 

@@ -582,7 +582,7 @@ async fn test_get_proof_with_relations() {
         issuance_date: Set(get_dummy_date()),
         redirect_uri: Set(None),
         deleted_at: Set(None),
-        exchange: Set("PROCIVIS_TEMPORARY".to_owned()),
+        exchange: Set("OPENID4VC".to_owned()),
         credential: Set(vec![0, 0, 0, 0]),
         role: Set(credential::CredentialRole::Issuer),
         issuer_did_id: Set(Some(did_id)),
@@ -898,7 +898,7 @@ async fn test_set_proof_claims_success() {
         &db,
         &credential_schema_id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did_id,
         None,
     )

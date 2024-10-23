@@ -43,7 +43,6 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::ssi_issuer::dto::IssuerResponseDTO;
-use crate::service::ssi_validator::validate_config_entity_presence;
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::{history_event, log_history_event_credential, log_history_event_proof};
 use crate::util::oidc::{
@@ -58,8 +57,6 @@ impl SSIHolderService {
         organisation_id: OrganisationId,
         transport: Option<Vec<String>>,
     ) -> Result<InvitationResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
         let organisation = self
             .organisation_repository
             .get_organisation(&organisation_id, &Default::default())
@@ -164,8 +161,6 @@ impl SSIHolderService {
         &self,
         interaction_id: &InteractionId,
     ) -> Result<(), ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
         let proof = self
             .proof_repository
             .get_proof_by_interaction_id(
@@ -237,8 +232,6 @@ impl SSIHolderService {
         &self,
         submission: PresentationSubmitRequestDTO,
     ) -> Result<(), ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
         let Some(proof) = self
             .proof_repository
             .get_proof_by_interaction_id(
@@ -565,8 +558,6 @@ impl SSIHolderService {
         did_id: DidId,
         key_id: Option<KeyId>,
     ) -> Result<(), ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
         let credentials = self
             .credential_repository
             .get_credentials_by_interaction_id(
@@ -731,8 +722,6 @@ impl SSIHolderService {
         &self,
         interaction_id: &InteractionId,
     ) -> Result<(), ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
         let credentials = self
             .credential_repository
             .get_credentials_by_interaction_id(
