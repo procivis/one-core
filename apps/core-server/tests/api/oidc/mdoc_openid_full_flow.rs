@@ -141,7 +141,7 @@ async fn test_openid4vc_mdoc_flow(
             &schema_id,
             "Test",
             &server_organisation,
-            "NONE",
+            "MDOC_MSO_UPDATE_SUSPENSION",
             &new_claim_schemas,
             "MDOC",
             doctype,

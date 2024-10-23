@@ -762,7 +762,7 @@ impl CredentialService {
             .await?;
 
         if format == "MDOC" {
-            let interaction_data: HolderInteractionData = deserialize_interaction_data(
+            let mut interaction_data: HolderInteractionData = deserialize_interaction_data(
                 credential
                     .interaction
                     .as_ref()
@@ -772,7 +772,7 @@ impl CredentialService {
             let result = update_mso_interaction_access_token(
                 &mut credential,
                 &*self.interaction_repository,
-                interaction_data.clone(),
+                &mut interaction_data,
                 &*self.client,
             )
             .await;
@@ -782,7 +782,7 @@ impl CredentialService {
                     &mut credential,
                     &*self.credential_repository,
                     &*self.key_provider,
-                    interaction_data,
+                    &interaction_data,
                     &*self.client,
                 )
                 .await;
@@ -799,8 +799,14 @@ impl CredentialService {
             }
 
             // If update could not be fetched and mso is outdated
-            // mark as revoked
-            if !is_mso_up_to_date(&detail_credential) {
+            // mark as suspended
+            let new_state = if !is_mso_up_to_date(&detail_credential) {
+                CredentialStateEnum::Suspended
+            } else {
+                CredentialStateEnum::Accepted
+            };
+
+            if new_state != current_state {
                 let update_request = UpdateCredentialRequest {
                     id: credential.id,
                     credential: None,
@@ -808,7 +814,7 @@ impl CredentialService {
                     issuer_did_id: None,
                     state: Some(CredentialState {
                         created_date: OffsetDateTime::now_utc(),
-                        state: CredentialStateEnum::Revoked,
+                        state: new_state.clone(),
                         suspend_end_date: None,
                     }),
                     interaction: None,
@@ -821,8 +827,16 @@ impl CredentialService {
                     .update_credential(update_request)
                     .await?;
 
-                current_state = CredentialStateEnum::Revoked;
+                current_state = new_state;
             }
+
+            //Mdoc flow ends here. Nothing else to do for MDOC
+            return Ok(CredentialRevocationCheckResponseDTO {
+                credential_id,
+                status: current_state.into(),
+                success: true,
+                reason: None,
+            });
         }
 
         let credential_status = match current_state {
@@ -956,7 +970,7 @@ async fn obtain_and_update_new_mso(
     credential: &mut Credential,
     credentials: &dyn CredentialRepository,
     key_provider: &dyn KeyProvider,
-    interaction_data: HolderInteractionData,
+    interaction_data: &HolderInteractionData,
     client: &dyn HttpClient,
 ) -> Result<(), ServiceError> {
     let key = credential
@@ -975,7 +989,7 @@ async fn obtain_and_update_new_mso(
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
-        interaction_data.issuer_url,
+        interaction_data.issuer_url.clone(),
         &holder_did,
         key.key_type.to_owned(),
         auth_fn,
@@ -1037,7 +1051,7 @@ async fn obtain_and_update_new_mso(
 async fn update_mso_interaction_access_token(
     credential: &mut Credential,
     interactions: &dyn InteractionRepository,
-    mut interaction_data: HolderInteractionData,
+    interaction_data: &mut HolderInteractionData,
     client: &dyn HttpClient,
 ) -> Result<(), ServiceError> {
     let now = OffsetDateTime::now_utc();
@@ -1053,12 +1067,13 @@ async fn update_mso_interaction_access_token(
         let url = format!("{}/token", interaction_data.issuer_url);
         let refresh_token = interaction_data
             .refresh_token
+            .as_ref()
             .ok_or(ServiceError::Other("Missing refresh token".to_owned()))?;
 
         let token_response: OpenID4VCITokenResponseDTO = client
             .post(&url)
             .form(&[
-                ("refresh_token", refresh_token),
+                ("refresh_token", refresh_token.to_string()),
                 ("grant_type", "refresh_token".to_string()),
             ])
             .context("form error")
