@@ -5,8 +5,7 @@ use one_core::config::core_config::{self, AppConfig};
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
-    CredentialStateRelations,
+    Credential, CredentialRole, CredentialState, CredentialStateEnum,
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
@@ -23,15 +22,12 @@ use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use one_core::model::revocation_list::{
-    RevocationList, RevocationListPurpose, RevocationListRelations,
-};
-use one_core::repository::error::DataLayerError;
+use one_core::model::revocation_list::{RevocationList, RevocationListPurpose};
 use one_core::repository::DataRepository;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use sea_orm::ConnectionTrait;
-use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue, KeyId, ProofId};
+use shared_types::{CredentialSchemaId, DidId, DidValue, KeyId, ProofId};
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
 use time::OffsetDateTime;
@@ -569,24 +565,6 @@ pub async fn create_revocation_list(
     revocation_list
 }
 
-pub async fn get_revocation_list(
-    db_conn: &DbConn,
-    issuer_did: &Did,
-) -> Result<RevocationList, DataLayerError> {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
-
-    let res = data_layer
-        .get_revocation_list_repository()
-        .get_revocation_by_issuer_did_id(
-            &issuer_did.id,
-            RevocationListPurpose::Revocation,
-            &RevocationListRelations::default(),
-        )
-        .await?;
-
-    Ok(res.unwrap())
-}
-
 type ClaimPath<'a> = &'a str;
 type ClaimValue<'a> = &'a str;
 type TestClaimSchema = Uuid;
@@ -705,33 +683,6 @@ pub async fn create_proof(
         .unwrap();
 
     proof
-}
-
-pub async fn get_credential(db_conn: &DbConn, credential_id: &CredentialId) -> Credential {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
-    data_layer
-        .get_credential_repository()
-        .get_credential(
-            credential_id,
-            &CredentialRelations {
-                state: Some(CredentialStateRelations {}),
-                claims: Some(ClaimRelations {
-                    schema: Some(ClaimSchemaRelations {}),
-                }),
-                schema: Some(CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    organisation: Some(OrganisationRelations::default()),
-                }),
-                holder_did: Some(DidRelations::default()),
-                interaction: Some(InteractionRelations { organisation: None }),
-                revocation_list: None,
-                issuer_did: None,
-                key: None,
-            },
-        )
-        .await
-        .unwrap()
-        .unwrap()
 }
 
 pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {

@@ -74,7 +74,7 @@ async fn test_share_proof_success() {
         None,
         Some(&proof_schema),
         ProofStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         None,
     )
     .await;
@@ -94,10 +94,7 @@ async fn test_share_proof_success() {
     assert_eq!(resp.status(), 200);
     let resp: Value = resp.json().await.unwrap();
     let url = resp["url"].as_str().unwrap();
-    assert!(url.ends_with(&format!(
-        "/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
-        "PROCIVIS_TEMPORARY", proof.id
-    )));
+    assert!(url.starts_with("openid4vp"));
 }
 
 #[tokio::test]

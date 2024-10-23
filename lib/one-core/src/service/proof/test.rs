@@ -120,7 +120,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
@@ -215,7 +215,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -333,7 +333,7 @@ async fn test_get_proof_exists() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -576,7 +576,7 @@ async fn test_get_proof_with_array_holder() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -800,7 +800,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -1029,7 +1029,7 @@ async fn test_get_proof_with_object_array_holder() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -1240,7 +1240,7 @@ async fn test_get_proof_with_array() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -1482,7 +1482,7 @@ async fn test_get_proof_with_array_in_object() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -1730,7 +1730,7 @@ async fn test_get_proof_with_object_array() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -1912,7 +1912,7 @@ async fn test_get_proof_list_success() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
@@ -1992,7 +1992,7 @@ async fn test_get_proof_list_success() {
 
 #[tokio::test]
 async fn test_create_proof_without_related_key() {
-    let exchange = "PROCIVIS_TEMPORARY".to_string();
+    let exchange = "OPENID4VC".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -2116,7 +2116,7 @@ async fn test_create_proof_without_related_key() {
 
 #[tokio::test]
 async fn test_create_proof_with_related_key() {
-    let exchange = "PROCIVIS_TEMPORARY".to_string();
+    let exchange = "OPENID4VC".to_string();
     let verifier_key_id = Uuid::new_v4().into();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
@@ -2239,7 +2239,7 @@ async fn test_create_proof_with_related_key() {
 
 #[tokio::test]
 async fn test_create_proof_failed_no_key_with_assertion_method_role() {
-    let exchange = "PROCIVIS_TEMPORARY".to_string();
+    let exchange = "OPENID4VC".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -2322,7 +2322,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
 
 #[tokio::test]
 async fn test_create_proof_failed_incompatible_exchange() {
-    let exchange = "PROCIVIS_TEMPORARY".to_string();
+    let exchange = "OPENID4VC".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -2380,7 +2380,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
 
 #[tokio::test]
 async fn test_create_proof_did_deactivated_error() {
-    let exchange = "PROCIVIS_TEMPORARY".to_string();
+    let exchange = "OPENID4VC".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -2494,7 +2494,7 @@ async fn test_create_proof_schema_deleted() {
         .create_proof(CreateProofRequestDTO {
             proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Uuid::new_v4().into(),
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             redirect_uri: None,
             verifier_key: None,
             scan_to_verify: None,
@@ -2533,7 +2533,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
         .expect_get_capabilities()
         .once()
         .return_once(move || FormatterCapabilities {
-            proof_exchange_protocols: vec!["PROCIVIS_TEMPORARY".to_string()],
+            proof_exchange_protocols: vec!["OPENID4VC".to_string()],
             ..Default::default()
         });
     credential_formatter_provider
@@ -2552,7 +2552,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
         .create_proof(CreateProofRequestDTO {
             proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Uuid::new_v4().into(),
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             redirect_uri: None,
             verifier_key: None,
             scan_to_verify: Some(ScanToVerifyRequestDTO {
@@ -2571,7 +2571,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
 
 #[tokio::test]
 async fn test_create_proof_failed_incompatible_verification_key_storage() {
-    let exchange = "PROCIVIS_TEMPORARY".to_string();
+    let exchange = "OPENID4VC".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Uuid::new_v4().into(),

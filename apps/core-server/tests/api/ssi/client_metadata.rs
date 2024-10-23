@@ -152,7 +152,7 @@ async fn test_fail_to_get_client_metadata_wrong_exchange_protocol() {
             None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "PROCIVIS_TEMPORARY",
+            "SCAN_TO_VERIFY",
             None,
             key,
         )

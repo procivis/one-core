@@ -190,7 +190,7 @@ pub async fn insert_proof_request_to_database(
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(get_dummy_date()),
-        exchange: Set("PROCIVIS_TEMPORARY".to_string()),
+        exchange: Set("OPENID4VC".to_string()),
         transport: Set("HTTP".to_string()),
         redirect_uri: Set(None),
         verifier_did_id: Set(Some(verifier_did_id)),

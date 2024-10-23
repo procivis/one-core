@@ -9,7 +9,6 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
-use crate::config::ConfigValidationError;
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
@@ -418,59 +417,6 @@ async fn test_oidc_create_token() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_token_incorrect_protocol() {
-    let mut repository = MockCredentialSchemaRepository::default();
-    let mut credential_repository = MockCredentialRepository::default();
-    let interaction_repository = MockInteractionRepository::default();
-
-    let schema = generic_credential_schema();
-    {
-        let clone = schema.clone();
-        repository
-            .expect_get_credential_schema()
-            .times(1)
-            .with(
-                eq(schema.id.to_owned()),
-                eq(CredentialSchemaRelations::default()),
-            )
-            .returning(move |_, _| Ok(Some(clone.clone())));
-
-        let clone = schema.clone();
-        credential_repository
-            .expect_get_credentials_by_interaction_id()
-            .once()
-            .return_once(move |_, _| {
-                Ok(vec![dummy_credential(
-                    "PROCIVIS_TEMPORARY",
-                    CredentialStateEnum::Pending,
-                    false,
-                    Some(clone),
-                )])
-            });
-    }
-    let service = setup_service(Mocks {
-        credential_schema_repository: repository,
-        credential_repository,
-        interaction_repository,
-        config: generic_config().core,
-        ..Default::default()
-    });
-    let result = service
-        .oidc_create_token(
-            &schema.id,
-            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
-                pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
-            },
-        )
-        .await;
-
-    assert!(result.is_err_and(|x| matches!(
-        x,
-        ServiceError::ConfigValidationError(ConfigValidationError::InvalidType(_, _))
-    )));
-}
-
-#[tokio::test]
 async fn test_oidc_create_token_empty_pre_authorized_code() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
 
@@ -728,71 +674,6 @@ async fn test_oidc_create_credential_success() {
     let result = result.unwrap();
     assert_eq!("jwt_vc_json", result.format);
     assert_eq!("xyz", result.credential);
-}
-
-#[tokio::test]
-async fn test_oidc_create_credential_incorrect_protocol() {
-    let mut repository = MockCredentialSchemaRepository::default();
-    let mut credential_repository = MockCredentialRepository::default();
-    let mut interaction_repository = MockInteractionRepository::default();
-
-    let schema = generic_credential_schema();
-    let credential = dummy_credential(
-        "PROCIVIS_TEMPORARY",
-        CredentialStateEnum::Pending,
-        true,
-        Some(schema.clone()),
-    );
-    {
-        let clone = schema.clone();
-        repository
-            .expect_get_credential_schema()
-            .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
-
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credentials_by_interaction_id()
-            .once()
-            .return_once(move |_, _| Ok(vec![clone]));
-
-        interaction_repository
-            .expect_get_interaction()
-            .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(None, true, None, None, None))));
-    }
-
-    let service = setup_service(Mocks {
-        credential_schema_repository: repository,
-        credential_repository,
-        interaction_repository,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .oidc_create_credential(
-            &schema.id,
-            "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            OpenID4VCICredentialRequestDTO {
-                format: "jwt_vc_json".to_string(),
-                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["VerifiableCredential".to_string()],
-                }),
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "jwt".to_string(),
-                    jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImRpZDprZXk6MTIzNCJ9.eyJhdWQiOiIxMjM0NTY3ODkwIn0.y9vUcoVsVgIt96oO28qpyCqCpc2Mr2Qztligw2PBaYI".to_string(),
-                },
-            },
-        )
-        .await;
-
-    assert!(result.is_err_and(|x| matches!(
-        x,
-        ServiceError::ConfigValidationError(ConfigValidationError::InvalidType(_, _))
-    )));
 }
 
 #[tokio::test]
@@ -1400,57 +1281,6 @@ async fn test_oidc_verifier_presentation_definition_success() {
 }
 
 #[tokio::test]
-async fn test_oidc_verifier_presentation_definition_incorrect_protocol() {
-    let mut proof_repository = MockProofRepository::default();
-
-    let proof_id: ProofId = Uuid::new_v4().into();
-
-    proof_repository
-        .expect_get_proof()
-        .once()
-        .return_once(move |_, _| {
-            Ok(Some(Proof {
-                id: proof_id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                issuance_date: get_dummy_date(),
-                exchange: "PROCIVIS_TEMPORARY".to_string(),
-                transport: "HTTP".to_string(),
-                redirect_uri: None,
-                state: None,
-                schema: None,
-                claims: None,
-                verifier_did: None,
-                holder_did: None,
-                verifier_key: None,
-                interaction: Some(Interaction {
-                    id: Uuid::new_v4(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    host: None,
-                    data: None,
-                    organisation: None,
-                }),
-            }))
-        });
-
-    let service = setup_service(Mocks {
-        proof_repository,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .oidc_verifier_presentation_definition(proof_id)
-        .await;
-
-    assert!(result.is_err_and(|x| matches!(
-        x,
-        ServiceError::ConfigValidationError(ConfigValidationError::InvalidType(_, _))
-    )));
-}
-
-#[tokio::test]
 async fn test_submit_proof_failed_credential_suspended() {
     let proof_id: ProofId = Uuid::new_v4().into();
     let verifier_did = "verifier did".parse().unwrap();
@@ -1754,7 +1584,7 @@ async fn test_submit_proof_incorrect_protocol() {
     proof_repository
         .expect_get_proof_by_interaction_id()
         .once()
-        .return_once(move |_, _| Ok(Some(dummy_proof_with_protocol("PROCIVIS_TEMPORARY"))));
+        .return_once(move |_, _| Ok(Some(dummy_proof_with_protocol("OPENID4VC"))));
 
     let service = setup_service(Mocks {
         proof_repository,

@@ -124,7 +124,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -204,7 +204,7 @@ fn generic_credential_list_entity() -> Credential {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -773,7 +773,7 @@ async fn test_create_credential_success() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -843,7 +843,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -899,7 +899,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             credential_schema_id: Uuid::new_v4().into(),
             issuer_did: did_id.into(),
             issuer_key: None,
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: vec![],
             redirect_uri: None,
         })
@@ -998,7 +998,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
         issuer_key: None,
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         claim_values: vec![],
         redirect_uri: None,
     };
@@ -1093,7 +1093,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
         issuer_key: None,
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         claim_values: vec![],
         redirect_uri: None,
     };
@@ -1174,7 +1174,7 @@ async fn test_create_credential_schema_deleted() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id,
                 value: "value".to_string(),
@@ -1623,7 +1623,7 @@ async fn test_create_credential_key_with_issuer_key() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(issuer_did.keys.unwrap()[0].key.id),
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1735,7 +1735,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(key_id.into()),
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1815,7 +1815,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1881,7 +1881,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(Uuid::new_v4().into()),
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1964,7 +1964,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(key_id.into()),
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2047,7 +2047,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(key_id.into()),
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2090,7 +2090,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
     }
 
     let mut formatter_capabilities = generic_formatter_capabilities();
-    formatter_capabilities.issuance_exchange_protocols = vec!["OPENID4VC".to_string()];
+    formatter_capabilities.issuance_exchange_protocols = vec!["SCAN_TO_VERIFY".to_string()];
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -2118,7 +2118,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2655,7 +2655,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
 
     validate_create_request(
         "KEY",
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -2737,7 +2737,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
 
     validate_create_request(
         "KEY",
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -2763,7 +2763,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
 
     validate_create_request(
         "KEY",
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
             value: "Somewhere".to_string(),
@@ -2777,7 +2777,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
 
     let result = validate_create_request(
         "KEY",
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -2859,7 +2859,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
 
     validate_create_request(
         "KEY",
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -2885,7 +2885,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
 
     let result = validate_create_request(
         "KEY",
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
             value: "Somewhere".to_string(),
@@ -2904,7 +2904,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
 
     validate_create_request(
         "KEY",
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -3109,7 +3109,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -3672,7 +3672,7 @@ async fn test_get_credential_success_array_index_sorting() {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -3984,7 +3984,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -4199,7 +4199,7 @@ async fn test_get_credential_success_array_single_element() {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -4440,7 +4440,7 @@ async fn test_create_credential_array(
             credential_schema_id: Uuid::new_v4().into(),
             issuer_did: Uuid::new_v4().into(),
             issuer_key: None,
-            exchange: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "OPENID4VC".to_string(),
             claim_values: claims
                 .iter()
                 .map(|claim| CredentialRequestClaimDTO {

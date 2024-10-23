@@ -101,7 +101,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        exchange: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {

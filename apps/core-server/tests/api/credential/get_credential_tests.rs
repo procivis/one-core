@@ -20,7 +20,7 @@ async fn test_get_credential_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams::default(),
         )
         .await;
@@ -56,7 +56,7 @@ async fn test_get_credential_with_lvvc_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams::default(),
         )
         .await;

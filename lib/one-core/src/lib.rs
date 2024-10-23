@@ -26,7 +26,6 @@ use service::proof::ProofService;
 use service::proof_schema::ProofSchemaService;
 use service::ssi_holder::SSIHolderService;
 use service::ssi_issuer::SSIIssuerService;
-use service::ssi_verifier::SSIVerifierService;
 use service::task::TaskService;
 use service::trust_anchor::TrustAnchorService;
 use service::trust_entity::TrustEntityService;
@@ -108,7 +107,6 @@ pub struct OneCore {
     pub proof_schema_service: ProofSchemaService,
     pub proof_service: ProofService,
     pub config_service: ConfigService,
-    pub ssi_verifier_service: SSIVerifierService,
     pub revocation_list_service: RevocationListService,
     pub oidc_service: OIDCService,
     pub ssi_issuer_service: SSIIssuerService,
@@ -507,25 +505,10 @@ impl OneCore {
                 data_provider.get_organisation_repository().clone(),
                 data_provider.get_validity_credential_repository().clone(),
             ),
-            ssi_verifier_service: SSIVerifierService::new(
-                data_provider.get_credential_repository(),
-                data_provider.get_proof_repository(),
-                data_provider.get_did_repository(),
-                formatter_provider.clone(),
-                did_method_provider.clone(),
-                revocation_method_provider.clone(),
-                key_algorithm_provider.clone(),
-                data_provider.get_history_repository(),
-                config.clone(),
-            ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),
-                data_provider.get_credential_repository(),
-                data_provider.get_did_repository(),
-                protocol_provider.clone(),
                 config.clone(),
                 providers.core_base_url.clone(),
-                data_provider.get_history_repository(),
             ),
             // TODO - config based
             vc_api_service: VCAPIService::new(

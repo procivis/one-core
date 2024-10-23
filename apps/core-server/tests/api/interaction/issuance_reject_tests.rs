@@ -5,63 +5,6 @@ use crate::fixtures::TestingCredentialParams;
 use crate::utils::context::TestContext;
 
 #[tokio::test]
-async fn test_issuance_reject_procivis_temp() {
-    // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
-        .await;
-    let interaction = context
-        .db
-        .interactions
-        .create(
-            None,
-            &context.server_mock.uri(),
-            "".as_bytes(),
-            &organisation,
-        )
-        .await;
-    let credential = context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Pending,
-            &did,
-            "PROCIVIS_TEMPORARY",
-            TestingCredentialParams {
-                interaction: Some(interaction.to_owned()),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    context.server_mock.ssi_reject().await;
-
-    // WHEN
-    let resp = context
-        .api
-        .interactions
-        .issuance_reject(interaction.id)
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 204);
-
-    let states = context
-        .db
-        .credentials
-        .get(&credential.id)
-        .await
-        .state
-        .unwrap();
-    assert_eq!(2, states.len());
-    assert_eq!(CredentialStateEnum::Rejected, states[0].state);
-}
-
-#[tokio::test]
 async fn test_issuance_reject_openid4vc() {
     // GIVEN
     let (context, organisation, did, _) = TestContext::new_with_did().await;

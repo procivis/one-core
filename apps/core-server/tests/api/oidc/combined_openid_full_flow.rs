@@ -179,14 +179,14 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
         )
         .await;
 
-    let jsonld_credential = server_context
+    let _jsonld_credential = server_context
         .db
         .credentials
         .create(
             &jsonld_credential_schema,
             CredentialStateEnum::Offered,
             &server_did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_local_key.to_owned()),
@@ -239,10 +239,24 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
     // Valid credentials
     let sdjwt_credential_token = resp["credential"].as_str().unwrap();
 
+    let jwt = [
+        &json!(
+            {
+            "alg": "EDDSA",
+            "typ": "JSON-LD",
+            "kid": holder_did_value
+        })
+        .to_string(),
+        r#"{"aud":"test123"}"#,
+        "MissingSignature",
+    ]
+    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
+    .join(".");
+
     let resp = server_context
         .api
         .ssi
-        .temporary_submit(jsonld_credential.id, holder_did_value)
+        .issuer_create_credential(jsonld_credential_schema.id, "ldp_vc", &jwt)
         .await;
 
     assert_eq!(resp.status(), 200);

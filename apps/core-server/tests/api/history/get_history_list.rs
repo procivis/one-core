@@ -104,7 +104,7 @@ async fn test_get_history_list_schema_joins_credentials() {
                 &schema,
                 CredentialStateEnum::Created,
                 &issuer_did,
-                "PROCIVIS_TEMPORARY",
+                "OPENID4VC",
                 TestingCredentialParams::default(),
             )
             .await;

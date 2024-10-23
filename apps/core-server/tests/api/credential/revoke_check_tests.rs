@@ -55,7 +55,7 @@ async fn test_revoke_check_success_statuslist2021() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams {
                 credential: Some(credential_jwt),
                 ..Default::default()
@@ -379,7 +379,7 @@ async fn test_revoke_check_mdoc_update() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
@@ -497,7 +497,7 @@ async fn test_revoke_check_token_update() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_VALID),
                 interaction: Some(interaction),
@@ -615,7 +615,7 @@ async fn test_revoke_check_mdoc_revoked() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_OUTDATED),
                 interaction: Some(interaction),
@@ -732,7 +732,7 @@ async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams {
                 credential: Some(CREDENTIAL_CONTENT_VALID),
                 interaction: Some(interaction),

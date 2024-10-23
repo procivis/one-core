@@ -12,7 +12,6 @@ use openid4vc::model::{
 use openid4vc::openidvc_ble::OpenID4VCBLE;
 use openid4vc::openidvc_http::OpenID4VCHTTP;
 use openid4vc::openidvc_mqtt::OpenId4VcMqtt;
-use procivis_temp::ProcivisTemp;
 use serde::de::{Deserialize, DeserializeOwned};
 use serde::Serialize;
 use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId};
@@ -53,27 +52,11 @@ pub mod error;
 pub mod iso_mdl;
 mod mapper;
 pub mod openid4vc;
-pub mod procivis_temp;
 pub(crate) mod provider;
 pub mod scan_to_verify;
 
 #[cfg(test)]
 mod test;
-
-pub(super) fn get_base_url_from_interaction(
-    interaction: Option<&Interaction>,
-) -> Result<Url, ExchangeProtocolError> {
-    interaction
-        .ok_or(ExchangeProtocolError::Failed(
-            "interaction is None".to_string(),
-        ))?
-        .host
-        .as_ref()
-        .ok_or(ExchangeProtocolError::Failed(
-            "interaction host is missing".to_string(),
-        ))
-        .cloned()
-}
 
 pub fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<&Vec<u8>>,
@@ -102,17 +85,6 @@ pub(crate) fn exchange_protocol_providers_from_config(
 
     for (name, fields) in config.exchange.iter() {
         match fields.r#type {
-            ExchangeType::ProcivisTemporary => {
-                let protocol = Arc::new(ExchangeProtocolWrapper::new(ProcivisTemp::new(
-                    core_base_url.clone(),
-                    formatter_provider.clone(),
-                    key_provider.clone(),
-                    config.clone(),
-                    client.clone(),
-                )));
-
-                providers.insert(name.to_string(), protocol);
-            }
             ExchangeType::ScanToVerify => {
                 let protocol = Arc::new(ExchangeProtocolWrapper::new(ScanToVerify::new(
                     formatter_provider.clone(),

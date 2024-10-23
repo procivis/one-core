@@ -1,7 +1,10 @@
 use axum::http::StatusCode;
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
+use time::macros::format_description;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::full_flow_common::TestKey;
@@ -13,7 +16,6 @@ use crate::fixtures::TestingCredentialParams;
 use crate::utils::api_clients::interactions::SubmittedCredential;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
-
 #[tokio::test]
 async fn test_openid4vc_jsonld_flow_eddsa_eddsa() {
     test_openid4vc_jsonld_flow(eddsa_key_1(), eddsa_key_2(), "NONE").await
@@ -50,7 +52,10 @@ async fn test_openid4vc_jsonld_flow(
     revocation_method: &str,
 ) {
     // GIVEN
-    let server_context = TestContext::new().await;
+    let date_format =
+        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    let interaction_id = Uuid::new_v4();
+    let server_context = TestContext::new_with_token(&format!("{}.test", interaction_id)).await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
@@ -83,22 +88,6 @@ async fn test_openid4vc_jsonld_flow(
         )
         .await;
 
-    let credential = server_context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Offered,
-            server_did.as_ref().unwrap(),
-            "PROCIVIS_TEMPORARY",
-            TestingCredentialParams {
-                holder_did: holder_did.clone(),
-                key: local_key.to_owned(),
-                ..Default::default()
-            },
-        )
-        .await;
-
     server_context
         .db
         .json_ld_contexts
@@ -118,10 +107,11 @@ async fn test_openid4vc_jsonld_flow(
         )
         .await;
 
-    let interaction_id = Uuid::new_v4();
-
     let interaction_data = json!({
         "nonce": nonce,
+        "pre_authorized_code_used": true,
+        "access_token": format!("{}.test",interaction_id),
+        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
         "presentation_definition": {
             "id": interaction_id.to_string(),
             "input_descriptors": [{
@@ -164,6 +154,23 @@ async fn test_openid4vc_jsonld_flow(
         )
         .await;
 
+    let _credential = server_context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Offered,
+            server_did.as_ref().unwrap(),
+            "OPENID4VC",
+            TestingCredentialParams {
+                holder_did: holder_did.clone(),
+                key: local_key.to_owned(),
+                interaction: Some(interaction.to_owned()),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let proof = server_context
         .db
         .proofs
@@ -179,10 +186,24 @@ async fn test_openid4vc_jsonld_flow(
         )
         .await;
 
+    let jwt = [
+        &json!(
+            {
+            "alg": "EDDSA",
+            "typ": "JSON-LD",
+            "kid": holder_did.unwrap().did
+        })
+        .to_string(),
+        r#"{"aud":"test123"}"#,
+        "MissingSignature",
+    ]
+    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
+    .join(".");
+
     let resp = server_context
         .api
         .ssi
-        .temporary_submit(credential.id, holder_did.as_ref().unwrap().did.clone())
+        .issuer_create_credential(credential_schema.id, "ldp_vc", &jwt)
         .await;
 
     assert_eq!(resp.status(), 200);
@@ -385,7 +406,10 @@ async fn test_openid4vc_jsonld_flow_array(
     revocation_method: &str,
 ) {
     // GIVEN
-    let server_context = TestContext::new().await;
+    let date_format =
+        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    let interaction_id = Uuid::new_v4();
+    let server_context = TestContext::new_with_token(&format!("{}.test", interaction_id)).await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
@@ -440,33 +464,6 @@ async fn test_openid4vc_jsonld_flow_array(
         .prepare_cache(&[get_array_context(&credential_schema.id, "Test", &base_url)])
         .await;
 
-    let credential = server_context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Offered,
-            server_did.as_ref().unwrap(),
-            "PROCIVIS_TEMPORARY",
-            TestingCredentialParams {
-                holder_did: holder_did.clone(),
-                key: local_key.to_owned(),
-                claims_data: Some(vec![
-                    // Keep random order
-                    (new_claim_schemas[3].0, "root/object_array/1/field1", "FV21"),
-                    (new_claim_schemas[1].0, "root/array/0", "Value1"),
-                    (new_claim_schemas[4].0, "root/object_array/3/field2", "FV42"),
-                    (new_claim_schemas[1].0, "root/array/2", "Value3"),
-                    (new_claim_schemas[4].0, "root/object_array/0/field2", "FV12"),
-                    (new_claim_schemas[3].0, "root/object_array/2/field1", "FV31"),
-                    (new_claim_schemas[1].0, "root/array/1", "Value2"),
-                    (new_claim_schemas[4].0, "root/object_array/2/field2", "FV32"),
-                ]),
-                ..Default::default()
-            },
-        )
-        .await;
-
     let proof_schema = server_context
         .db
         .proof_schemas
@@ -480,10 +477,11 @@ async fn test_openid4vc_jsonld_flow_array(
         )
         .await;
 
-    let interaction_id = Uuid::new_v4();
-
     let interaction_data = json!({
         "nonce": nonce,
+        "pre_authorized_code_used": true,
+        "access_token": format!("{}.test",interaction_id),
+        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
         "presentation_definition": {
             "id": interaction_id.to_string(),
             "input_descriptors": [{
@@ -527,6 +525,34 @@ async fn test_openid4vc_jsonld_flow_array(
         )
         .await;
 
+    let _credential = server_context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Offered,
+            server_did.as_ref().unwrap(),
+            "OPENID4VC",
+            TestingCredentialParams {
+                holder_did: holder_did.clone(),
+                key: local_key.to_owned(),
+                claims_data: Some(vec![
+                    // Keep random order
+                    (new_claim_schemas[3].0, "root/object_array/1/field1", "FV21"),
+                    (new_claim_schemas[1].0, "root/array/0", "Value1"),
+                    (new_claim_schemas[4].0, "root/object_array/3/field2", "FV42"),
+                    (new_claim_schemas[1].0, "root/array/2", "Value3"),
+                    (new_claim_schemas[4].0, "root/object_array/0/field2", "FV12"),
+                    (new_claim_schemas[3].0, "root/object_array/2/field1", "FV31"),
+                    (new_claim_schemas[1].0, "root/array/1", "Value2"),
+                    (new_claim_schemas[4].0, "root/object_array/2/field2", "FV32"),
+                ]),
+                interaction: Some(interaction.to_owned()),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let proof = server_context
         .db
         .proofs
@@ -542,10 +568,24 @@ async fn test_openid4vc_jsonld_flow_array(
         )
         .await;
 
+    let jwt = [
+        &json!(
+            {
+            "alg": "EDDSA",
+            "typ": "JSON-LD",
+            "kid": holder_did.unwrap().did
+        })
+        .to_string(),
+        r#"{"aud":"test123"}"#,
+        "MissingSignature",
+    ]
+    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
+    .join(".");
+
     let resp = server_context
         .api
         .ssi
-        .temporary_submit(credential.id, holder_did.as_ref().unwrap().did.clone())
+        .issuer_create_credential(credential_schema.id, "ldp_vc", &jwt)
         .await;
 
     assert_eq!(resp.status(), 200);

@@ -143,7 +143,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         &db,
         &credential_schema_id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did_id.to_owned(),
         None,
     )
@@ -397,7 +397,7 @@ async fn test_get_history_list_schema_joins_credentials() {
             &db,
             &credential_schema_id,
             CredentialStateEnum::Created,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             did_id.to_owned(),
             None,
         )

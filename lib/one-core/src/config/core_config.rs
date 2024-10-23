@@ -221,9 +221,6 @@ pub type ExchangeConfig = ConfigBlock<ExchangeType>;
     AsRefStr,
 )]
 pub enum ExchangeType {
-    #[serde(rename = "PROCIVIS_TEMPORARY")]
-    #[strum(serialize = "PROCIVIS_TEMPORARY")]
-    ProcivisTemporary,
     #[serde(rename = "OPENID4VC")]
     #[strum(serialize = "OPENID4VC")]
     OpenId4Vc,

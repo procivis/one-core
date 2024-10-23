@@ -1,7 +1,10 @@
 use axum::http::StatusCode;
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::proof::{ProofClaim, ProofStateEnum};
 use serde_json::json;
+use time::macros::format_description;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::api_oidc_tests::full_flow_common::{
@@ -12,7 +15,6 @@ use crate::fixtures::TestingCredentialParams;
 use crate::utils::api_clients::interactions::SubmittedCredential;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
-
 #[tokio::test]
 async fn test_openid4vc_jsonld_bbsplus_flow_none() {
     test_openid4vc_jsonld_bbsplus_flow("NONE").await
@@ -39,7 +41,10 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     let holder_key = eddsa_key_1();
     let verifier_key = eddsa_key_2();
 
-    let server_context = TestContext::new().await;
+    let date_format =
+        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    let interaction_id = Uuid::new_v4();
+    let server_context = TestContext::new_with_token(&format!("{}.test", interaction_id)).await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
@@ -119,23 +124,6 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
         )])
         .await;
 
-    let credential = server_context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Offered,
-            &server_issuer_did.unwrap(),
-            "PROCIVIS_TEMPORARY",
-            TestingCredentialParams {
-                holder_did: Some(server_remote_holder_did.clone()),
-                key: Some(server_issuer_key.unwrap()),
-                random_claims: true,
-                ..Default::default()
-            },
-        )
-        .await;
-
     let proof_schema = server_context
         .db
         .proof_schemas
@@ -149,10 +137,11 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
         )
         .await;
 
-    let interaction_id = Uuid::new_v4();
-
     let interaction_data = json!({
         "nonce": nonce,
+        "pre_authorized_code_used": true,
+        "access_token": format!("{}.test",interaction_id),
+        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
         "presentation_definition": {
             "id": interaction_id.to_string(),
             "input_descriptors": [{
@@ -200,6 +189,24 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
         )
         .await;
 
+    let _credential = server_context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Offered,
+            &server_issuer_did.unwrap(),
+            "OPENID4VC",
+            TestingCredentialParams {
+                holder_did: Some(server_remote_holder_did.clone()),
+                key: Some(server_issuer_key.unwrap()),
+                random_claims: true,
+                interaction: Some(interaction.to_owned()),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let proof = server_context
         .db
         .proofs
@@ -215,10 +222,24 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
         )
         .await;
 
+    let jwt = [
+        &json!(
+            {
+            "alg": "BBS_PLUS",
+            "typ": "JSON-LD",
+            "kid": server_remote_holder_did.did
+        })
+        .to_string(),
+        r#"{"aud":"test123"}"#,
+        "MissingSignature",
+    ]
+    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
+    .join(".");
+
     let resp = server_context
         .api
         .ssi
-        .temporary_submit(credential.id, server_remote_holder_did.did)
+        .issuer_create_credential(credential_schema.id, "ldp_vc", &jwt)
         .await;
 
     assert_eq!(resp.status(), 200);
@@ -479,7 +500,8 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
     let holder_key = eddsa_key_1();
     let verifier_key = eddsa_key_2();
 
-    let server_context = TestContext::new().await;
+    let interaction_id = Uuid::new_v4();
+    let server_context = TestContext::new_with_token(&format!("{}.test", interaction_id)).await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
@@ -545,33 +567,6 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
         .prepare_cache(&[get_array_context(&credential_schema.id, "Test", &base_url)])
         .await;
 
-    let credential = server_context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Offered,
-            &server_issuer_did.unwrap(),
-            "PROCIVIS_TEMPORARY",
-            TestingCredentialParams {
-                holder_did: Some(server_remote_holder_did.clone()),
-                key: Some(server_issuer_key.unwrap()),
-                claims_data: Some(vec![
-                    // Keep random order
-                    (new_claim_schemas[3].0, "root/object_array/1/field1", "FV21"),
-                    (new_claim_schemas[1].0, "root/array/0", "Value1"),
-                    (new_claim_schemas[4].0, "root/object_array/3/field2", "FV42"),
-                    (new_claim_schemas[1].0, "root/array/2", "Value3"),
-                    (new_claim_schemas[4].0, "root/object_array/0/field2", "FV12"),
-                    (new_claim_schemas[3].0, "root/object_array/2/field1", "FV31"),
-                    (new_claim_schemas[1].0, "root/array/1", "Value2"),
-                    (new_claim_schemas[4].0, "root/object_array/2/field2", "FV32"),
-                ]),
-                ..Default::default()
-            },
-        )
-        .await;
-
     let proof_schema = server_context
         .db
         .proof_schemas
@@ -585,10 +580,14 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
         )
         .await;
 
-    let interaction_id = Uuid::new_v4();
+    let date_format =
+        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
 
     let interaction_data = json!({
         "nonce": nonce,
+        "pre_authorized_code_used": true,
+        "access_token": format!("{}.test",interaction_id),
+        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
         "presentation_definition": {
             "id": interaction_id.to_string(),
             "input_descriptors": [{
@@ -638,6 +637,34 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
         )
         .await;
 
+    let _credential = server_context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Offered,
+            &server_issuer_did.unwrap(),
+            "OPENID4VC",
+            TestingCredentialParams {
+                holder_did: Some(server_remote_holder_did.clone()),
+                key: Some(server_issuer_key.unwrap()),
+                claims_data: Some(vec![
+                    // Keep random order
+                    (new_claim_schemas[3].0, "root/object_array/1/field1", "FV21"),
+                    (new_claim_schemas[1].0, "root/array/0", "Value1"),
+                    (new_claim_schemas[4].0, "root/object_array/3/field2", "FV42"),
+                    (new_claim_schemas[1].0, "root/array/2", "Value3"),
+                    (new_claim_schemas[4].0, "root/object_array/0/field2", "FV12"),
+                    (new_claim_schemas[3].0, "root/object_array/2/field1", "FV31"),
+                    (new_claim_schemas[1].0, "root/array/1", "Value2"),
+                    (new_claim_schemas[4].0, "root/object_array/2/field2", "FV32"),
+                ]),
+                interaction: Some(interaction.to_owned()),
+                ..Default::default()
+            },
+        )
+        .await;
+
     let proof = server_context
         .db
         .proofs
@@ -653,10 +680,24 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
         )
         .await;
 
+    let jwt = [
+        &json!(
+            {
+            "alg": "BBS_PLUS",
+            "typ": "JSON-LD",
+            "kid": server_remote_holder_did.did
+        })
+        .to_string(),
+        r#"{"aud":"test123"}"#,
+        "MissingSignature",
+    ]
+    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
+    .join(".");
+
     let resp = server_context
         .api
         .ssi
-        .temporary_submit(credential.id, server_remote_holder_did.did)
+        .issuer_create_credential(credential_schema.id, "ldp_vc", &jwt)
         .await;
 
     assert_eq!(resp.status(), 200);
@@ -899,7 +940,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
 }
 
 #[tokio::test]
-async fn test_opeind4vc_jsondl_only_bbs_supported() {
+async fn test_opeind4vc_jsonld_only_bbs_supported() {
     // GIVEN
     let issuer_not_bbs_key = ecdsa_key_1();
     let holder_key = eddsa_key_1();
@@ -935,14 +976,28 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
         )
         .await;
 
-    let credential = server_context
+    let jwt = [
+        &json!(
+            {
+            "alg": "EDDSA",
+            "typ": "JSON-LD",
+            "kid": holder_did.did
+        })
+        .to_string(),
+        r#"{"aud":"test123"}"#,
+        "MissingSignature",
+    ]
+    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
+    .join(".");
+
+    let _credential = server_context
         .db
         .credentials
         .create(
             &credential_schema,
             CredentialStateEnum::Offered,
             &server_issuer_did.unwrap(),
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
                 key: Some(server_issuer_key.unwrap()),
@@ -954,7 +1009,7 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
     let resp = server_context
         .api
         .ssi
-        .temporary_submit(credential.id, holder_did.did)
+        .issuer_create_credential(credential_schema.id, "ldp_vc", &jwt)
         .await;
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 }

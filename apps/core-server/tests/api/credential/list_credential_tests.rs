@@ -33,7 +33,7 @@ async fn test_get_list_credential_success() {
                 &credential_schema,
                 CredentialStateEnum::Accepted,
                 &did,
-                "PROCIVIS_TEMPORARY",
+                "OPENID4VC",
                 TestingCredentialParams::default(),
             )
             .await;
@@ -74,7 +74,7 @@ async fn test_get_list_credential_deleted_credentials_are_not_returned() {
                 &credential_schema,
                 CredentialStateEnum::Created,
                 &did,
-                "PROCIVIS_TEMPORARY",
+                "OPENID4VC",
                 TestingCredentialParams::default(),
             )
             .await;
@@ -87,7 +87,7 @@ async fn test_get_list_credential_deleted_credentials_are_not_returned() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams {
                 deleted_at: Some(OffsetDateTime::now_utc()),
                 ..Default::default()
@@ -134,7 +134,7 @@ async fn test_get_list_credential_filter_by_role() {
                     &credential_schema,
                     CredentialStateEnum::Created,
                     &did,
-                    "PROCIVIS_TEMPORARY",
+                    "OPENID4VC",
                     TestingCredentialParams {
                         role: Some(role_enum.clone()),
                         ..Default::default()
@@ -204,7 +204,7 @@ async fn test_get_list_credential_filter_by_name() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             Default::default(),
         )
         .await;
@@ -216,7 +216,7 @@ async fn test_get_list_credential_filter_by_name() {
             &credential_schema2,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             Default::default(),
         )
         .await;
@@ -269,7 +269,7 @@ async fn test_get_list_credential_filter_by_ids() {
                 &credential_schema,
                 CredentialStateEnum::Accepted,
                 &did,
-                "PROCIVIS_TEMPORARY",
+                "OPENID4VC",
                 TestingCredentialParams::default(),
             )
             .await;
@@ -325,7 +325,7 @@ async fn test_get_list_credential_include_layout_properties_success() {
                 &credential_schema,
                 CredentialStateEnum::Accepted,
                 &did,
-                "PROCIVIS_TEMPORARY",
+                "OPENID4VC",
                 TestingCredentialParams::default(),
             )
             .await;
@@ -394,7 +394,7 @@ async fn test_get_list_credential_filter_by_schema_name() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             Default::default(),
         )
         .await;
@@ -406,7 +406,7 @@ async fn test_get_list_credential_filter_by_schema_name() {
             &credential_schema2,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             Default::default(),
         )
         .await;
@@ -511,7 +511,7 @@ async fn test_get_list_credential_filter_by_claim_name() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             Default::default(),
         )
         .await;
@@ -616,7 +616,7 @@ async fn test_get_list_credential_filter_by_claim_value() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             Default::default(),
         )
         .await;
@@ -721,7 +721,7 @@ async fn test_get_list_credential_filter_by_everything() {
             &credential_schema1,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             Default::default(),
         )
         .await;

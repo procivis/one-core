@@ -691,7 +691,7 @@ async fn test_get_proof_with_credentials() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             Default::default(),
         )
         .await;
@@ -927,7 +927,7 @@ async fn test_get_proof_with_deleted_claims() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             Default::default(),
         )
         .await;

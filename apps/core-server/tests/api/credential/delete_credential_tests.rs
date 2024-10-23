@@ -19,7 +19,7 @@ async fn test_delete_credential_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams::default(),
         )
         .await;

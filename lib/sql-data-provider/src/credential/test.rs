@@ -171,7 +171,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did.id,
         None,
     )
@@ -397,7 +397,7 @@ async fn test_delete_credential_success() {
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did.id,
         None,
     )
@@ -457,7 +457,7 @@ async fn test_get_credential_list_success() {
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did.id,
         None,
     )
@@ -467,7 +467,7 @@ async fn test_get_credential_list_success() {
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did.id,
         None,
     )
@@ -478,7 +478,7 @@ async fn test_get_credential_list_success() {
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did.id,
         Some(OffsetDateTime::now_utc()),
     )
@@ -593,7 +593,7 @@ async fn test_get_credential_list_success_filter_state() {
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did.id,
         None,
     )
@@ -604,7 +604,7 @@ async fn test_get_credential_list_success_filter_state() {
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did.id,
         None,
     )
@@ -784,7 +784,7 @@ async fn test_get_credential_success() {
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did.id,
         None,
     )
@@ -961,7 +961,7 @@ async fn test_update_credential_success() {
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did.id,
         None,
     )
@@ -1059,7 +1059,7 @@ async fn test_get_credential_by_claim_id_success() {
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did.id,
         None,
     )
@@ -1070,7 +1070,7 @@ async fn test_get_credential_by_claim_id_success() {
         &db,
         &credential_schema.id,
         CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
+        "OPENID4VC",
         did.id,
         None,
     )

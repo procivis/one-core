@@ -20,7 +20,7 @@ async fn test_share_credential_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             TestingCredentialParams::default(),
         )
         .await;
@@ -35,13 +35,8 @@ async fn test_share_credential_success() {
     assert!(resp.get("url").is_some());
 
     let url: String = resp["url"].parse();
-    assert!(url.ends_with(
-        format!(
-            "/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
-            "PROCIVIS_TEMPORARY", credential.id
-        )
-        .as_str()
-    ));
+
+    assert!(url.starts_with("openid-credential-offer"));
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(

@@ -81,7 +81,7 @@ async fn test_delete_proof_claims_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &verifier_did,
-            "PROCIVIS_TEMPORARY",
+            "OPENID4VC",
             Default::default(),
         )
         .await;
