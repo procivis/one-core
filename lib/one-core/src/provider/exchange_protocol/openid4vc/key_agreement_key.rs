@@ -1,5 +1,5 @@
 use aes_gcm::aead::OsRng;
-use anyhow::anyhow;
+use anyhow::Context;
 use hkdf::Hkdf;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::Hasher;
@@ -32,20 +32,18 @@ impl KeyAgreementKey {
         let hasher = SHA256 {};
 
         // See https://github.com/openid/openid4vp_ble/issues/47#issuecomment-1991006348
-        let salt = hasher
-            .hash(&nonce)
-            .map_err(|e| anyhow!("Failed to generate salt: {e}"))?;
+        let salt = hasher.hash(&nonce).context("Failed to generate salt")?;
 
         let mut wallet_key: [u8; 32] = [0; 32];
         let mut verifier_key: [u8; 32] = [0; 32];
 
         Hkdf::<sha2::Sha256>::new(Some(&salt), z_ab.as_bytes())
             .expand("SKWallet".as_bytes(), &mut wallet_key)
-            .map_err(|e| anyhow!("Failed to expand session key: {e}"))?;
+            .context("Failed to expand SKWallet session key")?;
 
         Hkdf::<sha2::Sha256>::new(Some(&salt), z_ab.as_bytes())
             .expand("SKVerifier".as_bytes(), &mut verifier_key)
-            .map_err(|e| anyhow!("Failed to expand session key: {e}"))?;
+            .context("Failed to expand SKVerifier session key")?;
 
         Ok((wallet_key, verifier_key))
     }

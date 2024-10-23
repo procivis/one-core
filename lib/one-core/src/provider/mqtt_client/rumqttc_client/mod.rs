@@ -62,8 +62,9 @@ impl RumqttcClient {
             &broker_addr.host,
             broker_addr.port,
         );
-        mqttoptions.set_transport(Transport::Tls(TlsConfiguration::Native));
-        mqttoptions.set_max_packet_size(PACKET_SIZE_LIMIT, PACKET_SIZE_LIMIT);
+        mqttoptions
+            .set_transport(Transport::Tls(TlsConfiguration::Native))
+            .set_max_packet_size(PACKET_SIZE_LIMIT, PACKET_SIZE_LIMIT);
 
         let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
 

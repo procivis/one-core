@@ -45,11 +45,21 @@ impl KeyStorage for SecureElementKeyProvider {
         let key_id = key_id.ok_or(KeyStorageError::Failed("Missing key id".to_string()))?;
 
         let key_alias = format!("{}.{}", self.params.alias_prefix, key_id);
-        self.native_storage.generate_key(key_alias)
+        let native_storage = Arc::clone(&self.native_storage);
+
+        tokio::task::spawn_blocking(move || native_storage.generate_key(key_alias))
+            .await
+            .map_err(|error| SignerError::CouldNotSign(error.to_string()))?
     }
 
     async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        self.native_storage.sign(&key.key_reference, message)
+        let native_storage = Arc::clone(&self.native_storage);
+        let message = message.to_vec();
+        let key_reference = key.key_reference.clone();
+
+        tokio::task::spawn_blocking(move || native_storage.sign(&key_reference, &message))
+            .await
+            .map_err(|error| SignerError::CouldNotSign(error.to_string()))?
     }
 
     fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, KeyStorageError> {

@@ -614,7 +614,7 @@ impl OIDCService {
                         Uuid::from_str(&mqtt_response.presentation_submission.definition_id)
                             .map_err(|e| {
                                 ServiceError::MappingError(format!(
-                                    "Failed to parse BLE interaction data: {:?}",
+                                    "Failed to parse MQTT interaction data: {:?}",
                                     e.to_string()
                                 ))
                             })?;
@@ -745,8 +745,14 @@ impl OIDCService {
                             state: ProofStateEnum::Accepted,
                         },
                     )
-                    .await
-                    .map_err(ServiceError::from)?;
+                    .await?;
+
+                let _ = log_history_event_proof(
+                    &*self.history_repository,
+                    &proof,
+                    HistoryAction::Accepted,
+                )
+                .await;
 
                 Ok(response)
             }

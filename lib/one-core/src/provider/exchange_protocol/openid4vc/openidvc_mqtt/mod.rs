@@ -270,7 +270,7 @@ impl OpenId4VcMqtt {
 
         let now = OffsetDateTime::now_utc().unix_timestamp();
         let encrypted = encryption
-            .encrypt(now)
+            .encrypt(&now)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let reject_topic_name = format!(
@@ -423,7 +423,7 @@ impl OpenId4VcMqtt {
         );
 
         let encrypted = encryption
-            .encrypt(response)
+            .encrypt(&response)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let presentation_submission_topic = self

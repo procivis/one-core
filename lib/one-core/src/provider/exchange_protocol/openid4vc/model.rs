@@ -118,6 +118,7 @@ pub struct MQTTOpenId4VpResponse {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MQTTOpenID4VPInteractionDataVerifier {
+    pub presentation_definition: OpenID4VPPresentationDefinition,
     pub presentation_submission: MQTTOpenId4VpResponse,
     pub nonce: String,
     pub identity_request_nonce: String,

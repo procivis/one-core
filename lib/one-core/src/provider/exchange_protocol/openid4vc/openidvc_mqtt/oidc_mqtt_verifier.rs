@@ -75,17 +75,11 @@ pub(super) async fn mqtt_verifier_flow(
         let shared_key =
             PeerEncryption::new(encryption_key, decryption_key, identity_request.nonce);
 
-        let client_id = presentation_request.client_id.clone();
-        let nonce = presentation_request.nonce.clone();
-        let identity_request_nonce = hex::encode(identity_request.nonce);
-
-        let bytes = shared_key.encrypt(presentation_request)?;
-
+        let bytes = shared_key.encrypt(&presentation_request)?;
         topics.presentation_definition.send(bytes).await?;
+        set_proof_state(&proof, ProofStateEnum::Requested, &*proof_repository, &*history_repository).await?;
 
         tracing::debug!("presentation_definition is sent");
-
-        set_proof_state(&proof, ProofStateEnum::Requested, &*proof_repository, &*history_repository).await?;
 
         let reject = async {
             loop {
@@ -134,18 +128,17 @@ pub(super) async fn mqtt_verifier_flow(
                         host: None,
                         data: Some(
                             serde_json::to_vec(&MQTTOpenID4VPInteractionDataVerifier {
+                                presentation_definition: presentation_request.presentation_definition,
                                 presentation_submission,
-                                nonce,
-                                client_id,
-                                identity_request_nonce,
+                                nonce: presentation_request.nonce,
+                                client_id: presentation_request.client_id,
+                                identity_request_nonce: hex::encode(identity_request.nonce),
                             })
                             .context("failed to serialize presentation_submission")?,
                         ),
                         organisation: Some(organisation.clone()),
                     })
                     .await?;
-
-                set_proof_state(&proof, ProofStateEnum::Accepted, &*proof_repository, &*history_repository).await?;
             },
             _ = reject => {
                 tracing::debug!("got reject message");                
