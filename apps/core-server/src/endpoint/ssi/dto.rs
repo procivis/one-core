@@ -111,6 +111,7 @@ pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO {
     #[from(with_fn = convert_inner)]
     #[serde(skip_serializing_if = "HashMap::is_empty", default)]
     pub value: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>,
+    /// Indication of what type of key storage the wallet should use. See the [wallet storage type](/api/resources/credential_schemas#wallet-storage-type) guide.
     pub value_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mandatory: Option<bool>,
@@ -194,6 +195,7 @@ pub struct DidVerificationMethodRestDTO {
     pub public_key_jwk: PublicKeyJwkRestDTO,
 }
 
+/// JWK representation of the public key used to verify the DID.
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "kty")]
@@ -424,6 +426,7 @@ pub struct OpenID4VCICredentialOfferCredentialRestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRestDTO>,
+    /// Indication of what type of key storage the wallet should use. See the [wallet storage type](/api/resources/credential_schemas#wallet-storage-type) guide.
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     #[serde(skip_serializing_if = "Option::is_none")]

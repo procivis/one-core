@@ -28,6 +28,8 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve key",
+    description = "Returns detailed information on a key.",
 )]
 pub(crate) async fn get_key(
     state: State<AppState>,
@@ -62,6 +64,8 @@ pub(crate) async fn get_key(
     security(
         ("bearer" = [])
     ),
+    summary = "Create a key",
+    description = "Creates a key within an organization, which can be used to create a DID.",
 )]
 pub(crate) async fn post_key(
     state: State<AppState>,
@@ -80,6 +84,8 @@ pub(crate) async fn post_key(
     security(
         ("bearer" = [])
     ),
+    summary = "List keys",
+    description = "Returns a list of keys created in an organization.",
 )]
 pub(crate) async fn get_key_list(
     state: State<AppState>,
@@ -119,6 +125,8 @@ pub(crate) async fn get_key_list(
     security(
         ("bearer" = [])
     ),
+    summary = "Check certificate",
+    description = "",
 )]
 pub(crate) async fn check_certificate(
     state: State<AppState>,
@@ -149,6 +157,11 @@ pub(crate) async fn check_certificate(
     security(
         ("bearer" = [])
     ),
+    summary = "Generate a CSR",
+    description = indoc::formatdoc! {"
+        Generates a Certificate Signing Request (CSR). These are used to create mDL DS certificates, enabling mdoc issuance.
+        See the [mdoc guide](/guides/mdocs#configuring-mdocs-issuance) for more.
+    "},
 )]
 pub(crate) async fn generate_csr(
     state: State<AppState>,

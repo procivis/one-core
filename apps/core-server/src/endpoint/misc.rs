@@ -6,6 +6,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde_json::{json, Value};
 
+use crate::build_info;
 use crate::metrics::encode_metrics;
 
 #[utoipa::path(
@@ -15,20 +16,18 @@ use crate::metrics::encode_metrics;
         (status = 200, description = "Ok")
     ),
     tag = "other",
+    summary = "Retrieve version",
+    description = "Returns version information for Procivis One.",
 )]
 pub(crate) async fn get_build_info() -> Json<Value> {
-    use shadow_rs::shadow;
-
-    shadow!(build);
-
     Json::from(json!({
-        "target": String::from(build::BUILD_RUST_CHANNEL),
-        "build_time": String::from(build::BUILD_TIME),
-        "branch": String::from(build::BRANCH),
-        "tag": String::from(build::TAG),
-        "commit": String::from(build::COMMIT_HASH),
-        "rust_version": String::from(build::RUST_VERSION),
-        "pipeline_id": String::from(build::CI_PIPELINE_ID),
+        "target": String::from(build_info::BUILD_RUST_CHANNEL),
+        "build_time": String::from(build_info::BUILD_TIME),
+        "branch": String::from(build_info::BRANCH),
+        "tag": String::from(build_info::TAG),
+        "commit": String::from(build_info::COMMIT_HASH),
+        "rust_version": String::from(build_info::RUST_VERSION),
+        "pipeline_id": String::from(build_info::CI_PIPELINE_ID),
     }))
 }
 
@@ -39,6 +38,8 @@ pub(crate) async fn get_build_info() -> Json<Value> {
         (status = 204, description = "No content")
     ),
     tag = "other",
+    summary = "Health check",
+    description = "Returns a `204` response when the system is healthy.",
 )]
 pub(crate) async fn health_check() -> impl IntoResponse {
     StatusCode::NO_CONTENT
@@ -52,6 +53,8 @@ pub(crate) async fn health_check() -> impl IntoResponse {
         (status = 500, description = "Internal error")
     ),
     tag = "other",
+    summary = "Retrieve metrics",
+    description = "Returns system metrics.",
 )]
 pub(crate) async fn get_metrics() -> Response {
     match encode_metrics() {
@@ -65,8 +68,6 @@ pub(crate) async fn get_metrics() -> Response {
 }
 
 pub(crate) fn get_openapi_yaml<S>(openapi: utoipa::openapi::OpenApi) -> impl Handler<((),), S> {
-    move || {
-        let yaml = openapi.to_yaml().unwrap();
-        future::ready((StatusCode::OK, yaml).into_response())
-    }
+    let yaml = openapi.to_yaml().unwrap();
+    move || future::ready((StatusCode::OK, yaml.clone()).into_response())
 }

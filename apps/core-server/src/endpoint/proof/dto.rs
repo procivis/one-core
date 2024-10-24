@@ -26,6 +26,7 @@ use crate::endpoint::proof_schema::dto::{
 };
 use crate::serialize::{front_time, front_time_option};
 
+/// See the [proof request states](/api/resources/proof_requests#proof-request-states) guide.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(ProofStateEnum)]
@@ -39,26 +40,38 @@ pub enum ProofStateRestEnum {
     Error,
 }
 
-// create endpoint
+/// Exchange protocol being used. See the [exchange
+/// protocols](/guides/api#exchange-protocols) guide.
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateProofRequestRestDTO {
+    /// ID of the proof schema used to request the proof.
     pub proof_schema_id: ProofSchemaId,
     #[into(rename = "verifier_did_id")]
     #[schema(example = "<uuid; did identifier>")]
     pub verifier_did: DidId,
     pub exchange: String,
+    /// When a shared proof is accepted, the holder will be redirected to
+    /// the resource specified here.
     pub redirect_uri: Option<String>,
+    /// If multiple keys are specified for the authentication method of the
+    /// DID, use this value to specify which key should be used as the
+    /// authentication method for this proof request. If a key isn't
+    /// specified here, the first key listed during DID creation will be
+    /// used.
     pub verifier_key: Option<KeyId>,
     #[into(with_fn = convert_inner)]
     pub scan_to_verify: Option<ScanToVerifyRequestRestDTO>,
+    /// Not for use via the API; for ISO mDL verification over BLE using the
+    /// SDK. See the [ISO mDL](/guides/iso_mdl_offline_protocol) guide.
     #[into(with_fn = convert_inner)]
     pub iso_mdl_engagement: Option<String>,
     #[into(with_fn = convert_inner)]
     pub transport: Option<Vec<String>>,
 }
 
+/// Only for use when verifying physical credentials. See the [physical credentials](/guides/physical_credentials) guide.
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(ScanToVerifyRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -119,20 +132,26 @@ pub struct ProofListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 
+    /// When proof request was shared.
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: OffsetDateTime,
 
+    /// When proof request state changed from `PENDING` to `REQUESTED`.
+    /// Not supported in all exchange protocols.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub requested_date: Option<OffsetDateTime>,
 
+    /// Time at which the data shared by the holder for this proof request will be deleted.
+    /// Determined by the `expireDuration` parameter of the proof schema.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub retain_until_date: Option<OffsetDateTime>,
 
+    /// When holder submitted valid proof.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -141,6 +160,7 @@ pub struct ProofListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub verifier_did: Option<DidListItemResponseRestDTO>,
     pub exchange: String,
+    /// Exchange protocol being used. See the [exchange protocols](/api/exchange_protocols) guide.
     pub transport: String,
     pub state: ProofStateRestEnum,
     #[from(with_fn = convert_inner)]
@@ -171,6 +191,8 @@ pub struct PresentationDefinitionRequestGroupResponseRestDTO {
     pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseRestDTO>,
 }
 
+/// Summary of the credentials requested by the verifier, including suitable
+/// credentials filtered from the wallet.
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(PresentationDefinitionRequestedCredentialResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -304,10 +326,15 @@ pub enum ProofClaimValueRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(ProofInputDTO)]
 pub struct ProofInputRestDTO {
+    /// The set of claims being asserted by the credential shared during the proof request.
+    /// See the [claims object](/api/resources/credential_schemas#claims-object) guide.
     #[from(with_fn = convert_inner)]
     pub claims: Vec<ProofClaimRestDTO>,
+    /// The credentials exchanged as part of the successfully shared proof.
     #[from(with_fn = convert_inner)]
     pub credential: Option<GetCredentialResponseRestDTO>,
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
+    /// Defines the maximum age at which an LVVC will be validated.
+    /// See the [LVVC guide](/guides/lvvc).
     pub validity_constraint: Option<i64>,
 }

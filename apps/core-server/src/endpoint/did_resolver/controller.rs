@@ -15,10 +15,15 @@ use crate::router::AppState;
         ("didvalue" = DidValue, Path, description = "DID value")
     ),
     responses(OkOrErrorResponse<DidDocumentRestDTO>),
-    tag = "did_resolver",
+    tag = "did_management",
     security(
         ("bearer" = [])
     ),
+    summary = "Resolve a DID",
+    description = indoc::formatdoc! {"
+        Resolves a DID to its DID document, returning its verification relationships.
+        See the [DID Resolver](/api/resources/dids#did-resolver) guide for more information.
+    "},
 )]
 pub(crate) async fn resolve_did(
     state: State<AppState>,

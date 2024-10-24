@@ -20,7 +20,6 @@ use crate::endpoint::credential_schema::dto::{
 };
 use crate::serialize::{front_time, front_time_option};
 
-// create endpoint
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, Into)]
 #[into(CreateProofSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -28,7 +27,12 @@ pub struct CreateProofSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     #[schema(min_length = 1)]
     pub name: String,
+    /// Specify the organization.
     pub organisation_id: Uuid,
+    /// Defines the length of storage of received proofs, in seconds. After
+    /// the defined duration, the received proof and its data are deleted
+    /// from the system. If 0, the proofs received when using this proof
+    /// schema will not be deleted.
     pub expire_duration: Option<u32>,
     #[into(with_fn = convert_inner)]
     #[schema(min_items = 1)]
@@ -39,18 +43,28 @@ pub struct CreateProofSchemaRequestRestDTO {
 #[into(ProofInputSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofInputSchemaRequestRestDTO {
+    /// ID of the credential schema from which the `claimSchemas` object
+    /// is assembled.
     pub credential_schema_id: Uuid,
+    /// Defines the maximum age at which an LVVC will be validated. See the [LVVC guide](/guides/lvvc).
     pub validity_constraint: Option<i64>,
+    /// Defines the set of attributes being requested when making proof requests using this schema.
+    /// See the [claimSchemas object](/api/resources/proof_schemas#claimschemas-object) guide.
     #[into(with_fn = convert_inner)]
     #[schema(min_items = 1)]
     pub claim_schemas: Vec<ClaimProofSchemaRequestRestDTO>,
 }
 
+/// Defines the set of attributes being requested when making proof requests
+/// using this schema. See the [claimSchemas
+/// object](/api/resources/proof_schemas#claimschemas-object) guide.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateProofSchemaClaimRequestDTO)]
 pub struct ClaimProofSchemaRequestRestDTO {
+    /// The `id` of the attribute being requested, from the `claims` object.
     pub id: Uuid,
+    /// Whether the attribute is required in the proof request.
     pub required: bool,
 }
 
@@ -161,6 +175,8 @@ pub struct GetProofSchemaListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
+    /// The duration of storage of received proofs, in seconds. After the defined duration, the received proof and its data are deleted from the system.
+    /// If 0, the proofs received when using this proof schema will not be deleted.
     pub expire_duration: u32,
 }
 
@@ -184,6 +200,8 @@ pub struct GetProofSchemaResponseRestDTO {
     pub proof_input_schemas: Vec<ProofInputSchemaResponseRestDTO>,
 }
 
+/// The set of attributes being requested when using this proof schema.
+/// See the [claimSchemas object](/api/resources/proof_schemas#claimschemas-object) guide.
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofClaimSchemaResponseDTO)]
@@ -191,6 +209,7 @@ pub struct ProofClaimSchemaResponseRestDTO {
     pub id: Uuid,
     pub required: bool,
     pub key: String,
+    /// The type of data accepted for this attribute. See the [datatypes](/api/datatypes) guide.
     #[schema(example = "STRING")]
     pub data_type: String,
     #[from(with_fn = convert_inner)]
@@ -204,9 +223,12 @@ pub struct ProofClaimSchemaResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(ProofInputSchemaResponseDTO)]
 pub struct ProofInputSchemaResponseRestDTO {
+    /// Defines the set of attributes being requested when making proof requests using this schema.
+    /// See the [claimSchemas object](/api/resources/proof_schemas#claimschemas-object) guide.
     #[from(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
+    /// Defines the maximum age at which an LVVC will be validated. See the [LVVC guide](/guides/lvvc).
     pub validity_constraint: Option<i64>,
 }
 

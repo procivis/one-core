@@ -21,6 +21,11 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "Handle invitation",
+    description = indoc::formatdoc! {"
+        For a wallet, handles the interaction once the wallet connects to a share endpoint url
+        (e.g. scans the QR code of an offered credential or request for proof).
+    "},
 )]
 pub(crate) async fn handle_invitation(
     state: State<AppState>,
@@ -46,6 +51,11 @@ pub(crate) async fn handle_invitation(
     security(
         ("bearer" = [])
     ),
+    summary = "Accept issuance",
+    description = indoc::formatdoc! {"
+        Accepts an offered credential. The associated DID will be listed as the
+        subject of the issued credential.
+    "},
 )]
 pub(crate) async fn issuance_accept(
     state: State<AppState>,
@@ -71,6 +81,8 @@ pub(crate) async fn issuance_accept(
     security(
         ("bearer" = [])
     ),
+    summary = "Reject issuance",
+    description = "Rejects an offered credential.",
 )]
 pub(crate) async fn issuance_reject(
     state: State<AppState>,
@@ -96,6 +108,8 @@ pub(crate) async fn issuance_reject(
     security(
         ("bearer" = [])
     ),
+    summary = "Reject presentation",
+    description = "For a wallet, rejects a request to submit credentials to a verifier.",
 )]
 pub(crate) async fn presentation_reject(
     state: State<AppState>,
@@ -121,6 +135,8 @@ pub(crate) async fn presentation_reject(
     security(
         ("bearer" = [])
     ),
+    summary = "Submit presentation",
+    description = "Submits a presentation to a verifier.",
 )]
 pub(crate) async fn presentation_submit(
     state: State<AppState>,
@@ -146,6 +162,11 @@ pub(crate) async fn presentation_submit(
     security(
         ("bearer" = [])
     ),
+    summary = "Propose a proof",
+    description = indoc::formatdoc! {"
+        For digital wallets, creates an engagement QR code which can be scanned by a
+        mobile verifier to establish a Bluetooth Low Energy connection. See the [SDK](/sdk/propose_proof).
+    "},
 )]
 pub(crate) async fn propose_proof(
     state: State<AppState>,

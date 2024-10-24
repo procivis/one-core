@@ -39,6 +39,12 @@ use crate::router::AppState;
     ),
     responses(OkOrErrorResponse<DidDocumentRestDTO>),
     tag = "ssi",
+    summary = "Retrieve did:web document",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        For information on this endpoint, see directly the
+        [did:web Method Specification](https://w3c-ccg.github.io/did-method-web/).
+    "},
 )]
 pub(crate) async fn get_did_web_document(
     state: State<AppState>,
@@ -60,6 +66,11 @@ pub(crate) async fn get_did_web_document(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "Revocation - retrieve list",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        See the [W3C Verifiable Credentials Status List 2021 specification](https://www.w3.org/TR/2023/WD-vc-status-list-20230427/).
+    "},
 )]
 pub(crate) async fn get_revocation_list_by_id(
     state: State<AppState>,
@@ -114,6 +125,8 @@ pub(crate) async fn get_revocation_list_by_id(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "Get LVVC by credential",
+    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
 )]
 pub(crate) async fn get_lvvc_by_credential_id(
     state: State<AppState>,
@@ -155,6 +168,12 @@ pub(crate) async fn get_lvvc_by_credential_id(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "OID4VC - Retrieve issuer metadata",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
+        specifications](https://openid.net/sg/openid4vc/specifications/).
+    "},
 )]
 pub(crate) async fn oidc_get_issuer_metadata(
     state: State<AppState>,
@@ -195,6 +214,12 @@ pub(crate) async fn oidc_get_issuer_metadata(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "OID4VC - Service discovery",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
+        specifications](https://openid.net/sg/openid4vc/specifications/).
+    "},
 )]
 pub(crate) async fn oidc_service_discovery(
     state: State<AppState>,
@@ -237,6 +262,12 @@ pub(crate) async fn oidc_service_discovery(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "OID4VC - Retrieve credential offer",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
+        specifications](https://openid.net/sg/openid4vc/specifications/).
+    "},
 )]
 pub(crate) async fn oidc_get_credential_offer(
     state: State<AppState>,
@@ -291,6 +322,12 @@ pub(crate) async fn oidc_get_credential_offer(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "OID4VC - Create token",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
+        specifications](https://openid.net/sg/openid4vc/specifications/).
+    "},
 )]
 pub(crate) async fn oidc_create_token(
     state: State<AppState>,
@@ -358,6 +395,12 @@ pub(crate) async fn oidc_create_token(
         ("OpenID4VCI" = [])
     ),
     tag = "ssi",
+    summary = "OID4VC - Create credential",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
+        specifications](https://openid.net/sg/openid4vc/specifications/).
+    "},
 )]
 pub(crate) async fn oidc_create_credential(
     state: State<AppState>,
@@ -421,6 +464,12 @@ pub(crate) async fn oidc_create_credential(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "OID4VC - Verifier direct post",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
+        specifications](https://openid.net/sg/openid4vc/specifications/).
+    "},
 )]
 pub(crate) async fn oidc_verifier_direct_post(
     state: State<AppState>,
@@ -488,6 +537,12 @@ pub(crate) async fn oidc_verifier_direct_post(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "OID4VC - Verifier presentation definition",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
+        specifications](https://openid.net/sg/openid4vc/specifications/).
+    "},
 )]
 pub(crate) async fn oidc_verifier_presentation_definition(
     state: State<AppState>,
@@ -543,6 +598,12 @@ pub(crate) async fn oidc_verifier_presentation_definition(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "OID4VC - Client metadata",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
+        specifications](https://openid.net/sg/openid4vc/specifications/).
+    "},
 )]
 pub(crate) async fn oidc_client_metadata(
     state: State<AppState>,
@@ -600,6 +661,12 @@ pub(crate) async fn oidc_client_metadata(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "Retrieve @context",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        For information on this endpoint, see directly the
+        [W3C Verifiable Credentials Data Model](https://www.w3.org/TR/vc-data-model/).
+    "},
 )]
 pub(crate) async fn get_json_ld_context(
     state: State<AppState>,
@@ -638,6 +705,8 @@ pub(crate) async fn get_json_ld_context(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "Retrieve Trust List",
+    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
 )]
 pub(crate) async fn ssi_get_trust_list(
     state: State<AppState>,
@@ -667,6 +736,8 @@ pub(crate) async fn ssi_get_trust_list(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "Retrieve credential schema service",
+    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
 )]
 pub(crate) async fn ssi_get_credential_schema(
     state: State<AppState>,
@@ -693,6 +764,8 @@ pub(crate) async fn ssi_get_credential_schema(
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
+    summary = "Retrieve proof schema service",
+    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
 )]
 pub(crate) async fn ssi_get_proof_schema(
     state: State<AppState>,

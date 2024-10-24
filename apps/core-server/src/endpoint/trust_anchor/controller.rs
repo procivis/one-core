@@ -21,6 +21,8 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "Add a trust anchor",
+    description = "Publishes a new trust anchor or subscribes to an existing trust anchor.",
 )]
 pub(crate) async fn create_trust_anchor(
     state: State<AppState>,
@@ -48,6 +50,8 @@ pub(crate) async fn create_trust_anchor(
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve a trust anchor",
+    description = "Returns details on a given trust anchor.",
 )]
 pub(crate) async fn get_trust_anchor(
     state: State<AppState>,
@@ -66,6 +70,8 @@ pub(crate) async fn get_trust_anchor(
     security(
         ("bearer" = [])
     ),
+    summary = "List trust anchors",
+    description = "Returns a list of trust anchors in an organization.",
 )]
 pub(crate) async fn get_trust_anchors(
     state: State<AppState>,
@@ -90,6 +96,11 @@ pub(crate) async fn get_trust_anchors(
     security(
         ("bearer" = [])
     ),
+    summary = "Delete a trust anchor",
+    description = indoc::formatdoc! {"
+        Deletes a trust anchor. All trust entities on the deleted trust anchor
+        are also deleted.
+    "},
 )]
 pub(crate) async fn delete_trust_anchor(
     state: State<AppState>,

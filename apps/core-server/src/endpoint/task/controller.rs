@@ -16,6 +16,11 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "Run task",
+    description = indoc::formatdoc! {"
+        Runs a task. Typically tasks are run as part of a schedule via the CLI, but it is also possible to run them
+        through this endpoint.
+    "},
 )]
 pub(crate) async fn post_task(
     state: State<AppState>,

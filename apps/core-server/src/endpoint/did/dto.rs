@@ -16,6 +16,7 @@ use crate::serialize::front_time;
 
 pub type GetDidQuery = ListQueryParamsRest<DidFilterQueryParamsRest, SortableDidColumnRestDTO>;
 
+/// Whether a DID was locally created or is the DID of a remote wallet.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from("one_core::model::did::DidType")]
@@ -25,6 +26,8 @@ pub enum DidType {
     Local,
 }
 
+/// DID details.
+/// See the [DIDs](/api/resources/dids) guide.
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(DidListItemResponseDTO)]
@@ -76,6 +79,8 @@ pub struct DidResponseRestDTO {
     pub deactivated: bool,
 }
 
+/// The key, or keys, defining the verification relationships of the DID.
+/// See the [keys object](/api/resources/dids#keys-object) guide.
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, TryFrom)]
 #[try_from(T = DidResponseKeysDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
@@ -95,14 +100,24 @@ pub struct DidResponseKeysRestDTO {
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateDidRequestRestDTO {
+    /// The DID name must be unique within the organization or DID creation
+    /// will not complete successfully.
     pub name: String,
     pub organisation_id: OrganisationId,
+    /// Choose a DID method to create the DID. Corresponds to the associated
+    /// `property name*` of the `did` object of the configuration. See the
+    /// [DID method](/api/resources/dids) guide.
     pub method: String,
     pub keys: CreateDidRequestKeysRestDTO,
+    /// The parameters passed into the DID method. See the [DID
+    /// parameters](/api/resources/dids#did-parameters) guide.
     #[schema(value_type = Object)]
     pub params: Option<serde_json::Value>,
 }
 
+/// Each DID has five verification relationships defining the verification
+/// method used for different purposes. See the [keys
+/// object](/api/resources/dids#keys-object) guide.
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
 #[into(CreateDidRequestKeysDTO)]
 #[serde(rename_all = "camelCase")]

@@ -20,6 +20,8 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "Create a trust entity",
+    description = "Adds a trust entity to a trust anchor.",
 )]
 pub(crate) async fn create_trust_entity(
     state: State<AppState>,
@@ -47,6 +49,8 @@ pub(crate) async fn create_trust_entity(
     security(
         ("bearer" = [])
     ),
+    summary = "Delete a trust entity",
+    description = "Deletes a trust entity from a trust anchor.",
 )]
 pub(crate) async fn delete_trust_entity(
     state: State<AppState>,
@@ -72,6 +76,8 @@ pub(crate) async fn delete_trust_entity(
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve a trust entity",
+    description = "Returns details on a given trust entity.",
 )]
 pub(crate) async fn get_trust_entity_details(
     state: State<AppState>,
@@ -91,6 +97,8 @@ pub(crate) async fn get_trust_entity_details(
     security(
         ("bearer" = [])
     ),
+    summary = "List trust entities",
+    description = "Returns a list of trust entities in an organization.",
 )]
 pub(crate) async fn get_trust_entities(
     state: State<AppState>,
