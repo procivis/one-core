@@ -2,7 +2,6 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use josekit::Value;
 use one_crypto::{CryptoProvider, Hasher};
 use serde::{Deserialize, Serialize};
 
@@ -195,15 +194,15 @@ pub(super) fn gather_disclosures(
 ) -> Result<(Vec<String>, Vec<String>), FormatterError> {
     let hasher = crypto.get_hasher(algorithm)?;
 
-    let value_as_object: &josekit::Map<String, josekit::Value> = value.as_object().ok_or(
-        FormatterError::JsonMapping("value is not an Object".to_string()),
-    )?;
+    let value_as_object = value.as_object().ok_or(FormatterError::JsonMapping(
+        "value is not an Object".to_string(),
+    ))?;
     let mut disclosures = vec![];
     let mut hashed_disclosures = vec![];
 
     value_as_object.iter().try_for_each(|(k, v)| {
         match v {
-            Value::Array(array) => {
+            serde_json::Value::Array(array) => {
                 let salt = one_crypto::utilities::generate_salt_base64_16();
 
                 let value = serde_json::to_string(array)
@@ -221,7 +220,7 @@ pub(super) fn gather_disclosures(
                 disclosures.push(b64_encoded);
                 hashed_disclosures.push(hashed_disclosure);
             }
-            Value::Object(_object) => {
+            serde_json::Value::Object(_object) => {
                 let (subdisclosures, sd_hashes) = gather_disclosures(v, algorithm, crypto)?;
                 disclosures.extend(subdisclosures);
 
@@ -245,7 +244,7 @@ pub(super) fn gather_disclosures(
                 disclosures.push(sd_disclosure_as_b64);
                 hashed_disclosures.push(hashed_subdisclosure);
             }
-            Value::String(value) => {
+            serde_json::Value::String(value) => {
                 let salt = one_crypto::utilities::generate_salt_base64_16();
 
                 let result = serde_json::to_string(&[&salt, k, value])
@@ -260,7 +259,7 @@ pub(super) fn gather_disclosures(
                 disclosures.push(b64_encoded);
                 hashed_disclosures.push(hashed_disclosure);
             }
-            Value::Number(number) => {
+            serde_json::Value::Number(number) => {
                 let salt = one_crypto::utilities::generate_salt_base64_16();
 
                 let value = serde_json::to_string(number)
@@ -278,7 +277,7 @@ pub(super) fn gather_disclosures(
                 disclosures.push(b64_encoded);
                 hashed_disclosures.push(hashed_disclosure);
             }
-            Value::Bool(bool) => {
+            serde_json::Value::Bool(bool) => {
                 let salt = one_crypto::utilities::generate_salt_base64_16();
 
                 let value = serde_json::to_string(bool)

@@ -112,38 +112,3 @@ impl KeyAlgorithm for Eddsa {
         }
     }
 }
-
-pub trait JwkEddsaExt {
-    fn into_x25519(self) -> Result<Self, anyhow::Error>
-    where
-        Self: Sized;
-}
-
-impl JwkEddsaExt for josekit::jwk::Jwk {
-    fn into_x25519(mut self) -> Result<Self, anyhow::Error> {
-        if let Some("Ed25519") = self.curve() {
-            self.set_curve("X25519");
-
-            if let Some(x) = self.parameter("x").and_then(|x| x.as_str()) {
-                let key = Base64UrlSafeNoPadding::decode_to_vec(x, None)?;
-                let key = EDDSASigner::public_key_into_x25519(&key)?;
-                let key = Base64UrlSafeNoPadding::encode_to_string(key.as_slice())?;
-                self.set_parameter("x", Some(key.into()))?;
-            }
-
-            if let Some(d) = self.parameter("d").and_then(|d| d.as_str()) {
-                let key =
-                    Base64UrlSafeNoPadding::decode_to_vec(d, None).map(zeroize::Zeroizing::new)?;
-                let key = EDDSASigner::private_key_into_x25519(&key)?;
-                let key = Base64UrlSafeNoPadding::encode_to_string(key.as_slice())
-                    .map(zeroize::Zeroizing::new)?;
-
-                let key = serde_json::to_value(key)?;
-
-                self.set_parameter("d", Some(key))?;
-            };
-        }
-
-        Ok(self)
-    }
-}

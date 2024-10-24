@@ -16,6 +16,7 @@ use thiserror::Error;
 
 pub mod encryption;
 pub mod hasher;
+pub mod jwe;
 pub mod signer;
 pub mod utilities;
 
