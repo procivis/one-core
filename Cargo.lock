@@ -1034,7 +1034,6 @@ dependencies = [
  "one-core",
  "one-crypto",
  "one-dto-mapper",
- "p256",
  "prometheus",
  "rand",
  "reqwest 0.12.8",
@@ -3402,7 +3401,6 @@ dependencies = [
  "async-trait",
  "bincode",
  "bit-vec",
- "blstrs 0.7.1",
  "bs58",
  "ciborium",
  "cocoon",
@@ -3433,9 +3431,6 @@ dependencies = [
  "one-crypto",
  "one-dto-mapper",
  "ouroboros 0.18.4",
- "p256",
- "pairing_crypto",
- "pqc_dilithium",
  "rand",
  "rcgen",
  "rdf-types 0.15.4",
@@ -3503,6 +3498,7 @@ dependencies = [
 name = "one-crypto"
 version = "0.1.0"
 dependencies = [
+ "blstrs 0.7.1",
  "chacha20poly1305",
  "ct-codecs",
  "ed25519-compact",

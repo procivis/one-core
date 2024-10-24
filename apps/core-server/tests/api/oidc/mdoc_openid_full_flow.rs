@@ -3,7 +3,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::key::Key;
 use one_core::model::proof::{ProofClaim, ProofStateEnum};
-use p256::elliptic_curve::sec1::ToEncodedPoint;
+use one_crypto::signer::es256::ES256Signer;
 use serde_json::json;
 use time::macros::format_description;
 use time::OffsetDateTime;
@@ -78,12 +78,9 @@ async fn test_openid4vc_mdoc_flow_ecdsa_array() {
 fn get_key_data(key_type: KeyType, key: Key) -> KeyData {
     match key_type {
         KeyType::Ecdsa => {
-            let pk = p256::PublicKey::from_sec1_bytes(&key.public_key).unwrap();
-
-            let encoded_point = pk.to_encoded_point(false);
-
-            let x = Base64UrlSafeNoPadding::encode_to_string(encoded_point.x().unwrap()).unwrap();
-            let y = Base64UrlSafeNoPadding::encode_to_string(encoded_point.y().unwrap()).unwrap();
+            let (x, y) = ES256Signer::get_public_key_coordinates(&key.public_key).unwrap();
+            let x = Base64UrlSafeNoPadding::encode_to_string(x).unwrap();
+            let y = Base64UrlSafeNoPadding::encode_to_string(y).unwrap();
 
             KeyData {
                 x,

@@ -1,5 +1,6 @@
+use blstrs::G2Affine;
 use pairing_crypto::bbs::ciphersuites::bls12_381::{
-    PublicKey, SecretKey, BBS_BLS12381G1_SIGNATURE_LENGTH,
+    KeyPair, PublicKey, SecretKey, BBS_BLS12381G1_SIGNATURE_LENGTH,
 };
 use pairing_crypto::bbs::ciphersuites::bls12_381_g1_sha_256::{
     proof_gen, proof_verify, sign, verify,
@@ -9,7 +10,9 @@ use pairing_crypto::bbs::{
     BbsVerifyRequest,
 };
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroizing;
 
+use crate::utilities::get_rng;
 use crate::{Signer, SignerError};
 
 pub struct BBSSigner {}
@@ -91,7 +94,20 @@ pub struct BbsProofInput {
     pub messages: Vec<(usize, Vec<u8>)>,
 }
 
+pub struct GeneratedKey {
+    pub public: Vec<u8>,
+    pub private: Zeroizing<Vec<u8>>,
+}
+
 impl BBSSigner {
+    pub fn generate_key_pair() -> GeneratedKey {
+        // There is not much to break hence default on failure should be good enough.
+        let key_pair = KeyPair::random(&mut get_rng(), b"").unwrap_or_default();
+        let private = key_pair.secret_key.to_bytes().to_vec().into();
+        let public = key_pair.public_key.to_octets().to_vec();
+        GeneratedKey { public, private }
+    }
+
     pub fn derive_proof(input: &BbsDeriveInput, public_key: &[u8]) -> Result<Vec<u8>, SignerError> {
         let public_key = PublicKey::from_vec(public_key)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
@@ -149,5 +165,53 @@ impl BBSSigner {
         }
 
         Ok(())
+    }
+
+    pub fn parse_public_key(
+        x: &[u8],
+        y: &[u8],
+        extract_compressed: bool,
+    ) -> Result<Vec<u8>, SignerError> {
+        if x.len() != 96 || y.len() != 96 {
+            return Err(SignerError::CouldNotExtractPublicKey(
+                "Invalid key size".to_string(),
+            ));
+        }
+
+        let affine = Self::extract_affine(&[x, y].concat())?;
+        Ok(if extract_compressed {
+            affine.to_compressed().to_vec()
+        } else {
+            affine.to_uncompressed().to_vec()
+        })
+    }
+
+    pub fn get_public_key_coordinates(
+        public_key: &[u8],
+    ) -> Result<(Vec<u8>, Vec<u8>), SignerError> {
+        let point = Self::extract_affine(public_key)?.to_uncompressed();
+        let x = &point[..96];
+        let y = &point[96..];
+        Ok((x.to_vec(), y.to_vec()))
+    }
+
+    fn extract_affine(public_key: &[u8]) -> Result<G2Affine, SignerError> {
+        let public = match public_key.len() {
+            96 => blstrs::G2Affine::from_compressed(public_key.try_into().map_err(|_| {
+                SignerError::CouldNotExtractPublicKey("Invalid key size".to_string())
+            })?),
+            192 => blstrs::G2Affine::from_uncompressed(public_key.try_into().map_err(|_| {
+                SignerError::CouldNotExtractPublicKey("Invalid key size".to_string())
+            })?),
+            _ => {
+                return Err(SignerError::CouldNotExtractPublicKey(
+                    "Invalid key size".to_string(),
+                ))
+            }
+        };
+
+        public
+            .into_option()
+            .ok_or_else(|| SignerError::CouldNotExtractPublicKey("Invalid key value".to_string()))
     }
 }

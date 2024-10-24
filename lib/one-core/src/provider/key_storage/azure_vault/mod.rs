@@ -99,7 +99,7 @@ impl KeyStorage for AzureVaultKeyProvider {
 
         let public_key_bytes = public_key_from_components(&response.key)?;
 
-        let public_key = ES256Signer::to_bytes(&public_key_bytes)
+        let public_key = ES256Signer::parse_public_key(&public_key_bytes, true)
             .map_err(|err| KeyStorageError::Failed(format!("failed to build public key: {err}")))?;
 
         Ok(StorageGeneratedKey {

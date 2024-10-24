@@ -1,5 +1,5 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use pqc_dilithium::Keypair;
+use one_crypto::signer::crydi3::CRYDI3Signer;
 use serde::Deserialize;
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkMlweData};
@@ -42,10 +42,10 @@ impl KeyAlgorithm for MlDsa {
     }
 
     fn generate_key_pair(&self) -> GeneratedKey {
-        let keys = Keypair::generate();
+        let keys = CRYDI3Signer::generate_key_pair();
         GeneratedKey {
-            private: keys.expose_secret().to_owned(),
-            public: keys.public.to_vec(),
+            private: keys.private.to_vec(),
+            public: keys.public,
         }
     }
 

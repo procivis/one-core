@@ -1,7 +1,23 @@
 use pqc_dilithium::*;
+use zeroize::Zeroizing;
 
 use crate::{Signer, SignerError};
 pub struct CRYDI3Signer {}
+
+pub struct KeyPair {
+    pub public: Vec<u8>,
+    pub private: Zeroizing<Vec<u8>>,
+}
+
+impl CRYDI3Signer {
+    pub fn generate_key_pair() -> KeyPair {
+        let keys = pqc_dilithium::Keypair::generate();
+        KeyPair {
+            private: keys.expose_secret().to_vec().into(),
+            public: keys.public.to_vec(),
+        }
+    }
+}
 
 impl Signer for CRYDI3Signer {
     fn sign(

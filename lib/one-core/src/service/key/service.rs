@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Context};
+use one_crypto::signer::es256::ES256Signer;
 use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
 use shared_types::KeyId;
 use uuid::Uuid;
@@ -12,7 +13,6 @@ use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyListQuery, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::did_method::mdl::{parse_pem, parse_x509_from_der, parse_x509_from_pem};
-use crate::provider::key_algorithm::es256::Es256;
 use crate::provider::key_storage::KeyStorage;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
@@ -226,7 +226,7 @@ impl RemoteKeyAdapter {
         };
         if algorithm == &PKCS_ECDSA_P256_SHA256 {
             decompressed_public_key = Some(
-                Es256::decompress_public_key(&key.public_key)
+                ES256Signer::parse_public_key(&key.public_key, false)
                     .context("Key decompression failed")?,
             );
         }
