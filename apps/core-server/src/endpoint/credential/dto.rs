@@ -98,6 +98,8 @@ pub struct GetCredentialResponseRestDTO {
     pub suspend_end_date: Option<OffsetDateTime>,
     #[from(with_fn = convert_inner)]
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub holder_did: Option<DidListItemResponseRestDTO>,
 }
 
 /// See the [credential roles](/api/resources/credentials#credential-roles) guide.

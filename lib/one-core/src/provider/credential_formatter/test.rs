@@ -61,6 +61,16 @@ fn generate_credential_detail_response(
         lvvc_issuance_date: None,
         suspend_end_date: None,
         mdoc_mso_validity: None,
+        holder_did: Some(DidListItemResponseDTO {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name: "".to_string(),
+            did: DidValue::from_str("did:key:holder").unwrap(),
+            did_type: DidType::Remote,
+            did_method: "".to_string(),
+            deactivated: false,
+        }),
     }
 }
 

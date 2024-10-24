@@ -56,6 +56,7 @@ pub struct CredentialDetailResponseDTO {
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub suspend_end_date: Option<OffsetDateTime>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseDTO>,
+    pub holder_did: Option<DidListItemResponseDTO>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
