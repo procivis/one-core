@@ -1,6 +1,5 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use one_crypto::utilities::get_rng;
-use pairing_crypto::bbs::ciphersuites::bls12_381::KeyPair;
+use one_crypto::signer::bbs::BBSSigner;
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -24,11 +23,11 @@ impl KeyAlgorithm for BBS {
     }
 
     fn generate_key_pair(&self) -> GeneratedKey {
-        // There is not much to break hence default on failure should be good enough.
-        let key_pair = KeyPair::random(&mut get_rng(), b"").unwrap_or_default();
-        let private = key_pair.secret_key.to_bytes().to_vec();
-        let public = key_pair.public_key.to_octets().to_vec();
-        GeneratedKey { public, private }
+        let key_pair = BBSSigner::generate_key_pair();
+        GeneratedKey {
+            public: key_pair.public,
+            private: key_pair.private.to_vec(),
+        }
     }
 
     fn bytes_to_jwk(
@@ -36,21 +35,7 @@ impl KeyAlgorithm for BBS {
         bytes: &[u8],
         r#use: Option<String>,
     ) -> Result<PublicKeyJwk, KeyAlgorithmError> {
-        let public = blstrs::G2Affine::from_compressed(
-            bytes
-                .try_into()
-                .map_err(|_| KeyAlgorithmError::Failed("Couldn't parse public key".to_string()))?,
-        );
-        let public = if public.is_some().into() {
-            public.unwrap()
-        } else {
-            return Err(KeyAlgorithmError::Failed(
-                "Couldn't parse public key".to_string(),
-            ));
-        };
-        let pk_uncompressed = public.to_uncompressed();
-        let x = &pk_uncompressed[..96];
-        let y = &pk_uncompressed[96..];
+        let (x, y) = BBSSigner::get_public_key_coordinates(bytes)?;
         Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
             r#use,
             crv: "Bls12381G2".to_string(),
@@ -75,20 +60,7 @@ impl KeyAlgorithm for BBS {
             )
             .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
 
-            let uncompressed: [u8; 192] = [x, y]
-                .concat()
-                .try_into()
-                .map_err(|_| KeyAlgorithmError::Failed("Couldn't parse public key".to_string()))?;
-            let public = blstrs::G2Affine::from_uncompressed(&uncompressed);
-            let public = if public.is_some().into() {
-                public.unwrap()
-            } else {
-                return Err(KeyAlgorithmError::Failed(
-                    "Couldn't parse public key".to_string(),
-                ));
-            };
-
-            Ok(public.to_compressed().to_vec())
+            Ok(BBSSigner::parse_public_key(&x, &y, true)?)
         } else {
             Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
         }

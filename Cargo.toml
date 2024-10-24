@@ -31,7 +31,6 @@ futures            = { version = "0.3" }
 hex                = { version = "0.4", features = ["serde"] }
 mockall            = { version = "0.13" }
 one-dto-mapper     = { version = "0.1" }
-p256               = { version = "0.13", features = ["arithmetic", "jwk"] }
 rand               = { version = "0.8" }
 reqwest            = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
 sea-orm            = { version = "0.12", default-features = false }
