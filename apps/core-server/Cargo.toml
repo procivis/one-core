@@ -21,6 +21,7 @@ axum.workspace               = true
 clap                         = { version = "4.5", features = ["derive"] }
 ct-codecs.workspace          = true
 headers                      = { version = "0.4" }
+indoc                        = { version = "2.0" }
 one-core                     = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json", "config_yaml", "config_env"] }
 one-crypto                   = { version = "0.1.0", path = "../../lib/one-crypto" }
 one-dto-mapper.workspace     = true
@@ -41,7 +42,7 @@ tower-http                   = { version = "0.6", features = ["trace", "catch-pa
 tracing-subscriber.workspace = true
 tracing.workspace            = true
 url.workspace                = true
-utoipa                       = { workspace = true, features = ["uuid", "axum_extras", "url", "time", "yaml"] }
+utoipa                       = { workspace = true, features = ["uuid", "axum_extras", "url", "time", "yaml", "preserve_path_order"] }
 utoipa-swagger-ui            = { version = "8.0", features = ["axum"] }
 uuid.workspace               = true
 validator.workspace          = true

@@ -21,6 +21,11 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "List history events",
+    description = indoc::formatdoc! {"
+        Returns a list of history events for entities in the system. Use the parameters
+        to filter.
+    "},
 )]
 pub(crate) async fn get_history_list(
     state: State<AppState>,
@@ -46,6 +51,8 @@ pub(crate) async fn get_history_list(
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve history entry",
+    description = "Returns details on a single event.",
 )]
 pub(crate) async fn get_history_entry(
     state: State<AppState>,

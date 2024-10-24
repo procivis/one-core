@@ -16,13 +16,20 @@ use crate::serialize::front_time;
 #[into(CreateTrustAnchorRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTrustAnchorRequestRestDTO {
+    /// Must be unique within an organization.
     pub name: String,
+    /// Specify the type of trust management anchor to publish or subscribe
+    /// to. Possible values from the configuration.
     pub r#type: String,
     pub role: TrustAnchorRoleRest,
+    /// When an organization is present in two anchors, use this field to
+    /// specify the priority of the anchor.
     pub priority: Option<u32>,
     pub organisation_id: OrganisationId,
 }
 
+/// Whether an organization is the publisher of a trust anchor or
+/// is subscribed to a trust anchor.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[into(TrustAnchorRole)]
 #[from(TrustAnchorRole)]

@@ -25,6 +25,8 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "Delete a credential schema",
+    description = "Deletes a credential schema.",
 )]
 pub(crate) async fn delete_credential_schema(
     state: State<AppState>,
@@ -49,6 +51,8 @@ pub(crate) async fn delete_credential_schema(
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve credential schema",
+    description = "Retrieves detailed information on a credential schema.",
 )]
 pub(crate) async fn get_credential_schema(
     state: State<AppState>,
@@ -71,6 +75,8 @@ pub(crate) async fn get_credential_schema(
     security(
         ("bearer" = [])
     ),
+    summary = "List credential schemas",
+    description = "Returns a list of credential schemas in an organization.",
 )]
 pub(crate) async fn get_credential_schema_list(
     state: State<AppState>,
@@ -93,6 +99,16 @@ pub(crate) async fn get_credential_schema_list(
     security(
         ("bearer" = [])
     ),
+    summary = "Import credential schema",
+    description = indoc::formatdoc! {"
+        Imports a shared credential schema to a mobile verifier, for use in
+        constructing proof schemas.
+
+        After previewing the credential schema from the
+        [share credential schema](/core/share-credential-schema) endpoint, pass
+        the schema here, along with the uuid of the mobile verifier's organization,
+        to import the credential schema.
+    "},
 )]
 pub(crate) async fn import_credential_schema(
     state: State<AppState>,
@@ -118,6 +134,11 @@ pub(crate) async fn import_credential_schema(
     security(
         ("bearer" = [])
     ),
+    summary = "Create credential schema",
+    description = indoc::formatdoc! {"
+        Creates a credential schema, for issuing credentials.
+        See the [credential schemas](/api/resources/credential_schemas) guide.
+    "},
 )]
 pub(crate) async fn post_credential_schema(
     state: State<AppState>,
@@ -145,6 +166,12 @@ pub(crate) async fn post_credential_schema(
     security(
         ("bearer" = [])
     ),
+    summary = "Share credential schema",
+    description = indoc::formatdoc! {"
+        Generates a url to share a credential schema with a mobile verifier.
+        The mobile verifier can make an HTTP request on the resulting url to preview the shared credential
+        schema and [import](/core/import-credential-schema) it to use it in proof schema creation.
+    "},
 )]
 pub(crate) async fn share_credential_schema(
     state: State<AppState>,

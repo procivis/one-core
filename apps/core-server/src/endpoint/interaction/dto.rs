@@ -14,6 +14,7 @@ use uuid::Uuid;
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HandleInvitationRequestRestDTO {
+    /// Typically encoded as a QR code or deep link by the issuer or verifier.
     pub url: Url,
     pub organisation_id: OrganisationId,
     pub transport: Option<Vec<String>>,
@@ -31,8 +32,12 @@ pub struct HandleInvitationResponseRestDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct IssuanceAcceptRequestRestDTO {
+    /// The identifier associated with the particular issuance.
     pub interaction_id: Uuid,
     pub did_id: DidId,
+    /// If the associated DID supports multiple keys for authentication,
+    /// specify which key to use. If no key is specified the first suitable key listed
+    /// will be used.
     pub key_id: Option<KeyId>,
 }
 
@@ -45,6 +50,7 @@ pub struct IssuanceRejectRequestRestDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationRejectRequestRestDTO {
+    /// The identifier associated with a particular verification interaction.
     pub interaction_id: Uuid,
 }
 
@@ -56,6 +62,9 @@ pub struct PresentationSubmitRequestRestDTO {
     #[into(with_fn = convert_inner)]
     pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestRestDTO>,
     pub did_id: DidId,
+    /// If the associated DID supports multiple keys for authentication,
+    /// specify which key to use. If no key is specified the first suitable key listed
+    /// will be used.
     pub key_id: Option<KeyId>,
 }
 
@@ -63,7 +72,9 @@ pub struct PresentationSubmitRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 #[into(PresentationSubmitCredentialRequestDTO)]
 pub struct PresentationSubmitCredentialRequestRestDTO {
+    /// Select a credential.
     pub credential_id: Uuid,
+    /// claimSchemaId of the claim to send from this credential.
     pub submit_claims: Vec<String>,
 }
 

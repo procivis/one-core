@@ -26,6 +26,11 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve presentation definition",
+    description = indoc::formatdoc! {"
+        For wallets; after a wallet connects to a verifier's request for proof via the [Handle Invitation](/core/handle-invitation)
+        endpoint, the presentation definition endpoint takes the resulting `proofId` and filters the wallet, returning credentials which match the verifier's request.
+    "},
 )]
 pub(crate) async fn get_proof_presentation_definition(
     state: State<AppState>,
@@ -50,6 +55,8 @@ pub(crate) async fn get_proof_presentation_definition(
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve a proof request",
+    description = "Returns detailed information on a proof request.",
 )]
 pub(crate) async fn get_proof_details(
     state: State<AppState>,
@@ -68,6 +75,8 @@ pub(crate) async fn get_proof_details(
     security(
         ("bearer" = [])
     ),
+    summary = "List proof requests",
+    description = "Returns a list of proof requests in an organization.",
 )]
 pub(crate) async fn get_proofs(
     state: State<AppState>,
@@ -86,6 +95,8 @@ pub(crate) async fn get_proofs(
     security(
         ("bearer" = [])
     ),
+    summary = "Create a proof request",
+    description = "Creates a proof request, which can then be shared with a wallet holder.",
 )]
 pub(crate) async fn post_proof(
     state: State<AppState>,
@@ -109,6 +120,8 @@ pub(crate) async fn post_proof(
     security(
         ("bearer" = [])
     ),
+    summary = "Request a proof",
+    description = "Creates a share endpoint URL from a proof request. A wallet holder can use this URL to access the proof request.",
 )]
 pub(crate) async fn share_proof(
     state: State<AppState>,
@@ -129,6 +142,12 @@ pub(crate) async fn share_proof(
     security(
         ("bearer" = [])
     ),
+    summary = "Retract a proof request",
+    description = indoc::formatdoc! {"
+        Retracts a proof request. For those proof requests still in `PENDING` or `REQUESTED`, use this endpoint to
+        retract the request, effectively renewing it. This is helpful for preventing the creation of excess proof requests
+        during verification workflows. See the [proof request states](/api/resources/proof_requests#proof-request-states) guide.
+    "},
 )]
 pub(crate) async fn retract_proof(
     state: State<AppState>,
@@ -155,6 +174,8 @@ pub(crate) async fn retract_proof(
     security(
         ("bearer" = [])
     ),
+    summary = "Delete proof claims",
+    description = "",
 )]
 pub(crate) async fn delete_proof_claims(
     state: State<AppState>,

@@ -210,8 +210,7 @@ impl BBSSigner {
             }
         };
 
-        public
-            .into_option()
+        Option::from(public)
             .ok_or_else(|| SignerError::CouldNotExtractPublicKey("Invalid key value".to_string()))
     }
 }

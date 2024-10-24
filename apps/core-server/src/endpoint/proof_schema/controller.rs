@@ -22,6 +22,11 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "Create proof schema",
+    description = indoc::formatdoc! {"
+        Creates a proof schema, for creating proof requests. See the
+        [proof schemas](/api/resources/proof_schemas) guide.
+    "},
 )]
 pub(crate) async fn post_proof_schema(
     state: State<AppState>,
@@ -47,6 +52,8 @@ pub(crate) async fn post_proof_schema(
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve proof schemas",
+    description = "Returns a list of proof schemas.",
 )]
 pub(crate) async fn get_proof_schemas(
     state: State<AppState>,
@@ -71,6 +78,8 @@ pub(crate) async fn get_proof_schemas(
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve proof schema",
+    description = "Returns detailed information on a proof schema.",
 )]
 pub(crate) async fn get_proof_schema_detail(
     state: State<AppState>,
@@ -91,6 +100,8 @@ pub(crate) async fn get_proof_schema_detail(
     security(
         ("bearer" = [])
     ),
+    summary = "Delete a proof schema",
+    description = "Deletes a proof schema.",
 )]
 pub(crate) async fn delete_proof_schema(
     state: State<AppState>,
@@ -115,6 +126,8 @@ pub(crate) async fn delete_proof_schema(
     security(
         ("bearer" = [])
     ),
+    summary = "Share proof schema",
+    description = "Generates a url to share a proof schema with a mobile verifier.",
 )]
 pub(crate) async fn share_proof_schema(
     state: State<AppState>,
@@ -133,6 +146,12 @@ pub(crate) async fn share_proof_schema(
     security(
         ("bearer" = [])
     ),
+    summary = "Import proof schema",
+    description = indoc::formatdoc! {"
+        Imports a shared proof schema to a mobile verifier, for use in creating proof requests. After previewing
+        the proof schema from the [share proof schema](/core/share-proof-schema) endpoint, pass the schema here, along with
+        the uuid of the mobile verifier's organization, to import the proof schema.
+    "},
 )]
 pub(crate) async fn import_proof_schema(
     state: State<AppState>,

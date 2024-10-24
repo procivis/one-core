@@ -17,16 +17,23 @@ use crate::serialize::front_time;
 #[into(CreateTrustEntityRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTrustEntityRequestRestDTO {
+    /// Pass a string as an identifier.
     entity_id: String,
+    /// Specify the entity name.
     name: String,
+    /// base64 encoded image.
     logo: Option<String>,
+    /// Specify the entity's domain name.
     website: Option<String>,
+    /// Specify a Terms of Service url.
     terms_url: Option<String>,
+    /// Specify the Privacy Policy url.
     privacy_url: Option<String>,
     role: TrustEntityRoleRest,
     trust_anchor_id: TrustAnchorId,
 }
 
+/// Whether the trust entity issues credentials, verifies credentials, or both.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[into(TrustEntityRole)]
 #[from(TrustEntityRole)]

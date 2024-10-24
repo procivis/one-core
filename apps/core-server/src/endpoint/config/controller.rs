@@ -12,6 +12,8 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve configuration",
+    description = "Returns the system configuration. See the [configuration](/api/configuration) guide for more information.",
 )]
 pub(crate) async fn get_config(state: State<AppState>) -> OkOrErrorResponse<ConfigRestDTO> {
     let result = state.core.config_service.get_config();

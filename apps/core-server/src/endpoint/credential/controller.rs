@@ -34,6 +34,13 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "Delete a credential",
+    description = indoc::formatdoc! {"
+        Prevents a credential from being returned when retrieving a list of credentials. The credential maintains its state in the
+        system and can be retrieved by its ID. This has no impact on the holder's ability to keep and use the credential. Deletion cannot
+        be completed if the credential state is `ACCEPTED` while the corresponding credential schema includes a revocation method. If revocation
+        method is `NONE`, the credential can be deleted in any state.
+    "},
 )]
 pub(crate) async fn delete_credential(
     state: State<AppState>,
@@ -54,6 +61,8 @@ pub(crate) async fn delete_credential(
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve a credential",
+    description = "Returns detailed information on a credential.",
 )]
 pub(crate) async fn get_credential(
     state: State<AppState>,
@@ -74,6 +83,8 @@ pub(crate) async fn get_credential(
     security(
         ("bearer" = [])
     ),
+    summary = "List credentials",
+    description = "Returns a list of credentials within an organization.",
 )]
 pub(crate) async fn get_credential_list(
     state: State<AppState>,
@@ -121,6 +132,8 @@ pub(crate) async fn get_credential_list(
     security(
         ("bearer" = [])
     ),
+    summary = "Create a credential",
+    description = "Creates a credential, which can then be issued to a wallet holder.",
 )]
 pub(crate) async fn post_credential(
     state: State<AppState>,
@@ -149,6 +162,11 @@ pub(crate) async fn post_credential(
     security(
         ("bearer" = [])
     ),
+    summary = "Reactivate a credential",
+    description = indoc::formatdoc! {"
+        Reactivates a suspended credential.
+        See the [suspension and reactivation](/api/resources/credentials#suspension-and-reactivation) guide for more information.
+    "},
 )]
 pub(crate) async fn reactivate_credential(
     state: State<AppState>,
@@ -173,6 +191,11 @@ pub(crate) async fn reactivate_credential(
     security(
         ("bearer" = [])
     ),
+    summary = "Revoke a credential",
+    description = indoc::formatdoc! {"
+        Changes a credential state to `REVOKED`.
+        See the [credential states](/api/resources/credentials#credential-states) guide.
+    "},
 )]
 pub(crate) async fn revoke_credential(
     state: State<AppState>,
@@ -194,6 +217,11 @@ pub(crate) async fn revoke_credential(
     security(
         ("bearer" = [])
     ),
+    summary = "Suspend a credential",
+    description = indoc::formatdoc! {"
+        Suspends a credential, rendering it invalid until it has been reactivated.
+        See the [suspension and reactivation](/api/resources/credentials#suspension-and-reactivation) guide for more information.
+    "},
 )]
 pub(crate) async fn suspend_credential(
     state: State<AppState>,
@@ -222,6 +250,8 @@ pub(crate) async fn suspend_credential(
     security(
         ("bearer" = [])
     ),
+    summary = "Issue a credential",
+    description = "Creates a share endpoint URL. A wallet holder can use this to access the offered credential.",
 )]
 pub(crate) async fn share_credential(
     state: State<AppState>,
@@ -240,6 +270,11 @@ pub(crate) async fn share_credential(
     security(
         ("bearer" = [])
     ),
+    summary = "Check revocation",
+    description = indoc::formatdoc! {"
+        Checks whether a held credential has been revoked. Only applicable to
+        credentials with an associated revocation mechanism.
+    "},
 )]
 pub(crate) async fn revocation_check(
     state: State<AppState>,

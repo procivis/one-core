@@ -24,6 +24,8 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
+    summary = "Retrieve a DID",
+    description = "Returns detailed information on a DID.",
 )]
 pub(crate) async fn get_did(
     state: State<AppState>,
@@ -60,6 +62,8 @@ pub(crate) async fn get_did(
     security(
         ("bearer" = [])
     ),
+    summary = "List DIDs",
+    description = "Returns a list of DIDs within an organization.",
 )]
 pub(crate) async fn get_did_list(
     state: State<AppState>,
@@ -78,6 +82,11 @@ pub(crate) async fn get_did_list(
     security(
         ("bearer" = [])
     ),
+    summary = "Create a DID",
+    description = indoc::formatdoc! {"
+        Creates a DID using a key, or keys, and a method. See the
+        [DIDs](/api/resources/dids) guide for more information.
+    "},
 )]
 pub(crate) async fn post_did(
     state: State<AppState>,
@@ -112,6 +121,11 @@ pub(crate) async fn post_did(
     security(
         ("bearer" = [])
     ),
+    summary = "Deactivate a DID",
+    description = indoc::formatdoc! {"
+        Deactivate a DID. See the [DID deactivation](/api/resources/dids#did-deactivation)
+        guide for a list of supported DID methods which allow deactivation.
+    "},
 )]
 pub(crate) async fn update_did(
     state: State<AppState>,

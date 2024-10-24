@@ -10,6 +10,7 @@ pub mod extractor;
 pub mod init;
 pub mod mapper;
 pub mod metrics;
+pub mod openapi;
 pub mod router;
 pub mod serialize;
 pub mod build_info {
