@@ -20,6 +20,7 @@ pub struct TestingCreateSchemaParams {
     pub schema_type: Option<CredentialSchemaType>,
     pub allow_suspension: Option<bool>,
     pub imported_source_url: Option<String>,
+    pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
 }
 
 pub struct CredentialSchemasDB {
@@ -38,32 +39,34 @@ impl CredentialSchemasDB {
         revocation_method: &str,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
-        let claim_schema = ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "firstName".to_string(),
-            data_type: "STRING".to_string(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            array: false,
-        };
-        let claim_schema1 = ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "isOver18".to_string(),
-            data_type: "BOOLEAN".to_string(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            array: false,
-        };
-        let claim_schemas = vec![
-            CredentialSchemaClaim {
-                schema: claim_schema.to_owned(),
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: claim_schema1.to_owned(),
-                required: false,
-            },
-        ];
+        let claim_schemas = params.claim_schemas.unwrap_or_else(|| {
+            let claim_schema = ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "firstName".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                array: false,
+            };
+            let claim_schema1 = ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "isOver18".to_string(),
+                data_type: "BOOLEAN".to_string(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                array: false,
+            };
+            vec![
+                CredentialSchemaClaim {
+                    schema: claim_schema,
+                    required: true,
+                },
+                CredentialSchemaClaim {
+                    schema: claim_schema1,
+                    required: false,
+                },
+            ]
+        });
 
         let id = params.id.unwrap_or(Uuid::new_v4().into());
         let credential_schema = CredentialSchema {

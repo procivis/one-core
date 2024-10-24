@@ -124,7 +124,7 @@ fn extract_proof_input_claim_schemas(
 fn extract_proof_input_claim_schemas_nested(
     proof_schema_claims: Vec<ImportProofSchemaClaimSchemaDTO>,
     credential_schema_claims: &[CredentialSchemaClaim],
-    disclosure_level: Option<usize>,
+    remaining_disclosure_level: Option<usize>,
     parent_path_prefix: Option<String>,
 ) -> Result<Vec<ProofInputClaimSchema>, ServiceError> {
     let mut result: Vec<ProofInputClaimSchema> = vec![];
@@ -140,12 +140,20 @@ fn extract_proof_input_claim_schemas_nested(
             proof_schema_claim.key
         };
 
-        // only the leaf nodes contain the requested claims, or nodes on the deepest possible disclosure level
-        if child_claims.is_empty() || disclosure_level.is_some_and(|l| l == 1) {
+        if
+        // only the leaf nodes contain the requested claims
+        child_claims.is_empty()
+        // or the top-most array nodes
+        || proof_schema_claim.array
+        // or nodes on the deepest possible disclosure level
+        || remaining_disclosure_level.is_some_and(|l| l == 1)
+        {
             let claim_schema = credential_schema_claims
                 .iter()
                 .find(|credential_schema_claim| credential_schema_claim.schema.key == path)
-                .ok_or_else(|| ServiceError::MappingError("claim_schema missing".to_string()))?;
+                .ok_or_else(|| {
+                    ServiceError::MappingError(format!("claim_schema for path '{path}' missing"))
+                })?;
 
             result.push(ProofInputClaimSchema {
                 schema: claim_schema.schema.to_owned(),
@@ -156,7 +164,7 @@ fn extract_proof_input_claim_schemas_nested(
             result.extend(extract_proof_input_claim_schemas_nested(
                 child_claims,
                 credential_schema_claims,
-                disclosure_level.map(|l| l - 1),
+                remaining_disclosure_level.map(|l| l - 1),
                 Some(path),
             )?);
         }
