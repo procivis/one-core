@@ -28,7 +28,6 @@ hkdf                     = { version = "0.12.4", features = ["std"] }
 human-sort               = { version = "0.2" }
 indexmap                 = { version = "2.2", features = ["serde"] }
 itertools                = { version = "0.13" }
-josekit                  = { version = "0.10", features = ["vendored"] }
 json-ld                  = { version = "0.15" }
 json-syntax              = { version = "0.9" }
 json_ld_0_21             = { version = "0.21", package = "json-ld" }

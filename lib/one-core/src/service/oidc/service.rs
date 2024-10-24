@@ -1,8 +1,6 @@
 use std::str::FromStr;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
-use josekit::jwe::{JweDecrypter, JweHeader};
+use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use shared_types::{CredentialId, CredentialSchemaId, KeyId, ProofId};
@@ -31,7 +29,7 @@ use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
 use crate::model::history::HistoryAction;
 use crate::model::interaction::InteractionRelations;
-use crate::model::key::{Key, KeyRelations};
+use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
 use crate::model::proof_schema::{
@@ -54,9 +52,6 @@ use crate::provider::exchange_protocol::openid4vc::service::{
     create_open_id_for_vp_client_metadata, create_service_discovery_response, credentials_format,
     get_credential_schema_base_url, parse_access_token, parse_refresh_token,
 };
-use crate::provider::key_algorithm::eddsa::JwkEddsaExt;
-use crate::provider::key_algorithm::error::KeyAlgorithmError;
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -851,10 +846,7 @@ impl OIDCService {
                     ServiceError::Other(format!("Failed parsing JWE header: {err}"))
                 })?;
 
-                let key_id = jwe_header.key_id().ok_or_else(|| {
-                    ServiceError::ValidationError("JWE header is missing key_id".to_string())
-                })?;
-                let key_id = KeyId::from_str(key_id).map_err(|err| {
+                let key_id = KeyId::from_str(&jwe_header.key_id).map_err(|err| {
                     ServiceError::ValidationError(format!("JWE key_id value invalid format: {err}"))
                 })?;
 
@@ -866,23 +858,26 @@ impl OIDCService {
                         ServiceError::ValidationError("Invalid JWE key_id".to_string())
                     })?;
 
-                let decrypter = build_jwe_decrypter(&*self.key_provider, &key)?;
+                let key_storage = self
+                    .key_provider
+                    .get_key_storage(&key.storage_type)
+                    .ok_or_else(|| MissingProviderError::KeyStorage(key.storage_type.clone()))?;
 
-                let (payload, _) = josekit::jwe::deserialize_compact(&jwe, &decrypter).unwrap();
+                let key = key_storage.secret_key_as_jwk(&key.to_owned())?;
+
+                let payload = decrypt_jwe_payload(&jwe, &key).map_err(|err| {
+                    ServiceError::Other(format!("Failed decrypting JWE payload: {err}"))
+                })?;
 
                 let payload = JwePayload::try_from_json_base64_decode(&payload).map_err(|err| {
                     ServiceError::Other(format!("Failed deserializing JWE payload: {err}"))
                 })?;
 
-                let mdoc_generated_nonce = jwe_header
-                    .agreement_partyuinfo()
-                    .and_then(|nonce| String::from_utf8(nonce).ok());
-
                 Ok(RequestData {
                     presentation_submission: payload.presentation_submission,
                     vp_token: payload.vp_token,
                     state: payload.state.parse()?,
-                    mdoc_generated_nonce,
+                    mdoc_generated_nonce: Some(jwe_header.agreement_partyuinfo),
                 })
             }
             _ => Err(ServiceError::OpenID4VCIError(
@@ -890,41 +885,6 @@ impl OIDCService {
             )),
         }
     }
-}
-
-fn extract_jwe_header(jwe: &str) -> Result<JweHeader, anyhow::Error> {
-    let header_b64 = jwe
-        .split('.')
-        .next()
-        .ok_or_else(|| anyhow::anyhow!("Invalid JWE"))?;
-
-    let header = Base64UrlSafeNoPadding::decode_to_vec(header_b64, None)?;
-    let map: serde_json::Map<String, serde_json::Value> = serde_json::from_slice(&header)?;
-
-    Ok(JweHeader::from_map(map)?)
-}
-
-fn build_jwe_decrypter(
-    key_provider: &dyn KeyProvider,
-    key: &Key,
-) -> Result<impl JweDecrypter, ServiceError> {
-    let key_storage = key_provider
-        .get_key_storage(&key.storage_type)
-        .ok_or_else(|| MissingProviderError::KeyStorage(key.storage_type.clone()))?;
-
-    let jwk = key_storage.secret_key_as_jwk(&key.to_owned())?;
-    let mut jwk = josekit::jwk::Jwk::from_bytes(jwk.as_bytes())
-        .map_err(|err| ServiceError::MappingError(format!("Failed constructing JWK {err}")))?;
-
-    if let Some("Ed25519") = jwk.curve() {
-        jwk = jwk.into_x25519().map_err(|err| {
-            KeyAlgorithmError::Failed(format!("Cannot convert Ed25519 into X25519: {err}"))
-        })?;
-    };
-
-    EcdhEsJweAlgorithm::EcdhEs
-        .decrypter_from_jwk(&jwk)
-        .map_err(|err| ServiceError::Other(format!("Failed constructing EcdhEs decrypter: {err}")))
 }
 
 fn get_url(base_url: Option<String>) -> Result<String, ServiceError> {
