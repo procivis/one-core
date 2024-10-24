@@ -382,30 +382,30 @@ impl CredentialSchemaClaimsNestedTypeView {
         claims: &[CredentialSchemaClaim],
         claim: CredentialSchemaClaim,
     ) -> Result<Self, ServiceError> {
-        if claims.iter().any(|other_claim| {
-            other_claim.schema.key.starts_with(&claim.schema.key)
-                && other_claim.schema.id != claim.schema.id
-        }) {
+        let mut child_claims = claims
+            .iter()
+            .filter_map(|other_claim| {
+                other_claim
+                    .schema
+                    .key
+                    .strip_prefix(&claim.schema.key)
+                    .and_then(|v| v.strip_prefix(NESTED_CLAIM_MARKER))
+                    .and_then(|v| (!v.contains(NESTED_CLAIM_MARKER)).then_some((v, other_claim)))
+            })
+            .peekable();
+
+        if child_claims.peek().is_some() {
             Ok(Self::Object(CredentialSchemaClaimsNestedObjectView {
-                fields: claims
-                    .iter()
-                    .filter_map(|other_claim| {
-                        other_claim
-                            .schema
-                            .key
-                            .strip_prefix(&claim.schema.key)
-                            .and_then(|v| v.strip_prefix(NESTED_CLAIM_MARKER))
-                            .and_then(|v| {
-                                (!v.contains(NESTED_CLAIM_MARKER)).then_some((v, other_claim))
-                            })
-                    })
-                    .try_fold(HashMap::default(), |mut state, (key, other_claim)| {
+                fields: child_claims.try_fold(
+                    HashMap::default(),
+                    |mut state, (key, other_claim)| {
                         state.insert(
                             key.to_owned(),
                             Arrayed::from_claims_and_prefix(claims, other_claim.clone())?,
                         );
                         Ok::<_, ServiceError>(state)
-                    })?,
+                    },
+                )?,
                 claim,
             }))
         } else {
