@@ -153,7 +153,7 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                 CredentialStateEnum::Revoked,
                 CredentialStateEnum::Suspended,
             ]
-            .contains(&credential_state.state.clone())
+            .contains(&credential_state.state)
             {
                 continue;
             }
