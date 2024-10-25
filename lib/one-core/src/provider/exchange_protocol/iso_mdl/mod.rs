@@ -409,6 +409,7 @@ impl ExchangeProtocolImpl for IsoMdl {
                 purpose: None,
                 fields,
                 applicable_credentials,
+                inapplicable_credentials: vec![],
                 validity_credential_nbf: None,
             };
 

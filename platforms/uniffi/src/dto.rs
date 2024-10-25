@@ -719,6 +719,8 @@ pub struct PresentationDefinitionRequestedCredentialBindingDTO {
     pub fields: Vec<PresentationDefinitionFieldBindingDTO>,
     #[from(with_fn = convert_inner)]
     pub applicable_credentials: Vec<String>,
+    #[from(with_fn = convert_inner)]
+    pub inapplicable_credentials: Vec<String>,
     #[from(with_fn = format_timestamp_opt)]
     pub validity_credential_nbf: Option<String>,
 }

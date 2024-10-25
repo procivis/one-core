@@ -654,13 +654,23 @@ pub(super) fn presentation_definition_from_interaction_data(
                             .map(|field| {
                                 create_presentation_definition_field(
                                     field,
-                                    &group.applicable_credentials,
+                                    &group
+                                        .applicable_credentials
+                                        .iter()
+                                        .chain(group.inapplicable_credentials.iter())
+                                        .cloned()
+                                        .collect::<Vec<_>>(),
                                 )
                             })
                             .collect::<Result<_, _>>()?,
 
                         applicable_credentials: group
                             .applicable_credentials
+                            .into_iter()
+                            .map(|credential| credential.id.to_string())
+                            .collect(),
+                        inapplicable_credentials: group
+                            .inapplicable_credentials
                             .into_iter()
                             .map(|credential| credential.id.to_string())
                             .collect(),

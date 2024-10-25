@@ -605,6 +605,7 @@ dictionary PresentationDefinitionRequestedCredentialBindingDTO {
   string? purpose;
   sequence<PresentationDefinitionFieldBindingDTO> fields;
   sequence<string> applicable_credentials;
+  sequence<string> inapplicable_credentials;
   string? validity_credential_nbf;
 };
 

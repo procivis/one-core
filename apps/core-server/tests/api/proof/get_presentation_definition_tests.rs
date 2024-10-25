@@ -696,7 +696,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
     let first_claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0];
     let second_claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[1];
 
-    let _incomplete_credential = context
+    let incomplete_credential = context
         .db
         .credentials
         .create(
@@ -858,8 +858,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
 
     resp["requestGroups"][0]["id"].assert_eq(&proof.id);
     let credentials = resp["credentials"].as_array().unwrap();
-    assert_eq!(1, credentials.len());
-    credentials[0]["id"].assert_eq(&complete_credential.id);
+    assert_eq!(2, credentials.len());
 
     let applicable_credentials = resp["requestGroups"][0]["requestedCredentials"][0]
         ["applicableCredentials"]
@@ -867,4 +866,11 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
         .unwrap();
     assert_eq!(1, applicable_credentials.len());
     applicable_credentials[0].assert_eq(&complete_credential.id);
+
+    let applicable_credentials = resp["requestGroups"][0]["requestedCredentials"][0]
+        ["inapplicableCredentials"]
+        .as_array()
+        .unwrap();
+    assert_eq!(1, applicable_credentials.len());
+    applicable_credentials[0].assert_eq(&incomplete_credential.id);
 }
