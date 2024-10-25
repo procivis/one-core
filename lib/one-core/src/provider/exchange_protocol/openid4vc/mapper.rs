@@ -453,17 +453,17 @@ fn parse_mdoc_schema_elements(
 }
 
 pub(crate) fn parse_mdoc_schema_claims(
-    values: HashMap<String, HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>>,
+    values: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>,
     element_order: Option<Vec<String>>,
 ) -> Vec<CredentialClaimSchemaRequestDTO> {
     let mut claims_by_namespace: Vec<_> = values
         .into_iter()
-        .map(|(namespace, elements)| CredentialClaimSchemaRequestDTO {
+        .map(|(namespace, element)| CredentialClaimSchemaRequestDTO {
             key: namespace,
             datatype: "OBJECT".to_string(),
-            required: true,
+            required: element.mandatory.unwrap_or(false),
             array: Some(false),
-            claims: parse_mdoc_schema_elements(elements),
+            claims: parse_mdoc_schema_elements(element.value),
         })
         .collect();
 

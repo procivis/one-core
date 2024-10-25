@@ -43,7 +43,6 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use super::mapper::convert_mdoc_claims;
 use crate::endpoint::credential_schema::dto::{CredentialSchemaType, WalletStorageTypeRestEnum};
 use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
 use crate::endpoint::trust_entity::dto::TrustEntityRoleRest;
@@ -63,9 +62,8 @@ pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_mdoc_claims)]
-    pub claims:
-        Option<HashMap<String, HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>>>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub claims: Option<HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner_of_inner)]
     pub order: Option<Vec<String>>,
