@@ -342,10 +342,13 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             .url(Some("https://www.procivis.ch/en/procivis-one#signup"))
             .build(),
     );
-    docs.servers = Some(vec![Server::builder()
-        .url("https://www.procivis-one.com")
-        .description(Some("Generated server url"))
-        .build()]);
+    docs.servers = Some(vec![
+        Server::builder().url("/").build(),
+        Server::builder()
+            .url("https://www.procivis-one.com")
+            .description(Some("Generated server url"))
+            .build(),
+    ]);
     docs.tags = Some(get_tags());
     docs.external_docs = Some(
         ExternalDocs::builder()
