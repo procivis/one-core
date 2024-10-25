@@ -165,8 +165,7 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
     pub format: String,
-    pub claims:
-        Option<HashMap<String, HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>>>,
+    pub claims: Option<HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>>,
     pub order: Option<Vec<String>>,
     pub credential_definition: Option<OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO>,
     pub doctype: Option<String>,

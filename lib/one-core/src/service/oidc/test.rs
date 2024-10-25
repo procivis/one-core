@@ -304,16 +304,22 @@ async fn test_get_issuer_metadata_mdoc() {
     assert_eq!(
         HashMap::from([(
             "location".to_string(),
-            HashMap::from([(
-                "X".to_string(),
-                OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
-                    value: Default::default(),
-                    value_type: "STRING".to_string(),
-                    mandatory: Some(true),
-                    order: None,
-                    array: Some(false),
-                }
-            )])
+            OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
+                value: HashMap::from([(
+                    "X".to_string(),
+                    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
+                        value: Default::default(),
+                        value_type: "STRING".to_string(),
+                        mandatory: Some(true),
+                        order: None,
+                        array: Some(false),
+                    }
+                )]),
+                value_type: "OBJECT".to_string(),
+                mandatory: Some(true),
+                order: None,
+                array: Some(false),
+            }
         )]),
         claims
     );

@@ -40,11 +40,7 @@ pub(super) fn credentials_supported_mdoc(
         .map(|element| element.schema.key.replace(NESTED_CLAIM_MARKER, "~"))
         .collect();
 
-    let claim_schema_values = schemas_to_mdoc_values(claim_schemas)?;
-    let claims = claim_schema_values
-        .into_iter()
-        .map(|(namespace, elements)| (namespace, elements.value))
-        .collect();
+    let claims = schemas_to_mdoc_values(claim_schemas)?;
 
     let credentials_supported = vec![OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
         wallet_storage_type: schema.wallet_storage_type.map(Into::into),
