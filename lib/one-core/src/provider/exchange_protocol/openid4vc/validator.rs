@@ -11,6 +11,8 @@ use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
+use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
 use crate::provider::credential_formatter::model::{
     DetailCredential, ExtractPresentationCtx, Presentation, TokenVerifier,
 };
@@ -133,7 +135,7 @@ pub(super) async fn validate_credential(
     did_method_provider: &Arc<dyn DidMethodProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     map_from_oidc_format_to_external: FnMapOidcFormatToExternalDetailed,
-) -> Result<DetailCredential, OpenID4VCError> {
+) -> Result<(DetailCredential, Option<MobileSecurityObject>), OpenID4VCError> {
     let holder_did = presentation
         .issuer_did
         .as_ref()
@@ -142,19 +144,19 @@ pub(super) async fn validate_credential(
         ))?;
 
     let credential_index = vec_last_position_from_token_path(&path_nested.path)?;
-    let credential = presentation
+    let credential_token = presentation
         .credentials
         .get(credential_index)
         .ok_or(OpenID4VCIError::InvalidRequest)?;
 
     let oidc_format = &path_nested.format;
-    let format = map_from_oidc_format_to_external(oidc_format, Some(credential))?;
+    let format = map_from_oidc_format_to_external(oidc_format, Some(credential_token))?;
     let formatter = formatter_provider
         .get_formatter(&format)
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
 
     let credential = formatter
-        .extract_credentials(credential, key_verification)
+        .extract_credentials(credential_token, key_verification)
         .await
         .map_err(|e| {
             if matches!(e, FormatterError::CouldNotExtractCredentials(_)) {
@@ -175,7 +177,7 @@ pub(super) async fn validate_credential(
         ))?;
 
     if is_revocation_credential(&credential) {
-        return Ok(credential);
+        return Ok((credential, None));
     };
 
     for credential_status in credential.status.iter() {
@@ -231,7 +233,17 @@ pub(super) async fn validate_credential(
             "Holder DID doesn't match.".to_owned(),
         ));
     }
-    Ok(credential)
+
+    let mut mso = None;
+    if format == "MDOC" {
+        mso = Some(
+            try_extracting_mso_from_token(credential_token)
+                .await
+                .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?,
+        );
+    }
+
+    Ok((credential, mso))
 }
 
 pub(crate) fn validate_issuance_time(
@@ -279,6 +291,7 @@ pub(crate) fn validate_expiration_time(
 pub(super) fn validate_claims(
     received_credential: DetailCredential,
     proof_input_schema: &ProofInputSchema,
+    mso: Option<MobileSecurityObject>,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
     let expected_credential_claims = proof_input_schema
         .claim_schemas
@@ -303,6 +316,7 @@ pub(super) fn validate_claims(
                 credential: received_credential.to_owned(),
                 value: value.to_owned(),
                 credential_schema: credential_schema.to_owned(),
+                mdoc_mso: mso.clone(),
             })
         } else if expected_credential_claim.required {
             // Fail as required claim was not sent

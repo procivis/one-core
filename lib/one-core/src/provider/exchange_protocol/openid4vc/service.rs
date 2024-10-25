@@ -31,6 +31,7 @@ use crate::model::did::KeyRole;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -365,7 +366,7 @@ async fn process_proof_submission(
                 "Missing proof input schema for credential schema".to_owned(),
             ))?;
 
-        let credential = validate_credential(
+        let (credential, mso) = validate_credential(
             presentation,
             path_nested,
             &extracted_lvvcs,
@@ -387,7 +388,7 @@ async fn process_proof_submission(
         }
 
         let proved_claims: Vec<ValidatedProofClaimDTO> =
-            validate_claims(credential, proof_schema_input)?;
+            validate_claims(credential, proof_schema_input, mso)?;
 
         total_proved_claims.extend(proved_claims);
     }
@@ -507,6 +508,7 @@ async fn accept_proof(
         value: serde_json::Value,
         credential: DetailCredential,
         credential_schema: CredentialSchema,
+        mdoc_mso: Option<MobileSecurityObject>,
     }
     let proved_claims = proved_claims
         .into_iter()
@@ -516,6 +518,7 @@ async fn accept_proof(
                 credential: proved_claim.credential,
                 credential_schema: proved_claim.credential_schema,
                 claim_schema: proved_claim.proof_input_claim.schema,
+                mdoc_mso: proved_claim.mdoc_mso,
             })
         })
         .collect::<Result<Vec<ProvedClaim>, OpenID4VCError>>()?;
@@ -569,6 +572,7 @@ async fn accept_proof(
             claims,
             issuer_did,
             holder_did,
+            first_claim.mdoc_mso.to_owned(),
         )?;
 
         proof_claims.append(

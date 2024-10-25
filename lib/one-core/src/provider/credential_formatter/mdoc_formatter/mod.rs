@@ -718,12 +718,7 @@ fn extract_credentials_internal(
     token: &str,
     verify: bool,
 ) -> Result<DetailCredential, FormatterError> {
-    let token = Base64UrlSafeNoPadding::decode_to_vec(token, None)
-        .map_err(|err| FormatterError::Failed(format!("Base64 decoding failed: {err}")))?;
-
-    let issuer_signed: IssuerSigned = ciborium::from_reader(&token[..])
-        .map_err(|err| FormatterError::Failed(format!("Issuer signed decoding failed: {err}")))?;
-
+    let issuer_signed: IssuerSigned = decode_cbor_base64(token)?;
     let issuer_did = extract_did_from_x5chain_header(None, &issuer_signed.issuer_auth)?;
     let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
     let Some(namespaces) = issuer_signed.name_spaces else {
@@ -1402,4 +1397,11 @@ fn try_extract_claims(
     }
 
     Ok(result)
+}
+
+pub async fn try_extracting_mso_from_token(
+    token: &str,
+) -> Result<MobileSecurityObject, FormatterError> {
+    let issuer_signed: IssuerSigned = decode_cbor_base64(token)?;
+    try_extract_mobile_security_object(&issuer_signed.issuer_auth)
 }

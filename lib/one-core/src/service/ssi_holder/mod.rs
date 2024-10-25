@@ -13,6 +13,7 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 pub mod dto;
 pub mod service;
@@ -29,6 +30,7 @@ pub struct SSIHolderService {
     organisation_repository: Arc<dyn OrganisationRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     did_repository: Arc<dyn DidRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     key_provider: Arc<dyn KeyProvider>,
@@ -47,6 +49,7 @@ impl SSIHolderService {
         organisation_repository: Arc<dyn OrganisationRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         did_repository: Arc<dyn DidRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         key_provider: Arc<dyn KeyProvider>,
@@ -62,6 +65,7 @@ impl SSIHolderService {
             organisation_repository,
             interaction_repository,
             credential_schema_repository,
+            validity_credential_repository,
             did_repository,
             history_repository,
             key_provider,

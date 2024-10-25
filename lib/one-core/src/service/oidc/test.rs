@@ -44,6 +44,7 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
+use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::ServiceError;
 use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::service::oidc::OIDCService;
@@ -65,6 +66,7 @@ struct Mocks {
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
+    pub validity_credential_repository: MockValidityCredentialRepository,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -85,6 +87,7 @@ fn setup_service(mocks: Mocks) -> OIDCService {
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.revocation_method_provider),
+        Arc::new(mocks.validity_credential_repository),
     )
 }
 

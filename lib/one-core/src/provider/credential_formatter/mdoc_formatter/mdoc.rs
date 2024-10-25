@@ -125,7 +125,7 @@ impl<'de> Deserialize<'de> for CoseSign1 {
 }
 
 // payload for the IssuerAuth CoseSign1
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MobileSecurityObject {
     pub version: MobileSecurityObjectVersion,
@@ -136,13 +136,13 @@ pub struct MobileSecurityObject {
     pub validity_info: ValidityInfo,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum MobileSecurityObjectVersion {
     #[serde(rename = "1.0")]
     V1_0,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum DeviceResponseVersion {
     #[serde(rename = "1.0")]
     V1_0,
@@ -158,7 +158,7 @@ pub enum DigestAlgorithm {
     Sha512,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceKeyInfo {
     pub device_key: DeviceKey,
@@ -168,7 +168,7 @@ pub struct DeviceKeyInfo {
     pub key_info: Option<KeyInfo>,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(try_from = "ciborium::Value")]
 pub struct DeviceKey(pub coset::CoseKey);
 
@@ -192,7 +192,7 @@ impl TryFrom<ciborium::Value> for DeviceKey {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct KeyAuthorizations {
     // authorized namespaces
@@ -203,11 +203,11 @@ pub struct KeyAuthorizations {
     pub data_elements: Option<IndexMap<String, Vec<String>>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(transparent)]
 pub struct KeyInfo(IndexMap<i64, ciborium::Value>);
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidityInfo {
     pub signed: DateTime,
@@ -218,7 +218,7 @@ pub struct ValidityInfo {
 }
 
 // datetime for cbor should be in RFC-3339 format as String
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DateTime(pub OffsetDateTime);
 
 impl Serialize for DateTime {
