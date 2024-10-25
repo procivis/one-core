@@ -798,6 +798,7 @@ impl OpenID4VCHTTP {
                     })
                     .collect::<Result<Vec<_>, _>>()?,
                 applicable_credentials: vec![],
+                inapplicable_credentials: vec![],
                 validity_credential_nbf,
             });
         }

@@ -228,11 +228,11 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                         false
                     }
                 }) {
-                    // If not then skip this credential
-                    continue;
+                    group.inapplicable_credentials.push(credential.to_owned());
+                } else {
+                    group.applicable_credentials.push(credential.to_owned());
                 }
 
-                group.applicable_credentials.push(credential.to_owned());
                 relevant_credentials.push(credential.to_owned());
             }
         }

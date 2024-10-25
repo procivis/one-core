@@ -100,13 +100,25 @@ pub(super) fn presentation_definition_from_interaction_data(
                                 .map(|field| {
                                     create_presentation_definition_field(
                                         field,
-                                        &convert_inner(group.applicable_credentials.clone()),
+                                        &convert_inner(
+                                            group
+                                                .applicable_credentials
+                                                .iter()
+                                                .chain(group.inapplicable_credentials.iter())
+                                                .cloned()
+                                                .collect::<Vec<_>>(),
+                                        ),
                                     )
                                 })
                                 .collect::<Result<Vec<_>, _>>()?,
                         ),
                         applicable_credentials: group
                             .applicable_credentials
+                            .into_iter()
+                            .map(|credential| credential.id.to_string())
+                            .collect(),
+                        inapplicable_credentials: group
+                            .inapplicable_credentials
                             .into_iter()
                             .map(|credential| credential.id.to_string())
                             .collect(),
@@ -1632,6 +1644,7 @@ pub async fn holder_ble_mqtt_get_presentation_definition(
                 })
                 .collect::<anyhow::Result<Vec<_>, _>>()?,
             applicable_credentials: vec![],
+            inapplicable_credentials: vec![],
             validity_credential_nbf,
         });
     }

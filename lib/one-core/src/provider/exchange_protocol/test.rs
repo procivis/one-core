@@ -251,6 +251,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
                 required: true,
             }],
             applicable_credentials: vec![],
+            inapplicable_credentials: vec![],
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
@@ -321,6 +322,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
                 },
             ],
             applicable_credentials: vec![],
+            inapplicable_credentials: vec![],
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
@@ -330,7 +332,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
     .await
     .unwrap();
 
-    assert_eq!(0, result_credentials.len());
+    assert_eq!(1, result_credentials.len());
 }
 
 #[tokio::test]
@@ -355,6 +357,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
                 required: true,
             }],
             applicable_credentials: vec![],
+            inapplicable_credentials: vec![],
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
@@ -396,6 +399,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
                 required: true,
             }],
             applicable_credentials: vec![],
+            inapplicable_credentials: vec![],
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
@@ -510,6 +514,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
                 required: true,
             }],
             applicable_credentials: vec![],
+            inapplicable_credentials: vec![],
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
@@ -544,6 +549,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_se
                 required: true,
             }],
             applicable_credentials: vec![],
+            inapplicable_credentials: vec![],
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),

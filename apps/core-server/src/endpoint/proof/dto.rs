@@ -206,6 +206,9 @@ pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     pub fields: Vec<PresentationDefinitionFieldRestDTO>,
     #[from(with_fn = convert_inner)]
     pub applicable_credentials: Vec<String>,
+    #[from(with_fn = convert_inner)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub inapplicable_credentials: Vec<String>,
     #[serde(
         serialize_with = "front_time_option",
         skip_serializing_if = "Option::is_none"
