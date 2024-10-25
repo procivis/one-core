@@ -23,6 +23,7 @@ use crate::model::did::{Did, DidType};
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::model::proof_schema::ProofInputClaimSchema;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::exchange_protocol::dto::PresentationDefinitionRequestedCredentialResponseDTO;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
@@ -368,6 +369,7 @@ pub(super) struct ValidatedProofClaimDTO {
     pub credential: DetailCredential,
     pub credential_schema: CredentialSchema,
     pub value: serde_json::Value,
+    pub mdoc_mso: Option<MobileSecurityObject>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -467,6 +469,7 @@ pub struct ProvedCredential {
     pub credential: Credential,
     pub issuer_did_value: DidValue,
     pub holder_did_value: DidValue,
+    pub mdoc_mso: Option<MobileSecurityObject>,
 }
 
 pub struct AcceptProofResult {

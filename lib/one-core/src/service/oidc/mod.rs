@@ -14,6 +14,7 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 pub mod dto;
 pub mod mapper;
@@ -38,6 +39,7 @@ pub struct OIDCService {
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -58,6 +60,7 @@ impl OIDCService {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     ) -> Self {
         Self {
             core_base_url,
@@ -75,6 +78,7 @@ impl OIDCService {
             did_method_provider,
             key_algorithm_provider,
             revocation_method_provider,
+            validity_credential_repository,
         }
     }
 }

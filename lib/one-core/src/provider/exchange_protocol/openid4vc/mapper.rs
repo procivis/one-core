@@ -37,6 +37,7 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::ProofInputClaimSchema;
+use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::ExtractPresentationCtx;
 use crate::provider::exchange_protocol::dto::{
     CredentialGroup, CredentialGroupItem, PresentationDefinitionRequestGroupResponseDTO,
@@ -1294,6 +1295,7 @@ pub fn extracted_credential_to_model(
     claims: Vec<(serde_json::Value, ClaimSchema)>,
     issuer_did: &DidValue,
     holder_did: &DidValue,
+    mdoc_mso: Option<MobileSecurityObject>,
 ) -> Result<ProvedCredential, OpenID4VCError> {
     let now = OffsetDateTime::now_utc();
     let credential_id = Uuid::new_v4().into();
@@ -1336,6 +1338,7 @@ pub fn extracted_credential_to_model(
         },
         issuer_did_value: issuer_did.to_owned(),
         holder_did_value: holder_did.to_owned(),
+        mdoc_mso,
     })
 }
 

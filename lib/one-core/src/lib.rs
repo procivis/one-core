@@ -455,6 +455,7 @@ impl OneCore {
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
+                data_provider.get_validity_credential_repository(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 providers.core_base_url.clone(),
@@ -527,6 +528,7 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 data_provider.get_interaction_repository(),
                 data_provider.get_credential_schema_repository(),
+                data_provider.get_validity_credential_repository(),
                 data_provider.get_did_repository(),
                 data_provider.get_history_repository(),
                 key_provider,

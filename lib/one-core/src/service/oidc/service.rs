@@ -11,9 +11,9 @@ use super::dto::OpenID4VCICredentialResponseDTO;
 use super::mapper::{credential_from_proved, credentials_supported_mdoc};
 use super::OIDCService;
 use crate::common_mapper::{
-    get_encryption_key_jwk_from_proof, get_exchange_param_pre_authorization_expires_in,
-    get_exchange_param_refresh_token_expires_in, get_exchange_param_token_expires_in,
-    get_or_create_did,
+    encode_cbor_base64, get_encryption_key_jwk_from_proof,
+    get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
+    get_exchange_param_token_expires_in, get_or_create_did,
 };
 use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
@@ -35,6 +35,7 @@ use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, Pro
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::model::validity_credential::Mdoc;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_open_id_for_vp_formats, credentials_format_mdoc,
@@ -714,6 +715,9 @@ impl OIDCService {
         {
             Ok((accept_proof_result, response)) => {
                 for proved_credential in accept_proof_result.proved_credentials {
+                    let credential_id = proved_credential.credential.id;
+                    let mdoc_mso = proved_credential.mdoc_mso.to_owned();
+
                     let credential = credential_from_proved(
                         proved_credential,
                         organisation,
@@ -724,6 +728,24 @@ impl OIDCService {
                     self.credential_repository
                         .create_credential(credential)
                         .await?;
+
+                    if let Some(mso) = mdoc_mso {
+                        let mso_cbor = encode_cbor_base64(mso).map_err(|_| {
+                            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest)
+                        })?;
+
+                        self.validity_credential_repository
+                            .insert(
+                                Mdoc {
+                                    id: Uuid::new_v4(),
+                                    created_date: OffsetDateTime::now_utc(),
+                                    credential: mso_cbor.into_bytes(),
+                                    linked_credential_id: credential_id,
+                                }
+                                .into(),
+                            )
+                            .await?;
+                    }
                 }
 
                 self.proof_repository
