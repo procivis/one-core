@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 use shared_types::OrganisationId;
+use time::{Duration, OffsetDateTime};
 
 use super::dto::{CreateProofSchemaRequestDTO, ImportProofSchemaDTO, ProofInputSchemaRequestDTO};
 use super::ProofSchemaImportError;
@@ -100,6 +101,8 @@ pub fn validate_create_request(
         {
             return Err(ValidationError::ProofSchemaDuplicitClaim);
         }
+
+        check_if_validity_constraint_is_correct(proof_input)?;
     }
 
     Ok(())
@@ -227,6 +230,26 @@ pub(super) fn validate_imported_proof_schema(
                 .datatype
                 .get_if_enabled(datatype)
                 .map_err(|_| ProofSchemaImportError::UnsupportedDatatype(datatype.to_owned()))?;
+        }
+    }
+
+    Ok(())
+}
+
+fn check_if_validity_constraint_is_correct(
+    input_schema: &ProofInputSchemaRequestDTO,
+) -> Result<(), ValidationError> {
+    let now = OffsetDateTime::now_utc();
+
+    if let Some(validity_constraint) = input_schema.validity_constraint.as_ref() {
+        if now
+            .checked_sub(Duration::seconds(*validity_constraint))
+            .is_none()
+            || now
+                .checked_add(Duration::seconds(*validity_constraint))
+                .is_none()
+        {
+            return Err(ValidationError::ValidityConstraintOutOfRange);
         }
     }
 

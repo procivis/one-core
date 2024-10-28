@@ -426,6 +426,9 @@ pub enum ValidationError {
 
     #[error("Sharing not supported for requested proof-schema")]
     ProofSchemaSharingNotSupported,
+
+    #[error("ValidityConstraintOutOfRange")]
+    ValidityConstraintOutOfRange,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -872,6 +875,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Proof schema: claim schemas empty")]
     BR_0164,
+
+    #[strum(to_string = "Validity constraint out of range")]
+    BR_0166,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1051,6 +1057,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::TransportNotAllowedForExchange => ErrorCode::BR_0160,
             Self::TransportsCombinationNotAllowed => ErrorCode::BR_0159,
             Self::InvalidTransportType { .. } => ErrorCode::BR_0112,
+            Self::ValidityConstraintOutOfRange => ErrorCode::BR_0166,
         }
     }
 }

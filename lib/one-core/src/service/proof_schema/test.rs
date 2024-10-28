@@ -479,6 +479,39 @@ async fn test_create_proof_schema_success() {
 }
 
 #[tokio::test]
+async fn test_create_proof_schema_fail_validity_constraint_out_of_range() {
+    let create_request = CreateProofSchemaRequestDTO {
+        name: "name".to_string(),
+        expire_duration: Some(0),
+        organisation_id: Uuid::new_v4().into(),
+        proof_input_schemas: vec![ProofInputSchemaRequestDTO {
+            claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
+                id: Uuid::new_v4().into(),
+                required: true,
+            }],
+            credential_schema_id: Uuid::new_v4().into(),
+            validity_constraint: Some(9007199254740991),
+        }],
+    };
+
+    let service = setup_service(
+        MockProofSchemaRepository::default(),
+        MockCredentialSchemaRepository::default(),
+        MockOrganisationRepository::default(),
+        MockCredentialFormatterProvider::default(),
+        MockRevocationMethodProvider::default(),
+    );
+
+    let result = service.create_proof_schema(create_request).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::ValidityConstraintOutOfRange
+        ))
+    ));
+}
+
+#[tokio::test]
 async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
     let claim_schema_id = Uuid::new_v4().into();
     let claim_schema = ClaimSchema {
