@@ -1,5 +1,5 @@
 use one_core::provider::credential_formatter::json_ld::model::{LdCredential, LdPresentation};
-use one_core::provider::did_method::model::DidDocument;
+use one_core::provider::did_method::dto::DidDocumentDTO;
 use one_core::service::vc_api::dto::{
     CredentialIssueOptions, CredentialIssueRequest, CredentialIssueResponse,
     CredentialVerifiyRequest, CredentialVerifyResponse, PresentationVerifyRequest,
@@ -93,8 +93,8 @@ pub struct VcApiDidDocumentRestDTO {
     pub document: Option<DidDocumentRestDTO>,
 }
 
-impl From<DidDocument> for VcApiDidDocumentRestDTO {
-    fn from(value: DidDocument) -> Self {
+impl From<DidDocumentDTO> for VcApiDidDocumentRestDTO {
+    fn from(value: DidDocumentDTO) -> Self {
         Self {
             document: Some(DidDocumentRestDTO::from(value)),
         }
@@ -119,8 +119,8 @@ pub struct DidResolutionMetadataResponseDTO {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DidDocumentMetadataRestDTO {}
 
-impl From<DidDocument> for DidDocumentResolutionResponseDTO {
-    fn from(value: DidDocument) -> Self {
+impl From<DidDocumentDTO> for DidDocumentResolutionResponseDTO {
+    fn from(value: DidDocumentDTO) -> Self {
         Self {
             did_document: value.into(),
             context: vec!["https://w3id.org/did-resolution/v1".to_string()],

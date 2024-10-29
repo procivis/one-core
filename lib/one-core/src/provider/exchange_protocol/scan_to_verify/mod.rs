@@ -64,6 +64,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         &self,
         _url: Url,
         _organisation: Organisation,
+        _tx_code: Option<String>,
         _storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
         _transport: String,

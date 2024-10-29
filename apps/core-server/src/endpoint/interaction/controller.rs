@@ -37,7 +37,12 @@ pub(crate) async fn handle_invitation(
     let result = state
         .core
         .ssi_holder_service
-        .handle_invitation(request.url, request.organisation_id, request.transport)
+        .handle_invitation(
+            request.url,
+            request.organisation_id,
+            request.transport,
+            request.tx_code,
+        )
         .await;
     OkOrErrorResponse::from_result(result, state, "handling invitation")
 }

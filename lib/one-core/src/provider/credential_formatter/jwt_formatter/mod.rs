@@ -85,7 +85,13 @@ impl CredentialFormatter for JWTFormatter {
         };
 
         let key_id = auth_fn.get_key_id();
-        let jwt = Jwt::new("JWT".to_owned(), algorithm.to_owned(), key_id, payload);
+        let jwt = Jwt::new(
+            "JWT".to_owned(),
+            algorithm.to_owned(),
+            key_id,
+            None,
+            payload,
+        );
 
         jwt.tokenize(auth_fn).await
     }
@@ -147,7 +153,7 @@ impl CredentialFormatter for JWTFormatter {
             nonce: None,
         };
 
-        let jwt = Jwt::new("JWT".to_owned(), algorithm, None, payload);
+        let jwt = Jwt::new("JWT".to_owned(), algorithm, None, None, payload);
 
         jwt.tokenize(auth_fn).await
     }
@@ -204,7 +210,13 @@ impl CredentialFormatter for JWTFormatter {
         };
 
         let key_id = auth_fn.get_key_id();
-        let jwt = Jwt::new("JWT".to_owned(), algorithm.to_owned(), key_id, payload);
+        let jwt = Jwt::new(
+            "JWT".to_owned(),
+            algorithm.to_owned(),
+            key_id,
+            None,
+            payload,
+        );
 
         jwt.tokenize(auth_fn).await
     }

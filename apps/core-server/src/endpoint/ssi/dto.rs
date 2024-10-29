@@ -1,20 +1,17 @@
 use std::collections::HashMap;
 
-use one_core::provider::did_method::model::{DidDocument, DidVerificationMethod};
+use indexmap::IndexMap;
+use one_core::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
 use one_core::provider::exchange_protocol::openid4vc::model::{
     AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm,
-    NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialDefinition,
-    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferClaim,
-    OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant, OpenID4VCIGrants,
-    OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
-    OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
-    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ExtendedSubjectClaimsDTO,
+    ExtendedSubjectDTO, NestedPresentationSubmissionDescriptorDTO,
+    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinitionRequestDTO,
+    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
+    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
+    OpenID4VCIGrants, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VPClientMetadata,
     OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
     OpenID4VPFormat, OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
@@ -38,7 +35,8 @@ use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
-use shared_types::{CredentialId, DidValue, KeyId, TrustAnchorId, TrustEntityId};
+use shared_types::{CredentialId, DidValue, KeyId, ProofId, TrustAnchorId, TrustEntityId};
+use strum_macros::Display;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -47,29 +45,69 @@ use crate::endpoint::credential_schema::dto::{CredentialSchemaType, WalletStorag
 use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
 use crate::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use crate::serialize::{front_time, front_time_option};
+// verifier specific
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+#[serde(rename_all = "camelCase")]
+pub struct PostSsiVerifierConnectQueryParams {
+    pub protocol: String,
+    pub proof: ProofId,
+    pub redirect_uri: Option<String>,
+}
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[from(OpenID4VCIIssuerMetadataResponseDTO)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_issuer: String,
     pub credential_endpoint: String,
-    #[from(with_fn = convert_inner)]
-    pub credentials_supported: Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
+    pub credential_configurations_supported:
+        IndexMap<String, OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
+}
+
+// TODO! Support in mapper somehow?
+impl From<OpenID4VCIIssuerMetadataResponseDTO> for OpenID4VCIIssuerMetadataResponseRestDTO {
+    fn from(value: OpenID4VCIIssuerMetadataResponseDTO) -> Self {
+        Self {
+            credential_issuer: value.credential_issuer,
+            credential_endpoint: value.credential_endpoint,
+            credential_configurations_supported: value
+                .credential_configurations_supported
+                .into_iter()
+                .map(|(key, value)| (key, value.into()))
+                .collect(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[from(OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO)]
+#[from(OpenID4VCICredentialConfigurationData)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_inner_of_inner)]
-    pub claims: Option<HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>>,
+    #[schema(value_type = Object,
+        example = "{
+            credential_schema_id: {
+                claims: {
+                    claim1: {
+                        mandatory: true
+                    }
+                },
+                display: [
+                {
+                    name: \"Schema name\"
+                }
+                ],
+                doctype: \"eu.europa.ec.eudi.hiid.1\",
+                format: \"mso_mdoc\",
+            }
+        }",
+    )]
+    pub claims: Option<IndexMap<String, OpenID4VCICredentialSubjectItem>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner_of_inner)]
     pub order: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
-    pub credential_definition: Option<OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO>,
+    pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestRestDTO>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub doctype: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -78,6 +116,13 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    pub vct: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cryptographic_binding_methods_supported: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credential_signing_alg_values_supported: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -87,36 +132,10 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[from(OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub struct OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO {
-    pub r#type: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_inner)]
-    pub credential_schema: Option<OpenID4VCIIssuerMetadataCredentialSchemaRestDTO>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO)]
 pub struct OpenID4VCIIssuerMetadataCredentialSchemaRestDTO {
     pub id: String,
     pub r#type: CredentialSchemaType,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, From)]
-#[from(OpenID4VCIIssuerMetadataMdocClaimsValuesDTO)]
-pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO {
-    #[from(with_fn = convert_inner)]
-    #[serde(skip_serializing_if = "HashMap::is_empty", default)]
-    pub value: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>,
-    /// Indication of what type of key storage the wallet should use. See the [wallet storage type](/api/resources/credential_schemas#wallet-storage-type) guide.
-    pub value_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mandatory: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub order: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub array: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -141,10 +160,25 @@ pub struct OpenID4VCITokenRequestRestDTO {
     pub refresh_token: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From)]
 #[into(OpenID4VCICredentialDefinitionRequestDTO)]
+#[from(OpenID4VCICredentialDefinitionRequestDTO)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenID4VCICredentialDefinitionRequestRestDTO {
     pub r#type: Vec<String>,
+
+    #[serde(rename = "credentialSubject")]
+    #[schema(value_type = Object,
+        example = "{
+            claim1: {
+                mandatory: true
+            },
+            claim2: {
+                mandatory: true
+            }
+        }",
+    )]
+    pub credential_subject: Option<OpenID4VCICredentialSubjectItem>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
@@ -167,7 +201,7 @@ pub struct OpenID4VCIProofRequestRestDTO {
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[from(DidDocument)]
+#[from(DidDocumentDTO)]
 pub struct DidDocumentRestDTO {
     #[serde(rename = "@context")]
     pub context: serde_json::Value,
@@ -185,7 +219,7 @@ pub struct DidDocumentRestDTO {
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[from(DidVerificationMethod)]
+#[from(DidVerificationMethodDTO)]
 pub struct DidVerificationMethodRestDTO {
     pub id: String,
     pub r#type: String,
@@ -368,7 +402,6 @@ pub struct PostSsiIssuerConnectQueryParams {
 #[from(IssuerResponseDTO)]
 pub struct IssuerResponseRestDTO {
     pub credential: String,
-    pub format: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -376,7 +409,6 @@ pub struct IssuerResponseRestDTO {
 #[from(OpenID4VCICredentialResponseDTO)]
 pub struct OpenID4VCICredentialResponseRestDTO {
     pub credential: String,
-    pub format: String,
     pub redirect_uri: Option<String>,
 }
 
@@ -398,9 +430,45 @@ pub struct PostSsiIssuerSubmitQueryParams {
 #[from(OpenID4VCICredentialOfferDTO)]
 pub struct OpenID4VCICredentialOfferRestDTO {
     pub credential_issuer: String,
-    #[from(with_fn = convert_inner)]
-    pub credentials: Vec<OpenID4VCICredentialOfferCredentialRestDTO>,
+    pub credential_configuration_ids: Vec<String>,
     pub grants: OpenID4VCIGrantsRestDTO,
+
+    #[from(with_fn = convert_inner)]
+    pub credential_subject: Option<ExtendedSubjectRestDTO>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
+#[from(ExtendedSubjectDTO)]
+pub struct ExtendedSubjectRestDTO {
+    #[from(with_fn = convert_inner)]
+    pub keys: Option<ExtendedSubjectClaimsRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
+pub struct ExtendedSubjectClaimsRestDTO {
+    #[serde(flatten)]
+    pub claims: IndexMap<String, ProcivisSubjectClaimValueRestDTO>,
+}
+
+impl From<ExtendedSubjectClaimsDTO> for ExtendedSubjectClaimsRestDTO {
+    fn from(value: ExtendedSubjectClaimsDTO) -> Self {
+        Self {
+            claims: value
+                .claims
+                .into_iter()
+                .map(|(key, value)| (key, value.into()))
+                .collect(),
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
+#[from(OpenID4VCICredentialValueDetails)]
+pub struct ProcivisSubjectClaimValueRestDTO {
+    pub value: String,
+    pub value_type: String,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -417,61 +485,30 @@ pub struct OpenID4VCIGrantRestDTO {
     pub pre_authorized_code: String,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VCICredentialOfferCredentialDTO)]
-pub struct OpenID4VCICredentialOfferCredentialRestDTO {
-    pub format: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_inner)]
-    pub credential_definition: Option<OpenID4VCICredentialDefinitionRestDTO>,
-    /// Indication of what type of key storage the wallet should use. See the [wallet storage type](/api/resources/credential_schemas#wallet-storage-type) guide.
-    #[from(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub doctype: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_inner_of_inner)]
-    pub claims: Option<HashMap<String, OpenID4VCICredentialOfferClaimDTO>>,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VCICredentialOfferClaim)]
-pub struct OpenID4VCICredentialOfferClaimDTO {
-    #[schema(no_recursion)]
-    pub value: OpenID4VCICredentialOfferClaimValueDTO,
-    pub value_type: String,
-}
-
 #[derive(Clone, Debug, Serialize, ToSchema)]
-#[serde(untagged)]
-pub enum OpenID4VCICredentialOfferClaimValueDTO {
-    Nested(HashMap<String, OpenID4VCICredentialOfferClaimDTO>),
-    String(String),
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VCICredentialDefinition)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenID4VCICredentialDefinitionRestDTO {
     pub r#type: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_inner)]
-    pub credential_subject: Option<OpenID4VCICredentialSubjectRestDTO>,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VCICredentialSubject)]
-pub struct OpenID4VCICredentialSubjectRestDTO {
-    #[serde(flatten)]
-    #[from(with_fn = convert_inner)]
-    pub keys: HashMap<String, OpenID4VCICredentialValueDetailsRestDTO>,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VCICredentialValueDetails)]
-pub struct OpenID4VCICredentialValueDetailsRestDTO {
-    pub value: String,
-    pub value_type: String,
+    #[schema(value_type = Object,
+        example = "{
+            credential_schema_id: {
+                claims: {
+                    claim1: {
+                        mandatory: true
+                    }
+                },
+                display: [
+                {
+                    name: \"Schema name\"
+                }
+                ],
+                doctype: \"eu.europa.ec.eudi.hiid.1\",
+                format: \"mso_mdoc\",
+            }
+        }",
+    )]
+    pub credential_subject: Option<OpenID4VCICredentialSubjectItem>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -630,10 +667,13 @@ pub enum OID4VPAuthorizationEncryptedResponseAlgorithm {
     EcdhEs,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, ToSchema, From)]
+#[derive(Debug, Clone, Serialize, PartialEq, ToSchema, Display, From)]
 #[from(AuthorizationEncryptedResponseContentEncryptionAlgorithm)]
 pub enum OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm {
     A256GCM,
+    #[serde(rename = "A128CBC-HS256")]
+    #[strum(serialize = "A128CBC-HS256")]
+    A128CBCHS256,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, ToSchema, From)]

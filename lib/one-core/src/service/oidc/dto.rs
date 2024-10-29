@@ -8,6 +8,5 @@ use crate::provider::exchange_protocol::openid4vc::model::SubmitIssuerResponse;
 #[serde(rename_all = "camelCase")]
 pub struct OpenID4VCICredentialResponseDTO {
     pub credential: String,
-    pub format: String,
     pub redirect_uri: Option<String>,
 }

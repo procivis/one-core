@@ -18,6 +18,8 @@ pub struct HandleInvitationRequestRestDTO {
     pub url: Url,
     pub organisation_id: OrganisationId,
     pub transport: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tx_code: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema)]

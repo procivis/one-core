@@ -14,8 +14,8 @@ use crate::model::did::{DidListQuery, DidRelations, UpdateDidRequest};
 use crate::model::history::HistoryAction;
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
+use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodProviderError;
-use crate::provider::did_method::model::DidDocument;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::repository::error::DataLayerError;
 use crate::service::did::mapper::{
@@ -33,7 +33,7 @@ impl DidService {
     /// # Arguments
     ///
     /// * `id` - Did uuid
-    pub async fn get_did_web_document(&self, id: &DidId) -> Result<DidDocument, ServiceError> {
+    pub async fn get_did_web_document(&self, id: &DidId) -> Result<DidDocumentDTO, ServiceError> {
         let did = self
             .did_repository
             .get_did(
@@ -83,7 +83,7 @@ impl DidService {
                         map_key_to_verification_method(
                             &did.did,
                             key,
-                            key_algorithm.bytes_to_jwk(&value.public_key, None)?,
+                            key_algorithm.bytes_to_jwk(&value.public_key, None)?.into(),
                         )?,
                     ))
                 })
@@ -257,7 +257,10 @@ impl DidService {
         Ok(())
     }
 
-    pub async fn resolve_did(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {
-        self.did_method_provider.resolve(did).await
+    pub async fn resolve_did(
+        &self,
+        did: &DidValue,
+    ) -> Result<DidDocumentDTO, DidMethodProviderError> {
+        self.did_method_provider.resolve(did).await.map(Into::into)
     }
 }

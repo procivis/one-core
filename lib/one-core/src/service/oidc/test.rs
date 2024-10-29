@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use mockall::predicate::{always, eq};
 use serde_json::json;
 use shared_types::{DidId, DidValue, ProofId};
@@ -99,11 +100,21 @@ fn generic_credential_schema() -> CredentialSchema {
         imported_source_url: "CORE_URL".to_string(),
         created_date: now,
         last_modified: now,
-        name: "".to_string(),
+        name: "SchemaName".to_string(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         format: "JWT".to_string(),
         revocation_method: "".to_string(),
-        claim_schemas: None,
+        claim_schemas: Some(vec![CredentialSchemaClaim {
+            required: true,
+            schema: ClaimSchema {
+                array: false,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data_type: "STRING".to_string(),
+                key: "key".to_string(),
+                id: Uuid::new_v4().into(),
+            },
+        }]),
         organisation: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -212,9 +223,23 @@ async fn test_get_issuer_metadata_jwt() {
     let result = service.oidc_get_issuer_metadata(&schema.id).await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    let credential = result.credentials_supported[0].to_owned();
+    let credential = result.credential_configurations_supported[0].to_owned();
     assert_eq!("jwt_vc_json".to_string(), credential.format);
     assert_eq!(schema.name, credential.display.unwrap()[0].name);
+    assert!(credential.claims.is_none()); // This is present of mdoc only
+    let credential_definition = credential.credential_definition.as_ref().unwrap();
+    assert!(credential_definition
+        .r#type
+        .contains(&"VerifiableCredential".to_string()));
+    assert!(credential_definition
+        .r#credential_subject
+        .as_ref()
+        .unwrap()
+        .claims
+        .as_ref()
+        .unwrap()
+        .get("key")
+        .is_some());
 }
 
 #[tokio::test]
@@ -243,9 +268,23 @@ async fn test_get_issuer_metadata_sd_jwt() {
         ..Default::default()
     });
     let result = service.oidc_get_issuer_metadata(&schema.id).await.unwrap();
-    let credential = result.credentials_supported[0].to_owned();
+    let credential = result.credential_configurations_supported[0].to_owned();
     assert_eq!("vc+sd-jwt".to_string(), credential.format);
     assert_eq!(schema.name, credential.display.unwrap()[0].name);
+    assert!(credential.claims.is_none()); // This is present of mdoc only
+    let credential_definition = credential.credential_definition.as_ref().unwrap();
+    assert!(credential_definition
+        .r#type
+        .contains(&"VerifiableCredential".to_string()));
+    assert!(credential_definition
+        .r#credential_subject
+        .as_ref()
+        .unwrap()
+        .claims
+        .as_ref()
+        .unwrap()
+        .get("key")
+        .is_some());
 }
 
 #[tokio::test]
@@ -300,32 +339,28 @@ async fn test_get_issuer_metadata_mdoc() {
         ..Default::default()
     });
     let result = service.oidc_get_issuer_metadata(&schema.id).await.unwrap();
-    let credential = result.credentials_supported[0].to_owned();
+    let credential = result.credential_configurations_supported[0].to_owned();
     assert_eq!("mso_mdoc".to_string(), credential.format);
     assert_eq!(schema.name, credential.display.unwrap()[0].name);
     let claims = credential.claims.unwrap();
     assert_eq!(
-        HashMap::from([(
+        IndexMap::from([(
             "location".to_string(),
-            OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
-                value: HashMap::from([(
+            OpenID4VCICredentialSubjectItem {
+                claims: Some(IndexMap::from([(
                     "X".to_string(),
-                    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
-                        value: Default::default(),
-                        value_type: "STRING".to_string(),
+                    OpenID4VCICredentialSubjectItem {
+                        value_type: Some("string".to_string()),
                         mandatory: Some(true),
-                        order: None,
-                        array: Some(false),
+                        ..Default::default()
                     }
-                )]),
-                value_type: "OBJECT".to_string(),
-                mandatory: Some(true),
-                order: None,
-                array: Some(false),
+                )])),
+                ..Default::default()
             }
         )]),
         claims
     );
+    assert!(credential.credential_definition.is_none()); // Invalid for mdoc
 }
 
 #[tokio::test]
@@ -409,6 +444,7 @@ async fn test_oidc_create_token() {
             &schema.id,
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
+                tx_code: None,
             },
         )
         .await;
@@ -452,6 +488,7 @@ async fn test_oidc_create_token_empty_pre_authorized_code() {
             &schema.id,
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "".to_string(),
+                tx_code: None,
             },
         )
         .await;
@@ -508,6 +545,7 @@ async fn test_oidc_create_token_pre_authorized_code_used() {
             &schema.id,
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
+                tx_code: None,
             },
         )
         .await;
@@ -564,6 +602,7 @@ async fn test_oidc_create_token_wrong_credential_state() {
             &schema.id,
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
+                tx_code: None,
             },
         )
         .await;
@@ -619,7 +658,6 @@ async fn test_oidc_create_credential_success() {
             .return_once(|_, _| {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
-                    format: "jwt_vc_json".to_string(),
                     redirect_uri: None,
                 })
             });
@@ -669,6 +707,7 @@ async fn test_oidc_create_credential_success() {
                 format: "jwt_vc_json".to_string(),
                 credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
+                    credential_subject: None,
                 }),
                 doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
@@ -681,7 +720,6 @@ async fn test_oidc_create_credential_success() {
 
     //assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!("jwt_vc_json", result.format);
     assert_eq!("xyz", result.credential);
 }
 
@@ -731,7 +769,6 @@ async fn test_oidc_create_credential_success_mdoc() {
             .return_once(|_, _| {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
-                    format: "mso_mdoc".to_string(),
                     redirect_uri: None,
                 })
             });
@@ -791,7 +828,6 @@ async fn test_oidc_create_credential_success_mdoc() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!("mso_mdoc", result.format);
     assert_eq!("xyz", result.credential);
 }
 
@@ -822,6 +858,7 @@ async fn test_oidc_create_credential_format_invalid() {
                 format: "some_string".to_string(),
                 credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
+                    credential_subject: None,
                 }),
                 doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
@@ -868,6 +905,7 @@ async fn test_oidc_create_credential_format_invalid_for_credential_schema() {
                 format: "vc+sd-jwt".to_string(),
                 credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
+                    credential_subject: None,
                 }),
                 doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
@@ -914,6 +952,7 @@ async fn test_oidc_create_credential_format_invalid_credential_definition() {
                 format: "jwt_vc_json".to_string(),
                 credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["some string".to_string()],
+                    credential_subject: None,
                 }),
                 doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
@@ -960,6 +999,7 @@ async fn test_oidc_create_credential_format_invalid_bearer_token() {
                 format: "jwt_vc_json".to_string(),
                 credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
+                    credential_subject: None,
                 }),
                 doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
@@ -1015,6 +1055,7 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
                 format: "jwt_vc_json".to_string(),
                 credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
+                    credential_subject: None,
                 }),
                 doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
@@ -1070,6 +1111,7 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
                 format: "jwt_vc_json".to_string(),
                 credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
+                    credential_subject: None,
                 }),
                 doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
@@ -1133,6 +1175,7 @@ async fn test_oidc_create_credential_access_token_expired() {
                 format: "jwt_vc_json".to_string(),
                 credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
+                    credential_subject: None,
                 }),
                 doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
@@ -1840,6 +1883,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
             &schema.id,
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
+                tx_code: None,
             },
         )
         .await;

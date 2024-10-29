@@ -370,6 +370,7 @@ pub(crate) fn throw_if_token_request_invalid(
     match &request {
         OpenID4VCITokenRequestDTO::PreAuthorizedCode {
             pre_authorized_code,
+            tx_code: _,
         } if pre_authorized_code.is_empty() => {
             Err(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidRequest))
         }

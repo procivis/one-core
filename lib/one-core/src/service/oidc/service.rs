@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use indexmap::IndexMap;
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
@@ -8,7 +9,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::OpenID4VCICredentialResponseDTO;
-use super::mapper::{credential_from_proved, credentials_supported_mdoc};
+use super::mapper::credential_from_proved;
 use super::OIDCService;
 use crate::common_mapper::{
     encode_cbor_base64, get_encryption_key_jwk_from_proof,
@@ -19,13 +20,13 @@ use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
 use crate::config::core_config::{ExchangeType, TransportType};
-use crate::model::claim::ClaimRelations;
+use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
     CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
     UpdateCredentialRequest,
 };
-use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
 use crate::model::did::DidRelations;
 use crate::model::history::HistoryAction;
 use crate::model::interaction::InteractionRelations;
@@ -37,20 +38,19 @@ use crate::model::proof_schema::{
 };
 use crate::model::validity_credential::Mdoc;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
-use crate::provider::exchange_protocol::openid4vc::mapper::{
-    create_open_id_for_vp_formats, credentials_format_mdoc,
-};
+use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_formats;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, JwePayload, MQTTOpenID4VPInteractionDataVerifier,
-    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCIDiscoveryResponseDTO,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-    OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPPresentationDefinition, RequestData,
+    BLEOpenID4VPInteractionData, ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, JwePayload,
+    MQTTOpenID4VPInteractionDataVerifier, OpenID4VCICredentialOfferDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
+    OpenID4VCITokenResponseDTO, OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition, RequestData,
 };
 use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::exchange_protocol::openid4vc::service::{
     create_credential_offer, create_issuer_metadata_response,
-    create_open_id_for_vp_client_metadata, create_service_discovery_response, credentials_format,
+    create_open_id_for_vp_client_metadata, create_service_discovery_response,
     get_credential_schema_base_url, parse_access_token, parse_refresh_token,
 };
 use crate::service::error::{
@@ -96,23 +96,10 @@ impl OIDCService {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
-        let format = &self.config.format.get_fields(&schema.format)?;
         let oidc_format = map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?;
 
-        let schema_type = schema.schema_type.to_string();
-
-        match format.r#type.as_str() {
-            "MDOC" => credentials_supported_mdoc(&base_url, schema),
-            _ => create_issuer_metadata_response(
-                &base_url,
-                &oidc_format,
-                &schema.schema_id,
-                &schema_type,
-                &schema.name,
-                schema.wallet_storage_type,
-            )
-            .map_err(Into::into),
-        }
+        create_issuer_metadata_response(&base_url, &oidc_format, &schema, &self.config)
+            .map_err(Into::into)
     }
 
     pub async fn oidc_get_client_metadata(
@@ -238,41 +225,31 @@ impl OIDCService {
                 "interaction missing".to_string(),
             ))?;
 
-        let credential_schema = credential
+        let url = get_url(self.core_base_url.to_owned())?;
+
+        let wallet_storage_type = credential
             .schema
             .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "Missing credential schema".to_owned(),
-            ))?;
+            .unwrap()
+            .wallet_storage_type
+            .clone();
 
         let claims = credential
             .claims
-            .clone()
-            .ok_or(ServiceError::MappingError("Missing claims".to_owned()))?;
+            .unwrap()
+            .iter()
+            .map(|claim| claim.to_owned())
+            .collect::<Vec<_>>();
 
-        let format_type = &self
-            .config
-            .format
-            .get_fields(&credential_schema.format)
-            .map_err(|e| ServiceError::Other(e.to_string()))?
-            .r#type;
-
-        let wallet_storage_type = credential_schema.wallet_storage_type.clone();
-        let oidc_format = map_core_to_oidc_format(&credential_schema.format)
+        let credential_subject = credentials_format(wallet_storage_type, &claims)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-
-        let credentials = match format_type.as_str() {
-            "MDOC" => credentials_format_mdoc(credential_schema, claims),
-            _ => credentials_format(wallet_storage_type, &oidc_format, &claims),
-        }?;
-
-        let url = get_url(self.core_base_url.to_owned())?;
 
         Ok(create_credential_offer(
             &url,
             &interaction.id.to_string(),
             &credential_schema_id,
-            credentials,
+            &credential_schema.schema_id,
+            credential_subject,
         )?)
     }
 
@@ -384,7 +361,7 @@ impl OIDCService {
 
         Ok(OpenID4VCICredentialResponseDTO {
             credential: issued_credential.credential,
-            format: request.format,
+            // format: request.format,
             redirect_uri: credential.redirect_uri.to_owned(),
         })
     }
@@ -407,6 +384,7 @@ impl OIDCService {
         let interaction_id = match &request {
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code,
+                tx_code: _,
             } => Uuid::from_str(pre_authorized_code).map_err(|_| {
                 ServiceError::OpenID4VCError(OpenID4VCError::OpenID4VCI(
                     OpenID4VCIError::InvalidRequest,
@@ -911,4 +889,26 @@ impl OIDCService {
 
 fn get_url(base_url: Option<String>) -> Result<String, ServiceError> {
     base_url.ok_or(ServiceError::Other("Missing base_url".to_owned()))
+}
+
+pub fn credentials_format(
+    wallet_storage_type: Option<WalletStorageTypeEnum>,
+    claims: &[Claim],
+) -> Result<ExtendedSubjectDTO, OpenID4VCError> {
+    Ok(ExtendedSubjectDTO {
+        wallet_storage_type,
+        keys: Some(ExtendedSubjectClaimsDTO {
+            claims: IndexMap::from_iter(claims.iter().filter_map(|claim| {
+                claim.schema.as_ref().map(|schema| {
+                    (
+                        claim.path.clone(),
+                        OpenID4VCICredentialValueDetails {
+                            value: claim.value.clone(),
+                            value_type: schema.data_type.clone(),
+                        },
+                    )
+                })
+            })),
+        }),
+    })
 }

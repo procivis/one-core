@@ -18,7 +18,6 @@ use crate::repository::validity_credential_repository::ValidityCredentialReposit
 
 pub mod dto;
 pub mod mapper;
-pub mod model;
 pub mod service;
 pub mod validator;
 

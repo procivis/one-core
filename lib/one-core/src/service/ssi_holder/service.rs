@@ -60,6 +60,7 @@ impl SSIHolderService {
         url: Url,
         organisation_id: OrganisationId,
         transport: Option<Vec<String>>,
+        tx_code: Option<String>,
     ) -> Result<InvitationResponseDTO, ServiceError> {
         let organisation = self
             .organisation_repository
@@ -98,6 +99,7 @@ impl SSIHolderService {
             .handle_invitation(
                 url,
                 organisation,
+                tx_code,
                 &storage_access,
                 &handle_operations,
                 transport,

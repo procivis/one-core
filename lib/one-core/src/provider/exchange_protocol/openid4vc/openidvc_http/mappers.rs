@@ -17,7 +17,8 @@ use crate::provider::exchange_protocol::dto::{
 };
 use crate::provider::exchange_protocol::openid4vc::mapper::get_parent_claim_paths;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    DatatypeType, NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialValueDetails,
+    DatatypeType, NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialConfigurationData,
+    OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialValueDetails,
     PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO, PresentedCredential,
 };
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
@@ -681,4 +682,16 @@ pub(super) fn presentation_definition_from_interaction_data(
         }],
         credentials: credential_model_to_credential_dto(credentials, types)?,
     })
+}
+
+pub fn credential_offer_from_metadata(
+    credential_config: &OpenID4VCICredentialConfigurationData,
+) -> OpenID4VCICredentialOfferCredentialDTO {
+    OpenID4VCICredentialOfferCredentialDTO {
+        format: credential_config.format.clone(),
+        credential_definition: credential_config.credential_definition.clone(),
+        wallet_storage_type: credential_config.wallet_storage_type.clone(),
+        doctype: credential_config.doctype.clone(),
+        claims: credential_config.claims.clone(),
+    }
 }

@@ -16,36 +16,47 @@ doctest = false
 strict = []
 
 [dependencies]
-axum-extra                   = { version = "0.9", features = ["typed-header"] }
-axum.workspace               = true
-clap                         = { version = "4.5", features = ["derive"] }
-ct-codecs.workspace          = true
-headers                      = { version = "0.4" }
-indoc                        = { version = "2.0" }
-one-core                     = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json", "config_yaml", "config_env"] }
-one-crypto                   = { version = "0.1.0", path = "../../lib/one-crypto" }
-one-dto-mapper.workspace     = true
-prometheus                   = { version = "0.13", features = ["process"] }
-reqwest.workspace            = true
-sentry                       = { version = "0.34", default-features = false, features = ["backtrace", "panic", "reqwest", "tracing"] }
-serde.workspace              = true
-serde_json.workspace         = true
-serde_qs.workspace           = true
-serde_with.workspace         = true
-shadow-rs.workspace          = true
-shared-types                 = { version = "0.1.0", path = "../../lib/shared-types", features = ["utoipa"] }
-sql-data-provider            = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["mysql"] }
-thiserror.workspace          = true
-time.workspace               = true
-tokio                        = { workspace = true, features = ["macros", "rt-multi-thread"] }
-tower-http                   = { version = "0.6", features = ["trace", "catch-panic"] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
+axum.workspace = true
+clap = { version = "4.5", features = ["derive"] }
+ct-codecs.workspace = true
+headers = { version = "0.4" }
+indexmap.workspace = true
+indoc = { version = "2.0" }
+one-core = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json", "config_yaml", "config_env"] }
+one-crypto = { version = "0.1.0", path = "../../lib/one-crypto" }
+one-dto-mapper.workspace = true
+prometheus = { version = "0.13", features = ["process"] }
+reqwest.workspace = true
+sentry = { version = "0.34", default-features = false, features = ["backtrace", "panic", "reqwest", "tracing"] }
+serde.workspace = true
+serde_json.workspace = true
+serde_qs.workspace = true
+serde_with.workspace = true
+shadow-rs.workspace = true
+shared-types = { version = "0.1.0", path = "../../lib/shared-types", features = ["utoipa"] }
+sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["mysql"] }
+strum.workspace = true
+strum_macros = { version = "0.26" }
+thiserror.workspace = true
+time.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tower-http = { version = "0.6", features = ["trace", "catch-panic"] }
 tracing-subscriber.workspace = true
-tracing.workspace            = true
-url.workspace                = true
-utoipa                       = { workspace = true, features = ["uuid", "axum_extras", "url", "time", "yaml", "preserve_path_order"] }
-utoipa-swagger-ui            = { version = "8.0", features = ["axum"] }
-uuid.workspace               = true
-validator.workspace          = true
+tracing.workspace = true
+url.workspace = true
+utoipa = { workspace = true, features = [
+    "uuid",
+    "axum_extras",
+    "url",
+    "time",
+    "yaml",
+    "preserve_path_order",
+    "indexmap",
+] }
+utoipa-swagger-ui = { version = "8.0", features = ["axum"] }
+uuid.workspace = true
+validator.workspace = true
 
 [build-dependencies]
 serde                = { workspace = true, features = ["derive"] }

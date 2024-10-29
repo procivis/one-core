@@ -59,14 +59,11 @@ async fn test_get_credential_offer_success_jwt() {
     offer["grants"]["urn:ietf:params:oauth:grant-type:pre-authorized_code"]["pre-authorized_code"]
         .assert_eq(&interaction.id);
 
-    let offer_credential = &offer["credentials"][0];
-    assert_eq!(offer_credential["format"], "jwt_vc_json");
-    assert_eq!(offer_credential["wallet_storage_type"], "SOFTWARE");
+    let credential_id = &offer["credential_configuration_ids"][0];
 
-    let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(
-        CredentialStateEnum::Pending,
-        credential.state.unwrap()[0].state
+        credential_id.as_str(),
+        Some(credential_schema.schema_id.as_str())
     );
 }
 
@@ -131,41 +128,11 @@ async fn test_get_credential_offer_success_mdoc() {
     offer["grants"]["urn:ietf:params:oauth:grant-type:pre-authorized_code"]["pre-authorized_code"]
         .assert_eq(&interaction.id);
 
-    let offer_credential = &offer["credentials"][0];
-    assert_eq!(offer_credential["format"], "mso_mdoc");
-    assert_eq!(offer_credential["wallet_storage_type"], "SOFTWARE");
+    let credential_id = &offer["credential_configuration_ids"][0];
 
-    let expected_claims = serde_json::json!({
-      "address": {
-        "value": {
-          "coordinates": {
-            "value": {
-              "x": {
-                "value": "test",
-                "value_type": "NUMBER"
-              },
-              "y": {
-                "value": "test",
-                "value_type": "NUMBER"
-              }
-            },
-            "value_type": "OBJECT"
-          },
-          "street": {
-            "value": "test",
-            "value_type": "STRING"
-          }
-        },
-        "value_type": "OBJECT"
-      }
-    });
-    assert_eq!(expected_claims, offer_credential["claims"]);
-    assert_eq!(credential_schema.schema_id, offer_credential["doctype"]);
-
-    let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(
-        CredentialStateEnum::Pending,
-        credential.state.unwrap()[0].state
+        credential_id.as_str(),
+        Some(credential_schema.schema_id.as_str())
     );
 }
 
@@ -199,7 +166,7 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
         .clone()
         .unwrap()
         .into_iter()
-        .find(|claim| claim.schema.key == "root_array/nested/field")
+        .find(|claim| claim.schema.key == "namespace/root_array/nested/field")
         .unwrap()
         .schema
         .id;
@@ -215,10 +182,27 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 claims_data: Some(vec![
-                    (claim_id.into(), "root_array/0/nested/0/field", "foo1"),
-                    (claim_id.into(), "root_array/0/nested/1/field", "foo2"),
-                    (claim_id.into(), "root_array/1/nested/0/field", "foo3"),
-                    (claim_id.into(), "root_array/1/nested/1/field", "foo4"),
+                    (claim_id.into(), "namespace/root_field", "foo-field"),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/0/nested/0/field",
+                        "foo1",
+                    ),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/0/nested/1/field",
+                        "foo2",
+                    ),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/1/nested/0/field",
+                        "foo3",
+                    ),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/1/nested/1/field",
+                        "foo4",
+                    ),
                 ]),
                 ..Default::default()
             },
@@ -229,92 +213,37 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
     let resp = context
         .api
         .ssi
-        .get_credential_offer(credential_schema.id, credential.id)
+        .openid_credential_issuer(credential_schema.id)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
-    let offer = resp.json_value().await;
+    let metadata = resp.json_value().await;
 
-    assert_eq!(
-        offer["credential_issuer"],
-        format!(
-            "{}/ssi/oidc-issuer/v1/{}",
-            context.config.app.core_base_url, credential_schema.id
-        )
-    );
-    offer["grants"]["urn:ietf:params:oauth:grant-type:pre-authorized_code"]["pre-authorized_code"]
-        .assert_eq(&interaction.id);
-
-    let offer_credential = &offer["credentials"][0];
-    assert_eq!(offer_credential["format"], "mso_mdoc");
-    assert_eq!(offer_credential["wallet_storage_type"], "SOFTWARE");
+    let credential_configuration =
+        &metadata["credential_configurations_supported"][credential_schema.schema_id];
 
     let expected_claims = serde_json::json!({
-      "root_array": {
-        "value": {
-          "1": {
-            "value": {
-              "nested": {
-                "value": {
-                  "1": {
-                    "value": {
-                      "field": {
-                        "value": "foo4",
-                        "value_type": "STRING"
-                      }
-                    },
-                    "value_type": "OBJECT"
-                  },
-                  "0": {
-                    "value": {
-                      "field": {
-                        "value": "foo3",
-                        "value_type": "STRING"
-                      }
-                    },
-                    "value_type": "OBJECT"
-                  }
-                },
-                "value_type": "OBJECT"
-              }
+        "namespace": {
+            "root_field": {
+                "value_type": "string",
+                "mandatory": true,
             },
-            "value_type": "OBJECT"
-          },
-          "0": {
-            "value": {
-              "nested": {
-                "value": {
-                  "1": {
-                    "value": {
-                      "field": {
-                        "value": "foo2",
-                        "value_type": "STRING"
-                      }
-                    },
-                    "value_type": "OBJECT"
-                  },
-                  "0": {
-                    "value": {
-                      "field": {
-                        "value": "foo1",
-                        "value_type": "STRING"
-                      }
-                    },
-                    "value_type": "OBJECT"
-                  }
-                },
-                "value_type": "OBJECT"
-              }
-            },
-            "value_type": "OBJECT"
-          }
-        },
-        "value_type": "OBJECT"
-      }
+            "root_array": [
+                {
+                    "nested": [
+                        {
+                            "field": {
+                                "value_type": "string",
+                                "mandatory": true,
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
     });
-    assert_eq!(expected_claims, offer_credential["claims"]);
-    assert_eq!(credential_schema.schema_id, offer_credential["doctype"]);
+    assert_eq!(expected_claims, credential_configuration["claims"]);
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(

@@ -6,6 +6,7 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
+use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProofContent {
@@ -22,6 +23,7 @@ impl OpenID4VCIProofJWTFormatter {
     pub async fn format_proof(
         issuer_url: String,
         holder_did: &Did,
+        jwk: Option<PublicKeyJwkDTO>,
         algorithm: String,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
@@ -40,10 +42,16 @@ impl OpenID4VCIProofJWTFormatter {
             nonce: None,
         };
 
-        let jwt = Jwt::new(
+        let key_id = match jwk {
+            Some(_) => None,
+            None => Some(holder_did.did.to_string()),
+        };
+
+        let jwt: Jwt<ProofContent> = Jwt::new(
             "openid4vci-proof+jwt".to_owned(),
             algorithm,
-            Some(holder_did.did.to_string()),
+            key_id,
+            jwk,
             payload,
         );
 

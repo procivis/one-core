@@ -71,12 +71,22 @@ async fn test_create_credential_with_array_success() {
         .create_with_array_claims("test", &organisation, "JWT", Default::default())
         .await;
 
+    let claim_id_root_field = credential_schema
+        .claim_schemas
+        .clone()
+        .unwrap()
+        .into_iter()
+        .find(|claim| claim.schema.key == "namespace/root_field")
+        .unwrap()
+        .schema
+        .id;
+
     let claim_id = credential_schema
         .claim_schemas
         .clone()
         .unwrap()
         .into_iter()
-        .find(|claim| claim.schema.key == "root_array/nested/field")
+        .find(|claim| claim.schema.key == "namespace/root_array/nested/field")
         .unwrap()
         .schema
         .id;
@@ -91,24 +101,34 @@ async fn test_create_credential_with_array_success() {
             did.id,
             serde_json::json!([
                 {
-                    "claimId": claim_id.to_string(),
+                    "claimId": claim_id_root_field.to_string(),
                     "value": "foo",
-                    "path": "root_array/0/nested/0/field"
+                    "path": "namespace/root_field"
                 },
                 {
                     "claimId": claim_id.to_string(),
                     "value": "foo",
-                    "path": "root_array/0/nested/1/field"
+                    "path": "namespace/root_array/0/nested/0/field"
                 },
                 {
                     "claimId": claim_id.to_string(),
                     "value": "foo",
-                    "path": "root_array/1/nested/0/field"
+                    "path": "namespace/root_array/0/nested/0/field"
                 },
                 {
                     "claimId": claim_id.to_string(),
                     "value": "foo",
-                    "path": "root_array/1/nested/1/field"
+                    "path": "namespace/root_array/0/nested/1/field"
+                },
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "namespace/root_array/1/nested/0/field"
+                },
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "namespace/root_array/1/nested/1/field"
                 }
             ]),
             None,
@@ -128,20 +148,29 @@ async fn test_create_credential_with_array_success() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    let root_array = &resp["claims"][0];
-    assert_eq!(root_array["path"], "root_array");
+    let namespace = &resp["claims"][0];
+    assert_eq!(namespace["path"], "namespace");
+
+    let root_array = &namespace["value"][0];
+    assert_eq!(root_array["path"], "namespace/root_field");
+
+    let root_array = &namespace["value"][1];
+    assert_eq!(root_array["path"], "namespace/root_array");
 
     let item = &root_array["value"][0];
-    assert_eq!(item["path"], "root_array/0");
+    assert_eq!(item["path"], "namespace/root_array/0");
 
     let nested = &item["value"][0];
-    assert_eq!(nested["path"], "root_array/0/nested");
+    assert_eq!(nested["path"], "namespace/root_array/0/nested");
 
     let nested_item = &nested["value"][0];
-    assert_eq!(nested_item["path"], "root_array/0/nested/0");
+    assert_eq!(nested_item["path"], "namespace/root_array/0/nested/0");
 
     let nested_field = &nested_item["value"][0];
-    assert_eq!(nested_field["path"], "root_array/0/nested/0/field");
+    assert_eq!(
+        nested_field["path"],
+        "namespace/root_array/0/nested/0/field"
+    );
     assert_eq!(nested_field["value"], "foo");
 }
 

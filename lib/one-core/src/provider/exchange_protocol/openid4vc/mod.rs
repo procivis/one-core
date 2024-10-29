@@ -90,6 +90,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         &self,
         url: Url,
         organisation: Organisation,
+        tx_code: Option<String>,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
         transport: String,
@@ -111,6 +112,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         .handle_invitation(
                             url,
                             organisation,
+                            tx_code,
                             storage_access,
                             handle_invitation_operations,
                         )

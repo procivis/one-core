@@ -497,7 +497,7 @@ pub async fn prepare_bearer_token(
     };
 
     let signer = key_provider.get_signature_provider(&authentication_key.key.to_owned(), None)?;
-    let bearer_token = Jwt::new("JWT".to_string(), "HS256".to_string(), None, payload)
+    let bearer_token = Jwt::new("JWT".to_string(), "HS256".to_string(), None, None, payload)
         .tokenize(signer)
         .await?;
 

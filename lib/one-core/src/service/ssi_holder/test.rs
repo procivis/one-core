@@ -728,7 +728,6 @@ async fn test_accept_credential() {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
-                    format: "credential format".to_string(),
                     redirect_uri: None,
                 },
                 update_proof: None,

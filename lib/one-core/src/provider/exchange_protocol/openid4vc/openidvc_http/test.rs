@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use maplit::hashmap;
+use indexmap::{indexmap, IndexMap};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -22,6 +22,7 @@ use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     get_parent_claim_paths, map_offered_claims_to_credential_schema,
 };
@@ -30,14 +31,13 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCICredentialValueDetails, OpenID4VPClientMetadata, OpenID4VPFormat,
     OpenID4VPInteractionData, OpenID4VPPresentationDefinition,
 };
-use crate::provider::exchange_protocol::openid4vc::service::{
-    create_credential_offer, credentials_format,
-};
+use crate::provider::exchange_protocol::openid4vc::service::create_credential_offer;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::provider::exchange_protocol::{MockHandleInvitationOperations, MockStorageProxy};
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::service::oidc::service::credentials_format;
 use crate::service::test_utilities::{generic_config, get_dummy_date};
 
 #[derive(Default)]
@@ -45,6 +45,7 @@ struct TestInputs {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
     pub key_provider: MockKeyProvider,
+    pub did_method_provider: MockDidMethodProvider,
     pub params: Option<OpenID4VCParams>,
 }
 
@@ -53,6 +54,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
         Some("http://base_url".to_string()),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),
+        Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_provider),
         Arc::new(ReqwestClient::default()),
         inputs.params.unwrap_or(OpenID4VCParams {
@@ -175,29 +177,17 @@ async fn test_generate_offer() {
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     let credential = generic_credential();
 
-    let wallet_storage_type = credential
-        .schema
-        .as_ref()
-        .unwrap()
-        .wallet_storage_type
-        .clone();
+    let keys = credential.claims.unwrap_or_default();
 
-    let oidc_format = "jwt_vc_json";
-
-    let claims = credential
-        .claims
-        .unwrap()
-        .iter()
-        .map(|claim| claim.to_owned())
-        .collect::<Vec<_>>();
-
-    let credentials = credentials_format(wallet_storage_type, oidc_format, &claims).unwrap();
+    let credential_subject =
+        credentials_format(Some(WalletStorageTypeEnum::Software), &keys).unwrap();
 
     let offer = create_credential_offer(
         &base_url,
         &interaction_id.to_string(),
         &credential.schema.as_ref().unwrap().id,
-        credentials,
+        &credential.schema.as_ref().unwrap().schema_id,
+        credential_subject,
     )
     .unwrap();
 
@@ -205,18 +195,20 @@ async fn test_generate_offer() {
         serde_json::json!(&offer),
         serde_json::json!({
             "credential_issuer": "BASE_URL/ssi/oidc-issuer/v1/c322aa7f-9803-410d-b891-939b279fb965",
-            "credentials": [{
-                "wallet_storage_type": "SOFTWARE",
-                "format": "jwt_vc_json",
-                "credential_definition": {
-                    "type": ["VerifiableCredential"],
-                    "credentialSubject": {
-                        "NUMBER": { "value": "123", "value_type": "NUMBER" }
-                    }
-                }
-            }],
+            "credential_configuration_ids" : [
+                credential.schema.as_ref().unwrap().schema_id,
+            ],
             "grants": {
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
+            },
+            "credential_subject": {
+                "keys": {
+                    "NUMBER": {
+                        "value": "123",
+                        "value_type": "NUMBER"
+                    }
+                },
+                "wallet_storage_type": "SOFTWARE"
             }
         })
     )
@@ -256,7 +248,7 @@ async fn test_generate_share_credentials_offer_by_value() {
     // Everything except for interaction id is here.
     // Generating token with predictable interaction id is tested somewhere else.
     assert!(
-        result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credentials%22%3A%5B%7B%22format%22%3A%22jwt_vc_json%22%2C%22credential_definition%22%3A%7B%22type%22%3A%5B%22VerifiableCredential%22%5D%2C%22credentialSubject%22%3A%7B%22NUMBER%22%3A%7B%22value%22%3A%22123%22%2C%22value_type%22%3A%22NUMBER%22%7D%7D%7D%2C%22wallet_storage_type%22%3A%22SOFTWARE%22%7D%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
+        result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%"#)
     )
 }
 
@@ -298,7 +290,13 @@ async fn test_handle_invitation_proof_success() {
     let operations = MockHandleInvitationOperations::default();
 
     let result = protocol
-        .handle_invitation(url, generic_organisation(), &storage_proxy, &operations)
+        .handle_invitation(
+            url,
+            generic_organisation(),
+            None,
+            &storage_proxy,
+            &operations,
+        )
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -333,6 +331,7 @@ async fn test_handle_invitation_proof_success() {
         .handle_invitation(
             url_using_uri_instead_of_values,
             generic_organisation(),
+            None,
             &storage_proxy,
             &operations,
         )
@@ -378,6 +377,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             incorrect_response_type,
             generic_organisation(),
+            None,
             &storage_proxy,
             &operations,
         )
@@ -391,6 +391,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             missing_nonce,
             generic_organisation(),
+            None,
             &storage_proxy,
             &operations,
         )
@@ -404,6 +405,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             incorrect_client_id_scheme,
             generic_organisation(),
+            None,
             &storage_proxy,
             &operations,
         )
@@ -417,6 +419,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             incorrect_response_mode,
             generic_organisation(),
+            None,
             &storage_proxy,
             &operations,
         )
@@ -430,6 +433,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             incorrect_client_id_scheme,
             generic_organisation(),
+            None,
             &storage_proxy,
             &operations,
         )
@@ -450,6 +454,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             missing_metadata_field,
             generic_organisation(),
+            None,
             &storage_proxy,
             &operations,
         )
@@ -463,6 +468,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             both_client_metadata_and_uri_specified,
             generic_organisation(),
+            None,
             &storage_proxy,
             &operations,
         )
@@ -476,6 +482,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             both_presentation_definition_and_uri_specified,
             generic_organisation(),
+            None,
             &storage_proxy,
             &operations,
         )
@@ -503,6 +510,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             client_metadata_uri_is_not_https,
             generic_organisation(),
+            None,
             &storage_proxy,
             &operations,
         )
@@ -517,6 +525,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             presentation_definition_uri_is_not_https,
             generic_organisation(),
+            None,
             &storage_proxy,
             &operations,
         )
@@ -577,16 +586,16 @@ fn test_get_parent_claim_paths() {
 #[test]
 fn test_build_claims_keys_for_mdoc_converts_to_credential_subjects_compatible_claim_keys() {
     let claims = [
-        (hashmap! {}, hashmap! {}),
+        (indexmap! {}, indexmap! {}),
         (
-            hashmap! {
+            indexmap! {
                 "age".into() => OpenID4VCICredentialOfferClaim {
                     value_type: "INTEGER".into(),
                     value: OpenID4VCICredentialOfferClaimValue::String("55".into()),
                 },
                 "address".into() => OpenID4VCICredentialOfferClaim {
                     value_type: "OBJECT".into(),
-                    value: OpenID4VCICredentialOfferClaimValue::Nested(hashmap! {
+                    value: OpenID4VCICredentialOfferClaimValue::Nested(indexmap! {
                         "streetName".into() => OpenID4VCICredentialOfferClaim {
                             value: OpenID4VCICredentialOfferClaimValue::String("Via Roma".into()),
                             value_type: "STRING".into(),
@@ -595,14 +604,14 @@ fn test_build_claims_keys_for_mdoc_converts_to_credential_subjects_compatible_cl
                 },
                 "company".into() => OpenID4VCICredentialOfferClaim {
                     value_type: "OBJECT".into(),
-                    value: OpenID4VCICredentialOfferClaimValue::Nested(hashmap! {
+                    value: OpenID4VCICredentialOfferClaimValue::Nested(indexmap! {
                         "name".into() => OpenID4VCICredentialOfferClaim {
                             value_type: "STRING".into(),
                             value: OpenID4VCICredentialOfferClaimValue::String("Procivis".into()),
                         },
                         "address".into() => OpenID4VCICredentialOfferClaim {
                             value_type: "OBJECT".into(),
-                            value: OpenID4VCICredentialOfferClaimValue::Nested(hashmap! {
+                            value: OpenID4VCICredentialOfferClaimValue::Nested(indexmap! {
                                 "streetName".into() => OpenID4VCICredentialOfferClaim {
                                     value: OpenID4VCICredentialOfferClaimValue::String("Deitzingerstrasse 22".into()),
                                     value_type: "STRING".into(),
@@ -613,7 +622,7 @@ fn test_build_claims_keys_for_mdoc_converts_to_credential_subjects_compatible_cl
                 }
             },
             // expected
-            hashmap! {
+            indexmap! {
                 "age".into() => OpenID4VCICredentialValueDetails { value: "55".into(), value_type: "INTEGER".into() },
                 "address/streetName".into() => OpenID4VCICredentialValueDetails { value: "Via Roma".into(), value_type: "STRING".into() },
                 "company/name".into() => OpenID4VCICredentialValueDetails { value: "Procivis".into(), value_type: "STRING".into() },
@@ -941,7 +950,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
 fn test_map_offered_claims_to_credential_schema_success_missing_optional_object() {
     let schema = generic_schema();
 
-    let claim_keys = HashMap::from([
+    let claim_keys = IndexMap::from([
         (
             "Last Name".to_string(),
             OpenID4VCICredentialValueDetails {
@@ -976,7 +985,7 @@ fn test_map_offered_claims_to_credential_schema_success_missing_optional_object(
 fn test_map_offered_claims_to_credential_schema_failed_partially_missing_optional_object() {
     let schema = generic_schema();
 
-    let claim_keys = HashMap::from([
+    let claim_keys = IndexMap::from([
         (
             "Last Name".to_string(),
             OpenID4VCICredentialValueDetails {
@@ -1009,7 +1018,7 @@ fn test_map_offered_claims_to_credential_schema_failed_partially_missing_optiona
 fn test_map_offered_claims_to_credential_schema_success_object_array() {
     let schema = generic_schema_array_object();
 
-    let claim_keys = HashMap::from([
+    let claim_keys = IndexMap::from([
         (
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
@@ -1097,7 +1106,7 @@ fn test_map_offered_claims_to_credential_schema_success_object_array() {
 fn test_map_offered_claims_to_credential_schema_success_optional_array_missing() {
     let schema = generic_schema_array_object();
 
-    let claim_keys = HashMap::from([
+    let claim_keys = IndexMap::from([
         (
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
@@ -1142,7 +1151,7 @@ fn test_map_offered_claims_to_credential_schema_success_optional_array_missing()
 fn test_map_offered_claims_to_credential_schema_mandatory_array_missing_error() {
     let schema = generic_schema_array_object();
 
-    let claim_keys = HashMap::from([
+    let claim_keys = IndexMap::from([
         (
             "array_object/0/Field 1".to_string(),
             OpenID4VCICredentialValueDetails {
@@ -1176,7 +1185,7 @@ fn test_map_offered_claims_to_credential_schema_mandatory_array_missing_error() 
 fn test_map_offered_claims_to_credential_schema_mandatory_array_object_field_missing_error() {
     let schema = generic_schema_array_object();
 
-    let claim_keys = HashMap::from([
+    let claim_keys = IndexMap::from([
         (
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
@@ -1210,7 +1219,7 @@ fn test_map_offered_claims_to_credential_schema_mandatory_array_object_field_mis
 fn test_map_offered_claims_to_credential_schema_mandatory_object_error() {
     let schema = generic_schema_array_object();
 
-    let claim_keys = HashMap::from([
+    let claim_keys = IndexMap::from([
         (
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
@@ -1244,7 +1253,7 @@ fn test_map_offered_claims_to_credential_schema_mandatory_object_error() {
 fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_present() {
     let schema = generic_schema_object_hell();
 
-    let claim_keys = HashMap::from([
+    let claim_keys = IndexMap::from([
         (
             "opt_obj/obj_str".to_string(),
             OpenID4VCICredentialValueDetails {
@@ -1275,7 +1284,7 @@ fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_present() {
 fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_missing() {
     let schema = generic_schema_object_hell();
 
-    let claim_keys = HashMap::from([(
+    let claim_keys = IndexMap::from([(
         "opt_obj/obj_str".to_string(),
         OpenID4VCICredentialValueDetails {
             value: "os".to_string(),
@@ -1298,7 +1307,7 @@ fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_present_man_f
 {
     let schema = generic_schema_object_hell();
 
-    let claim_keys = HashMap::from([
+    let claim_keys = IndexMap::from([
         (
             "opt_obj/obj_str".to_string(),
             OpenID4VCICredentialValueDetails {
@@ -1326,7 +1335,7 @@ fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_present_man_r
 ) {
     let schema = generic_schema_object_hell();
 
-    let claim_keys = HashMap::from([(
+    let claim_keys = IndexMap::from([(
         "opt_obj/opt_obj/field_man".to_string(),
         OpenID4VCICredentialValueDetails {
             value: "oofm".to_string(),

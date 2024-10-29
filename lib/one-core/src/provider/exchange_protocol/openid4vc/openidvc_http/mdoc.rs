@@ -1,9 +1,9 @@
 use anyhow::{anyhow, bail};
 use one_crypto::jwe::{Header, RemoteJwk};
+use x509_parser::nom::AsBytes;
 
 use crate::provider::exchange_protocol::openid4vc::model::{
-    AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, JwePayload, OpenID4VPClientMetadata,
+    AuthorizationEncryptedResponseAlgorithm, JwePayload, OpenID4VPClientMetadata,
     OpenID4VPClientMetadataJwkDTO,
 };
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -22,10 +22,10 @@ pub(crate) fn build_jwe(
         .zip(verifier_metadata.authorization_encrypted_response_enc.as_ref())
     {
         None => return Err(anyhow!("Verifier must provide `authorization_encrypted_response_alg` and `authorization_encrypted_response_enc` parameters when for encrypted authorization response")),
-        Some((AuthorizationEncryptedResponseAlgorithm::EcdhEs, AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM)) => {}
+        Some((AuthorizationEncryptedResponseAlgorithm::EcdhEs, _)) => {}
     }
 
-    let key = key_from_verifier_metadata(verifier_metadata)?;
+    let key = key_from_verifier_metadata(&verifier_metadata)?;
 
     Ok(one_crypto::jwe::build_jwe(
         payload.as_bytes(),
@@ -59,11 +59,11 @@ fn convert_jwk(key: PublicKeyJwkDTO) -> anyhow::Result<RemoteJwk> {
 }
 
 fn key_from_verifier_metadata(
-    metadata: OpenID4VPClientMetadata,
+    metadata: &OpenID4VPClientMetadata,
 ) -> anyhow::Result<OpenID4VPClientMetadataJwkDTO> {
     metadata
         .jwks
-        .into_iter()
+        .iter()
         .find(|key| {
             matches!(&key.jwk,
                 PublicKeyJwkDTO::Ec(key) | PublicKeyJwkDTO::Okp(key) if key.r#use.as_deref() == Some("enc")
@@ -72,4 +72,5 @@ fn key_from_verifier_metadata(
         .ok_or(anyhow!(
             "verifier metadata is missing EC or OKP key with `enc=use` parameter",
         ))
+        .cloned()
 }

@@ -182,10 +182,26 @@ impl CredentialSchemasDB {
         revocation_method: &str,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
+        let claim_schema_root_namespace: ClaimSchema = ClaimSchema {
+            array: false,
+            id: Uuid::new_v4().into(),
+            key: "namespace".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_root_field: ClaimSchema = ClaimSchema {
+            array: false,
+            id: Uuid::new_v4().into(),
+            key: "namespace/root_field".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
         let claim_schema_root_array = ClaimSchema {
             array: true,
             id: Uuid::new_v4().into(),
-            key: "root_array".to_string(),
+            key: "namespace/root_array".to_string(),
             data_type: "OBJECT".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -193,7 +209,7 @@ impl CredentialSchemasDB {
         let claim_schema_nested = ClaimSchema {
             array: true,
             id: Uuid::new_v4().into(),
-            key: "root_array/nested".to_string(),
+            key: "namespace/root_array/nested".to_string(),
             data_type: "OBJECT".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -201,15 +217,23 @@ impl CredentialSchemasDB {
         let claim_schema_field = ClaimSchema {
             array: false,
             id: Uuid::new_v4().into(),
-            key: "root_array/nested/field".to_string(),
+            key: "namespace/root_array/nested/field".to_string(),
             data_type: "STRING".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
         };
         let claim_schemas = vec![
             CredentialSchemaClaim {
-                schema: claim_schema_root_array.to_owned(),
+                schema: claim_schema_root_namespace.to_owned(),
                 required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_root_field.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_root_array.to_owned(),
+                required: false,
             },
             CredentialSchemaClaim {
                 schema: claim_schema_nested.to_owned(),
@@ -243,7 +267,7 @@ impl CredentialSchemasDB {
             schema_type: params
                 .schema_type
                 .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
-            schema_id: format!("ssi/schema/{id}"),
+            schema_id: "doctype".to_string(),
             allow_suspension: true,
         };
 
@@ -431,6 +455,219 @@ impl CredentialSchemasDB {
             },
             CredentialSchemaClaim {
                 schema: claim_schema_address_coordinates.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_address_coordinates_x.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_address_coordinates_y.to_owned(),
+                required: true,
+            },
+        ];
+
+        let id = Uuid::new_v4();
+        let credential_schema = CredentialSchema {
+            id: id.into(),
+            imported_source_url: "CORE_URL".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            name: name.to_owned(),
+            wallet_storage_type: Some(
+                params
+                    .wallet_storage_type
+                    .unwrap_or(WalletStorageTypeEnum::Software),
+            ),
+            organisation: Some(organisation.clone()),
+            deleted_at: None,
+            format: params.format.unwrap_or("JWT".to_string()),
+            revocation_method: revocation_method.to_owned(),
+            claim_schemas: Some(claim_schemas),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_type: params
+                .schema_type
+                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
+            schema_id: format!("ssi/schema/{id}"),
+            allow_suspension: true,
+        };
+
+        let id = self
+            .repository
+            .create_credential_schema(credential_schema)
+            .await
+            .unwrap();
+
+        self.get(&id).await
+    }
+
+    pub async fn create_with_nested_hell(
+        &self,
+        name: &str,
+        organisation: &Organisation,
+        revocation_method: &str,
+        params: TestingCreateSchemaParams,
+    ) -> CredentialSchema {
+        let claim_schema_name = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "name".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: false,
+        };
+        let claim_schema_string_array = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "string_array".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: true,
+        };
+        let claim_schema_object_array = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "object_array".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: true,
+        };
+        let claim_schema_object_array_field1 = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "object_array/field1".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: false,
+        };
+        let claim_schema_object_array_field2 = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "object_array/field2".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: false,
+        };
+        let claim_schema_address = ClaimSchema {
+            array: false,
+            id: Uuid::new_v4().into(),
+            key: "address".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_address_street = ClaimSchema {
+            array: false,
+            id: Uuid::new_v4().into(),
+            key: "address/street".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_address_coordinates = ClaimSchema {
+            array: false,
+            id: Uuid::new_v4().into(),
+            key: "address/coordinates".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_nested_string_array = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "address/coordinates/string_array".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: true,
+        };
+        let claim_schema_nested_object_array = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "address/coordinates/object_array".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: true,
+        };
+        let claim_schema_nested_object_array_field1 = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "address/coordinates/object_array/field1".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: false,
+        };
+        let claim_schema_nested_object_array_field2 = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "address/coordinates/object_array/field2".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: false,
+        };
+        let claim_schema_address_coordinates_x = ClaimSchema {
+            array: false,
+            id: Uuid::new_v4().into(),
+            key: "address/coordinates/x".to_string(),
+            data_type: "NUMBER".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_address_coordinates_y = ClaimSchema {
+            array: false,
+            id: Uuid::new_v4().into(),
+            key: "address/coordinates/y".to_string(),
+            data_type: "NUMBER".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schemas = vec![
+            CredentialSchemaClaim {
+                schema: claim_schema_name.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_string_array.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_object_array.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_object_array_field1.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_object_array_field2.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_address.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_address_street.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_address_coordinates.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_nested_string_array.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_nested_object_array.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_nested_object_array_field1.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_nested_object_array_field2.to_owned(),
                 required: true,
             },
             CredentialSchemaClaim {

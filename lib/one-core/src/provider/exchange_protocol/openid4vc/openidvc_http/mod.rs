@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use anyhow::Context;
+use indexmap::IndexMap;
 pub use mappers::create_presentation_submission;
 use mappers::{
     map_credential_formats_to_presentation_format, presentation_definition_from_interaction_data,
@@ -25,9 +26,10 @@ use super::mapper::{
     proof_from_handle_invitation,
 };
 use super::model::{
-    DatatypeType, HolderInteractionData, InvitationResponseDTO, JwePayload, OpenID4VCICredential,
-    OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferClaim,
-    OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialOfferDTO,
+    DatatypeType, ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO, JwePayload,
+    OpenID4VCICredential, OpenID4VCICredentialConfigurationData,
+    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferClaim,
+    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProof, OpenID4VCITokenRequestDTO,
     OpenID4VCITokenResponseDTO, OpenID4VCInteractionContent, OpenID4VPDirectPostResponseDTO,
@@ -35,13 +37,12 @@ use super::model::{
     ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use super::proof_formatter::OpenID4VCIProofJWTFormatter;
-use super::service::{
-    create_credential_offer, credentials_format, FnMapExternalFormatToExternalDetailed,
-};
+use super::service::{create_credential_offer, FnMapExternalFormatToExternalDetailed};
 use super::{
     ExchangeProtocolError, FormatMapper, HandleInvitationOperationsAccess, StorageAccess,
     TypeToDescriptorMapper,
 };
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::UpdateCredentialSchemaRequest;
@@ -55,6 +56,7 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
 };
 use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::dto::{
     CredentialGroup, CredentialGroupItem, ExchangeProtocolCapabilities,
     PresentationDefinitionResponseDTO,
@@ -65,11 +67,13 @@ use crate::provider::exchange_protocol::mapper::{
     interaction_from_handle_invitation,
 };
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCICredentialOfferClaimValue;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::mappers::credential_offer_from_metadata;
 use crate::provider::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::service::oidc::service::credentials_format;
 
 pub mod mappers;
 mod mdoc;
@@ -88,6 +92,7 @@ pub struct OpenID4VCHTTP {
     client: Arc<dyn HttpClient>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     base_url: Option<String>,
     params: OpenID4VCParams,
@@ -111,11 +116,13 @@ pub struct OpenID4VCParams {
     pub allow_insecure_http_transport: Option<bool>,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl OpenID4VCHTTP {
     pub fn new(
         base_url: Option<String>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         client: Arc<dyn HttpClient>,
         params: OpenID4VCParams,
@@ -125,6 +132,7 @@ impl OpenID4VCHTTP {
             base_url,
             formatter_provider,
             revocation_provider,
+            did_method_provider,
             key_provider,
             client,
             params,
@@ -158,6 +166,7 @@ impl OpenID4VCHTTP {
         &self,
         url: Url,
         organisation: Organisation,
+        tx_code: Option<String>,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
@@ -172,6 +181,7 @@ impl OpenID4VCHTTP {
                 handle_credential_invitation(
                     url,
                     organisation,
+                    tx_code,
                     &self.client,
                     storage_access,
                     handle_invitation_operations,
@@ -419,9 +429,43 @@ impl OpenID4VCHTTP {
             .get_signature_provider(&key.to_owned(), jwk_key_id)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
+        // Very basic support for JWK as crypto binding method for EUDI
+        let jwk = match interaction_data.cryptographic_binding_methods_supported {
+            Some(methods) => {
+                if methods.contains(&"jwk".to_string()) {
+                    let resolved = self
+                        .did_method_provider
+                        .resolve(&holder_did.did)
+                        .await
+                        .map_err(|_| {
+                            ExchangeProtocolError::Failed(
+                                "Could not resolve did method".to_string(),
+                            )
+                        })?;
+
+                    Some(
+                        resolved
+                            .verification_method
+                            .first()
+                            .ok_or(ExchangeProtocolError::Failed(
+                                "Could find verification method in resolved did document"
+                                    .to_string(),
+                            ))?
+                            .public_key_jwk
+                            .clone()
+                            .into(),
+                    )
+                } else {
+                    None
+                }
+            }
+            None => None,
+        };
+
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
             interaction_data.issuer_url,
             &holder_did.clone(),
+            jwk,
             key.key_type.to_owned(),
             auth_fn,
         )
@@ -431,21 +475,23 @@ impl OpenID4VCHTTP {
         let (credential_definition, doctype) = match credential_format {
             "mso_mdoc" => (None, Some(schema.schema_id.to_owned())),
             _ => (
-                Some(OpenID4VCICredentialDefinition {
+                Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
                     credential_subject: None,
                 }),
                 None,
             ),
         };
+
         let body = OpenID4VCICredential {
             format: credential_format.to_owned(),
-            credential_definition,
+            vct: Some(schema.name.clone()),
             doctype,
             proof: OpenID4VCIProof {
                 proof_type: "jwt".to_string(),
                 jwt: proof_jwt,
             },
+            credential_definition,
         };
 
         let response = self
@@ -459,6 +505,7 @@ impl OpenID4VCHTTP {
             .await
             .context("send error")
             .map_err(ExchangeProtocolError::Transport)?;
+
         let response = response
             .error_for_status()
             .context("status error")
@@ -603,7 +650,7 @@ impl OpenID4VCHTTP {
     pub async fn share_credential(
         &self,
         credential: &Credential,
-        credential_format: &str,
+        _credential_format: &str,
     ) -> Result<ShareResponse<OpenID4VCInteractionContent>, ExchangeProtocolError> {
         let interaction_id = Uuid::new_v4();
         let interaction_content = OpenID4VCInteractionContent {
@@ -629,6 +676,11 @@ impl OpenID4VCHTTP {
                 "credential schema missing".to_string(),
             ))?;
 
+        let url = self
+            .base_url
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed("Missing base_url".to_owned()))?;
+
         let wallet_storage_type = credential_schema.wallet_storage_type.clone();
 
         let claims = credential
@@ -639,13 +691,8 @@ impl OpenID4VCHTTP {
             .map(|claim| claim.to_owned())
             .collect::<Vec<_>>();
 
-        let credentials = credentials_format(wallet_storage_type, credential_format, &claims)
+        let credential_subject = credentials_format(wallet_storage_type, &claims)
             .map_err(|e| ExchangeProtocolError::Other(e.into()))?;
-
-        let url = self
-            .base_url
-            .as_ref()
-            .ok_or(ExchangeProtocolError::Failed("Missing base_url".to_owned()))?;
 
         if self
             .params
@@ -656,7 +703,8 @@ impl OpenID4VCHTTP {
                 url,
                 &interaction_id.to_string(),
                 &credential_schema.id,
-                credentials,
+                &credential_schema.schema_id,
+                credential_subject,
             )
             .map_err(|e| ExchangeProtocolError::Other(e.into()))?;
 
@@ -851,6 +899,7 @@ impl OpenID4VCHTTP {
 async fn handle_credential_invitation(
     invitation_url: Url,
     organisation: Organisation,
+    tx_code: Option<String>,
     client: &Arc<dyn HttpClient>,
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
@@ -872,6 +921,7 @@ async fn handle_credential_invitation(
         .post(&oicd_discovery.token_endpoint)
         .form(&OpenID4VCITokenRequestDTO::PreAuthorizedCode {
             pre_authorized_code: credential_offer.grants.code.pre_authorized_code.clone(),
+            tx_code,
         })
         .context("form error")
         .map_err(ExchangeProtocolError::Transport)?
@@ -886,18 +936,31 @@ async fn handle_credential_invitation(
         .context("parsing error")
         .map_err(ExchangeProtocolError::Transport)?;
 
-    // OID4VC credential offer query param should always contain one credential for the moment
-    let credential: &OpenID4VCICredentialOfferCredentialDTO =
-        credential_offer.credentials.first().ok_or_else(|| {
+    // We only support one credential at the time now
+    let incoming_schema_id = credential_offer
+        .credential_configuration_ids
+        .first()
+        .ok_or_else(|| {
             ExchangeProtocolError::Failed("Credential offer is missing credentials".to_string())
         })?;
 
+    let credential_config = issuer_metadata
+        .credential_configurations_supported
+        .get(incoming_schema_id)
+        .ok_or_else(|| {
+            ExchangeProtocolError::Failed(format!(
+                "Credential configuration is missing for {incoming_schema_id}"
+            ))
+        })?;
+
+    let credential = credential_offer_from_metadata(credential_config);
+
     let credential_schema_name = handle_invitation_operations
-        .get_credential_schema_name(&issuer_metadata, credential)
+        .get_credential_schema_name(&issuer_metadata, &credential, incoming_schema_id)
         .await?;
 
     let schema_data = handle_invitation_operations
-        .find_schema_data(&issuer_metadata, credential)
+        .find_schema_data(&issuer_metadata, &credential, incoming_schema_id)
         .await;
 
     let holder_data = HolderInteractionData {
@@ -910,6 +973,12 @@ async fn handle_credential_invitation(
         refresh_token_expires_at: token_response
             .refresh_token_expires_in
             .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok()),
+        credential_signing_alg_values_supported: credential_config
+            .credential_signing_alg_values_supported
+            .clone(),
+        cryptographic_binding_methods_supported: credential_config
+            .cryptographic_binding_methods_supported
+            .clone(),
     };
     let data = serialize_interaction_data(&holder_data)?;
 
@@ -922,8 +991,7 @@ async fn handle_credential_invitation(
     .await?;
     let interaction_id = interaction.id;
 
-    let claim_keys: HashMap<String, OpenID4VCICredentialValueDetails> =
-        build_claim_keys(credential)?;
+    let claim_keys = build_claim_keys(credential_config, &credential_offer.credential_subject)?;
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let (claims, credential_schema) = match storage_access
@@ -954,7 +1022,7 @@ async fn handle_credential_invitation(
                     &schema_data,
                     &claim_keys,
                     &credential_id,
-                    credential,
+                    &credential,
                     &issuer_metadata,
                     &credential_schema_name,
                     organisation.clone(),
@@ -1134,35 +1202,119 @@ async fn create_and_store_interaction(
 }
 
 fn build_claim_keys(
-    credential: &OpenID4VCICredentialOfferCredentialDTO,
-) -> Result<HashMap<String, OpenID4VCICredentialValueDetails>, ExchangeProtocolError> {
-    if let Some(credential_definition) = &credential.credential_definition {
-        let credential_subject = credential_definition
+    credential_configuration: &OpenID4VCICredentialConfigurationData,
+    credential_subject: &Option<ExtendedSubjectDTO>,
+) -> Result<IndexMap<String, OpenID4VCICredentialValueDetails>, ExchangeProtocolError> {
+    let claim_object = match (
+        &credential_configuration.credential_definition,
+        &credential_configuration.claims,
+    ) {
+        (None, None) | (Some(_), Some(_)) => {
+            return Err(ExchangeProtocolError::Failed(
+                "Incorrect or missing credential claims".to_string(),
+            ))
+        }
+        (None, Some(mdoc_claims)) => &OpenID4VCICredentialSubjectItem {
+            claims: Some(mdoc_claims.clone()),
+            ..Default::default()
+        },
+        (Some(credential_definition), None) => credential_definition
             .credential_subject
             .as_ref()
             .ok_or_else(|| {
                 ExchangeProtocolError::Failed("Missing credential subject".to_string())
-            })?;
+            })?,
+    };
 
-        return Ok(credential_subject.keys.to_owned());
+    let keys = credential_subject
+        .as_ref()
+        .and_then(|cs| cs.keys.clone())
+        .unwrap_or_default();
+
+    if keys.claims.is_empty() {
+        // WORKAROUND
+        // Logic somewhere later expects values to be provided at this point. We don't have them for e.g. external credentials
+        // hence we fulfill mandatory fields with empty values. The logic wil later be reworked to provide no claims in case
+        // there is no credential definition
+
+        let missing_keys = collect_mandatory_keys(claim_object, None);
+        Ok(missing_keys
+            .into_iter()
+            .map(|(missing_claim_path, value_type)| {
+                (
+                    missing_claim_path,
+                    OpenID4VCICredentialValueDetails {
+                        value: "".to_owned(),
+                        value_type,
+                    },
+                )
+            })
+            .collect())
+
+        //END OF WORKAROUND
+    } else {
+        Ok(keys.claims)
+    }
+}
+
+fn collect_mandatory_keys(
+    claim_object: &OpenID4VCICredentialSubjectItem,
+    item_path: Option<&str>,
+) -> Vec<(String, String)> {
+    let mut item_paths = Vec::new();
+
+    if let Some(claims) = claim_object.claims.as_ref() {
+        for (key, object) in claims {
+            let path = if let Some(item_path) = &item_path {
+                format!("{item_path}{}{key}", NESTED_CLAIM_MARKER)
+            } else {
+                key.to_owned()
+            };
+            let paths = collect_mandatory_keys(object, Some(&path));
+
+            item_paths.extend(paths);
+        }
     }
 
-    if let Some(credential_claims) = credential.claims.as_ref() {
-        return Ok(build_claims_keys_for_mdoc(credential_claims));
+    if let Some(arrays) = claim_object.arrays.as_ref() {
+        for (key, object_definitions) in arrays {
+            if let Some(object_fields) = object_definitions.first() {
+                let path = if let Some(item_path) = &item_path {
+                    format!(
+                        "{item_path}{}{key}{}0",
+                        NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER
+                    )
+                } else {
+                    format!("{key}{}0", NESTED_CLAIM_MARKER)
+                };
+                let paths = collect_mandatory_keys(object_fields, Some(&path));
+
+                item_paths.extend(paths);
+            }
+        }
     }
 
-    Err(ExchangeProtocolError::Failed(
-        "Inconsistent credential offer missing both credential definition and claims fields"
-            .to_string(),
-    ))
+    // Break condition - we reached top claim and it suppose to have a value
+    if claim_object.arrays.is_none() && claim_object.claims.is_none() {
+        item_paths.push((
+            item_path.unwrap_or_default().to_string(),
+            claim_object
+                .value_type
+                .as_ref()
+                .cloned()
+                .unwrap_or("STRING".to_owned()),
+        ));
+    }
+
+    item_paths
 }
 
 pub fn build_claims_keys_for_mdoc(
-    claims: &HashMap<String, OpenID4VCICredentialOfferClaim>,
-) -> HashMap<String, OpenID4VCICredentialValueDetails> {
+    claims: &IndexMap<String, OpenID4VCICredentialOfferClaim>,
+) -> IndexMap<String, OpenID4VCICredentialValueDetails> {
     fn build<'a>(
-        normalized_claims: &mut HashMap<String, OpenID4VCICredentialValueDetails>,
-        claims: &'a HashMap<String, OpenID4VCICredentialOfferClaim>,
+        normalized_claims: &mut IndexMap<String, OpenID4VCICredentialValueDetails>,
+        claims: &'a IndexMap<String, OpenID4VCICredentialOfferClaim>,
         path: &mut Vec<&'a str>,
     ) {
         for (key, offer_claim) in claims {
@@ -1188,7 +1340,7 @@ pub fn build_claims_keys_for_mdoc(
         }
     }
 
-    let mut claim_keys = HashMap::with_capacity(claims.len());
+    let mut claim_keys = IndexMap::with_capacity(claims.len());
     let mut path = vec![];
 
     build(&mut claim_keys, claims, &mut path);

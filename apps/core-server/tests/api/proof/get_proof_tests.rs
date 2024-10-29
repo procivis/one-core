@@ -379,8 +379,11 @@ async fn test_get_proof_with_empty_array() {
     resp["schema"]["id"].assert_eq(&proof_schema.id);
 
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
-    assert_eq!(resp["proofInputs"][0]["claims"][0]["path"], "root_array");
-    assert!(resp["proofInputs"][0]["claims"][0]["value"].is_null());
+    assert_eq!(
+        resp["proofInputs"][0]["claims"][0]["value"][1]["path"],
+        "namespace/root_array"
+    );
+    assert!(resp["proofInputs"][0]["claims"][0]["value"][1]["value"].is_null());
 }
 
 #[tokio::test]
@@ -399,7 +402,7 @@ async fn test_get_proof_with_array() {
         .clone()
         .unwrap()
         .into_iter()
-        .find(|claim| claim.schema.key == "root_array/nested/field")
+        .find(|claim| claim.schema.key == "namespace/root_array/nested/field")
         .unwrap()
         .schema
         .id;
@@ -414,10 +417,26 @@ async fn test_get_proof_with_array() {
             "OPENID4VC",
             TestingCredentialParams {
                 claims_data: Some(vec![
-                    (claim_id.into(), "root_array/0/nested/0/field", "foo1"),
-                    (claim_id.into(), "root_array/0/nested/1/field", "foo2"),
-                    (claim_id.into(), "root_array/1/nested/0/field", "foo3"),
-                    (claim_id.into(), "root_array/1/nested/1/field", "foo4"),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/0/nested/0/field",
+                        "foo1",
+                    ),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/0/nested/1/field",
+                        "foo2",
+                    ),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/1/nested/0/field",
+                        "foo3",
+                    ),
+                    (
+                        claim_id.into(),
+                        "namespace/root_array/1/nested/1/field",
+                        "foo4",
+                    ),
                 ]),
                 ..Default::default()
             },
@@ -505,29 +524,31 @@ async fn test_get_proof_with_array() {
 
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
 
-    let root_array = &resp["proofInputs"][0]["claims"][0];
-    assert_eq!(root_array["path"], "root_array");
+    let namespace = &resp["proofInputs"][0]["claims"][0];
+    assert_eq!(namespace["path"], "namespace");
+
+    let root_array = &namespace["value"][0];
 
     let nested_0 = &root_array["value"][0]["value"][0];
-    assert_eq!(nested_0["path"], "root_array/0/nested");
+    assert_eq!(nested_0["path"], "namespace/root_array/0/nested");
 
     let field_0 = &nested_0["value"][0]["value"][0];
-    assert_eq!(field_0["path"], "root_array/0/nested/0/field");
+    assert_eq!(field_0["path"], "namespace/root_array/0/nested/0/field");
     assert_eq!(field_0["value"], "foo1");
 
     let field_1 = &nested_0["value"][1]["value"][0];
-    assert_eq!(field_1["path"], "root_array/0/nested/1/field");
+    assert_eq!(field_1["path"], "namespace/root_array/0/nested/1/field");
     assert_eq!(field_1["value"], "foo2");
 
     let nested_1 = &root_array["value"][1]["value"][0];
-    assert_eq!(nested_1["path"], "root_array/1/nested");
+    assert_eq!(nested_1["path"], "namespace/root_array/1/nested");
 
     let field_2 = &nested_1["value"][0]["value"][0];
-    assert_eq!(field_2["path"], "root_array/1/nested/0/field");
+    assert_eq!(field_2["path"], "namespace/root_array/1/nested/0/field");
     assert_eq!(field_2["value"], "foo3");
 
     let field_3 = &nested_1["value"][1]["value"][0];
-    assert_eq!(field_3["path"], "root_array/1/nested/1/field");
+    assert_eq!(field_3["path"], "namespace/root_array/1/nested/1/field");
     assert_eq!(field_3["value"], "foo4");
 }
 

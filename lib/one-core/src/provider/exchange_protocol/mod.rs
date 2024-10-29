@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use dto::{ExchangeProtocolCapabilities, PresentationDefinitionResponseDTO};
 use error::ExchangeProtocolError;
+use indexmap::IndexMap;
 use openid4vc::error::OpenID4VCError;
 use openid4vc::model::{
     OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialValueDetails,
@@ -108,6 +109,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     core_base_url.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
+                    did_method_provider.clone(),
                     key_provider.clone(),
                     client.clone(),
                     params,
@@ -192,6 +194,7 @@ pub trait StorageProxy: Send + Sync {
 }
 pub type StorageAccess = dyn StorageProxy;
 
+#[derive(Debug)]
 pub struct BasicSchemaData {
     pub schema_id: String,
     pub schema_type: String,
@@ -213,6 +216,7 @@ pub trait HandleInvitationOperations: Send + Sync {
         &self,
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
         credential: &OpenID4VCICredentialOfferCredentialDTO,
+        schema_id: &str,
     ) -> Result<String, ExchangeProtocolError>;
 
     /// Utilizes custom logic to find out credential schema
@@ -221,6 +225,7 @@ pub trait HandleInvitationOperations: Send + Sync {
         &self,
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
         credential: &OpenID4VCICredentialOfferCredentialDTO,
+        schema_id: &str,
     ) -> BasicSchemaData;
 
     /// Allows use of custom logic to create new credential schema for
@@ -228,7 +233,7 @@ pub trait HandleInvitationOperations: Send + Sync {
     async fn create_new_schema(
         &self,
         schema_data: &BasicSchemaData,
-        claim_keys: &HashMap<String, OpenID4VCICredentialValueDetails>,
+        claim_keys: &IndexMap<String, OpenID4VCICredentialValueDetails>,
         credential_id: &CredentialId,
         credential: &OpenID4VCICredentialOfferCredentialDTO,
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
@@ -257,6 +262,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         &self,
         url: Url,
         organisation: Organisation,
+        tx_code: Option<String>,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
         transport: String,
@@ -381,6 +387,7 @@ where
         &self,
         url: Url,
         organisation: Organisation,
+        tx_code: Option<String>,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
         transport: String,
@@ -389,6 +396,7 @@ where
             .handle_invitation(
                 url,
                 organisation,
+                tx_code,
                 storage_access,
                 handle_invitation_operations,
                 transport,

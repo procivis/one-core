@@ -10,7 +10,6 @@ use crate::service::did::dto::DidListItemResponseDTO;
 #[derive(Clone, Debug, Deserialize)]
 pub struct IssuerResponseDTO {
     pub credential: String,
-    pub format: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]

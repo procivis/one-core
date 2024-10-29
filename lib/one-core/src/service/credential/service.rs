@@ -1003,6 +1003,7 @@ async fn obtain_and_update_new_mso(
     let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
         interaction_data.issuer_url.clone(),
         &holder_did,
+        None,
         key.key_type.to_owned(),
         auth_fn,
     )
@@ -1020,6 +1021,7 @@ async fn obtain_and_update_new_mso(
             jwt: proof_jwt,
         },
         format: "mso_mdoc".to_owned(),
+        vct: None,
         credential_definition: None,
         doctype: Some(schema.schema_id.to_owned()),
     };

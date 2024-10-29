@@ -3,26 +3,26 @@ use std::ops::Sub;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use one_crypto::utilities;
 use shared_types::{CredentialSchemaId, KeyId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::error::{OpenID4VCError, OpenID4VCIError};
+use super::mapper::{credentials_supported_mdoc, prepare_nested_representation};
 use super::model::{
     AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VCICredentialDefinition,
-    OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
-    OpenID4VCIGrant, OpenID4VCIGrants, OpenID4VCIInteractionDataDTO,
-    OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
-    OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ExtendedSubjectDTO,
+    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
+    OpenID4VCICredentialSubjectItem, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrant,
+    OpenID4VCIGrants, OpenID4VCIInteractionDataDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCITokenRequestDTO, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
     OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, PresentationSubmissionMappingDTO,
     ValidatedProofClaimDTO,
 };
+use crate::config::core_config::CoreConfig;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
@@ -40,7 +40,8 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
     parse_interaction_content, vec_last_position_from_token_path,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    AcceptProofResult, OpenID4VPInteractionContent, OpenID4VPPresentationDefinition, RequestData,
+    AcceptProofResult, OpenID4VCICredentialConfigurationData, OpenID4VPInteractionContent,
+    OpenID4VPPresentationDefinition, RequestData,
 };
 use crate::provider::exchange_protocol::openid4vc::validator::{
     peek_presentation, throw_if_interaction_created_date,
@@ -57,53 +58,110 @@ use crate::util::key_verification::KeyVerification;
 pub fn create_issuer_metadata_response(
     base_url: &str,
     oidc_format: &str,
-    schema_id: &str,
-    schema_type: &str,
-    schema_name: &str,
-    wallet_storage_type: Option<WalletStorageTypeEnum>,
+    schema: &CredentialSchema,
+    config: &CoreConfig,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIError> {
-    let credentials_supported = credentials_supported(
-        wallet_storage_type,
-        oidc_format,
-        schema_id,
-        schema_type,
-        schema_name,
-    )?;
+    let credential_configurations_supported =
+        credential_configurations_supported(oidc_format, schema, config)?;
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer: base_url.to_owned(),
         credential_endpoint: format!("{base_url}/credential"),
-        credentials_supported,
+        credential_configurations_supported,
     })
 }
 
-fn credentials_supported(
+fn credential_configurations_supported(
+    oidc_format: &str,
+    credential_schema: &CredentialSchema,
+    config: &CoreConfig,
+) -> Result<IndexMap<String, OpenID4VCICredentialConfigurationData>, OpenID4VCIError> {
+    let wallet_storage_type = credential_schema.wallet_storage_type.to_owned();
+    let schema_id = credential_schema.schema_id.to_owned();
+
+    let claims = prepare_nested_representation(credential_schema, config)?;
+
+    Ok(IndexMap::from([(
+        schema_id,
+        match oidc_format {
+            "ldp_vc" => {
+                jsonld_configuration(wallet_storage_type, oidc_format, claims, credential_schema)
+            }
+            "jwt_vc_json" => {
+                jwt_configuration(wallet_storage_type, oidc_format, claims, credential_schema)
+            }
+            "vc+sd-jwt" => {
+                sdjwt_configuration(wallet_storage_type, oidc_format, claims, credential_schema)
+            }
+            "mso_mdoc" => credentials_supported_mdoc(credential_schema.clone(), config)
+                .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
+            _ => jwt_configuration(wallet_storage_type, oidc_format, claims, credential_schema),
+        },
+    )]))
+}
+
+fn jsonld_configuration(
     wallet_storage_type: Option<WalletStorageTypeEnum>,
     oidc_format: &str,
-    schema_id: &str,
-    schema_type: &str,
-    schema_name: &str,
-) -> Result<Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO>, OpenID4VCIError> {
-    Ok(vec![
-        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
-            wallet_storage_type,
-            format: oidc_format.into(),
-            claims: None,
-            order: None,
-            credential_definition: Some(OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO {
-                r#type: vec!["VerifiableCredential".to_string()],
-                credential_schema: Some(OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO {
-                    id: schema_id.into(),
-                    r#type: schema_type.into(),
-                }),
-            }),
-            doctype: None,
-            display: Some(vec![
-                OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
-                    name: schema_name.into(),
-                },
-            ]),
-        },
-    ])
+    claims: OpenID4VCICredentialSubjectItem,
+    credential_schema: &CredentialSchema,
+) -> OpenID4VCICredentialConfigurationData {
+    let schema_name = credential_schema.name.to_owned();
+    OpenID4VCICredentialConfigurationData {
+        context: None, //TODO! Fill for json_ld
+        wallet_storage_type,
+        format: oidc_format.into(),
+        credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
+            r#type: vec!["VerifiableCredential".to_string()],
+            credential_subject: Some(claims),
+        }),
+        display: Some(vec![
+            OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema_name },
+        ]),
+        ..Default::default()
+    }
+}
+fn jwt_configuration(
+    wallet_storage_type: Option<WalletStorageTypeEnum>,
+    oidc_format: &str,
+    claims: OpenID4VCICredentialSubjectItem,
+    credential_schema: &CredentialSchema,
+) -> OpenID4VCICredentialConfigurationData {
+    let schema_name = credential_schema.name.to_owned();
+    OpenID4VCICredentialConfigurationData {
+        wallet_storage_type,
+        format: oidc_format.into(),
+        credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
+            r#type: vec!["VerifiableCredential".to_string()],
+            credential_subject: Some(claims),
+        }),
+        display: Some(vec![
+            OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema_name },
+        ]),
+        ..Default::default()
+    }
+}
+
+fn sdjwt_configuration(
+    wallet_storage_type: Option<WalletStorageTypeEnum>,
+    oidc_format: &str,
+    claims: OpenID4VCICredentialSubjectItem,
+    credential_schema: &CredentialSchema,
+) -> OpenID4VCICredentialConfigurationData {
+    let schema_name = credential_schema.name.to_owned();
+    OpenID4VCICredentialConfigurationData {
+        wallet_storage_type,
+        format: oidc_format.into(),
+        credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
+            r#type: vec!["VerifiableCredential".to_string()],
+            credential_subject: Some(claims),
+        }),
+        doctype: None,
+        display: Some(vec![
+            OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema_name },
+        ]),
+        vct: None, // TODO! Fill for SD-JWT
+        ..Default::default()
+    }
 }
 
 pub fn create_open_id_for_vp_client_metadata(
@@ -596,47 +654,21 @@ async fn accept_proof(
 pub fn create_credential_offer(
     base_url: &str,
     pre_authorized_code: &str,
-    credential_schema_id: &CredentialSchemaId,
-    credentials: Vec<OpenID4VCICredentialOfferCredentialDTO>,
+    credential_schema_uuid: &CredentialSchemaId,
+    credential_schema_id: &str,
+    credential_subject: ExtendedSubjectDTO,
 ) -> Result<OpenID4VCICredentialOfferDTO, OpenID4VCError> {
     Ok(OpenID4VCICredentialOfferDTO {
-        credential_issuer: format!("{}/ssi/oidc-issuer/v1/{}", base_url, credential_schema_id),
-        credentials,
+        credential_issuer: format!("{}/ssi/oidc-issuer/v1/{}", base_url, credential_schema_uuid),
+        credential_configuration_ids: vec![credential_schema_id.to_string()],
         grants: OpenID4VCIGrants {
             code: OpenID4VCIGrant {
                 pre_authorized_code: pre_authorized_code.to_owned(),
+                tx_code: None,
             },
         },
+        credential_subject: Some(credential_subject),
     })
-}
-
-pub fn credentials_format(
-    wallet_storage_type: Option<WalletStorageTypeEnum>,
-    oidc_format: &str,
-    claims: &[Claim],
-) -> Result<Vec<OpenID4VCICredentialOfferCredentialDTO>, OpenID4VCError> {
-    Ok(vec![OpenID4VCICredentialOfferCredentialDTO {
-        wallet_storage_type,
-        format: oidc_format.to_owned(),
-        credential_definition: Some(OpenID4VCICredentialDefinition {
-            r#type: vec!["VerifiableCredential".to_string()],
-            credential_subject: Some(OpenID4VCICredentialSubject {
-                keys: HashMap::from_iter(claims.iter().filter_map(|claim| {
-                    claim.schema.as_ref().map(|schema| {
-                        (
-                            claim.path.clone(),
-                            OpenID4VCICredentialValueDetails {
-                                value: claim.value.clone(),
-                                value_type: schema.data_type.clone(),
-                            },
-                        )
-                    })
-                })),
-            }),
-        }),
-        doctype: None,
-        claims: Default::default(),
-    }])
 }
 
 pub fn oidc_create_token(

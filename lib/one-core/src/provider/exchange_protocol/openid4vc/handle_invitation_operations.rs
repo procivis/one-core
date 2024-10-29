@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -16,8 +16,7 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
     CreateCredentialSchemaRequestDTO, OpenID4VCICredentialOfferCredentialDTO,
-    OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
-    OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataResponseDTO,
 };
 use crate::provider::exchange_protocol::{
     BasicSchemaData, BuildCredentialSchemaResponse, HandleInvitationOperations,
@@ -51,16 +50,17 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
         &self,
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
         credential: &OpenID4VCICredentialOfferCredentialDTO,
+        schema_id: &str,
     ) -> Result<String, ExchangeProtocolError> {
         let display_name = issuer_metadata
-            .credentials_supported
-            .first()
-            .and_then(|credential| credential.display.as_ref())
-            .and_then(|displays| displays.first())
-            .map(|display| display.name.to_owned());
+            .credential_configurations_supported
+            .get(schema_id)
+            // Just get the first one as we sends only one token at the time
+            .and_then(|credential| credential.display.clone())
+            .and_then(|displays| displays.into_iter().next());
 
         let credential_schema_name = match display_name {
-            Some(display_name) => display_name,
+            Some(display_name) => display_name.name,
             // fallback to doctype for mdoc
             None if credential.format == "mso_mdoc" => {
                 let doctype = credential
@@ -99,42 +99,31 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
     async fn find_schema_data(
         &self,
-        issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
+        _issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
         credential: &OpenID4VCICredentialOfferCredentialDTO,
+        schema_id: &str,
     ) -> BasicSchemaData {
         if credential.format == "mso_mdoc" {
-            // doctype is the schema_id for MDOC
-            if let Some(doctype) = credential.doctype.to_owned() {
-                return BasicSchemaData {
-                    schema_id: doctype,
-                    schema_type: "mdoc".to_string(),
-                };
-            }
+            return BasicSchemaData {
+                schema_id: credential
+                    .doctype
+                    .as_deref()
+                    .unwrap_or(schema_id)
+                    .to_string(),
+                schema_type: CredentialSchemaType::Mdoc.to_string(),
+            };
         }
 
-        let credential_schema: Option<OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO> =
-            issuer_metadata
-                .credentials_supported
-                .first() // This is not interoperable, but since in this case we only try to detect our own schema, we know there's always only one
-                .and_then(|credential| credential.credential_definition.as_ref())
-                .and_then(|definition| definition.credential_schema.to_owned());
-
-        match credential_schema {
-            None => BasicSchemaData {
-                schema_id: Uuid::new_v4().to_string(),
-                schema_type: "FallbackSchema2024".to_string(),
-            },
-            Some(schema) => BasicSchemaData {
-                schema_id: schema.id,
-                schema_type: schema.r#type,
-            },
+        BasicSchemaData {
+            schema_id: schema_id.to_owned(),
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024.to_string(),
         }
     }
 
     async fn create_new_schema(
         &self,
         schema_data: &BasicSchemaData,
-        claim_keys: &HashMap<String, OpenID4VCICredentialValueDetails>,
+        claim_keys: &IndexMap<String, OpenID4VCICredentialValueDetails>,
         credential_id: &CredentialId,
         credential: &OpenID4VCICredentialOfferCredentialDTO,
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
@@ -204,21 +193,15 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
                 let metadata_credential = issuer_metadata
-                    .credentials_supported
-                    .clone()
-                    .into_iter()
-                    .find(|credential| {
-                        credential
-                            .doctype
-                            .as_ref()
-                            .is_some_and(|doctype| doctype == &schema_data.schema_id)
-                    });
+                    .credential_configurations_supported
+                    .get(&schema_data.schema_id);
 
                 let element_order = metadata_credential
                     .as_ref()
-                    .and_then(|credential| credential.order.to_owned());
+                    .and_then(|credential| credential.order.clone());
 
-                let claim_schemas = metadata_credential.and_then(|credential| credential.claims);
+                let claim_schemas =
+                    metadata_credential.and_then(|credential| credential.claims.clone());
                 let claims_specified = claim_schemas.is_some();
 
                 let credential_schema = from_create_request(

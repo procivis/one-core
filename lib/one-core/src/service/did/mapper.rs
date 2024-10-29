@@ -6,11 +6,11 @@ use time::OffsetDateTime;
 
 use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
 use crate::model::did::{Did, GetDidList, KeyRole, RelatedKey};
-use crate::model::key::{Key, PublicKeyJwk};
+use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
+use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use crate::service::error::{EntityNotFoundError, ServiceError};
-use crate::service::key::dto::KeyListItemResponseDTO;
+use crate::service::key::dto::{KeyListItemResponseDTO, PublicKeyJwkDTO};
 
 impl TryFrom<Did> for DidResponseDTO {
     type Error = ServiceError;
@@ -112,9 +112,9 @@ pub(super) fn did_from_did_request(
 pub(super) fn map_did_model_to_did_web_response(
     did: &Did,
     keys: &[RelatedKey],
-    grouped_key: &HashMap<KeyId, DidVerificationMethod>,
-) -> Result<DidDocument, ServiceError> {
-    Ok(DidDocument {
+    grouped_key: &HashMap<KeyId, DidVerificationMethodDTO>,
+) -> Result<DidDocumentDTO, ServiceError> {
+    Ok(DidDocumentDTO {
         context: serde_json::json!([
             "https://www.w3.org/ns/did/v1",
             "https://w3id.org/security/suites/jws-2020/v1",
@@ -143,7 +143,7 @@ pub(super) fn map_did_model_to_did_web_response(
 pub(super) fn get_key_id_by_role(
     role: KeyRole,
     keys: &[RelatedKey],
-    group: &HashMap<KeyId, DidVerificationMethod>,
+    group: &HashMap<KeyId, DidVerificationMethodDTO>,
 ) -> Result<Vec<String>, ServiceError> {
     keys.iter()
         .filter(|key| key.role == role)
@@ -160,9 +160,9 @@ pub(super) fn get_key_id_by_role(
 pub(super) fn map_key_to_verification_method(
     did_value: &DidValue,
     public_key_id: &KeyId,
-    public_key_jwk: PublicKeyJwk,
-) -> Result<DidVerificationMethod, ServiceError> {
-    Ok(DidVerificationMethod {
+    public_key_jwk: PublicKeyJwkDTO,
+) -> Result<DidVerificationMethodDTO, ServiceError> {
+    Ok(DidVerificationMethodDTO {
         id: format!("{}#key-{}", did_value, public_key_id),
         r#type: "JsonWebKey2020".to_string(),
         controller: did_value.to_string(),

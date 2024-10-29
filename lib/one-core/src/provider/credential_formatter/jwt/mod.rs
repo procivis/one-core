@@ -14,6 +14,7 @@ use self::mapper::json_from_decoded;
 use self::model::{DecomposedToken, JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
+use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[cfg(test)]
 mod test;
@@ -48,12 +49,14 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
         signature_type: String,
         algorithm: String,
         key_id: Option<String>,
+        jwk: Option<PublicKeyJwkDTO>,
         payload: JWTPayload<Payload>,
     ) -> Jwt<Payload> {
         let header = JWTHeader {
             signature_type: Some(signature_type),
             algorithm,
             key_id,
+            jwk,
         };
 
         Jwt { header, payload }

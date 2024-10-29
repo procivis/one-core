@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use crate::service::key::dto::PublicKeyJwkDTO;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JWTHeader {
     #[serde(rename = "alg")]
@@ -11,6 +13,9 @@ pub struct JWTHeader {
 
     #[serde(rename = "typ", default, skip_serializing_if = "Option::is_none")]
     pub signature_type: Option<String>,
+
+    #[serde(rename = "jwk", default, skip_serializing_if = "Option::is_none")]
+    pub jwk: Option<PublicKeyJwkDTO>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

@@ -9,7 +9,7 @@ async fn test_get_credential_issuer_metadata() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create_with_nested_hell("test", &organisation, "NONE", Default::default())
         .await;
 
     // WHEN
@@ -30,11 +30,72 @@ async fn test_get_credential_issuer_metadata() {
     assert_eq!(issuer, resp["credential_issuer"]);
     assert_eq!(format!("{issuer}/credential"), resp["credential_endpoint"]);
 
-    let credentials = resp["credentials_supported"].as_array().unwrap();
+    let credentials = resp["credential_configurations_supported"]
+        .as_object()
+        .unwrap();
     assert!(!credentials.is_empty());
-    assert!(credentials
-        .iter()
-        .all(|entry| entry["wallet_storage_type"] == "SOFTWARE"));
+    assert_eq!(
+        credentials[&credential_schema.schema_id]["wallet_storage_type"],
+        "SOFTWARE"
+    );
+
+    let subject =
+        &credentials[&credential_schema.schema_id]["credential_definition"]["credentialSubject"];
+
+    assert_eq!(
+        &credentials[&credential_schema.schema_id]["credential_definition"]["type"][0],
+        "VerifiableCredential"
+    );
+
+    assert_eq!(subject["name"]["value_type"], "string");
+    assert_eq!(subject["name"]["mandatory"], true);
+
+    assert_eq!(subject["string_array"]["value_type"], "string[]");
+    assert_eq!(subject["string_array"]["mandatory"], true);
+
+    assert_eq!(subject["address"]["street"]["value_type"], "string");
+    assert_eq!(subject["address"]["street"]["mandatory"], true);
+
+    assert_eq!(
+        subject["address"]["coordinates"]["string_array"]["value_type"],
+        "string[]"
+    );
+    assert_eq!(
+        subject["address"]["coordinates"]["string_array"]["mandatory"],
+        true
+    );
+    assert_eq!(
+        subject["address"]["coordinates"]["x"]["value_type"],
+        "number"
+    );
+    assert_eq!(subject["address"]["coordinates"]["x"]["mandatory"], true);
+    assert_eq!(
+        subject["address"]["coordinates"]["y"]["value_type"],
+        "number"
+    );
+    assert_eq!(subject["address"]["coordinates"]["y"]["mandatory"], true);
+
+    assert_eq!(
+        subject["address"]["coordinates"]["object_array"][0]["field1"]["value_type"],
+        "string"
+    );
+    assert_eq!(
+        subject["address"]["coordinates"]["object_array"][0]["field1"]["mandatory"],
+        true
+    );
+    assert_eq!(
+        subject["address"]["coordinates"]["object_array"][0]["field2"]["value_type"],
+        "string"
+    );
+    assert_eq!(
+        subject["address"]["coordinates"]["object_array"][0]["field2"]["mandatory"],
+        true
+    );
+
+    assert_eq!(subject["object_array"][0]["field1"]["value_type"], "string");
+    assert_eq!(subject["object_array"][0]["field1"]["mandatory"], true);
+    assert_eq!(subject["object_array"][0]["field2"]["value_type"], "string");
+    assert_eq!(subject["object_array"][0]["field2"]["mandatory"], true);
 }
 
 #[tokio::test]
@@ -72,32 +133,34 @@ async fn test_get_credential_issuer_metadata_for_mdoc() {
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-    let claims = &resp["credentials_supported"][0]["claims"];
-    let expected_claims = serde_json::json!( {
-        "root": {
-            "value": {
+
+    let metadata = &resp["credential_configurations_supported"]["schema-id"];
+    let expected_metadata = serde_json::json!({
+        "format": "mso_mdoc",
+        "claims": {
+            "root": {
                 "str": {
-                    "value_type": "STRING",
+                    "value_type": "string",
                     "mandatory": true,
-                    "array": false,
                 },
                 "num": {
-                    "value_type": "NUMBER",
+                    "value_type": "number",
                     "mandatory": true,
-                    "array": false,
                 },
                 "bool": {
-                    "value_type": "BOOLEAN",
+                    "value_type": "boolean",
                     "mandatory": true,
-                    "array": false,
                 }
-            },
-            "value_type": "OBJECT",
-            "mandatory": false,
-            "order": ["str", "num", "bool"],
-            "array": false,
-        }
+            }
+        },
+        "order": ["root~str", "root~num", "root~bool"],
+        "doctype": "schema-id",
+        "display": [
+            {
+                "name": "schema-1"
+            }
+        ]
     });
 
-    assert_eq!(&expected_claims, claims);
+    assert_eq!(&expected_metadata, metadata);
 }

@@ -71,6 +71,7 @@ fn prepare_test_json() -> (Jwt<Payload>, String) {
         "Signature1".to_owned(),
         "Algorithm1".to_owned(),
         None,
+        None,
         payload,
     );
 

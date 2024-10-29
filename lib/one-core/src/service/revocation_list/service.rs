@@ -110,7 +110,6 @@ impl RevocationListService {
             LvvcStatus::Revoked | LvvcStatus::Suspended { .. } => {
                 return Ok(IssuerResponseDTO {
                     credential: credential_content.to_string(),
-                    format,
                 });
             }
             LvvcStatus::Accepted => {}
@@ -149,14 +148,12 @@ impl RevocationListService {
 
             return Ok(IssuerResponseDTO {
                 credential: credential_content.to_string(),
-                format,
             });
         }
 
         // Otherwise, return the current LVVC to holder.
         Ok(IssuerResponseDTO {
             credential: credential_content.to_string(),
-            format,
         })
     }
 
