@@ -724,7 +724,7 @@ async fn test_accept_credential() {
         .inner
         .expect_accept_credential()
         .once()
-        .returning(|_, _, _, _, _, _, _| {
+        .returning(|_, _, _, _, _, _, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
@@ -754,7 +754,7 @@ async fn test_accept_credential() {
 
     let interaction_id = Uuid::new_v4();
     service
-        .accept_credential(&interaction_id, did_id, None)
+        .accept_credential(&interaction_id, did_id, None, None)
         .await
         .unwrap();
 }

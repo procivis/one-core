@@ -166,7 +166,6 @@ impl OpenID4VCHTTP {
         &self,
         url: Url,
         organisation: Organisation,
-        tx_code: Option<String>,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
@@ -181,7 +180,6 @@ impl OpenID4VCHTTP {
                 handle_credential_invitation(
                     url,
                     organisation,
-                    tx_code,
                     &self.client,
                     storage_access,
                     handle_invitation_operations,
@@ -220,8 +218,16 @@ impl OpenID4VCHTTP {
         // oidc_vp_format -> LOCAL_PRESENTATION_FORMAT
         presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
+        let interaction = proof
+            .interaction
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "interaction is None".to_string(),
+            ))?
+            .to_owned();
+
         let interaction_data: OpenID4VPInteractionData =
-            deserialize_interaction_data(proof.interaction.as_ref())?;
+            deserialize_interaction_data(interaction.data)?;
 
         let tokens: Vec<String> = credential_presentations
             .iter()
@@ -414,6 +420,7 @@ impl OpenID4VCHTTP {
         jwk_key_id: Option<String>,
         credential_format: &str,
         storage_access: &StorageAccess,
+        tx_code: Option<String>,
         map_external_format_to_external_detailed: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         let schema = credential
@@ -421,8 +428,54 @@ impl OpenID4VCHTTP {
             .as_ref()
             .ok_or(ExchangeProtocolError::Failed("schema is None".to_string()))?;
 
-        let interaction_data: HolderInteractionData =
-            deserialize_interaction_data(credential.interaction.as_ref())?;
+        let mut interaction = credential
+            .interaction
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "interaction is None".to_string(),
+            ))?
+            .to_owned();
+
+        let mut interaction_data: HolderInteractionData =
+            deserialize_interaction_data(interaction.data)?;
+
+        let token_response: OpenID4VCITokenResponseDTO = self
+            .client
+            .post(&interaction_data.token_endpoint)
+            .form(&OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                pre_authorized_code: interaction_data.grants.code.pre_authorized_code.clone(),
+                tx_code,
+            })
+            .context("form error")
+            .map_err(ExchangeProtocolError::Transport)?
+            .send()
+            .await
+            .context("send error")
+            .map_err(ExchangeProtocolError::Transport)?
+            .error_for_status()
+            .context("status error")
+            .map_err(ExchangeProtocolError::Transport)?
+            .json()
+            .context("parsing error")
+            .map_err(ExchangeProtocolError::Transport)?;
+
+        interaction_data.access_token = Some(token_response.access_token.clone());
+        interaction_data.access_token_expires_at =
+            OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
+        interaction_data.refresh_token = token_response.refresh_token;
+        interaction_data.refresh_token_expires_at = token_response
+            .refresh_token_expires_in
+            .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
+
+        let data = serialize_interaction_data(&interaction_data)?;
+        interaction.data = Some(data);
+
+        storage_access
+            .update_interaction(interaction)
+            .await
+            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+        let access_token = token_response.access_token;
 
         let auth_fn = self
             .key_provider
@@ -497,7 +550,7 @@ impl OpenID4VCHTTP {
         let response = self
             .client
             .post(interaction_data.credential_endpoint.as_str())
-            .bearer_auth(&interaction_data.access_token)
+            .bearer_auth(&access_token)
             .json(&body)
             .context("json error")
             .map_err(ExchangeProtocolError::Transport)?
@@ -790,8 +843,16 @@ impl OpenID4VCHTTP {
         format_map: HashMap<String, String>,
         types: HashMap<String, DatatypeType>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
+        let interaction = proof
+            .interaction
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "interaction is None".to_string(),
+            ))?
+            .to_owned();
+
         let presentation_definition =
-            deserialize_interaction_data::<OpenID4VPInteractionData>(proof.interaction.as_ref())?
+            deserialize_interaction_data::<OpenID4VPInteractionData>(interaction.data)?
                 .presentation_definition
                 .ok_or(ExchangeProtocolError::Failed(
                     "presentation_definition is None".to_string(),
@@ -899,12 +960,13 @@ impl OpenID4VCHTTP {
 async fn handle_credential_invitation(
     invitation_url: Url,
     organisation: Organisation,
-    tx_code: Option<String>,
     client: &Arc<dyn HttpClient>,
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let credential_offer = resolve_credential_offer(client, invitation_url).await?;
+
+    let tx_code = credential_offer.grants.code.tx_code.clone();
 
     let credential_issuer_endpoint: Url =
         credential_offer.credential_issuer.parse().map_err(|_| {
@@ -916,25 +978,6 @@ async fn handle_credential_invitation(
 
     let (oicd_discovery, issuer_metadata) =
         get_discovery_and_issuer_metadata(client, credential_issuer_endpoint.to_owned()).await?;
-
-    let token_response: OpenID4VCITokenResponseDTO = client
-        .post(&oicd_discovery.token_endpoint)
-        .form(&OpenID4VCITokenRequestDTO::PreAuthorizedCode {
-            pre_authorized_code: credential_offer.grants.code.pre_authorized_code.clone(),
-            tx_code,
-        })
-        .context("form error")
-        .map_err(ExchangeProtocolError::Transport)?
-        .send()
-        .await
-        .context("send error")
-        .map_err(ExchangeProtocolError::Transport)?
-        .error_for_status()
-        .context("status error")
-        .map_err(ExchangeProtocolError::Transport)?
-        .json()
-        .context("parsing error")
-        .map_err(ExchangeProtocolError::Transport)?;
 
     // We only support one credential at the time now
     let incoming_schema_id = credential_offer
@@ -966,13 +1009,12 @@ async fn handle_credential_invitation(
     let holder_data = HolderInteractionData {
         issuer_url: issuer_metadata.credential_issuer.clone(),
         credential_endpoint: issuer_metadata.credential_endpoint.clone(),
-        access_token: token_response.access_token,
-        access_token_expires_at: OffsetDateTime::from_unix_timestamp(token_response.expires_in.0)
-            .ok(),
-        refresh_token: token_response.refresh_token,
-        refresh_token_expires_at: token_response
-            .refresh_token_expires_in
-            .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok()),
+        token_endpoint: oicd_discovery.token_endpoint,
+        grants: credential_offer.grants,
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        refresh_token_expires_at: None,
         credential_signing_alg_values_supported: credential_config
             .credential_signing_alg_values_supported
             .clone(),
@@ -1037,6 +1079,7 @@ async fn handle_credential_invitation(
     Ok(InvitationResponseDTO::Credential {
         interaction_id,
         credentials: vec![credential],
+        tx_code: tx_code.map(Into::into),
     })
 }
 

@@ -68,7 +68,10 @@ pub struct OpenID4VCInteractionContent {
 pub struct HolderInteractionData {
     pub issuer_url: String,
     pub credential_endpoint: String,
-    pub access_token: String,
+    pub token_endpoint: String,
+    pub grants: OpenID4VCIGrants,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_token: Option<String>,
     #[serde(with = "time::serde::rfc3339::option")]
     pub access_token_expires_at: Option<OffsetDateTime>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -240,6 +243,7 @@ pub enum OpenID4VCITokenRequestDTO {
     PreAuthorizedCode {
         #[serde(rename = "pre-authorized_code")]
         pre_authorized_code: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
         tx_code: Option<String>,
     },
     #[serde(rename = "refresh_token")]
@@ -501,6 +505,7 @@ pub enum InvitationResponseDTO {
     Credential {
         interaction_id: InteractionId,
         credentials: Vec<Credential>,
+        tx_code: Option<OpenID4VCITxCode>,
     },
     ProofRequest {
         interaction_id: InteractionId,
@@ -657,7 +662,7 @@ pub struct OpenID4VCIGrant {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCITxCode {
     pub input_mode: Option<OpenID4VCITxCodeInputMode>,
-    pub length: Option<i32>,
+    pub length: Option<i64>,
     pub description: Option<String>,
 }
 
@@ -666,8 +671,8 @@ pub enum OpenID4VCITxCodeInputMode {
     #[serde(rename = "numeric")]
     #[strum(serialize = "numeric")]
     Numeric,
-    #[serde(rename = "numeric")]
-    #[strum(serialize = "numeric")]
+    #[serde(rename = "text")]
+    #[strum(serialize = "text")]
     Text,
 }
 

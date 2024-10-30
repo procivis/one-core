@@ -465,9 +465,19 @@ dictionary PresentationSubmitCredentialRequestBindingDTO {
   sequence<string> submit_claims;
 };
 
+dictionary OpenID4VCITxCodeBindingDTO {
+  OpenID4VCITxCodeInputModeBindingEnum? input_mode;
+  i64? length;
+  string? description;
+};
+
+enum OpenID4VCITxCodeInputModeBindingEnum {
+  "Numeric", "Text"
+};
+
 [Enum]
 interface HandleInvitationResponseBindingEnum {
-  CredentialIssuance(string interaction_id, sequence<string> credential_ids);
+  CredentialIssuance(string interaction_id, sequence<string> credential_ids, OpenID4VCITxCodeBindingDTO? tx_code);
   ProofRequest(string interaction_id, string proof_id);
 };
 
@@ -1084,10 +1094,10 @@ interface OneCoreBinding {
   DidListBindingDTO get_dids(DidListQueryBindingDTO query);
 
   [Throws=BindingError]
-  HandleInvitationResponseBindingEnum handle_invitation(string url, string organisation_id, sequence<string>? transport, string? tx_code);
+  HandleInvitationResponseBindingEnum handle_invitation(string url, string organisation_id, sequence<string>? transport);
 
   [Throws=BindingError]
-  void holder_accept_credential(string interaction_id, string did_id, string? key_id);
+  void holder_accept_credential(string interaction_id, string did_id, string? key_id, string? tx_code);
 
   [Throws=BindingError]
   void holder_reject_credential(string interaction_id);

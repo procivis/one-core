@@ -1026,9 +1026,17 @@ async fn obtain_and_update_new_mso(
         doctype: Some(schema.schema_id.to_owned()),
     };
 
+    let access_token =
+        &interaction_data
+            .access_token
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "Missing access token".to_string(),
+            ))?;
+
     let response = client
         .post(&interaction_data.credential_endpoint)
-        .bearer_auth(&interaction_data.access_token)
+        .bearer_auth(access_token)
         .json(&body)
         .context("json error")
         .map_err(ExchangeProtocolError::Transport)?
@@ -1103,7 +1111,7 @@ async fn update_mso_interaction_access_token(
             .context("parsing error")
             .map_err(ExchangeProtocolError::Transport)?;
 
-        interaction_data.access_token = token_response.access_token;
+        interaction_data.access_token = Some(token_response.access_token);
         interaction_data.access_token_expires_at =
             OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
 

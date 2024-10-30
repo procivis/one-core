@@ -290,13 +290,7 @@ async fn test_handle_invitation_proof_success() {
     let operations = MockHandleInvitationOperations::default();
 
     let result = protocol
-        .handle_invitation(
-            url,
-            generic_organisation(),
-            None,
-            &storage_proxy,
-            &operations,
-        )
+        .handle_invitation(url, generic_organisation(), &storage_proxy, &operations)
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -331,7 +325,6 @@ async fn test_handle_invitation_proof_success() {
         .handle_invitation(
             url_using_uri_instead_of_values,
             generic_organisation(),
-            None,
             &storage_proxy,
             &operations,
         )
@@ -377,7 +370,6 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             incorrect_response_type,
             generic_organisation(),
-            None,
             &storage_proxy,
             &operations,
         )
@@ -391,7 +383,6 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             missing_nonce,
             generic_organisation(),
-            None,
             &storage_proxy,
             &operations,
         )
@@ -405,7 +396,6 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             incorrect_client_id_scheme,
             generic_organisation(),
-            None,
             &storage_proxy,
             &operations,
         )
@@ -419,7 +409,6 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             incorrect_response_mode,
             generic_organisation(),
-            None,
             &storage_proxy,
             &operations,
         )
@@ -433,7 +422,6 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             incorrect_client_id_scheme,
             generic_organisation(),
-            None,
             &storage_proxy,
             &operations,
         )
@@ -454,7 +442,6 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             missing_metadata_field,
             generic_organisation(),
-            None,
             &storage_proxy,
             &operations,
         )
@@ -468,7 +455,6 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             both_client_metadata_and_uri_specified,
             generic_organisation(),
-            None,
             &storage_proxy,
             &operations,
         )
@@ -482,7 +468,6 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             both_presentation_definition_and_uri_specified,
             generic_organisation(),
-            None,
             &storage_proxy,
             &operations,
         )
@@ -510,7 +495,6 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             client_metadata_uri_is_not_https,
             generic_organisation(),
-            None,
             &storage_proxy,
             &operations,
         )
@@ -525,7 +509,6 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(
             presentation_definition_uri_is_not_https,
             generic_organisation(),
-            None,
             &storage_proxy,
             &operations,
         )

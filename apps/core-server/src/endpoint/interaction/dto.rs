@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+use one_core::provider::exchange_protocol::openid4vc::model::{
+    OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
+};
 use one_core::service::proof::dto::ProposeProofResponseDTO;
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
@@ -7,6 +10,7 @@ use one_core::service::ssi_holder::dto::{
 use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, KeyId, OrganisationId, ProofId};
+use strum_macros::Display;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -18,8 +22,6 @@ pub struct HandleInvitationRequestRestDTO {
     pub url: Url,
     pub organisation_id: OrganisationId,
     pub transport: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tx_code: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
@@ -29,6 +31,31 @@ pub struct HandleInvitationResponseRestDTO {
 
     pub credential_ids: Option<Vec<CredentialId>>,
     pub proof_id: Option<ProofId>,
+    pub tx_code: Option<OpenID4VCITxCodeRestDTO>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
+#[from(OpenID4VCITxCode)]
+pub struct OpenID4VCITxCodeRestDTO {
+    #[from(with_fn = convert_inner)]
+    #[schema(value_type = String, example = "numeric")]
+    pub input_mode: Option<OpenID4VCITxCodeInputModeRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub length: Option<i64>,
+    #[from(with_fn = convert_inner)]
+    #[schema(value_type = String, example = "Pin number")]
+    pub description: Option<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display, From)]
+#[from(OpenID4VCITxCodeInputMode)]
+pub enum OpenID4VCITxCodeInputModeRestDTO {
+    #[serde(rename = "numeric")]
+    #[strum(serialize = "numeric")]
+    Numeric,
+    #[serde(rename = "text")]
+    #[strum(serialize = "text")]
+    Text,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
@@ -41,6 +68,7 @@ pub struct IssuanceAcceptRequestRestDTO {
     /// specify which key to use. If no key is specified the first suitable key listed
     /// will be used.
     pub key_id: Option<KeyId>,
+    pub tx_code: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]

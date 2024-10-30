@@ -169,6 +169,10 @@ pub type FnMapExternalFormatToExternalDetailed = fn(&str, &str) -> Result<String
 pub trait StorageProxy: Send + Sync {
     /// Store an interaction with a chosen storage layer.
     async fn create_interaction(&self, interaction: Interaction) -> anyhow::Result<InteractionId>;
+
+    /// Store an interaction with a chosen storage layer.
+    async fn update_interaction(&self, interaction: Interaction) -> anyhow::Result<()>;
+
     /// Get a credential schema from a chosen storage layer.
     async fn get_schema(
         &self,
@@ -261,7 +265,6 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         &self,
         url: Url,
         organisation: Organisation,
-        tx_code: Option<String>,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
         transport: String,
@@ -294,6 +297,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         jwk_key_id: Option<String>,
         format: &str,
         storage_access: &StorageAccess,
+        tx_code: Option<String>,
         // This helps map to correct formatter key if crypto suite hast o be scanned.
         map_external_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError>;
@@ -386,7 +390,6 @@ where
         &self,
         url: Url,
         organisation: Organisation,
-        tx_code: Option<String>,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
         transport: String,
@@ -395,7 +398,6 @@ where
             .handle_invitation(
                 url,
                 organisation,
-                tx_code,
                 storage_access,
                 handle_invitation_operations,
                 transport,
@@ -438,6 +440,7 @@ where
         jwk_key_id: Option<String>,
         format: &str,
         storage_access: &StorageAccess,
+        tx_code: Option<String>,
         map_external_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         self.inner
@@ -448,6 +451,7 @@ where
                 jwk_key_id,
                 format,
                 storage_access,
+                tx_code,
                 map_external_format_to_external,
             )
             .await

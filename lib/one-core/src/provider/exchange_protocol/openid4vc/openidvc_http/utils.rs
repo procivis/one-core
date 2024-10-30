@@ -3,23 +3,16 @@ use std::sync::Arc;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
-use crate::model::interaction::Interaction;
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::provider::http_client::HttpClient;
 
 pub fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
-    interaction: Option<&Interaction>,
+    data: Option<Vec<u8>>,
 ) -> Result<DataDTO, ExchangeProtocolError> {
-    let data = interaction
-        .ok_or(ExchangeProtocolError::Failed(
-            "interaction is None".to_string(),
-        ))?
-        .data
-        .as_ref()
-        .ok_or(ExchangeProtocolError::Failed(
-            "interaction data is missing".to_string(),
-        ))?;
+    let data = data.as_ref().ok_or(ExchangeProtocolError::Failed(
+        "interaction data is missing".to_string(),
+    ))?;
     serde_json::from_slice(data).map_err(ExchangeProtocolError::JsonError)
 }
 

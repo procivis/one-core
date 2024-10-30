@@ -3,11 +3,9 @@ use std::str::FromStr;
 
 use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::provider::exchange_protocol::openid4vc::model::{
-    HolderInteractionData, OpenID4VPClientMetadata, OpenID4VPFormat,
-    OpenID4VPPresentationDefinition,
+    OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
 };
 use serde_json::json;
-use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -143,24 +141,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
                     "public"
                 ],
                 "token_endpoint": token_endpoint
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    let test_token = "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE";
-    Mock::given(method(Method::POST))
-        .and(path(format!(
-            "/ssi/oidc-issuer/v1/{credential_schema_id}/token"
-        )))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "access_token": test_token,
-                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-                "refresh_token": test_token,
-                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-                "token_type": "bearer"
             }
         )))
         .expect(1)
@@ -314,13 +294,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         credential.schema.unwrap().wallet_storage_type,
         Some(WalletStorageTypeEnum::Software)
     );
-
-    let interaction: HolderInteractionData =
-        serde_json::from_slice(&credential.interaction.unwrap().data.unwrap()).unwrap();
-    assert_eq!(interaction.access_token, test_token);
-    assert_eq!(interaction.refresh_token, Some(test_token.to_string()));
-    assert!(interaction.access_token_expires_at.is_some());
-    assert!(interaction.refresh_token_expires_at.is_some());
 }
 
 #[tokio::test]
@@ -414,18 +387,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .expect(1)
         .mount(&mock_server)
         .await;
-
-    Mock::given(method(Method::POST))
-    .and(path(format!("/ssi/oidc-issuer/v1/{credential_schema_id}/token")))
-    .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-        {
-            "access_token": "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE",
-            "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-            "token_type": "bearer"
-        }
-    )))
-    .expect(1)
-    .mount(&mock_server).await;
 
     let address_claim_schema = json!({
         "id": "545f984b-4fdf-4e26-aba0-61b72d21dbd9",
@@ -619,18 +580,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .expect(1)
         .mount(&mock_server)
         .await;
-
-    Mock::given(method(Method::POST))
-    .and(path(format!("/ssi/oidc-issuer/v1/{credential_schema_id}/token")))
-    .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-        {
-            "access_token": "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE",
-            "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-            "token_type": "bearer"
-        }
-    )))
-    .expect(1)
-    .mount(&mock_server).await;
 
     let address_claim_schema = json!({
         "id": "545f984b-4fdf-4e26-aba0-61b72d21dbd9",
@@ -834,18 +783,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .expect(1)
         .mount(&mock_server)
         .await;
-
-    Mock::given(method(Method::POST))
-    .and(path(format!("/ssi/oidc-issuer/v1/{credential_schema_id}/token")))
-    .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-        {
-            "access_token": "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE",
-            "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-            "token_type": "bearer"
-        }
-    )))
-    .expect(1)
-    .mount(&mock_server).await;
 
     let address_claim_schema = json!({
         "id": "545f984b-4fdf-4e26-aba0-61b72d21dbd9",
@@ -1068,18 +1005,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
         .mount(&mock_server)
         .await;
 
-    Mock::given(method(Method::POST))
-    .and(path(format!("/ssi/oidc-issuer/v1/{credential_schema_id}/token")))
-    .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-        {
-            "access_token": "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE",
-            "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-            "token_type": "bearer"
-        }
-    )))
-    .expect(1)
-    .mount(&mock_server).await;
-
     // WHEN
     let credential_offer = serde_json::to_string(&credential_offer).unwrap();
     let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
@@ -1196,24 +1121,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
         .mount(&mock_server)
         .await;
 
-    let test_token = "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE";
-    Mock::given(method(Method::POST))
-        .and(path(format!(
-            "/ssi/oidc-issuer/v1/{credential_schema_id}/token"
-        )))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "access_token": test_token,
-                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-                "refresh_token": test_token,
-                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-                "token_type": "bearer"
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
     Mock::given(method(Method::GET))
         .and(path(format!(
             "/ssi/oidc-issuer/v1/{credential_schema_id}/offer/{credential_id}"
@@ -1282,13 +1189,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
         credential.schema.unwrap().wallet_storage_type,
         Some(WalletStorageTypeEnum::Software)
     );
-
-    let interaction: HolderInteractionData =
-        serde_json::from_slice(&credential.interaction.unwrap().data.unwrap()).unwrap();
-    assert_eq!(interaction.access_token, test_token);
-    assert_eq!(interaction.refresh_token, Some(test_token.to_string()));
-    assert!(interaction.access_token_expires_at.is_some());
-    assert!(interaction.refresh_token_expires_at.is_some());
 }
 
 #[tokio::test]
@@ -1498,18 +1398,6 @@ async fn test_handle_invitation_mdoc() {
         .mount(&mock_server)
         .await;
 
-    Mock::given(method(Method::POST))
-    .and(path(format!("/ssi/oidc-issuer/v1/{credential_schema_id}/token")))
-    .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-        {
-            "access_token": "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE",
-            "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-            "token_type": "bearer"
-        }
-    )))
-    .expect(1)
-    .mount(&mock_server).await;
-
     // WHEN
     let credential_offer = serde_json::to_string(&credential_offer).unwrap();
     let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
@@ -1597,4 +1485,163 @@ async fn test_handle_invitation_mdoc() {
     assert!(!field.required);
     assert!(!field.schema.array);
     assert_eq!(&field.schema.data_type, "STRING");
+}
+
+#[tokio::test]
+async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_tx_code_passed() {
+    let mock_server = MockServer::start().await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let credential_schema_id = Uuid::new_v4();
+    let credential_issuer = format!(
+        "{}/ssi/oidc-issuer/v1/{credential_schema_id}",
+        mock_server.uri()
+    );
+    let credential_offer = json!({
+        "credential_issuer": credential_issuer,
+        "credential_configuration_ids": [
+            "doctype"
+        ],
+        "grants": {
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+                "pre-authorized_code": "78db97c3-dbda-4bb2-a17c-b971ae7d6740",
+                "tx_code":{"input_mode":"numeric","length":5,"description":"code"}
+            }
+        },
+        "credential_subject": {
+            "keys": {
+                "namespace2/Field 1": {"value": "foo", "value_type": "STRING"},
+            },
+            "wallet_storage_type": "SOFTWARE"
+        }
+    });
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-credential-issuer"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{credential_issuer}/credential"),
+                "credential_issuer": credential_issuer,
+                "credential_configurations_supported": {
+                    "doctype": {
+                          "format": "mso_mdoc",
+                              "claims": {
+                              "namespace2": {
+                                  "Field 1": {
+                                    "value_type": "string",
+                                    "mandatory": true
+                                  }
+                              }
+                          },
+                          "order": [
+                              "namespace2~Field 1",
+                          ],
+                          "display": [
+                          {
+                              "name": "TestNestedHell"
+                          }
+                          ],
+                          "wallet_storage_type": "SOFTWARE"
+                      }
+              }
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let token_endpoint = format!("{credential_issuer}/token");
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-configuration"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                "grant_types_supported": [
+                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                ],
+                "id_token_signing_alg_values_supported": [],
+                "issuer": credential_issuer,
+                "jwks_uri": format!("{credential_issuer}/jwks"),
+                "response_types_supported": [
+                    "token"
+                ],
+                "subject_types_supported": [
+                    "public"
+                ],
+                "token_endpoint": token_endpoint
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "id": credential_schema_id,
+            "createdDate": "2024-05-16T10:47:48.093Z",
+            "lastModified": "2024-05-16T10:47:48.093Z",
+            "name": "test",
+            "format": "SDJWT",
+            "revocationMethod": "NONE",
+            "organisationId": organisation.id,
+            "claims": [
+              {
+                  "id": "98deb04d-c639-42d3-aa32-3b0ee8b713f0",
+                  "createdDate": "2024-10-17T10:36:55.019Z",
+                  "lastModified": "2024-10-17T10:36:55.019Z",
+                  "key": "namespace2",
+                  "datatype": "OBJECT",
+                  "required": true,
+                  "array": false,
+                  "claims": [
+                  {
+                      "id": "2b7c0489-cc7f-492f-b96f-0b67a08c5bf6",
+                      "createdDate": "2024-10-17T10:36:55.019Z",
+                      "lastModified": "2024-10-17T10:36:55.019Z",
+                      "key": "Field 1",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false
+                  }
+                  ]
+              }
+              ],
+            "walletStorageType": "SOFTWARE",
+            "schemaId": format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()),
+            "schemaType": "ProcivisOneSchema2024",
+            "layoutType": "CARD",
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organisation.id, credential_offer_url.as_ref())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    assert!(resp.get("interactionId").is_some());
+
+    let code = &resp["txCode"];
+    assert_eq!(code["input_mode"], "numeric");
+    assert_eq!(code["length"], 5);
+    assert_eq!(code["description"], "code");
 }

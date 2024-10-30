@@ -188,9 +188,11 @@ impl From<InvitationResponseDTO> for HandleInvitationResponseBindingEnum {
             InvitationResponseDTO::Credential {
                 credentials,
                 interaction_id,
+                tx_code,
             } => Self::CredentialIssuance {
                 interaction_id: interaction_id.to_string(),
                 credential_ids: credentials.iter().map(|item| item.id.to_string()).collect(),
+                tx_code: convert_inner(tx_code),
             },
             InvitationResponseDTO::ProofRequest {
                 interaction_id,

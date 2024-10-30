@@ -48,6 +48,13 @@ impl StorageProxy for StorageProxyImpl {
             .context("Create interaction error")
     }
 
+    async fn update_interaction(&self, interaction: Interaction) -> anyhow::Result<()> {
+        self.interactions
+            .update_interaction(interaction)
+            .await
+            .context("failed to update interaction")
+    }
+
     async fn get_schema(
         &self,
         schema_id: &str,

@@ -354,6 +354,12 @@ async fn test_revoke_check_mdoc_update() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": issuer_url,
         "credential_endpoint": format!("{}/credential", issuer_url),
+        "token_endpoint": format!("{}/token", issuer_url),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
         "access_token": "123",
         "access_token_expires_at": a_couple_of_seconds_in_future,
         "refresh_token": "123",
@@ -477,6 +483,12 @@ async fn test_revoke_check_token_update() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": issuer_url,
         "credential_endpoint": format!("{}/credential", issuer_url),
+        "token_endpoint": format!("{}/token", issuer_url),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
         "access_token": "123",
         "access_token_expires_at": a_couple_of_seconds_ago,
         "refresh_token": "123",
@@ -595,6 +607,12 @@ async fn test_revoke_check_mdoc_revoked() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": issuer_url,
         "credential_endpoint": format!("{}/credential", issuer_url),
+        "token_endpoint": format!("{}/token", issuer_url),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
         "access_token": "invalid",
         "access_token_expires_at": a_couple_of_seconds_ago,
         "refresh_token": "invalid",
@@ -713,6 +731,12 @@ async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": issuer_url,
         "credential_endpoint": format!("{}/credential", issuer_url),
+        "token_endpoint": format!("{}/token", issuer_url),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
         "access_token": "invalid",
         "access_token_expires_at": a_couple_of_seconds_ago,
         "refresh_token": "invalid",
@@ -830,6 +854,12 @@ async fn test_suspended_to_valid() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": issuer_url,
         "credential_endpoint": format!("{}/credential", issuer_url),
+        "token_endpoint": format!("{}/token", issuer_url),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
         "access_token": "invalid",
         "access_token_expires_at": a_couple_of_seconds_ago,
         "refresh_token": "valid",
@@ -966,6 +996,12 @@ async fn test_suspended_to_suspended_update_failed() {
     let interaction_data = serde_json::to_vec(&json!({
         "issuer_url": issuer_url,
         "credential_endpoint": format!("{}/credential", issuer_url),
+        "token_endpoint": format!("{}/token", issuer_url),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
         "access_token": "invalid",
         "access_token_expires_at": a_couple_of_seconds_ago,
         "refresh_token": "valid",

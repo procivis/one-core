@@ -90,7 +90,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
         &self,
         url: Url,
         organisation: Organisation,
-        tx_code: Option<String>,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
         transport: String,
@@ -112,7 +111,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         .handle_invitation(
                             url,
                             organisation,
-                            tx_code,
                             storage_access,
                             handle_invitation_operations,
                         )
@@ -220,6 +218,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         jwk_key_id: Option<String>,
         format: &str,
         storage_access: &StorageAccess,
+        tx_code: Option<String>,
         map_oidc_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         self.openid_http
@@ -230,6 +229,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 jwk_key_id,
                 format,
                 storage_access,
+                tx_code,
                 map_oidc_format_to_external,
             )
             .await

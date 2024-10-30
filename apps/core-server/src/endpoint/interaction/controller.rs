@@ -37,12 +37,7 @@ pub(crate) async fn handle_invitation(
     let result = state
         .core
         .ssi_holder_service
-        .handle_invitation(
-            request.url,
-            request.organisation_id,
-            request.transport,
-            request.tx_code,
-        )
+        .handle_invitation(request.url, request.organisation_id, request.transport)
         .await;
     OkOrErrorResponse::from_result(result, state, "handling invitation")
 }
@@ -72,7 +67,12 @@ pub(crate) async fn issuance_accept(
     let result = state
         .core
         .ssi_holder_service
-        .accept_credential(&request.interaction_id, request.did_id, request.key_id)
+        .accept_credential(
+            &request.interaction_id,
+            request.did_id,
+            request.key_id,
+            request.tx_code,
+        )
         .await;
     EmptyOrErrorResponse::from_result(result, state, "accepting credential")
 }

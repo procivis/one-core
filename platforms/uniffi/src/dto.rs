@@ -20,6 +20,9 @@ use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
+use one_core::provider::exchange_protocol::openid4vc::model::{
+    OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
+};
 use one_core::provider::key_storage::model::StorageGeneratedKey;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
@@ -600,11 +603,30 @@ pub enum HandleInvitationResponseBindingEnum {
     CredentialIssuance {
         interaction_id: String,
         credential_ids: Vec<String>,
+        tx_code: Option<OpenID4VCITxCodeBindingDTO>,
     },
     ProofRequest {
         interaction_id: String,
         proof_id: String,
     },
+}
+
+#[derive(Debug, Clone, From)]
+#[from(OpenID4VCITxCode)]
+pub struct OpenID4VCITxCodeBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub input_mode: Option<OpenID4VCITxCodeInputModeBindingEnum>,
+    #[from(with_fn = convert_inner)]
+    pub length: Option<i64>,
+    #[from(with_fn = convert_inner)]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(OpenID4VCITxCodeInputMode)]
+pub enum OpenID4VCITxCodeInputModeBindingEnum {
+    Numeric,
+    Text,
 }
 
 pub struct ProofRequestBindingDTO {

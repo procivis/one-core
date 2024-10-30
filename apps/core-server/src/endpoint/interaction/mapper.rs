@@ -1,4 +1,5 @@
 use one_core::provider::exchange_protocol::openid4vc::model::InvitationResponseDTO;
+use one_dto_mapper::convert_inner;
 
 use super::dto::HandleInvitationResponseRestDTO;
 
@@ -8,6 +9,7 @@ impl From<InvitationResponseDTO> for HandleInvitationResponseRestDTO {
             InvitationResponseDTO::Credential {
                 credentials,
                 interaction_id,
+                tx_code,
             } => Self {
                 interaction_id,
                 credential_ids: Some(
@@ -17,6 +19,7 @@ impl From<InvitationResponseDTO> for HandleInvitationResponseRestDTO {
                         .collect(),
                 ),
                 proof_id: None,
+                tx_code: convert_inner(tx_code),
             },
             InvitationResponseDTO::ProofRequest {
                 proof,
@@ -26,6 +29,7 @@ impl From<InvitationResponseDTO> for HandleInvitationResponseRestDTO {
                 interaction_id,
                 credential_ids: None,
                 proof_id: Some(proof.id),
+                tx_code: None,
             },
         }
     }

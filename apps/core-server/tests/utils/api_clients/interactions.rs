@@ -39,11 +39,13 @@ impl InteractionsApi {
         interaction_id: impl Into<Uuid>,
         did_id: impl Into<DidId>,
         key_id: impl Into<Option<KeyId>>,
+        tx_code: impl Into<Option<&str>>,
     ) -> Response {
         let body = json!({
           "interactionId": interaction_id.into(),
           "didId": did_id.into(),
           "keyId": key_id.into(),
+          "txCode": tx_code.into(),
         });
 
         self.client

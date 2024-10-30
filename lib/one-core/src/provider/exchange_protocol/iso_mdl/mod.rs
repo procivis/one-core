@@ -89,7 +89,6 @@ impl ExchangeProtocolImpl for IsoMdl {
         &self,
         _url: Url,
         _organisation: Organisation,
-        _tx_code: Option<String>,
         _storage_access: &StorageAccess,
         _handle_invitation_operations: &HandleInvitationOperationsAccess,
         _transport: String,
@@ -228,6 +227,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         _jwk_key_id: Option<String>,
         _format: &str,
         _storage_access: &StorageAccess,
+        _tx_code: Option<String>,
         _map_oidc_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         unimplemented!()
