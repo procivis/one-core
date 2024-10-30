@@ -17,7 +17,6 @@ use crate::model::credential_schema::{
     LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::history::HistoryAction;
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
@@ -41,7 +40,6 @@ use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
@@ -55,7 +53,6 @@ use crate::service::test_utilities::*;
 struct Mocks {
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub credential_repository: MockCredentialRepository,
-    pub history_repository: MockHistoryRepository,
     pub proof_repository: MockProofRepository,
     pub interaction_repository: MockInteractionRepository,
     pub key_repository: MockKeyRepository,
@@ -76,7 +73,6 @@ fn setup_service(mocks: Mocks) -> OIDCService {
         Some("http://127.0.0.1:3000".to_string()),
         Arc::new(mocks.credential_schema_repository),
         Arc::new(mocks.credential_repository),
-        Arc::new(mocks.history_repository),
         Arc::new(mocks.proof_repository),
         Arc::new(mocks.key_repository),
         Arc::new(mocks.key_provider),
@@ -1340,16 +1336,6 @@ async fn test_submit_proof_failed_credential_suspended() {
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
 
     let mut proof_repository = MockProofRepository::new();
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .withf(move |history| {
-            assert_eq!(history.entity_id, Some(proof_id.into()));
-            assert_eq!(history.action, HistoryAction::Errored);
-            true
-        })
-        .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let interaction_id = Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36").unwrap();
 
@@ -1593,7 +1579,6 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     let service = setup_service(Mocks {
         proof_repository,
-        history_repository,
         formatter_provider,
         revocation_method_provider,
         config: generic_config().core,

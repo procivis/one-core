@@ -14,7 +14,6 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
 use crate::service::proof::dto::ProofFilterValue;
-use crate::util::history::log_history_event_proof;
 
 pub struct RetainProofCheck {
     proof_repository: Arc<dyn ProofRepository>,
@@ -99,12 +98,6 @@ impl Task for RetainProofCheck {
                 }
 
                 self.proof_repository.delete_proof_claims(&proof.id).await?;
-                log_history_event_proof(
-                    &*self.history_repository,
-                    &proof,
-                    HistoryAction::ClaimsRemoved,
-                )
-                .await?;
             }
 
             page += 1;

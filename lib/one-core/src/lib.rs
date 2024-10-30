@@ -443,7 +443,6 @@ impl OneCore {
                 providers.core_base_url.clone(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_credential_repository(),
-                data_provider.get_history_repository(),
                 data_provider.get_proof_repository(),
                 data_provider.get_key_repository(),
                 key_provider.clone(),

@@ -16,7 +16,6 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 };
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
 use crate::provider::mqtt_client::MqttTopic;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 
@@ -36,7 +35,6 @@ pub(super) async fn mqtt_verifier_flow(
     presentation_request: MqttOpenId4VpRequest,
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
-    history_repository: Arc<dyn HistoryRepository>,
     interaction_id: InteractionId,
     cancellation_token: CancellationToken,
 ) -> anyhow::Result<()> {
@@ -77,7 +75,7 @@ pub(super) async fn mqtt_verifier_flow(
 
         let bytes = shared_key.encrypt(&presentation_request)?;
         topics.presentation_definition.send(bytes).await?;
-        set_proof_state(&proof, ProofStateEnum::Requested, &*proof_repository, &*history_repository).await?;
+        set_proof_state(&proof, ProofStateEnum::Requested, &*proof_repository).await?;
 
         tracing::debug!("presentation_definition is sent");
 
@@ -141,8 +139,8 @@ pub(super) async fn mqtt_verifier_flow(
                     .await?;
             },
             _ = reject => {
-                tracing::debug!("got reject message");                
-                set_proof_state(&proof, ProofStateEnum::Rejected, &*proof_repository, &*history_repository).await?;
+                tracing::debug!("got reject message");
+                set_proof_state(&proof, ProofStateEnum::Rejected, &*proof_repository).await?;
             }
         }
 
@@ -151,13 +149,7 @@ pub(super) async fn mqtt_verifier_flow(
     .await;
 
     if result.is_err() {
-        set_proof_state(
-            &proof,
-            ProofStateEnum::Error,
-            &*proof_repository,
-            &*history_repository,
-        )
-        .await?;
+        set_proof_state(&proof, ProofStateEnum::Error, &*proof_repository).await?;
     }
 
     result

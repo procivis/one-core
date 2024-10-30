@@ -24,7 +24,6 @@ use super::model::{
 };
 use crate::config::core_config::{CoreConfig, ExchangeType, TransportType};
 use crate::model::did::Did;
-use crate::model::history::HistoryAction;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -50,10 +49,8 @@ use crate::provider::exchange_protocol::{
 };
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::mqtt_client::{MqttClient, MqttTopic};
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::util::history::log_history_event_proof;
 use crate::util::oidc::create_core_to_oicd_format_map;
 
 mod oidc_mqtt_verifier;
@@ -69,7 +66,6 @@ pub struct OpenId4VcMqtt {
 
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
-    history_repository: Arc<dyn HistoryRepository>,
 
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
@@ -86,14 +82,12 @@ struct SubscriptionHandle {
 }
 
 impl OpenId4VcMqtt {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         mqtt_client: Arc<dyn MqttClient>,
         config: Arc<CoreConfig>,
         params: ConfigParams,
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
-        history_repository: Arc<dyn HistoryRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
     ) -> OpenId4VcMqtt {
@@ -104,7 +98,6 @@ impl OpenId4VcMqtt {
             handle: Mutex::new(None),
             interaction_repository,
             proof_repository,
-            history_repository,
             formatter_provider,
             key_provider,
         }
@@ -562,7 +555,6 @@ impl OpenId4VcMqtt {
                 presentation_request,
                 self.proof_repository.clone(),
                 self.interaction_repository.clone(),
-                self.history_repository.clone(),
                 interaction_id,
                 cancellation_token,
             )
@@ -619,15 +611,7 @@ async fn set_proof_state(
     proof: &Proof,
     state: ProofStateEnum,
     proof_repository: &dyn ProofRepository,
-    history_repository: &dyn HistoryRepository,
 ) -> Result<(), ExchangeProtocolError> {
-    let log_history_event = |event: HistoryAction| async move {
-        if let Err(error) = log_history_event_proof(history_repository, proof, event.clone()).await
-        {
-            tracing::error!(%error, proof_id=%proof.id, ?event, "Failed storing history event for proof")
-        }
-    };
-
     let now = OffsetDateTime::now_utc();
     if let Err(error) = proof_repository
         .set_proof_state(
@@ -643,15 +627,6 @@ async fn set_proof_state(
         tracing::error!(%error, proof_id=%proof.id, ?state, "Failed setting proof state");
 
         return Err(ExchangeProtocolError::Failed(error.to_string()));
-    }
-
-    match state {
-        ProofStateEnum::Created => log_history_event(HistoryAction::Created).await,
-        ProofStateEnum::Pending => log_history_event(HistoryAction::Pending).await,
-        ProofStateEnum::Requested => log_history_event(HistoryAction::Requested).await,
-        ProofStateEnum::Accepted => log_history_event(HistoryAction::Accepted).await,
-        ProofStateEnum::Rejected => log_history_event(HistoryAction::Rejected).await,
-        ProofStateEnum::Error => log_history_event(HistoryAction::Errored).await,
     }
 
     Ok(())

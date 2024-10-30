@@ -125,7 +125,6 @@ pub(crate) fn exchange_protocol_providers_from_config(
                         params,
                         data_provider.get_interaction_repository(),
                         data_provider.get_proof_repository(),
-                        data_provider.get_history_repository(),
                         formatter_provider.clone(),
                         key_provider.clone(),
                     ));

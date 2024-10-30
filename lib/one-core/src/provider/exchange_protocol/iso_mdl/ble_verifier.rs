@@ -143,10 +143,9 @@ pub(crate) async fn start_client(
             if let Ok(true) = central.is_scanning().await {
                 let _ = central.stop_scan().await;
             }
-            {
-                if let Ok(device_info) = receiver.await {
-                    send_end_and_disconnect(&device_info, &peripheral_server_uuid, &*central).await;
-                }
+
+            if let Ok(device_info) = receiver.await {
+                send_end_and_disconnect(&device_info, &peripheral_server_uuid, &*central).await;
             }
 
             let _ = proof_repository_clone

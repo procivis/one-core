@@ -28,7 +28,6 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
 use crate::model::did::DidRelations;
-use crate::model::history::HistoryAction;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -62,7 +61,6 @@ use crate::service::oidc::validator::{
     validate_config_entity_presence,
 };
 use crate::service::ssi_validator::validate_exchange_type;
-use crate::util::history::log_history_event_proof;
 use crate::util::oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core_detailed};
 
 impl OIDCService {
@@ -742,26 +740,11 @@ impl OIDCService {
                     )
                     .await?;
 
-                let _ = log_history_event_proof(
-                    &*self.history_repository,
-                    &proof,
-                    HistoryAction::Accepted,
-                )
-                .await;
-
                 Ok(response)
             }
             Err(err) => {
                 tracing::info!("Proof validation failed: {err}");
                 self.mark_proof_as_failed(&proof.id).await?;
-
-                let _ = log_history_event_proof(
-                    &*self.history_repository,
-                    &proof,
-                    HistoryAction::Errored,
-                )
-                .await;
-
                 Err(err.into())
             }
         }

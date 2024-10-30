@@ -28,7 +28,6 @@ use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncrypti
 use crate::provider::exchange_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::mqtt_client::{MockMqttClient, MockMqttTopic};
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::test_utilities::generic_config;
@@ -39,7 +38,6 @@ struct TestInputs<'a> {
     pub mqtt_client: MockMqttClient,
     pub interaction_repository: MockInteractionRepository,
     pub proof_repository: MockProofRepository,
-    pub history_repository: MockHistoryRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub key_provider: MockKeyProvider,
 }
@@ -71,7 +69,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
         },
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.proof_repository),
-        Arc::new(inputs.history_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.key_provider),
     )

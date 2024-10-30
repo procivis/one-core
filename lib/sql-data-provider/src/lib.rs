@@ -25,6 +25,7 @@ use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
 use one_core::repository::DataRepository;
 use organisation::OrganisationProvider;
+use proof::history::ProofHistoryDecorator;
 use proof::ProofProvider;
 use proof_schema::ProofSchemaProvider;
 use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
@@ -168,6 +169,11 @@ impl DataLayer {
             did_repository: did_repository.clone(),
             interaction_repository: interaction_repository.clone(),
             key_repository: key_repository.clone(),
+        });
+
+        let proof_repository = Arc::new(ProofHistoryDecorator {
+            history_repository: history_repository.clone(),
+            inner: proof_repository,
         });
 
         let lvvc_repository = Arc::new(ValidityCredentialProvider::new(db.clone()));

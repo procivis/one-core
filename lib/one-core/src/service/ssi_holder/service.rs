@@ -48,7 +48,7 @@ use crate::service::error::{
 };
 use crate::service::ssi_issuer::dto::IssuerResponseDTO;
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::history::{history_event, log_history_event_credential, log_history_event_proof};
+use crate::util::history::{history_event, log_history_event_credential};
 use crate::util::oidc::{
     create_core_to_oicd_format_map, create_core_to_oicd_presentation_format_map,
     create_oicd_to_core_format_map, detect_format_with_crypto_suite, map_core_to_oidc_format,
@@ -212,9 +212,6 @@ impl SSIHolderService {
             .await)
             .is_ok()
         {
-            let _ =
-                log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Rejected)
-                    .await;
             ProofStateEnum::Rejected
         } else {
             ProofStateEnum::Error
@@ -547,13 +544,6 @@ impl SSIHolderService {
                 },
             )
             .await?;
-
-        let action = if submit_result.is_ok() {
-            HistoryAction::Accepted
-        } else {
-            HistoryAction::Errored
-        };
-        let _ = log_history_event_proof(&*self.history_repository, &proof, action).await;
 
         submit_result
     }

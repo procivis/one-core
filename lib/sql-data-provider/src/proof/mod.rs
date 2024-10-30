@@ -8,6 +8,7 @@ use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use sea_orm::DatabaseConnection;
 
+pub mod history;
 mod mapper;
 mod model;
 pub mod repository;
