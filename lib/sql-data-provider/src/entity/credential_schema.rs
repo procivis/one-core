@@ -80,7 +80,7 @@ impl sea_orm::ActiveEnum for CredentialSchemaType {
     }
 
     fn db_type() -> sea_orm::ColumnDef {
-        sea_orm::prelude::ColumnTypeTrait::def(sea_orm::ColumnType::String(Some(1)))
+        sea_orm::prelude::ColumnTypeTrait::def(sea_orm::ColumnType::string(Some(1)))
     }
 }
 

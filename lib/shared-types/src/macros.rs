@@ -62,7 +62,7 @@ macro_rules! impls_for_seaorm_newtype {
             }
 
             fn column_type() -> sea_orm::sea_query::ColumnType {
-                sea_orm::sea_query::ColumnType::String(None)
+                sea_orm::sea_query::ColumnType::string(None)
             }
         }
 

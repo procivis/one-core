@@ -13,7 +13,7 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
 
     pub key: String,
-    #[sea_orm(column_type = "Binary(BlobSize::Long)")]
+    #[sea_orm(column_type = "Blob")]
     pub value: Vec<u8>,
 
     pub hit_counter: u32,

@@ -1,6 +1,7 @@
 use sea_orm_migration::prelude::*;
 
 use crate::m20240514_070446_add_trust_model::TrustEntity;
+use crate::ColumnDefExt;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -21,7 +22,7 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(TrustEntity::Table)
-                    .add_column(ColumnDef::new(TrustEntity::Logo).blob(BlobSize::Long))
+                    .add_column(ColumnDef::new(TrustEntity::Logo).custom_blob(manager))
                     .to_owned(),
             )
             .await

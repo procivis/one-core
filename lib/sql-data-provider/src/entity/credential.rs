@@ -22,7 +22,7 @@ pub struct Model {
     pub exchange: String,
     pub redirect_uri: Option<String>,
 
-    #[sea_orm(column_type = "Binary(BlobSize::Long)")]
+    #[sea_orm(column_type = "Blob")]
     pub credential: Vec<u8>,
 
     pub role: CredentialRole,

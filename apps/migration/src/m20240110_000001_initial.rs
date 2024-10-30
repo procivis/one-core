@@ -2,6 +2,8 @@ use std::fmt;
 
 use sea_orm_migration::prelude::*;
 
+use crate::ColumnDefExt;
+
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
@@ -36,7 +38,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(ColumnDef::new(Interaction::Host).string())
-                    .col(ColumnDef::new(Interaction::Data).binary())
+                    .col(ColumnDef::new(Interaction::Data).custom_blob(manager))
                     .to_owned(),
             )
             .await?;
@@ -381,7 +383,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(RevocationList::Credentials)
-                            .binary()
+                            .custom_blob(manager)
                             .not_null(),
                     )
                     .col(
@@ -418,8 +420,16 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(ColumnDef::new(Key::Name).string().not_null())
-                    .col(ColumnDef::new(Key::PublicKey).binary().not_null())
-                    .col(ColumnDef::new(Key::KeyReference).binary().not_null())
+                    .col(
+                        ColumnDef::new(Key::PublicKey)
+                            .custom_blob(manager)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Key::KeyReference)
+                            .custom_blob(manager)
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(Key::StorageType).string().not_null())
                     .col(ColumnDef::new(Key::KeyType).string().not_null())
                     .col(ColumnDef::new(Key::OrganisationId).char_len(36).not_null())
@@ -469,7 +479,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Credential::RedirectUri).string())
                     .col(
                         ColumnDef::new(Credential::Credential)
-                            .blob(BlobSize::Long)
+                            .custom_blob(manager)
                             .not_null(),
                     )
                     .col(
@@ -722,7 +732,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Claim::ClaimSchemaId).char_len(36).not_null())
                     .col(ColumnDef::new(Claim::CredentialId).char_len(36).not_null())
-                    .col(ColumnDef::new(Claim::Value).blob(BlobSize::Long).not_null())
+                    .col(ColumnDef::new(Claim::Value).custom_blob(manager).not_null())
                     .col(
                         ColumnDef::new(Claim::CreatedDate)
                             .custom(datetime)

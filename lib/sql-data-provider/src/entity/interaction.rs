@@ -10,7 +10,7 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub host: Option<String>,
-    #[sea_orm(column_type = "Binary(BlobSize::Blob(None))", nullable)]
+    #[sea_orm(column_type = "Blob")]
     pub data: Option<Vec<u8>>,
     pub organisation_id: OrganisationId,
 }

@@ -13,7 +13,7 @@ pub struct Model {
     pub credential_id: CredentialId,
 
     #[serde(with = "hex::serde")]
-    #[sea_orm(column_type = "Binary(BlobSize::Long)")]
+    #[sea_orm(column_type = "Blob")]
     pub value: Vec<u8>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,

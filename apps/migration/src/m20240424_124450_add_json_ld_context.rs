@@ -1,6 +1,7 @@
 use sea_orm_migration::prelude::*;
 
 use crate::m20240110_000001_initial::CustomDateTime;
+use crate::ColumnDefExt;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -32,7 +33,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(JsonLdContext::Context)
-                            .blob(BlobSize::Long)
+                            .custom_blob(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(JsonLdContext::Url).string())

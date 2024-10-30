@@ -15,10 +15,10 @@ pub struct Model {
 
     pub name: String,
 
-    #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
+    #[sea_orm(column_type = "Blob")]
     pub public_key: Vec<u8>,
 
-    #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
+    #[sea_orm(column_type = "Blob")]
     pub key_reference: Vec<u8>,
 
     pub storage_type: String,

@@ -63,7 +63,7 @@ pub fn json_object_columns<T: Iden + ColumnTrait>(
         .into_iter()
         .fold(Func::cust(JsonObject), |state, column| {
             match column.def().get_column_type() {
-                sea_orm::ColumnType::Binary(_) => state
+                sea_orm::ColumnType::Blob => state
                     .arg(column.to_string())
                     .arg(Func::cust(Hex).arg(column.into_expr())),
                 _ => state.arg(column.to_string()).arg(column.into_expr()),

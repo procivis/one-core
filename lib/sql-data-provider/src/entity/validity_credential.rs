@@ -2,8 +2,8 @@ use anyhow::Context;
 use one_core::model;
 use one_dto_mapper::{From, Into};
 use sea_orm::prelude::{
-    ActiveModelBehavior, BlobSize, DeriveEntityModel, DerivePrimaryKey, DeriveRelation,
-    EntityTrait, EnumIter, PrimaryKeyTrait, Related, RelationDef, RelationTrait,
+    ActiveModelBehavior, DeriveEntityModel, DerivePrimaryKey, DeriveRelation, EntityTrait,
+    EnumIter, PrimaryKeyTrait, Related, RelationDef, RelationTrait,
 };
 use sea_orm::DeriveActiveEnum;
 use time::OffsetDateTime;
@@ -14,7 +14,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
     pub created_date: OffsetDateTime,
-    #[sea_orm(column_type = "Binary(BlobSize::Long)")]
+    #[sea_orm(column_type = "Blob")]
     pub credential: Vec<u8>,
     pub credential_id: String,
     pub r#type: ValidityCredentialType,

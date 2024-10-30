@@ -1,6 +1,7 @@
 use sea_orm_migration::prelude::*;
 
 use crate::m20240110_000001_initial::{Credential, CustomDateTime};
+use crate::ColumnDefExt;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -27,7 +28,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(Lvvc::Credential)
-                            .blob(BlobSize::Long)
+                            .custom_blob(manager)
                             .not_null(),
                     )
                     .col(ColumnDef::new(Lvvc::CredentialId).char_len(36).not_null())

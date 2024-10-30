@@ -10,7 +10,7 @@ pub struct Model {
     pub id: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    #[sea_orm(column_type = "Binary(BlobSize::Blob(None))", nullable)]
+    #[sea_orm(column_type = "Blob")]
     pub credentials: Vec<u8>,
     pub purpose: RevocationListPurpose,
 
