@@ -1335,13 +1335,8 @@ fn handle_array(array: Vec<Value>) -> Result<serde_json::Value, FormatterError> 
         return Ok(serde_json::Value::Array(vec![]));
     };
 
-    // It really is an array. Let's collect items.
-    if array.iter().all(|item| {
-        item.is_array() && first.is_array()
-            || item.is_text() && first.is_text()
-            || item.is_map() && first.is_map()
-    }) {
-        //let mut items: Vec<serde_json::Value> = Vec::new();
+    // Collect items if a homogenous array
+    if array.iter().all(|item| is_same_type(item, first)) {
         let items = array
             .into_iter()
             .map(build_json_value)
@@ -1368,6 +1363,19 @@ fn handle_array(array: Vec<Value>) -> Result<serde_json::Value, FormatterError> 
     }
 
     Err(FormatterError::Failed("Unhandled array".to_owned()))
+}
+
+fn is_same_type(a: &Value, b: &Value) -> bool {
+    a.is_array() && b.is_array()
+        || a.is_map() && b.is_map()
+        || a.is_text() && b.is_text()
+        || a.is_bool() && b.is_bool()
+        || a.is_bytes() && b.is_bytes()
+        || (a.is_integer() || a.is_float()) && (b.is_integer() || b.is_float())
+        || a.is_tag()
+            && b.is_tag()
+            && a.as_tag()
+                .is_some_and(|(tag_a, _)| b.as_tag().is_some_and(|(tag_b, _)| tag_a == tag_b))
 }
 
 fn handle_bytes(bytes: &[u8]) -> Result<serde_json::Value, FormatterError> {
