@@ -429,6 +429,7 @@ impl CredentialService {
                         interaction: None,
                         key: None,
                         redirect_uri: None,
+                        claims: None,
                     })
                     .await?;
             }
@@ -690,6 +691,7 @@ impl CredentialService {
                 interaction: None,
                 key: None,
                 redirect_uri: None,
+                claims: None,
             })
             .await?;
 
@@ -832,6 +834,7 @@ impl CredentialService {
                     interaction: None,
                     key: None,
                     redirect_uri: None,
+                    claims: None,
                 };
 
                 let _ = &self
@@ -958,6 +961,7 @@ impl CredentialService {
                     interaction: None,
                     key: None,
                     redirect_uri: None,
+                    claims: None,
                 })
                 .await?;
 
@@ -1064,6 +1068,7 @@ async fn obtain_and_update_new_mso(
         interaction: None,
         key: None,
         redirect_uri: None,
+        claims: None,
     };
 
     credentials.update_credential(update_request).await?;

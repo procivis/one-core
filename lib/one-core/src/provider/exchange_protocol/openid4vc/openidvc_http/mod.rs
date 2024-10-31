@@ -686,6 +686,7 @@ impl OpenID4VCHTTP {
                 state: None,
                 interaction: None,
                 key: None,
+                claims: None,
             }),
         })
     }
@@ -1340,7 +1341,7 @@ fn collect_mandatory_keys(
                 .value_type
                 .as_ref()
                 .cloned()
-                .unwrap_or("STRING".to_owned()),
+                .unwrap_or("string".to_owned()),
         ));
     }
 

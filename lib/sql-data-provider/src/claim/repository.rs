@@ -6,7 +6,7 @@ use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-use shared_types::ClaimSchemaId;
+use shared_types::{ClaimSchemaId, CredentialId};
 
 use super::ClaimProvider;
 use crate::entity::claim;
@@ -22,6 +22,19 @@ impl ClaimRepository for ClaimProvider {
             .collect::<Result<Vec<claim::ActiveModel>, _>>()?;
 
         claim::Entity::insert_many(models)
+            .exec(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        Ok(())
+    }
+
+    async fn delete_claims_for_credential(
+        &self,
+        request: CredentialId,
+    ) -> Result<(), DataLayerError> {
+        claim::Entity::delete_many()
+            .filter(claim::Column::CredentialId.eq(request))
             .exec(&self.db)
             .await
             .map_err(to_data_layer_error)?;

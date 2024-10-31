@@ -444,6 +444,7 @@ impl OIDCService {
                 interaction: None,
                 key: None,
                 redirect_uri: None,
+                claims: None,
             })
             .await?;
 
@@ -454,7 +455,6 @@ impl OIDCService {
 
         Ok(OpenID4VCICredentialResponseDTO {
             credential: issued_credential.credential,
-            // format: request.format,
             redirect_uri: credential.redirect_uri.to_owned(),
         })
     }

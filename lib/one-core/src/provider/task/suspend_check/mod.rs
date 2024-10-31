@@ -176,6 +176,7 @@ impl Task for SuspendCheckProvider {
                     interaction: None,
                     key: None,
                     redirect_uri: None,
+                    claims: None,
                 })
                 .await?;
 

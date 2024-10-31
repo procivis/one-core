@@ -37,6 +37,7 @@ pub(super) fn get_issued_credential_update(
         issuer_did_id: None,
         interaction: None,
         redirect_uri: None,
+        claims: None,
     }
 }
 

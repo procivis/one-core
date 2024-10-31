@@ -141,6 +141,49 @@ async fn test_create_claim_list_success() {
 }
 
 #[tokio::test]
+async fn test_delete_claims_for_credential() {
+    let TestSetup {
+        repository,
+        claim_schemas,
+        db,
+        credential_id,
+        ..
+    } = setup(get_claim_schema_repository_mock()).await;
+
+    repository
+        .create_claim_list(
+            claim_schemas
+                .into_iter()
+                .map(|schema| Claim {
+                    id: ClaimId::new_v4(),
+                    credential_id,
+                    value: "value".to_string(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    path: schema.key.to_owned(),
+                    schema: Some(schema),
+                })
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+    repository
+        .delete_claims_for_credential(credential_id)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        crate::entity::claim::Entity::find()
+            .all(&db)
+            .await
+            .unwrap()
+            .len(),
+        0
+    );
+}
+
+#[tokio::test]
 async fn test_create_claim_list_missing_schema() {
     let TestSetup {
         repository,

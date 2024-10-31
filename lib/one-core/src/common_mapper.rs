@@ -128,7 +128,7 @@ pub(super) fn did_method_id_from_value(did_value: &DidValue) -> Result<String, S
     Ok(did_method.to_uppercase())
 }
 
-fn value_to_model_claims(
+pub fn value_to_model_claims(
     credential_id: CredentialId,
     claim_schemas: &[CredentialSchemaClaim],
     json_value: &serde_json::Value,

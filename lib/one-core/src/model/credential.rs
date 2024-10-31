@@ -92,6 +92,8 @@ pub struct UpdateCredentialRequest {
     pub interaction: Option<InteractionId>,
     pub key: Option<KeyId>,
     pub redirect_uri: Option<Option<String>>,
+
+    pub claims: Option<Vec<Claim>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

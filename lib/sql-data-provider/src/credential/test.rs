@@ -1024,6 +1024,7 @@ async fn test_update_credential_success() {
             interaction: Some(interaction_id),
             key: None,
             redirect_uri: None,
+            claims: None,
         })
         .await
         .is_ok());

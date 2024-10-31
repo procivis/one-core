@@ -2,14 +2,14 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use futures::TryFutureExt;
-use shared_types::{DidId, KeyId, OrganisationId, ProofId};
+use shared_types::{CredentialId, DidId, KeyId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
 use super::dto::PresentationSubmitRequestDTO;
 use super::SSIHolderService;
-use crate::common_mapper::{encode_cbor_base64, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{encode_cbor_base64, value_to_model_claims, NESTED_CLAIM_MARKER};
 use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
@@ -23,7 +23,9 @@ use crate::model::credential::{
     CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
     UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
+};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::interaction::{InteractionId, InteractionRelations};
@@ -549,7 +551,7 @@ impl SSIHolderService {
                     }),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
                     }),
                     issuer_did: Some(DidRelations::default()),
                     ..Default::default()
@@ -693,6 +695,10 @@ impl SSIHolderService {
                     .await?;
             }
 
+            let claims = self
+                .extract_claims(&credential.id, &issuer_response.credential, schema)
+                .await?;
+
             self.credential_repository
                 .update_credential(UpdateCredentialRequest {
                     id: credential.id,
@@ -707,11 +713,63 @@ impl SSIHolderService {
                     interaction: None,
                     key: Some(selected_key.id),
                     redirect_uri: None,
+                    claims: Some(claims),
                 })
                 .await?;
         }
 
         Ok(())
+    }
+
+    async fn extract_claims(
+        &self,
+        credential_id: &CredentialId,
+        credential: &str,
+        schema: &CredentialSchema,
+    ) -> Result<Vec<Claim>, ServiceError> {
+        let credential_format = &schema.format;
+
+        let formatter = self
+            .formatter_provider
+            .get_formatter(credential_format)
+            .ok_or(ServiceError::MissingProvider(
+                MissingProviderError::Formatter(credential_format.to_owned()),
+            ))?;
+
+        let credential = formatter
+            .extract_credentials_unverified(credential)
+            .await
+            .map_err(ServiceError::FormatterError)?;
+
+        let mut collected_claims: Vec<Claim> = Vec::new();
+
+        let claim_schemas = schema
+            .claim_schemas
+            .as_ref()
+            .ok_or(ServiceError::BusinessLogic(
+                BusinessLogicError::MissingClaimSchemas,
+            ))?;
+        let now = OffsetDateTime::now_utc();
+
+        for (key, value) in credential.claims.values {
+            let this_claim_schema = claim_schemas
+                .iter()
+                .find(|claim_schema| claim_schema.schema.key == key)
+                .ok_or(ServiceError::BusinessLogic(
+                    BusinessLogicError::MissingClaimSchemas,
+                ))?;
+
+            collected_claims.extend(value_to_model_claims(
+                *credential_id,
+                claim_schemas,
+                &value,
+                now,
+                &this_claim_schema.schema,
+                &key,
+            )?);
+        }
+
+        Ok(collected_claims)
     }
 
     pub async fn reject_credential(
@@ -770,6 +828,7 @@ impl SSIHolderService {
                     interaction: None,
                     key: None,
                     redirect_uri: None,
+                    claims: None, //TODO!
                 })
                 .await?;
         }

@@ -55,6 +55,7 @@ pub async fn update_credentials_interaction(
         state: None,
         key: None,
         redirect_uri: None,
+        claims: None,
     };
 
     credential_repository.update_credential(update).await?;

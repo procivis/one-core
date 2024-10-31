@@ -441,6 +441,7 @@ impl CredentialRepository for CredentialProvider {
                     interaction: None,
                     key: None,
                     redirect_uri: None,
+                    claims: None,
                 })
                 .await?;
             }
@@ -601,6 +602,18 @@ impl CredentialRepository for CredentialProvider {
                 .exec(&self.db)
                 .await
                 .map_err(|e| DataLayerError::Db(e.into()))?;
+        }
+
+        if let Some(claims) = request.claims {
+            if claims.iter().any(|claim| claim.credential_id != request.id) {
+                return Err(anyhow::anyhow!("Claim credential-id mismatch!").into());
+            }
+
+            self.claim_repository
+                .delete_claims_for_credential(*id)
+                .await?;
+
+            self.claim_repository.create_claim_list(claims).await?;
         }
 
         update_model.update(&self.db).await.map_err(|e| match e {

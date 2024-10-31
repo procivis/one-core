@@ -5,19 +5,20 @@ use std::vec;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
 use serde_json::json;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
+    CredentialSchemaClaim, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::provider::credential_formatter::model::{CredentialSubject, DetailCredential};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
@@ -733,12 +734,48 @@ async fn test_accept_credential() {
         .once()
         .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
 
+    let mut formatter = MockCredentialFormatter::new();
+
+    formatter
+        .expect_extract_credentials_unverified()
+        .once()
+        .returning(move |_| {
+            Ok(DetailCredential {
+                id: None,
+                valid_from: Some(OffsetDateTime::now_utc()),
+                valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                update_at: None,
+                invalid_before: Some(OffsetDateTime::now_utc()),
+                issuer_did: None,
+                subject: None,
+                claims: CredentialSubject {
+                    values: HashMap::from([("key1".to_string(), json!("key1_value"))]),
+                },
+                status: vec![],
+                credential_schema: Some(
+                    crate::provider::credential_formatter::model::CredentialSchema {
+                        id: "SchemaId".to_string(),
+                        r#type: CredentialSchemaType::Mdoc.to_string(),
+                        metadata: None,
+                    },
+                ),
+            })
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let formatter = Arc::new(formatter);
+    formatter_provider
+        .expect_get_formatter()
+        .times(1)
+        .returning(move |_| Some(formatter.clone()));
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         protocol_provider: Arc::new(protocol_provider),
         history_repository: Arc::new(history_repository),
         did_repository: Arc::new(did_repository),
         key_provider: Arc::new(key_provider),
+        formatter_provider: Arc::new(formatter_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -839,7 +876,7 @@ fn dummy_credential() -> Credential {
             deactivated: false,
         }),
         holder_did: None,
-        schema: Some(CredentialSchema {
+        schema: Some(crate::model::credential_schema::CredentialSchema {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -848,7 +885,17 @@ fn dummy_credential() -> Credential {
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            claim_schemas: None,
+            claim_schemas: Some(vec![CredentialSchemaClaim {
+                schema: ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    key: "key1".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    array: false,
+                },
+                required: true,
+            }]),
             organisation: Some(dummy_organisation()),
             deleted_at: None,
             layout_type: LayoutType::Card,
