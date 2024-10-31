@@ -11,7 +11,6 @@ use super::validator::validate_deactivation_request;
 use super::DidService;
 use crate::config::validator::did::validate_did_method;
 use crate::model::did::{DidListQuery, DidRelations, UpdateDidRequest};
-use crate::model::history::HistoryAction;
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::did_method::dto::DidDocumentDTO;
@@ -25,7 +24,6 @@ use crate::service::did::validator::validate_request_amount_of_keys;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
-use crate::util::history::log_history_event_did;
 
 impl DidService {
     /// Returns did document for did:web
@@ -209,9 +207,6 @@ impl DidService {
                 err => ServiceError::from(err),
             })?;
 
-        let _ =
-            log_history_event_did(&*self.history_repository, &did, HistoryAction::Created).await;
-
         Ok(did_id)
     }
 
@@ -249,12 +244,11 @@ impl DidService {
             id: did.id,
             deactivated: request.deactivated,
         };
-        self.did_repository.update_did(update_did).await?;
 
-        let _ = log_history_event_did(&*self.history_repository, &did, HistoryAction::Deactivated)
-            .await;
-
-        Ok(())
+        self.did_repository
+            .update_did(update_did)
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn resolve_did(

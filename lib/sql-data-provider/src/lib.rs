@@ -3,8 +3,11 @@ use std::sync::Arc;
 use backup::BackupProvider;
 use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
+use credential::history::CredentialHistoryDecorator;
+use did::history::DidHistoryDecorator;
 use did::DidProvider;
 use interaction::InteractionProvider;
+use key::history::KeyHistoryDecorator;
 use migration::run_migrations;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::claim_repository::ClaimRepository;
@@ -120,14 +123,24 @@ impl DataLayer {
             organisation_repository: organisation_repository.clone(),
         });
 
-        let json_ld_context_repository = Arc::new(RemoteEntityCacheProvider { db: db.clone() });
-
         let history_repository = Arc::new(HistoryProvider { db: db.clone() });
+
+        let key_repository = Arc::new(KeyHistoryDecorator {
+            inner: key_repository,
+            history_repository: history_repository.clone(),
+        });
+
+        let json_ld_context_repository = Arc::new(RemoteEntityCacheProvider { db: db.clone() });
 
         let did_repository = Arc::new(DidProvider {
             key_repository: key_repository.clone(),
             organisation_repository: organisation_repository.clone(),
             db: db.clone(),
+        });
+
+        let did_repository = Arc::new(DidHistoryDecorator {
+            inner: did_repository,
+            history_repository: history_repository.clone(),
         });
 
         let proof_schema_repository = Arc::new(ProofSchemaProvider {
@@ -159,6 +172,11 @@ impl DataLayer {
             interaction_repository: interaction_repository.clone(),
             revocation_list_repository: revocation_list_repository.clone(),
             key_repository: key_repository.clone(),
+        });
+
+        let credential_repository = Arc::new(CredentialHistoryDecorator {
+            inner: credential_repository,
+            history_repository: history_repository.clone(),
         });
 
         let proof_repository = Arc::new(ProofProvider {

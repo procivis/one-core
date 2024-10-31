@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::did::Did;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
@@ -108,31 +107,6 @@ pub(crate) async fn log_history_event_credential_schema(
             schema.id,
             organisation_id,
             HistoryEntityType::CredentialSchema,
-            event,
-        ))
-        .await?;
-
-    Ok(())
-}
-
-pub(crate) async fn log_history_event_did(
-    history_repository: &dyn HistoryRepository,
-    did: &Did,
-    event: HistoryAction,
-) -> Result<(), ServiceError> {
-    let organisation_id = did
-        .organisation
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "organisation is None".to_string(),
-        ))?
-        .id;
-
-    history_repository
-        .create_history(history_event(
-            did.id,
-            organisation_id,
-            HistoryEntityType::Did,
             event,
         ))
         .await?;

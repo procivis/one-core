@@ -5,7 +5,6 @@ use crate::config::core_config;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::did_repository::DidRepository;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 
@@ -19,7 +18,6 @@ pub(crate) mod validator;
 #[derive(Clone)]
 pub struct DidService {
     did_repository: Arc<dyn DidRepository>,
-    history_repository: Arc<dyn HistoryRepository>,
     key_repository: Arc<dyn KeyRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -30,7 +28,6 @@ pub struct DidService {
 impl DidService {
     pub fn new(
         did_repository: Arc<dyn DidRepository>,
-        history_repository: Arc<dyn HistoryRepository>,
         key_repository: Arc<dyn KeyRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -39,7 +36,6 @@ impl DidService {
     ) -> Self {
         Self {
             did_repository,
-            history_repository,
             key_repository,
             organisation_repository,
             did_method_provider,

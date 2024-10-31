@@ -120,7 +120,7 @@ impl ProofRepository for ProofHistoryDecorator {
 
         let organisation = self.get_organisation_for_proof(proof_id).await?;
 
-        let _ = self
+        let result = self
             .history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
@@ -132,6 +132,10 @@ impl ProofRepository for ProofHistoryDecorator {
                 organisation: Some(organisation),
             })
             .await;
+
+        if let Err(err) = result {
+            tracing::debug!("failed to insert proof history event: {:?}", err);
+        }
 
         Ok(())
     }
@@ -157,7 +161,7 @@ impl ProofRepository for ProofHistoryDecorator {
 
         let organisation = self.get_organisation_for_proof(proof_id).await?;
 
-        let _ = self
+        let result = self
             .history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
@@ -169,6 +173,10 @@ impl ProofRepository for ProofHistoryDecorator {
                 organisation: Some(organisation),
             })
             .await;
+
+        if let Err(err) = result {
+            tracing::debug!("failed to insert proof history event: {:?}", err);
+        }
 
         Ok(())
     }

@@ -9,6 +9,7 @@ use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::DatabaseConnection;
 
 mod entity_model;
+pub mod history;
 pub mod mapper;
 pub mod repository;
 

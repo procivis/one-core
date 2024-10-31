@@ -6,7 +6,6 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
-use super::mapper::credential_accepted_history_event;
 use super::ExchangeProtocolImpl;
 use crate::common_validator::get_latest_state;
 use crate::config::core_config::CoreConfig;
@@ -36,7 +35,6 @@ use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::CredentialAdditionalData;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::mapper::credential_detail_response_from_model;
@@ -95,7 +93,6 @@ pub(crate) struct ExchangeProtocolProviderCoreImpl {
     inner: Arc<dyn ExchangeProtocolProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
-    history_repository: Arc<dyn HistoryRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -113,7 +110,6 @@ impl ExchangeProtocolProviderCoreImpl {
         credential_repository: Arc<dyn CredentialRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
-        history_repository: Arc<dyn HistoryRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
@@ -126,7 +122,6 @@ impl ExchangeProtocolProviderCoreImpl {
             credential_repository,
             revocation_method_provider,
             key_provider,
-            history_repository,
             did_method_provider,
             revocation_list_repository,
             validity_credential_repository,
@@ -436,11 +431,6 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                     ))
                     .await?;
 
-                let _ = self
-                    .history_repository
-                    .create_history(credential_accepted_history_event(credential))
-                    .await;
-
                 self.validity_credential_repository
                     .insert(
                         Mdoc {
@@ -461,11 +451,6 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                         holder_did.id,
                     ))
                     .await?;
-
-                let _ = self
-                    .history_repository
-                    .create_history(credential_accepted_history_event(credential))
-                    .await;
             }
         }
 

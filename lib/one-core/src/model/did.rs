@@ -135,6 +135,7 @@ pub struct DidRelations {
     pub organisation: Option<OrganisationRelations>,
 }
 
+#[derive(Clone)]
 pub struct UpdateDidRequest {
     pub id: DidId,
     pub deactivated: Option<bool>,

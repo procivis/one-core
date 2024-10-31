@@ -16,7 +16,6 @@ use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::provider::key_storage::provider::KeyProviderImpl;
 use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -28,7 +27,6 @@ use crate::service::test_utilities::generic_config;
 
 fn setup_service(
     repository: MockKeyRepository,
-    history_repository: MockHistoryRepository,
     organisation_repository: MockOrganisationRepository,
     did_mdl_validator: MockDidMdlValidator,
     key_storage: MockKeyStorage,
@@ -42,7 +40,6 @@ fn setup_service(
 
     KeyService::new(
         Arc::new(repository),
-        Arc::new(history_repository),
         Arc::new(organisation_repository),
         Arc::new(did_mdl_validator),
         Arc::new(provider),
@@ -102,15 +99,8 @@ async fn test_create_key_success() {
             .returning(move |_| Ok(key.id));
     }
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .times(1)
-        .returning(|history| Ok(history.id));
-
     let service = setup_service(
         repository,
-        history_repository,
         organisation_repository,
         MockDidMdlValidator::default(),
         key_storage,
@@ -152,7 +142,6 @@ async fn test_get_key_success() {
 
     let service = setup_service(
         repository,
-        MockHistoryRepository::default(),
         organisation_repository,
         MockDidMdlValidator::default(),
         key_storage,
@@ -186,7 +175,6 @@ async fn test_get_key_list() {
 
     let service = setup_service(
         repository,
-        MockHistoryRepository::default(),
         organisation_repository,
         MockDidMdlValidator::default(),
         key_storage,
@@ -271,7 +259,6 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
 
     let service = setup_service(
         repository,
-        MockHistoryRepository::default(),
         organisation_repository,
         MockDidMdlValidator::default(),
         key_storage,

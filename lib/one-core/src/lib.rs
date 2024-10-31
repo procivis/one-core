@@ -366,7 +366,6 @@ impl OneCore {
             data_provider.get_credential_repository(),
             revocation_method_provider.clone(),
             key_provider.clone(),
-            data_provider.get_history_repository(),
             did_method_provider.clone(),
             data_provider.get_revocation_list_repository(),
             data_provider.get_validity_credential_repository(),
@@ -419,7 +418,6 @@ impl OneCore {
             ),
             did_service: DidService::new(
                 data_provider.get_did_repository(),
-                data_provider.get_history_repository(),
                 data_provider.get_key_repository(),
                 data_provider.get_organisation_repository(),
                 did_method_provider.clone(),
@@ -468,7 +466,6 @@ impl OneCore {
             history_service: HistoryService::new(data_provider.get_history_repository()),
             key_service: KeyService::new(
                 data_provider.get_key_repository(),
-                data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
                 did_mdl_validator,
                 key_provider.clone(),

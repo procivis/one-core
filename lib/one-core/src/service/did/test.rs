@@ -25,7 +25,6 @@ use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::error::DataLayerError;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
@@ -35,7 +34,6 @@ use crate::service::error::{
 
 fn setup_service(
     did_repository: MockDidRepository,
-    history_repository: MockHistoryRepository,
     key_repository: MockKeyRepository,
     organisation_repository: MockOrganisationRepository,
     did_method: MockDidMethod,
@@ -57,7 +55,6 @@ fn setup_service(
 
     DidService::new(
         did_repository,
-        Arc::new(history_repository),
         Arc::new(key_repository),
         Arc::new(organisation_repository),
         Arc::new(did_method_provider),
@@ -137,7 +134,6 @@ async fn test_get_did_exists() {
 
     let service = setup_service(
         repository,
-        MockHistoryRepository::default(),
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
@@ -164,7 +160,6 @@ async fn test_get_did_missing() {
 
     let service = setup_service(
         repository,
-        MockHistoryRepository::default(),
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
@@ -213,7 +208,6 @@ async fn test_get_did_list() {
 
     let service = setup_service(
         repository,
-        MockHistoryRepository::default(),
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
@@ -309,15 +303,8 @@ async fn test_create_did_success() {
             }))
         });
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .once()
-        .returning(|history| Ok(history.id));
-
     let service = setup_service(
         did_repository,
-        history_repository,
         key_repository,
         organisation_repository,
         did_method,
@@ -398,7 +385,6 @@ async fn test_create_did_value_already_exists() {
 
     let service = setup_service(
         did_repository,
-        MockHistoryRepository::default(),
         key_repository,
         organisation_repository,
         did_method,
@@ -440,7 +426,6 @@ async fn test_fail_to_create_did_value_invalid_amount_of_keys() {
 
     let service = setup_service(
         MockDidRepository::default(),
-        MockHistoryRepository::default(),
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         did_method,

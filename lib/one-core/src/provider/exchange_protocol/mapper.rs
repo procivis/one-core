@@ -12,7 +12,6 @@ use crate::model::credential::{
     Credential, CredentialState, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::did::Did;
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -272,20 +271,6 @@ pub fn create_presentation_definition_field(
         required: Some(field.required),
         key_map,
     })
-}
-
-pub(super) fn credential_accepted_history_event(
-    credential: crate::model::credential::Credential,
-) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action: HistoryAction::Accepted,
-        entity_id: Some(credential.id.into()),
-        entity_type: HistoryEntityType::Credential,
-        metadata: None,
-        organisation: credential.schema.and_then(|s| s.organisation),
-    }
 }
 
 pub fn gather_object_datatypes_from_config(config: &DatatypeConfig) -> HashSet<&str> {

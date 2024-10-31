@@ -9,7 +9,6 @@ use uuid::Uuid;
 use super::dto::{GetKeyListResponseDTO, KeyCheckCertificateRequestDTO};
 use super::mapper::request_to_certificate_params;
 use super::KeyService;
-use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyListQuery, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::did_method::mdl::{parse_pem, parse_x509_from_der, parse_x509_from_pem};
@@ -23,7 +22,6 @@ use crate::service::key::dto::{
 };
 use crate::service::key::mapper::from_create_request;
 use crate::service::key::validator::{validate_generate_request, validate_key_algorithm_for_csr};
-use crate::util::history::history_event;
 
 impl KeyService {
     /// Returns details of a key
@@ -65,7 +63,6 @@ impl KeyService {
         let Some(organisation) = organisation else {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
-        let organisation_id = organisation.id;
 
         let provider = self
             .key_provider
@@ -89,16 +86,6 @@ impl KeyService {
                 }
                 err => ServiceError::from(err),
             })?;
-
-        let _ = self
-            .history_repository
-            .create_history(history_event(
-                uuid,
-                organisation_id,
-                HistoryEntityType::Key,
-                HistoryAction::Created,
-            ))
-            .await;
 
         Ok(uuid)
     }

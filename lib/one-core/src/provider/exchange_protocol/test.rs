@@ -39,7 +39,6 @@ use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::ServiceError;
@@ -160,12 +159,6 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .returning(|_, _| Ok(Box::<MockSignatureProvider>::default()));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
         .expect_resolve()
@@ -206,7 +199,6 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(credential_repository),
         Arc::new(revocation_method_provider),
         Arc::new(key_provider),
-        Arc::new(history_repository),
         Arc::new(did_method_provider),
         Arc::new(revocation_list_repository),
         Arc::new(MockValidityCredentialRepository::new()),
@@ -621,12 +613,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .once()
         .returning(|_, _| Ok(Box::<MockSignatureProvider>::default()));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
         .expect_resolve()
@@ -679,7 +665,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(credential_repository),
         Arc::new(revocation_method_provider),
         Arc::new(key_provider),
-        Arc::new(history_repository),
         Arc::new(did_method_provider),
         Arc::new(revocation_list_repository),
         Arc::new(validity_credential_repository),
@@ -833,7 +818,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(credential_repository),
         Arc::new(revocation_method_provider),
         Arc::new(key_provider),
-        Arc::new(MockHistoryRepository::new()),
         Arc::new(did_method_provider),
         Arc::new(revocation_list_repository),
         Arc::new(validity_credential_repository),
@@ -910,7 +894,6 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(credential_repository),
         Arc::new(MockRevocationMethodProvider::new()),
         Arc::new(MockKeyProvider::new()),
-        Arc::new(MockHistoryRepository::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockRevocationListRepository::new()),
         Arc::new(validity_credential_repository),
