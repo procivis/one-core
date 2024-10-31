@@ -10,6 +10,7 @@ import android.security.keystore.StrongBoxUnavailableException
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
@@ -40,13 +41,11 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
                 .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
                 .setDigests(KeyProperties.DIGEST_SHA256)
 
-            var strongbox = false
+            var strongbox = strongBoxSupported()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                strongbox = this.context.packageManager
-                    .hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)
-
                 if (strongbox) {
                     builder.setIsStrongBoxBacked(true)
+                        .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_NONE)
                 }
             }
 
@@ -55,7 +54,7 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
                 try {
                     keyPairGenerator.generateKeyPair()
                 } catch (e: StrongBoxUnavailableException) {
-                    builder.setIsStrongBoxBacked(false)
+                    builder.setIsStrongBoxBacked(false).setDigests(KeyProperties.DIGEST_SHA256)
                     strongbox = false
                     keyPairGenerator.initialize(builder.build())
                     keyPairGenerator.generateKeyPair()
@@ -64,16 +63,10 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
                 keyPairGenerator.generateKeyPair()
             }
 
-            val privateKey = pair.private
-            val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
-
             // on Samsung S20 (with Strongbox support) the keyInfo reports the generated key as Software security level
             // we will assume the generated key is HW secured in this case, since the generation did not produce the `StrongBoxUnavailableException`
             if (!strongbox) {
-                val keyInfo = factory.getKeySpec(
-                    privateKey,
-                    KeyInfo::class.java
-                )
+                val keyInfo = keyInfo(pair.private)
 
                 if (!keyInfo.isInsideSecureHardware) {
                     throw NativeKeyStorageException.Unsupported();
@@ -102,16 +95,44 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
 
             val keyStore = getAndroidKeyStore()
             val privateKey = keyStore.getKey(keyAlias, null) as PrivateKey
-            val signature: Signature = Signature.getInstance("SHA256withECDSA")
+            val keyInfo = keyInfo(privateKey)
 
-            signature.initSign(privateKey)
-            signature.update(message)
+            // StrongBox can be slow to sign a huge message (e.g. Pixel 8),
+            // do the hashing inside the application context and only sign the final hash
+            val signature = if (keyInfo.digests.contains(KeyProperties.DIGEST_NONE)) {
+                val signature = Signature.getInstance("NONEwithECDSA")
+                signature.initSign(privateKey)
+
+                val digest = MessageDigest.getInstance("SHA-256")
+                signature.update(digest.digest(message))
+                signature
+            } else {
+                val signature = Signature.getInstance("SHA256withECDSA")
+                signature.initSign(privateKey)
+                signature.update(message)
+                signature
+            }
+
             return extractSignatureBytes(signature.sign())
         } catch (e: NativeKeyStorageException) {
             throw e;
         } catch (e: Throwable) {
             throw NativeKeyStorageException.SignatureFailure(e.toString());
         }
+    }
+
+    private fun strongBoxSupported(): Boolean {
+        var strongbox = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            strongbox = this.context.packageManager
+                .hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)
+        }
+        return strongbox
+    }
+
+    private fun keyInfo(privateKey: PrivateKey): KeyInfo {
+        val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
+        return factory.getKeySpec(privateKey, KeyInfo::class.java)
     }
 
     private fun getAndroidKeyStore(): KeyStore {
