@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::borrow::Cow;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -21,6 +22,8 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
+use crate::model::proof::Proof;
+use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
@@ -29,14 +32,17 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
 use crate::provider::exchange_protocol::openid4vc::model::{
     InvitationResponseDTO, OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
     OpenID4VCICredentialValueDetails, OpenID4VPClientMetadata, OpenID4VPFormat,
-    OpenID4VPInteractionData, OpenID4VPPresentationDefinition,
+    OpenID4VPInteractionData, OpenID4VPPresentationDefinition, ShareResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::service::create_credential_offer;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
-use crate::provider::exchange_protocol::{MockHandleInvitationOperations, MockStorageProxy};
+use crate::provider::exchange_protocol::{
+    FormatMapper, MockHandleInvitationOperations, MockStorageProxy, TypeToDescriptorMapper,
+};
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::service::oidc::service::credentials_format;
 use crate::service::test_utilities::{generic_config, get_dummy_date};
 
@@ -60,11 +66,12 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
         inputs.params.unwrap_or(OpenID4VCParams {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
-            credential_offer_by_value: None,
-            client_metadata_by_value: None,
-            presentation_definition_by_value: None,
-            allow_insecure_http_transport: Some(true),
+            credential_offer_by_value: false,
+            client_metadata_by_value: false,
+            presentation_definition_by_value: false,
+            allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
+            use_request_uri: false,
         }),
         Arc::new(generic_config().core),
     )
@@ -231,11 +238,12 @@ async fn test_generate_share_credentials_offer_by_value() {
         params: Some(OpenID4VCParams {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
-            credential_offer_by_value: Some(true),
-            client_metadata_by_value: None,
-            presentation_definition_by_value: None,
-            allow_insecure_http_transport: Some(true),
+            credential_offer_by_value: true,
+            client_metadata_by_value: false,
+            presentation_definition_by_value: false,
+            allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
+            use_request_uri: false,
         }),
         ..Default::default()
     });
@@ -250,6 +258,215 @@ async fn test_generate_share_credentials_offer_by_value() {
     assert!(
         result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%"#)
     )
+}
+
+#[tokio::test]
+async fn test_share_proof() {
+    let protocol = setup_protocol(TestInputs::default());
+
+    let proof_id = Uuid::new_v4();
+    let proof = Proof {
+        id: proof_id.into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        issuance_date: OffsetDateTime::now_utc(),
+        exchange: "OPENID4VC".to_string(),
+        transport: "HTTP".to_string(),
+        redirect_uri: None,
+        state: None,
+        schema: Some(ProofSchema {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
+            name: "test-share-proof".into(),
+            expire_duration: 123,
+            imported_source_url: None,
+            organisation: None,
+            input_schemas: Some(vec![ProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: None,
+                credential_schema: None,
+            }]),
+        }),
+        claims: None,
+        verifier_did: None,
+        holder_did: None,
+        verifier_key: None,
+        interaction: None,
+    };
+
+    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+
+    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
+
+    let key_id = Uuid::new_v4().into();
+    let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+        r#use: None,
+        crv: "P-256".to_string(),
+        x: "x".to_string(),
+        y: None,
+    });
+    let vp_formats = HashMap::new();
+
+    let ShareResponse {
+        url,
+        interaction_id,
+        ..
+    } = protocol
+        .share_proof(
+            &proof,
+            format_type_mapper,
+            key_id,
+            encryption_key_jwk,
+            vp_formats,
+            type_to_descriptor_mapper,
+        )
+        .await
+        .unwrap();
+    let url: Url = url.parse().unwrap();
+    let query_pairs: HashMap<Cow<'_, str>, Cow<'_, str>> = url.query_pairs().collect();
+
+    assert_eq!(
+        HashSet::<&str>::from_iter([
+            "response_mode",
+            "client_metadata_uri",
+            "nonce",
+            "response_type",
+            "state",
+            "client_id_scheme",
+            "response_uri",
+            "client_id",
+            "presentation_definition_uri",
+        ]),
+        HashSet::from_iter(query_pairs.keys().map(|k| k.as_ref()))
+    );
+
+    assert_eq!("vp_token", query_pairs.get("response_type").unwrap());
+
+    assert_eq!("direct_post", query_pairs.get("response_mode").unwrap());
+
+    assert_eq!(
+        &interaction_id.to_string(),
+        query_pairs.get("state").unwrap()
+    );
+    assert_eq!("redirect_uri", query_pairs.get("client_id_scheme").unwrap());
+
+    assert_eq!(
+        "http://base_url/ssi/oidc-verifier/v1/response",
+        query_pairs.get("response_uri").unwrap()
+    );
+
+    assert_eq!(
+        "http://base_url/ssi/oidc-verifier/v1/response",
+        query_pairs.get("client_id").unwrap()
+    );
+
+    assert_eq!(
+        &format!(
+            "http://base_url/ssi/oidc-verifier/v1/{}/presentation-definition",
+            proof.id
+        ),
+        query_pairs.get("presentation_definition_uri").unwrap()
+    );
+
+    assert_eq!(
+        &format!(
+            "http://base_url/ssi/oidc-verifier/v1/{}/client-metadata",
+            proof.id
+        ),
+        query_pairs.get("client_metadata_uri").unwrap()
+    );
+}
+
+#[tokio::test]
+async fn test_share_proof_with_use_request_uri() {
+    let protocol = setup_protocol(TestInputs {
+        params: Some(OpenID4VCParams {
+            pre_authorized_code_expires_in: 10,
+            token_expires_in: 10,
+            credential_offer_by_value: false,
+            client_metadata_by_value: false,
+            presentation_definition_by_value: false,
+            allow_insecure_http_transport: true,
+            refresh_expires_in: 1000,
+            use_request_uri: true,
+        }),
+        ..Default::default()
+    });
+
+    let proof_id = Uuid::new_v4();
+    let proof = Proof {
+        id: proof_id.into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        issuance_date: OffsetDateTime::now_utc(),
+        exchange: "OPENID4VC".to_string(),
+        transport: "HTTP".to_string(),
+        redirect_uri: None,
+        state: None,
+        schema: Some(ProofSchema {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
+            name: "test-share-proof".into(),
+            expire_duration: 123,
+            imported_source_url: None,
+            organisation: None,
+            input_schemas: Some(vec![ProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: None,
+                credential_schema: None,
+            }]),
+        }),
+        claims: None,
+        verifier_did: None,
+        holder_did: None,
+        verifier_key: None,
+        interaction: None,
+    };
+
+    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+
+    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
+
+    let key_id = Uuid::new_v4().into();
+    let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+        r#use: None,
+        crv: "P-256".to_string(),
+        x: "x".to_string(),
+        y: None,
+    });
+    let vp_formats = HashMap::new();
+
+    let ShareResponse { url, .. } = protocol
+        .share_proof(
+            &proof,
+            format_type_mapper,
+            key_id,
+            encryption_key_jwk,
+            vp_formats,
+            type_to_descriptor_mapper,
+        )
+        .await
+        .unwrap();
+    let url: Url = url.parse().unwrap();
+    let query_pairs: HashSet<(Cow<'_, str>, Cow<'_, str>)> = HashSet::from_iter(url.query_pairs());
+
+    assert_eq!(
+        HashSet::from_iter([
+            (
+                "client_id".into(),
+                "http://base_url/ssi/oidc-verifier/v1/response".into()
+            ),
+            (
+                "request_uri".into(),
+                format!("http://base_url/ssi/oidc-verifier/v1/{proof_id}/client-request").into()
+            ),
+        ]),
+        query_pairs
+    );
 }
 
 #[tokio::test]
@@ -479,11 +696,12 @@ async fn test_handle_invitation_proof_failed() {
         params: Some(OpenID4VCParams {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
-            credential_offer_by_value: None,
-            client_metadata_by_value: None,
-            presentation_definition_by_value: None,
-            allow_insecure_http_transport: None,
+            credential_offer_by_value: false,
+            client_metadata_by_value: false,
+            presentation_definition_by_value: false,
+            allow_insecure_http_transport: false,
             refresh_expires_in: 1000,
+            use_request_uri: false,
         }),
         ..Default::default()
     });

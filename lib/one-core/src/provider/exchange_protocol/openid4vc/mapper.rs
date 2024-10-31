@@ -4,7 +4,7 @@ use anyhow::{anyhow, Context};
 use indexmap::map::Entry;
 use indexmap::IndexMap;
 use one_dto_mapper::convert_inner;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -21,6 +21,7 @@ use super::model::{
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor, ProvedCredential, Timestamp,
 };
+use super::openidvc_http::OpenID4VCParams;
 use super::service::create_open_id_for_vp_client_metadata;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
@@ -1209,65 +1210,99 @@ pub fn create_presentation_submission(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     base_url: &str,
-    client_id: String,
-    response_uri: String,
+    openidvc_params: &OpenID4VCParams,
+    client_id: &str,
     interaction_id: InteractionId,
-    nonce: String,
+    nonce: &str,
     proof: &Proof,
-    client_metadata_by_value: bool,
-    presentation_definition_by_value: bool,
     key_id: KeyId,
     encryption_key_jwk: PublicKeyJwkDTO,
     vp_formats: HashMap<String, OpenID4VPFormat>,
     type_to_descriptor: TypeToDescriptorMapper,
     format_to_type_mapper: FormatMapper,
 ) -> Result<String, ExchangeProtocolError> {
-    let client_metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata(
-        key_id,
-        encryption_key_jwk,
-        vp_formats,
-    ))
-    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-    let presentation_definition =
-        serde_json::to_string(&create_open_id_for_vp_presentation_definition(
-            interaction_id,
-            proof,
-            type_to_descriptor,
-            format_to_type_mapper,
-        )?)
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-    let mut params: Vec<(&str, String)> = vec![
-        ("response_type", "vp_token".to_string()),
-        ("state", interaction_id.to_string()),
-        ("nonce", nonce),
-        ("client_id_scheme", "redirect_uri".to_string()),
-        ("client_id", client_id),
-        ("response_mode", "direct_post".to_string()),
-        ("response_uri", response_uri),
-    ];
-
-    match client_metadata_by_value {
-        true => params.push(("client_metadata", client_metadata)),
-        false => params.push((
-            "client_metadata_uri",
-            format!(
-                "{}/ssi/oidc-verifier/v1/{}/client-metadata",
-                base_url, proof.id
-            ),
-        )),
+    #[derive(Serialize)]
+    #[serde(untagged)]
+    enum UrlParams<'a> {
+        RequestUri {
+            client_id: &'a str,
+            request_uri: String,
+        },
+        Other {
+            response_type: &'a str,
+            state: String,
+            nonce: &'a str,
+            client_id_scheme: &'a str,
+            client_id: &'a str,
+            response_mode: &'a str,
+            response_uri: &'a str,
+            client_metadata: Option<String>,
+            client_metadata_uri: Option<String>,
+            presentation_definition: Option<String>,
+            presentation_definition_uri: Option<String>,
+        },
     }
 
-    match presentation_definition_by_value {
-        true => params.push(("presentation_definition", presentation_definition)),
-        false => params.push((
-            "presentation_definition_uri",
-            format!(
-                "{}/ssi/oidc-verifier/v1/{}/presentation-definition",
-                base_url, proof.id
+    let params = if openidvc_params.use_request_uri {
+        UrlParams::RequestUri {
+            client_id,
+            request_uri: format!(
+                "{base_url}/ssi/oidc-verifier/v1/{}/client-request",
+                proof.id
             ),
-        )),
-    }
+        }
+    } else {
+        let mut presentation_definition = None;
+        let mut presentation_definition_uri = None;
+        if openidvc_params.presentation_definition_by_value {
+            let pd = serde_json::to_string(&create_open_id_for_vp_presentation_definition(
+                interaction_id,
+                proof,
+                type_to_descriptor,
+                format_to_type_mapper,
+            )?)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+            presentation_definition = Some(pd);
+        } else {
+            presentation_definition_uri = Some(format!(
+                "{base_url}/ssi/oidc-verifier/v1/{}/presentation-definition",
+                proof.id
+            ));
+        }
+
+        let mut client_metadata = None;
+        let mut client_metadata_uri = None;
+        if openidvc_params.client_metadata_by_value {
+            let metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata(
+                key_id,
+                encryption_key_jwk,
+                vp_formats,
+            ))
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+            client_metadata = Some(metadata);
+        } else {
+            client_metadata_uri = Some(format!(
+                "{base_url}/ssi/oidc-verifier/v1/{}/client-metadata",
+                proof.id
+            ));
+        }
+
+        UrlParams::Other {
+            response_type: "vp_token",
+            state: interaction_id.to_string(),
+            nonce,
+            client_id_scheme: "redirect_uri",
+            client_id,
+            response_mode: "direct_post",
+            response_uri: client_id,
+            client_metadata,
+            client_metadata_uri,
+            presentation_definition,
+            presentation_definition_uri,
+        }
+    };
 
     let encoded_params = serde_urlencoded::to_string(params)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;

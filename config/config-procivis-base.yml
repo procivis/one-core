@@ -58,6 +58,7 @@ exchange:
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
+        useRequestUri: false
 transport:
   HTTP:
     type: "HTTP"

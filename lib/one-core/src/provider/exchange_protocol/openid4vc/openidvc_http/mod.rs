@@ -14,8 +14,8 @@ use shared_types::{CredentialId, KeyId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{
-    deserialize_interaction_data, interaction_data_from_query, serialize_interaction_data,
-    validate_interaction_data,
+    deserialize_interaction_data, interaction_data_from_query, interaction_data_from_request_uri,
+    serialize_interaction_data, validate_interaction_data,
 };
 use uuid::Uuid;
 
@@ -87,6 +87,7 @@ const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
 const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
 const PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY: &str = "presentation_definition";
 const PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY: &str = "presentation_definition_uri";
+const REQUEST_URI_QUERY_PARAM_KEY: &str = "request_uri";
 
 pub struct OpenID4VCHTTP {
     client: Arc<dyn HttpClient>,
@@ -110,10 +111,16 @@ pub struct OpenID4VCParams {
     pub pre_authorized_code_expires_in: u64,
     pub token_expires_in: u64,
     pub refresh_expires_in: u64,
-    pub credential_offer_by_value: Option<bool>,
-    pub client_metadata_by_value: Option<bool>,
-    pub presentation_definition_by_value: Option<bool>,
-    pub allow_insecure_http_transport: Option<bool>,
+    #[serde(default)]
+    pub credential_offer_by_value: bool,
+    #[serde(default)]
+    pub client_metadata_by_value: bool,
+    #[serde(default)]
+    pub presentation_definition_by_value: bool,
+    #[serde(default)]
+    pub allow_insecure_http_transport: bool,
+    #[serde(default)]
+    pub use_request_uri: bool,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -151,6 +158,7 @@ impl OpenID4VCHTTP {
 
         if query_has_key(PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY)
             || query_has_key(PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY)
+            || query_has_key(REQUEST_URI_QUERY_PARAM_KEY)
         {
             return Some(InvitationType::ProofRequest);
         }
@@ -189,9 +197,7 @@ impl OpenID4VCHTTP {
             InvitationType::ProofRequest => {
                 handle_proof_invitation(
                     url,
-                    self.params
-                        .allow_insecure_http_transport
-                        .is_some_and(|value| value),
+                    self.params.allow_insecure_http_transport,
                     &self.client,
                     storage_access,
                     Some(organisation),
@@ -747,11 +753,7 @@ impl OpenID4VCHTTP {
         let credential_subject = credentials_format(wallet_storage_type, &claims)
             .map_err(|e| ExchangeProtocolError::Other(e.into()))?;
 
-        if self
-            .params
-            .credential_offer_by_value
-            .is_some_and(|by_value| by_value)
-        {
+        if self.params.credential_offer_by_value {
             let offer = create_credential_offer(
                 url,
                 &interaction_id.to_string(),
@@ -800,34 +802,28 @@ impl OpenID4VCHTTP {
             return Err(ExchangeProtocolError::Failed("Missing base_url".into()));
         };
         let client_id = format!("{base_url}/ssi/oidc-verifier/v1/response");
-        let response_uri = client_id.clone();
-
-        let interaction_content = OpenID4VPInteractionContent {
-            nonce: utilities::generate_alphanumeric(32),
-            presentation_definition,
-            client_id: Some(client_id.clone()),
-            response_uri: Some(response_uri.clone()),
-        };
+        let nonce = utilities::generate_alphanumeric(32);
 
         let encoded_offer = create_open_id_for_vp_sharing_url_encoded(
             base_url,
-            client_id,
-            response_uri,
+            &self.params,
+            &client_id,
             interaction_id,
-            interaction_content.nonce.clone(),
+            &nonce,
             proof,
-            self.params
-                .client_metadata_by_value
-                .is_some_and(|value| value),
-            self.params
-                .presentation_definition_by_value
-                .is_some_and(|value| value),
             key_id,
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor,
             format_to_type_mapper,
         )?;
+
+        let interaction_content = OpenID4VPInteractionContent {
+            nonce,
+            presentation_definition,
+            client_id: Some(client_id.clone()),
+            response_uri: Some(client_id),
+        };
 
         Ok(ShareResponse {
             url: format!("openid4vp://?{encoded_offer}"),
@@ -1144,12 +1140,20 @@ async fn handle_proof_invitation(
     storage_access: &StorageAccess,
     organisation: Option<Organisation>,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
-    let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
-        "Query cannot be empty".to_string(),
-    ))?;
+    let interaction_data = if let Some(request_uri) = url
+        .query_pairs()
+        .find_map(|(k, v)| (k == REQUEST_URI_QUERY_PARAM_KEY).then_some(v))
+    {
+        interaction_data_from_request_uri(client, &request_uri, allow_insecure_http_transport)
+            .await?
+    } else {
+        let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
+            "Query cannot be empty".to_string(),
+        ))?;
 
-    let interaction_data =
-        interaction_data_from_query(query, client, allow_insecure_http_transport).await?;
+        interaction_data_from_query(query, client, allow_insecure_http_transport).await?
+    };
+
     validate_interaction_data(&interaction_data)?;
     let data = serialize_interaction_data(&interaction_data)?;
 

@@ -1,8 +1,11 @@
+use core::str;
 use std::sync::Arc;
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
+use crate::provider::credential_formatter::jwt::model::DecomposedToken;
+use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::provider::http_client::HttpClient;
@@ -20,6 +23,27 @@ pub fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
     dto: &DataDTO,
 ) -> Result<Vec<u8>, ExchangeProtocolError> {
     serde_json::to_vec(&dto).map_err(ExchangeProtocolError::JsonError)
+}
+
+pub async fn interaction_data_from_request_uri(
+    client: &Arc<dyn HttpClient>,
+    request_uri: &str,
+    _allow_insecure_http_transport: bool,
+) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
+    let token = client
+        .get(request_uri)
+        .send()
+        .await
+        .context("Error calling request_uri")
+        .and_then(|r| r.error_for_status().context("Response status error"))
+        .and_then(|r| String::from_utf8(r.body).context("Invalid response"))
+        .map_err(ExchangeProtocolError::Transport)?;
+
+    let DecomposedToken::<OpenID4VPInteractionData> { payload, .. } = Jwt::decompose_token(&token)
+        .context("Invalid JWT from response uri")
+        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+    Ok(payload.custom)
 }
 
 pub async fn interaction_data_from_query(
