@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use resolver::StatusListResolver;
+use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, DidValue};
 
@@ -222,11 +222,14 @@ impl RevocationMethod for BitstringStatusList {
             .parse()
             .map_err(|_| RevocationError::ValidationError("Invalid list index".to_string()))?;
 
-        let response = String::from_utf8(
-            self.caching_loader
+        let response: StatusListCacheEntry = serde_json::from_slice(
+            &self
+                .caching_loader
                 .get(list_url, self.resolver.clone())
                 .await?,
         )?;
+
+        let response_content = String::from_utf8(response.content)?;
 
         let key_verification = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -235,8 +238,8 @@ impl RevocationMethod for BitstringStatusList {
         });
 
         let status_credential = self
-            .get_formatter_for_credential_format()?
-            .extract_credentials(&response, key_verification)
+            .get_formatter_for_parsing(&response.content_type)?
+            .extract_credentials(&response_content, key_verification)
             .await?;
 
         let encoded_list = status_credential
@@ -288,9 +291,7 @@ impl RevocationMethod for BitstringStatusList {
 }
 
 impl BitstringStatusList {
-    fn get_formatter_for_credential_format(
-        &self,
-    ) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
+    fn get_formatter_for_issuance(&self) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
         let format: String = self
             .params
             .bitstring_credential_format
@@ -300,6 +301,27 @@ impl BitstringStatusList {
 
         self.formatter_provider
             .get_formatter(&format)
+            .ok_or_else(|| RevocationError::FormatterNotFound(format.to_string()))
+    }
+
+    fn get_formatter_for_parsing(
+        &self,
+        content_type: &str,
+    ) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
+        let format = match content_type {
+            "application/jwt" => "JWT",
+            "application/vc+ld+json" | "application/ld+json" | "application/json" => {
+                "JSON_LD_CLASSIC"
+            }
+            _ => {
+                return Err(RevocationError::MappingError(format!(
+                    "Invalid status list Content-Type: {content_type}"
+                )));
+            }
+        };
+
+        self.formatter_provider
+            .get_formatter(format)
             .ok_or_else(|| RevocationError::FormatterNotFound(format.to_string()))
     }
 
@@ -390,7 +412,7 @@ impl BitstringStatusList {
             purpose,
             &self.key_provider,
             &self.core_base_url,
-            &*self.get_formatter_for_credential_format()?,
+            &*self.get_formatter_for_issuance()?,
             issuer_jwk_key_id,
         )
         .await?;

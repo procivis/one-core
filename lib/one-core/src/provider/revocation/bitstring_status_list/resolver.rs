@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 use crate::provider::caching_loader::{CachingLoader, ResolveResult, Resolver};
@@ -13,6 +14,12 @@ pub struct StatusListResolver {
 
 pub type StatusListCachingLoader = CachingLoader<RevocationError>;
 
+#[derive(Debug, Serialize, Deserialize)]
+pub(super) struct StatusListCacheEntry {
+    pub content: Vec<u8>,
+    pub content_type: String,
+}
+
 #[async_trait]
 impl Resolver for StatusListResolver {
     type Error = RevocationError;
@@ -22,9 +29,16 @@ impl Resolver for StatusListResolver {
         url: &str,
         _previous: Option<&OffsetDateTime>,
     ) -> Result<ResolveResult, Self::Error> {
-        Ok(ResolveResult::NewValue(
-            self.client.get(url).send().await?.error_for_status()?.body,
-        ))
+        let response = self.client.get(url).send().await?.error_for_status()?;
+        let content_type = response
+            .header_get("Content-Type")
+            .ok_or_else(|| RevocationError::MappingError("Content-Type not present".to_string()))?
+            .to_owned();
+        let cache_entry = StatusListCacheEntry {
+            content: response.body,
+            content_type,
+        };
+        Ok(ResolveResult::NewValue(serde_json::to_vec(&cache_entry)?))
     }
 }
 

@@ -161,7 +161,9 @@ async fn test_revoke_check_success_bitstring_status_list() {
             "/ssi/revocation/v1/list/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf",
         ))
         .respond_with(
-            ResponseTemplate::new(200).set_body_string(bitstring_status_list_credential_jwt),
+            ResponseTemplate::new(200)
+                .insert_header("Content-Type", "application/jwt")
+                .set_body_bytes(bitstring_status_list_credential_jwt.as_bytes().to_vec()),
         )
         .expect(1)
         .mount(&mock_server)

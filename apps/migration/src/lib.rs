@@ -55,6 +55,7 @@ mod m20240925_130000_introduce_allow_suspension;
 mod m20241001_102526_make_import_source_url_optional_proof_schema_table;
 mod m20241001_114629_soft_delete_bbsplus;
 mod m20241009_153829_organisation_id_added_to_interaction;
+mod m20241101_092048_clear_statuslist_cache;
 
 pub struct Migrator;
 
@@ -113,6 +114,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20241001_102526_make_import_source_url_optional_proof_schema_table::Migration),
             Box::new(m20241001_114629_soft_delete_bbsplus::Migration),
             Box::new(m20241009_153829_organisation_id_added_to_interaction::Migration),
+            Box::new(m20241101_092048_clear_statuslist_cache::Migration),
         ]
     }
 }

@@ -61,7 +61,23 @@ pub(crate) async fn get_did_web_document(
         ("id" = Uuid, Path, description = "Revocation list id")
     ),
     responses(
-        (status = 200, description = "OK", content_type = "text/plain"),
+        (status = 200, description = "OK", content(
+            (String = "application/jwt", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"),
+            (String = "application/ld+json", example = json!({
+                "@context": [
+                  "https://www.w3.org/ns/credentials/v2"
+                ],
+                "id": "https://example.com/credentials/status/3",
+                "type": ["VerifiableCredential", "BitstringStatusListCredential"],
+                "issuer": "did:example:12345",
+                "credentialSubject": {
+                  "id": "https://example.com/status/3#list",
+                  "type": "BitstringStatusList",
+                  "statusPurpose": "revocation",
+                  "encodedList": "uH4sIAAAAAAAAA-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA"
+                }
+              }))
+        )),
         (status = 404, description = "Revocation list not found"),
         (status = 500, description = "Server error"),
     ),
@@ -85,7 +101,7 @@ pub(crate) async fn get_revocation_list_by_id(
     match result {
         Ok(result) => {
             let content_type = match result.format {
-                SupportedBitstringCredentialFormat::Jwt => "text/plain".to_owned(),
+                SupportedBitstringCredentialFormat::Jwt => "application/jwt".to_owned(),
                 SupportedBitstringCredentialFormat::JsonLdClassic => {
                     "application/ld+json".to_owned()
                 }

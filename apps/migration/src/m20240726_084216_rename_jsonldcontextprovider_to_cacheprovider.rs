@@ -79,3 +79,13 @@ pub enum RemoteEntityType {
     #[iden = "STATUSLIST_CREDENTIAL"]
     StatusListCredential,
 }
+
+impl RemoteEntityType {
+    pub(crate) fn as_expr(&self) -> Expr {
+        let mut s = String::new();
+
+        self.unquoted(&mut s);
+
+        Expr::val(s)
+    }
+}
