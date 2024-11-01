@@ -134,7 +134,7 @@ impl ProofRepository for ProofHistoryDecorator {
             .await;
 
         if let Err(err) = result {
-            tracing::debug!("failed to insert proof history event: {:?}", err);
+            tracing::debug!("failed to insert proof history event: {err:?}");
         }
 
         Ok(())
@@ -175,7 +175,7 @@ impl ProofRepository for ProofHistoryDecorator {
             .await;
 
         if let Err(err) = result {
-            tracing::debug!("failed to insert proof history event: {:?}", err);
+            tracing::debug!("failed to insert proof history event: {err:?}");
         }
 
         Ok(())

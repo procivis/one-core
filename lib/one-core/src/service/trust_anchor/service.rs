@@ -8,13 +8,11 @@ use super::mapper::trust_anchor_from_request;
 use super::TrustAnchorService;
 use crate::config::core_config::TrustManagementType;
 use crate::config::validator::trust_management::validate_trust_management;
-use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_anchor::TrustAnchorRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
-use crate::util::history::history_event;
 
 impl TrustAnchorService {
     pub async fn create_trust_anchor(
@@ -37,28 +35,15 @@ impl TrustAnchorService {
             "Missing core_base_url in trust anchor service".to_string(),
         ))?;
 
-        let anchor = trust_anchor_from_request(request, organisation.clone(), core_base_url);
+        let anchor = trust_anchor_from_request(request, organisation, core_base_url);
 
-        let result = self.trust_anchor_repository.create(anchor).await;
-
-        match result {
-            Ok(id) => {
-                let _ = self
-                    .history_repository
-                    .create_history(history_event(
-                        id,
-                        organisation.id,
-                        HistoryEntityType::TrustAnchor,
-                        HistoryAction::Created,
-                    ))
-                    .await;
-                Ok(id)
-            }
-            Err(DataLayerError::AlreadyExists) => {
-                Err(BusinessLogicError::TrustAnchorNameTaken.into())
-            }
-            Err(err) => Err(err.into()),
-        }
+        self.trust_anchor_repository
+            .create(anchor)
+            .await
+            .map_err(|err| match err {
+                DataLayerError::AlreadyExists => BusinessLogicError::TrustAnchorNameTaken.into(),
+                err => err.into(),
+            })
     }
 
     pub async fn get_trust_list(
@@ -137,33 +122,14 @@ impl TrustAnchorService {
     }
 
     pub async fn delete_trust_anchor(&self, anchor_id: TrustAnchorId) -> Result<(), ServiceError> {
-        let anchor = self
-            .trust_anchor_repository
-            .get(
-                anchor_id,
-                &TrustAnchorRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+        self.trust_anchor_repository
+            .get(anchor_id, &Default::default())
             .await?
             .ok_or(EntityNotFoundError::TrustAnchor(anchor_id))?;
 
-        self.trust_anchor_repository.delete(anchor_id).await?;
-
-        let Some(organisation) = anchor.organisation else {
-            return Err(BusinessLogicError::GeneralInputValidationError.into());
-        };
-
-        let _ = self
-            .history_repository
-            .create_history(history_event(
-                anchor.id,
-                organisation.id,
-                HistoryEntityType::TrustAnchor,
-                HistoryAction::Deleted,
-            ))
-            .await;
-
-        Ok(())
+        self.trust_anchor_repository
+            .delete(anchor_id)
+            .await
+            .map_err(Into::into)
     }
 }

@@ -4,6 +4,7 @@ use backup::BackupProvider;
 use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
 use credential::history::CredentialHistoryDecorator;
+use credential_schema::history::CredentialSchemaHistoryDecorator;
 use did::history::DidHistoryDecorator;
 use did::DidProvider;
 use interaction::InteractionProvider;
@@ -27,12 +28,16 @@ use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
 use one_core::repository::DataRepository;
+use organisation::history::OrganisationHistoryDecorator;
 use organisation::OrganisationProvider;
 use proof::history::ProofHistoryDecorator;
 use proof::ProofProvider;
+use proof_schema::history::ProofSchemaHistoryDecorator;
 use proof_schema::ProofSchemaProvider;
 use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
+use trust_anchor::history::TrustAnchorHistoryDecorator;
 use trust_anchor::TrustAnchorProvider;
+use trust_entity::history::TrustEntityHistoryDecorator;
 use trust_entity::TrustEntityProvider;
 use validity_credential::ValidityCredentialProvider;
 
@@ -98,6 +103,8 @@ pub struct DataLayer {
 
 impl DataLayer {
     pub fn build(db: DbConn, exportable_storages: Vec<String>) -> Self {
+        let history_repository = Arc::new(HistoryProvider { db: db.clone() });
+
         let claim_schema_repository = Arc::new(ClaimSchemaProvider { db: db.clone() });
 
         let claim_repository = Arc::new(ClaimProvider {
@@ -106,6 +113,10 @@ impl DataLayer {
         });
 
         let organisation_repository = Arc::new(OrganisationProvider { db: db.clone() });
+        let organisation_repository = Arc::new(OrganisationHistoryDecorator {
+            inner: organisation_repository,
+            history_repository: history_repository.clone(),
+        });
 
         let interaction_repository = Arc::new(InteractionProvider {
             db: db.clone(),
@@ -118,12 +129,15 @@ impl DataLayer {
             organisation_repository: organisation_repository.clone(),
         });
 
+        let credential_schema_repository = Arc::new(CredentialSchemaHistoryDecorator {
+            inner: credential_schema_repository,
+            history_repository: history_repository.clone(),
+        });
+
         let key_repository = Arc::new(KeyProvider {
             db: db.clone(),
             organisation_repository: organisation_repository.clone(),
         });
-
-        let history_repository = Arc::new(HistoryProvider { db: db.clone() });
 
         let key_repository = Arc::new(KeyHistoryDecorator {
             inner: key_repository,
@@ -150,6 +164,11 @@ impl DataLayer {
             credential_schema_repository: credential_schema_repository.clone(),
         });
 
+        let proof_schema_repository = Arc::new(ProofSchemaHistoryDecorator {
+            inner: proof_schema_repository,
+            history_repository: history_repository.clone(),
+        });
+
         let revocation_list_repository = Arc::new(RevocationListProvider {
             db: db.clone(),
             did_repository: did_repository.clone(),
@@ -159,9 +178,18 @@ impl DataLayer {
             db: db.clone(),
             organisation_repository: organisation_repository.clone(),
         });
+        let trust_anchor_repository = Arc::new(TrustAnchorHistoryDecorator {
+            inner: trust_anchor_repository,
+            history_repository: history_repository.clone(),
+        });
+
         let trust_entity_repository = Arc::new(TrustEntityProvider {
             db: db.clone(),
             trust_anchor_repository: trust_anchor_repository.clone(),
+        });
+        let trust_entity_repository = Arc::new(TrustEntityHistoryDecorator {
+            inner: trust_entity_repository,
+            history_repository: history_repository.clone(),
         });
 
         let credential_repository = Arc::new(CredentialProvider {

@@ -204,15 +204,8 @@ impl ProofSchemaService {
     ///
     /// * `request` - data
     pub async fn delete_proof_schema(&self, id: &ProofSchemaId) -> Result<(), ServiceError> {
-        let proof_schema = self
-            .proof_schema_repository
-            .get_proof_schema(
-                id,
-                &ProofSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
-                },
-            )
+        self.proof_schema_repository
+            .get_proof_schema(id, &Default::default())
             .await?
             .ok_or(BusinessLogicError::MissingProofSchema {
                 proof_schema_id: *id,
@@ -229,16 +222,7 @@ impl ProofSchemaService {
                 }
                 .into(),
                 error => ServiceError::from(error),
-            })?;
-
-        let _ = log_history_event_proof_schema(
-            &*self.history_repository,
-            &proof_schema,
-            HistoryAction::Deleted,
-        )
-        .await;
-
-        Ok(())
+            })
     }
 
     pub async fn share_proof_schema(

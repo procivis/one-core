@@ -6,10 +6,8 @@ use uuid::Uuid;
 use super::dto::GetOrganisationDetailsResponseDTO;
 use super::validator::organisation_already_exists;
 use super::OrganisationService;
-use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use crate::util::history::history_event;
 
 impl OrganisationService {
     /// Returns all existing organisations
@@ -71,16 +69,6 @@ impl OrganisationService {
             .organisation_repository
             .create_organisation(request.to_owned())
             .await?;
-
-        let _ = self
-            .history_repository
-            .create_history(history_event(
-                request.id,
-                request.id,
-                HistoryEntityType::Organisation,
-                HistoryAction::Created,
-            ))
-            .await;
 
         Ok(uuid)
     }

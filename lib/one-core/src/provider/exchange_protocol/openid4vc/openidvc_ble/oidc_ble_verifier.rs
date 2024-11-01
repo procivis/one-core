@@ -402,7 +402,7 @@ async fn get_connection_event_stream(
         match peripheral.get_connection_change_events().await {
             Ok(events) => Some((events, peripheral)),
             Err(err) => {
-                tracing::error!("Failed to get connection events: {:?}", err);
+                tracing::error!("Failed to get connection events: {err:?}");
                 None
             }
         }

@@ -146,7 +146,7 @@ impl CredentialRepository for CredentialHistoryDecorator {
             .await;
 
         if let Err(err) = result {
-            tracing::debug!("failed to insert credential history event: {:?}", err);
+            tracing::debug!("failed to insert credential history event: {err:?}");
         }
 
         Ok(())

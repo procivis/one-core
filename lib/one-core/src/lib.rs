@@ -378,7 +378,6 @@ impl OneCore {
             trust_anchor_service: TrustAnchorService::new(
                 data_provider.get_trust_anchor_repository(),
                 data_provider.get_trust_entity_repository(),
-                data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
                 providers.core_base_url.clone(),
                 config.clone(),
@@ -386,7 +385,6 @@ impl OneCore {
             trust_entity_service: TrustEntityService::new(
                 data_provider.get_trust_anchor_repository(),
                 data_provider.get_trust_entity_repository(),
-                data_provider.get_history_repository(),
                 trust_management_provider,
             ),
             backup_service: BackupService::new(
@@ -397,7 +395,6 @@ impl OneCore {
             ),
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),
-                data_provider.get_history_repository(),
             ),
             credential_service: CredentialService::new(
                 data_provider.get_credential_repository(),

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use sea_orm::DatabaseConnection;
 
+pub mod history;
 pub mod mapper;
 pub mod model;
 pub mod repository;

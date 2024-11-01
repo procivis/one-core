@@ -1,0 +1,106 @@
+use std::sync::Arc;
+
+use anyhow::Context;
+use one_core::model::history::{History, HistoryAction, HistoryEntityType};
+use one_core::model::trust_anchor::TrustAnchorRelations;
+use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations};
+use one_core::repository::error::DataLayerError;
+use one_core::repository::history_repository::HistoryRepository;
+use one_core::repository::trust_entity_repository::TrustEntityRepository;
+use one_core::service::trust_entity::dto::{
+    GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO,
+};
+use shared_types::{TrustAnchorId, TrustEntityId};
+use time::OffsetDateTime;
+use uuid::Uuid;
+
+pub struct TrustEntityHistoryDecorator {
+    pub history_repository: Arc<dyn HistoryRepository>,
+    pub inner: Arc<dyn TrustEntityRepository>,
+}
+
+#[async_trait::async_trait]
+impl TrustEntityRepository for TrustEntityHistoryDecorator {
+    async fn create(&self, entity: TrustEntity) -> Result<TrustEntityId, DataLayerError> {
+        let trust_entity_id = self.inner.create(entity.clone()).await?;
+
+        let result = self
+            .history_repository
+            .create_history(History {
+                id: Uuid::new_v4().into(),
+                created_date: entity.created_date,
+                action: HistoryAction::Created,
+                entity_id: Some(trust_entity_id.into()),
+                entity_type: HistoryEntityType::TrustEntity,
+                metadata: None,
+                organisation: entity.trust_anchor.and_then(|anchor| anchor.organisation),
+            })
+            .await;
+
+        if let Err(err) = result {
+            tracing::debug!("failed to insert trust entity history event: {err:?}");
+        }
+
+        Ok(trust_entity_id)
+    }
+
+    async fn get_by_trust_anchor_id(
+        &self,
+        trust_anchor_id: TrustAnchorId,
+    ) -> Result<Vec<TrustEntity>, DataLayerError> {
+        self.inner.get_by_trust_anchor_id(trust_anchor_id).await
+    }
+
+    async fn delete(&self, id: TrustEntityId) -> Result<(), DataLayerError> {
+        let trust_entity = self
+            .inner
+            .get(
+                id,
+                &TrustEntityRelations {
+                    trust_anchor: Some(TrustAnchorRelations {
+                        organisation: Some(Default::default()),
+                    }),
+                },
+            )
+            .await?
+            .context("trust entity is missing")?;
+
+        self.inner.delete(id).await?;
+
+        let result = self
+            .history_repository
+            .create_history(History {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                action: HistoryAction::Created,
+                entity_id: Some(trust_entity.id.into()),
+                entity_type: HistoryEntityType::TrustEntity,
+                metadata: None,
+                organisation: trust_entity
+                    .trust_anchor
+                    .and_then(|anchor| anchor.organisation),
+            })
+            .await;
+
+        if let Err(err) = result {
+            tracing::debug!("failed to insert trust entity history event: {err:?}");
+        }
+
+        Ok(())
+    }
+
+    async fn get(
+        &self,
+        id: TrustEntityId,
+        relations: &TrustEntityRelations,
+    ) -> Result<Option<TrustEntity>, DataLayerError> {
+        self.inner.get(id, relations).await
+    }
+
+    async fn list(
+        &self,
+        filters: ListTrustEntitiesQueryDTO,
+    ) -> Result<GetTrustEntitiesResponseDTO, DataLayerError> {
+        self.inner.list(filters).await
+    }
+}

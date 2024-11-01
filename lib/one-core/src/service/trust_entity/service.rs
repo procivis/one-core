@@ -6,15 +6,12 @@ use super::dto::{
 };
 use super::mapper::trust_entity_from_request;
 use super::TrustEntityService;
-use crate::model::history::{HistoryAction, HistoryEntityType};
-use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_anchor::{TrustAnchorRelations, TrustAnchorRole};
 use crate::model::trust_entity::TrustEntityRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
-use crate::util::history::history_event;
 
 impl TrustEntityService {
     pub async fn create_trust_entity(
@@ -26,7 +23,7 @@ impl TrustEntityService {
             .get(
                 request.trust_anchor_id,
                 &TrustAnchorRelations {
-                    organisation: Some(OrganisationRelations::default()),
+                    organisation: Some(Default::default()),
                 },
             )
             .await?
@@ -45,30 +42,15 @@ impl TrustEntityService {
 
         trust.publish_entity(&trust_anchor, &entity).await;
 
-        let result = self.trust_entity_repository.create(entity).await;
-
-        let Some(organisation) = trust_anchor.organisation else {
-            return Err(BusinessLogicError::GeneralInputValidationError.into());
-        };
-
-        match result {
-            Ok(entity_id) => {
-                let _ = self
-                    .history_repository
-                    .create_history(history_event(
-                        entity_id,
-                        organisation.id,
-                        HistoryEntityType::TrustEntity,
-                        HistoryAction::Created,
-                    ))
-                    .await;
-                Ok(entity_id)
-            }
-            Err(DataLayerError::AlreadyExists) => {
-                Err(BusinessLogicError::TrustEntityAlreadyPresent.into())
-            }
-            Err(err) => Err(err.into()),
-        }
+        self.trust_entity_repository
+            .create(entity)
+            .await
+            .map_err(|err| match err {
+                DataLayerError::AlreadyExists => {
+                    BusinessLogicError::TrustEntityAlreadyPresent.into()
+                }
+                err => err.into(),
+            })
     }
 
     pub async fn get_trust_entity(
@@ -81,7 +63,7 @@ impl TrustEntityService {
                 id,
                 &TrustEntityRelations {
                     trust_anchor: Some(TrustAnchorRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                        organisation: Some(Default::default()),
                     }),
                 },
             )
@@ -92,44 +74,17 @@ impl TrustEntityService {
     }
 
     pub async fn delete_trust_entity(&self, id: TrustEntityId) -> Result<(), ServiceError> {
-        let Some(trust_entity) = self
-            .trust_entity_repository
-            .get(
-                id,
-                &TrustEntityRelations {
-                    trust_anchor: Some(TrustAnchorRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
-                },
-            )
+        self.trust_entity_repository
+            .get(id, &Default::default())
             .await?
-        else {
-            return Err(ServiceError::EntityNotFound(
+            .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::TrustEntity(id),
-            ));
-        };
+            ))?;
 
-        let Some(trust_anchor) = trust_entity.trust_anchor else {
-            return Err(BusinessLogicError::GeneralInputValidationError.into());
-        };
-
-        let Some(organisation) = trust_anchor.organisation else {
-            return Err(BusinessLogicError::GeneralInputValidationError.into());
-        };
-
-        self.trust_entity_repository.delete(id).await?;
-
-        let _ = self
-            .history_repository
-            .create_history(history_event(
-                id,
-                organisation.id,
-                HistoryEntityType::TrustEntity,
-                HistoryAction::Deleted,
-            ))
-            .await;
-
-        Ok(())
+        self.trust_entity_repository
+            .delete(id)
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn list_trust_entities(

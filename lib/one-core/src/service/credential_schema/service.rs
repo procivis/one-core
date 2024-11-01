@@ -90,20 +90,10 @@ impl CredentialSchemaService {
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<(), ServiceError> {
-        let schema = self
-            .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await?;
-
-        let Some(credential_schema) = schema else {
-            return Err(BusinessLogicError::MissingCredentialSchema.into());
-        };
+        self.credential_schema_repository
+            .get_credential_schema(credential_schema_id, &Default::default())
+            .await?
+            .ok_or(BusinessLogicError::MissingCredentialSchema)?;
 
         self.credential_schema_repository
             .delete_credential_schema(credential_schema_id)
@@ -113,16 +103,7 @@ impl CredentialSchemaService {
                     EntityNotFoundError::CredentialSchema(*credential_schema_id).into()
                 }
                 error => ServiceError::from(error),
-            })?;
-
-        let _ = log_history_event_credential_schema(
-            &*self.history_repository,
-            &credential_schema,
-            HistoryAction::Deleted,
-        )
-        .await;
-
-        Ok(())
+            })
     }
 
     /// Returns details of a credential schema

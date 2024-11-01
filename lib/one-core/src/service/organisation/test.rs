@@ -8,16 +8,11 @@ use uuid::Uuid;
 use super::OrganisationService;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::repository::error::DataLayerError;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 
-fn setup_service(
-    organisation_repository: MockOrganisationRepository,
-    history_repository: MockHistoryRepository,
-) -> OrganisationService {
+fn setup_service(organisation_repository: MockOrganisationRepository) -> OrganisationService {
     OrganisationService {
-        history_repository: Arc::new(history_repository),
         organisation_repository: Arc::new(organisation_repository),
     }
 }
@@ -30,13 +25,7 @@ async fn test_create_organisation_id_not_set() {
         .times(1)
         .returning(|org| Ok(org.id));
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .times(1)
-        .returning(|history| Ok(history.id));
-
-    let service = setup_service(organisation_repository, history_repository);
+    let service = setup_service(organisation_repository);
     let result = service.create_organisation(None).await;
 
     assert!(result.is_ok());
@@ -57,13 +46,7 @@ async fn test_create_organisation_id_set() {
         .in_sequence(&mut sequence)
         .returning(|org| Ok(org.id));
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .times(1)
-        .returning(|history| Ok(history.id));
-
-    let service = setup_service(organisation_repository, history_repository);
+    let service = setup_service(organisation_repository);
     let id = Uuid::new_v4().into();
     let result = service.create_organisation(Some(id)).await.unwrap();
 
@@ -84,7 +67,7 @@ async fn test_create_organisation_already_exists() {
             }))
         });
 
-    let service = setup_service(organisation_repository, MockHistoryRepository::default());
+    let service = setup_service(organisation_repository);
     let id = Uuid::new_v4().into();
     let result = service.create_organisation(Some(id)).await;
 
@@ -115,7 +98,7 @@ async fn test_get_organisation_success() {
         )
         .returning(move |_, _| Ok(Some(org_clone.clone())));
 
-    let service = setup_service(organisation_repository, MockHistoryRepository::default());
+    let service = setup_service(organisation_repository);
     let result = service.get_organisation(&organisation.id).await;
 
     assert!(result.is_ok());
@@ -133,7 +116,7 @@ async fn test_get_organisation_failure() {
         .times(1)
         .returning(|_, _| Ok(None));
 
-    let service = setup_service(organisation_repository, MockHistoryRepository::default());
+    let service = setup_service(organisation_repository);
     let result = service.get_organisation(&Uuid::new_v4().into()).await;
 
     assert!(matches!(
@@ -158,7 +141,7 @@ async fn test_get_organisation_list_success() {
             }])
         });
 
-    let service = setup_service(organisation_repository, MockHistoryRepository::default());
+    let service = setup_service(organisation_repository);
     let result = service.get_organisation_list().await;
 
     assert!(result.is_ok());
@@ -174,7 +157,7 @@ async fn test_get_organisation_list_failure() {
         .times(1)
         .returning(|| Err(anyhow::anyhow!("TEST").into()));
 
-    let service = setup_service(organisation_repository, MockHistoryRepository::default());
+    let service = setup_service(organisation_repository);
     let result = service.get_organisation_list().await;
 
     assert!(matches!(

@@ -32,7 +32,7 @@ impl KeyRepository for KeyHistoryDecorator {
             .await;
 
         if let Err(err) = result {
-            tracing::debug!("failed to insert key history event: {:?}", err);
+            tracing::debug!("failed to insert key history event: {err:?}");
         }
 
         Ok(key_id)

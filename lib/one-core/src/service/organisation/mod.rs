@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 
 pub mod dto;
@@ -9,17 +8,12 @@ pub mod validator;
 
 #[derive(Clone)]
 pub struct OrganisationService {
-    history_repository: Arc<dyn HistoryRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
 }
 
 impl OrganisationService {
-    pub fn new(
-        organisation_repository: Arc<dyn OrganisationRepository>,
-        history_repository: Arc<dyn HistoryRepository>,
-    ) -> Self {
+    pub fn new(organisation_repository: Arc<dyn OrganisationRepository>) -> Self {
         Self {
-            history_repository,
             organisation_repository,
         }
     }

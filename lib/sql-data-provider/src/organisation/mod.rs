@@ -1,5 +1,6 @@
 use sea_orm::DatabaseConnection;
 
+pub mod history;
 mod mapper;
 pub mod repository;
 

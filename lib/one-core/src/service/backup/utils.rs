@@ -156,7 +156,7 @@ pub(super) fn create_backup_history_event(
 }
 
 pub(super) fn map_error(err: anyhow::Error) -> ServiceError {
-    ServiceError::Other(format!("{:?}", err))
+    ServiceError::Other(format!("{err:?}"))
 }
 
 pub(super) fn dir_path_from_file_path<T: ?Sized + AsRef<OsStr>>(

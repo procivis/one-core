@@ -4,6 +4,7 @@ use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::DatabaseConnection;
 
 pub mod entities;
+pub mod history;
 pub mod mapper;
 pub mod repository;
 

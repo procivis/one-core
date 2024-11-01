@@ -34,7 +34,7 @@ impl DidRepository for DidHistoryDecorator {
             .await;
 
         if let Err(err) = result {
-            tracing::debug!("failed to insert did history event: {:?}", err);
+            tracing::debug!("failed to insert did history event: {err:?}");
         }
 
         Ok(did_id)
@@ -93,7 +93,7 @@ impl DidRepository for DidHistoryDecorator {
             .await;
 
         if let Err(err) = result {
-            tracing::debug!("failed to insert did history event: {:?}", err);
+            tracing::debug!("failed to insert did history event: {err:?}");
         }
 
         Ok(())
