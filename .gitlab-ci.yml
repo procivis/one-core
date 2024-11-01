@@ -402,6 +402,16 @@ deploy:demo:
     - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: manual
 
+deploy:canivc:
+  extends:
+    - .deploy_trigger
+  variables:
+    VALUES_PATH: values/canivc
+    K8S_NAMESPACE: canivc
+  rules:
+    - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
+      when: manual
+
 run_e2e_tests:
   stage: manual_e2e_tests
   when: manual
