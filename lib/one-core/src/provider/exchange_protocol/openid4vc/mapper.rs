@@ -986,7 +986,7 @@ pub fn proof_from_handle_invitation(
         state: Some(vec![ProofState {
             created_date: now,
             last_modified: now,
-            state: ProofStateEnum::Pending,
+            state: ProofStateEnum::Requested,
         }]),
         schema: None,
         claims: None,

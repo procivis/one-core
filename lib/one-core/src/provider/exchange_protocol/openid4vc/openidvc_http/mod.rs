@@ -50,7 +50,7 @@ use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
 };
@@ -68,7 +68,6 @@ use crate::provider::exchange_protocol::mapper::{
 };
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCICredentialOfferClaimValue;
 use crate::provider::exchange_protocol::openid4vc::openidvc_http::mappers::credential_offer_from_metadata;
-use crate::provider::exchange_protocol::openid4vc::validator::throw_if_latest_proof_state_not_eq;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -696,14 +695,6 @@ impl OpenID4VCHTTP {
         _credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         Err(ExchangeProtocolError::OperationNotSupported)
-    }
-
-    pub async fn validate_proof_for_submission(
-        &self,
-        proof: &Proof,
-    ) -> Result<(), ExchangeProtocolError> {
-        throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Pending)
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     pub async fn share_credential(

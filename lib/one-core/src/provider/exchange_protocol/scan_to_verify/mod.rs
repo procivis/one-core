@@ -11,12 +11,11 @@ use super::{
     ExchangeProtocolError, ExchangeProtocolImpl, FnMapExternalFormatToExternalDetailed,
     FormatMapper, HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
 };
-use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::model::credential::Credential;
 use crate::model::did::{Did, KeyRole};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::Proof;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -118,14 +117,6 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _types: HashMap<String, DatatypeType>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         unimplemented!()
-    }
-
-    async fn validate_proof_for_submission(
-        &self,
-        proof: &Proof,
-    ) -> Result<(), ExchangeProtocolError> {
-        throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Pending)
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     async fn share_credential(

@@ -272,7 +272,7 @@ impl OpenID4VCBLE {
             now,
             None,
             "BLE",
-            ProofStateEnum::Pending,
+            ProofStateEnum::Requested,
         );
 
         ble_holder

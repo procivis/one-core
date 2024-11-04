@@ -480,7 +480,7 @@ async fn test_openid4vc_jwt_mdoc_flow() {
             &server_did,
             Some(&holder_did),
             None,
-            ProofStateEnum::Pending,
+            ProofStateEnum::Requested,
             "OPENID4VC",
             Some(&holder_interaction),
             local_key,

@@ -319,12 +319,6 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         types: HashMap<String, DatatypeType>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError>;
 
-    /// Validates proof properties before submitting to verifier
-    async fn validate_proof_for_submission(
-        &self,
-        proof: &Proof,
-    ) -> Result<(), ExchangeProtocolError>;
-
     // Issuer methods:
     /// Generates QR-code content to start the credential issuance flow.
     async fn share_credential(
@@ -477,13 +471,6 @@ where
         self.inner
             .get_presentation_definition(proof, interaction_data, storage_access, format_map, types)
             .await
-    }
-
-    async fn validate_proof_for_submission(
-        &self,
-        proof: &Proof,
-    ) -> Result<(), ExchangeProtocolError> {
-        self.inner.validate_proof_for_submission(proof).await
     }
 
     async fn share_credential(

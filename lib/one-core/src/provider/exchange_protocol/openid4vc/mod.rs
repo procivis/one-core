@@ -18,13 +18,12 @@ use super::{
     ExchangeProtocol, ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper,
     HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
 };
-use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{CoreConfig, TransportType};
 use crate::model::credential::Credential;
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::Proof;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::exchange_protocol::openid4vc::mapper::holder_ble_mqtt_get_presentation_definition;
 use crate::provider::exchange_protocol::openid4vc::model::{
@@ -240,14 +239,6 @@ impl ExchangeProtocolImpl for OpenID4VC {
         credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         self.openid_http.reject_credential(credential).await
-    }
-
-    async fn validate_proof_for_submission(
-        &self,
-        proof: &Proof,
-    ) -> Result<(), ExchangeProtocolError> {
-        throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Pending)
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     async fn share_credential(

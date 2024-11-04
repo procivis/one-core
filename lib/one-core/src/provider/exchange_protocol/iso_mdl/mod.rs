@@ -20,13 +20,12 @@ use super::{
     FormatMapper, HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
 };
 use crate::common_mapper::{decode_cbor_base64, NESTED_CLAIM_MARKER};
-use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::Proof;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     DeviceResponse, DeviceResponseVersion, DocumentError, EmbeddedCbor, SessionTranscript,
 };
@@ -238,14 +237,6 @@ impl ExchangeProtocolImpl for IsoMdl {
         _credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         unimplemented!()
-    }
-
-    async fn validate_proof_for_submission(
-        &self,
-        proof: &Proof,
-    ) -> Result<(), ExchangeProtocolError> {
-        throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Requested)
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
     }
 
     async fn share_credential(

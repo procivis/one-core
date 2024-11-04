@@ -185,7 +185,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         &verifier_did,
         None,
         None,
-        ProofStateEnum::Pending,
+        ProofStateEnum::Requested,
         "OPENID4VC",
         Some(&interaction),
     )
@@ -428,7 +428,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         &verifier_did,
         None,
         None,
-        ProofStateEnum::Pending,
+        ProofStateEnum::Requested,
         "OPENID4VC",
         Some(&interaction),
     )

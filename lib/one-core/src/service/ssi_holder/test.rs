@@ -52,7 +52,7 @@ use crate::service::test_utilities::{
 };
 
 #[tokio::test]
-async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_pending(
+async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_requested(
 ) {
     let interaction_id = Uuid::new_v4();
     let proof_id = Uuid::new_v4().into();
@@ -70,7 +70,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                     ProofState {
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
-                        state: ProofStateEnum::Pending,
+                        state: ProofStateEnum::Requested,
                     },
                     ProofState {
                         created_date: OffsetDateTime::now_utc(),
@@ -137,7 +137,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
 }
 
 #[tokio::test]
-async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
+async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
     let reject_proof_for_state = |state| async {
         let interaction_id = Uuid::new_v4();
         let proof_id = Uuid::new_v4().into();
@@ -184,7 +184,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
 
     for state in [
         ProofStateEnum::Created,
-        ProofStateEnum::Requested,
+        ProofStateEnum::Pending,
         ProofStateEnum::Accepted,
         ProofStateEnum::Rejected,
         ProofStateEnum::Error,
@@ -230,7 +230,7 @@ async fn test_submit_proof_succeeds() {
                     ProofState {
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
-                        state: ProofStateEnum::Pending,
+                        state: ProofStateEnum::Requested,
                     },
                     ProofState {
                         created_date: OffsetDateTime::now_utc(),
@@ -294,11 +294,6 @@ async fn test_submit_proof_succeeds() {
         .returning(move |_| Some(formatter.clone()));
 
     let mut exchange_protocol = MockExchangeProtocol::default();
-    exchange_protocol
-        .inner
-        .expect_validate_proof_for_submission()
-        .once()
-        .returning(|_| Ok(()));
     exchange_protocol
         .inner
         .expect_get_presentation_definition()
@@ -445,7 +440,7 @@ async fn test_submit_proof_repeating_claims() {
                 state: Some(vec![ProofState {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
-                    state: ProofStateEnum::Pending,
+                    state: ProofStateEnum::Requested,
                 }]),
                 interaction: Some(Interaction {
                     id: interaction_id,
@@ -498,11 +493,6 @@ async fn test_submit_proof_repeating_claims() {
         .returning(move |_| Some(formatter.clone()));
 
     let mut exchange_protocol = MockExchangeProtocol::default();
-    exchange_protocol
-        .inner
-        .expect_validate_proof_for_submission()
-        .once()
-        .returning(|_| Ok(()));
     exchange_protocol
         .inner
         .expect_get_presentation_definition()

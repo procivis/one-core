@@ -13,7 +13,7 @@ use crate::common_mapper::{encode_cbor_base64, NESTED_CLAIM_MARKER};
 use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
-use crate::config::core_config::{ExchangeType, Fields, RevocationType};
+use crate::config::core_config::{Fields, RevocationType};
 use crate::config::validator::transport::{
     validate_and_select_transport_type, SelectedTransportType,
 };
@@ -185,20 +185,7 @@ impl SSIHolderService {
             return Err(BusinessLogicError::MissingProofForInteraction(*interaction_id).into());
         };
 
-        let exchange = self
-            .config
-            .exchange
-            .get_if_enabled(proof.exchange.as_str())
-            .map_err(|_| {
-                ServiceError::MissingExchangeProtocol("Exchange not found in config".to_string())
-            })?;
-
-        match exchange.r#type {
-            ExchangeType::IsoMdl => {
-                throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?
-            }
-            _ => throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?,
-        }
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
         let state = if (self
             .protocol_provider
@@ -298,9 +285,7 @@ impl SSIHolderService {
             MissingProviderError::ExchangeProtocol(proof.exchange.clone()),
         )?;
 
-        exchange_protocol
-            .validate_proof_for_submission(&proof)
-            .await?;
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
         let interaction_data = proof
             .interaction

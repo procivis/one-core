@@ -464,7 +464,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
             &server_did,
             Some(&holder_did),
             None,
-            ProofStateEnum::Pending,
+            ProofStateEnum::Requested,
             "OPENID4VC",
             Some(&holder_interaction),
             local_key,

@@ -238,7 +238,7 @@ impl OpenId4VcMqtt {
             OffsetDateTime::now_utc(),
             None,
             TransportType::Mqtt.as_ref(),
-            ProofStateEnum::Pending,
+            ProofStateEnum::Requested,
         );
 
         Ok(InvitationResponseDTO::ProofRequest {
