@@ -2,7 +2,7 @@ use std::fmt;
 
 use sea_orm_migration::prelude::*;
 
-use crate::ColumnDefExt;
+use crate::datatype::ColumnDefExt;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

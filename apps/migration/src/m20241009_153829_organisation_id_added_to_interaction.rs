@@ -1,8 +1,8 @@
 use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
 
+use crate::datatype::ColumnDefExt;
 use crate::m20240110_000001_initial::CustomDateTime;
-use crate::ColumnDefExt;
 
 #[derive(DeriveMigrationName)]
 pub(crate) struct Migration;

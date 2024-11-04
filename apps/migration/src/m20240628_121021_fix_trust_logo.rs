@@ -1,7 +1,7 @@
 use sea_orm_migration::prelude::*;
 
+use crate::datatype::ColumnDefExt;
 use crate::m20240514_070446_add_trust_model::TrustEntity;
-use crate::ColumnDefExt;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

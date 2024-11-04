@@ -9,7 +9,7 @@ use did::history::DidHistoryDecorator;
 use did::DidProvider;
 use interaction::InteractionProvider;
 use key::history::KeyHistoryDecorator;
-use migration::run_migrations;
+use migration::runner::run_migrations;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;

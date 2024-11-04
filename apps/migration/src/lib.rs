@@ -1,6 +1,9 @@
-use sea_orm::{DatabaseBackend, TransactionError, TransactionTrait};
 use sea_orm_migration::migrator::MigratorTrait;
 use sea_orm_migration::prelude::*;
+
+pub(crate) mod datatype;
+pub(crate) mod models_20240209;
+pub mod runner;
 
 mod m20240110_000001_initial;
 mod m20240115_093859_unique_did_name_and_key_name_in_org;
@@ -14,8 +17,6 @@ mod m20240130_105023_add_history;
 mod m20240130_153529_add_pending_variant_to_history_action_enum_in_history_table;
 mod m20240209_144950_add_verifier_key_id_to_proof;
 mod m20240220_082229_add_lvvc_table;
-
-pub(crate) mod m20240209_144950_models;
 mod m20240223_094129_validity_constraint_in_proof_schema;
 mod m20240223_103849_add_backup_columns;
 mod m20240229_134129_wallet_storage_type_credential_schema;
@@ -118,51 +119,5 @@ impl MigratorTrait for Migrator {
             Box::new(m20241031_095859_redirect_uri_length::Migration),
             Box::new(m20241101_092048_clear_statuslist_cache::Migration),
         ]
-    }
-}
-
-/// Wraps DB migrations into a single transaction
-/// to prevent problems with partially applied migrations
-///
-pub async fn run_migrations<'c, C>(db: C) -> Result<(), DbErr>
-where
-    C: IntoSchemaManagerConnection<'c>,
-{
-    let connection = db.into_schema_manager_connection();
-    match connection.get_database_backend() {
-        // sea-orm-migrations runs it atomic with Postgres
-        DatabaseBackend::Postgres => Migrator::up(connection, None).await,
-
-        // manual wrapping with transaction necessary for the others
-        DatabaseBackend::MySql | DatabaseBackend::Sqlite => {
-            let result = connection
-                .transaction::<_, (), DbErr>(|txn| {
-                    Box::pin(async move { Migrator::up(txn, None).await })
-                })
-                .await;
-
-            match result {
-                Ok(_) => Ok(()),
-                Err(TransactionError::Connection(e)) => Err(e),
-                Err(TransactionError::Transaction(e)) => Err(e),
-            }
-        }
-    }
-}
-
-trait ColumnDefExt {
-    fn custom_blob(&mut self, manager: &SchemaManager) -> &mut ColumnDef;
-}
-
-impl ColumnDefExt for ColumnDef {
-    fn custom_blob(&mut self, _manager: &SchemaManager) -> &mut ColumnDef {
-        self.blob();
-
-        #[cfg(feature = "mysql")]
-        if matches!(_manager.get_database_backend(), DatabaseBackend::MySql) {
-            self.custom(extension::mysql::MySqlType::LongBlob);
-        }
-
-        self
     }
 }

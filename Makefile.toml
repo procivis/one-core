@@ -84,10 +84,6 @@ script = [
   "docker volume rm docker_mariadb_data",
 ]
 
-[tasks.install_seaormcli]
-args    = ["install", "sea-orm-cli", "--force", "--version", "0.12.1"]
-command = "cargo"
-
 [tasks.dbup1]
 args    = ["run", "-p", "migration", "--", "up", "-n1"]
 command = "cargo"
@@ -98,9 +94,13 @@ args    = ["run", "-p", "migration", "--", "down", "-n1"]
 command = "cargo"
 env     = { "DATABASE_URL" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core" }
 
+[tasks.seaormcli]
+install_crate = { crate_name = "sea-orm-cli", version = "1.1.0", binary = "sea-orm-cli", test_arg = "--version" }
+
 [tasks.generate_migration]
-args    = ["migrate", "generate", "${@}", "-d", "./apps/migration/"]
-command = "sea-orm-cli"
+args         = ["migrate", "generate", "${@}", "-d", "./apps/migration/"]
+command      = "sea-orm-cli"
+dependencies = ["seaormcli"]
 
 [tasks.dbtempent]
 args = [
@@ -114,6 +114,7 @@ args = [
   "lib/sql-data-provider/src/entity_new/",
 ]
 command = "sea-orm-cli"
+dependencies = ["seaormcli"]
 
 [tasks.mobile-build]
 script.pre = '''
