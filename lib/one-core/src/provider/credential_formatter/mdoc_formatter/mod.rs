@@ -1045,9 +1045,9 @@ fn map_to_ciborium_value(
         DatatypeType::String => ciborium::Value::Text(value_as_string),
         DatatypeType::Number => {
             let value = value_as_string
-                .parse::<u32>()
+                .parse::<i128>()
                 .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-            ciborium::Value::Integer(value.into())
+            ciborium::Value::from(value)
         }
         DatatypeType::Date => {
             ciborium::Value::Tag(FULL_DATE_TAG, ciborium::Value::from(value_as_string).into())
@@ -1290,9 +1290,7 @@ fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, Format
             "false".to_string()
         })),
         Value::Integer(number) => {
-            let number_value: u32 = number
-                .try_into()
-                .map_err(|e: core::num::TryFromIntError| FormatterError::Failed(e.to_string()))?;
+            let number_value: i128 = number.into();
             Ok(serde_json::Value::String(number_value.to_string()))
         }
         Value::Tag(tag, tag_value) => match tag {
