@@ -37,6 +37,7 @@ fn setup_service(
     key_repository: MockKeyRepository,
     organisation_repository: MockOrganisationRepository,
     did_method: MockDidMethod,
+    url_did_resolver: Option<Arc<dyn DidMethod>>,
     key_algorithm_provider: MockKeyAlgorithmProvider,
     did_config: DidConfig,
 ) -> DidService {
@@ -51,7 +52,8 @@ fn setup_service(
         Duration::seconds(1000),
         Duration::seconds(999),
     );
-    let did_method_provider = DidMethodProviderImpl::new(did_caching_loader, did_methods);
+    let did_method_provider =
+        DidMethodProviderImpl::new(did_caching_loader, did_methods, url_did_resolver);
 
     DidService::new(
         did_repository,
@@ -137,6 +139,7 @@ async fn test_get_did_exists() {
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
+        None,
         MockKeyAlgorithmProvider::default(),
         DidConfig::default(),
     );
@@ -163,6 +166,7 @@ async fn test_get_did_missing() {
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
+        None,
         MockKeyAlgorithmProvider::default(),
         DidConfig::default(),
     );
@@ -211,6 +215,7 @@ async fn test_get_did_list() {
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
+        None,
         MockKeyAlgorithmProvider::default(),
         DidConfig::default(),
     );
@@ -308,6 +313,7 @@ async fn test_create_did_success() {
         key_repository,
         organisation_repository,
         did_method,
+        None,
         MockKeyAlgorithmProvider::default(),
         get_did_config(),
     );
@@ -388,6 +394,7 @@ async fn test_create_did_value_already_exists() {
         key_repository,
         organisation_repository,
         did_method,
+        None,
         MockKeyAlgorithmProvider::default(),
         get_did_config(),
     );
@@ -429,6 +436,7 @@ async fn test_fail_to_create_did_value_invalid_amount_of_keys() {
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         did_method,
+        None,
         MockKeyAlgorithmProvider::default(),
         get_did_config(),
     );

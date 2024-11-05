@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-mod jwk_helpers;
+pub(crate) mod jwk_helpers;
 
 use shared_types::{DidId, DidValue};
 

@@ -94,6 +94,7 @@ impl Display for StatusCode {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum Method {
     Get,
     Post,

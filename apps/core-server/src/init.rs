@@ -21,6 +21,7 @@ use one_core::provider::did_method::key::KeyDidMethod;
 use one_core::provider::did_method::mdl::{DidMdl, DidMdlValidator};
 use one_core::provider::did_method::provider::DidMethodProviderImpl;
 use one_core::provider::did_method::resolver::DidCachingLoader;
+use one_core::provider::did_method::sd_jwt_vc_issuer_metadata::SdJwtVcIssuerMetadataDidMethod;
 use one_core::provider::did_method::universal::UniversalDidMethod;
 use one_core::provider::did_method::web::WebDidMethod;
 use one_core::provider::did_method::x509::X509Method;
@@ -152,6 +153,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
         let client = client.clone();
         Box::new(move |config, providers| {
             let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
+            let mut url_did_resolver: Option<Arc<dyn DidMethod>> = None;
 
             let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
 
@@ -218,6 +220,14 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
 
                         did_mdl as _
                     }
+                    "SD_JWT_VC_ISSUER_METADATA" => {
+                        let did_method =
+                            Arc::new(SdJwtVcIssuerMetadataDidMethod::new(client.clone()));
+
+                        url_did_resolver = Some(did_method.clone() as Arc<dyn DidMethod>);
+
+                        did_method as _
+                    }
                     other => panic!("Unexpected did method: {other}"),
                 };
                 did_methods.insert(name.to_owned(), did_method);
@@ -249,7 +259,11 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                 initialize_did_caching_loader(&cache_entities_config, data_provider);
 
             (
-                Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods)),
+                Arc::new(DidMethodProviderImpl::new(
+                    did_caching_loader,
+                    did_methods,
+                    url_did_resolver,
+                )),
                 did_mdl_validator,
             )
         })

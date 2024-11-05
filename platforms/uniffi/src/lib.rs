@@ -78,6 +78,7 @@ mod utils;
 use binding::OneCoreBinding;
 use dto::*;
 use one_core::config::core_config::{CacheEntitiesConfig, RevocationType};
+use one_core::provider::did_method::sd_jwt_vc_issuer_metadata::SdJwtVcIssuerMetadataDidMethod;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::revocation::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
 use one_core::provider::revocation::none::NoneRevocation;
@@ -254,6 +255,7 @@ fn initialize_core(
                 let client = client.clone();
                 Box::new(move |config, providers| {
                     let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
+                    let mut url_did_resolver: Option<Arc<dyn DidMethod>> = None;
 
                     let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
 
@@ -324,6 +326,14 @@ fn initialize_core(
 
                                 did_mdl as _
                             }
+                            "SD_JWT_VC_ISSUER_METADATA" => {
+                                let did_method =
+                                    Arc::new(SdJwtVcIssuerMetadataDidMethod::new(client.clone()));
+
+                                url_did_resolver = Some(did_method.clone() as Arc<dyn DidMethod>);
+
+                                did_method as _
+                            }
                             other => panic!("Unexpected did method: {other}"),
                         };
                         did_methods.insert(name.to_owned(), did_method);
@@ -355,7 +365,11 @@ fn initialize_core(
                         initialize_did_caching_loader(&cache_entities_config, data_provider);
 
                     (
-                        Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods)),
+                        Arc::new(DidMethodProviderImpl::new(
+                            did_caching_loader,
+                            did_methods,
+                            url_did_resolver,
+                        )),
                         did_mdl_validator,
                     )
                 })
@@ -404,8 +418,14 @@ fn initialize_core(
                             "SD_JWT" => {
                                 let params = format_config
                                     .get(name)
-                                    .expect("SDJWT formatter params are mandatory");
+                                    .expect("SD-JWT formatter params are mandatory");
                                 Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _
+                            }
+                            "SD_JWT_VC" => {
+                                let params = format_config
+                                    .get(name)
+                                    .expect("SD-JWT VC formatter params are mandatory");
+                                Arc::new(SDJWTVCFormatter::new(params, crypto.clone())) as _
                             }
                             "JSON_LD_CLASSIC" => {
                                 let params = format_config
@@ -446,12 +466,6 @@ fn initialize_core(
                                     providers.core_base_url.clone(),
                                     datatype_config.clone(),
                                 )) as _
-                            }
-                            "SD_JWT_VC" => {
-                                let params = format_config
-                                    .get(name)
-                                    .expect("SD-JWT VC formatter params are mandatory");
-                                Arc::new(SDJWTVCFormatter::new(params, crypto.clone())) as _
                             }
                             other => unimplemented!("formatter: {other}"),
                         };
