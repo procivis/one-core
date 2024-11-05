@@ -14,7 +14,7 @@ pub enum KeyAlgorithmType {
 pub enum CredentialFormat {
     #[strum(serialize = "JWT")]
     Jwt,
-    #[strum(serialize = "SDJWT")]
+    #[strum(serialize = "SD_JWT")]
     SdJwt,
     #[strum(serialize = "JSON_LD_BBSPLUS")]
     JsonLdBbsPlus,

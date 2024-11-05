@@ -322,7 +322,7 @@ pub struct OpenID4VPDirectPostRequestRestDTO {
     #[into(with_fn = convert_inner)]
     #[serde(flatten)]
     pub presentation_submission: Option<InternalPresentationSubmissionMappingRestDTO>,
-    #[schema(example = "<jwt/sdjwt token>")]
+    #[schema(example = "<jwt/sd_jwt token>")]
     #[into(with_fn = convert_inner)]
     pub vp_token: Option<String>,
     #[schema(example = "<UUID>")]
@@ -367,7 +367,7 @@ pub struct PresentationSubmissionMappingRestDTO {
 #[into(PresentationSubmissionDescriptorDTO)]
 pub struct PresentationSubmissionDescriptorRestDTO {
     pub id: String,
-    #[schema(example = "SDJWT")]
+    #[schema(example = "SD_JWT")]
     pub format: String,
     pub path: String,
     #[into(with_fn = convert_inner)]

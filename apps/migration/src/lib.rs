@@ -58,6 +58,7 @@ mod m20241001_114629_soft_delete_bbsplus;
 mod m20241009_153829_organisation_id_added_to_interaction;
 mod m20241031_095859_redirect_uri_length;
 mod m20241101_092048_clear_statuslist_cache;
+mod m20241104_085435_rename_sdjwt_with_underscore;
 
 pub struct Migrator;
 
@@ -118,6 +119,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20241009_153829_organisation_id_added_to_interaction::Migration),
             Box::new(m20241031_095859_redirect_uri_length::Migration),
             Box::new(m20241101_092048_clear_statuslist_cache::Migration),
+            Box::new(m20241104_085435_rename_sdjwt_with_underscore::Migration),
         ]
     }
 }

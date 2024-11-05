@@ -5,16 +5,15 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::{CryptoProvider, Hasher};
 use serde::{Deserialize, Serialize};
 
-use super::model::DecomposedToken;
-use super::{remove_first_nesting_layer, Disclosure};
-use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::mapper::string_to_b64url_string;
 use crate::provider::credential_formatter::model::PublishedClaim;
+use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Disclosure};
 
 const SELECTIVE_DISCLOSURE_MARKER: &str = "_sd";
 
-pub(super) fn gather_hashes_from_disclosures(
+pub(crate) fn gather_hashes_from_disclosures(
     disclosures: &[Disclosure],
     hasher: &dyn Hasher,
 ) -> Result<Vec<String>, FormatterError> {
@@ -25,12 +24,12 @@ pub(super) fn gather_hashes_from_disclosures(
 }
 
 #[derive(Debug, Deserialize)]
-pub(super) struct SelectiveDisclosureArray {
+pub(crate) struct SelectiveDisclosureArray {
     #[serde(rename = "_sd")]
     pub sd: Vec<String>,
 }
 
-pub(super) fn gather_hash(
+pub(crate) fn gather_hash(
     disclosure: &Disclosure,
     hasher: &dyn Hasher,
 ) -> Result<Vec<String>, FormatterError> {
@@ -43,7 +42,7 @@ pub(super) fn gather_hash(
     }
 }
 
-pub(super) fn gather_hashes_from_hashed_claims(
+pub(crate) fn gather_hashes_from_hashed_claims(
     hashed_claims: &[String],
     disclosures: &[Disclosure],
     hasher: &dyn Hasher,
@@ -67,7 +66,7 @@ pub(super) fn gather_hashes_from_hashed_claims(
     Ok(used_hashes)
 }
 
-pub(super) fn get_disclosures_by_claim_name(
+pub(crate) fn get_disclosures_by_claim_name(
     claim_name: &str,
     disclosures: &[Disclosure],
     hasher: &dyn Hasher,
@@ -121,7 +120,7 @@ pub(super) fn get_disclosures_by_claim_name(
     Err(FormatterError::MissingClaim)
 }
 
-pub(super) fn resolve_disclosure_by_hash(
+pub(crate) fn resolve_disclosure_by_hash(
     hash: &str,
     disclosures: &[Disclosure],
     hashes: &[String],
@@ -174,7 +173,7 @@ impl Disclosure {
     }
 }
 
-pub(super) fn to_hashmap(
+pub(crate) fn to_hashmap(
     value: serde_json::Value,
 ) -> Result<HashMap<String, serde_json::Value>, FormatterError> {
     Ok(value
@@ -187,7 +186,7 @@ pub(super) fn to_hashmap(
         .collect())
 }
 
-pub(super) fn gather_disclosures(
+pub(crate) fn gather_disclosures(
     value: &serde_json::Value,
     algorithm: &str,
     crypto: &dyn CryptoProvider,
@@ -308,7 +307,7 @@ pub(super) fn gather_disclosures(
     Ok((disclosures, hashed_disclosures))
 }
 
-pub(super) fn extract_claims_from_disclosures(
+pub(crate) fn extract_claims_from_disclosures(
     disclosures: &[Disclosure],
     hasher: &dyn Hasher,
 ) -> Result<serde_json::Value, FormatterError> {
@@ -368,7 +367,7 @@ pub(super) fn extract_claims_from_disclosures(
     Ok(result)
 }
 
-pub(super) fn get_subdisclosures(
+pub(crate) fn get_subdisclosures(
     disclosures: &[Disclosure],
     subdisclosures: &[String],
     hasher: &dyn Hasher,
@@ -410,7 +409,7 @@ pub(super) fn get_subdisclosures(
     Ok((result, resolved_subdisclosures))
 }
 
-pub(super) fn extract_disclosures(token: &str) -> Result<DecomposedToken, FormatterError> {
+pub(crate) fn extract_disclosures(token: &str) -> Result<DecomposedToken, FormatterError> {
     let mut token_parts = token.split('~');
     let jwt = token_parts.next().ok_or(FormatterError::MissingPart)?;
 
@@ -435,13 +434,13 @@ pub(super) fn extract_disclosures(token: &str) -> Result<DecomposedToken, Format
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(expecting = "expecting [<salt>, <key>, <value>] array")]
-pub(super) struct DisclosureArray {
+pub(crate) struct DisclosureArray {
     pub salt: String,
     pub key: String,
     pub value: serde_json::Value,
 }
 
-pub(super) fn parse_disclosure(
+pub(crate) fn parse_disclosure(
     disclosure: &str,
     base64_encoded_disclosure: &str,
 ) -> Result<Disclosure, FormatterError> {
@@ -457,7 +456,7 @@ pub(super) fn parse_disclosure(
     })
 }
 
-pub(super) fn sort_published_claims_by_indices(claims: &[PublishedClaim]) -> Vec<PublishedClaim> {
+pub(crate) fn sort_published_claims_by_indices(claims: &[PublishedClaim]) -> Vec<PublishedClaim> {
     let mut claims = claims.to_owned();
 
     claims.sort_by(|a, b| {

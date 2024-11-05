@@ -19,7 +19,7 @@ async fn test_format_capabilities_for_verification_key_algorithms() {
         json!(["EDDSA", "ES256", "DILITHIUM"])
     );
     assert_eq!(
-        resp["format"]["SDJWT"]["capabilities"]["verificationKeyAlgorithms"],
+        resp["format"]["SD_JWT"]["capabilities"]["verificationKeyAlgorithms"],
         json!(["EDDSA", "ES256", "DILITHIUM"])
     );
     assert_eq!(

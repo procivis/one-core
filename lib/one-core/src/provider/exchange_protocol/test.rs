@@ -395,7 +395,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
             validity_credential_nbf: None,
         }],
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
-        &HashSet::from(["SDJWT"]),
+        &HashSet::from(["SD_JWT"]),
         &object_datatypes(),
     )
     .await

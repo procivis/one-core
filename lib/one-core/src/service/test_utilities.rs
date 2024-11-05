@@ -50,8 +50,8 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         leeway: 60
-            SDJWT:
-                type: 'SDJWT'
+            SD_JWT:
+                type: 'SD_JWT'
                 display: 'format.sdjwt'
                 order: 1
                 params:

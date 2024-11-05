@@ -26,7 +26,9 @@ pub mod mdoc_formatter;
 pub mod model;
 pub mod physical_card;
 pub mod provider;
+pub mod sdjwt;
 pub mod sdjwt_formatter;
+pub mod sdjwtvc_formatter;
 pub mod status_list_jwt_formatter;
 
 #[cfg(test)]

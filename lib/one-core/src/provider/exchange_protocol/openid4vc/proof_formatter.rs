@@ -40,6 +40,7 @@ impl OpenID4VCIProofJWTFormatter {
             expires_at: None,
             invalid_before: None,
             nonce: None,
+            vc_type: None,
         };
 
         let key_id = match jwk {

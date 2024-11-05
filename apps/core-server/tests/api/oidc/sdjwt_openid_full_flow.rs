@@ -73,7 +73,7 @@ async fn test_openid4vc_jwt_flow(
             &server_organisation,
             revocation_method,
             &new_claim_schemas,
-            "SDJWT",
+            "SD_JWT",
             "schema_id",
         )
         .await;
@@ -228,7 +228,7 @@ async fn test_openid4vc_jwt_flow(
             &holder_organisation,
             revocation_method,
             &new_claim_schemas,
-            "SDJWT",
+            "SD_JWT",
             &credential_schema.schema_id,
         )
         .await;
@@ -434,7 +434,7 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
             &server_organisation,
             "NONE",
             &new_claim_schemas,
-            "SDJWT",
+            "SD_JWT",
             "schema_id",
         )
         .await;
@@ -608,7 +608,7 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
             &holder_organisation,
             "NONE",
             &new_claim_schemas,
-            "SDJWT",
+            "SD_JWT",
             &credential_schema.schema_id,
         )
         .await;

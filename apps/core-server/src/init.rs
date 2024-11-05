@@ -14,6 +14,7 @@ use one_core::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use one_core::provider::credential_formatter::physical_card::PhysicalCardFormatter;
 use one_core::provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use one_core::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
+use one_core::provider::credential_formatter::sdjwtvc_formatter::SDJWTVCFormatter;
 use one_core::provider::credential_formatter::CredentialFormatter;
 use one_core::provider::did_method::jwk::JWKDidMethod;
 use one_core::provider::did_method::key::KeyDidMethod;
@@ -339,11 +340,17 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                         caching_loader.clone(),
                         client.clone(),
                     )) as _,
-                    "SDJWT" => {
+                    "SD_JWT" => {
                         let params = format_config
                             .get(name)
-                            .expect("SDJWT formatter params are mandatory");
+                            .expect("SD_JWT formatter params are mandatory");
                         Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _
+                    }
+                    "SD_JWT_VC" => {
+                        let params = format_config
+                            .get(name)
+                            .expect("SD-JWT VC formatter params are mandatory");
+                        Arc::new(SDJWTVCFormatter::new(params, crypto.clone())) as _
                     }
                     "JSON_LD_CLASSIC" => {
                         let params = format_config

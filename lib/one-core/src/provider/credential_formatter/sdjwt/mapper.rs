@@ -1,16 +1,16 @@
 use shared_types::DidValue;
 
-use super::model::{SDCredentialSubject, Sdvc, VCContent};
-use super::Sdvp;
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, Presentation, PublishedClaim,
 };
+use crate::provider::credential_formatter::sdjwt::model::{
+    SDCredentialSubject, Sdvc, Sdvp, VCContent,
+};
 
-pub(super) fn vc_from_credential(
+pub(crate) fn vc_from_credential(
     credential: CredentialData,
     sd_section: &[String],
     additional_context: Vec<ContextType>,
@@ -52,7 +52,7 @@ pub(super) fn vc_from_credential(
     })
 }
 
-pub(super) fn tokenize_claims(disclosures: Vec<String>) -> Result<String, FormatterError> {
+pub(crate) fn tokenize_claims(disclosures: Vec<String>) -> Result<String, FormatterError> {
     let mut token = String::new();
 
     for disclosure in disclosures {
@@ -63,7 +63,7 @@ pub(super) fn tokenize_claims(disclosures: Vec<String>) -> Result<String, Format
     Ok(token)
 }
 
-pub(super) fn nest_claims_to_json(
+pub(crate) fn nest_claims_to_json(
     claims: &[PublishedClaim],
 ) -> Result<serde_json::Value, FormatterError> {
     let mut data = serde_json::Value::Object(Default::default());
@@ -78,7 +78,7 @@ pub(super) fn nest_claims_to_json(
     Ok(data)
 }
 
-pub(super) fn unpack_arrays(
+pub(crate) fn unpack_arrays(
     value: &serde_json::Value,
 ) -> Result<serde_json::Value, FormatterError> {
     let mut result = serde_json::Value::Object(Default::default());
@@ -147,13 +147,6 @@ pub(super) fn unpack_arrays(
         })?;
 
     Ok(result)
-}
-
-pub(super) fn remove_first_nesting_layer(name: &str) -> String {
-    match name.find(NESTED_CLAIM_MARKER) {
-        Some(marker_pos) => name[marker_pos + 1..].to_string(),
-        None => name.to_string(),
-    }
 }
 
 impl From<Jwt<Sdvp>> for Presentation {

@@ -47,7 +47,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
             &server_organisation,
             "NONE",
             &sdjwt_claim_schemas,
-            "SDJWT",
+            "SD_JWT",
             "sdjwt_schema_id",
         )
         .await;
@@ -291,7 +291,7 @@ async fn test_openid4vc_sdjwt_jsonld_flow() {
             &holder_organisation,
             "NONE",
             &sdjwt_claim_schemas,
-            "SDJWT",
+            "SD_JWT",
             &sdjwt_credential_schema.schema_id,
         )
         .await;

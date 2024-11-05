@@ -400,7 +400,7 @@ fn initialize_core(
                                 caching_loader.clone(),
                                 client.clone(),
                             )) as _,
-                            "SDJWT" => {
+                            "SD_JWT" => {
                                 let params = format_config
                                     .get(name)
                                     .expect("SDJWT formatter params are mandatory");

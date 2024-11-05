@@ -56,6 +56,9 @@ pub struct JWTPayload<CustomPayload> {
     #[serde(rename = "nonce", default, skip_serializing_if = "Option::is_none")]
     pub nonce: Option<String>,
 
+    #[serde(rename = "vct", default, skip_serializing_if = "Option::is_none")]
+    pub vc_type: Option<String>,
+
     #[serde(flatten)]
     pub custom: CustomPayload,
 }

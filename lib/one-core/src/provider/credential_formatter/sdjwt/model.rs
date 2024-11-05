@@ -59,7 +59,7 @@ pub struct Sdvp {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub(crate) struct Disclosure {
+pub struct Disclosure {
     pub salt: String,
     pub key: String,
     pub value: serde_json::Value,

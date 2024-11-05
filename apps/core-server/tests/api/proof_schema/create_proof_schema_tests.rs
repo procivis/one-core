@@ -108,7 +108,7 @@ async fn test_succeed_to_create_nested_proof_schema_without_object_claim() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("SDJWT".to_owned()),
+                format: Some("SD_JWT".to_owned()),
                 ..Default::default()
             },
         )

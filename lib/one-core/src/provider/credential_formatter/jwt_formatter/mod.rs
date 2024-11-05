@@ -82,6 +82,7 @@ impl CredentialFormatter for JWTFormatter {
             jwt_id: credential_id,
             custom: vc,
             nonce: None,
+            vc_type: None,
         };
 
         let key_id = auth_fn.get_key_id();
@@ -151,6 +152,7 @@ impl CredentialFormatter for JWTFormatter {
             expires_at: None,
             invalid_before: None,
             nonce: None,
+            vc_type: None,
         };
 
         let jwt = Jwt::new("JWT".to_owned(), algorithm, None, None, payload);
@@ -207,6 +209,7 @@ impl CredentialFormatter for JWTFormatter {
             jwt_id: Some(Uuid::new_v4().to_string()),
             custom: vp,
             nonce,
+            vc_type: None,
         };
 
         let key_id = auth_fn.get_key_id();

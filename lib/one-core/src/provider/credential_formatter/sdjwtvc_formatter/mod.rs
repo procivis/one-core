@@ -1,6 +1,9 @@
-//! SD-JWT implementation.
+//! SD-JWT VC implementation.
 //
 // https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html
+
+#[cfg(test)]
+mod test;
 
 use std::sync::Arc;
 
@@ -9,6 +12,7 @@ use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use shared_types::DidValue;
 
+use super::json_ld::model::ContextType;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -17,19 +21,14 @@ use crate::provider::credential_formatter::model::{
     ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
     VerificationFn,
 };
-use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-
-#[cfg(test)]
-mod test;
-
-use super::json_ld::model::ContextType;
-use crate::provider::credential_formatter::sdjwt::model::*;
+use crate::provider::credential_formatter::sdjwt::model::Sdvp;
 use crate::provider::credential_formatter::sdjwt::{
     extract_credentials_internal, format_sdjwt_credentials, prepare_sd_presentation,
 };
+use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 
-pub struct SDJWTFormatter {
+pub struct SDJWTVCFormatter {
     pub crypto: Arc<dyn CryptoProvider>,
     params: Params,
 }
@@ -42,7 +41,7 @@ pub struct Params {
 }
 
 #[async_trait]
-impl CredentialFormatter for SDJWTFormatter {
+impl CredentialFormatter for SDJWTVCFormatter {
     async fn format_credentials(
         &self,
         credential: CredentialData,
@@ -52,6 +51,7 @@ impl CredentialFormatter for SDJWTFormatter {
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
+        let schema_id = credential.schema.id.to_owned();
         format_sdjwt_credentials(
             credential,
             holder_did,
@@ -62,8 +62,8 @@ impl CredentialFormatter for SDJWTFormatter {
             &*self.crypto,
             self.params.embed_layout_properties,
             self.params.leeway,
-            "SD_JWT".to_string(),
-            None,
+            "vc+sd-jwt".to_string(),
+            schema_id,
         )
         .await
     }
@@ -78,7 +78,7 @@ impl CredentialFormatter for SDJWTFormatter {
         _status_purpose: StatusPurpose,
     ) -> Result<String, FormatterError> {
         Err(FormatterError::Failed(
-            "Cannot format BitstringStatusList with SD-JWT formatter".to_string(),
+            "Cannot format BitstringStatusList with SD-JWT VC formatter".to_string(),
         ))
     }
 
@@ -163,10 +163,7 @@ impl CredentialFormatter for SDJWTFormatter {
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
             ],
-            features: vec![
-                "SELECTIVE_DISCLOSURE".to_string(),
-                "SUPPORTS_CREDENTIAL_DESIGN".to_string(),
-            ],
+            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
             selective_disclosure: vec!["ANY_LEVEL".to_string()],
             issuance_did_methods: vec![
                 "KEY".to_string(),
@@ -175,28 +172,16 @@ impl CredentialFormatter for SDJWTFormatter {
                 "X509".to_string(),
             ],
             issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
-            proof_exchange_protocols: vec!["OPENID4VC".to_string()],
-            revocation_methods: vec![
-                "NONE".to_string(),
-                "BITSTRINGSTATUSLIST".to_string(),
-                "LVVC".to_string(),
-            ],
-            verification_key_algorithms: vec![
-                "EDDSA".to_string(),
-                "ES256".to_string(),
-                "DILITHIUM".to_string(),
-            ],
-            verification_key_storages: vec![
-                "INTERNAL".to_string(),
-                "AZURE_VAULT".to_string(),
-                "SECURE_ELEMENT".to_string(),
-            ],
+            proof_exchange_protocols: vec![],
+            revocation_methods: vec!["NONE".to_string()],
+            verification_key_algorithms: vec![],
+            verification_key_storages: vec![],
             forbidden_claim_names: vec!["0".to_string()],
         }
     }
 }
 
-impl SDJWTFormatter {
+impl SDJWTVCFormatter {
     pub fn new(params: Params, crypto: Arc<dyn CryptoProvider>) -> Self {
         Self { params, crypto }
     }

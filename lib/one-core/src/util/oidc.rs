@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::provider::credential_formatter::json_ld;
+use crate::provider::credential_formatter::sdjwt::{detect_sdjwt_type_from_token, SdJwtType};
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 
 #[derive(Debug, Error)]
@@ -14,7 +15,8 @@ pub enum FormatError {
 pub fn map_core_to_oidc_format(format: &str) -> Result<String, FormatError> {
     match format {
         "JWT" => Ok("jwt_vc_json".to_string()),
-        "SDJWT" => Ok("vc+sd-jwt".to_string()),
+        "SD_JWT" => Ok("vc+sd-jwt".to_string()),
+        "SD_JWT_VC" => Ok("vc+sd-jwt".to_string()),
         "JSON_LD_CLASSIC" => Ok("ldp_vc".to_string()),
         "JSON_LD_BBSPLUS" => Ok("ldp_vc".to_string()),
         "JSON_LD" => Ok("ldp_vc".to_string()),
@@ -28,7 +30,8 @@ pub fn map_core_to_oidc_format(format: &str) -> Result<String, FormatError> {
 pub fn create_core_to_oicd_format_map() -> HashMap<String, String> {
     [
         ("JWT", "jwt_vc_json"),
-        ("SDJWT", "vc+sd-jwt"),
+        ("SD_JWT", "vc+sd-jwt"),
+        ("SD_JWT_VC", "vc+sd-jwt"),
         ("JSON_LD_CLASSIC", "ldp_vc"),
         ("JSON_LD_BBSPLUS", "ldp_vc"),
         ("JSON_LD", "ldp_vc"),
@@ -53,7 +56,7 @@ pub fn create_core_to_oicd_presentation_format_map() -> HashMap<String, String> 
 pub fn create_oicd_to_core_format_map() -> HashMap<String, String> {
     [
         ("jwt_vc_json", "JWT"),
-        ("vc+sd-jwt", "SDJWT"),
+        ("vc+sd-jwt", "SD_JWT"),
         ("ldp_vc", "JSON_LD"),
         ("mso_mdoc", "MDOC"),
     ]
@@ -65,7 +68,7 @@ pub fn create_oicd_to_core_format_map() -> HashMap<String, String> {
 pub fn map_from_oidc_format_to_core(format: &str) -> Result<String, OpenID4VCError> {
     match format {
         "jwt_vc_json" => Ok("JWT".to_string()),
-        "vc+sd-jwt" => Ok("SDJWT".to_string()),
+        "vc+sd-jwt" => Ok("SD_JWT".to_string()),
         "ldp_vc" => Ok("JSON_LD".to_string()),
         "mso_mdoc" => Ok("MDOC".to_string()),
         _ => Err(OpenID4VCError::OpenID4VCI(
@@ -80,7 +83,18 @@ pub fn map_from_oidc_format_to_core_detailed(
 ) -> Result<String, OpenID4VCError> {
     match format {
         "jwt_vc_json" => Ok("JWT".to_string()),
-        "vc+sd-jwt" => Ok("SDJWT".to_string()),
+        "vc+sd-jwt" => {
+            if let Some(token) = token {
+                match detect_sdjwt_type_from_token(token).map_err(|_| {
+                    OpenID4VCError::OpenID4VCI(OpenID4VCIError::UnsupportedCredentialFormat)
+                })? {
+                    SdJwtType::SdJwt => Ok("SD_JWT".to_string()),
+                    SdJwtType::SdJwtVc => Ok("SD_JWT_VC".to_string()),
+                }
+            } else {
+                Ok("SD_JWT".to_string())
+            }
+        }
         "ldp_vc" => {
             if let Some(token) = token {
                 match json_ld::get_crypto_suite(token) {

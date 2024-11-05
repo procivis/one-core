@@ -244,7 +244,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
     let credential_repository = MockCredentialRepository::default();
 
     let mut schema = generic_credential_schema();
-    schema.format = "SDJWT".to_string();
+    schema.format = "SD_JWT".to_string();
     let relations = CredentialSchemaRelations {
         claim_schemas: Some(ClaimSchemaRelations::default()),
         ..Default::default()

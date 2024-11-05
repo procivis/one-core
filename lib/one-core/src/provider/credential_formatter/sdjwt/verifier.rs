@@ -1,10 +1,12 @@
 use one_crypto::Hasher;
 
-use super::disclosures::{gather_hashes_from_disclosures, gather_hashes_from_hashed_claims};
-use super::model::Disclosure;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::sdjwt::disclosures::{
+    gather_hashes_from_disclosures, gather_hashes_from_hashed_claims,
+};
+use crate::provider::credential_formatter::sdjwt::model::Disclosure;
 
-pub(super) fn verify_claims(
+pub(crate) fn verify_claims(
     hashed_claims: &[String],
     disclosures: &[Disclosure],
     hasher: &dyn Hasher,
