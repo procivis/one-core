@@ -76,7 +76,7 @@ pub(crate) async fn get_proof_details(
         ("bearer" = [])
     ),
     summary = "List proof requests",
-    description = "Returns a list of proof requests in an organization.",
+    description = "Returns a list of proof requests in an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_proofs(
     state: State<AppState>,
@@ -174,8 +174,11 @@ pub(crate) async fn retract_proof(
     security(
         ("bearer" = [])
     ),
-    summary = "Delete proof claims",
-    description = "",
+    summary = "Delete claim data",
+    description = indoc::formatdoc! {"
+        For the specified proof, permanently deletes all claim data shared by the wallet
+        holder. The proof request metadata and related history entries are still accessible.
+    "},
 )]
 pub(crate) async fn delete_proof_claims(
     state: State<AppState>,

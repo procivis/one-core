@@ -85,7 +85,7 @@ pub(crate) async fn post_key(
         ("bearer" = [])
     ),
     summary = "List keys",
-    description = "Returns a list of keys created in an organization.",
+    description = "Returns a list of keys created in an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
 )]
 pub(crate) async fn get_key_list(
     state: State<AppState>,
@@ -151,7 +151,7 @@ pub(crate) async fn check_certificate(
     request_body = KeyGenerateCSRRequestRestDTO,
     responses(OkOrErrorResponse<KeyGenerateCSRResponseRestDTO>),
     params(
-        ("id" = KeyId, Path, description = "Key id")
+        ("id" = KeyId, Path, description = "Key id. Must be either `ES256` or `EDDSA`.")
     ),
     tag = "key",
     security(

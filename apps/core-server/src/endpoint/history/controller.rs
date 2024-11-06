@@ -23,8 +23,7 @@ use crate::router::AppState;
     ),
     summary = "List history events",
     description = indoc::formatdoc! {"
-        Returns a list of history events for entities in the system. Use the parameters
-        to filter.
+        Returns a list of history events for entities in the system. See the [guidelines](/api/general_guidelines) for handling list endpoints.
     "},
 )]
 pub(crate) async fn get_history_list(
