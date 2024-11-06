@@ -479,6 +479,7 @@ impl TryFrom<ImportProofSchemaClaimSchemaBindingDTO> for ImportProofSchemaClaimS
         let claims = value.claims.unwrap_or_default();
         Ok(Self {
             id: into_id(&value.id)?,
+            requested: value.requested,
             required: value.required,
             key: value.key,
             data_type: value.data_type,

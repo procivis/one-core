@@ -1343,6 +1343,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
+                requested: true,
                 required: true,
                 key: "field".to_string(),
                 data_type: "STRING".to_string(),
@@ -1545,6 +1546,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
+                requested: true,
                 required: true,
                 key: "field".to_string(),
                 data_type: "STRING".to_string(),
@@ -1752,11 +1754,13 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
-                required: true,
+                requested: false,
+                required: false,
                 key: "root".to_string(),
                 data_type: "OBJECT".to_string(),
                 claims: vec![ImportProofSchemaClaimSchemaDTO {
                     id: Uuid::new_v4().into(),
+                    requested: true,
                     required: true,
                     key: "name".to_string(),
                     data_type: "STRING".to_string(),
@@ -1859,6 +1863,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
+                requested: true,
                 required: true,
                 key: "root/name".to_string(),
                 data_type: "STRING".to_string(),
@@ -1936,6 +1941,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
+                requested: true,
                 required: true,
                 key: "root/name".to_string(),
                 data_type: "UNSUPPORTED_DATATYPE".to_string(),
@@ -2011,8 +2017,9 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
         proof_input_schemas: vec![ImportProofSchemaInputSchemaDTO {
             claim_schemas: vec![ImportProofSchemaClaimSchemaDTO {
                 id: Uuid::new_v4().into(),
+                requested: true,
                 required: true,
-                key: "root/name".to_string(),
+                key: "root".to_string(),
                 data_type: "UNSUPPORTED_DATATYPE".to_string(),
                 claims: vec![],
                 array: false,

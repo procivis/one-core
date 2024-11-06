@@ -469,6 +469,7 @@ fn renest_proof_claims(claims: Vec<ProofClaimDTO>, prefix: &str) -> Vec<ProofCla
         result.push(ProofClaimDTO {
             schema: ProofClaimSchemaResponseDTO {
                 id: Uuid::new_v4().into(),
+                requested: true,
                 required: true,
                 key: root_key.to_string(),
                 data_type: DatatypeType::Object.to_string(),
@@ -493,6 +494,7 @@ fn renest_proof_claims(claims: Vec<ProofClaimDTO>, prefix: &str) -> Vec<ProofCla
         result.push(ProofClaimDTO {
             schema: ProofClaimSchemaResponseDTO {
                 id: Uuid::new_v4().into(),
+                requested: true,
                 required: true,
                 key: root_key.to_string(),
                 data_type: DatatypeType::Object.to_string(),
@@ -560,6 +562,7 @@ pub async fn get_holder_proof_detail(
         let claim = ProofClaimDTO {
             schema: ProofClaimSchemaResponseDTO {
                 id: claim_schema.id,
+                requested: true,
                 required: true,
                 key: claim_schema.key.clone(),
                 data_type: claim_schema.data_type.clone(),

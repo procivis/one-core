@@ -424,6 +424,7 @@ dictionary ProofRequestClaimBindingDTO {
 
 dictionary ProofClaimSchemaBindingDTO {
   string id;
+  boolean requested;
   boolean required;
   string key;
   string data_type;
@@ -433,6 +434,7 @@ dictionary ProofClaimSchemaBindingDTO {
 
 dictionary ImportProofSchemaClaimSchemaBindingDTO {
   string id;
+  boolean requested;
   boolean required;
   string key;
   string data_type;

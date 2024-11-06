@@ -110,6 +110,7 @@ pub struct ImportProofSchemaInputSchemaRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct ImportProofSchemaClaimSchemaRestDTO {
     pub id: Uuid,
+    pub requested: bool,
     pub required: bool,
     pub key: String,
     #[schema(example = "STRING")]
@@ -207,6 +208,9 @@ pub struct GetProofSchemaResponseRestDTO {
 #[from(ProofClaimSchemaResponseDTO)]
 pub struct ProofClaimSchemaResponseRestDTO {
     pub id: Uuid,
+    /// Marking attributes that are targeted with proof request
+    pub requested: bool,
+    /// Requested as mandatory or optional
     pub required: bool,
     pub key: String,
     /// The type of data accepted for this attribute. See the [datatypes](/api/datatypes) guide.

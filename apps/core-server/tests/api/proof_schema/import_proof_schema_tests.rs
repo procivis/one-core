@@ -88,6 +88,7 @@ async fn test_import_proof_schema_ok() {
             {
                 "claimSchemas": [{
                     "id": Uuid::new_v4(),
+                    "requested": true,
                     "required": true,
                     "key": requested_claim_schema.schema.key,
                     "dataType": requested_claim_schema.schema.data_type,
@@ -176,6 +177,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
             {
                 "claimSchemas": [{
                     "id": requested_claim_schema.schema.id,
+                    "requested": true,
                     "required": requested_claim_schema.required,
                     "key": requested_claim_schema.schema.key,
                     "dataType": requested_claim_schema.schema.data_type,
@@ -301,11 +303,13 @@ async fn test_import_proof_schema_nested_array() {
             {
                 "claimSchemas": [{
                     "id": requested_claim_schema.schema.id,
+                    "requested": true,
                     "required": requested_claim_schema.required,
                     "key": requested_claim_schema.schema.key,
                     "dataType": requested_claim_schema.schema.data_type,
                     "claims": [{
                         "id": "06155d27-ea07-4be4-b5e3-c057c741d959",
+                        "requested": false,
                         "required": true,
                         "key": "field",
                         "dataType": "STRING",

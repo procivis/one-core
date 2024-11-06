@@ -16,8 +16,7 @@ use crate::model::common::ExactColumn;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::organisation::Organisation;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
+use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
 
 pub(super) fn convert_proof_schema_to_response(
@@ -51,44 +50,14 @@ pub(super) fn convert_proof_schema_to_response(
 pub(super) fn proof_input_from_import_request(
     input_schema: ImportProofSchemaInputSchemaDTO,
     credential_schema: CredentialSchema,
-    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<ProofInputSchema, ServiceError> {
     let credential_schema_claims = credential_schema
         .claim_schemas
         .as_ref()
         .ok_or_else(|| ServiceError::MappingError("claim_schemas is None".to_string()))?;
 
-    let format_capabilities = formatter_provider
-        .get_formatter(&credential_schema.format)
-        .ok_or_else(|| MissingProviderError::Formatter(credential_schema.format.to_owned()))?
-        .get_capabilities();
-
-    let disclosure_level: Option<usize> = if format_capabilities
-        .features
-        .contains(&"SELECTIVE_DISCLOSURE".to_string())
-    {
-        match format_capabilities
-            .selective_disclosure
-            .first()
-            .map(|c| c.as_str())
-        {
-            Some("ANY_LEVEL") => None,
-            Some("SECOND_LEVEL") => Some(2),
-            _ => {
-                return Err(ServiceError::MappingError(
-                    "invalid selective disclosure".to_string(),
-                ))
-            }
-        }
-    } else {
-        Some(1)
-    };
-
-    let proof_input_claim_schemas = extract_proof_input_claim_schemas(
-        input_schema.claim_schemas,
-        credential_schema_claims,
-        disclosure_level,
-    )?;
+    let proof_input_claim_schemas =
+        extract_proof_input_claim_schemas(input_schema.claim_schemas, credential_schema_claims)?;
 
     Ok(ProofInputSchema {
         validity_constraint: input_schema.validity_constraint,
@@ -100,12 +69,10 @@ pub(super) fn proof_input_from_import_request(
 fn extract_proof_input_claim_schemas(
     proof_schema_claims: Vec<ImportProofSchemaClaimSchemaDTO>,
     credential_schema_claims: &[CredentialSchemaClaim],
-    disclosure_level: Option<usize>,
 ) -> Result<Vec<ProofInputClaimSchema>, ServiceError> {
     let proof_input_claim_schemas = extract_proof_input_claim_schemas_nested(
         proof_schema_claims,
         credential_schema_claims,
-        disclosure_level,
         None,
     )?;
 
@@ -124,13 +91,11 @@ fn extract_proof_input_claim_schemas(
 fn extract_proof_input_claim_schemas_nested(
     proof_schema_claims: Vec<ImportProofSchemaClaimSchemaDTO>,
     credential_schema_claims: &[CredentialSchemaClaim],
-    remaining_disclosure_level: Option<usize>,
     parent_path_prefix: Option<String>,
 ) -> Result<Vec<ProofInputClaimSchema>, ServiceError> {
     let mut result: Vec<ProofInputClaimSchema> = vec![];
 
     for proof_schema_claim in proof_schema_claims {
-        let child_claims = proof_schema_claim.claims;
         let path = if let Some(parent_path) = &parent_path_prefix {
             format!(
                 "{parent_path}{NESTED_CLAIM_MARKER}{}",
@@ -140,14 +105,7 @@ fn extract_proof_input_claim_schemas_nested(
             proof_schema_claim.key
         };
 
-        if
-        // only the leaf nodes contain the requested claims
-        child_claims.is_empty()
-        // or the top-most array nodes
-        || proof_schema_claim.array
-        // or nodes on the deepest possible disclosure level
-        || remaining_disclosure_level.is_some_and(|l| l == 1)
-        {
+        if proof_schema_claim.requested {
             let claim_schema = credential_schema_claims
                 .iter()
                 .find(|credential_schema_claim| credential_schema_claim.schema.key == path)
@@ -162,9 +120,8 @@ fn extract_proof_input_claim_schemas_nested(
             });
         } else {
             result.extend(extract_proof_input_claim_schemas_nested(
-                child_claims,
+                proof_schema_claim.claims,
                 credential_schema_claims,
-                remaining_disclosure_level.map(|l| l - 1),
                 Some(path),
             )?);
         }
@@ -207,11 +164,11 @@ fn convert_input_schema_to_response(
 }
 
 fn append_object_claim_schemas(
-    mut claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
+    mut proof_claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
     credential_claim_schemas: &[CredentialSchemaClaim],
     datatype_config: &DatatypeConfig,
 ) -> Result<Vec<ProofClaimSchemaResponseDTO>, ServiceError> {
-    let mut nested_claim_schemas: Vec<_> = claim_schemas
+    let mut nested_claim_schemas: Vec<_> = proof_claim_schemas
         .iter()
         // todo: can arrays be root objects
         .filter(|cs| is_object(&cs.data_type, datatype_config).unwrap_or(false))
@@ -227,7 +184,8 @@ fn append_object_claim_schemas(
                 })
                 .map(|child_claim| ProofClaimSchemaResponseDTO {
                     id: child_claim.schema.id,
-                    required: child_claim.required,
+                    requested: false,
+                    required: os.required,
                     key: child_claim.schema.key.to_owned(),
                     data_type: child_claim.schema.data_type.to_owned(),
                     claims: vec![],
@@ -237,13 +195,16 @@ fn append_object_claim_schemas(
         })
         .collect();
 
-    claim_schemas.append(&mut nested_claim_schemas);
+    proof_claim_schemas.append(&mut nested_claim_schemas);
 
     credential_claim_schemas.iter().try_for_each(|value| {
-        if is_object(&value.schema.data_type, datatype_config)? {
-            claim_schemas.push(ProofClaimSchemaResponseDTO {
+        if is_object(&value.schema.data_type, datatype_config)?
+            && !proof_claim_schemas.iter().any(|c| c.id == value.schema.id)
+        {
+            proof_claim_schemas.push(ProofClaimSchemaResponseDTO {
                 id: value.schema.id,
-                required: value.required,
+                requested: false,
+                required: false,
                 key: value.schema.key.to_owned(),
                 data_type: value.schema.data_type.to_owned(),
                 claims: vec![],
@@ -254,7 +215,7 @@ fn append_object_claim_schemas(
         Ok::<(), ServiceError>(())
     })?;
 
-    Ok(claim_schemas)
+    Ok(proof_claim_schemas)
 }
 
 fn nest_claim_schemas(
@@ -321,6 +282,7 @@ impl From<ProofInputClaimSchema> for ProofClaimSchemaResponseDTO {
     fn from(value: ProofInputClaimSchema) -> Self {
         Self {
             id: value.schema.id,
+            requested: true,
             required: value.required,
             key: value.schema.key,
             data_type: value.schema.data_type,
@@ -334,6 +296,8 @@ impl From<CredentialSchemaClaim> for ProofClaimSchemaResponseDTO {
     fn from(value: CredentialSchemaClaim) -> Self {
         Self {
             id: value.schema.id,
+            // TODO: unknown requested and required values
+            requested: true,
             required: value.required,
             key: value.schema.key,
             data_type: value.schema.data_type,

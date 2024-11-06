@@ -313,7 +313,7 @@ impl ProofSchemaService {
                                 self.create_credential_schema_from_input_schema(&request_input_schema, &organisation).await
                             }?;
 
-                        proof_input_from_import_request(request_input_schema, credential_schema, &*self.formatter_provider)
+                        proof_input_from_import_request(request_input_schema, credential_schema)
                     }
                 });
 

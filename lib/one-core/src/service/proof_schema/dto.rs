@@ -20,6 +20,7 @@ pub type GetProofSchemaQueryDTO = GetListQueryParams<SortableProofSchemaColumn>;
 #[serde(rename_all = "camelCase")]
 pub struct ProofClaimSchemaResponseDTO {
     pub id: ClaimSchemaId,
+    pub requested: bool,
     pub required: bool,
     pub key: String,
     pub data_type: String,
@@ -112,6 +113,7 @@ pub struct ImportProofSchemaInputSchemaDTO {
 #[derive(Clone, Debug)]
 pub struct ImportProofSchemaClaimSchemaDTO {
     pub id: ClaimSchemaId,
+    pub requested: bool,
     pub required: bool,
     pub key: String,
     pub data_type: String,

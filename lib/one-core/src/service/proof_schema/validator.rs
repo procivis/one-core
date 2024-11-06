@@ -4,7 +4,10 @@ use itertools::Itertools;
 use shared_types::OrganisationId;
 use time::{Duration, OffsetDateTime};
 
-use super::dto::{CreateProofSchemaRequestDTO, ImportProofSchemaDTO, ProofInputSchemaRequestDTO};
+use super::dto::{
+    CreateProofSchemaRequestDTO, ImportProofSchemaClaimSchemaDTO, ImportProofSchemaDTO,
+    ProofInputSchemaRequestDTO,
+};
 use super::ProofSchemaImportError;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
@@ -224,13 +227,24 @@ pub(super) fn validate_imported_proof_schema(
             .get_if_enabled(format)
             .map_err(|_| ProofSchemaImportError::UnsupportedFormat(format.to_owned()))?;
 
-        for claim_schema in &schema.claim_schemas {
-            let datatype = &claim_schema.data_type;
-            config
-                .datatype
-                .get_if_enabled(datatype)
-                .map_err(|_| ProofSchemaImportError::UnsupportedDatatype(datatype.to_owned()))?;
-        }
+        validate_imported_proof_schema_data_types(&schema.claim_schemas, config)?;
+    }
+
+    Ok(())
+}
+
+fn validate_imported_proof_schema_data_types(
+    claim_schemas: &[ImportProofSchemaClaimSchemaDTO],
+    config: &CoreConfig,
+) -> Result<(), BusinessLogicError> {
+    for claim_schema in claim_schemas {
+        let datatype = &claim_schema.data_type;
+        config
+            .datatype
+            .get_if_enabled(datatype)
+            .map_err(|_| ProofSchemaImportError::UnsupportedDatatype(datatype.to_owned()))?;
+
+        validate_imported_proof_schema_data_types(&claim_schema.claims, config)?;
     }
 
     Ok(())

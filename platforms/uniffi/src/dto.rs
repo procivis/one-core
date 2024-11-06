@@ -683,6 +683,7 @@ impl From<ProofClaimValueDTO> for ProofRequestClaimValueBindingDTO {
 pub struct ProofClaimSchemaBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
+    pub requested: bool,
     pub required: bool,
     pub key: String,
     pub data_type: String,
@@ -694,6 +695,7 @@ pub struct ProofClaimSchemaBindingDTO {
 #[derive(Debug)]
 pub struct ImportProofSchemaClaimSchemaBindingDTO {
     pub id: String,
+    pub requested: bool,
     pub required: bool,
     pub key: String,
     pub data_type: String,
