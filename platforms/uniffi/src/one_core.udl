@@ -454,6 +454,7 @@ dictionary ProofRequestBindingDTO {
   string created_date;
   string last_modified;
   string? verifier_did;
+  string? holder_did;
   GetProofSchemaListItemBindingDTO? proof_schema;
   string exchange;
   string? redirect_uri;

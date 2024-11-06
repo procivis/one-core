@@ -156,8 +156,6 @@ pub async fn get_verifier_proof_detail(
     claims_removed_event: Option<History>,
     validity_credential_repository: &dyn ValidityCredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
-    let holder_did_id = proof.holder_did.as_ref().map(|did| did.id);
-
     let schema = proof
         .schema
         .as_ref()
@@ -412,7 +410,7 @@ pub async fn get_verifier_proof_detail(
     }
 
     let redirect_uri = proof.redirect_uri.to_owned();
-    let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
+    let list_item_response: ProofListItemResponseDTO = proof.clone().try_into()?;
 
     Ok(ProofDetailResponseDTO {
         id: list_item_response.id,
@@ -423,7 +421,7 @@ pub async fn get_verifier_proof_detail(
         retain_until_date: list_item_response.retain_until_date,
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
-        holder_did_id,
+        holder_did: convert_inner(proof.holder_did),
         transport: list_item_response.transport,
         exchange: list_item_response.exchange,
         state: list_item_response.state,
@@ -520,8 +518,6 @@ pub async fn get_holder_proof_detail(
         .as_ref()
         .and_then(|did| did.organisation.as_ref().map(|o| o.id));
 
-    let holder_did_id = value.holder_did.as_ref().map(|did| did.id);
-
     let redirect_uri = value.redirect_uri.to_owned();
 
     let mut submitted_credentials: HashMap<
@@ -614,7 +610,7 @@ pub async fn get_holder_proof_detail(
         })
         .collect();
 
-    let list_item_response: ProofListItemResponseDTO = value.try_into()?;
+    let list_item_response: ProofListItemResponseDTO = value.clone().try_into()?;
 
     Ok(ProofDetailResponseDTO {
         id: list_item_response.id,
@@ -625,7 +621,7 @@ pub async fn get_holder_proof_detail(
         retain_until_date: list_item_response.retain_until_date,
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
-        holder_did_id,
+        holder_did: convert_inner(value.holder_did),
         transport: list_item_response.transport,
         exchange: list_item_response.exchange,
         state: list_item_response.state,

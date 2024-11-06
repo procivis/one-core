@@ -289,6 +289,8 @@ pub struct ProofDetailResponseRestDTO {
 
     #[from(with_fn = convert_inner)]
     pub verifier_did: Option<DidListItemResponseRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub holder_did: Option<DidListItemResponseRestDTO>,
     pub exchange: String,
     pub transport: String,
     pub state: ProofStateRestEnum,

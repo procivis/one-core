@@ -119,6 +119,7 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             last_modified: value.last_modified.format_timestamp(),
             proof_schema: convert_inner(value.schema),
             verifier_did: optional_did_string(value.verifier_did),
+            holder_did: optional_did_string(value.holder_did),
             exchange: value.exchange,
             redirect_uri: value.redirect_uri,
             proof_inputs: convert_inner(value.proof_inputs),

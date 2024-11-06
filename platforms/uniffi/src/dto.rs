@@ -634,6 +634,7 @@ pub struct ProofRequestBindingDTO {
     pub created_date: String,
     pub last_modified: String,
     pub verifier_did: Option<String>,
+    pub holder_did: Option<String>,
     pub state: ProofStateBindingEnum,
     pub proof_schema: Option<GetProofSchemaListItemBindingDTO>,
     pub exchange: String,
