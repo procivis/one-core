@@ -1,6 +1,7 @@
 keyStorage:
   AZURE_VAULT:
     disabled: true
+    type: AZURE_VAULT
     params:
       private:
         vaultUrl: "https://procivis-one-demo.vault.azure.net"
