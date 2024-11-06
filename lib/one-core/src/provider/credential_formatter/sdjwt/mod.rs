@@ -192,7 +192,7 @@ pub async fn format_sdjwt_credentials(
     let key_id = auth_fn.get_key_id();
     let jwt = Jwt::new(token_type, algorithm.to_owned(), key_id, None, payload);
 
-    let mut token = jwt.tokenize(auth_fn).await?;
+    let mut token = jwt.tokenize(Some(auth_fn)).await?;
 
     let disclosures_token = tokenize_claims(disclosures)?;
 

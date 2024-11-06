@@ -66,8 +66,7 @@ pub struct JWTPayload<CustomPayload> {
 #[derive(Debug)]
 pub struct DecomposedToken<Payload> {
     pub header: JWTHeader,
-    pub header_json: String,
     pub payload: JWTPayload<Payload>,
-    pub payload_json: String,
     pub signature: Vec<u8>,
+    pub unverified_jwt: String,
 }

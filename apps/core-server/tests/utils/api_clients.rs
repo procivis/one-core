@@ -128,6 +128,10 @@ impl Response {
         self.resp.status().into()
     }
 
+    pub async fn text(self) -> String {
+        self.resp.text().await.unwrap()
+    }
+
     pub async fn json<T: DeserializeOwned>(self) -> T {
         let full = self.resp.bytes().await.unwrap();
         serde_json::from_slice(&full).unwrap()

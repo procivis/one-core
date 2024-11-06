@@ -98,6 +98,7 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             ssi::controller::oidc_verifier_direct_post,
             ssi::controller::oidc_verifier_presentation_definition,
             ssi::controller::oidc_client_metadata,
+            ssi::controller::oidc_client_request,
             ssi::controller::get_json_ld_context,
             ssi::controller::ssi_get_credential_schema,
             ssi::controller::ssi_get_proof_schema,

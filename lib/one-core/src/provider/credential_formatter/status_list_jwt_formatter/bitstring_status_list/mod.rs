@@ -56,7 +56,7 @@ impl BitstringStatusListJwtFormatter {
 
         let jwt = Jwt::new("JWT".to_owned(), algorithm, None, None, payload);
 
-        jwt.tokenize(auth_fn).await
+        jwt.tokenize(Some(auth_fn)).await
     }
 
     pub async fn parse_status_list(

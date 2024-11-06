@@ -10,7 +10,6 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use shared_types::DidValue;
 
-use self::mapper::json_from_decoded;
 use self::model::{DecomposedToken, JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
@@ -39,12 +38,12 @@ impl TokenVerifier for Box<dyn TokenVerifier> {
 }
 
 #[derive(Debug)]
-pub struct Jwt<Payload: Serialize + DeserializeOwned + Debug> {
+pub struct Jwt<Payload> {
     pub header: JWTHeader,
     pub payload: JWTPayload<Payload>,
 }
 
-impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
+impl<Payload> Jwt<Payload> {
     pub fn new(
         signature_type: String,
         algorithm: String,
@@ -61,24 +60,19 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
 
         Jwt { header, payload }
     }
+}
 
+impl<Payload: DeserializeOwned> Jwt<Payload> {
     pub async fn build_from_token(
         token: &str,
         verification: Option<Box<dyn TokenVerifier>>,
     ) -> Result<Jwt<Payload>, FormatterError> {
         let DecomposedToken {
             header,
-            header_json,
             payload,
-            payload_json,
             signature,
+            unverified_jwt,
         } = Jwt::decompose_token(token)?;
-
-        let jwt = format!(
-            "{}.{}",
-            string_to_b64url_string(&header_json)?,
-            string_to_b64url_string(&payload_json)?,
-        );
 
         if let Some(verification) = verification {
             verification
@@ -86,7 +80,7 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
                     payload.issuer.as_ref().map(|v| DidValue::from(v.clone())),
                     header.key_id.as_deref(),
                     &header.algorithm,
-                    jwt.as_bytes(),
+                    unverified_jwt.as_bytes(),
                     &signature,
                 )
                 .await
@@ -98,43 +92,19 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
         Ok(jwt)
     }
 
-    pub async fn tokenize(&self, auth_fn: AuthenticationFn) -> Result<String, FormatterError> {
-        let jwt_header_json = serde_json::to_string(&self.header)
-            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-        let payload_json = serde_json::to_string(&self.payload)
-            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-        let mut token = format!(
-            "{}.{}",
-            string_to_b64url_string(&jwt_header_json)?,
-            string_to_b64url_string(&payload_json)?,
-        );
-
-        let signature = auth_fn
-            .sign(token.as_bytes())
-            .await
-            .map_err(|e| FormatterError::CouldNotSign(e.to_string()))?;
-
-        if !signature.is_empty() {
-            let signature_encoded = bin_to_b64url_string(&signature)?;
-
-            token.push('.');
-            token.push_str(&signature_encoded);
-        }
-
-        Ok(token)
-    }
-
     pub fn decompose_token(token: &str) -> Result<DecomposedToken<Payload>, FormatterError> {
         let token = token.trim_matches(|c: char| c == '.' || c.is_whitespace());
         let mut jwt_parts = token.splitn(3, '.');
 
-        let (Some(header), Some(payload), Some(signature)) =
+        let (Some(header), Some(payload), maybe_signature) =
             (jwt_parts.next(), jwt_parts.next(), jwt_parts.next())
         else {
             return Err(FormatterError::CouldNotExtractCredentials(
                 "Missing token part".to_owned(),
             ));
         };
+
+        let unverified_jwt = [header, payload].join(".");
 
         let header_decoded = Base64UrlSafeNoPadding::decode_to_vec(header, None)
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
@@ -148,15 +118,53 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
         let payload: JWTPayload<Payload> = serde_json::from_slice(&payload_decoded)
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
 
-        let signature = Base64UrlSafeNoPadding::decode_to_vec(signature, None)
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+        let signature = maybe_signature
+            .map(|signature| {
+                Base64UrlSafeNoPadding::decode_to_vec(signature, None)
+                    .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))
+            })
+            .transpose()?
+            .unwrap_or_default();
 
         Ok(DecomposedToken {
             header,
-            header_json: json_from_decoded(header_decoded)?,
             payload,
-            payload_json: json_from_decoded(payload_decoded)?,
             signature,
+            unverified_jwt,
         })
+    }
+}
+
+impl<Payload: Serialize> Jwt<Payload> {
+    // todo: this probably needs to be a "sign" function on an UnsignedJwt type
+    pub async fn tokenize(
+        &self,
+        auth_fn: Option<AuthenticationFn>,
+    ) -> Result<String, FormatterError> {
+        let jwt_header_json = serde_json::to_string(&self.header)
+            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
+        let payload_json = serde_json::to_string(&self.payload)
+            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
+        let mut token = format!(
+            "{}.{}",
+            string_to_b64url_string(&jwt_header_json)?,
+            string_to_b64url_string(&payload_json)?,
+        );
+
+        if let Some(auth_fn) = auth_fn {
+            let signature = auth_fn
+                .sign(token.as_bytes())
+                .await
+                .map_err(|e| FormatterError::CouldNotSign(e.to_string()))?;
+
+            if !signature.is_empty() {
+                let signature_encoded = bin_to_b64url_string(&signature)?;
+
+                token.push('.');
+                token.push_str(&signature_encoded);
+            }
+        }
+
+        Ok(token)
     }
 }

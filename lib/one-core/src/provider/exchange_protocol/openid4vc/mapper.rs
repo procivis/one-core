@@ -1223,12 +1223,8 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
 ) -> Result<String, ExchangeProtocolError> {
     #[derive(Serialize)]
     #[serde(untagged)]
-    enum UrlParams<'a> {
-        RequestUri {
-            client_id: &'a str,
-            request_uri: String,
-        },
-        Other {
+    enum QueryParamsOption<'a> {
+        Default {
             response_type: &'a str,
             state: String,
             nonce: &'a str,
@@ -1241,10 +1237,14 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
             presentation_definition: Option<String>,
             presentation_definition_uri: Option<String>,
         },
+        RequestUri {
+            client_id: &'a str,
+            request_uri: String,
+        },
     }
 
     let params = if openidvc_params.use_request_uri {
-        UrlParams::RequestUri {
+        QueryParamsOption::RequestUri {
             client_id,
             request_uri: format!(
                 "{base_url}/ssi/oidc-verifier/v1/{}/client-request",
@@ -1289,7 +1289,7 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
             ));
         }
 
-        UrlParams::Other {
+        QueryParamsOption::Default {
             response_type: "vp_token",
             state: interaction_id.to_string(),
             nonce,

@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::ops::Sub;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -40,8 +39,8 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
     parse_interaction_content, vec_last_position_from_token_path,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    AcceptProofResult, OpenID4VCICredentialConfigurationData, OpenID4VPInteractionContent,
-    OpenID4VPPresentationDefinition, RequestData,
+    AcceptProofResult, OpenID4VCICredentialConfigurationData, OpenID4VPPresentationDefinition,
+    RequestData,
 };
 use crate::provider::exchange_protocol::openid4vc::validator::{
     peek_presentation, throw_if_interaction_created_date,
@@ -208,10 +207,10 @@ pub fn get_credential_schema_base_url(
 }
 
 pub fn oidc_verifier_presentation_definition(
-    proof: Proof,
-    mut interaction_content: OpenID4VPInteractionContent,
+    proof: &Proof,
+    mut presentation_definition: OpenID4VPPresentationDefinition,
 ) -> Result<OpenID4VPPresentationDefinition, OpenID4VCError> {
-    throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+    throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Pending)?;
 
     let proof_schema = proof.schema.as_ref().ok_or(OpenID4VCError::MappingError(
         "Proof schema not found".to_string(),
@@ -226,12 +225,7 @@ pub fn oidc_verifier_presentation_definition(
         }
     };
 
-    if proof_schema_inputs.len()
-        != interaction_content
-            .presentation_definition
-            .input_descriptors
-            .len()
-    {
+    if proof_schema_inputs.len() != presentation_definition.input_descriptors.len() {
         return Err(OpenID4VCError::Other(
             "Proof schema inputs length doesn't match interaction data input descriptors length"
                 .to_owned(),
@@ -239,19 +233,18 @@ pub fn oidc_verifier_presentation_definition(
     }
 
     let now = OffsetDateTime::now_utc();
-    interaction_content
-        .presentation_definition
+    for (input_descriptor, proof_schema_input) in presentation_definition
         .input_descriptors
         .iter_mut()
         .zip(proof_schema_inputs)
-        .for_each(|(input_descriptor, proof_schema_input)| {
-            if let Some(validity_constraint) = proof_schema_input.validity_constraint {
-                input_descriptor.constraints.validity_credential_nbf =
-                    Some(now.sub(Duration::seconds(validity_constraint)));
-            }
-        });
+    {
+        if let Some(validity_constraint) = proof_schema_input.validity_constraint {
+            input_descriptor.constraints.validity_credential_nbf =
+                Some(now - Duration::seconds(validity_constraint));
+        }
+    }
 
-    Ok(interaction_content.presentation_definition)
+    Ok(presentation_definition)
 }
 
 #[allow(clippy::too_many_arguments)]

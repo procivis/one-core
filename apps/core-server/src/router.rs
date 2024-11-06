@@ -281,6 +281,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(ssi::controller::oidc_client_metadata),
         )
         .route(
+            "/ssi/oidc-verifier/v1/:id/client-request",
+            get(ssi::controller::oidc_client_request),
+        )
+        .route(
             "/ssi/revocation/v1/list/:id",
             get(ssi::controller::get_revocation_list_by_id),
         )

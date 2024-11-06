@@ -14,8 +14,8 @@ use shared_types::{CredentialId, KeyId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{
-    deserialize_interaction_data, interaction_data_from_query, interaction_data_from_request_uri,
-    serialize_interaction_data, validate_interaction_data,
+    deserialize_interaction_data, interaction_data_from_client_request,
+    interaction_data_from_query, serialize_interaction_data, validate_interaction_data,
 };
 use uuid::Uuid;
 
@@ -1135,7 +1135,7 @@ async fn handle_proof_invitation(
         .query_pairs()
         .find_map(|(k, v)| (k == REQUEST_URI_QUERY_PARAM_KEY).then_some(v))
     {
-        interaction_data_from_request_uri(client, &request_uri, allow_insecure_http_transport)
+        interaction_data_from_client_request(client, &request_uri, allow_insecure_http_transport)
             .await?
     } else {
         let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(

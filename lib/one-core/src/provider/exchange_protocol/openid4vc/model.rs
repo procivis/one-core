@@ -373,6 +373,19 @@ pub struct OpenID4VPClientMetadata {
         Option<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct OpenID4VPClientRequestResponse {
+    pub response_type: String,
+    pub response_mode: String,
+    pub client_id: String,
+    pub client_id_scheme: String,
+    pub client_metadata: OpenID4VPClientMetadata,
+    pub presentation_definition: OpenID4VPPresentationDefinition,
+    pub response_uri: String,
+    pub nonce: String,
+    pub state: Option<String>,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VCIDiscoveryResponseDTO {
     pub issuer: String,

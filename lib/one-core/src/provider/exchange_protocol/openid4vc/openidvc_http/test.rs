@@ -3,7 +3,9 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
 
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indexmap::{indexmap, IndexMap};
+use serde_json::json;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -545,6 +547,126 @@ async fn test_handle_invitation_proof_success() {
             &storage_proxy,
             &operations,
         )
+        .await
+        .unwrap();
+    assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
+}
+
+#[tokio::test]
+async fn test_handle_invitation_proof_with_client_request_ok() {
+    let protocol = setup_protocol(TestInputs {
+        params: Some(OpenID4VCParams {
+            pre_authorized_code_expires_in: 60,
+            token_expires_in: 60,
+            refresh_expires_in: 60,
+            credential_offer_by_value: false,
+            client_metadata_by_value: false,
+            presentation_definition_by_value: false,
+            allow_insecure_http_transport: true,
+            use_request_uri: true,
+        }),
+        ..Default::default()
+    });
+
+    let mock_server = MockServer::start().await;
+
+    let client_id = format!("{}/client-id", mock_server.uri());
+    let client_request_uri = format!("{}/client-request", mock_server.uri());
+    let client_request_resp = [
+        json!({"alg": "none"}),
+        json!({
+          "response_type": "vp_token",
+          "state": "0193a9e2-edb7-48b7-bf82-3cbe6a74d711",
+          "nonce": "nonce123",
+          "response_mode": "direct_post",
+          "client_id_scheme": "redirect_uri",
+          "client_id": client_id,
+          "client_metadata": {
+            "jwks": [
+              {
+                "kid": "e8745b9f-337a-4584-b8a3-3697e56512b5",
+                "kty": "EC",
+                "use": "enc",
+                "crv": "P-256",
+                "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
+                "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA"
+              }
+            ],
+            "vp_formats": {
+              "jwt_vp_json": {
+                "alg": [
+                  "EdDSA",
+                  "ES256"
+                ]
+              }
+            },
+            "client_id_scheme": "redirect_uri",
+            "authorization_encrypted_response_alg": "ECDH-ES",
+            "authorization_encrypted_response_enc": "A256GCM"
+          },
+          "presentation_definition": {
+            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
+            "input_descriptors": [
+              {
+                "id": "input_0",
+                "format": {
+                  "jwt_vc_json": {
+                    "alg": [
+                      "EdDSA",
+                      "ES256"
+                    ]
+                  }
+                },
+                "constraints": {
+                  "fields": [
+                    {
+                      "id": "80ce6ddc-d994-4b27-8d80-41ce7a53a66e",
+                      "path": [
+                        "$.vc.credentialSubject.cat1"
+                      ],
+                      "optional": false,
+                    },
+                    {
+                      "id": "58ca9c64-626b-49c1-856c-81f08932d112",
+                      "path": [
+                        "$.vc.credentialSubject.cat2"
+                      ],
+                      "optional": false,
+                    }
+                  ],
+                  "validity_credential_nbf": null
+                }
+              }
+            ]
+          },
+          "response_uri": client_id,
+        }),
+    ]
+    .map(|json| json.to_string())
+    .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
+    .join(".");
+
+    Mock::given(method(Method::GET))
+        .and(path("/client-request"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(client_request_resp))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let url: Url = format!("openid4vp://?client_id={client_id}&request_uri={client_request_uri}",)
+        .parse()
+        .unwrap();
+
+    let mut storage_proxy = MockStorageProxy::default();
+    storage_proxy
+        .expect_create_interaction()
+        .times(1)
+        .returning(move |request| Ok(request.id));
+
+    let operations = MockHandleInvitationOperations::default();
+
+    let result = protocol
+        .handle_invitation(url, generic_organisation(), &storage_proxy, &operations)
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));

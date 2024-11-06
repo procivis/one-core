@@ -47,6 +47,11 @@ impl SSIApi {
         self.client.get(&url).await
     }
 
+    pub async fn get_client_request(&self, proof_id: impl Into<Uuid>) -> Response {
+        let url = format!("/ssi/oidc-verifier/v1/{}/client-request", proof_id.into());
+        self.client.get(&url).await
+    }
+
     pub async fn issuer_create_credential(
         &self,
         credential_schema_id: impl Into<Uuid>,
