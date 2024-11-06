@@ -1,4 +1,3 @@
-use sea_orm::DatabaseBackend;
 use sea_orm_migration::prelude::*;
 
 pub trait ColumnDefExt {
@@ -10,7 +9,10 @@ impl ColumnDefExt for ColumnDef {
         self.blob();
 
         #[cfg(feature = "mysql")]
-        if matches!(_manager.get_database_backend(), DatabaseBackend::MySql) {
+        if matches!(
+            _manager.get_database_backend(),
+            sea_orm::DatabaseBackend::MySql
+        ) {
             self.custom(extension::mysql::MySqlType::LongBlob);
         }
 

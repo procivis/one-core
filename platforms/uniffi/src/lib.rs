@@ -15,6 +15,7 @@ use one_core::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use one_core::provider::credential_formatter::physical_card::PhysicalCardFormatter;
 use one_core::provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use one_core::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
+use one_core::provider::credential_formatter::sdjwtvc_formatter::SDJWTVCFormatter;
 use one_core::provider::credential_formatter::CredentialFormatter;
 use one_core::provider::did_method::jwk::JWKDidMethod;
 use one_core::provider::did_method::key::KeyDidMethod;
@@ -446,7 +447,13 @@ fn initialize_core(
                                     datatype_config.clone(),
                                 )) as _
                             }
-                            _ => unimplemented!(),
+                            "SD_JWT_VC" => {
+                                let params = format_config
+                                    .get(name)
+                                    .expect("SD-JWT VC formatter params are mandatory");
+                                Arc::new(SDJWTVCFormatter::new(params, crypto.clone())) as _
+                            }
+                            other => unimplemented!("formatter: {other}"),
                         };
                         formatters.insert(name.to_owned(), formatter);
                     }

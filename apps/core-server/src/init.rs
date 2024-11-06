@@ -392,7 +392,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                             datatype_config.clone(),
                         )) as _
                     }
-                    _ => unimplemented!(),
+                    other => unimplemented!("formatter: {other}"),
                 };
                 formatters.insert(name.to_owned(), formatter);
             }
