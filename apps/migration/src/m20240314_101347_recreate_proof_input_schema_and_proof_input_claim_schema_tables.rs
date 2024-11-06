@@ -129,12 +129,6 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
-        Err(DbErr::Migration(
-            "BigUnsigned N/A for sqlite and postgres (breaks during runtime)".to_owned(),
-        ))
-    }
 }
 
 #[derive(DeriveIden)]

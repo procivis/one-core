@@ -45,38 +45,4 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let db = manager.get_connection();
-        let query = match manager.get_database_backend() {
-            DatabaseBackend::Sqlite => {
-                format!(
-                    "UPDATE credential
-                    SET deleted_at = NULL
-                    WHERE EXISTS (
-                        SELECT 1
-                        FROM credential_schema
-                        WHERE credential.credential_schema_id = credential_schema.id
-                        WHERE credential_schema.format in ('{}', '{}')
-                        AND credential.deleted_at='{PLACEHOLDER_DATE}'
-                    );",
-                    AFFECTED_FORMATS[0], AFFECTED_FORMATS[1]
-                )
-            }
-            _ => {
-                format!(
-                    "UPDATE credential
-                    JOIN credential_schema ON credential.credential_schema_id = credential_schema.id
-                    SET credential.deleted_at = NULL
-                    WHERE credential_schema.format in ('{}', '{}')
-                    AND credential.deleted_at='{PLACEHOLDER_DATE}';",
-                    AFFECTED_FORMATS[0], AFFECTED_FORMATS[1]
-                )
-            }
-        };
-
-        db.execute_unprepared(&query).await?;
-
-        Ok(())
-    }
 }

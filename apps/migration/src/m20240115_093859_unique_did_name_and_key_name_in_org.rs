@@ -35,24 +35,4 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_index(
-                Index::drop()
-                    .name(UNIQUE_KEY_NAME_IN_ORGANISATION_INDEX)
-                    .table(Key::Table)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .drop_index(
-                Index::drop()
-                    .name(UNIQUE_DID_NAME_IN_ORGANISATION_INDEX)
-                    .table(Did::Table)
-                    .to_owned(),
-            )
-            .await
-    }
 }

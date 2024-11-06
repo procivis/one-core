@@ -19,17 +19,6 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(ProofInputClaimSchema::Table)
-                    .drop_column(ProofInputClaimSchema::Required)
-                    .to_owned(),
-            )
-            .await
-    }
 }
 
 #[allow(dead_code)]

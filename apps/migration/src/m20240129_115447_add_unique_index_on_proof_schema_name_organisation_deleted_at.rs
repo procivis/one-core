@@ -35,27 +35,4 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .create_index(
-                Index::create()
-                    .unique()
-                    .name(UNIQUE_PROOF_SCHEMA_ORGANISATION_ID_NAME_INDEX)
-                    .table(ProofSchema::Table)
-                    .col(ProofSchema::OrganisationId)
-                    .col(ProofSchema::Name)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .drop_index(
-                Index::drop()
-                    .name(UNIQUE_INDEX_PROOF_SCHEMA_ORGANISATION_ID_NAME_DELETED_AT)
-                    .table(ProofSchema::Table)
-                    .to_owned(),
-            )
-            .await
-    }
 }

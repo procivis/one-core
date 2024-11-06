@@ -34,26 +34,6 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(CredentialSchema::Table)
-                    .drop_column(CredentialSchema::LayoutType)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(CredentialSchema::Table)
-                    .drop_column(CredentialSchema::LayoutProperties)
-                    .to_owned(),
-            )
-            .await
-    }
 }
 
 #[derive(DeriveIden)]

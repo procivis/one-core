@@ -80,14 +80,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_table(Table::drop().table(History::Table).to_owned())
-            .await?;
-
-        Ok(())
-    }
 }
 
 #[derive(Iden)]

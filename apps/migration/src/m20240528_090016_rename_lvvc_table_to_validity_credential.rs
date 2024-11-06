@@ -14,16 +14,6 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .rename_table(
-                Table::rename()
-                    .table(ValidityCredential::Table, Lvvc::Table)
-                    .to_owned(),
-            )
-            .await
-    }
 }
 
 #[derive(DeriveIden)]

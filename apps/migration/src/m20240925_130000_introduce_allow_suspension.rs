@@ -22,19 +22,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(CredentialSchema::Table)
-                    .drop_column(CredentialSchema::AllowSuspension)
-                    .to_owned(),
-            )
-            .await?;
-
-        Ok(())
-    }
 }
 
 #[derive(Iden)]

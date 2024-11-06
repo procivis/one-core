@@ -41,13 +41,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, _: &SchemaManager) -> Result<(), DbErr> {
-        // It's not safe to remove a variant as it may be already used
-        Err(DbErr::Migration(
-            "One way migration - cannot remove RESTORED variant from history action".to_owned(),
-        ))
-    }
 }
 
 #[derive(Iden, EnumIter)]

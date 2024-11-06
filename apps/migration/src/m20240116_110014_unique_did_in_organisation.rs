@@ -31,10 +31,4 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
-        // We can't simply revert to the previous index because
-        // there might be duplicated dids between organisations
-        Err(DbErr::Migration("One way migration".to_owned()))
-    }
 }

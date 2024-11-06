@@ -28,17 +28,6 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(RevocationList::Table)
-                    .drop_column(RevocationList::Purpose)
-                    .to_owned(),
-            )
-            .await
-    }
 }
 
 #[derive(DeriveIden)]

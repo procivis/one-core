@@ -73,12 +73,6 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
-        Err(DbErr::Migration(
-            "One way migration - cannot remove SUSPEND variant from history action and credential status".to_owned(),
-        ))
-    }
 }
 
 #[derive(DeriveIden)]

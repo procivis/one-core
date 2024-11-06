@@ -68,37 +68,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_index(
-                Index::drop()
-                    .table(CredentialSchema::Table)
-                    .name(SCHEMA_ID_IN_ORGANISATION_INDEX)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(CredentialSchema::Table)
-                    .drop_column(CredentialSchema::SchemaType)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(CredentialSchema::Table)
-                    .drop_column(CredentialSchema::SchemaId)
-                    .to_owned(),
-            )
-            .await?;
-
-        Ok(())
-    }
 }
 
 #[derive(Iden)]

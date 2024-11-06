@@ -42,14 +42,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
-        // It's not safe to remove a variant as it may be already used
-        Err(DbErr::Migration(
-            "One way migration - cannot remove SHARED and IMPORTED variant from history action"
-                .to_owned(),
-        ))
-    }
 }
 
 #[derive(Iden, EnumIter)]

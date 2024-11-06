@@ -27,8 +27,4 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, _: &SchemaManager) -> Result<(), DbErr> {
-        Err(DbErr::Migration("One way migration".to_owned()))
-    }
 }

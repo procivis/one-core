@@ -35,26 +35,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let query = format!(
-            "UPDATE {} SET {} = {}",
-            Proof::Table,
-            Proof::Transport,
-            Proof::Exchange,
-        );
-        manager.get_connection().execute_unprepared(&query).await?;
-
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(Proof::Table)
-                    .drop_column(Proof::Exchange)
-                    .to_owned(),
-            )
-            .await?;
-        Ok(())
-    }
 }
 
 #[derive(Iden)]

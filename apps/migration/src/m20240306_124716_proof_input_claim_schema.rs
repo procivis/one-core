@@ -56,12 +56,6 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_table(Table::drop().table(ProofInputClaimSchema::Table).to_owned())
-            .await
-    }
 }
 
 #[derive(DeriveIden)]

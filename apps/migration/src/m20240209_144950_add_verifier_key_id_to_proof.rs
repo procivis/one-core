@@ -24,12 +24,6 @@ impl MigrationTrait for Migration {
             DbBackend::Sqlite => sqlite_migration(manager).await,
         }
     }
-
-    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
-        Err(DbErr::Migration(
-            "One way migration - cannot remove verifier key id".to_owned(),
-        ))
-    }
 }
 
 async fn sane_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {

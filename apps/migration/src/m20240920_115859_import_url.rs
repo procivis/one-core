@@ -65,28 +65,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(CredentialSchema::Table)
-                    .drop_column(CredentialSchema::ImportedSourceUrl)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(ProofSchema::Table)
-                    .drop_column(ProofSchema::ImportedSourceUrl)
-                    .to_owned(),
-            )
-            .await?;
-
-        Ok(())
-    }
 }
 
 #[derive(Iden)]

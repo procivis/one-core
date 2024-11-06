@@ -57,27 +57,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(Claim::Table)
-                    .drop_column(Claim::Path)
-                    .to_owned(),
-            )
-            .await?;
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(ClaimSchema::Table)
-                    .drop_column(ClaimSchema::Array)
-                    .to_owned(),
-            )
-            .await?;
-
-        Ok(())
-    }
 }
 
 #[derive(Iden)]

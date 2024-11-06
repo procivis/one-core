@@ -35,18 +35,6 @@ impl MigrationTrait for Migration {
             DbBackend::Sqlite => sqlite_migration(manager).await,
         }
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(Alias::new(TABLE))
-                    .drop_foreign_key(Alias::new("fk-interaction-OrganisationId"))
-                    .drop_column(Interaction::OrganisationId)
-                    .to_owned(),
-            )
-            .await
-    }
 }
 
 async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {

@@ -34,27 +34,4 @@ impl MigrationTrait for Migration {
             )
             .await
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .create_index(
-                Index::create()
-                    .unique()
-                    .name(UNIQUE_CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX)
-                    .table(CredentialSchema::Table)
-                    .col(CredentialSchema::OrganisationId)
-                    .col(CredentialSchema::Name)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .drop_index(
-                Index::drop()
-                    .name(UNIQUE_INDEX_CREDENTIAL_SCHEMA_ORGANISATION_ID_NAME_DELETED_AT)
-                    .table(CredentialSchema::Table)
-                    .to_owned(),
-            )
-            .await
-    }
 }

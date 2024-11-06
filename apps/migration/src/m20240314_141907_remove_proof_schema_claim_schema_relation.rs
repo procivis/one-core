@@ -45,12 +45,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
-        Err(DbErr::Migration(
-            "Recreation of old relations is too complex and unnecessary at this point".to_owned(),
-        ))
-    }
 }
 
 async fn migrate_proof_input_claim_schema(backend: &DbBackend) -> Result<Statement, DbErr> {

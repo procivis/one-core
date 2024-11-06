@@ -98,10 +98,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, _: &SchemaManager) -> Result<(), DbErr> {
-        Err(DbErr::Migration("One way migration".to_owned()))
-    }
 }
 
 #[derive(Iden)]

@@ -184,12 +184,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, _: &SchemaManager) -> Result<(), DbErr> {
-        Err(DbErr::Migration(
-            "One way migration - cannot remove TRUST_ANCHOR and TRUST_ENTITY variants from history type".to_owned(),
-        ))
-    }
 }
 
 #[derive(Iden, EnumIter)]
