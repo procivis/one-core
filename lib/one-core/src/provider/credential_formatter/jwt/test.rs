@@ -67,6 +67,7 @@ fn prepare_test_json() -> (Jwt<Payload>, String) {
         custom: custom_payload,
         nonce: None,
         vc_type: None,
+        proof_of_possession_key: None,
     };
     let jwt: Jwt<Payload> = Jwt::new(
         "Signature1".to_owned(),

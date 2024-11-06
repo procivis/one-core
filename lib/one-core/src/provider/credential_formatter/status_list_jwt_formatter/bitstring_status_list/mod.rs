@@ -52,6 +52,7 @@ impl BitstringStatusListJwtFormatter {
             invalid_before: None,
             nonce: None,
             vc_type: None,
+            proof_of_possession_key: None,
         };
 
         let jwt = Jwt::new("JWT".to_owned(), algorithm, None, None, payload);

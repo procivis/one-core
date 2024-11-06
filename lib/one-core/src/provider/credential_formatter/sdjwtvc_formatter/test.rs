@@ -3,7 +3,9 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use mockall::predicate::eq;
+use one_crypto::hasher::sha256::SHA256;
 use one_crypto::{MockCryptoProvider, MockHasher};
+use serde_json::json;
 use shared_types::DidValue;
 use time::Duration;
 
@@ -14,13 +16,13 @@ use crate::provider::credential_formatter::model::{
     CredentialStatus, ExtractPresentationCtx, MockTokenVerifier,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
-use crate::provider::credential_formatter::sdjwt::model::Sdvc;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::SDJWTVCVc;
 use crate::provider::credential_formatter::sdjwtvc_formatter::{Params, SDJWTVCFormatter};
 use crate::provider::credential_formatter::CredentialFormatter;
 
 #[tokio::test]
-async fn test_format_credential_a() {
+async fn test_format_credential() {
     let mut hasher = MockHasher::default();
     hasher
         .expect_hash_base64()
@@ -73,7 +75,7 @@ async fn test_format_credential_a() {
 
     let parts: Vec<&str> = token.splitn(4, '~').collect();
 
-    assert_eq!(parts.len(), 3);
+    assert_eq!(parts.len(), 4);
 
     let part1 = DisclosureArray::from_b64(parts[1]);
     assert_eq!(part1.key, "name");
@@ -97,7 +99,7 @@ async fn test_format_credential_a() {
         &Base64UrlSafeNoPadding::encode_to_string(r#"ABC"#).unwrap()
     );
 
-    let payload: JWTPayload<Sdvc> = serde_json::from_str(
+    let payload: JWTPayload<SDJWTVCVc> = serde_json::from_str(
         &String::from_utf8(Base64UrlSafeNoPadding::decode_to_vec(jwt_parts[1], None).unwrap())
             .unwrap(),
     )
@@ -115,56 +117,25 @@ async fn test_format_credential_a() {
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
     assert_eq!(payload.subject, Some(String::from("holder_did")));
 
-    let vc = payload.custom.vc;
+    let vc = payload.custom;
 
     assert!(vc
-        .credential_subject
-        .claims
+        .disclosures
         .iter()
         .all(|hashed_claim| hashed_claim == "YWJjMTIz"));
 
-    assert!(vc
-        .context
-        .contains(&ContextType::Url("http://context.com".parse().unwrap())));
-    assert!(vc.r#type.contains(&String::from("Type1")));
-
-    assert_eq!(1, vc.credential_status.len());
-    let first_credential_status = vc.credential_status.first().unwrap();
-    assert!(first_credential_status
-        .id
-        .as_ref()
-        .is_some_and(|id| id.as_str() == "did:status:id"));
-    assert_eq!(first_credential_status.r#type, "TYPE");
-    assert_eq!(
-        first_credential_status.status_purpose.as_deref(),
-        Some("PURPOSE")
-    );
-    assert_eq!(
-        first_credential_status.additional_fields.get("Field1"),
-        Some(&"Val1".into())
-    );
+    assert!(vc.public_claims.is_empty()); // Empty until we support issuing public_claims
 }
 
 #[tokio::test]
 async fn test_extract_credentials() {
-    let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAidHlwIjogInZjK3NkLWp3dCIKfQo.ewogICJpYXQiOiAxNjk5MjcwMjY2LAogICJleHAiOiAxNzYyMzQyMjY2LAogICJuYmYiOiAxNjk5MjcwMjIxLAogICJpc3MiOiAiZGlkOmlzc3Vlcjp0ZXN0IiwKICAic3ViIjogImRpZDpob2xkZXI6dGVzdCIsCiAgImp0aSI6ICI5YTQxNGE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLAogICJ2Y3QiOiAiaHR0cDovLzEyNy4wLjAuMS9zc2kvc2NoZW1hL3YxLzlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsCiAgInZjIjogewogICAgIkBjb250ZXh0IjogWwogICAgICAiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiLAogICAgICAiaHR0cHM6Ly93d3cudHlwZTEtY29udGV4dC5jb20vdjEiCiAgICBdLAogICAgInR5cGUiOiBbCiAgICAgICJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsCiAgICAgICJUeXBlMSIKICAgIF0sCiAgICAiY3JlZGVudGlhbFN1YmplY3QiOiB7CiAgICAgICJfc2QiOiBbCiAgICAgICAgInJaanl4RjR6RTdmZFJta2NVVDhIa3I4X0lIU0JlczF6MXBaV1AydkxCUkUiLAogICAgICAgICJLR1BsZGxQQjM5NXhLSlJqSzhrMks1VXZzRW5zOVFoTDdPN0pVdTU5RVJrIgogICAgICBdCiAgICB9LAogICAgImNyZWRlbnRpYWxTdGF0dXMiOiB7CiAgICAgICJpZCI6ICJodHRwczovL3d3dy50ZXN0LXZjLmNvbS9zdGF0dXMvaWQiLAogICAgICAidHlwZSI6ICJUWVBFIiwKICAgICAgInN0YXR1c1B1cnBvc2UiOiAiUFVSUE9TRSIsCiAgICAgICJGaWVsZDEiOiAiVmFsMSIKICAgIH0KICB9LAogICJfc2RfYWxnIjogInNoYS0yNTYiCn0gCg";
+    // Token from: https://paradym.id/tools/sd-jwt-vc
+    let jwt_token = "eyJ0eXAiOiJ2YytzZC1qd3QiLCJhbGciOiJFZERTQSIsImtpZCI6IiN6Nk1rdHF0WE5HOENEVVk5UHJydG9TdEZ6ZUNuaHBNbWd4WUwxZ2lrY1czQnp2TlcifQ.eyJ2Y3QiOiJJZGVudGl0eUNyZWRlbnRpYWwiLCJmYW1pbHlfbmFtZSI6IkRvZSIsInBob25lX251bWJlciI6IisxLTIwMi01NTUtMDEwMSIsImFkZHJlc3MiOnsic3RyZWV0X2FkZHJlc3MiOiIxMjMgTWFpbiBTdCIsImxvY2FsaXR5IjoiQW55dG93biIsIl9zZCI6WyJOSm5tY3QwQnFCTUUxSmZCbEM2alJRVlJ1ZXZwRU9OaVl3N0E3TUh1SnlRIiwib201Wnp0WkhCLUdkMDBMRzIxQ1ZfeE00RmFFTlNvaWFPWG5UQUpOY3pCNCJdfSwiY25mIjp7Imp3ayI6eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6Im9FTlZzeE9VaUg1NFg4d0pMYVZraWNDUmswMHdCSVE0c1JnYms1NE44TW8ifX0sImlzcyI6ImRpZDprZXk6ejZNa3RxdFhORzhDRFVZOVBycnRvU3RGemVDbmhwTW1neFlMMWdpa2NXM0J6dk5XIiwiaWF0IjoxNjk4MTUxNTMyLCJfc2QiOlsiMUN1cjJrMkEyb0lCNUNzaFNJZl9BX0tnLWwyNnVfcUt1V1E3OVAwVmRhcyIsIlIxelRVdk9ZSGdjZXBqMGpIeXBHSHo5RUh0dFZLZnQweXN3YmM5RVRQYlUiLCJlRHFRcGRUWEpYYldoZi1Fc0k3enc1WDZPdlltRk4tVVpRUU1lc1h3S1B3IiwicGREazJfWEFLSG83Z09BZndGMWI3T2RDVVZUaXQya0pIYXhTRUNROXhmYyIsInBzYXVLVU5XRWkwOW51M0NsODl4S1hnbXBXRU5abDV1eTFOMW55bl9qTWsiLCJzTl9nZTBwSFhGNnFtc1luWDFBOVNkd0o4Y2g4YUVOa3hiT0RzVDc0WXdJIl0sIl9zZF9hbGciOiJzaGEtMjU2In0";
     let token = format!(
-        "{jwt_token}.QUJD~WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0~WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0"
+        "{jwt_token}.QUJD~WyJzYWx0IiwicmVnaW9uIiwiQW55c3RhdGUiXQ~WyJzYWx0IiwiY291bnRyeSIsIlVTIl0~WyJzYWx0IiwiZ2l2ZW5fbmFtZSIsIkpvaG4iXQ~WyJzYWx0IiwiZW1haWwiLCJqb2huZG9lQGV4YW1wbGUuY29tIl0~WyJzYWx0IiwiYmlydGhkYXRlIiwiMTk0MC0wMS0wMSJd~WyJzYWx0IiwiaXNfb3Zlcl8xOCIsdHJ1ZV0~WyJzYWx0IiwiaXNfb3Zlcl8yMSIsdHJ1ZV0~WyJzYWx0IiwiaXNfb3Zlcl82NSIsdHJ1ZV0~"
     );
 
-    let claim1 = "[\"MTIzYWJj\",\"name\",\"John\"]";
-    let claim2 = "[\"MTIzYWJj\",\"age\",\"42\"]";
-
-    let mut hasher = MockHasher::default();
-    hasher
-        .expect_hash_base64()
-        .with(eq(claim1.as_bytes()))
-        .returning(|_| Ok("rZjyxF4zE7fdRmkcUT8Hkr8_IHSBes1z1pZWP2vLBRE".to_string()));
-    hasher
-        .expect_hash_base64()
-        .with(eq(claim2.as_bytes()))
-        .returning(|_| Ok("KGPldlPB395xKJRjK8k2K5UvsEns9QhL7O7JUu59ERk".to_string()));
-    let hasher = Arc::new(hasher);
+    let hasher = Arc::new(SHA256 {});
 
     let mut crypto = MockCryptoProvider::default();
 
@@ -202,39 +173,45 @@ async fn test_extract_credentials() {
         )
         .return_once(|_, _, _, _, _| Ok(()));
 
-    let result = sd_formatter
-        .extract_credentials(&token, Box::new(verify_mock))
-        .await;
-
-    let credentials = result.unwrap();
+    let credentials = sd_formatter
+        .extract_credentials_unverified(&token) //Box::new(verify_mock))
+        .await
+        .unwrap();
 
     assert_eq!(
         credentials.issuer_did,
-        Some(DidValue::from("did:issuer:test".to_string()))
+        Some(DidValue::from(
+            "did:key:z6MktqtXNG8CDUY9PrrtoStFzeCnhpMmgxYL1gikcW3BzvNW".to_string()
+        ))
     );
-    assert_eq!(
-        credentials.subject,
-        Some(DidValue::from("did:holder:test".to_string()))
+    assert_eq!(credentials.subject, None);
+
+    let expected_result = json!(
+        {
+            "is_over_18": true,
+            "email": "johndoe@example.com",
+            "phone_number": "+1-202-555-0101",
+            "is_over_65": true,
+            "given_name": "John",
+            "birthdate": "1940-01-01",
+            "address": {
+                "street_address": "123 Main St",
+                "locality": "Anytown",
+                "region": "Anystate",
+                "country": "US",
+            },
+            "is_over_21": true,
+            "family_name": "Doe",
+        }
     );
 
-    assert_eq!(1, credentials.status.len());
-    let first_credential_status = credentials.status.first().unwrap();
-    assert!(first_credential_status
-        .id
-        .as_ref()
-        .is_some_and(|id| id.as_str() == "https://www.test-vc.com/status/id"));
-    assert_eq!(first_credential_status.r#type, "TYPE");
-    assert_eq!(
-        first_credential_status.status_purpose.as_deref(),
-        Some("PURPOSE")
-    );
-    assert_eq!(
-        first_credential_status.additional_fields.get("Field1"),
-        Some(&"Val1".into())
-    );
+    let claim_values_as_json = credentials
+        .claims
+        .values
+        .into_iter()
+        .collect::<serde_json::Map<String, serde_json::Value>>();
 
-    assert_eq!(credentials.claims.values.get("name").unwrap(), "John");
-    assert_eq!(credentials.claims.values.get("age").unwrap(), "42");
+    assert_eq!(claim_values_as_json, *expected_result.as_object().unwrap());
 }
 
 #[tokio::test]

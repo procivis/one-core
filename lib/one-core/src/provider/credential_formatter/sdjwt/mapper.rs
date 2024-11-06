@@ -138,8 +138,11 @@ pub(crate) fn unpack_arrays(
 
                     result_obj.insert(k.to_owned(), serde_json::Value::Array(array));
                 }
-                _ => {
+                serde_json::Value::Object(_) => {
                     result_obj.insert(k.to_owned(), unpack_arrays(v)?);
+                }
+                _ => {
+                    result_obj.insert(k.to_owned(), v.to_owned());
                 }
             }
 

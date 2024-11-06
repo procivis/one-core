@@ -83,6 +83,7 @@ impl CredentialFormatter for JWTFormatter {
             custom: vc,
             nonce: None,
             vc_type: None,
+            proof_of_possession_key: None,
         };
 
         let key_id = auth_fn.get_key_id();
@@ -153,6 +154,7 @@ impl CredentialFormatter for JWTFormatter {
             invalid_before: None,
             nonce: None,
             vc_type: None,
+            proof_of_possession_key: None,
         };
 
         let jwt = Jwt::new("JWT".to_owned(), algorithm, None, None, payload);
@@ -210,6 +212,7 @@ impl CredentialFormatter for JWTFormatter {
             custom: vp,
             nonce,
             vc_type: None,
+            proof_of_possession_key: None,
         };
 
         let key_id = auth_fn.get_key_id();

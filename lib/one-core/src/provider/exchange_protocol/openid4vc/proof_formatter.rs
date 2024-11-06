@@ -41,6 +41,7 @@ impl OpenID4VCIProofJWTFormatter {
             invalid_before: None,
             nonce: None,
             vc_type: None,
+            proof_of_possession_key: None,
         };
 
         let key_id = match jwk {

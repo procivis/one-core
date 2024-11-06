@@ -59,6 +59,9 @@ pub struct JWTPayload<CustomPayload> {
     #[serde(rename = "vct", default, skip_serializing_if = "Option::is_none")]
     pub vc_type: Option<String>,
 
+    #[serde(rename = "cnf", default, skip_serializing_if = "Option::is_none")]
+    pub proof_of_possession_key: Option<serde_json::Value>,
+
     #[serde(flatten)]
     pub custom: CustomPayload,
 }
@@ -69,4 +72,12 @@ pub struct DecomposedToken<Payload> {
     pub payload: JWTPayload<Payload>,
     pub signature: Vec<u8>,
     pub unverified_jwt: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProofOfPossessionKey {
+    #[serde(rename = "kid", default, skip_serializing_if = "Option::is_none")]
+    pub key_id: Option<String>,
+
+    pub jwk: PublicKeyJwkDTO,
 }

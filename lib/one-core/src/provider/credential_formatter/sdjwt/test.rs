@@ -360,7 +360,7 @@ fn test_get_subdisclosures() {
 
     let disclosure_hashes = disclosures
         .iter()
-        .map(|d| d.hash(&hasher).unwrap())
+        .map(|d| d.hash_original_disclosure(&hasher).unwrap())
         .collect::<Vec<String>>();
     let first_two_to_resolve = disclosure_hashes[0..2].to_vec();
     let resolve_only_objects = disclosure_hashes[2..3].to_vec();

@@ -11,7 +11,7 @@ use crate::provider::credential_formatter::jwt::mapper::string_to_b64url_string;
 use crate::provider::credential_formatter::model::PublishedClaim;
 use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Disclosure};
 
-const SELECTIVE_DISCLOSURE_MARKER: &str = "_sd";
+pub(crate) const SELECTIVE_DISCLOSURE_MARKER: &str = "_sd";
 
 pub(crate) fn gather_hashes_from_disclosures(
     disclosures: &[Disclosure],
@@ -19,7 +19,7 @@ pub(crate) fn gather_hashes_from_disclosures(
 ) -> Result<Vec<String>, FormatterError> {
     disclosures
         .iter()
-        .map(|disclosure| disclosure.hash(hasher))
+        .map(|disclosure| disclosure.hash_original_disclosure(hasher))
         .collect::<Result<Vec<String>, FormatterError>>()
 }
 
@@ -35,10 +35,10 @@ pub(crate) fn gather_hash(
 ) -> Result<Vec<String>, FormatterError> {
     match serde_json::from_value::<SelectiveDisclosureArray>(disclosure.value.to_owned()) {
         Ok(mut value) => {
-            value.sd.push(disclosure.hash(hasher)?);
+            value.sd.push(disclosure.hash_original_disclosure(hasher)?);
             Ok(value.sd)
         }
-        Err(_) => Ok(vec![disclosure.hash(hasher)?]),
+        Err(_) => Ok(vec![disclosure.hash_original_disclosure(hasher)?]),
     }
 }
 
@@ -50,13 +50,12 @@ pub(crate) fn gather_hashes_from_hashed_claims(
     let mut used_hashes = vec![];
 
     hashed_claims.iter().try_for_each(|hashed_claim| {
-        let matching_disclosure =
-            disclosures
-                .iter()
-                .find(|disclosure| match disclosure.hash(hasher) {
-                    Ok(hash) => hash == *hashed_claim,
-                    _ => false,
-                });
+        let matching_disclosure = disclosures.iter().find(|disclosure| {
+            match disclosure.hash_original_disclosure(hasher) {
+                Ok(hash) => hash == *hashed_claim,
+                _ => false,
+            }
+        });
         if let Some(disclosure) = matching_disclosure {
             used_hashes.extend(gather_hash(disclosure, hasher)?);
         }
@@ -166,9 +165,15 @@ impl Disclosure {
             .is_some_and(|obj| obj.contains_key("_sd"))
     }
 
-    pub fn hash(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
+    pub fn hash_original_disclosure(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
         hasher
             .hash_base64(self.original_disclosure.as_bytes())
+            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))
+    }
+
+    pub fn hash_b64_disclosure(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
+        hasher
+            .hash_base64(self.base64_encoded_disclosure.as_bytes())
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))
     }
 }
@@ -323,7 +328,7 @@ pub(crate) fn extract_claims_from_disclosures(
         .iter()
         .filter_map(|disclosure| {
             if disclosure.has_subdisclosures() {
-                Some(disclosure.hash(hasher))
+                Some(disclosure.hash_original_disclosure(hasher))
             } else {
                 None
             }
@@ -381,7 +386,7 @@ pub(crate) fn get_subdisclosures(
 
     for hash in subdisclosures {
         let Some(disclosure) = disclosures.iter().find(|disclosure| {
-            if let Ok(disclosure_hash) = disclosure.hash(hasher) {
+            if let Ok(disclosure_hash) = disclosure.hash_original_disclosure(hasher) {
                 disclosure_hash == *hash
             } else {
                 false

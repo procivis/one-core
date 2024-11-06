@@ -189,6 +189,7 @@ impl OIDCService {
                 nonce: None,
                 vc_type: None,
                 custom: client_response,
+                proof_of_possession_key: None,
             },
         };
 
