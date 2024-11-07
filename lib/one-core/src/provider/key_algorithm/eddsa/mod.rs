@@ -5,7 +5,7 @@ use zeroize::Zeroizing;
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
-use crate::provider::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};
+use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
 use crate::provider::key_algorithm::KeyAlgorithm;
 
 pub struct Eddsa;
@@ -108,7 +108,7 @@ impl KeyAlgorithm for Eddsa {
 
     fn get_capabilities(&self) -> KeyAlgorithmCapabilities {
         KeyAlgorithmCapabilities {
-            features: vec!["GENERATE_CSR".to_string()],
+            features: vec![Features::GenerateCSR],
         }
     }
 }

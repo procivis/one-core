@@ -16,5 +16,12 @@ pub struct GeneratedKey {
 
 #[derive(Serialize, Clone, Default)]
 pub struct KeyAlgorithmCapabilities {
-    pub features: Vec<String>,
+    pub features: Vec<Features>,
+}
+
+#[derive(Serialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Features {
+    #[serde(rename = "GENERATE_CSR")]
+    GenerateCSR,
 }
