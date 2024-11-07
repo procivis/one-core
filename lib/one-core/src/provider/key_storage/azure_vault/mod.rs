@@ -25,7 +25,7 @@ use crate::model::key::Key;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
-    KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
+    Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
 use crate::provider::key_storage::KeyStorage;
 
@@ -146,7 +146,7 @@ impl KeyStorage for AzureVaultKeyProvider {
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
-            features: vec!["EXPORTABLE".to_owned()],
+            features: vec![Features::Exportable],
             algorithms: vec!["ES256".to_string()],
             security: vec![KeySecurity::Hardware],
         }

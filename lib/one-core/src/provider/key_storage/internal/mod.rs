@@ -13,7 +13,7 @@ use crate::model::key::Key;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
-    KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
+    Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
 use crate::provider::key_storage::KeyStorage;
 
@@ -103,7 +103,7 @@ impl KeyStorage for InternalKeyProvider {
                 "BBS_PLUS".to_string(),
             ],
             security: vec![KeySecurity::Software],
-            features: vec!["EXPORTABLE".to_string()],
+            features: vec![Features::Exportable],
         }
     }
 }

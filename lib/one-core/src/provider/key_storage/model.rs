@@ -11,9 +11,15 @@ pub enum KeySecurity {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct KeyStorageCapabilities {
-    pub features: Vec<String>,
+    pub features: Vec<Features>,
     pub algorithms: Vec<String>,
     pub security: Vec<KeySecurity>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Features {
+    Exportable,
 }
 
 pub struct StorageGeneratedKey {
