@@ -23,8 +23,8 @@ use crate::provider::credential_formatter::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSubject, DetailCredential,
-    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
-    VerificationFn,
+    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
+    SelectiveDisclosure, VerificationFn,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     extract_disclosures, sort_published_claims_by_indices, to_hashmap,
@@ -173,8 +173,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
             ],
-            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
-            selective_disclosure: vec!["ANY_LEVEL".to_string()],
+            features: vec![Features::SelectiveDisclosure],
+            selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
             issuance_did_methods: vec![
                 "KEY".to_string(),
                 "WEB".to_string(),

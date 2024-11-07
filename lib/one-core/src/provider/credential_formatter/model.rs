@@ -243,8 +243,8 @@ pub struct VCCredentialSchemaResponse {
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FormatterCapabilities {
-    pub features: Vec<String>,
-    pub selective_disclosure: Vec<String>,
+    pub features: Vec<Features>,
+    pub selective_disclosure: Vec<SelectiveDisclosure>,
     pub issuance_did_methods: Vec<String>,
     pub issuance_exchange_protocols: Vec<String>,
     pub proof_exchange_protocols: Vec<String>,
@@ -255,6 +255,21 @@ pub struct FormatterCapabilities {
     pub datatypes: Vec<String>,
     pub allowed_schema_ids: Vec<String>,
     pub forbidden_claim_names: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Features {
+    SelectiveDisclosure,
+    SupportsCredentialDesign,
+    RequiresSchemaId,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SelectiveDisclosure {
+    AnyLevel,
+    SecondLevel,
 }
 
 #[derive(Debug, Serialize, Deserialize, Display, IntoStaticStr)]
@@ -319,7 +334,6 @@ pub enum Description {
     Language(LanguageValue),
     String(String),
 }
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct LanguageValue {

@@ -20,7 +20,9 @@ use crate::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
     ProofSchema, ProofSchemaRelations,
 };
-use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::credential_formatter::model::{
+    Features, FormatterCapabilities, SelectiveDisclosure,
+};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::http_client::{Method, MockHttpClient, RequestBuilder, Response, StatusCode};
@@ -700,8 +702,8 @@ async fn test_create_proof_schema_array_object_fail() {
 
     let claim_id = claim_schema_array_object_item.id;
     let mut capabilities = generic_formatter_capabilities();
-    capabilities.features = vec!["SELECTIVE_DISCLOSURE".to_string()];
-    capabilities.selective_disclosure = vec!["ANY_LEVEL".to_string()];
+    capabilities.features = vec![Features::SelectiveDisclosure];
+    capabilities.selective_disclosure = vec![SelectiveDisclosure::AnyLevel];
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -863,8 +865,8 @@ async fn test_create_proof_schema_array_success() {
     let claim_id = claim_schema_array.id;
 
     let mut capabilities = generic_formatter_capabilities();
-    capabilities.features = vec!["SELECTIVE_DISCLOSURE".to_string()];
-    capabilities.selective_disclosure = vec!["ANY_LEVEL".to_string()];
+    capabilities.features = vec![Features::SelectiveDisclosure];
+    capabilities.selective_disclosure = vec![SelectiveDisclosure::AnyLevel];
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -1792,8 +1794,8 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec!["NONE".to_string()],
-            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
-            selective_disclosure: vec!["SECOND_LEVEL".to_string()],
+            features: vec![Features::SelectiveDisclosure],
+            selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
             ..Default::default()
         });
 
@@ -2191,8 +2193,8 @@ async fn test_create_proof_schema_verify_nested_2nd_level_success() {
     let keys = ["root/nested", "root/nested2", "root/nested3"];
     assert!(test_create_proof_schema_verify_nested_generic(
         &keys,
-        &["SELECTIVE_DISCLOSURE".to_owned()],
-        &["SECOND_LEVEL".to_owned()]
+        &[Features::SelectiveDisclosure],
+        &[SelectiveDisclosure::SecondLevel]
     )
     .await
     .is_ok())
@@ -2207,8 +2209,8 @@ async fn test_create_proof_schema_verify_nested_2nd_level_fail_3rd_level() {
     ];
     assert!(test_create_proof_schema_verify_nested_generic(
         &keys,
-        &["SELECTIVE_DISCLOSURE".to_owned()],
-        &["SECOND_LEVEL".to_owned()]
+        &[Features::SelectiveDisclosure],
+        &[SelectiveDisclosure::SecondLevel]
     )
     .await
     .is_err_and(|e| e.error_code() == ErrorCode::BR_0130));
@@ -2219,8 +2221,8 @@ async fn test_create_proof_schema_verify_nested_2nd_level_success_root_level() {
     let keys = ["root/nested", "root", "root/nested3"];
     assert!(test_create_proof_schema_verify_nested_generic(
         &keys,
-        &["SELECTIVE_DISCLOSURE".to_owned()],
-        &["SECOND_LEVEL".to_owned()]
+        &[Features::SelectiveDisclosure],
+        &[SelectiveDisclosure::SecondLevel]
     )
     .await
     .is_ok());
@@ -2236,8 +2238,8 @@ async fn test_create_proof_schema_verify_nested_any_level_success() {
     ];
     assert!(test_create_proof_schema_verify_nested_generic(
         &keys,
-        &["SELECTIVE_DISCLOSURE".to_owned()],
-        &["ANY_LEVEL".to_owned()]
+        &[Features::SelectiveDisclosure],
+        &[SelectiveDisclosure::AnyLevel]
     )
     .await
     .is_ok());
@@ -2265,8 +2267,8 @@ async fn test_create_proof_schema_verify_nested_no_disclosure_success() {
 
 async fn test_create_proof_schema_verify_nested_generic(
     keys: &[&str],
-    features: &[String],
-    disclosure_features: &[String],
+    features: &[Features],
+    disclosure_features: &[SelectiveDisclosure],
 ) -> Result<ProofSchemaId, ServiceError> {
     let claim_schemas: Vec<_> = keys
         .iter()

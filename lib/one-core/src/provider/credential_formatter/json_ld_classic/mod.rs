@@ -24,8 +24,8 @@ use crate::provider::credential_formatter::json_ld::model::{
 };
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, Context, CredentialData, CredentialPresentation, CredentialSubject,
-    DetailCredential, ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Issuer,
-    Presentation, VerificationFn,
+    DetailCredential, ExtractPresentationCtx, Features, FormatPresentationCtx,
+    FormatterCapabilities, Issuer, Presentation, VerificationFn,
 };
 use crate::provider::credential_formatter::{json_ld, CredentialFormatter};
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -355,7 +355,7 @@ impl CredentialFormatter for JsonLdClassic {
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
             signing_key_algorithms: vec!["EDDSA".to_owned(), "ES256".to_owned()],
-            features: vec!["SUPPORTS_CREDENTIAL_DESIGN".to_string()],
+            features: vec![Features::SupportsCredentialDesign],
             selective_disclosure: vec![],
             issuance_did_methods: vec![
                 "KEY".to_string(),

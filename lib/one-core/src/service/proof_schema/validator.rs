@@ -13,6 +13,7 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::provider::credential_formatter::model::{Features, SelectiveDisclosure};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
@@ -194,18 +195,16 @@ pub(super) fn validate_proof_schema_nesting(
     let valid_disclosure_level = match (
         capabilities
             .features
-            .contains(&"SELECTIVE_DISCLOSURE".to_string()),
-        capabilities
-            .selective_disclosure
-            .first()
-            .map(|c| c.as_str()),
+            .contains(&Features::SelectiveDisclosure),
+        capabilities.selective_disclosure.first(),
     ) {
         (true, None) => false,     // Incompatible capabilities
         (false, Some(_)) => false, // Incompatible capabilities
         (false, None) => !claim_schema.key.contains('/'),
-        (true, Some("ANY_LEVEL")) => true,
-        (true, Some("SECOND_LEVEL")) => claim_schema.key.chars().filter(|&c| c == '/').count() <= 1,
-        (true, Some(_)) => false, // Unsupported capability
+        (true, Some(SelectiveDisclosure::AnyLevel)) => true,
+        (true, Some(SelectiveDisclosure::SecondLevel)) => {
+            claim_schema.key.chars().filter(|&c| c == '/').count() <= 1
+        }
     };
 
     if !valid_disclosure_level {

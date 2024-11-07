@@ -15,7 +15,7 @@ use crate::provider::credential_formatter::json_ld::context::caching_loader::{
 };
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
-    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
+    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
     VerificationFn,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
@@ -131,7 +131,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
                 "UtopiaDrivingLicense".to_string(),
                 "IdentityCard".to_string(),
             ],
-            features: vec!["REQUIRES_SCHEMA_ID".to_string()],
+            features: vec![Features::RequiresSchemaId],
             selective_disclosure: vec![],
             issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],

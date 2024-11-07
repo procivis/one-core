@@ -13,7 +13,7 @@ use uuid::Uuid;
 use super::json_ld::model::ContextType;
 use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
-use super::model::{Context, CredentialSubject, Issuer};
+use super::model::{Context, CredentialSubject, Features, Issuer};
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
@@ -250,7 +250,7 @@ impl CredentialFormatter for JWTFormatter {
                 "ES256".to_owned(),
                 "DILITHIUM".to_owned(),
             ],
-            features: vec!["SUPPORTS_CREDENTIAL_DESIGN".to_string()],
+            features: vec![Features::SupportsCredentialDesign],
             selective_disclosure: vec![],
             issuance_did_methods: vec![
                 "KEY".to_string(),

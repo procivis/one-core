@@ -42,8 +42,8 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema,
     CredentialSchemaMetadata, CredentialSubject, DetailCredential, ExtractPresentationCtx,
-    FormatPresentationCtx, FormatterCapabilities, Presentation, PublishedClaim, SignatureProvider,
-    TokenVerifier, VerificationFn,
+    Features, FormatPresentationCtx, FormatterCapabilities, Presentation, PublishedClaim,
+    SelectiveDisclosure, SignatureProvider, TokenVerifier, VerificationFn,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::mdl::DidMdlValidator;
@@ -507,12 +507,12 @@ impl CredentialFormatter for MdocFormatter {
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
             features: vec![
-                "SELECTIVE_DISCLOSURE".to_string(),
-                "REQUIRES_SCHEMA_ID".to_string(),
-                "SUPPORTS_CREDENTIAL_DESIGN".to_string(),
+                Features::SelectiveDisclosure,
+                Features::RequiresSchemaId,
+                Features::SupportsCredentialDesign,
             ],
             allowed_schema_ids: vec![],
-            selective_disclosure: vec!["SECOND_LEVEL".to_string()],
+            selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
             issuance_did_methods: vec!["MDL".to_string()],
             issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
             proof_exchange_protocols: vec!["OPENID4VC".to_string(), "ISO_MDL".to_string()],

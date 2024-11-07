@@ -14,8 +14,8 @@ use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchemaData, CredentialStatus, ExtractPresentationCtx, Issuer,
-    MockTokenVerifier, PublishedClaim,
+    CredentialData, CredentialSchemaData, CredentialStatus, ExtractPresentationCtx, Features,
+    Issuer, MockTokenVerifier, PublishedClaim,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
@@ -624,8 +624,8 @@ fn test_get_capabilities() {
 
     assert_eq!(
         vec![
-            "SELECTIVE_DISCLOSURE".to_string(),
-            "SUPPORTS_CREDENTIAL_DESIGN".to_string()
+            Features::SelectiveDisclosure,
+            Features::SupportsCredentialDesign
         ],
         sd_formatter.get_capabilities().features
     );

@@ -8,6 +8,7 @@ use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
+use crate::provider::credential_formatter::model::Features;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::revocation::model::Operation;
@@ -366,7 +367,7 @@ fn validate_credential_design(
         && !formatter
             .get_capabilities()
             .features
-            .contains(&"SUPPORTS_CREDENTIAL_DESIGN".into())
+            .contains(&Features::SupportsCredentialDesign)
     {
         return Err(BusinessLogicError::LayoutPropertiesNotSupported.into());
     }

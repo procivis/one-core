@@ -16,8 +16,8 @@ use crate::provider::credential_formatter::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSubject, DetailCredential,
-    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
-    VerificationFn,
+    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
+    SelectiveDisclosure, VerificationFn,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -172,10 +172,10 @@ impl CredentialFormatter for SDJWTFormatter {
                 "ARRAY".to_string(),
             ],
             features: vec![
-                "SELECTIVE_DISCLOSURE".to_string(),
-                "SUPPORTS_CREDENTIAL_DESIGN".to_string(),
+                Features::SelectiveDisclosure,
+                Features::SupportsCredentialDesign,
             ],
-            selective_disclosure: vec!["ANY_LEVEL".to_string()],
+            selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
             issuance_did_methods: vec![
                 "KEY".to_string(),
                 "WEB".to_string(),

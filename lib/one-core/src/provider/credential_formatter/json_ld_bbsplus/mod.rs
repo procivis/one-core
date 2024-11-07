@@ -20,8 +20,8 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
-    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
-    VerificationFn,
+    ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
+    SelectiveDisclosure, VerificationFn,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -148,10 +148,10 @@ impl CredentialFormatter for JsonLdBbsplus {
         FormatterCapabilities {
             signing_key_algorithms: vec!["BBS_PLUS".to_owned()],
             features: vec![
-                "SUPPORTS_CREDENTIAL_DESIGN".to_string(),
-                "SELECTIVE_DISCLOSURE".to_owned(),
+                Features::SupportsCredentialDesign,
+                Features::SelectiveDisclosure,
             ],
-            selective_disclosure: vec!["ANY_LEVEL".to_owned()],
+            selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
             issuance_did_methods: vec![
                 "KEY".to_string(),
                 "WEB".to_string(),
