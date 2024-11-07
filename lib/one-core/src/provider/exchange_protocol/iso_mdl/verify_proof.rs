@@ -150,19 +150,20 @@ pub async fn validate_proof(
         HashMap::new();
 
     for credential in presentation.credentials {
-        let credential = formatter
+        let received_credential = formatter
             .extract_credentials(&credential, key_verification_credentials.clone())
             .await?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
-        validate_issuance_time(&credential.invalid_before, leeway)?;
-        validate_expiration_time(&credential.valid_until, leeway)?;
+        validate_issuance_time(&received_credential.invalid_before, leeway)?;
+        validate_expiration_time(&received_credential.valid_until, leeway)?;
 
         let (credential_schema_id, requested_proof_claims) =
-            extract_matching_requested_schema(&credential, &mut remaining_requested_claims)?;
+            extract_matching_requested_schema(&received_credential, &remaining_requested_claims)?;
+        remaining_requested_claims.remove(&credential_schema_id);
 
         // Check if all subjects of the submitted VCs is matching the holder did.
-        let claim_subject = match &credential.subject {
+        let claim_subject = match &received_credential.subject {
             None => {
                 return Err(ServiceError::ValidationError(
                     "Claim Holder DID missing".to_owned(),
@@ -181,41 +182,11 @@ pub async fn validate_proof(
 
         let mut collected_proved_claims: Vec<ValidatedProofClaimDTO> = vec![];
         for requested_proof_claim in requested_proof_claims {
-            let (namespace, element_identifier) = requested_proof_claim
-                .schema
-                .key
-                .split_once(NESTED_CLAIM_MARKER)
-                .ok_or_else(|| {
-                    ServiceError::MappingError(format!(
-                        "Invalid requested claim key: {}",
-                        requested_proof_claim.schema.key
-                    ))
-                })?;
-            let found = credential
-                .claims
-                .values
-                .get(namespace)
-                .and_then(|elements| elements.as_object())
-                .and_then(|elements| elements.get(element_identifier));
-
-            // missing optional claim
-            if !requested_proof_claim.required && found.is_none() {
-                continue;
+            if let Some(received_claim) =
+                extract_matching_requested_claim(&received_credential, requested_proof_claim)?
+            {
+                collected_proved_claims.push(received_claim);
             }
-
-            let value = found.ok_or(ServiceError::ValidationError(format!(
-                "Required credential key '{}' missing",
-                &requested_proof_claim.schema.key
-            )))?;
-
-            collected_proved_claims.push(ValidatedProofClaimDTO {
-                claim_schema_id: requested_proof_claim.schema.id,
-                credential: credential.to_owned(),
-                value: (
-                    requested_proof_claim.schema.key.to_owned(),
-                    value.to_owned(),
-                ),
-            });
         }
 
         // TODO Validate collected_proved_claims when validators are ready
@@ -243,7 +214,7 @@ pub async fn validate_proof(
 
 fn extract_matching_requested_schema(
     received_credential: &DetailCredential,
-    remaining_requested_claims: &mut HashMap<CredentialSchemaId, Vec<ProofInputClaimSchema>>,
+    remaining_requested_claims: &HashMap<CredentialSchemaId, Vec<ProofInputClaimSchema>>,
 ) -> Result<(CredentialSchemaId, Vec<ProofInputClaimSchema>), ServiceError> {
     let (matching_credential_schema_id, matching_claim_schemas) =
         remaining_requested_claims
@@ -255,12 +226,17 @@ fn extract_matching_requested_schema(
                     .all(|required_claim_schema| {
                         received_credential.claims.values.iter().any(
                             |(namespace, element_value)| {
-                                element_value.as_object().is_some_and(|value| {
-                                    value.keys().any(|key| {
-                                        format!("{namespace}{NESTED_CLAIM_MARKER}{key}")
-                                            == required_claim_schema.schema.key
+                                let required_key = &required_claim_schema.schema.key;
+
+                                namespace == required_key // requesting a whole namespace
+                                ||
+                                    // or requesting a single element
+                                    element_value.as_object().is_some_and(|value| {
+                                        value.keys().any(|key| {
+                                            &format!("{namespace}{NESTED_CLAIM_MARKER}{key}")
+                                                == required_key
+                                        })
                                     })
-                                })
                             },
                         )
                     })
@@ -269,12 +245,46 @@ fn extract_matching_requested_schema(
                 "Could not find matching requested credential schema".to_owned(),
             ))?;
 
-    let result = (
+    Ok((
         matching_credential_schema_id.to_owned(),
         matching_claim_schemas.to_owned(),
-    );
-    remaining_requested_claims.remove(&result.0);
-    Ok(result)
+    ))
+}
+
+fn extract_matching_requested_claim(
+    received_credential: &DetailCredential,
+    requested_claim_schema: ProofInputClaimSchema,
+) -> Result<Option<ValidatedProofClaimDTO>, ServiceError> {
+    let requested_key = &requested_claim_schema.schema.key;
+    let found = if let Some((namespace, element_identifier)) =
+        requested_key.split_once(NESTED_CLAIM_MARKER)
+    {
+        // requested single element
+        received_credential
+            .claims
+            .values
+            .get(namespace)
+            .and_then(|elements| elements.as_object())
+            .and_then(|elements| elements.get(element_identifier))
+    } else {
+        // requested whole namespace
+        received_credential.claims.values.get(requested_key)
+    };
+
+    // missing optional claim
+    if !requested_claim_schema.required && found.is_none() {
+        return Ok(None);
+    }
+
+    let value = found.ok_or(ServiceError::ValidationError(format!(
+        "Required credential key '{requested_key}' missing",
+    )))?;
+
+    Ok(Some(ValidatedProofClaimDTO {
+        claim_schema_id: requested_claim_schema.schema.id,
+        credential: received_credential.to_owned(),
+        value: (requested_claim_schema.schema.key, value.to_owned()),
+    }))
 }
 
 pub async fn accept_proof(

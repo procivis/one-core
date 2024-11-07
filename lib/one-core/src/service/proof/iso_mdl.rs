@@ -57,7 +57,7 @@ impl ProofService {
                 last_modified: now,
                 state: ProofStateEnum::Pending,
             }]),
-            schema: Some(schema.clone()),
+            schema: Some(schema),
             transport: transport.to_owned(),
             claims: None,
             verifier_did: None,

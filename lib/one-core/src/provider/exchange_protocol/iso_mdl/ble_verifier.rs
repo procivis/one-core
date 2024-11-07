@@ -73,7 +73,7 @@ pub(crate) fn setup_verifier_session(
             .context("missing input_schemas")
             .map_err(ExchangeProtocolError::Other)?
             .iter()
-            .map(|schema| proof_input_schema_to_doc_request(schema.to_owned()))
+            .map(proof_input_schema_to_doc_request)
             .collect::<anyhow::Result<_>>()
             .map_err(ExchangeProtocolError::Other)?,
     };
@@ -499,37 +499,50 @@ async fn read_response(
     }
 }
 
-fn proof_input_schema_to_doc_request(input: ProofInputSchema) -> anyhow::Result<DocRequest> {
-    let claim_schemas = input.claim_schemas.context("claim_schemas is missing")?;
+fn proof_input_schema_to_doc_request(input: &ProofInputSchema) -> anyhow::Result<DocRequest> {
+    let proof_claim_schemas = input
+        .claim_schemas
+        .as_ref()
+        .context("claim_schemas is missing")?;
 
     let credential_schema = input
         .credential_schema
+        .as_ref()
         .context("credential_schema is missing")?;
 
     let mut name_spaces = HashMap::new();
-    for claim_schema in claim_schemas
-        .iter()
-        .filter(|schema| schema.schema.key.contains(NESTED_CLAIM_MARKER))
-    {
-        let (namespace, claim_path) = claim_schema
-            .schema
-            .key
-            .split_once(NESTED_CLAIM_MARKER)
-            .context("missing root object")?;
+    for proof_claim_schema in proof_claim_schemas {
+        let key = &proof_claim_schema.schema.key;
+        let claim_keys = if key.contains(NESTED_CLAIM_MARKER) {
+            // defining an element
+            vec![key]
+        } else {
+            // defining a whole namespace
+            credential_schema
+                .claim_schemas
+                .as_ref()
+                .context("claim_schemas missing in credential_schema")?
+                .iter()
+                .map(|claim_schema| &claim_schema.schema.key)
+                .filter(|k| k.starts_with(&format!("{key}{NESTED_CLAIM_MARKER}")))
+                .collect()
+        };
 
-        let element_identifier: String = claim_path
-            .chars()
-            .take_while(|c| *c != NESTED_CLAIM_MARKER)
-            .collect();
-        name_spaces
-            .entry(namespace.to_string())
-            .or_insert_with(HashMap::new)
-            .insert(element_identifier, true);
+        for claim_key in claim_keys {
+            let path: Vec<_> = claim_key.splitn(3, NESTED_CLAIM_MARKER).collect();
+
+            let namespace = path[0].to_string();
+            let element_identifier = path[1].to_string();
+            name_spaces
+                .entry(namespace)
+                .or_insert_with(HashMap::new)
+                .insert(element_identifier, true);
+        }
     }
 
     Ok(DocRequest {
         items_request: EmbeddedCbor::new(ItemsRequest {
-            doc_type: credential_schema.schema_id,
+            doc_type: credential_schema.schema_id.to_owned(),
             name_spaces,
         })?,
     })
