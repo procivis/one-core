@@ -68,8 +68,8 @@ pub struct OpenID4VCInteractionContent {
 pub struct HolderInteractionData {
     pub issuer_url: String,
     pub credential_endpoint: String,
-    pub token_endpoint: String,
-    pub grants: OpenID4VCIGrants,
+    pub token_endpoint: Option<String>,
+    pub grants: Option<OpenID4VCIGrants>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub access_token: Option<String>,
     #[serde(with = "time::serde::rfc3339::option")]

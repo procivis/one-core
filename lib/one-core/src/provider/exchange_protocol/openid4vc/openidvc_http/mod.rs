@@ -444,11 +444,26 @@ impl OpenID4VCHTTP {
         let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data)?;
 
+        let token_endpoint =
+            interaction_data
+                .token_endpoint
+                .as_ref()
+                .ok_or(ExchangeProtocolError::Failed(
+                    "token endpoint is missing".to_string(),
+                ))?;
+
+        let grants = interaction_data
+            .grants
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "grants data is missing".to_string(),
+            ))?;
+
         let token_response: OpenID4VCITokenResponseDTO = self
             .client
-            .post(&interaction_data.token_endpoint)
+            .post(token_endpoint.as_str())
             .form(&OpenID4VCITokenRequestDTO::PreAuthorizedCode {
-                pre_authorized_code: interaction_data.grants.code.pre_authorized_code.clone(),
+                pre_authorized_code: grants.code.pre_authorized_code.clone(),
                 tx_code,
             })
             .context("form error")
@@ -997,8 +1012,8 @@ async fn handle_credential_invitation(
     let holder_data = HolderInteractionData {
         issuer_url: issuer_metadata.credential_issuer.clone(),
         credential_endpoint: issuer_metadata.credential_endpoint.clone(),
-        token_endpoint: oicd_discovery.token_endpoint,
-        grants: credential_offer.grants,
+        token_endpoint: Some(oicd_discovery.token_endpoint),
+        grants: Some(credential_offer.grants),
         access_token: None,
         access_token_expires_at: None,
         refresh_token: None,
