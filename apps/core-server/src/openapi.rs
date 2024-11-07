@@ -255,6 +255,7 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 ssi::dto::PublicKeyJwkMlweDataRestDTO,
                 ssi::dto::GetTrustAnchorResponseRestDTO,
                 ssi::dto::GetTrustEntityResponseRestDTO,
+                ssi::dto::ProcivisSubjectClaimValueRestDTO,
 
                 interaction::dto::HandleInvitationRequestRestDTO,
                 interaction::dto::HandleInvitationResponseRestDTO,
