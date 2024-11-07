@@ -347,6 +347,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
             interaction_id,
             key_agreement,
             CancellationToken::new(),
+            None,
         )
         .await
         .unwrap();

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
+use futures::future::{BoxFuture, Shared};
 use time::{Duration, OffsetDateTime};
 use tokio_util::sync::CancellationToken;
 
@@ -37,6 +38,7 @@ pub(super) async fn mqtt_verifier_flow(
     interaction_repository: Arc<dyn InteractionRepository>,
     interaction_id: InteractionId,
     cancellation_token: CancellationToken,
+    callback: Option<Shared<BoxFuture<'static, ()>>>,
 ) -> anyhow::Result<()> {
     let result = async {
         let identify_bytes = tokio::select! {
@@ -137,6 +139,10 @@ pub(super) async fn mqtt_verifier_flow(
                         organisation: Some(organisation.clone()),
                     })
                     .await?;
+
+                if let Some(callback) = callback {
+                    callback.await;
+                }
             },
             _ = reject => {
                 tracing::debug!("got reject message");

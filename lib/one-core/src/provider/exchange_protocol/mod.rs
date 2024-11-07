@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use dto::{ExchangeProtocolCapabilities, PresentationDefinitionResponseDTO};
 use error::ExchangeProtocolError;
+use futures::future::BoxFuture;
 use indexmap::IndexMap;
 use openid4vc::error::OpenID4VCError;
 use openid4vc::model::{
@@ -340,6 +341,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         encryption_key_jwk: PublicKeyJwkDTO,
         vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
+        callback: Option<BoxFuture<'static, ()>>,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError>;
 
     /// Checks if the submitted presentation complies with the given proof request.
@@ -500,6 +502,7 @@ where
         encryption_key_jwk: PublicKeyJwkDTO,
         vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
+        callback: Option<BoxFuture<'static, ()>>,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         self.inner
             .share_proof(
@@ -509,6 +512,7 @@ where
                 encryption_key_jwk,
                 vp_formats,
                 type_to_descriptor,
+                callback,
             )
             .await
             .map(|resp| ShareResponse {

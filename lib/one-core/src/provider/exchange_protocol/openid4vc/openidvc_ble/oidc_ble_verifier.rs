@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context};
+use futures::future::{BoxFuture, Shared};
 use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt, TryFutureExt, TryStreamExt};
 use one_crypto::utilities;
@@ -72,7 +73,7 @@ impl OpenID4VCBLEVerifier {
             .map_err(|err| ExchangeProtocolError::Transport(err.into()))
     }
 
-    #[tracing::instrument(level = "debug", skip(self, keypair), err(Debug))]
+    #[tracing::instrument(level = "debug", skip_all, err(Debug))]
     pub async fn share_proof(
         self,
         presentation_definition: OpenID4VPPresentationDefinition,
@@ -80,6 +81,7 @@ impl OpenID4VCBLEVerifier {
         interaction_id: InteractionId,
         keypair: KeyAgreementKey,
         cancellation_token: CancellationToken,
+        callback: Option<Shared<BoxFuture<'static, ()>>>,
     ) -> Result<String, ExchangeProtocolError> {
         let proof_repository = self.proof_repository.clone();
 
@@ -235,6 +237,10 @@ impl OpenID4VCBLEVerifier {
 
                         let _ = wallet_disconnect_event(&mut connection_event_stream, &wallet.address).await;
                         let _ = peripheral.stop_server().await;
+                        if let Some(callback) = callback {
+                            callback.await;
+                        }
+
                         Ok(()) as Result<(), ExchangeProtocolError>
                     }
                     .await;

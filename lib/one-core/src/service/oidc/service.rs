@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use anyhow::Context;
 use indexmap::IndexMap;
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
 use one_crypto::utilities;
@@ -582,126 +583,94 @@ impl OIDCService {
     // TODO (Eugeniu) - this method is used as part of the OIDC BLE flow
     // as soon as ONE-2754 is finalized, we should remove this method, and move
     // all logic to the provider instead. This is a temporary solution.
-    pub async fn oidc_verifier_ble_mqtt_presentation(
-        &self,
-        proof_id: &ProofId,
-    ) -> Result<(), ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
-        let (proof, presentation_submission) = loop {
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-
-            let proof = self
-                .proof_repository
-                .get_proof(
-                    proof_id,
-                    &ProofRelations {
-                        schema: Some(ProofSchemaRelations {
-                            organisation: Some(OrganisationRelations::default()),
-                            proof_inputs: Some(ProofInputSchemaRelations {
-                                claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                                credential_schema: Some(CredentialSchemaRelations {
-                                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                                    ..Default::default()
-                                }),
+    pub async fn oidc_verifier_ble_mqtt_presentation(&self, proof_id: ProofId) {
+        let Ok(Some(proof)) = self
+            .proof_repository
+            .get_proof(
+                &proof_id,
+                &ProofRelations {
+                    schema: Some(ProofSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        proof_inputs: Some(ProofInputSchemaRelations {
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                            credential_schema: Some(CredentialSchemaRelations {
+                                claim_schemas: Some(ClaimSchemaRelations::default()),
+                                ..Default::default()
                             }),
                         }),
-                        interaction: Some(InteractionRelations::default()),
-                        state: Some(ProofStateRelations::default()),
-                        ..Default::default()
-                    },
-                )
-                .await?
-                .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(
-                    *proof_id,
-                )))?;
+                    }),
+                    interaction: Some(InteractionRelations::default()),
+                    state: Some(ProofStateRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+        else {
+            tracing::error!(%proof_id, "Missing proof");
+            return;
+        };
 
-            if ![
-                TransportType::Ble.as_ref(),
-                TransportType::Mqtt.as_ref(),
-                "",
-            ]
-            .contains(&proof.transport.as_str())
-            {
-                return Err(OpenID4VCIError::InvalidRequest.into());
-            };
-
-            let proof_state = proof
-                .state
-                .as_ref()
-                .ok_or(ServiceError::MappingError("state is None".to_string()))?
-                .first()
-                .ok_or(ServiceError::MappingError("state is empty".to_string()))?;
-
-            let state = proof_state.state.clone();
-
-            if state.eq(&ProofStateEnum::Created)
-                || state.eq(&ProofStateEnum::Accepted)
-                || state.eq(&ProofStateEnum::Rejected)
-                || state.eq(&ProofStateEnum::Error)
-            {
-                return Ok(());
-            }
-
-            if let Some(data) = proof
+        let request_data_fn = || {
+            let interaction_data = proof
                 .interaction
                 .as_ref()
                 .and_then(|interaction| interaction.data.as_ref())
-            {
-                if let Ok(interaction_data) =
-                    serde_json::from_slice::<BLEOpenID4VPInteractionData>(data)
-                {
-                    tracing::debug!("Got BLE interaction data");
-                    if let Some(ble_response) = interaction_data.presentation_submission {
-                        let state =
-                            Uuid::from_str(&ble_response.presentation_submission.definition_id)
-                                .map_err(|e| {
-                                    ServiceError::MappingError(format!(
-                                        "Failed to parse BLE interaction data: {:?}",
-                                        e.to_string()
-                                    ))
-                                })?;
+                .context("Missing interaction data")?;
 
-                        let request_data = RequestData {
-                            presentation_submission: ble_response.presentation_submission,
-                            vp_token: ble_response.vp_token,
-                            state,
-                            mdoc_generated_nonce: interaction_data.identity_request_nonce,
-                        };
+            if proof.transport == TransportType::Ble.as_ref() {
+                let interaction_data =
+                    serde_json::from_slice::<BLEOpenID4VPInteractionData>(interaction_data)
+                        .context("BLE interaction data deserialization")?;
 
-                        break Ok((proof, request_data)) as Result<_, ServiceError>;
-                    }
-                }
+                let response = interaction_data
+                    .presentation_submission
+                    .context("BLE interaction missing presentation_submission")?;
+                let state = Uuid::from_str(&response.presentation_submission.definition_id)?;
 
-                if let Ok(interaction_data) =
-                    serde_json::from_slice::<MQTTOpenID4VPInteractionDataVerifier>(data)
-                {
-                    tracing::debug!("Got MQTT interaction data");
-                    let mqtt_response = interaction_data.presentation_submission;
-                    let state =
-                        Uuid::from_str(&mqtt_response.presentation_submission.definition_id)
-                            .map_err(|e| {
-                                ServiceError::MappingError(format!(
-                                    "Failed to parse MQTT interaction data: {:?}",
-                                    e.to_string()
-                                ))
-                            })?;
+                let request_data = RequestData {
+                    presentation_submission: response.presentation_submission,
+                    vp_token: response.vp_token,
+                    state,
+                    mdoc_generated_nonce: interaction_data.identity_request_nonce,
+                };
 
-                    let request_data = RequestData {
-                        presentation_submission: mqtt_response.presentation_submission,
-                        vp_token: mqtt_response.vp_token,
-                        state,
-                        mdoc_generated_nonce: Some(interaction_data.identity_request_nonce),
-                    };
+                anyhow::Ok(request_data)
+            } else {
+                let interaction_data =
+                    serde_json::from_slice::<MQTTOpenID4VPInteractionDataVerifier>(
+                        interaction_data,
+                    )
+                    .context("MQTT interaction data deserialization")?;
 
-                    break Ok((proof, request_data)) as Result<_, ServiceError>;
-                }
+                let response = interaction_data.presentation_submission;
+                let state = Uuid::from_str(&response.presentation_submission.definition_id)?;
+
+                let request_data = RequestData {
+                    presentation_submission: response.presentation_submission,
+                    vp_token: response.vp_token,
+                    state,
+                    mdoc_generated_nonce: Some(interaction_data.identity_request_nonce),
+                };
+
+                anyhow::Ok(request_data)
             }
-        }?;
+        };
 
-        self.oidc_verifier_verify_submission(proof, presentation_submission)
-            .await?;
-        Ok(())
+        let request_data = match request_data_fn() {
+            Ok(request_data) => request_data,
+            Err(error) => {
+                tracing::error!(%error, "Failed parsing interaction data");
+                let _ = self.mark_proof_as_failed(&proof.id).await;
+                return;
+            }
+        };
+
+        if let Err(error) = self
+            .oidc_verifier_verify_submission(proof, request_data)
+            .await
+        {
+            tracing::error!(%error, "Proof submission failed");
+        }
     }
 
     pub async fn oidc_verifier_direct_post(

@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use ble::ISO_MDL_FLOW;
 use ble_holder::{send_mdl_response, MdocBleHolderInteractionData};
 use common::{to_cbor, DeviceRequest};
+use futures::future::BoxFuture;
 use shared_types::KeyId;
 use url::Url;
 
@@ -267,6 +268,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         _encryption_key_jwk: PublicKeyJwkDTO,
         _vp_formats: HashMap<String, OpenID4VPFormat>,
         _type_to_descriptor: TypeToDescriptorMapper,
+        _callback: Option<BoxFuture<'static, ()>>,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         unimplemented!()
     }

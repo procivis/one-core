@@ -3508,6 +3508,7 @@ name = "one-core-uniffi"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "futures",
  "one-core",
  "one-crypto",
  "one-dto-mapper",

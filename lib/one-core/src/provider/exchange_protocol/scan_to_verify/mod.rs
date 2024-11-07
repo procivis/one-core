@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use dto::ScanToVerifyCredentialDTO;
+use futures::future::BoxFuture;
 use shared_types::KeyId;
 use url::Url;
 
@@ -139,6 +140,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _encryption_key_jwk: PublicKeyJwkDTO,
         _vp_formats: HashMap<String, OpenID4VPFormat>,
         _type_to_descriptor: TypeToDescriptorMapper,
+        _callback: Option<BoxFuture<'static, ()>>,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         unimplemented!()
     }

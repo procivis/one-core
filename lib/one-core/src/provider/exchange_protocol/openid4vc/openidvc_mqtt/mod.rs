@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
+use futures::future::{BoxFuture, Shared};
 use oidc_mqtt_verifier::{mqtt_verifier_flow, Topics};
 use one_crypto::utilities;
 use rand::rngs::OsRng;
@@ -444,6 +445,7 @@ impl OpenId4VcMqtt {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
     pub async fn share_proof(
         &self,
@@ -453,6 +455,7 @@ impl OpenId4VcMqtt {
         interaction_id: InteractionId,
         key_agreement: KeyAgreementKey,
         cancellation_token: CancellationToken,
+        callback: Option<Shared<BoxFuture<'static, ()>>>,
     ) -> Result<Url, ExchangeProtocolError> {
         let url = {
             let mut url: Url = "openid4vp://connect".parse().unwrap();
@@ -497,6 +500,7 @@ impl OpenId4VcMqtt {
             presentation_request,
             interaction_id,
             cancellation_token,
+            callback,
         )
         .await?;
 
@@ -523,6 +527,7 @@ impl OpenId4VcMqtt {
             })
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
     async fn start_detached_subscriber(
         &self,
@@ -532,6 +537,7 @@ impl OpenId4VcMqtt {
         presentation_request: MqttOpenId4VpRequest,
         interaction_id: InteractionId,
         cancellation_token: CancellationToken,
+        callback: Option<Shared<BoxFuture<'static, ()>>>,
     ) -> Result<(), ExchangeProtocolError> {
         let (identify, presentation_definition_topic, accept, reject) = tokio::try_join!(
             self.subscribe_to_topic(topic_prefix.clone() + "/presentation-submission/identify"),
@@ -557,6 +563,7 @@ impl OpenId4VcMqtt {
                 self.interaction_repository.clone(),
                 interaction_id,
                 cancellation_token,
+                callback,
             )
             .in_current_span(),
         );

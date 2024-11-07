@@ -2704,7 +2704,7 @@ async fn test_share_proof_created_success() {
         .inner
         .expect_share_proof()
         .once()
-        .returning(move |_, _, _, _, _, _| {
+        .returning(move |_, _, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -2771,7 +2771,7 @@ async fn test_share_proof_created_success() {
         ..Default::default()
     });
 
-    let result = service.share_proof(&proof_id).await;
+    let result = service.share_proof(&proof_id, None).await;
 
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -2810,7 +2810,7 @@ async fn test_share_proof_pending_success() {
         .inner
         .expect_share_proof()
         .once()
-        .returning(move |_, _, _, _, _, _| {
+        .returning(move |_, _, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -2864,7 +2864,7 @@ async fn test_share_proof_pending_success() {
         ..Default::default()
     });
 
-    let result = service.share_proof(&proof_id).await;
+    let result = service.share_proof(&proof_id, None).await;
     assert!(result.is_ok());
 }
 
@@ -2888,7 +2888,7 @@ async fn test_share_proof_invalid_state() {
         ..Default::default()
     });
 
-    let result = service.share_proof(&proof_id).await;
+    let result = service.share_proof(&proof_id, None).await;
     assert!(matches!(
         result,
         Err(ServiceError::BusinessLogic(

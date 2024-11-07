@@ -127,7 +127,7 @@ pub(crate) async fn share_proof(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<EntityShareResponseRestDTO> {
-    let result = state.core.proof_service.share_proof(&id).await;
+    let result = state.core.proof_service.share_proof(&id, None).await;
     OkOrErrorResponse::from_result(result, state, "sharing proof")
 }
 

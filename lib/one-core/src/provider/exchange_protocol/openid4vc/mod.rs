@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
+use futures::future::BoxFuture;
+use futures::FutureExt;
 use key_agreement_key::KeyAgreementKey;
 use openidvc_ble::OpenID4VCBLE;
 use openidvc_http::OpenID4VCHTTP;
@@ -264,8 +266,10 @@ impl ExchangeProtocolImpl for OpenID4VC {
         encryption_key_jwk: PublicKeyJwkDTO,
         vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
+        callback: Option<BoxFuture<'static, ()>>,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         let transport = get_transport(proof)?;
+        let callback = callback.map(|fut| fut.shared());
 
         match transport.as_slice() {
             [TransportType::Ble] => {
@@ -280,6 +284,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         interaction_id,
                         key_agreement,
                         CancellationToken::new(),
+                        callback,
                     )
                     .await
                     .map(|url| ShareResponse {
@@ -318,6 +323,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     interaction_id,
                     key_agreement,
                     CancellationToken::new(),
+                    callback,
                 )
                 .await
                 .map(|url| ShareResponse {
@@ -347,10 +353,9 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         interaction_id,
                         key_agreement.clone(),
                         cancellation_token.clone(),
+                        callback.clone(),
                     )
                     .await?;
-
-                tracing::debug!("Got mqtt url: {mqtt_url}");
 
                 let ble_response = self
                     .openid_ble
@@ -361,10 +366,9 @@ impl ExchangeProtocolImpl for OpenID4VC {
                         interaction_id,
                         key_agreement,
                         cancellation_token,
+                        callback,
                     )
                     .await?;
-
-                tracing::debug!("Got ble url: {ble_response}");
 
                 let ble_url: Url = ble_response
                     .parse()

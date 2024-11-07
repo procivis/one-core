@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
+use futures::future::BoxFuture;
 use shared_types::{OrganisationId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -420,7 +421,11 @@ impl ProofService {
     /// # Arguments
     ///
     /// * `id` - proof identifier
-    pub async fn share_proof(&self, id: &ProofId) -> Result<EntityShareResponseDTO, ServiceError> {
+    pub async fn share_proof(
+        &self,
+        id: &ProofId,
+        callback: Option<BoxFuture<'static, ()>>,
+    ) -> Result<EntityShareResponseDTO, ServiceError> {
         let (proof, proof_state) = self.get_proof_with_state(id).await?;
 
         let now = OffsetDateTime::now_utc();
@@ -475,6 +480,7 @@ impl ProofService {
                 jwk.jwk.into(),
                 formats,
                 type_to_descriptor_mapper,
+                callback,
             )
             .await?;
 

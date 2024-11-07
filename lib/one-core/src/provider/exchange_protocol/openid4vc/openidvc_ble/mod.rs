@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
 use anyhow::{anyhow, Result};
+use futures::future::{BoxFuture, Shared};
 use futures::{Stream, TryStreamExt};
 use oidc_ble_holder::OpenID4VCBLEHolder;
 use oidc_ble_verifier::OpenID4VCBLEVerifier;
@@ -449,6 +450,7 @@ impl OpenID4VCBLE {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn share_proof(
         &self,
         proof: &Proof,
@@ -457,6 +459,7 @@ impl OpenID4VCBLE {
         interaction_id: InteractionId,
         key_agreement: KeyAgreementKey,
         cancellation_token: CancellationToken,
+        callback: Option<Shared<BoxFuture<'static, ()>>>,
     ) -> Result<String, ExchangeProtocolError> {
         // Pass the expected presentation content to interaction for verification
         let presentation_definition = create_open_id_for_vp_presentation_definition(
@@ -499,6 +502,7 @@ impl OpenID4VCBLE {
                 interaction_id,
                 key_agreement,
                 cancellation_token,
+                callback,
             )
             .await
     }
