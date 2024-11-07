@@ -1,6 +1,6 @@
 use shared_types::DidValue;
 
-use super::model::CredentialRevocationInfo;
+use super::model::{CredentialRevocationInfo, Operation};
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::revocation::error::RevocationError;
@@ -51,7 +51,7 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
         RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         }
     }
 

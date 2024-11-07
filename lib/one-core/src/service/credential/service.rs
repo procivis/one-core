@@ -36,7 +36,7 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationState, RevocationMethodCapabilities,
+    CredentialDataByRole, CredentialRevocationState, Operation, RevocationMethodCapabilities,
 };
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::error::DataLayerError;
@@ -633,11 +633,10 @@ impl CredentialService {
         let capabilities: RevocationMethodCapabilities = revocation_method.get_capabilities();
         let required_capability = match revocation_state {
             CredentialRevocationState::Valid | CredentialRevocationState::Suspended { .. } => {
-                "SUSPEND"
+                Operation::Suspend
             }
-            CredentialRevocationState::Revoked => "REVOKE",
-        }
-        .to_string();
+            CredentialRevocationState::Revoked => Operation::Revoke,
+        };
         if !capabilities.operations.contains(&required_capability) {
             return Err(
                 BusinessLogicError::OperationNotSupportedByRevocationMethod {

@@ -13,7 +13,8 @@ use crate::provider::revocation::bitstring_status_list::util::extract_bitstring_
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialAdditionalData, CredentialDataByRole, CredentialRevocationInfo,
-    CredentialRevocationState, JsonLdContext, RevocationMethodCapabilities, RevocationUpdate,
+    CredentialRevocationState, JsonLdContext, Operation, RevocationMethodCapabilities,
+    RevocationUpdate,
 };
 use crate::provider::revocation::RevocationMethod;
 use crate::util::key_verification::KeyVerification;
@@ -126,7 +127,7 @@ impl RevocationMethod for StatusList2021 {
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
         RevocationMethodCapabilities {
-            operations: vec!["REVOKE".to_string(), "SUSPEND".to_string()],
+            operations: vec![Operation::Revoke, Operation::Suspend],
         }
     }
 

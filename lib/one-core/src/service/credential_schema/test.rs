@@ -24,7 +24,7 @@ use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::revocation::model::RevocationMethodCapabilities;
+use crate::provider::revocation::model::{Operation, RevocationMethodCapabilities};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -368,7 +368,7 @@ async fn test_create_credential_schema_success() {
         .expect_get_capabilities()
         .once()
         .return_once(|| RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -498,7 +498,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .expect_get_capabilities()
         .once()
         .return_once(|| RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -614,7 +614,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         .expect_get_capabilities()
         .once()
         .return_once(|| RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -895,7 +895,7 @@ async fn test_create_credential_schema_unique_name_error() {
         .expect_get_capabilities()
         .once()
         .return_once(|| RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -1175,7 +1175,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         .expect_get_capabilities()
         .once()
         .return_once(|| RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -1297,7 +1297,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
         .expect_get_capabilities()
         .once()
         .return_once(|| RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -1391,7 +1391,7 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
         .expect_get_capabilities()
         .once()
         .return_once(|| RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -1475,7 +1475,7 @@ async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() 
         .expect_get_capabilities()
         .once()
         .return_once(|| RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -1538,7 +1538,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
         .expect_get_capabilities()
         .once()
         .return_once(|| RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -2646,7 +2646,7 @@ async fn test_import_credential_schema_success() {
         .expect_get_capabilities()
         .once()
         .return_once(|| RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();

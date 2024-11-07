@@ -38,7 +38,7 @@ use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::model::{
-    CredentialRevocationState, RevocationMethodCapabilities, RevocationUpdate,
+    CredentialRevocationState, Operation, RevocationMethodCapabilities, RevocationUpdate,
 };
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::MockRevocationMethod;
@@ -2172,7 +2172,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
         .expect_get_capabilities()
         .once()
         .return_once(move || RevocationMethodCapabilities {
-            operations: vec!["REVOKE".to_string()],
+            operations: vec![Operation::Revoke],
         });
     revocation_method
         .expect_mark_credential_as()
@@ -2253,7 +2253,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
         .expect_get_capabilities()
         .once()
         .return_once(move || RevocationMethodCapabilities {
-            operations: vec!["REVOKE".to_string()],
+            operations: vec![Operation::Revoke],
         });
     revocation_method
         .expect_mark_credential_as()
@@ -2337,7 +2337,7 @@ async fn test_suspend_credential_success() {
         .expect_get_capabilities()
         .once()
         .return_once(move || RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
     revocation_method
         .expect_mark_credential_as()
@@ -2480,7 +2480,7 @@ async fn test_reactivate_credential_success() {
         .expect_get_capabilities()
         .once()
         .return_once(move || RevocationMethodCapabilities {
-            operations: vec!["SUSPEND".to_string()],
+            operations: vec![Operation::Suspend],
         });
     revocation_method
         .expect_mark_credential_as()

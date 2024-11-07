@@ -53,11 +53,18 @@ pub struct JsonLdContext {
 
 #[derive(Clone, Default, Serialize)]
 pub struct RevocationMethodCapabilities {
-    pub operations: Vec<String>,
+    pub operations: Vec<Operation>,
 }
 
 #[derive(Debug)]
 pub struct RevocationUpdate {
     pub status_type: String,
     pub data: Vec<u8>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Operation {
+    Revoke,
+    Suspend,
 }

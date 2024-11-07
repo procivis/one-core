@@ -31,8 +31,8 @@ use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::lvvc::dto::{IssuerResponseDTO, Lvvc};
 use crate::provider::revocation::model::{
     CredentialAdditionalData, CredentialDataByRole, CredentialRevocationInfo,
-    CredentialRevocationState, JsonLdContext, RevocationMethodCapabilities, RevocationUpdate,
-    VerifierCredentialData,
+    CredentialRevocationState, JsonLdContext, Operation, RevocationMethodCapabilities,
+    RevocationUpdate, VerifierCredentialData,
 };
 use crate::provider::revocation::RevocationMethod;
 use crate::util::params::convert_params;
@@ -321,7 +321,7 @@ impl RevocationMethod for LvvcProvider {
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
         RevocationMethodCapabilities {
-            operations: vec!["REVOKE".to_string(), "SUSPEND".to_string()],
+            operations: vec![Operation::Revoke, Operation::Suspend],
         }
     }
 

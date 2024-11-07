@@ -24,8 +24,8 @@ use crate::provider::revocation::bitstring_status_list::resolver::StatusListCach
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialAdditionalData, CredentialDataByRole, CredentialRevocationInfo,
-    CredentialRevocationState, JsonLdContext, RevocationListId, RevocationMethodCapabilities,
-    RevocationUpdate,
+    CredentialRevocationState, JsonLdContext, Operation, RevocationListId,
+    RevocationMethodCapabilities, RevocationUpdate,
 };
 use crate::provider::revocation::RevocationMethod;
 use crate::service::revocation_list::dto::SupportedBitstringCredentialFormat;
@@ -277,7 +277,7 @@ impl RevocationMethod for BitstringStatusList {
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
         RevocationMethodCapabilities {
-            operations: vec!["REVOKE".to_string(), "SUSPEND".to_string()],
+            operations: vec![Operation::Revoke, Operation::Suspend],
         }
     }
 

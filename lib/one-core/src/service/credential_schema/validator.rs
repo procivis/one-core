@@ -10,6 +10,7 @@ use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -331,7 +332,7 @@ fn validate_revocation_method_is_compatible_with_suspension(
             .get_capabilities()
             .operations
             .iter()
-            .any(|capability| capability == "SUSPEND")
+            .any(|capability| *capability == Operation::Suspend)
     {
         return Err(BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod.into());
     }
