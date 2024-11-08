@@ -253,3 +253,34 @@ dependencies = [
   "package_ios_bindings",
 ]
 script = 'echo "--- output available in target/bindings/ios ---"'
+
+[tasks.install_api_tests]
+description = "Install dependencies for Playwright tests"
+script_runner = "sh"
+cwd = "${API_TEST_REPO_PATH}"
+script = '''
+echo Install api test node_modules
+yarn install --cwd api-tests
+echo Install test lib node_modules
+yarn install --cwd one-tests-lib
+echo Installation completed
+'''
+
+[tasks.api_tests]
+# dependencies = ["install_api_tests"]
+description = "Run Playwright API tests"
+script_runner = "sh"
+cwd = "${API_TEST_REPO_PATH}"
+script = '''
+cd api-tests
+yarn test  --project core
+'''
+
+[tasks.api_tests_report]
+description = "Run Playwright API tests report"
+script_runner = "sh"
+cwd = "${API_TEST_REPO_PATH}"
+script = '''
+cd api-tests
+yarn playwright show-report
+'''

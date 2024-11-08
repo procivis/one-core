@@ -42,7 +42,7 @@ stages:
   - build
   - test
   - docs
-  - manual_e2e_tests
+  - tests
   - scan
   - publish
   - deploy
@@ -83,11 +83,15 @@ before_script:
     - !reference [.only_main_or_tag, rules]
     - when: manual
 
-.manual_except_main_branch:
+.rule:run_tests:
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: never
-    - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
+    - when: manual
+
+.rule:except_main_branch:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: never
     - when: on_success
 
@@ -127,6 +131,17 @@ before_script:
     project: procivis/one/one-e2e-tests
     branch: main
     strategy: depend
+
+.run_api_tests:
+  variables:
+    CORE_IMAGE_TAG: ${APP_VERSION}
+    API_TEST_RUN_CORE: true
+    API_TEST_RUN_BFF: false
+  trigger:
+    project: procivis/one/one-tests
+    branch: main
+    strategy: depend
+
 
 build:
   stage: build
@@ -350,13 +365,22 @@ sdk:generate_binding_files:
   extends:
     - .only_main_or_tag
 
-test_e2e:
+tests:e2e:
   stage: e2e_tests
   needs:
     - job: publish
       artifacts: true
   extends:
     - .run_e2e_tests
+    - .only_main_or_tag
+
+tests:api:
+  stage: api_tests
+  needs:
+    - job: publish
+      artifacts: true
+  extends:
+    - .run_api_tests
     - .only_main_or_tag
 
 .deploy_trigger:
@@ -412,42 +436,41 @@ deploy:canivc:
     - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: manual
 
-run_e2e_tests:
-  stage: manual_e2e_tests
-  when: manual
-  needs: [tests:sqlite]
-  script:
-    - echo "Job for trigger manual e2e tests"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
-      when: never
-    - when: manual
-
-e2e:build:
-  stage: manual_e2e_tests
-  needs:
-    - job: run_e2e_tests
+test:build:
+  stage: tests
+  needs: []
   extends:
     - .cargo_build
-    - .manual_except_main_branch
+    - .rule:except_main_branch
 
-e2e:publish:
-  stage: manual_e2e_tests
+tests:publish:
+  stage: tests
   needs:
-    - job: e2e:build
-  dependencies: [e2e:build]
+    - job: test:build
+      artifacts: true
   extends:
     - .docker_publish
-    - .manual_except_main_branch
+    - .rule:except_main_branch
 
 e2e:trigger_tests:
-  stage: manual_e2e_tests
+  stage: tests
+  when: manual
   needs:
-    - job: e2e:publish
+    - job: tests:publish
       artifacts: true
   extends:
     - .run_e2e_tests
-    - .manual_except_main_branch
+    - .rule:run_tests
+
+api:trigger_tests:
+  stage: tests
+  when: manual
+  needs:
+    - job: tests:publish
+      artifacts: true
+  extends:
+    - .run_api_tests
+    - .rule:except_main_branch
 
 dtrack:upload-bom:
   stage: scan
@@ -549,20 +572,3 @@ github:release:
     - job: github:push
     - job: dtrack:upload-bom
       artifacts: true
-
-tests:api:
-  stage: api_tests
-  needs:
-    - job: deploy:dev
-  variables:
-    API_TEST_RUN_CORE: true
-    API_TEST_RUN_BFF: false
-    ALLOW_FAILURES: false
-    THREADS: 1
-    LOOP_COUNT: 1
-  trigger:
-    project: procivis/one/one-performance-test
-    branch: main
-    strategy: depend
-  extends:
-    - .only_main
