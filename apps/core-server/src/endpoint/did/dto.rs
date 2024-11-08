@@ -180,24 +180,26 @@ impl From<Boolean> for bool {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct DidFilterQueryParamsRest {
+    #[param(nullable = false)]
     pub name: Option<String>,
+    #[param(nullable = false)]
     pub did: Option<String>,
-    #[param(inline)]
+    #[param(nullable = false)]
     pub r#type: Option<DidType>,
-    #[param(inline, rename = "exact[]")]
+    #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactDidFilterColumnRestEnum>>,
     pub organisation_id: OrganisationId,
-    #[param(inline)]
+    #[param(inline, nullable = false)]
     pub deactivated: Option<Boolean>,
-    #[param(inline, rename = "keyAlgorithms[]")]
+    #[param(rename = "keyAlgorithms[]", nullable = false)]
     pub key_algorithms: Option<Vec<String>>,
-    #[param(inline, rename = "keyRoles[]")]
+    #[param(rename = "keyRoles[]", inline, nullable = false)]
     pub key_roles: Option<Vec<KeyRoleRestEnum>>,
-    #[param(inline, rename = "keyStorages[]")]
+    #[param(rename = "keyStorages[]", nullable = false)]
     pub key_storages: Option<Vec<String>>,
-    #[param(inline, rename = "keyIds[]")]
+    #[param(rename = "keyIds[]", inline, nullable = false)]
     pub key_ids: Option<Vec<KeyId>>,
-    #[param(inline, rename = "didMethods[]")]
+    #[param(rename = "didMethods[]", nullable = false)]
     pub did_methods: Option<Vec<String>>,
 }
 

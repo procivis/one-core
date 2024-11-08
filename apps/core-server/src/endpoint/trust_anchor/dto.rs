@@ -93,11 +93,14 @@ pub enum ExactTrustAnchorFilterColumnRestEnum {
 #[derive(Clone, Debug, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustAnchorsFilterQueryParamsRest {
+    #[param(nullable = false)]
     pub name: Option<String>,
+    #[param(nullable = false)]
     pub role: Option<TrustAnchorRoleRest>,
+    #[param(nullable = false)]
     pub r#type: Option<String>,
     pub organisation_id: OrganisationId,
-    #[param(inline, rename = "exact[]")]
+    #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactTrustAnchorFilterColumnRestEnum>>,
 }
 

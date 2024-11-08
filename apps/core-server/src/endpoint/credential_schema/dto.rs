@@ -162,12 +162,15 @@ pub enum CredentialSchemasExactColumn {
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemasFilterQueryParamsRest {
     pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
     pub name: Option<String>,
-    #[param(inline, rename = "exact[]")]
+    #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<CredentialSchemasExactColumn>>,
-    #[param(inline, rename = "ids[]")]
+    #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<CredentialSchemaId>>,
+    #[param(nullable = false)]
     pub schema_id: Option<String>,
+    #[param(nullable = false)]
     pub format: Option<String>,
 }
 

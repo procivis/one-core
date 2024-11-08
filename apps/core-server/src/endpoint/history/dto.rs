@@ -92,21 +92,31 @@ pub enum SortableHistoryColumnRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryFilterQueryParamsRest {
-    #[param(inline, rename = "entityTypes[]")]
+    #[param(rename = "entityTypes[]", inline, nullable = false)]
     pub entity_types: Option<Vec<HistoryEntityType>>,
+    #[param(nullable = false)]
     pub entity_id: Option<EntityId>,
+    #[param(nullable = false)]
     pub action: Option<HistoryAction>,
+    /// timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z')
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[param(value_type = String)]
     pub created_date_from: Option<OffsetDateTime>,
+    /// timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z')
     #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[param(value_type = String)]
     pub created_date_to: Option<OffsetDateTime>,
+    #[param(nullable = false)]
     pub did_id: Option<DidId>,
+    #[param(nullable = false)]
     pub credential_id: Option<CredentialId>,
+    #[param(nullable = false)]
     pub credential_schema_id: Option<CredentialSchemaId>,
+    #[param(nullable = false)]
     pub proof_schema_id: Option<ProofSchemaId>,
+    #[param(nullable = false)]
     pub search_text: Option<String>,
+    #[param(nullable = false)]
     pub search_type: Option<HistorySearchEnumRest>,
     pub organisation_id: OrganisationId,
 }

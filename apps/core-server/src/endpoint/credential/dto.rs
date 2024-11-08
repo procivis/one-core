@@ -197,16 +197,19 @@ pub enum SearchType {
 #[serde(rename_all = "camelCase")]
 pub struct CredentialsFilterQueryParamsRest {
     pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
     pub name: Option<String>,
+    #[param(nullable = false)]
     pub role: Option<CredentialRoleRestEnum>,
-    #[param(inline, rename = "exact[]")]
+    #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
-    #[param(inline, rename = "ids[]")]
+    #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<CredentialId>>,
-    #[param(inline, rename = "status[]")]
+    #[param(rename = "status[]", inline, nullable = false)]
     pub status: Option<Vec<CredentialStateRestEnum>>,
+    #[param(nullable = false)]
     pub search_text: Option<String>,
-    #[param(inline, rename = "searchType[]")]
+    #[param(rename = "searchType[]", inline, nullable = false)]
     pub search_type: Option<Vec<SearchType>>,
 }
 
@@ -215,7 +218,6 @@ pub struct CredentialsFilterQueryParamsRest {
 #[into(CredentialListIncludeEntityTypeEnum)]
 pub enum CredentialListIncludeEntityTypeRestEnum {
     LayoutProperties,
-    Credential,
 }
 
 pub type GetCredentialQuery = ListQueryParamsRest<

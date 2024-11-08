@@ -105,15 +105,15 @@ pub enum SortableKeyColumnRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct KeyFilterQueryParamsRest {
     pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
     pub name: Option<String>,
-
-    #[param(inline)]
+    #[param(nullable = false)]
     pub key_type: Option<String>,
-    #[param(inline)]
+    #[param(nullable = false)]
     pub key_storage: Option<String>,
-    #[param(inline, rename = "ids[]")]
+    #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<KeyId>>,
-    #[param(inline, rename = "exact[]")]
+    #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
 }
 

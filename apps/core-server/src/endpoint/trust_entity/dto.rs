@@ -81,11 +81,14 @@ pub type ListTrustEntitiesQuery =
 #[derive(Clone, Debug, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustEntityFilterQueryParamsRestDto {
+    #[param(nullable = false)]
     pub name: Option<String>,
+    #[param(nullable = false)]
     pub role: Option<TrustEntityRoleRest>,
+    #[param(nullable = false)]
     pub trust_anchor_id: Option<TrustAnchorId>,
     pub organisation_id: OrganisationId,
-    #[param(inline, rename = "exact[]")]
+    #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
 }
 

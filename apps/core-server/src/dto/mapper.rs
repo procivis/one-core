@@ -66,19 +66,25 @@ where
     }
 }
 
-// only used for generation of swagger-ui params for pagination and sorting
+// only used for generation of swagger-ui params for pagination, sorting and data inclusion
 #[derive(Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct PartialQueryParamsRest<SortColumn: ToSchema, Include: ToSchema> {
+    /// page index
     pub page: u32,
+    /// limits number of items per page
     pub page_size: u32,
 
-    #[param(inline)]
+    /// order results based on specific field values
+    #[param(inline, nullable = false)]
     pub sort: Option<SortColumn>,
+    /// default: ASC
+    #[param(nullable = false)]
     pub sort_direction: Option<SortDirection>,
 
-    #[param(inline, rename = "include[]")]
+    /// additional fields to include in response objects
+    #[param(rename = "include[]", inline, nullable = false)]
     pub include: Option<Vec<Include>>,
 }
 

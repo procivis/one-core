@@ -104,14 +104,15 @@ pub enum SortableProofColumnRestEnum {
 #[serde(rename_all = "camelCase")]
 pub struct ProofsFilterQueryParamsRest {
     pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
     pub name: Option<String>,
-    #[param(inline, rename = "proofStates[]")]
+    #[param(rename = "proofStates[]", inline, nullable = false)]
     pub proof_states: Option<Vec<ProofStateRestEnum>>,
-    #[param(inline, rename = "proofSchemaIds[]")]
+    #[param(rename = "proofSchemaIds[]", inline, nullable = false)]
     pub proof_schema_ids: Option<Vec<ProofSchemaId>>,
-    #[param(inline, rename = "ids[]")]
+    #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<ProofId>>,
-    #[param(inline, rename = "exact[]")]
+    #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
 }
 
