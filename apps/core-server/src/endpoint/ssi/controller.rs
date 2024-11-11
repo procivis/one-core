@@ -16,8 +16,8 @@ use shared_types::{
 use uuid::Uuid;
 
 use super::dto::{
-    DidDocumentRestDTO, GetTrustAnchorResponseRestDTO, IssuerResponseRestDTO,
-    JsonLDContextResponseRestDTO, OpenID4VCICredentialOfferRestDTO,
+    DidDocumentRestDTO, GetTrustAnchorResponseRestDTO, JsonLDContextResponseRestDTO,
+    LVVCIssuerResponseRestDTO, OpenID4VCICredentialOfferRestDTO,
     OpenID4VCICredentialRequestRestDTO, OpenID4VCICredentialResponseRestDTO,
     OpenID4VCIDiscoveryResponseRestDTO, OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
     OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
@@ -135,10 +135,13 @@ pub(crate) async fn get_revocation_list_by_id(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
     responses(
-        (status = 200, description = "OK", content_type = "text/plain"),
+        (status = 200, description = "OK", body = LVVCIssuerResponseRestDTO),
         (status = 400, description = "Credential in PENDING, REQUESTED or CREATED state/Invalid holder token"),
         (status = 404, description = "Credential not found"),
         (status = 500, description = "Server error"),
+    ),
+    security(
+        ("lvvc-fetch" = [])
     ),
     tag = "ssi",
     summary = "Get LVVC by credential",
@@ -156,7 +159,11 @@ pub(crate) async fn get_lvvc_by_credential_id(
         .await;
 
     match result {
-        Ok(result) => (StatusCode::OK, Json(IssuerResponseRestDTO::from(result))).into_response(),
+        Ok(result) => (
+            StatusCode::OK,
+            Json(LVVCIssuerResponseRestDTO::from(result)),
+        )
+            .into_response(),
         Err(ServiceError::ConfigValidationError(error)) => {
             tracing::error!("Config validation error: {}", error);
             StatusCode::BAD_REQUEST.into_response()
@@ -408,7 +415,7 @@ pub(crate) async fn oidc_create_token(
         (status = 500, description = "Server error"),
     ),
     security(
-        ("OpenID4VCI" = [])
+        ("openID4VCI" = [])
     ),
     tag = "ssi",
     summary = "OID4VC - Create credential",

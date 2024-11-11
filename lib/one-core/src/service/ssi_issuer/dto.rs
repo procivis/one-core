@@ -7,11 +7,6 @@ use crate::service::credential::dto::DetailCredentialClaimResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
 use crate::service::did::dto::DidListItemResponseDTO;
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct IssuerResponseDTO {
-    pub credential: String,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct JsonLDContextResponseDTO {
     pub context: JsonLDContextDTO,

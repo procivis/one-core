@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::ops::Sub;
 use std::sync::Arc;
 
+use dto::IssuerResponseDTO;
 use mapper::create_id_claim;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
@@ -28,7 +29,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::error::RevocationError;
-use crate::provider::revocation::lvvc::dto::{IssuerResponseDTO, Lvvc};
+use crate::provider::revocation::lvvc::dto::Lvvc;
 use crate::provider::revocation::model::{
     CredentialAdditionalData, CredentialDataByRole, CredentialRevocationInfo,
     CredentialRevocationState, JsonLdContext, Operation, RevocationMethodCapabilities,
@@ -37,6 +38,7 @@ use crate::provider::revocation::model::{
 use crate::provider::revocation::RevocationMethod;
 use crate::util::params::convert_params;
 use crate::util::vcdm_jsonld_contexts::{vcdm_type, vcdm_v2_base_context};
+
 pub mod dto;
 pub mod mapper;
 pub mod util;
@@ -138,27 +140,23 @@ impl LvvcProvider {
     ) -> Result<CredentialRevocationState, RevocationError> {
         let bearer_token = prepare_bearer_token(credential, self.key_provider.clone()).await?;
 
-        let lvvc_check_url =
-            credential_status
-                .id
-                .as_ref()
-                .ok_or(RevocationError::ValidationError(
-                    "LVVC status id is missing".to_string(),
-                ))?;
+        let lvvc_url = credential_status
+            .id
+            .as_ref()
+            .ok_or(RevocationError::ValidationError(
+                "LVVC status id is missing".to_string(),
+            ))?;
 
         let response: IssuerResponseDTO = self
             .client
-            .get(lvvc_check_url.as_str())
+            .get(lvvc_url.as_str())
             .bearer_auth(&bearer_token)
             .send()
             .await?
             .error_for_status()?
             .json()?;
 
-        let formatter = self
-            .credential_formatter
-            .get_formatter(&response.format)
-            .ok_or(RevocationError::FormatterNotFound(response.format))?;
+        let formatter = self.formatter(credential)?;
 
         let lvvc = formatter
             .extract_credentials_unverified(&response.credential)

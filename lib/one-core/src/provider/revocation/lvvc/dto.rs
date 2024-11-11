@@ -15,9 +15,8 @@ pub enum LvvcStatus {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub(super) struct IssuerResponseDTO {
+pub struct IssuerResponseDTO {
     pub credential: String,
-    pub format: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]

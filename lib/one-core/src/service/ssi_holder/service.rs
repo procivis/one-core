@@ -43,12 +43,12 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     InvitationResponseDTO, PresentedCredential, UpdateResponse,
 };
 use crate::provider::key_storage::model::KeySecurity;
+use crate::provider::revocation::lvvc::dto::IssuerResponseDTO;
 use crate::provider::revocation::lvvc::prepare_bearer_token;
 use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use crate::service::ssi_issuer::dto::IssuerResponseDTO;
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::history_event;
 use crate::util::oidc::{

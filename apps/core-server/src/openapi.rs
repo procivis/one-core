@@ -204,7 +204,7 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 proof_schema::dto::ImportProofSchemaClaimSchemaRestDTO,
                 proof_schema::dto::ImportProofSchemaCredentialSchemaRestDTO,
 
-                ssi::dto::IssuerResponseRestDTO,
+                ssi::dto::LVVCIssuerResponseRestDTO,
                 ssi::dto::OpenID4VCIIssuerMetadataResponseRestDTO,
                 ssi::dto::OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO,
                 ssi::dto::OpenID4VCIIssuerMetadataCredentialSchemaRestDTO,
@@ -313,11 +313,21 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 ),
             );
             components.add_security_scheme(
-                "OpenID4VCI",
+                "openID4VCI",
                 SecurityScheme::Http(
                     HttpBuilder::new()
                         .scheme(HttpAuthScheme::Bearer)
                         .description(Some("OpenID4VCI token"))
+                        .build(),
+                ),
+            );
+            components.add_security_scheme(
+                "lvvc-fetch",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Bearer)
+                        .bearer_format("JWT")
+                        .description(Some("LVVC holder fetch token"))
                         .build(),
                 ),
             );

@@ -12,12 +12,11 @@ use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::revocation::bitstring_status_list::Params;
 use crate::provider::revocation::lvvc::create_lvvc_with_status;
-use crate::provider::revocation::lvvc::dto::LvvcStatus;
+use crate::provider::revocation::lvvc::dto::{IssuerResponseDTO, LvvcStatus};
 use crate::provider::revocation::lvvc::mapper::status_from_lvvc_claims;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 use crate::service::revocation_list::dto::RevocationListId;
 use crate::service::revocation_list::RevocationListService;
-use crate::service::ssi_issuer::dto::IssuerResponseDTO;
 use crate::util::params::convert_params;
 
 impl RevocationListService {

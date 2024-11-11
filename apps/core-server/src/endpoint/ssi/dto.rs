@@ -21,14 +21,15 @@ use one_core::provider::exchange_protocol::openid4vc::model::{
     OpenID4VPPresentationDefinitionInputDescriptorFormat, PresentationSubmissionDescriptorDTO,
     PresentationSubmissionMappingDTO,
 };
+use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
 use one_core::service::key::dto::{
     PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO,
     PublicKeyJwkRsaDataDTO,
 };
 use one_core::service::oidc::dto::OpenID4VCICredentialResponseDTO;
 use one_core::service::ssi_issuer::dto::{
-    IssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO,
-    JsonLDInlineEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
+    JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
+    JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
 };
 use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
 use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
@@ -397,10 +398,10 @@ pub struct PostSsiIssuerConnectQueryParams {
     pub redirect_uri: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(IssuerResponseDTO)]
-pub struct IssuerResponseRestDTO {
+pub struct LVVCIssuerResponseRestDTO {
     pub credential: String,
 }
 

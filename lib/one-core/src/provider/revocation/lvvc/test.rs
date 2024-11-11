@@ -9,6 +9,7 @@ use wiremock::matchers::{header_regex, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::model::credential::{Credential, CredentialRole};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::key::Key;
 use crate::provider::credential_formatter::model::{
@@ -66,7 +67,24 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
         claims: None,
         issuer_did: Some(did.to_owned()),
         holder_did: None,
-        schema: None,
+        schema: Some(CredentialSchema {
+            id: Uuid::new_v4().into(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "schema".to_string(),
+            format: "JWT".to_string(),
+            revocation_method: "LVVC".to_string(),
+            wallet_storage_type: None,
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: "schema_id".to_string(),
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            imported_source_url: "URL".to_string(),
+            allow_suspension: true,
+            claim_schemas: None,
+            organisation: None,
+        }),
         key: None,
         interaction: None,
         revocation_list: None,
