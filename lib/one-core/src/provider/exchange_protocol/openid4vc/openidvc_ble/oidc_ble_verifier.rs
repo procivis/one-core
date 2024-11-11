@@ -91,25 +91,38 @@ impl OpenID4VCBLEVerifier {
         // The name can be max 8 bytes for Android.
         let verifier_name = utilities::generate_alphanumeric(8);
 
-        let qr_url = format!(
-            "OPENID4VP://connect?name={}&key={}",
-            verifier_name,
-            hex::encode(keypair.public_key_bytes()),
-        );
-        let interaction_repository = self.interaction_repository.clone();
-
-        let result = self
+        let public_key = keypair.public_key_bytes();
+        let advertising_name = verifier_name.clone();
+        let (advertising_task_id, advertising_result) = self
             .ble
             .schedule(
                 *OIDC_BLE_FLOW,
-                |task_id, _, peripheral| async move {
-                    start_advertisement(
-                        keypair.public_key_bytes(),
-                        verifier_name.clone(),
-                        &*peripheral,
-                    )
-                    .await?;
+                |_, _, peripheral| async move {
+                    start_advertisement(public_key, advertising_name, &*peripheral).await
+                },
+                |_, peripheral| async move {
+                    let _ = peripheral.stop_server().await;
+                },
+                OnConflict::ReplaceIfSameFlow,
+                true,
+            )
+            .await
+            .value_or(ExchangeProtocolError::Failed("BLE is busy".to_string()))
+            .await?;
+        advertising_result.ok_or(ExchangeProtocolError::Failed("flow was aborted".into()))??;
 
+        let qr_url = format!(
+            "OPENID4VP://connect?name={}&key={}",
+            verifier_name,
+            hex::encode(public_key),
+        );
+
+        let interaction_repository = self.interaction_repository.clone();
+        let result = self
+            .ble
+            .schedule_continuation(
+                advertising_task_id,
+                |task_id, _, peripheral| async move {
                     let mut connection_event_stream =
                         get_connection_event_stream(peripheral.clone()).await;
                     let result: Result<(), ExchangeProtocolError> = async {
@@ -289,7 +302,6 @@ impl OpenID4VCBLEVerifier {
                     };
                     let _ = peripheral.stop_server().await;
                 },
-                OnConflict::ReplaceIfSameFlow,
                 false,
             )
             .await;
