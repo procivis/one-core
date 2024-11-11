@@ -16,7 +16,6 @@ use super::model::ProofListItemModel;
 use crate::common::calculate_pages_count;
 use crate::entity::proof_state::ProofRequestState;
 use crate::entity::{did, proof, proof_claim, proof_schema, proof_state};
-use crate::list_query::GetEntityColumn;
 use crate::list_query_generic::{
     get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
 };
@@ -157,17 +156,6 @@ impl TryFrom<Proof> for proof::ActiveModel {
                 .interaction
                 .map(|interaction| interaction.id.to_string())),
         })
-    }
-}
-
-impl GetEntityColumn for SortableProofColumn {
-    fn get_simple_expr(&self) -> SimpleExpr {
-        match self {
-            Self::CreatedDate => proof::Column::CreatedDate.into_simple_expr(),
-            Self::SchemaName => proof_schema::Column::Name.into_simple_expr(),
-            Self::VerifierDid => did::Column::Did.into_simple_expr(),
-            Self::State => proof_state::Column::State.into_simple_expr(),
-        }
     }
 }
 

@@ -2,9 +2,11 @@ use shared_types::ProofSchemaId;
 use time::OffsetDateTime;
 
 use super::claim_schema::ClaimSchema;
-use super::common::{GetListQueryParams, GetListResponse};
+use super::common::GetListResponse;
 use super::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use super::list_query::ListQuery;
 use super::organisation::{Organisation, OrganisationRelations};
+use crate::service::proof_schema::dto::ProofSchemaFilterValue;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProofSchema {
@@ -44,7 +46,7 @@ pub enum SortableProofSchemaColumn {
 }
 
 pub type GetProofSchemaList = GetListResponse<ProofSchema>;
-pub type GetProofSchemaQuery = GetListQueryParams<SortableProofSchemaColumn>;
+pub type GetProofSchemaQuery = ListQuery<SortableProofSchemaColumn, ProofSchemaFilterValue>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProofSchemaRelations {

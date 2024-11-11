@@ -3,10 +3,12 @@ use serde::Deserialize;
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 
-use crate::model::common::{GetListQueryParams, GetListResponse};
+use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
     CredentialFormat, LayoutType, RevocationMethod, WalletStorageTypeEnum,
 };
+use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_query::ListQuery;
 use crate::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};
 use crate::service::credential::dto::CredentialSchemaType;
 use crate::service::credential_schema::dto::{
@@ -14,7 +16,17 @@ use crate::service::credential_schema::dto::{
 };
 
 pub type GetProofSchemaListResponseDTO = GetListResponse<GetProofSchemaListItemDTO>;
-pub type GetProofSchemaQueryDTO = GetListQueryParams<SortableProofSchemaColumn>;
+
+#[derive(Debug, Clone)]
+pub enum ProofSchemaFilterValue {
+    Name(StringMatch),
+    OrganisationId(OrganisationId),
+    ProofSchemaIds(Vec<ProofSchemaId>),
+}
+
+impl ListFilterValue for ProofSchemaFilterValue {}
+
+pub type GetProofSchemaQueryDTO = ListQuery<SortableProofSchemaColumn, ProofSchemaFilterValue>;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

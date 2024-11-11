@@ -21,7 +21,7 @@ use uuid::Uuid;
 use super::mapper::create_list_response;
 use super::ProofSchemaProvider;
 use crate::entity::{proof_input_claim_schema, proof_input_schema, proof_schema};
-use crate::list_query::SelectWithListQuery;
+use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
 
 #[autometrics]
@@ -199,13 +199,14 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         &self,
         query_params: GetProofSchemaQuery,
     ) -> Result<GetProofSchemaList, DataLayerError> {
-        let limit: u64 = query_params.page_size as u64;
+        let limit = query_params
+            .pagination
+            .as_ref()
+            .map(|pagination| pagination.page_size as _);
 
         let query = crate::entity::proof_schema::Entity::find()
             .filter(proof_schema::Column::DeletedAt.is_null())
-            .with_organisation_id(&query_params, &proof_schema::Column::OrganisationId)
-            .with_ids(&query_params, &proof_schema::Column::Id)
-            .with_list_query(&query_params, &Some(vec![proof_schema::Column::Name]))
+            .with_list_query(&query_params)
             .order_by_desc(proof_schema::Column::CreatedDate)
             .order_by_desc(proof_schema::Column::Id);
 
@@ -220,7 +221,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        create_list_response(proof_schemas, limit, items_count)
+        create_list_response(proof_schemas, limit.unwrap_or(items_count), items_count)
     }
 
     async fn delete_proof_schema(

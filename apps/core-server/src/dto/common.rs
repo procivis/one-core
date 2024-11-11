@@ -2,8 +2,7 @@ use std::fmt;
 
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
-use shared_types::OrganisationId;
-use utoipa::{IntoParams, ToSchema};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::endpoint::credential::dto::CredentialListItemResponseRestDTO;
@@ -40,30 +39,6 @@ pub type GetTrustAnchorListResponseRestDTO =
     GetListResponseRestDTO<ListTrustAnchorsResponseItemRestDTO>;
 pub type GetTrustEntityListResponseRestDTO =
     GetListResponseRestDTO<ListTrustEntitiesResponseItemRestDTO>;
-
-#[derive(Clone, Deserialize, IntoParams)]
-#[into_params(parameter_in = Query)]
-#[serde(rename_all = "camelCase")]
-pub struct GetListQueryParams<T: ToSchema> {
-    // pagination
-    pub page: u32,
-    pub page_size: u32,
-
-    // sorting
-    #[param(inline)]
-    pub sort: Option<T>,
-    pub sort_direction: Option<SortDirection>,
-
-    // filtering
-    pub name: Option<String>,
-    pub organisation_id: OrganisationId,
-    // It is required to rename fields in swagger which are of type vector to <name>[]
-    #[param(rename = "exact[]", value_type = Option::<Vec::<String>>)]
-    pub exact: Option<Vec<ExactColumn>>,
-
-    #[param(inline, rename = "ids[]")]
-    pub ids: Option<Vec<Uuid>>,
-}
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 pub struct NoIncludesSupported {}

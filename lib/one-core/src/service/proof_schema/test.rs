@@ -15,6 +15,8 @@ use crate::model::credential_schema::{
     GetCredentialSchemaList, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::history::{HistoryAction, HistoryEntityType};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
@@ -41,6 +43,7 @@ use crate::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
     ImportProofSchemaClaimSchemaDTO, ImportProofSchemaCredentialSchemaDTO, ImportProofSchemaDTO,
     ImportProofSchemaInputSchemaDTO, ImportProofSchemaRequestDTO, ProofInputSchemaRequestDTO,
+    ProofSchemaFilterValue,
 };
 use crate::service::proof_schema::ProofSchemaImportError;
 use crate::service::test_utilities::{
@@ -208,14 +211,12 @@ async fn test_get_proof_schema_list_success() {
     );
 
     let query = GetProofSchemaQueryDTO {
-        page: 0,
-        page_size: 1,
-        sort: None,
-        sort_direction: None,
-        exact: None,
-        name: None,
-        organisation_id: Uuid::new_v4().into(),
-        ids: None,
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 1,
+        }),
+        filtering: Some(ProofSchemaFilterValue::OrganisationId(Uuid::new_v4().into()).condition()),
+        ..Default::default()
     };
     let result = service.get_proof_schema_list(query).await;
 
@@ -246,14 +247,12 @@ async fn test_get_proof_schema_list_failure() {
     );
 
     let query = GetProofSchemaQueryDTO {
-        page: 0,
-        page_size: 1,
-        sort: None,
-        sort_direction: None,
-        exact: None,
-        name: None,
-        organisation_id: Uuid::new_v4().into(),
-        ids: None,
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 1,
+        }),
+        filtering: Some(ProofSchemaFilterValue::OrganisationId(Uuid::new_v4().into()).condition()),
+        ..Default::default()
     };
     let result = service.get_proof_schema_list(query).await;
 

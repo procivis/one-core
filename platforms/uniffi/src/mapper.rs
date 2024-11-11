@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 
-use one_core::model::common::GetListQueryParams;
 use one_core::model::did::DidType;
 use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use one_core::model::list_query::{ListPagination, ListSorting};
-use one_core::model::proof_schema::SortableProofSchemaColumn;
 use one_core::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use one_core::provider::exchange_protocol::openid4vc::model::InvitationResponseDTO;
 use one_core::service::credential::dto::{
@@ -22,11 +20,13 @@ use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDTO};
 use one_core::service::key::dto::KeyRequestDTO;
 use one_core::service::proof::dto::{GetProofQueryDTO, ProofDetailResponseDTO, ProofFilterValue};
-use one_core::service::proof_schema::dto::ImportProofSchemaClaimSchemaDTO;
+use one_core::service::proof_schema::dto::{
+    GetProofSchemaQueryDTO, ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterValue,
+};
 use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, ListTrustAnchorsQueryDTO, TrustAnchorFilterValue,
 };
-use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
+use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde_json::json;
 use shared_types::KeyId;
 use time::OffsetDateTime;
@@ -44,7 +44,7 @@ use crate::{
     ExactTrustAnchorFilterColumnBindings, HistoryListItemBindingDTO, HistoryMetadataBinding,
     ImportCredentialSchemaClaimSchemaBindingDTO, ImportProofSchemaClaimSchemaBindingDTO,
     ListProofSchemasFiltersBindingDTO, ListTrustAnchorsFiltersBindings, ProofListQueryBindingDTO,
-    ProofListQueryExactColumnBindingEnum,
+    ProofListQueryExactColumnBindingEnum, ProofSchemaListQueryExactColumnBinding,
 };
 
 pub(crate) fn serialize_config_entity(
@@ -399,22 +399,44 @@ impl TryFrom<ListTrustAnchorsFiltersBindings> for ListTrustAnchorsQueryDTO {
     }
 }
 
-impl TryFrom<ListProofSchemasFiltersBindingDTO> for GetListQueryParams<SortableProofSchemaColumn> {
+impl TryFrom<ListProofSchemasFiltersBindingDTO> for GetProofSchemaQueryDTO {
     type Error = BindingError;
 
     fn try_from(value: ListProofSchemasFiltersBindingDTO) -> Result<Self, Self::Error> {
+        let exact = value.exact.unwrap_or_default();
+
+        let organisation_id =
+            ProofSchemaFilterValue::OrganisationId(into_id(&value.organisation_id)?).condition();
+
+        let name = value.name.map(|name| {
+            let filter = if exact.contains(&ProofSchemaListQueryExactColumnBinding::Name) {
+                StringMatch::equals(name)
+            } else {
+                StringMatch::starts_with(name)
+            };
+
+            ProofSchemaFilterValue::Name(filter)
+        });
+
+        let proof_schema_ids = value
+            .ids
+            .map(|ids| ids.into_iter().map(|id| into_id(&id)).collect())
+            .transpose()?
+            .map(ProofSchemaFilterValue::ProofSchemaIds);
+
+        let filtering = organisation_id & name & proof_schema_ids;
+
         Ok(Self {
-            page: value.page,
-            page_size: value.page_size,
-            sort: convert_inner(value.sort),
-            sort_direction: convert_inner(value.sort_direction),
-            name: value.name,
-            organisation_id: into_id(&value.organisation_id)?,
-            exact: convert_inner_of_inner(value.exact),
-            ids: value
-                .ids
-                .map(|ids| ids.into_iter().map(|id| into_id(&id)).collect())
-                .transpose()?,
+            pagination: Some(ListPagination {
+                page: value.page,
+                page_size: value.page_size,
+            }),
+            sorting: value.sort.map(|sort| ListSorting {
+                column: sort.into(),
+                direction: convert_inner(value.sort_direction),
+            }),
+            filtering: Some(filtering),
+            ..Default::default()
         })
     }
 }

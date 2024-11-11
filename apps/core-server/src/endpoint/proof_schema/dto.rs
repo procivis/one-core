@@ -9,11 +9,11 @@ use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::dto::common::GetListQueryParams;
+use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaLayoutType,
     CredentialSchemaListItemResponseRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
@@ -156,7 +156,20 @@ pub enum SortableProofSchemaColumnRestEnum {
     CreatedDate,
 }
 
-pub type GetProofSchemaQuery = GetListQueryParams<SortableProofSchemaColumnRestEnum>;
+pub type GetProofSchemaQuery =
+    ListQueryParamsRest<ProofSchemasFilterQueryParamsRest, SortableProofSchemaColumnRestEnum>;
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct ProofSchemasFilterQueryParamsRest {
+    pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub name: Option<String>,
+    #[param(rename = "ids[]", inline, nullable = false)]
+    pub ids: Option<Vec<ProofSchemaId>>,
+    #[param(rename = "exact[]", inline, nullable = false)]
+    pub exact: Option<Vec<ExactColumn>>,
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]

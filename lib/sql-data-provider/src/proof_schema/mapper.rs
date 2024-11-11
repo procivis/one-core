@@ -1,13 +1,16 @@
 use anyhow::anyhow;
 use one_core::model::proof_schema::{GetProofSchemaList, ProofSchema, SortableProofSchemaColumn};
 use one_core::repository::error::DataLayerError;
+use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
 use one_dto_mapper::convert_inner;
-use sea_orm::sea_query::SimpleExpr;
-use sea_orm::{IntoSimpleExpr, Set};
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
 
 use crate::common::calculate_pages_count;
 use crate::entity::proof_schema;
-use crate::list_query::GetEntityColumn;
+use crate::list_query_generic::{
+    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+};
 
 impl From<proof_schema::Model> for ProofSchema {
     fn from(value: proof_schema::Model) -> Self {
@@ -25,11 +28,25 @@ impl From<proof_schema::Model> for ProofSchema {
     }
 }
 
-impl GetEntityColumn for SortableProofSchemaColumn {
-    fn get_simple_expr(&self) -> SimpleExpr {
+impl IntoSortingColumn for SortableProofSchemaColumn {
+    fn get_column(&self) -> SimpleExpr {
         match self {
             Self::Name => proof_schema::Column::Name.into_simple_expr(),
             Self::CreatedDate => proof_schema::Column::CreatedDate.into_simple_expr(),
+        }
+    }
+}
+
+impl IntoFilterCondition for ProofSchemaFilterValue {
+    fn get_condition(self) -> sea_orm::Condition {
+        match self {
+            Self::Name(string_match) => {
+                get_string_match_condition(proof_schema::Column::Name, string_match)
+            }
+            Self::OrganisationId(organisation_id) => {
+                get_equals_condition(proof_schema::Column::OrganisationId, organisation_id)
+            }
+            Self::ProofSchemaIds(ids) => proof_schema::Column::Id.is_in(ids).into_condition(),
         }
     }
 }

@@ -1229,7 +1229,7 @@ pub enum SortableProofSchemaColumnBinding {
     CreatedDate,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, PartialEq)]
 #[into(ExactColumn)]
 pub enum ProofSchemaListQueryExactColumnBinding {
     Name,

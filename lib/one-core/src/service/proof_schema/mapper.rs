@@ -8,12 +8,14 @@ use uuid::Uuid;
 use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ImportProofSchemaClaimSchemaDTO,
     ImportProofSchemaInputSchemaDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
+    ProofSchemaFilterValue,
 };
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::common::ExactColumn;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -312,14 +314,15 @@ pub fn create_unique_name_check_request(
     organisation_id: OrganisationId,
 ) -> Result<GetProofSchemaQueryDTO, ServiceError> {
     Ok(GetProofSchemaQueryDTO {
-        page: 0,
-        page_size: 1,
-        sort: None,
-        sort_direction: None,
-        exact: Some(vec![ExactColumn::Name]),
-        name: Some(name.to_string()),
-        organisation_id,
-        ids: None,
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 1,
+        }),
+        filtering: Some(
+            ProofSchemaFilterValue::OrganisationId(organisation_id).condition()
+                & ProofSchemaFilterValue::Name(StringMatch::equals(name.to_string())),
+        ),
+        ..Default::default()
     })
 }
 

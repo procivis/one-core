@@ -52,7 +52,6 @@ mod common;
 mod entity;
 mod mapper;
 
-mod list_query;
 mod list_query_generic;
 
 // New implementations

@@ -1,14 +1,17 @@
 use std::sync::Arc;
 
 use one_core::model::claim_schema::ClaimSchema;
+use one_core::model::common::SortDirection;
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, LayoutType,
     WalletStorageTypeEnum,
 };
+use one_core::model::list_filter::{ListFilterValue, StringMatch};
+use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof_schema::{
     GetProofSchemaQuery, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
-    ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
+    ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations, SortableProofSchemaColumn,
 };
 use one_core::repository::claim_schema_repository::{
     self, ClaimSchemaRepository, MockClaimSchemaRepository,
@@ -21,6 +24,7 @@ use one_core::repository::organisation_repository::{
     self, MockOrganisationRepository, OrganisationRepository,
 };
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
+use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
 use sea_orm::{ActiveModelTrait, Set, Unchanged};
 use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
@@ -797,14 +801,12 @@ async fn test_get_proof_schema_list_empty() {
 
     let result = repository
         .get_proof_schema_list(GetProofSchemaQuery {
-            page: 0,
-            page_size: 1,
-            sort: None,
-            exact: None,
-            sort_direction: None,
-            name: None,
-            organisation_id,
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            filtering: Some(ProofSchemaFilterValue::OrganisationId(organisation_id).condition()),
+            ..Default::default()
         })
         .await;
 
@@ -836,14 +838,12 @@ async fn test_get_proof_schema_list_deleted() {
 
     let result = repository
         .get_proof_schema_list(GetProofSchemaQuery {
-            page: 0,
-            page_size: 1,
-            sort: None,
-            exact: None,
-            sort_direction: None,
-            name: None,
-            organisation_id,
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            filtering: Some(ProofSchemaFilterValue::OrganisationId(organisation_id).condition()),
+            ..Default::default()
         })
         .await;
 
@@ -903,14 +903,12 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     // default sorting - by created date descending
     let result = repository
         .get_proof_schema_list(GetProofSchemaQuery {
-            page: 0,
-            page_size: 2,
-            exact: None,
-            sort: None,
-            sort_direction: None,
-            name: None,
-            organisation_id,
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            filtering: Some(ProofSchemaFilterValue::OrganisationId(organisation_id).condition()),
+            ..Default::default()
         })
         .await;
 
@@ -925,14 +923,16 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     // sort by name - default (ascending)
     let result = repository
         .get_proof_schema_list(GetProofSchemaQuery {
-            page: 0,
-            page_size: 2,
-            sort: Some(one_core::model::proof_schema::SortableProofSchemaColumn::Name),
-            sort_direction: None,
-            exact: None,
-            name: None,
-            organisation_id,
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            sorting: Some(ListSorting {
+                column: SortableProofSchemaColumn::Name,
+                direction: None,
+            }),
+            filtering: Some(ProofSchemaFilterValue::OrganisationId(organisation_id).condition()),
+            ..Default::default()
         })
         .await;
     assert_eq!(result.unwrap().values[0].id, schema1_id);
@@ -940,14 +940,16 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     // sort by name - descending
     let result = repository
         .get_proof_schema_list(GetProofSchemaQuery {
-            page: 0,
-            page_size: 2,
-            sort: Some(one_core::model::proof_schema::SortableProofSchemaColumn::Name),
-            sort_direction: Some(one_core::model::common::SortDirection::Descending),
-            exact: None,
-            name: None,
-            organisation_id,
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            sorting: Some(ListSorting {
+                column: SortableProofSchemaColumn::Name,
+                direction: Some(SortDirection::Descending),
+            }),
+            filtering: Some(ProofSchemaFilterValue::OrganisationId(organisation_id).condition()),
+            ..Default::default()
         })
         .await;
     assert_eq!(result.unwrap().values[0].id, schema2_id);
@@ -955,14 +957,16 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     // sort by created-date - ascending
     let result = repository
         .get_proof_schema_list(GetProofSchemaQuery {
-            page: 0,
-            page_size: 2,
-            sort: Some(one_core::model::proof_schema::SortableProofSchemaColumn::CreatedDate),
-            sort_direction: Some(one_core::model::common::SortDirection::Ascending),
-            exact: None,
-            name: None,
-            organisation_id,
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            sorting: Some(ListSorting {
+                column: SortableProofSchemaColumn::CreatedDate,
+                direction: Some(SortDirection::Ascending),
+            }),
+            filtering: Some(ProofSchemaFilterValue::OrganisationId(organisation_id).condition()),
+            ..Default::default()
         })
         .await;
     assert_eq!(result.unwrap().values[0].id, schema1_id);
@@ -971,14 +975,15 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     // filter by name - one result
     let result = repository
         .get_proof_schema_list(GetProofSchemaQuery {
-            page: 0,
-            page_size: 2,
-            sort: None,
-            exact: None,
-            sort_direction: None,
-            name: Some("schema-1".to_string()),
-            organisation_id,
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            filtering: Some(
+                ProofSchemaFilterValue::OrganisationId(organisation_id).condition()
+                    & ProofSchemaFilterValue::Name(StringMatch::contains("schema-1".to_string())),
+            ),
+            ..Default::default()
         })
         .await;
 
@@ -992,14 +997,15 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     // filter by name - two results
     let result = repository
         .get_proof_schema_list(GetProofSchemaQuery {
-            page: 0,
-            page_size: 2,
-            sort: None,
-            exact: None,
-            sort_direction: None,
-            name: Some("schema".to_string()),
-            organisation_id,
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            filtering: Some(
+                ProofSchemaFilterValue::OrganisationId(organisation_id).condition()
+                    & ProofSchemaFilterValue::Name(StringMatch::starts_with("schema".to_string())),
+            ),
+            ..Default::default()
         })
         .await;
 
@@ -1012,14 +1018,15 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     // filter by name - no results
     let result = repository
         .get_proof_schema_list(GetProofSchemaQuery {
-            page: 0,
-            page_size: 2,
-            sort: None,
-            exact: None,
-            sort_direction: None,
-            name: Some("nothing".to_string()),
-            organisation_id,
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            filtering: Some(
+                ProofSchemaFilterValue::OrganisationId(organisation_id).condition()
+                    & ProofSchemaFilterValue::Name(StringMatch::contains("nothing".to_string())),
+            ),
+            ..Default::default()
         })
         .await;
 
@@ -1033,14 +1040,12 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     // first page
     let result = repository
         .get_proof_schema_list(GetProofSchemaQuery {
-            page: 0,
-            page_size: 1,
-            sort: None,
-            sort_direction: None,
-            exact: None,
-            name: None,
-            organisation_id,
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            filtering: Some(ProofSchemaFilterValue::OrganisationId(organisation_id).condition()),
+            ..Default::default()
         })
         .await;
 
@@ -1054,14 +1059,12 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
     // second page
     let result = repository
         .get_proof_schema_list(GetProofSchemaQuery {
-            page: 1,
-            page_size: 1,
-            sort: None,
-            exact: None,
-            sort_direction: None,
-            name: None,
-            organisation_id,
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 1,
+                page_size: 1,
+            }),
+            filtering: Some(ProofSchemaFilterValue::OrganisationId(organisation_id).condition()),
+            ..Default::default()
         })
         .await;
 

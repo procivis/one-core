@@ -12,7 +12,6 @@ use sea_orm::{ColumnTrait, IntoSimpleExpr};
 use shared_types::CredentialSchemaId;
 
 use crate::entity::{claim_schema, credential_schema, credential_schema_claim_schema};
-use crate::list_query::GetEntityColumn;
 use crate::list_query_generic::{
     get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
 };
@@ -73,16 +72,6 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             schema_id: Set(value.schema_id),
             allow_suspension: Set(value.allow_suspension),
         })
-    }
-}
-
-impl GetEntityColumn for SortableCredentialSchemaColumn {
-    fn get_simple_expr(&self) -> SimpleExpr {
-        match self {
-            Self::Name => credential_schema::Column::Name.into_simple_expr(),
-            Self::Format => credential_schema::Column::Format.into_simple_expr(),
-            Self::CreatedDate => credential_schema::Column::CreatedDate.into_simple_expr(),
-        }
     }
 }
 
