@@ -1,12 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
 use indexmap::IndexMap;
 pub use mappers::create_presentation_submission;
-use mappers::{
-    map_credential_formats_to_presentation_format, presentation_definition_from_interaction_data,
-};
+use mappers::map_credential_formats_to_presentation_format;
 use one_crypto::utilities;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
@@ -21,12 +19,11 @@ use uuid::Uuid;
 
 use super::mapper::{
     create_credential, create_open_id_for_vp_presentation_definition,
-    create_open_id_for_vp_sharing_url_encoded, get_claim_name_by_json_path,
-    get_credential_offer_url, map_offered_claims_to_credential_schema,
-    proof_from_handle_invitation,
+    create_open_id_for_vp_sharing_url_encoded, get_credential_offer_url,
+    map_offered_claims_to_credential_schema, proof_from_handle_invitation,
 };
 use super::model::{
-    DatatypeType, ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO, JwePayload,
+    ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO, JwePayload,
     OpenID4VCICredential, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferClaim,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubjectItem,
@@ -43,7 +40,6 @@ use super::{
     TypeToDescriptorMapper,
 };
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::CoreConfig;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::UpdateCredentialSchemaRequest;
 use crate::model::did::{Did, DidType};
@@ -57,15 +53,9 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
 use crate::provider::credential_formatter::model::{DetailCredential, FormatPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::exchange_protocol::dto::{
-    CredentialGroup, CredentialGroupItem, ExchangeProtocolCapabilities,
-    PresentationDefinitionResponseDTO,
-};
+use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
 use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
-use crate::provider::exchange_protocol::mapper::{
-    gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
-    interaction_from_handle_invitation,
-};
+use crate::provider::exchange_protocol::mapper::interaction_from_handle_invitation;
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCICredentialOfferClaimValue;
 use crate::provider::exchange_protocol::openid4vc::openidvc_http::mappers::credential_offer_from_metadata;
 use crate::provider::http_client::HttpClient;
@@ -96,7 +86,6 @@ pub struct OpenID4VCHTTP {
     key_provider: Arc<dyn KeyProvider>,
     base_url: Option<String>,
     params: OpenID4VCParams,
-    config: Arc<CoreConfig>,
 }
 
 enum InvitationType {
@@ -132,7 +121,6 @@ impl OpenID4VCHTTP {
         key_provider: Arc<dyn KeyProvider>,
         client: Arc<dyn HttpClient>,
         params: OpenID4VCParams,
-        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             base_url,
@@ -142,7 +130,6 @@ impl OpenID4VCHTTP {
             key_provider,
             client,
             params,
-            config,
         }
     }
 
@@ -837,110 +824,6 @@ impl OpenID4VCHTTP {
             interaction_id,
             context: interaction_content,
         })
-    }
-
-    pub async fn get_presentation_definition(
-        &self,
-        proof: &Proof,
-        storage_access: &StorageAccess,
-        format_map: HashMap<String, String>,
-        types: HashMap<String, DatatypeType>,
-    ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
-        let interaction = proof
-            .interaction
-            .as_ref()
-            .ok_or(ExchangeProtocolError::Failed(
-                "interaction is None".to_string(),
-            ))?
-            .to_owned();
-
-        let presentation_definition =
-            deserialize_interaction_data::<OpenID4VPInteractionData>(interaction.data)?
-                .presentation_definition
-                .ok_or(ExchangeProtocolError::Failed(
-                    "presentation_definition is None".to_string(),
-                ))?;
-
-        let mut credential_groups: Vec<CredentialGroup> = vec![];
-        let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
-
-        let mut allowed_oidc_formats = HashSet::new();
-
-        for input_descriptor in presentation_definition.input_descriptors {
-            input_descriptor.format.keys().for_each(|key| {
-                allowed_oidc_formats.insert(key.to_owned());
-            });
-            let validity_credential_nbf = input_descriptor.constraints.validity_credential_nbf;
-
-            let mut fields = input_descriptor.constraints.fields;
-
-            let schema_id_filter_index = fields
-                .iter()
-                .position(|field| {
-                    field.filter.is_some()
-                        && field.path.contains(&"$.credentialSchema.id".to_string())
-                })
-                .ok_or(ExchangeProtocolError::Failed(
-                    "schema_id filter not found".to_string(),
-                ))?;
-
-            let schema_id_filter = fields.remove(schema_id_filter_index).filter.ok_or(
-                ExchangeProtocolError::Failed("schema_id filter not found".to_string()),
-            )?;
-
-            group_id_to_schema_id.insert(input_descriptor.id.clone(), schema_id_filter.r#const);
-            credential_groups.push(CredentialGroup {
-                id: input_descriptor.id,
-                name: input_descriptor.name,
-                purpose: input_descriptor.purpose,
-                claims: fields
-                    .iter()
-                    .filter(|requested| requested.id.is_some())
-                    .map(|requested_claim| {
-                        Ok(CredentialGroupItem {
-                            id: requested_claim
-                                .id
-                                .ok_or(ExchangeProtocolError::Failed(
-                                    "requested_claim id is None".to_string(),
-                                ))?
-                                .to_string(),
-                            key: get_claim_name_by_json_path(&requested_claim.path)?,
-                            required: !requested_claim.optional.is_some_and(|optional| optional),
-                        })
-                    })
-                    .collect::<Result<Vec<_>, _>>()?,
-                applicable_credentials: vec![],
-                inapplicable_credentials: vec![],
-                validity_credential_nbf,
-            });
-        }
-
-        let allowed_schema_formats: HashSet<_> = allowed_oidc_formats
-            .iter()
-            .map(|oidc_format| {
-                format_map
-                    .get(oidc_format)
-                    .ok_or_else(|| {
-                        ExchangeProtocolError::Failed(format!("unknown format {oidc_format}"))
-                    })
-                    .map(String::as_str)
-            })
-            .collect::<Result<_, _>>()?;
-
-        let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
-            storage_access,
-            credential_groups,
-            group_id_to_schema_id,
-            &allowed_schema_formats,
-            &gather_object_datatypes_from_config(&self.config.datatype),
-        )
-        .await?;
-        presentation_definition_from_interaction_data(
-            proof.id,
-            credentials,
-            credential_groups,
-            &types,
-        )
     }
 
     pub async fn verifier_handle_proof(

@@ -422,13 +422,7 @@ async fn test_get_presentation_definition_ok() {
         });
 
     let mut presentation_definition = service
-        .get_presentation_definition(
-            &proof,
-            interaction_data,
-            &storage_access,
-            hashmap! {},
-            hashmap! {},
-        )
+        .get_presentation_definition(&proof, interaction_data, &storage_access, hashmap! {})
         .await
         .unwrap();
 

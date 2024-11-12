@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -6,6 +6,9 @@ use async_trait::async_trait;
 use futures::future::BoxFuture;
 use futures::FutureExt;
 use key_agreement_key::KeyAgreementKey;
+use mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
+use model::OpenID4VPInteractionData;
+use one_dto_mapper::convert_inner;
 use openidvc_ble::OpenID4VCBLE;
 use openidvc_http::OpenID4VCHTTP;
 use openidvc_mqtt::OpenId4VcMqtt;
@@ -27,9 +30,12 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::exchange_protocol::openid4vc::mapper::holder_ble_mqtt_get_presentation_definition;
+use crate::provider::exchange_protocol::dto::{CredentialGroup, CredentialGroupItem};
+use crate::provider::exchange_protocol::mapper::{
+    gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
+};
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, DatatypeType, InvitationResponseDTO, MQTTOpenID4VPInteractionData,
+    BLEOpenID4VPInteractionData, InvitationResponseDTO, MQTTOpenID4VPInteractionData,
     OpenID4VPFormat, PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
@@ -397,55 +403,128 @@ impl ExchangeProtocolImpl for OpenID4VC {
         interaction_data: Self::VPInteractionContext,
         storage_access: &StorageAccess,
         format_map: HashMap<String, String>,
-        types: HashMap<String, DatatypeType>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
 
-        match transport {
+        let presentation_definition = match transport {
             TransportType::Ble => {
                 let interaction_data: BLEOpenID4VPInteractionData =
                     serde_json::from_value(interaction_data)
                         .map_err(ExchangeProtocolError::JsonError)?;
 
-                holder_ble_mqtt_get_presentation_definition(
-                    &self.config,
-                    proof,
-                    interaction_data.presentation_definition.ok_or(
-                        ExchangeProtocolError::Failed(
-                            "presentation_definition is None".to_string(),
-                        ),
-                    )?,
-                    storage_access,
-                )
-                .await
+                interaction_data
+                    .presentation_definition
+                    .ok_or(ExchangeProtocolError::Failed(
+                        "presentation_definition is None".to_string(),
+                    ))?
             }
             TransportType::Http => {
-                self.openid_http
-                    .get_presentation_definition(proof, storage_access, format_map, types)
-                    .await
+                let interaction_data: OpenID4VPInteractionData =
+                    serde_json::from_value(interaction_data)
+                        .map_err(ExchangeProtocolError::JsonError)?;
+
+                interaction_data
+                    .presentation_definition
+                    .ok_or(ExchangeProtocolError::Failed(
+                        "presentation_definition is None".to_string(),
+                    ))?
             }
             TransportType::Mqtt => {
-                tracing::debug!("Getting presentation definition");
-
                 let interaction_data: MQTTOpenID4VPInteractionData =
                     serde_json::from_value(interaction_data)
                         .map_err(ExchangeProtocolError::JsonError)?;
 
-                holder_ble_mqtt_get_presentation_definition(
-                    &self.config,
-                    proof,
-                    interaction_data.presentation_definition.ok_or(
-                        ExchangeProtocolError::Failed(
-                            "presentation_definition is None".to_string(),
-                        ),
-                    )?,
-                    storage_access,
-                )
-                .await
+                interaction_data
+                    .presentation_definition
+                    .ok_or(ExchangeProtocolError::Failed(
+                        "presentation_definition is None".to_string(),
+                    ))?
             }
+        };
+
+        let mut credential_groups: Vec<CredentialGroup> = vec![];
+        let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
+
+        let mut allowed_oidc_formats = HashSet::new();
+
+        for input_descriptor in presentation_definition.input_descriptors {
+            input_descriptor.format.keys().for_each(|key| {
+                allowed_oidc_formats.insert(key.to_owned());
+            });
+            let validity_credential_nbf = input_descriptor.constraints.validity_credential_nbf;
+
+            let mut fields = input_descriptor.constraints.fields;
+
+            let schema_id_filter_index = fields
+                .iter()
+                .position(|field| {
+                    field.filter.is_some()
+                        && field.path.contains(&"$.credentialSchema.id".to_string())
+                })
+                .ok_or(ExchangeProtocolError::Failed(
+                    "schema_id filter not found".to_string(),
+                ))?;
+
+            let schema_id_filter = fields.remove(schema_id_filter_index).filter.ok_or(
+                ExchangeProtocolError::Failed("schema_id filter not found".to_string()),
+            )?;
+
+            group_id_to_schema_id.insert(input_descriptor.id.clone(), schema_id_filter.r#const);
+            credential_groups.push(CredentialGroup {
+                id: input_descriptor.id,
+                name: input_descriptor.name,
+                purpose: input_descriptor.purpose,
+                claims: fields
+                    .iter()
+                    .filter(|requested| requested.id.is_some())
+                    .map(|requested_claim| {
+                        Ok(CredentialGroupItem {
+                            id: requested_claim
+                                .id
+                                .ok_or(ExchangeProtocolError::Failed(
+                                    "requested_claim id is None".to_string(),
+                                ))?
+                                .to_string(),
+                            key: get_claim_name_by_json_path(&requested_claim.path)?,
+                            required: !requested_claim.optional.is_some_and(|optional| optional),
+                        })
+                    })
+                    .collect::<anyhow::Result<Vec<_>, _>>()?,
+                applicable_credentials: vec![],
+                inapplicable_credentials: vec![],
+                validity_credential_nbf,
+            });
         }
+
+        let allowed_schema_formats: HashSet<_> = allowed_oidc_formats
+            .iter()
+            .map(|oidc_format| {
+                format_map
+                    .get(oidc_format)
+                    .ok_or_else(|| {
+                        ExchangeProtocolError::Failed(format!("unknown format {oidc_format}"))
+                    })
+                    .map(String::as_str)
+            })
+            .collect::<Result<_, _>>()?;
+
+        let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
+            storage_access,
+            convert_inner(credential_groups),
+            group_id_to_schema_id,
+            &allowed_schema_formats,
+            &gather_object_datatypes_from_config(&self.config.datatype),
+        )
+        .await?;
+
+        presentation_definition_from_interaction_data(
+            proof.id,
+            convert_inner(credentials),
+            convert_inner(credential_groups),
+            &self.config,
+        )
     }
 
     async fn verifier_handle_proof(

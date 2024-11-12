@@ -21,7 +21,7 @@ use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
+    InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
     SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -115,7 +115,6 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _interaction_data: Self::VPInteractionContext,
         _storage_access: &StorageAccess,
         _format_map: HashMap<String, String>,
-        _types: HashMap<String, DatatypeType>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         unimplemented!()
     }

@@ -34,7 +34,7 @@ use crate::provider::credential_formatter::model::{DetailCredential, FormatPrese
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    DatatypeType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
+    InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
     SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::key_storage::provider::KeyProvider;
@@ -279,7 +279,6 @@ impl ExchangeProtocolImpl for IsoMdl {
         interaction_data: Self::VPInteractionContext,
         storage_access: &StorageAccess,
         _format_map: HashMap<String, String>,
-        _types: HashMap<String, DatatypeType>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let interaction_data: MdocBleHolderInteractionData =
             serde_json::from_value(interaction_data).map_err(ExchangeProtocolError::JsonError)?;

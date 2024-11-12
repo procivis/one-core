@@ -45,7 +45,6 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 use crate::provider::key_storage::model::KeySecurity;
 use crate::provider::revocation::lvvc::dto::IssuerResponseDTO;
 use crate::provider::revocation::lvvc::prepare_bearer_token;
-use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -310,7 +309,6 @@ impl SSIHolderService {
                 interaction_data,
                 &storage_access,
                 create_oicd_to_core_format_map(),
-                core_type_to_open_core_type(&self.config.datatype),
             )
             .await?;
 

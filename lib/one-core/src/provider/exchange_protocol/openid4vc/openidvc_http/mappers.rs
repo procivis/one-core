@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use shared_types::{CredentialId, ProofId};
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -10,10 +10,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::exchange_protocol::dto::{
-    CredentialGroup, CredentialGroupItem, PresentationDefinitionFieldDTO,
-    PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+    CredentialGroupItem, PresentationDefinitionFieldDTO,
 };
 use crate::provider::exchange_protocol::openid4vc::mapper::get_parent_claim_paths;
 use crate::provider::exchange_protocol::openid4vc::model::{
@@ -623,65 +620,6 @@ pub fn map_credential_formats_to_presentation_format(
             .map(|(k, _)| (has_mdoc, k.to_owned(), "jwt_vp_json".to_owned()))
             .ok_or_else(|| ExchangeProtocolError::Failed("no jwt_vp_json format in map".into()))
     }
-}
-
-pub(super) fn presentation_definition_from_interaction_data(
-    proof_id: ProofId,
-    credentials: Vec<Credential>,
-    credential_groups: Vec<CredentialGroup>,
-    types: &HashMap<String, DatatypeType>,
-) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
-    Ok(PresentationDefinitionResponseDTO {
-        request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
-            id: proof_id.to_string(),
-            name: None,
-            purpose: None,
-            rule: PresentationDefinitionRuleDTO {
-                r#type: PresentationDefinitionRuleTypeEnum::All,
-                min: None,
-                max: None,
-                count: None,
-            },
-            requested_credentials: credential_groups
-                .into_iter()
-                .map(|group| {
-                    Ok(PresentationDefinitionRequestedCredentialResponseDTO {
-                        id: group.id,
-                        name: group.name,
-                        purpose: group.purpose,
-                        fields: group
-                            .claims
-                            .into_iter()
-                            .map(|field| {
-                                create_presentation_definition_field(
-                                    field,
-                                    &group
-                                        .applicable_credentials
-                                        .iter()
-                                        .chain(group.inapplicable_credentials.iter())
-                                        .cloned()
-                                        .collect::<Vec<_>>(),
-                                )
-                            })
-                            .collect::<Result<_, _>>()?,
-
-                        applicable_credentials: group
-                            .applicable_credentials
-                            .into_iter()
-                            .map(|credential| credential.id.to_string())
-                            .collect(),
-                        inapplicable_credentials: group
-                            .inapplicable_credentials
-                            .into_iter()
-                            .map(|credential| credential.id.to_string())
-                            .collect(),
-                        validity_credential_nbf: group.validity_credential_nbf,
-                    })
-                })
-                .collect::<Result<_, _>>()?,
-        }],
-        credentials: credential_model_to_credential_dto(credentials, types)?,
-    })
 }
 
 pub fn credential_offer_from_metadata(

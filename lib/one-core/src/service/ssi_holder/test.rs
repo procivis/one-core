@@ -298,12 +298,12 @@ async fn test_submit_proof_succeeds() {
     exchange_protocol
         .inner
         .expect_get_presentation_definition()
-        .withf(move |proof, _, _, _, _| {
+        .withf(move |proof, _, _, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _, _, _| {
+        .returning(|_, _, _, _| {
             Ok(PresentationDefinitionResponseDTO {
                 request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
                     id: "random".to_string(),
@@ -497,12 +497,12 @@ async fn test_submit_proof_repeating_claims() {
     exchange_protocol
         .inner
         .expect_get_presentation_definition()
-        .withf(move |proof, _, _, _, _| {
+        .withf(move |proof, _, _, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(move |_, _, _, _, _| {
+        .returning(move |_, _, _, _| {
             Ok(PresentationDefinitionResponseDTO {
                 request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
                     id: "random".to_string(),

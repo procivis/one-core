@@ -56,7 +56,6 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
 };
 use crate::provider::exchange_protocol::openid4vc::model::ShareResponse;
 use crate::provider::exchange_protocol::{FormatMapper, TypeToDescriptorMapper};
-use crate::service::common_mapper::core_type_to_open_core_type;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -227,7 +226,6 @@ impl ProofService {
                 interaction_data,
                 &storage_access,
                 create_oicd_to_core_format_map(),
-                core_type_to_open_core_type(&self.config.datatype),
             )
             .await
             .map_err(Into::into)

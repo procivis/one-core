@@ -35,8 +35,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::iso_mdl::IsoMdl;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    DatatypeType, InvitationResponseDTO, PresentedCredential, ShareResponse, SubmitIssuerResponse,
-    UpdateResponse,
+    InvitationResponseDTO, PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::provider::{ExchangeProtocol, ExchangeProtocolProvider};
@@ -114,7 +113,6 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     key_provider.clone(),
                     client.clone(),
                     params,
-                    config.clone(),
                 );
 
                 let mut mqtt = None;
@@ -317,7 +315,6 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         context: Self::VPInteractionContext,
         storage_access: &StorageAccess,
         format_map: HashMap<String, String>,
-        types: HashMap<String, DatatypeType>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError>;
 
     // Issuer methods:
@@ -466,12 +463,11 @@ where
         interaction_data: Self::VPInteractionContext,
         storage_access: &StorageAccess,
         format_map: HashMap<String, String>,
-        types: HashMap<String, DatatypeType>,
     ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let interaction_data =
             serde_json::from_value(interaction_data).map_err(ExchangeProtocolError::JsonError)?;
         self.inner
-            .get_presentation_definition(proof, interaction_data, storage_access, format_map, types)
+            .get_presentation_definition(proof, interaction_data, storage_access, format_map)
             .await
     }
 
