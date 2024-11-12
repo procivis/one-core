@@ -828,7 +828,7 @@ pub enum ErrorCode {
     #[strum(to_string = "Proof schema must contain only one physical card credential schema")]
     BR_0137,
 
-    #[strum(to_string = "Missing MDOC doctype")]
+    #[strum(to_string = "Missing Schema ID")]
     BR_0138,
 
     #[strum(to_string = "Schema ID not allowed")]
