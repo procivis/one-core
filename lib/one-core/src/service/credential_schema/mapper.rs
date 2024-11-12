@@ -80,32 +80,14 @@ pub(super) fn create_unique_name_check_request(
     })
 }
 
-pub fn from_create_request(
-    request: CreateCredentialSchemaRequestDTO,
-    organisation: Organisation,
-    core_base_url: &str,
-    format_type: &str,
-    schema_type: Option<CredentialSchemaType>,
-) -> Result<CredentialSchema, ServiceError> {
-    from_create_request_with_id(
-        Uuid::new_v4().into(),
-        request,
-        organisation,
-        core_base_url,
-        format_type,
-        schema_type,
-        None,
-    )
-}
-
 pub(super) fn from_create_request_with_id(
     id: CredentialSchemaId,
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
-    core_base_url: &str,
     format_type: &str,
     schema_type: Option<CredentialSchemaType>,
-    imported_source_url: Option<String>,
+    schema_id: String,
+    imported_source_url: String,
 ) -> Result<CredentialSchema, ServiceError> {
     if request.claims.is_empty() {
         return Err(ServiceError::ValidationError(
@@ -117,8 +99,6 @@ pub(super) fn from_create_request_with_id(
 
     let claim_schemas = unnest_claim_schemas(request.claims);
 
-    let url = format!("{core_base_url}/ssi/schema/v1/{id}");
-    let schema_id = request.schema_id.unwrap_or(url.clone());
     let schema_type = schema_type.unwrap_or(match format_type {
         "MDOC" => CredentialSchemaType::Mdoc,
         _ => CredentialSchemaType::ProcivisOneSchema2024,
@@ -152,7 +132,7 @@ pub(super) fn from_create_request_with_id(
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
         schema_type,
-        imported_source_url: imported_source_url.unwrap_or(url),
+        imported_source_url,
         schema_id,
         allow_suspension: request.allow_suspension.unwrap_or_default(),
     })

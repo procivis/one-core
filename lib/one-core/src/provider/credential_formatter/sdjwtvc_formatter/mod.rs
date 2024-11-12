@@ -13,7 +13,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
-use shared_types::DidValue;
+use shared_types::{CredentialSchemaId, DidValue};
 use time::Duration;
 
 use super::json_ld::model::ContextType;
@@ -40,6 +40,7 @@ use crate::provider::credential_formatter::sdjwtvc_formatter::disclosures::{
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SDJWTVCVc;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 pub struct SDJWTVCFormatter {
     pub crypto: Arc<dyn CryptoProvider>,
@@ -173,7 +174,11 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
             ],
-            features: vec![Features::SelectiveDisclosure],
+            features: vec![
+                Features::SelectiveDisclosure,
+                Features::RequiresSchemaId,
+                Features::SupportsCredentialDesign,
+            ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
             issuance_did_methods: vec![
                 "KEY".to_string(),
@@ -188,6 +193,19 @@ impl CredentialFormatter for SDJWTVCFormatter {
             verification_key_storages: vec![],
             forbidden_claim_names: vec!["0".to_string()],
         }
+    }
+
+    fn credential_schema_id(
+        &self,
+        _id: CredentialSchemaId,
+        request: &CreateCredentialSchemaRequestDTO,
+        core_base_url: &str,
+    ) -> Result<String, FormatterError> {
+        request
+            .schema_id
+            .clone()
+            .map(|schema_id| format!("{core_base_url}/ssi/v1/vct/{schema_id}"))
+            .ok_or(FormatterError::Failed("Missing schema_id".to_string()))
     }
 }
 

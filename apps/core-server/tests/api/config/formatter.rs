@@ -62,7 +62,11 @@ async fn test_expected_format_features() {
     );
     assert_eq!(
         resp["format"]["SD_JWT_VC"]["capabilities"]["features"],
-        json!(["SELECTIVE_DISCLOSURE"])
+        json!([
+            "SELECTIVE_DISCLOSURE",
+            "REQUIRES_SCHEMA_ID",
+            "SUPPORTS_CREDENTIAL_DESIGN"
+        ])
     );
     assert_eq!(
         resp["format"]["JSON_LD_CLASSIC"]["capabilities"]["features"],

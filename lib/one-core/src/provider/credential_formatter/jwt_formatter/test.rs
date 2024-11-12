@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use shared_types::DidValue;
+use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -17,6 +17,7 @@ use crate::provider::credential_formatter::model::{
     CredentialStatus, ExtractPresentationCtx, Issuer, MockTokenVerifier, PublishedClaim,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 fn get_credential_data(status: Vec<CredentialStatus>, core_base_url: &str) -> CredentialData {
     let id = Some(Uuid::new_v4().urn().to_string());
@@ -742,4 +743,34 @@ fn test_get_capabilities() {
     };
 
     assert_eq!(1, jwt_formatter.get_capabilities().features.len());
+}
+
+#[test]
+fn test_schema_id() {
+    let formatter = JWTFormatter {
+        params: Params {
+            leeway: 123u64,
+            embed_layout_properties: false,
+        },
+    };
+    let request_dto = CreateCredentialSchemaRequestDTO {
+        name: "".to_string(),
+        format: "".to_string(),
+        revocation_method: "".to_string(),
+        organisation_id: OrganisationId::from(Uuid::new_v4()),
+        claims: vec![],
+        wallet_storage_type: None,
+        layout_type: LayoutType::Card,
+        layout_properties: None,
+        schema_id: None,
+        allow_suspension: None,
+    };
+
+    let id = CredentialSchemaId::from(Uuid::new_v4());
+    let result = formatter.credential_schema_id(id, &request_dto, "https://example.com");
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        format!("https://example.com/ssi/schema/v1/{id}")
+    )
 }

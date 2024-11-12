@@ -270,8 +270,8 @@ pub enum BusinessLogicError {
     #[error("Invalid claim type (mdoc top level only objects allowed)")]
     InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
 
-    #[error("Missing MDOC doctype")]
-    MissingMdocDoctype,
+    #[error("Missing schema ID")]
+    MissingSchemaId,
 
     #[error("Schema ID not allowed")]
     SchemaIdNotAllowed,
@@ -1010,7 +1010,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
             Self::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,
             Self::ProofSchemaImport(_) => ErrorCode::BR_0135,
-            Self::MissingMdocDoctype => ErrorCode::BR_0138,
+            Self::MissingSchemaId => ErrorCode::BR_0138,
             Self::SchemaIdNotAllowed => ErrorCode::BR_0139,
             Self::LayoutPropertiesNotSupported => ErrorCode::BR_0131,
             Self::SuspensionNotAvailableForSelectedRevocationMethod => ErrorCode::BR_0162,

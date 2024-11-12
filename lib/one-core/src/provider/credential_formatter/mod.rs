@@ -5,10 +5,11 @@ use model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
     ExtractPresentationCtx, FormatPresentationCtx, Presentation, TokenVerifier,
 };
-use shared_types::DidValue;
+use shared_types::{CredentialSchemaId, DidValue};
 
 use crate::model::did::Did;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 pub mod error;
 
@@ -125,4 +126,15 @@ pub trait CredentialFormatter: Send + Sync {
     ///
     /// [cfc]: https://docs.procivis.ch/api/resources/credential_schemas#credential-format-capabilities
     fn get_capabilities(&self) -> model::FormatterCapabilities;
+
+    /// Returns the schema id to be used for a newly created schema.
+    /// It may be derived from the `id`, the creation request and the `core_base_url`.
+    fn credential_schema_id(
+        &self,
+        id: CredentialSchemaId,
+        _request: &CreateCredentialSchemaRequestDTO,
+        core_base_url: &str,
+    ) -> Result<String, FormatterError> {
+        Ok(format!("{core_base_url}/ssi/schema/v1/{id}"))
+    }
 }

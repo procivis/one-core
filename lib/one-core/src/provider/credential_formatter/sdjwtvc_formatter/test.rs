@@ -6,9 +6,11 @@ use mockall::predicate::eq;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::json;
-use shared_types::DidValue;
+use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
 use time::Duration;
+use uuid::Uuid;
 
+use crate::model::credential_schema::LayoutType;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
@@ -20,6 +22,7 @@ use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SDJWTVCVc;
 use crate::provider::credential_formatter::sdjwtvc_formatter::{Params, SDJWTVCFormatter};
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 #[tokio::test]
 async fn test_format_credential() {
@@ -282,4 +285,38 @@ async fn test_extract_presentation() {
         presentation.issuer_did,
         Some(DidValue::from("holder_did".to_string()))
     );
+}
+
+#[test]
+fn test_schema_id() {
+    let formatter = SDJWTVCFormatter::new(
+        Params {
+            leeway: 45u64,
+            embed_layout_properties: false,
+        },
+        Arc::new(MockCryptoProvider::default()),
+    );
+    let request_dto = CreateCredentialSchemaRequestDTO {
+        name: "".to_string(),
+        format: "".to_string(),
+        revocation_method: "".to_string(),
+        organisation_id: OrganisationId::from(Uuid::new_v4()),
+        claims: vec![],
+        wallet_storage_type: None,
+        layout_type: LayoutType::Card,
+        layout_properties: None,
+        schema_id: Some("schema_id_name".to_string()),
+        allow_suspension: None,
+    };
+
+    let result = formatter.credential_schema_id(
+        CredentialSchemaId::from(Uuid::new_v4()),
+        &request_dto,
+        "https://example.com",
+    );
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        "https://example.com/ssi/v1/vct/schema_id_name"
+    )
 }

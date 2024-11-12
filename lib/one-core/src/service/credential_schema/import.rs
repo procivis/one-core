@@ -7,7 +7,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::common_mapper::regenerate_credential_schema_uuids;
-use crate::service::error::ServiceError;
+use crate::service::error::{MissingProviderError, ServiceError};
 
 pub(crate) async fn import_credential_schema(
     request: ImportCredentialSchemaRequestSchemaDTO,
@@ -20,10 +20,13 @@ pub(crate) async fn import_credential_schema(
     let credential_schema_id = request.id.into();
     let create_request = request.to_owned().into();
 
+    let formatter = formatter_provider
+        .get_formatter(&request.format)
+        .ok_or(MissingProviderError::Formatter(request.format.to_owned()))?;
     super::validator::validate_create_request(
         &create_request,
         config,
-        formatter_provider,
+        &*formatter,
         revocation_method_provider,
         true,
     )?;
@@ -45,10 +48,10 @@ pub(crate) async fn import_credential_schema(
         credential_schema_id,
         create_request,
         organisation,
-        "", // importing credential schema will always contain the schema_id
         format_type,
         Some(request.schema_type.to_owned().into()),
-        Some(request.imported_source_url),
+        request.schema_id,
+        request.imported_source_url,
     )?;
 
     let credential_schema = regenerate_credential_schema_uuids(credential_schema);

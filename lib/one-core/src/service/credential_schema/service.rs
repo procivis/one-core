@@ -1,4 +1,5 @@
 use shared_types::CredentialSchemaId;
+use uuid::Uuid;
 
 use super::import::import_credential_schema;
 use crate::common_mapper::list_response_into;
@@ -12,9 +13,11 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
     GetCredentialSchemaQueryDTO, ImportCredentialSchemaRequestDTO,
 };
-use crate::service::credential_schema::mapper::from_create_request;
+use crate::service::credential_schema::mapper::from_create_request_with_id;
 use crate::service::credential_schema::CredentialSchemaService;
-use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
+};
 use crate::util::history::log_history_event_credential_schema;
 
 impl CredentialSchemaService {
@@ -32,10 +35,14 @@ impl CredentialSchemaService {
             .as_ref()
             .ok_or_else(|| ServiceError::Other("Missing core base_url".to_string()))?;
 
+        let formatter = self
+            .formatter_provider
+            .get_formatter(&request.format)
+            .ok_or(MissingProviderError::Formatter(request.format.to_owned()))?;
         super::validator::validate_create_request(
             &request,
             &self.config,
-            &*self.formatter_provider,
+            &*formatter,
             &*self.revocation_method_provider,
             false,
         )?;
@@ -62,8 +69,18 @@ impl CredentialSchemaService {
         };
 
         let format_type = &self.config.format.get_fields(&request.format)?.r#type;
-        let credential_schema =
-            from_create_request(request, organisation, core_base_url, format_type, None)?;
+        let id = CredentialSchemaId::from(Uuid::new_v4());
+        let schema_id = formatter.credential_schema_id(id, &request, core_base_url)?;
+        let imported_source_url = format!("{core_base_url}/ssi/schema/v1/{id}");
+        let credential_schema = from_create_request_with_id(
+            id,
+            request,
+            organisation,
+            format_type,
+            None,
+            schema_id,
+            imported_source_url,
+        )?;
 
         let result = self
             .credential_schema_repository

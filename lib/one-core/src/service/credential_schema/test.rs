@@ -358,6 +358,9 @@ async fn test_create_credential_schema_success() {
             revocation_methods: vec!["NONE".to_string()],
             ..Default::default()
         });
+    formatter
+        .expect_credential_schema_id()
+        .returning(|_, _, _| Ok("schema id".to_string()));
     formatter_provider
         .expect_get_formatter()
         .once()
@@ -473,6 +476,9 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
             revocation_methods: vec!["NONE".to_string()],
             ..Default::default()
         });
+    formatter
+        .expect_credential_schema_id()
+        .returning(|_, _, _| Ok(custom_schema_id.to_string()));
     formatter_provider
         .expect_get_formatter()
         .once()
@@ -604,6 +610,9 @@ async fn test_create_credential_schema_success_nested_claims() {
             revocation_methods: vec!["NONE".to_string()],
             ..Default::default()
         });
+    formatter
+        .expect_credential_schema_id()
+        .returning(|_, _, _| Ok("some schema id".to_string()));
     formatter_provider
         .expect_get_formatter()
         .once()
@@ -673,11 +682,16 @@ async fn test_create_credential_schema_success_nested_claims() {
 
 #[tokio::test]
 async fn test_create_credential_schema_failed_slash_in_claim_name() {
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
-        MockCredentialFormatterProvider::default(),
+        formatter_provider,
         MockRevocationMethodProvider::default(),
         generic_config().core,
     );
@@ -713,11 +727,16 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
 
 #[tokio::test]
 async fn test_create_credential_schema_failed_nested_claims_not_in_object_type() {
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
-        MockCredentialFormatterProvider::default(),
+        formatter_provider,
         MockRevocationMethodProvider::default(),
         generic_config().core,
     );
@@ -768,11 +787,16 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
 
 #[tokio::test]
 async fn test_create_credential_schema_failed_nested_claims_object_type_has_empty_claims() {
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
-        MockCredentialFormatterProvider::default(),
+        formatter_provider,
         MockRevocationMethodProvider::default(),
         generic_config().core,
     );
@@ -806,11 +830,16 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
 
 #[tokio::test]
 async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
-        MockCredentialFormatterProvider::default(),
+        formatter_provider,
         MockRevocationMethodProvider::default(),
         generic_config().core,
     );
@@ -941,11 +970,16 @@ async fn test_create_credential_schema_unique_name_error() {
 
 #[tokio::test]
 async fn test_create_credential_schema_failed_unique_claims_error() {
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .times(2)
+        .returning(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
-        MockCredentialFormatterProvider::default(),
+        formatter_provider,
         MockRevocationMethodProvider::default(),
         generic_config().core,
     );
@@ -1032,12 +1066,17 @@ async fn test_create_credential_schema_fail_validation() {
     let repository = MockCredentialSchemaRepository::default();
     let history_repository = MockHistoryRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .times(4)
+        .returning(|_| Some(Arc::new(MockCredentialFormatter::default())));
 
     let service = setup_service(
         repository,
         history_repository,
         organisation_repository,
-        MockCredentialFormatterProvider::default(),
+        formatter_provider,
         MockRevocationMethodProvider::default(),
         generic_config().core,
     );
@@ -1438,7 +1477,7 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
         .unwrap_err();
     assert!(matches!(
         result,
-        ServiceError::BusinessLogic(BusinessLogicError::MissingMdocDoctype)
+        ServiceError::BusinessLogic(BusinessLogicError::MissingSchemaId)
     ));
 }
 
@@ -1585,11 +1624,16 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
 
 #[tokio::test]
 async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .times(3)
+        .returning(|_| Some(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         Default::default(),
         Default::default(),
         Default::default(),
-        Default::default(),
+        formatter_provider,
         Default::default(),
         generic_config().core,
     );

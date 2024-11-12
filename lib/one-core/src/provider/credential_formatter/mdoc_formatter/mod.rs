@@ -18,7 +18,7 @@ use serde::Deserialize;
 use serde_json::json;
 use serde_with::{serde_as, DurationSeconds};
 use sha2::{Digest, Sha256, Sha384, Sha512};
-use shared_types::DidValue;
+use shared_types::{CredentialSchemaId, DidValue};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -50,6 +50,7 @@ use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 mod cose;
 pub mod mdoc;
@@ -566,6 +567,18 @@ impl CredentialFormatter for MdocFormatter {
             nonce: context.nonce,
             credentials: tokens,
         })
+    }
+
+    fn credential_schema_id(
+        &self,
+        _id: CredentialSchemaId,
+        request: &CreateCredentialSchemaRequestDTO,
+        _core_base_url: &str,
+    ) -> Result<String, FormatterError> {
+        request
+            .schema_id
+            .clone()
+            .ok_or(FormatterError::Failed("Missing schema_id".to_string()))
     }
 }
 

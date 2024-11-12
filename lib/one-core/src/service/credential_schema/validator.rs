@@ -9,7 +9,6 @@ use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
 use crate::provider::credential_formatter::model::Features;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -44,7 +43,7 @@ pub(crate) async fn credential_schema_already_exists(
 pub(crate) fn validate_create_request(
     request: &CreateCredentialSchemaRequestDTO,
     config: &CoreConfig,
-    formatter_provider: &dyn CredentialFormatterProvider,
+    formatter: &dyn CredentialFormatter,
     revocation_method_provider: &dyn RevocationMethodProvider,
     during_import: bool,
 ) -> Result<(), ServiceError> {
@@ -58,20 +57,16 @@ pub(crate) fn validate_create_request(
     validate_revocation(&request.revocation_method, &config.revocation)?;
     validate_nested_claim_schemas(&request.claims, config)?;
 
-    let formatter = formatter_provider
-        .get_formatter(&request.format)
-        .ok_or(MissingProviderError::Formatter(request.format.to_owned()))?;
-
     let revocation_method = revocation_method_provider
         .get_revocation_method(&request.revocation_method)
         .ok_or(MissingProviderError::RevocationMethod(
             request.revocation_method.to_owned(),
         ))?;
 
-    validate_claim_names(request, &*formatter)?;
-    validate_revocation_method_is_compatible_with_format(request, config, &*formatter)?;
+    validate_claim_names(request, formatter)?;
+    validate_revocation_method_is_compatible_with_format(request, config, formatter)?;
     validate_revocation_method_is_compatible_with_suspension(request, &*revocation_method)?;
-    validate_credential_design(request, &*formatter)?;
+    validate_credential_design(request, formatter)?;
     validate_mdoc_claim_types(request, config)?;
     validate_schema_id(request, config, during_import)?;
 
@@ -410,7 +405,7 @@ fn validate_schema_id(
     if is_schema_id_required {
         let schema_id = request.schema_id.as_deref().filter(|s| !s.is_empty());
         if schema_id.is_none() {
-            return Err(BusinessLogicError::MissingMdocDoctype.into());
+            return Err(BusinessLogicError::MissingSchemaId.into());
         }
 
         if let Some(Value::Object(c)) = capabilities {

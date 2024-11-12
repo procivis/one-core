@@ -4,6 +4,7 @@ use coset::{KeyType, Label, RegisteredLabelWithPrivate};
 use hex_literal::hex;
 use maplit::hashmap;
 use serde_json::json;
+use shared_types::OrganisationId;
 
 use super::mdoc::*;
 use super::*;
@@ -701,4 +702,44 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
         .extract_credentials(&formatted_credential, Box::new(token_verifier))
         .await
         .unwrap()
+}
+
+#[test]
+fn test_credential_schema_id() {
+    let params = Params {
+        mso_expires_in: Duration::seconds(10),
+        mso_expected_update_in: Duration::days(10),
+        leeway: 60_u64,
+        embed_layout_properties: None,
+    };
+    let formatter = MdocFormatter::new(
+        params,
+        Some(Arc::new(MockDidMdlValidator::new())),
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        None,
+        generic_config().core.datatype,
+    );
+    let schema_id = "schema_id_name".to_string();
+    let request_dto = CreateCredentialSchemaRequestDTO {
+        name: "".to_string(),
+        format: "".to_string(),
+        revocation_method: "".to_string(),
+        organisation_id: OrganisationId::from(Uuid::new_v4()),
+        claims: vec![],
+        wallet_storage_type: None,
+        layout_type: LayoutType::Card,
+        layout_properties: None,
+        schema_id: Some(schema_id.clone()),
+        allow_suspension: None,
+    };
+
+    let result = formatter.credential_schema_id(
+        CredentialSchemaId::from(Uuid::new_v4()),
+        &request_dto,
+        "https://example.com",
+    );
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), schema_id)
 }
