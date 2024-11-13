@@ -2,7 +2,6 @@ use std::sync::Arc;
 use std::vec;
 
 use mockall::predicate::*;
-use serde_json::json;
 use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -11,7 +10,7 @@ use super::dto::CredentialSchemaLayoutPropertiesRequestDTO;
 use super::validator::{
     check_background_properties, check_claims_presence_in_layout_properties, check_logo_properties,
 };
-use crate::config::core_config::{CoreConfig, Fields};
+use crate::config::core_config::CoreConfig;
 use crate::config::ConfigValidationError;
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential_schema::{
@@ -21,7 +20,7 @@ use crate::model::credential_schema::{
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::revocation::model::{Operation, RevocationMethodCapabilities};
@@ -474,6 +473,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec!["NONE".to_string()],
+            features: vec![Features::SelectiveDisclosure, Features::RequiresSchemaId],
             ..Default::default()
         });
     formatter
@@ -483,21 +483,6 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .expect_get_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
-
-    let mut config = generic_config().core;
-    config.format.insert(
-        "MDOC".to_string(),
-        Fields {
-            r#type: "MDOC".to_owned(),
-            display: Default::default(),
-            order: None,
-            disabled: None,
-            capabilities: Some(json!({
-                "features": ["REQUIRES_SCHEMA_ID"]
-            })),
-            params: None,
-        },
-    );
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
@@ -519,7 +504,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         organisation_repository,
         formatter_provider,
         revocation_method_provider,
-        config,
+        generic_config().core,
     );
 
     let result = service
@@ -1405,25 +1390,18 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
 
     formatter
         .expect_get_capabilities()
-        .returning(generic_formatter_capabilities);
+        .returning(|| FormatterCapabilities {
+            features: vec![
+                Features::SelectiveDisclosure,
+                Features::RequiresSchemaId,
+                Features::SupportsCredentialDesign,
+            ],
+            ..generic_formatter_capabilities()
+        });
     formatter_provider
         .expect_get_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
-    let mut config = generic_config().core;
-    config.format.insert(
-        "MDOC".to_string(),
-        Fields {
-            r#type: "MDOC".to_owned(),
-            display: Default::default(),
-            order: None,
-            disabled: None,
-            capabilities: Some(json!({
-                "features": ["REQUIRES_SCHEMA_ID"]
-            })),
-            params: None,
-        },
-    );
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
@@ -1445,7 +1423,7 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
         MockOrganisationRepository::default(),
         formatter_provider,
         revocation_method_provider,
-        config,
+        generic_config().core,
     );
 
     let result = service
@@ -1488,26 +1466,19 @@ async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() 
 
     formatter
         .expect_get_capabilities()
-        .returning(generic_formatter_capabilities);
+        .returning(|| FormatterCapabilities {
+            features: vec![
+                Features::SelectiveDisclosure,
+                Features::RequiresSchemaId,
+                Features::SupportsCredentialDesign,
+            ],
+            allowed_schema_ids: vec!["UtopiaEmploymentDocument".to_string()],
+            ..generic_formatter_capabilities()
+        });
     formatter_provider
         .expect_get_formatter()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
-    let mut config = generic_config().core;
-    config.format.insert(
-        "PHYSICAL_CARD".to_string(),
-        Fields {
-            r#type: "PHYSICAL_CARD".to_owned(),
-            display: Default::default(),
-            order: None,
-            disabled: None,
-            capabilities: Some(json!({
-                "features": ["REQUIRES_SCHEMA_ID"],
-                "allowedSchemaIds": ["UtopiaEmploymentDocument"],
-            })),
-            params: None,
-        },
-    );
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
@@ -1529,7 +1500,7 @@ async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() 
         MockOrganisationRepository::default(),
         formatter_provider,
         revocation_method_provider,
-        config,
+        generic_config().core,
     );
 
     let result = service

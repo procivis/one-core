@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use serde_json::Value;
 use shared_types::OrganisationId;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
@@ -68,7 +67,7 @@ pub(crate) fn validate_create_request(
     validate_revocation_method_is_compatible_with_suspension(request, &*revocation_method)?;
     validate_credential_design(request, formatter)?;
     validate_mdoc_claim_types(request, config)?;
-    validate_schema_id(request, config, during_import)?;
+    validate_schema_id(request, formatter, during_import)?;
 
     Ok(())
 }
@@ -390,32 +389,22 @@ fn validate_mdoc_claim_types(
 
 fn validate_schema_id(
     request: &CreateCredentialSchemaRequestDTO,
-    config: &CoreConfig,
+    formatter: &dyn CredentialFormatter,
     during_import: bool,
 ) -> Result<(), ServiceError> {
-    let capabilities = &config.format.get_fields(&request.format)?.capabilities;
-    let mut is_schema_id_required = false;
-    if let Some(Value::Object(c)) = capabilities {
-        is_schema_id_required = if let Some(Value::Array(arr)) = c.get("features") {
-            arr.iter().any(|v| v.as_str() == Some("REQUIRES_SCHEMA_ID"))
-        } else {
-            false
-        };
-    }
+    let is_schema_id_required = formatter
+        .get_capabilities()
+        .features
+        .contains(&Features::RequiresSchemaId);
     if is_schema_id_required {
         let schema_id = request.schema_id.as_deref().filter(|s| !s.is_empty());
-        if schema_id.is_none() {
+        let Some(schema_id) = schema_id else {
             return Err(BusinessLogicError::MissingSchemaId.into());
-        }
+        };
 
-        if let Some(Value::Object(c)) = capabilities {
-            if let Some(Value::Array(allowed_schema_ids)) = c.get("allowedSchemaIds") {
-                if !allowed_schema_ids.is_empty()
-                    && !allowed_schema_ids.iter().any(|v| v.as_str() == schema_id)
-                {
-                    return Err(ValidationError::SchemaIdNotAllowedForFormat.into());
-                }
-            }
+        let allowed_schema_ids = formatter.get_capabilities().allowed_schema_ids;
+        if !allowed_schema_ids.is_empty() && !allowed_schema_ids.iter().any(|v| v == schema_id) {
+            return Err(ValidationError::SchemaIdNotAllowedForFormat.into());
         }
     } else if !during_import && request.schema_id.is_some() {
         return Err(BusinessLogicError::SchemaIdNotAllowed.into());
