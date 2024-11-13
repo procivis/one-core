@@ -21,6 +21,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 use crate::provider::exchange_protocol::{
     BasicSchemaData, BuildCredentialSchemaResponse, HandleInvitationOperations,
 };
+use crate::provider::http_client::HttpClient;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::util::oidc::map_from_oidc_format_to_core;
 
@@ -28,6 +29,7 @@ pub struct HandleInvitationOperationsImpl {
     pub organisation: Organisation,
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
     pub config: Arc<CoreConfig>,
+    pub http_client: Arc<dyn HttpClient>,
 }
 
 impl HandleInvitationOperationsImpl {
@@ -35,11 +37,13 @@ impl HandleInvitationOperationsImpl {
         organisation: Organisation,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         config: Arc<CoreConfig>,
+        http_client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
             organisation,
             credential_schemas,
             config,
+            http_client,
         }
     }
 }
@@ -140,9 +144,10 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
         let result = match schema_data.schema_type.as_str() {
             "ProcivisOneSchema2024" => {
-                let procivis_schema = fetch_procivis_schema(&schema_data.schema_id)
-                    .await
-                    .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
+                let procivis_schema =
+                    fetch_procivis_schema(&schema_data.schema_id, &*self.http_client)
+                        .await
+                        .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
                 let schema = from_create_request(
                     CreateCredentialSchemaRequestDTO {
@@ -178,7 +183,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 BuildCredentialSchemaResponse { claims, schema }
             }
             "mdoc" => {
-                let result = fetch_procivis_schema(&schema_url).await;
+                let result = fetch_procivis_schema(&schema_url, &*self.http_client).await;
 
                 let (layout_type, layout_properties) = match result {
                     Ok(schema) => (

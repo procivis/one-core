@@ -61,8 +61,6 @@ pub enum ProofSchemaImportError {
     UnsupportedDatatype(String),
     #[error("Unsupported format: {0}")]
     UnsupportedFormat(String),
-    #[error("Failed getting proof schema: {0}")]
-    HttpClient(#[from] reqwest::Error),
 }
 
 #[cfg(test)]

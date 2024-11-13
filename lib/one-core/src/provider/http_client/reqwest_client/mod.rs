@@ -4,8 +4,7 @@ use std::sync::Arc;
 
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 
-use super::{Error, Headers, HttpClient, Method, RequestBuilder, Response, StatusCode};
-
+use super::{Error, Headers, HttpClient, Method, Request, RequestBuilder, Response, StatusCode};
 #[derive(Clone)]
 pub struct ReqwestClient {
     pub client: reqwest::Client,
@@ -33,6 +32,7 @@ impl HttpClient for ReqwestClient {
         RequestBuilder::new(Arc::new(self.clone()), Method::Post, url)
     }
 
+    #[track_caller]
     async fn send(
         &self,
         url: &str,
@@ -40,6 +40,13 @@ impl HttpClient for ReqwestClient {
         headers: Option<Headers>,
         method: Method,
     ) -> Result<Response, Error> {
+        let request = Request {
+            body: body.clone(),
+            headers: headers.clone().unwrap_or_default(),
+            method,
+            url: url.to_string(),
+        };
+
         let mut builder = match method {
             Method::Get => self.client.get(url),
             Method::Post => self.client.post(url),
@@ -52,7 +59,32 @@ impl HttpClient for ReqwestClient {
             builder = builder.body(body);
         }
 
-        do_send(builder).await
+        let response = builder
+            .send()
+            .await
+            .map_err(|e| Error::HttpError(e.to_string()))?;
+
+        let headers = response
+            .headers()
+            .iter()
+            .map(|(k, v)| {
+                let value = v.to_str().map_err(|e| Error::Other(e.to_string()))?;
+
+                Ok((k.to_string(), value.to_string()))
+            })
+            .collect::<Result<Headers, Error>>()?;
+        let status_code = response.status().as_u16();
+        let body = response
+            .bytes()
+            .await
+            .map_err(|e| Error::HttpError(e.to_string()))?;
+
+        Ok(Response {
+            body: body.to_vec(),
+            headers,
+            status: StatusCode(status_code),
+            request,
+        })
     }
 }
 
@@ -67,32 +99,4 @@ fn to_header_map(headers: HashMap<String, String>) -> Result<HeaderMap, Error> {
             Ok((name, value))
         })
         .collect::<Result<HeaderMap, Error>>()
-}
-
-async fn do_send(builder: reqwest::RequestBuilder) -> Result<Response, Error> {
-    let response = builder
-        .send()
-        .await
-        .map_err(|e| Error::HttpError(e.to_string()))?;
-
-    let headers = response
-        .headers()
-        .iter()
-        .map(|(k, v)| {
-            let value = v.to_str().map_err(|e| Error::Other(e.to_string()))?;
-
-            Ok((k.to_string(), value.to_string()))
-        })
-        .collect::<Result<Headers, Error>>()?;
-    let status_code = response.status().as_u16();
-    let body = response
-        .bytes()
-        .await
-        .map_err(|e| Error::HttpError(e.to_string()))?;
-
-    Ok(Response {
-        body: body.to_vec(),
-        headers,
-        status: StatusCode(status_code),
-    })
 }

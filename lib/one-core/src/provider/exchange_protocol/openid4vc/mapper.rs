@@ -62,6 +62,8 @@ use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest
 use crate::provider::exchange_protocol::openid4vc::{
     ExchangeProtocolError, FormatMapper, TypeToDescriptorMapper,
 };
+use crate::provider::http_client;
+use crate::provider::http_client::HttpClient;
 use crate::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::ServiceError;
@@ -570,12 +572,14 @@ fn from_jwt_request_claim_schema(
 
 pub(crate) async fn fetch_procivis_schema(
     schema_id: &str,
-) -> Result<CredentialSchemaDetailResponseDTO, reqwest::Error> {
-    reqwest::get(schema_id)
+    http_client: &dyn HttpClient,
+) -> Result<CredentialSchemaDetailResponseDTO, http_client::Error> {
+    http_client
+        .get(schema_id)
+        .send()
         .await?
         .error_for_status()?
         .json()
-        .await
 }
 
 pub fn from_create_request(

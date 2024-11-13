@@ -83,6 +83,7 @@ impl SSIHolderService {
             organisation.clone(),
             self.credential_schema_repository.clone(),
             self.config.clone(),
+            self.client.clone(),
         );
 
         let transport =
@@ -659,7 +660,7 @@ impl SSIHolderService {
                 let url_result = Url::from_str(&schema.schema_id);
 
                 if let Ok(url) = url_result {
-                    let result = fetch_procivis_schema(url.as_ref()).await;
+                    let result = fetch_procivis_schema(url.as_ref(), &*self.client).await;
 
                     if let (Ok(response_schema), Some(schema_update_request)) =
                         (result, issuer_response.update_credential_schema.as_mut())

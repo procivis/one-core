@@ -8,7 +8,9 @@ use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::sd_jwt_vc_issuer_metadata::SdJwtVcIssuerMetadataDidMethod;
 use crate::provider::did_method::DidMethod;
-use crate::provider::http_client::{Method, MockHttpClient, RequestBuilder, Response, StatusCode};
+use crate::provider::http_client::{
+    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
+};
 
 fn mock_http_get_request(http_client: &mut MockHttpClient, url: &'static str, response: Response) {
     let mut new_client = MockHttpClient::new();
@@ -106,6 +108,12 @@ async fn test_resolve_through_jwks_with_path() {
                 .into_bytes(),
             headers: Default::default(),
             status: StatusCode(200),
+            request: Request {
+                body: None,
+                headers: Default::default(),
+                method: Method::Get,
+                url: DID_URL_AFTER_PREPENDING_WELL_KNOWN_ISSUER.to_string(),
+            },
         },
     );
 
@@ -153,6 +161,12 @@ async fn test_resolve_through_jwk_url_without_path() {
                 .into_bytes(),
             headers: Default::default(),
             status: StatusCode(200),
+            request: Request {
+                body: None,
+                headers: Default::default(),
+                method: Method::Get,
+                url: DID_URL_AFTER_PREPENDING_WELL_KNOWN_ISSUER.to_string(),
+            },
         },
     );
     mock_http_get_request(
@@ -164,6 +178,12 @@ async fn test_resolve_through_jwk_url_without_path() {
                 .into_bytes(),
             headers: Default::default(),
             status: StatusCode(200),
+            request: Request {
+                body: None,
+                headers: Default::default(),
+                method: Method::Get,
+                url: JWKS_URL.to_string(),
+            },
         },
     );
 

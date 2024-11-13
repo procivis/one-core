@@ -27,7 +27,9 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::http_client::{Method, MockHttpClient, RequestBuilder, Response, StatusCode};
+use crate::provider::http_client::{
+    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
+};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -50,6 +52,8 @@ use crate::service::test_utilities::{
     dummy_credential_schema, dummy_proof_schema, generic_config, generic_formatter_capabilities,
     get_dummy_date,
 };
+
+const IMPORT_URL: &str = "http://import.credential.schema";
 
 fn setup_service(
     proof_schema_repository: MockProofSchemaRepository,
@@ -1373,7 +1377,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     http_client
         .expect_get()
         .once()
-        .with(eq("http://import.credential.schema"))
+        .with(eq(IMPORT_URL))
         .returning(|url| {
             let mut inner_client = MockHttpClient::new();
             inner_client.expect_send().once().returning(|_, _, _, _| {
@@ -1407,6 +1411,12 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                     .to_vec(),
                     headers: Default::default(),
                     status: StatusCode(200),
+                    request: Request {
+                        body: None,
+                        headers: Default::default(),
+                        method: Method::Get,
+                        url: IMPORT_URL.to_string(),
+                    },
                 })
             });
 
@@ -1576,7 +1586,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     http_client
         .expect_get()
         .once()
-        .with(eq("http://import.credential.schema"))
+        .with(eq(IMPORT_URL))
         .returning(|url| {
             let mut inner_client = MockHttpClient::new();
             inner_client.expect_send().once().returning(|_, _, _, _| {
@@ -1610,6 +1620,12 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
                     .to_vec(),
                     headers: Default::default(),
                     status: StatusCode(200),
+                    request: Request {
+                        body: None,
+                        headers: Default::default(),
+                        method: Method::Get,
+                        url: crate::service::proof_schema::test::IMPORT_URL.to_string(),
+                    },
                 })
             });
 
