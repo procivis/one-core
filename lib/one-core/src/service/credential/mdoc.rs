@@ -1,0 +1,284 @@
+use anyhow::Context;
+use time::OffsetDateTime;
+
+use crate::model::credential::{Credential, CredentialStateEnum, UpdateCredentialRequest};
+use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::exchange_protocol::deserialize_interaction_data;
+use crate::provider::exchange_protocol::error::ExchangeProtocolError;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    HolderInteractionData, OpenID4VCICredential, OpenID4VCIProof, OpenID4VCITokenResponseDTO,
+};
+use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
+use crate::provider::http_client::HttpClient;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::interaction_repository::InteractionRepository;
+use crate::service::credential::CredentialService;
+use crate::service::error::ServiceError;
+use crate::service::oidc::dto::OpenID4VCICredentialResponseDTO;
+
+impl CredentialService {
+    pub(super) async fn check_mdoc_update(
+        &self,
+        credential: &Credential,
+        detail_credential: &DetailCredential,
+    ) -> Result<CredentialStateEnum, ServiceError> {
+        let mut interaction_data: HolderInteractionData = deserialize_interaction_data(
+            credential
+                .interaction
+                .as_ref()
+                .and_then(|i| i.data.as_ref()),
+        )?;
+
+        let mut new_state = if is_mso_expired(detail_credential) {
+            CredentialStateEnum::Suspended
+        } else {
+            CredentialStateEnum::Accepted
+        };
+
+        let result = check_access_token(
+            credential,
+            &*self.interaction_repository,
+            &mut interaction_data,
+            &*self.client,
+        )
+        .await;
+
+        if let Ok(TokenCheckResult {
+            mso_refresh_possible,
+        }) = result
+        {
+            if !mso_refresh_possible && is_mso_expired(detail_credential) {
+                new_state = CredentialStateEnum::Revoked;
+            }
+
+            if mso_refresh_possible && mso_requires_update(detail_credential) {
+                let result = obtain_and_update_new_mso(
+                    credential,
+                    &*self.credential_repository,
+                    &*self.key_provider,
+                    &interaction_data,
+                    &*self.client,
+                )
+                .await;
+
+                // If we have managed to refresh mso
+                if result.is_ok() {
+                    new_state = CredentialStateEnum::Accepted;
+                }
+            }
+        }
+
+        Ok(new_state)
+    }
+}
+
+async fn obtain_and_update_new_mso(
+    credential: &Credential,
+    credentials: &dyn CredentialRepository,
+    key_provider: &dyn KeyProvider,
+    interaction_data: &HolderInteractionData,
+    client: &dyn HttpClient,
+) -> Result<(), ServiceError> {
+    let key = credential
+        .key
+        .as_ref()
+        .ok_or(ServiceError::Other("Missing key".to_owned()))?
+        .clone();
+    let holder_did = credential
+        .holder_did
+        .as_ref()
+        .ok_or(ServiceError::Other("Missing holder did".to_owned()))?
+        .clone();
+
+    let auth_fn = key_provider
+        .get_signature_provider(&key.to_owned(), None)
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
+        interaction_data.issuer_url.clone(),
+        &holder_did,
+        None,
+        key.key_type.to_owned(),
+        auth_fn,
+    )
+    .await
+    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let schema = credential
+        .schema
+        .as_ref()
+        .ok_or(ExchangeProtocolError::Failed("schema is None".to_string()))?;
+
+    let body = OpenID4VCICredential {
+        proof: OpenID4VCIProof {
+            proof_type: "jwt".to_string(),
+            jwt: proof_jwt,
+        },
+        format: "mso_mdoc".to_owned(),
+        vct: None,
+        credential_definition: None,
+        doctype: Some(schema.schema_id.to_owned()),
+    };
+
+    let access_token =
+        &interaction_data
+            .access_token
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "Missing access token".to_string(),
+            ))?;
+
+    let response = client
+        .post(&interaction_data.credential_endpoint)
+        .bearer_auth(access_token)
+        .json(&body)
+        .context("json error")
+        .map_err(ExchangeProtocolError::Transport)?
+        .send()
+        .await
+        .context("send error")
+        .map_err(ExchangeProtocolError::Transport)?;
+    let response = response
+        .error_for_status()
+        .context("status error")
+        .map_err(ExchangeProtocolError::Transport)?;
+
+    let result: OpenID4VCICredentialResponseDTO =
+        serde_json::from_slice(&response.body).map_err(ExchangeProtocolError::JsonError)?;
+
+    // Update credential value
+    let update_request = UpdateCredentialRequest {
+        id: credential.id,
+        credential: Some(result.credential.as_bytes().to_vec()),
+        holder_did_id: None,
+        issuer_did_id: None,
+        state: None,
+        interaction: None,
+        key: None,
+        redirect_uri: None,
+        claims: None,
+    };
+
+    credentials.update_credential(update_request).await?;
+    Ok(())
+}
+
+struct TokenCheckResult {
+    pub mso_refresh_possible: bool,
+}
+
+async fn check_access_token(
+    credential: &Credential,
+    interactions: &dyn InteractionRepository,
+    interaction_data: &mut HolderInteractionData,
+    client: &dyn HttpClient,
+) -> Result<TokenCheckResult, ServiceError> {
+    let now = OffsetDateTime::now_utc();
+    let access_token_expires_at =
+        interaction_data
+            .access_token_expires_at
+            .ok_or(ServiceError::Other(
+                "Missing expires_at in interaction data for mso".to_owned(),
+            ))?;
+
+    if access_token_expires_at > now {
+        // stored access token still valid
+        return Ok(TokenCheckResult {
+            mso_refresh_possible: true,
+        });
+    }
+
+    // Fetch a new one
+    let refresh_token = if let Some(refresh_token) = interaction_data.refresh_token.as_ref() {
+        refresh_token
+    } else {
+        // missing refresh token
+        return Ok(TokenCheckResult {
+            mso_refresh_possible: false,
+        });
+    };
+
+    if interaction_data
+        .refresh_token_expires_at
+        .is_some_and(|expires_at| expires_at <= now)
+    {
+        // Expired refresh token
+        return Ok(TokenCheckResult {
+            mso_refresh_possible: false,
+        });
+    }
+
+    let token_endpoint =
+        interaction_data
+            .token_endpoint
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed(
+                "token endpoint is missing".to_string(),
+            ))?;
+
+    let token_response: OpenID4VCITokenResponseDTO = client
+        .post(token_endpoint)
+        .form(&[
+            ("refresh_token", refresh_token.to_string()),
+            ("grant_type", "refresh_token".to_string()),
+        ])
+        .context("form error")
+        .map_err(ExchangeProtocolError::Transport)?
+        .send()
+        .await
+        .context("send error")
+        .map_err(ExchangeProtocolError::Transport)?
+        .error_for_status()
+        .context("status error")
+        .map_err(ExchangeProtocolError::Transport)?
+        .json()
+        .context("parsing error")
+        .map_err(ExchangeProtocolError::Transport)?;
+
+    interaction_data.access_token = Some(token_response.access_token);
+    interaction_data.access_token_expires_at =
+        OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
+
+    interaction_data.refresh_token = token_response.refresh_token;
+    interaction_data.refresh_token_expires_at = token_response
+        .refresh_token_expires_in
+        .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
+
+    let mut interaction = credential
+        .interaction
+        .as_ref()
+        .ok_or(ServiceError::Other("Missing interaction".to_owned()))?
+        .clone();
+
+    interaction.data = Some(
+        serde_json::to_vec(&interaction_data)
+            .map_err(|e| ServiceError::MappingError(e.to_string()))?,
+    );
+    // Update in database
+    interactions.update_interaction(interaction).await?;
+
+    Ok(TokenCheckResult {
+        mso_refresh_possible: true,
+    })
+}
+
+fn is_mso_expired(detail_credential: &DetailCredential) -> bool {
+    let now = OffsetDateTime::now_utc();
+
+    if let Some(valid_until) = detail_credential.valid_until {
+        return valid_until < now;
+    }
+
+    false
+}
+
+fn mso_requires_update(detail_credential: &DetailCredential) -> bool {
+    let now = OffsetDateTime::now_utc();
+
+    if let Some(update_at) = detail_credential.update_at {
+        return update_at < now;
+    }
+
+    is_mso_expired(detail_credential)
+}

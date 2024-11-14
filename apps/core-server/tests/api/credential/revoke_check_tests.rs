@@ -477,6 +477,9 @@ async fn test_revoke_check_token_update() {
     let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
         .format(&format)
         .unwrap();
+    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
+        .format(&format)
+        .unwrap();
     let issuer_url = format!(
         "{}/ssi/oidc-issuer/v1/{}",
         context.server_mock.uri(),
@@ -494,7 +497,7 @@ async fn test_revoke_check_token_update() {
         "access_token": "123",
         "access_token_expires_at": a_couple_of_seconds_ago,
         "refresh_token": "123",
-        "refresh_token_expires_at": a_couple_of_seconds_ago,
+        "refresh_token_expires_at": a_couple_of_seconds_in_future,
     }))
     .unwrap();
 
@@ -556,7 +559,7 @@ async fn test_revoke_check_token_update() {
 }
 
 #[tokio::test]
-async fn test_revoke_check_mdoc_revoked() {
+async fn test_revoke_check_mdoc_tokens_expired() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
 
@@ -597,7 +600,7 @@ async fn test_revoke_check_mdoc_revoked() {
         .await;
 
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    // Token is up outdated
+    // Token is outdated
     let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
         .format(&format)
         .unwrap();
@@ -663,7 +666,7 @@ async fn test_revoke_check_mdoc_revoked() {
     let resp = resp.json_value().await;
 
     resp[0]["credentialId"].assert_eq(&credential.id);
-    assert_eq!("SUSPENDED", resp[0]["status"]);
+    assert_eq!("REVOKED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());
 
@@ -674,7 +677,7 @@ async fn test_revoke_check_mdoc_revoked() {
     );
     assert_eq!(
         updated_credentials.state.unwrap()[0].state,
-        CredentialStateEnum::Suspended,
+        CredentialStateEnum::Revoked,
     );
 }
 
