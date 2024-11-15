@@ -65,7 +65,11 @@ impl CredentialFormatter for SDJWTVCFormatter {
         _additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
-        let schema_id = credential.schema.id.to_owned();
+        let schema_id =
+            credential.schema.id.clone().ok_or_else(|| {
+                FormatterError::Failed("Missing credential schema id".to_string())
+            })?;
+
         format_credentials(
             credential,
             holder_did,
@@ -265,14 +269,14 @@ pub async fn format_credentials(
     crypto: &dyn CryptoProvider,
     leeway: u64,
     token_type: String,
-    vc_type: Option<String>,
+    vc_type: String,
 ) -> Result<String, FormatterError> {
+    let (vc, disclosures) = format_hashed_credential(&credential, "sha-256", crypto)?;
+
     let issuer = credential.issuer_did.to_did_value().to_string();
-    let id = credential.id.clone();
+    let id = credential.id;
     let issued_at = credential.issuance_date;
     let expires_at = issued_at.checked_add(credential.valid_for);
-
-    let (vc, disclosures) = format_hashed_credential(credential, "sha-256", crypto)?;
 
     let payload = JWTPayload {
         issued_at: Some(issued_at),
@@ -283,7 +287,7 @@ pub async fn format_credentials(
         jwt_id: id,
         custom: vc,
         nonce: None,
-        vc_type,
+        vc_type: Some(vc_type),
         proof_of_possession_key: None,
     };
 
@@ -301,7 +305,7 @@ pub async fn format_credentials(
 }
 
 pub(super) fn format_hashed_credential(
-    credential: CredentialData,
+    credential: &CredentialData,
     algorithm: &str,
     crypto: &dyn CryptoProvider,
 ) -> Result<(SDJWTVCVc, Vec<String>), FormatterError> {
