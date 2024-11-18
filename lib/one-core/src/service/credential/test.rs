@@ -609,7 +609,7 @@ async fn test_share_credential_success() {
     let interaction_id = Uuid::new_v4();
     protocol
         .inner
-        .expect_share_credential()
+        .expect_issuer_share_credential()
         .times(1)
         .returning(move |_, _| {
             Ok(ShareResponse {

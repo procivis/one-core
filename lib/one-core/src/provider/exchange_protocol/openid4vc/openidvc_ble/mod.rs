@@ -196,7 +196,7 @@ impl OpenID4VCBLE {
         }
     }
 
-    pub fn can_handle(&self, url: &Url) -> bool {
+    pub fn holder_can_handle(&self, url: &Url) -> bool {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
         url.scheme() == "openid4vp"
@@ -204,12 +204,12 @@ impl OpenID4VCBLE {
             && query_has_key(PRESENTATION_DEFINITION_BLE_KEY)
     }
 
-    pub async fn handle_invitation(
+    pub async fn holder_handle_invitation(
         &self,
         url: Url,
         organisation: Organisation,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
-        if !self.can_handle(&url) {
+        if !self.holder_can_handle(&url) {
             return Err(ExchangeProtocolError::Failed(
                 "No OpenID4VC over BLE query params detected".to_string(),
             ));
@@ -286,7 +286,7 @@ impl OpenID4VCBLE {
         })
     }
 
-    pub async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    pub async fn holder_reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let ble_holder = OpenID4VCBLEHolder::new(
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
@@ -300,7 +300,7 @@ impl OpenID4VCBLE {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn submit_proof(
+    pub async fn holder_submit_proof(
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
@@ -451,7 +451,7 @@ impl OpenID4VCBLE {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn share_proof(
+    pub async fn verifier_share_proof(
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
@@ -507,7 +507,7 @@ impl OpenID4VCBLE {
             .await
     }
 
-    pub async fn retract_proof(&self) -> Result<(), ExchangeProtocolError> {
+    pub async fn verifier_retract_proof(&self) -> Result<(), ExchangeProtocolError> {
         self.ble
             .as_ref()
             .ok_or_else(|| ExchangeProtocolError::Failed("BLE is missing in service".to_string()))?

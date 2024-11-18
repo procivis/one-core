@@ -250,23 +250,23 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
     let unprotected = Router::new()
         .route(
             "/ssi/oidc-issuer/v1/:id/.well-known/openid-credential-issuer",
-            get(ssi::controller::oidc_get_issuer_metadata),
+            get(ssi::controller::oidc_issuer_get_issuer_metadata),
         )
         .route(
             "/ssi/oidc-issuer/v1/:id/.well-known/openid-configuration",
-            get(ssi::controller::oidc_service_discovery),
+            get(ssi::controller::oidc_issuer_service_discovery),
         )
         .route(
             "/ssi/oidc-issuer/v1/:credential_schema_id/offer/:credential_id",
-            get(ssi::controller::oidc_get_credential_offer),
+            get(ssi::controller::oidc_issuer_get_credential_offer),
         )
         .route(
             "/ssi/oidc-issuer/v1/:id/token",
-            post(ssi::controller::oidc_create_token),
+            post(ssi::controller::oidc_issuer_create_token),
         )
         .route(
             "/ssi/oidc-issuer/v1/:id/credential",
-            post(ssi::controller::oidc_create_credential),
+            post(ssi::controller::oidc_issuer_create_credential),
         )
         .route(
             "/ssi/oidc-verifier/v1/response",
@@ -278,11 +278,11 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         )
         .route(
             "/ssi/oidc-verifier/v1/:id/client-metadata",
-            get(ssi::controller::oidc_client_metadata),
+            get(ssi::controller::oidc_verifier_client_metadata),
         )
         .route(
             "/ssi/oidc-verifier/v1/:id/client-request",
-            get(ssi::controller::oidc_client_request),
+            get(ssi::controller::oidc_verifier_client_request),
         )
         .route(
             "/ssi/revocation/v1/list/:id",

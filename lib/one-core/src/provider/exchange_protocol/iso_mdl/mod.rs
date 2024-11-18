@@ -81,11 +81,11 @@ impl ExchangeProtocolImpl for IsoMdl {
     type VCInteractionContext = ();
     type VPInteractionContext = serde_json::Value;
 
-    fn can_handle(&self, _url: &Url) -> bool {
+    fn holder_can_handle(&self, _url: &Url) -> bool {
         false
     }
 
-    async fn handle_invitation(
+    async fn holder_handle_invitation(
         &self,
         _url: Url,
         _organisation: Organisation,
@@ -96,7 +96,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         unimplemented!()
     }
 
-    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let ble = self.ble.as_ref().ok_or(ExchangeProtocolError::Failed(
             "Missing BLE waiter".to_string(),
         ))?;
@@ -137,7 +137,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         Ok(())
     }
 
-    async fn submit_proof(
+    async fn holder_submit_proof(
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
@@ -219,7 +219,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         })
     }
 
-    async fn accept_credential(
+    async fn holder_accept_credential(
         &self,
         _credential: &Credential,
         _holder_did: &Did,
@@ -233,14 +233,14 @@ impl ExchangeProtocolImpl for IsoMdl {
         unimplemented!()
     }
 
-    async fn reject_credential(
+    async fn holder_reject_credential(
         &self,
         _credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         unimplemented!()
     }
 
-    async fn share_credential(
+    async fn issuer_share_credential(
         &self,
         _credential: &Credential,
         _credential_format: &str,
@@ -248,7 +248,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         unimplemented!()
     }
 
-    async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    async fn verifier_retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let ble = self
             .ble
             .as_ref()
@@ -260,7 +260,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         Ok(())
     }
 
-    async fn share_proof(
+    async fn verifier_share_proof(
         &self,
         _proof: &Proof,
         _format_to_type_mapper: FormatMapper,
@@ -273,7 +273,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         unimplemented!()
     }
 
-    async fn get_presentation_definition(
+    async fn holder_get_presentation_definition(
         &self,
         proof: &Proof,
         interaction_data: Self::VPInteractionContext,

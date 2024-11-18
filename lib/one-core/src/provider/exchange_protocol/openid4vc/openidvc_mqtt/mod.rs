@@ -104,7 +104,7 @@ impl OpenId4VcMqtt {
         }
     }
 
-    pub fn can_handle(&self, url: &Url) -> bool {
+    pub fn holder_can_handle(&self, url: &Url) -> bool {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
         url.scheme() == "openid4vp"
@@ -113,14 +113,14 @@ impl OpenId4VcMqtt {
             && query_has_key("topicId")
     }
 
-    pub async fn handle_invitation(
+    pub async fn holder_handle_invitation(
         &self,
         url: Url,
         organisation: Organisation,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         tracing::debug!("MQTT Handle invitation: {url}");
 
-        if !self.can_handle(&url) {
+        if !self.holder_can_handle(&url) {
             return Err(ExchangeProtocolError::Failed(
                 "No OpenID4VC over MQTT query params detected".to_string(),
             ));
@@ -248,7 +248,7 @@ impl OpenId4VcMqtt {
         })
     }
 
-    pub async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    pub async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let interaction_data: MQTTOpenID4VPInteractionData = deserialize_interaction_data(
             proof
                 .interaction
@@ -295,7 +295,7 @@ impl OpenId4VcMqtt {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn submit_proof(
+    pub async fn holder_submit_proof(
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
@@ -447,7 +447,7 @@ impl OpenId4VcMqtt {
 
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
-    pub async fn share_proof(
+    pub async fn verifier_share_proof(
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
@@ -579,7 +579,7 @@ impl OpenId4VcMqtt {
         Ok(())
     }
 
-    pub async fn retract_proof(&self) {
+    pub async fn verifier_retract_proof(&self) {
         if let Some(old) = self.handle.lock().await.take() {
             old.task_handle.abort()
         };

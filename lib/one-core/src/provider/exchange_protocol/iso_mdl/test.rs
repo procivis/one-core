@@ -158,7 +158,7 @@ async fn test_presentation_reject_ok() {
         }),
     };
 
-    let result = provider.reject_proof(&proof).await;
+    let result = provider.holder_reject_proof(&proof).await;
     assert!(result.is_ok(), "Reject proof should succeed");
 }
 
@@ -422,7 +422,7 @@ async fn test_get_presentation_definition_ok() {
         });
 
     let mut presentation_definition = service
-        .get_presentation_definition(&proof, interaction_data, &storage_access, hashmap! {})
+        .holder_get_presentation_definition(&proof, interaction_data, &storage_access, hashmap! {})
         .await
         .unwrap();
 

@@ -221,7 +221,7 @@ impl ProofService {
         );
 
         exchange
-            .get_presentation_definition(
+            .holder_get_presentation_definition(
                 &proof,
                 interaction_data,
                 &storage_access,
@@ -471,7 +471,7 @@ impl ProofService {
             interaction_id,
             context,
         } = exchange
-            .share_proof(
+            .verifier_share_proof(
                 &proof,
                 format_type_mapper,
                 jwk.key_id,
@@ -548,7 +548,7 @@ impl ProofService {
             ServiceError::MissingExchangeProtocol(proof.exchange.clone()),
         )?;
 
-        exchange_protocol.retract_proof(&proof).await?;
+        exchange_protocol.verifier_retract_proof(&proof).await?;
 
         // we keep the interaction data if the transport hasn't been established
         let can_remove_interaction = !proof.transport.is_empty();

@@ -97,7 +97,7 @@ impl SSIHolderService {
         };
 
         let response = protocol
-            .handle_invitation(
+            .holder_handle_invitation(
                 url,
                 organisation,
                 &storage_access,
@@ -195,7 +195,7 @@ impl SSIHolderService {
             .ok_or(MissingProviderError::ExchangeProtocol(
                 proof.exchange.clone(),
             ))?
-            .reject_proof(&proof)
+            .holder_reject_proof(&proof)
             .await)
             .is_ok()
         {
@@ -305,7 +305,7 @@ impl SSIHolderService {
         );
 
         let presentation_definition = exchange_protocol
-            .get_presentation_definition(
+            .holder_get_presentation_definition(
                 &proof,
                 interaction_data,
                 &storage_access,
@@ -489,7 +489,7 @@ impl SSIHolderService {
         }
 
         let submit_result = exchange_protocol
-            .submit_proof(
+            .holder_submit_proof(
                 &proof,
                 credential_presentations,
                 &holder_did,
@@ -637,7 +637,7 @@ impl SSIHolderService {
                 .ok_or(MissingProviderError::ExchangeProtocol(
                     credential.exchange.clone(),
                 ))?
-                .accept_credential(
+                .holder_accept_credential(
                     &credential,
                     &did,
                     selected_key,
@@ -810,7 +810,7 @@ impl SSIHolderService {
                 .ok_or(MissingProviderError::ExchangeProtocol(
                     credential.exchange.clone(),
                 ))?
-                .reject_credential(&credential)
+                .holder_reject_credential(&credential)
                 .await?;
 
             self.credential_repository

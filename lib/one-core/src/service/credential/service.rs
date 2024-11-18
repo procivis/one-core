@@ -462,7 +462,9 @@ impl CredentialService {
             url,
             interaction_id,
             context,
-        } = exchange.share_credential(&credential, &format).await?;
+        } = exchange
+            .issuer_share_credential(&credential, &format)
+            .await?;
 
         let organisation = if let Some(organisation) = credential
             .schema

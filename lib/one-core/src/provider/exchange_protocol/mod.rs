@@ -256,11 +256,11 @@ pub trait ExchangeProtocolImpl: Send + Sync {
 
     // Holder methods:
     /// Check if the holder can handle the necessary URLs.
-    fn can_handle(&self, url: &Url) -> bool;
+    fn holder_can_handle(&self, url: &Url) -> bool;
 
     /// For handling credential issuance and verification, this method
     /// saves the offer information coming in.
-    async fn handle_invitation(
+    async fn holder_handle_invitation(
         &self,
         url: Url,
         organisation: Organisation,
@@ -270,11 +270,11 @@ pub trait ExchangeProtocolImpl: Send + Sync {
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError>;
 
     /// Rejects a verifier's request for credential presentation.
-    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError>;
+    async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError>;
 
     /// Submits a presentation to a verifier.
     #[allow(clippy::too_many_arguments)]
-    async fn submit_proof(
+    async fn holder_submit_proof(
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
@@ -288,7 +288,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
     /// Accepts an offered credential.
     ///
     /// Storage access must be implemented.
-    async fn accept_credential(
+    async fn holder_accept_credential(
         &self,
         credential: &Credential,
         holder_did: &Did,
@@ -302,14 +302,16 @@ pub trait ExchangeProtocolImpl: Send + Sync {
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError>;
 
     /// Rejects an offered credential.
-    async fn reject_credential(&self, credential: &Credential)
-        -> Result<(), ExchangeProtocolError>;
+    async fn holder_reject_credential(
+        &self,
+        credential: &Credential,
+    ) -> Result<(), ExchangeProtocolError>;
 
     /// Takes a proof request and filters held credentials,
     /// returning those which are acceptable for the request.
     ///
     /// Storage access is needed to check held credentials.
-    async fn get_presentation_definition(
+    async fn holder_get_presentation_definition(
         &self,
         proof: &Proof,
         context: Self::VPInteractionContext,
@@ -319,7 +321,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
 
     // Issuer methods:
     /// Generates QR-code content to start the credential issuance flow.
-    async fn share_credential(
+    async fn issuer_share_credential(
         &self,
         credential: &Credential,
         credential_format: &str,
@@ -327,10 +329,10 @@ pub trait ExchangeProtocolImpl: Send + Sync {
 
     // Verifier methods:
     /// Called when proof needs to be retracted. Use this function for closing opened transmissions, buffers, etc.
-    async fn retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError>;
+    async fn verifier_retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError>;
 
     /// Generates QR-code content to start the proof request flow.
-    async fn share_proof(
+    async fn verifier_share_proof(
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
@@ -375,11 +377,11 @@ where
     type VCInteractionContext = serde_json::Value;
     type VPInteractionContext = serde_json::Value;
 
-    fn can_handle(&self, url: &Url) -> bool {
-        self.inner.can_handle(url)
+    fn holder_can_handle(&self, url: &Url) -> bool {
+        self.inner.holder_can_handle(url)
     }
 
-    async fn handle_invitation(
+    async fn holder_handle_invitation(
         &self,
         url: Url,
         organisation: Organisation,
@@ -388,7 +390,7 @@ where
         transport: String,
     ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         self.inner
-            .handle_invitation(
+            .holder_handle_invitation(
                 url,
                 organisation,
                 storage_access,
@@ -398,11 +400,11 @@ where
             .await
     }
 
-    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
-        self.inner.reject_proof(proof).await
+    async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
+        self.inner.holder_reject_proof(proof).await
     }
 
-    async fn submit_proof(
+    async fn holder_submit_proof(
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
@@ -413,7 +415,7 @@ where
         presentation_format_map: HashMap<String, String>,
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         self.inner
-            .submit_proof(
+            .holder_submit_proof(
                 proof,
                 credential_presentations,
                 holder_did,
@@ -425,7 +427,7 @@ where
             .await
     }
 
-    async fn accept_credential(
+    async fn holder_accept_credential(
         &self,
         credential: &Credential,
         holder_did: &Did,
@@ -437,7 +439,7 @@ where
         map_external_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         self.inner
-            .accept_credential(
+            .holder_accept_credential(
                 credential,
                 holder_did,
                 key,
@@ -450,14 +452,14 @@ where
             .await
     }
 
-    async fn reject_credential(
+    async fn holder_reject_credential(
         &self,
         credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
-        self.inner.reject_credential(credential).await
+        self.inner.holder_reject_credential(credential).await
     }
 
-    async fn get_presentation_definition(
+    async fn holder_get_presentation_definition(
         &self,
         proof: &Proof,
         interaction_data: Self::VPInteractionContext,
@@ -467,17 +469,17 @@ where
         let interaction_data =
             serde_json::from_value(interaction_data).map_err(ExchangeProtocolError::JsonError)?;
         self.inner
-            .get_presentation_definition(proof, interaction_data, storage_access, format_map)
+            .holder_get_presentation_definition(proof, interaction_data, storage_access, format_map)
             .await
     }
 
-    async fn share_credential(
+    async fn issuer_share_credential(
         &self,
         credential: &Credential,
         credential_format: &str,
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         self.inner
-            .share_credential(credential, credential_format)
+            .issuer_share_credential(credential, credential_format)
             .await
             .map(|resp| ShareResponse {
                 url: resp.url,
@@ -486,11 +488,11 @@ where
             })
     }
 
-    async fn retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
-        self.inner.retract_proof(proof).await
+    async fn verifier_retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
+        self.inner.verifier_retract_proof(proof).await
     }
 
-    async fn share_proof(
+    async fn verifier_share_proof(
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
@@ -501,7 +503,7 @@ where
         callback: Option<BoxFuture<'static, ()>>,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         self.inner
-            .share_proof(
+            .verifier_share_proof(
                 proof,
                 format_to_type_mapper,
                 key_id,
@@ -558,7 +560,7 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
     fn detect_protocol(&self, url: &Url) -> Option<Arc<dyn ExchangeProtocol>> {
         self.protocols
             .values()
-            .find(|protocol| protocol.can_handle(url))
+            .find(|protocol| protocol.holder_can_handle(url))
             .cloned()
     }
 }

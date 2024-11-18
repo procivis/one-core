@@ -79,15 +79,15 @@ fn test_can_handle() {
     let protocol = setup_protocol(TestInputs::default());
 
     let wrong_protocol_url = "http://127.0.0.1".parse().unwrap();
-    assert!(!protocol.can_handle(&wrong_protocol_url));
+    assert!(!protocol.holder_can_handle(&wrong_protocol_url));
 
     let missing_parameters = "openid4vp://proof".parse().unwrap();
-    assert!(!protocol.can_handle(&missing_parameters));
+    assert!(!protocol.holder_can_handle(&missing_parameters));
 
     let valid = "openid4vp://proof?brokerUrl=mqtt%3A%2F%2Fsomewhere.com%3A1234&key=abcdef&topicId=F25591B1-DB46-4606-8068-ADF986C3A2BD"
         .parse()
         .unwrap();
-    assert!(protocol.can_handle(&valid));
+    assert!(protocol.holder_can_handle(&valid));
 }
 
 #[test]
@@ -187,7 +187,7 @@ async fn test_handle_invitation_success() {
         ..Default::default()
     });
     let result = protocol
-        .handle_invitation(valid, dummy_organization())
+        .holder_handle_invitation(valid, dummy_organization())
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -275,7 +275,7 @@ async fn test_presentation_reject_success() {
         mqtt_client,
         ..Default::default()
     });
-    protocol.reject_proof(&proof).await.unwrap();
+    protocol.holder_reject_proof(&proof).await.unwrap();
 }
 
 #[tokio::test]
@@ -340,7 +340,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
     let interaction_id = Uuid::new_v4();
 
     let url = protocol
-        .share_proof(
+        .verifier_share_proof(
             &proof,
             format_type_mapper,
             type_to_descriptor_mapper,

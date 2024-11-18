@@ -56,11 +56,11 @@ impl ExchangeProtocolImpl for ScanToVerify {
     type VCInteractionContext = ();
     type VPInteractionContext = ();
 
-    fn can_handle(&self, _url: &Url) -> bool {
+    fn holder_can_handle(&self, _url: &Url) -> bool {
         false
     }
 
-    async fn handle_invitation(
+    async fn holder_handle_invitation(
         &self,
         _url: Url,
         _organisation: Organisation,
@@ -71,11 +71,11 @@ impl ExchangeProtocolImpl for ScanToVerify {
         unimplemented!()
     }
 
-    async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    async fn holder_reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         unimplemented!()
     }
 
-    async fn submit_proof(
+    async fn holder_submit_proof(
         &self,
         _proof: &Proof,
         _credential_presentations: Vec<PresentedCredential>,
@@ -88,7 +88,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         unimplemented!()
     }
 
-    async fn accept_credential(
+    async fn holder_accept_credential(
         &self,
         _credential: &Credential,
         _holder_did: &Did,
@@ -102,14 +102,14 @@ impl ExchangeProtocolImpl for ScanToVerify {
         unimplemented!()
     }
 
-    async fn reject_credential(
+    async fn holder_reject_credential(
         &self,
         _credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         unimplemented!()
     }
 
-    async fn get_presentation_definition(
+    async fn holder_get_presentation_definition(
         &self,
         _proof: &Proof,
         _interaction_data: Self::VPInteractionContext,
@@ -119,7 +119,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         unimplemented!()
     }
 
-    async fn share_credential(
+    async fn issuer_share_credential(
         &self,
         _credential: &Credential,
         _credential_format: &str,
@@ -127,11 +127,11 @@ impl ExchangeProtocolImpl for ScanToVerify {
         unimplemented!()
     }
 
-    async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    async fn verifier_retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         Ok(())
     }
 
-    async fn share_proof(
+    async fn verifier_share_proof(
         &self,
         _proof: &Proof,
         _format_to_type_mapper: FormatMapper,

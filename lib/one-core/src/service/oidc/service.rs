@@ -68,7 +68,7 @@ use crate::service::ssi_validator::validate_exchange_type;
 use crate::util::oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core_detailed};
 
 impl OIDCService {
-    pub async fn oidc_get_issuer_metadata(
+    pub async fn oidc_issuer_get_issuer_metadata(
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
@@ -104,7 +104,10 @@ impl OIDCService {
             .map_err(Into::into)
     }
 
-    pub async fn oidc_get_client_request(&self, id: ProofId) -> Result<String, ServiceError> {
+    pub async fn oidc_verifier_get_client_request(
+        &self,
+        id: ProofId,
+    ) -> Result<String, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
         let proof = self
@@ -197,7 +200,7 @@ impl OIDCService {
         Ok(unsigned_jwt.tokenize(None).await?)
     }
 
-    pub async fn oidc_get_client_metadata(
+    pub async fn oidc_verifier_get_client_metadata(
         &self,
         id: ProofId,
     ) -> Result<OpenID4VPClientMetadata, ServiceError> {
@@ -233,7 +236,7 @@ impl OIDCService {
         ))
     }
 
-    pub async fn oidc_service_discovery(
+    pub async fn oidc_issuer_service_discovery(
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIDiscoveryResponseDTO, ServiceError> {
@@ -266,7 +269,7 @@ impl OIDCService {
         Ok(create_service_discovery_response(&schema_base_url)?)
     }
 
-    pub async fn oidc_get_credential_offer(
+    pub async fn oidc_issuer_get_credential_offer(
         &self,
         credential_schema_id: CredentialSchemaId,
         credential_id: CredentialId,
@@ -348,7 +351,7 @@ impl OIDCService {
         )?)
     }
 
-    pub async fn oidc_create_credential(
+    pub async fn oidc_issuer_create_credential(
         &self,
         credential_schema_id: &CredentialSchemaId,
         access_token: &str,
@@ -461,7 +464,7 @@ impl OIDCService {
         })
     }
 
-    pub async fn oidc_create_token(
+    pub async fn oidc_issuer_create_token(
         &self,
         credential_schema_id: &CredentialSchemaId,
         request: OpenID4VCITokenRequestDTO,
@@ -534,7 +537,7 @@ impl OIDCService {
             get_exchange_param_refresh_token_expires_in(&self.config, &credential.exchange)?;
 
         let mut interaction_data =
-            crate::provider::exchange_protocol::openid4vc::service::oidc_create_token(
+            crate::provider::exchange_protocol::openid4vc::service::oidc_issuer_create_token(
                 interaction_data_to_dto(&interaction)?,
                 &convert_inner(credentials.to_owned()),
                 &interaction,

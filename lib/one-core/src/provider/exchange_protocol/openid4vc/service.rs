@@ -664,7 +664,7 @@ pub fn create_credential_offer(
     })
 }
 
-pub fn oidc_create_token(
+pub fn oidc_issuer_create_token(
     mut interaction_data: OpenID4VCIInteractionDataDTO,
     credentials: &[Credential],
     interaction: &Interaction,

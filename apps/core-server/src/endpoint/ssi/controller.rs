@@ -198,11 +198,15 @@ pub(crate) async fn get_lvvc_by_credential_id(
         specifications](https://openid.net/sg/openid4vc/specifications/).
     "},
 )]
-pub(crate) async fn oidc_get_issuer_metadata(
+pub(crate) async fn oidc_issuer_get_issuer_metadata(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
 ) -> Response {
-    let result = state.core.oidc_service.oidc_get_issuer_metadata(&id).await;
+    let result = state
+        .core
+        .oidc_service
+        .oidc_issuer_get_issuer_metadata(&id)
+        .await;
 
     match result {
         Ok(value) => (
@@ -244,11 +248,15 @@ pub(crate) async fn oidc_get_issuer_metadata(
         specifications](https://openid.net/sg/openid4vc/specifications/).
     "},
 )]
-pub(crate) async fn oidc_service_discovery(
+pub(crate) async fn oidc_issuer_service_discovery(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
 ) -> Response {
-    let result = state.core.oidc_service.oidc_service_discovery(&id).await;
+    let result = state
+        .core
+        .oidc_service
+        .oidc_issuer_service_discovery(&id)
+        .await;
 
     match result {
         Ok(value) => (
@@ -292,7 +300,7 @@ pub(crate) async fn oidc_service_discovery(
         specifications](https://openid.net/sg/openid4vc/specifications/).
     "},
 )]
-pub(crate) async fn oidc_get_credential_offer(
+pub(crate) async fn oidc_issuer_get_credential_offer(
     state: State<AppState>,
     WithRejection(Path((credential_schema_id, credential_id)), _): WithRejection<
         Path<(CredentialSchemaId, CredentialId)>,
@@ -302,7 +310,7 @@ pub(crate) async fn oidc_get_credential_offer(
     let result = state
         .core
         .oidc_service
-        .oidc_get_credential_offer(credential_schema_id, credential_id)
+        .oidc_issuer_get_credential_offer(credential_schema_id, credential_id)
         .await;
 
     match result {
@@ -352,7 +360,7 @@ pub(crate) async fn oidc_get_credential_offer(
         specifications](https://openid.net/sg/openid4vc/specifications/).
     "},
 )]
-pub(crate) async fn oidc_create_token(
+pub(crate) async fn oidc_issuer_create_token(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
     WithRejection(Form(request), _): WithRejection<
@@ -366,7 +374,7 @@ pub(crate) async fn oidc_create_token(
         state
             .core
             .oidc_service
-            .oidc_create_token(&id, request)
+            .oidc_issuer_create_token(&id, request)
             .await
     }
     .await;
@@ -425,7 +433,7 @@ pub(crate) async fn oidc_create_token(
         specifications](https://openid.net/sg/openid4vc/specifications/).
     "},
 )]
-pub(crate) async fn oidc_create_credential(
+pub(crate) async fn oidc_issuer_create_credential(
     state: State<AppState>,
     WithRejection(Path(credential_schema_id), _): WithRejection<
         Path<CredentialSchemaId>,
@@ -444,7 +452,7 @@ pub(crate) async fn oidc_create_credential(
     let result = state
         .core
         .oidc_service
-        .oidc_create_credential(&credential_schema_id, access_token, request.into())
+        .oidc_issuer_create_credential(&credential_schema_id, access_token, request.into())
         .await;
 
     match result {
@@ -628,14 +636,14 @@ pub(crate) async fn oidc_verifier_presentation_definition(
         specifications](https://openid.net/sg/openid4vc/specifications/).
     "},
 )]
-pub(crate) async fn oidc_client_metadata(
+pub(crate) async fn oidc_verifier_client_metadata(
     state: State<AppState>,
     WithRejection(Path(proof_id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core
         .oidc_service
-        .oidc_get_client_metadata(proof_id)
+        .oidc_verifier_get_client_metadata(proof_id)
         .await;
 
     match result {
@@ -692,14 +700,14 @@ pub(crate) async fn oidc_client_metadata(
         specifications](https://openid.net/sg/openid4vc/specifications/).
     "},
 )]
-pub(crate) async fn oidc_client_request(
+pub(crate) async fn oidc_verifier_client_request(
     state: State<AppState>,
     WithRejection(Path(proof_id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core
         .oidc_service
-        .oidc_get_client_request(proof_id)
+        .oidc_verifier_get_client_request(proof_id)
         .await;
 
     match result {

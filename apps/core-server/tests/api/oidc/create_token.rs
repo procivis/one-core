@@ -9,7 +9,7 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 
 #[tokio::test]
-async fn test_oidc_create_token() {
+async fn test_oidc_issuer_create_token() {
     // GIVEN
 
     let (context, org, issuer_did, _key) = TestContext::new_with_did().await;
@@ -77,7 +77,7 @@ async fn test_oidc_create_token() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_token_for_mdoc_creates_refresh_token() {
+async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
     // GIVEN
 
     let (context, org, issuer_did, _key) = TestContext::new_with_did().await;
@@ -148,7 +148,8 @@ async fn test_oidc_create_token_for_mdoc_creates_refresh_token() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_token_for_refresh_token_grant_updates_both_access_and_refresh_tokens() {
+async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_access_and_refresh_tokens(
+) {
     // GIVEN
     let (context, org, issuer_did, _key) = TestContext::new_with_did().await;
 

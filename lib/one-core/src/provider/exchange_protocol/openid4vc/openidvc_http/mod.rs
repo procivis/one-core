@@ -156,7 +156,7 @@ impl OpenID4VCHTTP {
         self.detect_invitation_type(url).is_some()
     }
 
-    pub async fn handle_invitation(
+    pub async fn holder_handle_invitation(
         &self,
         url: Url,
         organisation: Organisation,
@@ -193,12 +193,12 @@ impl OpenID4VCHTTP {
         }
     }
 
-    pub async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    pub async fn holder_reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         Err(ExchangeProtocolError::OperationNotSupported)
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn submit_proof(
+    pub async fn holder_submit_proof(
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
@@ -404,7 +404,7 @@ impl OpenID4VCHTTP {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn accept_credential(
+    pub async fn holder_accept_credential(
         &self,
         credential: &Credential,
         holder_did: &Did,
@@ -693,14 +693,14 @@ impl OpenID4VCHTTP {
         })
     }
 
-    pub async fn reject_credential(
+    pub async fn holder_reject_credential(
         &self,
         _credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
         Err(ExchangeProtocolError::OperationNotSupported)
     }
 
-    pub async fn share_credential(
+    pub async fn issuer_share_credential(
         &self,
         credential: &Credential,
         _credential_format: &str,
@@ -773,7 +773,7 @@ impl OpenID4VCHTTP {
         })
     }
 
-    pub async fn share_proof(
+    pub async fn verifier_share_proof(
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper, // Credential schema format to format type mapper
@@ -834,7 +834,10 @@ impl OpenID4VCHTTP {
         Err(ExchangeProtocolError::OperationNotSupported)
     }
 
-    pub async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    pub async fn verifier_retract_proof(
+        &self,
+        _proof: &Proof,
+    ) -> Result<(), ExchangeProtocolError> {
         Ok(())
     }
 

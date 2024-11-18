@@ -2702,7 +2702,7 @@ async fn test_share_proof_created_success() {
     let interaction_id = Uuid::new_v4();
     protocol
         .inner
-        .expect_share_proof()
+        .expect_verifier_share_proof()
         .once()
         .returning(move |_, _, _, _, _, _, _| {
             Ok(ShareResponse {
@@ -2808,7 +2808,7 @@ async fn test_share_proof_pending_success() {
     let interaction_id = Uuid::new_v4();
     protocol
         .inner
-        .expect_share_proof()
+        .expect_verifier_share_proof()
         .once()
         .returning(move |_, _, _, _, _, _, _| {
             Ok(ShareResponse {
@@ -2922,7 +2922,7 @@ async fn test_retract_proof_ok_for_allowed_state(
         let mut protocol = MockExchangeProtocol::default();
         protocol
             .inner
-            .expect_retract_proof()
+            .expect_verifier_retract_proof()
             .times(1)
             .returning(|_| Ok(()));
 
@@ -3080,7 +3080,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         let mut protocol = MockExchangeProtocol::default();
         protocol
             .inner
-            .expect_retract_proof()
+            .expect_verifier_retract_proof()
             .times(1)
             .returning(|_| Ok(()));
 

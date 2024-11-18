@@ -84,16 +84,16 @@ impl ExchangeProtocolImpl for OpenID4VC {
     type VCInteractionContext = serde_json::Value;
     type VPInteractionContext = serde_json::Value;
 
-    fn can_handle(&self, url: &Url) -> bool {
+    fn holder_can_handle(&self, url: &Url) -> bool {
         self.openid_http.can_handle(url)
-            || self.openid_ble.can_handle(url)
+            || self.openid_ble.holder_can_handle(url)
             || self
                 .openid_mqtt
                 .as_ref()
-                .is_some_and(|mqtt| mqtt.can_handle(url))
+                .is_some_and(|mqtt| mqtt.holder_can_handle(url))
     }
 
-    async fn handle_invitation(
+    async fn holder_handle_invitation(
         &self,
         url: Url,
         organisation: Organisation,
@@ -107,15 +107,18 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
         match transport {
             TransportType::Ble => {
-                if self.openid_ble.can_handle(&url) {
-                    return self.openid_ble.handle_invitation(url, organisation).await;
+                if self.openid_ble.holder_can_handle(&url) {
+                    return self
+                        .openid_ble
+                        .holder_handle_invitation(url, organisation)
+                        .await;
                 }
             }
             TransportType::Http => {
                 if self.openid_http.can_handle(&url) {
                     return self
                         .openid_http
-                        .handle_invitation(
+                        .holder_handle_invitation(
                             url,
                             organisation,
                             storage_access,
@@ -129,8 +132,8 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     ExchangeProtocolError::Failed("MQTT client not configured".to_string())
                 })?;
 
-                if client.can_handle(&url) {
-                    return client.handle_invitation(url, organisation).await;
+                if client.holder_can_handle(&url) {
+                    return client.holder_handle_invitation(url, organisation).await;
                 }
             }
         }
@@ -140,24 +143,24 @@ impl ExchangeProtocolImpl for OpenID4VC {
         ))
     }
 
-    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             ExchangeProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
 
         match transport {
-            TransportType::Ble => self.openid_ble.reject_proof(proof).await,
-            TransportType::Http => self.openid_http.reject_proof(proof).await,
+            TransportType::Ble => self.openid_ble.holder_reject_proof(proof).await,
+            TransportType::Http => self.openid_http.holder_reject_proof(proof).await,
             TransportType::Mqtt => {
                 let client = self.openid_mqtt.as_ref().ok_or_else(|| {
                     ExchangeProtocolError::Failed("MQTT client not configured".to_string())
                 })?;
-                client.reject_proof(proof).await
+                client.holder_reject_proof(proof).await
             }
         }
     }
 
-    async fn submit_proof(
+    async fn holder_submit_proof(
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
@@ -174,7 +177,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         match transport {
             TransportType::Ble => {
                 self.openid_ble
-                    .submit_proof(
+                    .holder_submit_proof(
                         proof,
                         credential_presentations,
                         holder_did,
@@ -187,7 +190,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
             }
             TransportType::Http => {
                 self.openid_http
-                    .submit_proof(
+                    .holder_submit_proof(
                         proof,
                         credential_presentations,
                         holder_did,
@@ -203,7 +206,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     ExchangeProtocolError::Failed("MQTT client not configured".to_string())
                 })?;
                 client
-                    .submit_proof(
+                    .holder_submit_proof(
                         proof,
                         credential_presentations,
                         holder_did,
@@ -217,7 +220,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         }
     }
 
-    async fn accept_credential(
+    async fn holder_accept_credential(
         &self,
         credential: &Credential,
         holder_did: &Did,
@@ -229,7 +232,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         map_oidc_format_to_external: FnMapExternalFormatToExternalDetailed,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, ExchangeProtocolError> {
         self.openid_http
-            .accept_credential(
+            .holder_accept_credential(
                 credential,
                 holder_did,
                 key,
@@ -242,20 +245,20 @@ impl ExchangeProtocolImpl for OpenID4VC {
             .await
     }
 
-    async fn reject_credential(
+    async fn holder_reject_credential(
         &self,
         credential: &Credential,
     ) -> Result<(), ExchangeProtocolError> {
-        self.openid_http.reject_credential(credential).await
+        self.openid_http.holder_reject_credential(credential).await
     }
 
-    async fn share_credential(
+    async fn issuer_share_credential(
         &self,
         credential: &Credential,
         credential_format: &str,
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError> {
         self.openid_http
-            .share_credential(credential, credential_format)
+            .issuer_share_credential(credential, credential_format)
             .await
             .map(|context| ShareResponse {
                 url: context.url,
@@ -264,7 +267,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
             })
     }
 
-    async fn share_proof(
+    async fn verifier_share_proof(
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
@@ -283,7 +286,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 let key_agreement = KeyAgreementKey::new_random();
 
                 self.openid_ble
-                    .share_proof(
+                    .verifier_share_proof(
                         proof,
                         format_to_type_mapper,
                         type_to_descriptor,
@@ -301,7 +304,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
             }
             [TransportType::Http] => self
                 .openid_http
-                .share_proof(
+                .verifier_share_proof(
                     proof,
                     format_to_type_mapper,
                     key_id,
@@ -322,7 +325,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 let interaction_id = Uuid::new_v4();
                 let key_agreement = KeyAgreementKey::new_random();
 
-                mqtt.share_proof(
+                mqtt.verifier_share_proof(
                     proof,
                     format_to_type_mapper,
                     type_to_descriptor,
@@ -352,7 +355,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 let cancellation_token = CancellationToken::new();
 
                 let mqtt_url = mqtt
-                    .share_proof(
+                    .verifier_share_proof(
                         proof,
                         format_to_type_mapper.clone(),
                         type_to_descriptor.clone(),
@@ -365,7 +368,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
 
                 let ble_response = self
                     .openid_ble
-                    .share_proof(
+                    .verifier_share_proof(
                         proof,
                         format_to_type_mapper,
                         type_to_descriptor,
@@ -397,7 +400,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         }
     }
 
-    async fn get_presentation_definition(
+    async fn holder_get_presentation_definition(
         &self,
         proof: &Proof,
         interaction_data: Self::VPInteractionContext,
@@ -535,11 +538,11 @@ impl ExchangeProtocolImpl for OpenID4VC {
         unimplemented!()
     }
 
-    async fn retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    async fn verifier_retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
         for transport in get_transport(proof)? {
             match transport {
                 TransportType::Http => {}
-                TransportType::Ble => self.openid_ble.retract_proof().await?,
+                TransportType::Ble => self.openid_ble.verifier_retract_proof().await?,
                 TransportType::Mqtt => {
                     self.openid_mqtt
                         .as_ref()
@@ -548,7 +551,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                                 "MQTT not configured for retract proof".to_string(),
                             )
                         })?
-                        .retract_proof()
+                        .verifier_retract_proof()
                         .await;
                 }
             }

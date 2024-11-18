@@ -216,7 +216,7 @@ async fn test_get_issuer_metadata_jwt() {
         config: generic_config().core,
         ..Default::default()
     });
-    let result = service.oidc_get_issuer_metadata(&schema.id).await;
+    let result = service.oidc_issuer_get_issuer_metadata(&schema.id).await;
     assert!(result.is_ok());
     let result = result.unwrap();
     let credential = result.credential_configurations_supported[0].to_owned();
@@ -263,7 +263,10 @@ async fn test_get_issuer_metadata_sd_jwt() {
         config: generic_config().core,
         ..Default::default()
     });
-    let result = service.oidc_get_issuer_metadata(&schema.id).await.unwrap();
+    let result = service
+        .oidc_issuer_get_issuer_metadata(&schema.id)
+        .await
+        .unwrap();
     let credential = result.credential_configurations_supported[0].to_owned();
     assert_eq!("vc+sd-jwt".to_string(), credential.format);
     assert_eq!(schema.name, credential.display.unwrap()[0].name);
@@ -334,7 +337,10 @@ async fn test_get_issuer_metadata_mdoc() {
         config: generic_config().core,
         ..Default::default()
     });
-    let result = service.oidc_get_issuer_metadata(&schema.id).await.unwrap();
+    let result = service
+        .oidc_issuer_get_issuer_metadata(&schema.id)
+        .await
+        .unwrap();
     let credential = result.credential_configurations_supported[0].to_owned();
     assert_eq!("mso_mdoc".to_string(), credential.format);
     assert_eq!(schema.name, credential.display.unwrap()[0].name);
@@ -383,12 +389,12 @@ async fn test_service_discovery() {
         config: generic_config().core,
         ..Default::default()
     });
-    let result = service.oidc_service_discovery(&schema.id).await;
+    let result = service.oidc_issuer_service_discovery(&schema.id).await;
     assert!(result.is_ok());
 }
 
 #[tokio::test]
-async fn test_oidc_create_token() {
+async fn test_oidc_issuer_create_token() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
@@ -436,7 +442,7 @@ async fn test_oidc_create_token() {
         ..Default::default()
     });
     let result = service
-        .oidc_create_token(
+        .oidc_issuer_create_token(
             &schema.id,
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
@@ -458,7 +464,7 @@ async fn test_oidc_create_token() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_token_empty_pre_authorized_code() {
+async fn test_oidc_issuer_create_token_empty_pre_authorized_code() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
 
     let schema = generic_credential_schema();
@@ -480,7 +486,7 @@ async fn test_oidc_create_token_empty_pre_authorized_code() {
         ..Default::default()
     });
     let result = service
-        .oidc_create_token(
+        .oidc_issuer_create_token(
             &schema.id,
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "".to_string(),
@@ -499,7 +505,7 @@ async fn test_oidc_create_token_empty_pre_authorized_code() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_token_pre_authorized_code_used() {
+async fn test_oidc_issuer_create_token_pre_authorized_code_used() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let interaction_repository = MockInteractionRepository::default();
@@ -537,7 +543,7 @@ async fn test_oidc_create_token_pre_authorized_code_used() {
         ..Default::default()
     });
     let result = service
-        .oidc_create_token(
+        .oidc_issuer_create_token(
             &schema.id,
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
@@ -556,7 +562,7 @@ async fn test_oidc_create_token_pre_authorized_code_used() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_token_wrong_credential_state() {
+async fn test_oidc_issuer_create_token_wrong_credential_state() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let interaction_repository = MockInteractionRepository::default();
@@ -594,7 +600,7 @@ async fn test_oidc_create_token_wrong_credential_state() {
         ..Default::default()
     });
     let result = service
-        .oidc_create_token(
+        .oidc_issuer_create_token(
             &schema.id,
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
@@ -613,7 +619,7 @@ async fn test_oidc_create_token_wrong_credential_state() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_credential_success() {
+async fn test_oidc_issuer_create_credential_success() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
@@ -696,7 +702,7 @@ async fn test_oidc_create_credential_success() {
     });
 
     let result = service
-        .oidc_create_credential(
+        .oidc_issuer_create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
@@ -720,7 +726,7 @@ async fn test_oidc_create_credential_success() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_credential_success_mdoc() {
+async fn test_oidc_issuer_create_credential_success_mdoc() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
@@ -807,7 +813,7 @@ async fn test_oidc_create_credential_success_mdoc() {
     });
 
     let result = service
-        .oidc_create_credential(
+        .oidc_issuer_create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
@@ -828,7 +834,7 @@ async fn test_oidc_create_credential_success_mdoc() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_credential_format_invalid() {
+async fn test_oidc_issuer_create_credential_format_invalid() {
     let mut repository = MockCredentialSchemaRepository::default();
 
     let schema = generic_credential_schema();
@@ -847,7 +853,7 @@ async fn test_oidc_create_credential_format_invalid() {
     });
 
     let result = service
-        .oidc_create_credential(
+        .oidc_issuer_create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
@@ -875,7 +881,7 @@ async fn test_oidc_create_credential_format_invalid() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_credential_format_invalid_for_credential_schema() {
+async fn test_oidc_issuer_create_credential_format_invalid_for_credential_schema() {
     let mut repository = MockCredentialSchemaRepository::default();
 
     let schema = generic_credential_schema();
@@ -894,7 +900,7 @@ async fn test_oidc_create_credential_format_invalid_for_credential_schema() {
     });
 
     let result = service
-        .oidc_create_credential(
+        .oidc_issuer_create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
@@ -922,7 +928,7 @@ async fn test_oidc_create_credential_format_invalid_for_credential_schema() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_credential_format_invalid_credential_definition() {
+async fn test_oidc_issuer_create_credential_format_invalid_credential_definition() {
     let mut repository = MockCredentialSchemaRepository::default();
 
     let schema = generic_credential_schema();
@@ -941,7 +947,7 @@ async fn test_oidc_create_credential_format_invalid_credential_definition() {
     });
 
     let result = service
-        .oidc_create_credential(
+        .oidc_issuer_create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
@@ -969,7 +975,7 @@ async fn test_oidc_create_credential_format_invalid_credential_definition() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_credential_format_invalid_bearer_token() {
+async fn test_oidc_issuer_create_credential_format_invalid_bearer_token() {
     let mut repository = MockCredentialSchemaRepository::default();
 
     let schema = generic_credential_schema();
@@ -988,7 +994,7 @@ async fn test_oidc_create_credential_format_invalid_bearer_token() {
     });
 
     let result = service
-        .oidc_create_credential(
+        .oidc_issuer_create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             OpenID4VCICredentialRequestDTO {
@@ -1014,7 +1020,7 @@ async fn test_oidc_create_credential_format_invalid_bearer_token() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_credential_pre_authorized_code_not_used() {
+async fn test_oidc_issuer_create_credential_pre_authorized_code_not_used() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
@@ -1044,7 +1050,7 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
     });
 
     let result = service
-        .oidc_create_credential(
+        .oidc_issuer_create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
@@ -1070,7 +1076,7 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_credential_interaction_data_invalid() {
+async fn test_oidc_issuer_create_credential_interaction_data_invalid() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
@@ -1100,7 +1106,7 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
     });
 
     let result = service
-        .oidc_create_credential(
+        .oidc_issuer_create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.123",
             OpenID4VCICredentialRequestDTO {
@@ -1126,7 +1132,7 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
 }
 
 #[tokio::test]
-async fn test_oidc_create_credential_access_token_expired() {
+async fn test_oidc_issuer_create_credential_access_token_expired() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
@@ -1164,7 +1170,7 @@ async fn test_oidc_create_credential_access_token_expired() {
     });
 
     let result = service
-        .oidc_create_credential(
+        .oidc_issuer_create_credential(
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
@@ -1742,7 +1748,10 @@ async fn test_get_client_metadata_success() {
         config: generic_config().core,
         ..Default::default()
     });
-    let result = service.oidc_get_client_metadata(proof_id).await.unwrap();
+    let result = service
+        .oidc_verifier_get_client_metadata(proof_id)
+        .await
+        .unwrap();
     assert_eq!(
         OpenID4VPClientMetadata {
             jwks: vec![OpenID4VPClientMetadataJwkDTO {
@@ -1864,7 +1873,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
     });
 
     let result = service
-        .oidc_create_token(
+        .oidc_issuer_create_token(
             &schema.id,
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
@@ -1947,7 +1956,7 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
     });
 
     let result = service
-        .oidc_create_token(
+        .oidc_issuer_create_token(
             &schema.id,
             OpenID4VCITokenRequestDTO::RefreshToken {
                 refresh_token: refresh_token.to_string(),
@@ -2022,7 +2031,7 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
     });
 
     let result = service
-        .oidc_create_token(
+        .oidc_issuer_create_token(
             &schema.id,
             OpenID4VCITokenRequestDTO::RefreshToken {
                 refresh_token: refresh_token.to_string(),
