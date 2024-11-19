@@ -200,6 +200,7 @@ pub type StorageAccess = dyn StorageProxy;
 pub struct BasicSchemaData {
     pub schema_id: String,
     pub schema_type: String,
+    pub offer_id: String,
 }
 
 pub struct BuildCredentialSchemaResponse {
@@ -228,6 +229,7 @@ pub trait HandleInvitationOperations: Send + Sync {
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
         credential: &OpenID4VCICredentialOfferCredentialDTO,
         schema_id: &str,
+        offer_id: &str,
     ) -> BasicSchemaData;
 
     /// Allows use of custom logic to create new credential schema for

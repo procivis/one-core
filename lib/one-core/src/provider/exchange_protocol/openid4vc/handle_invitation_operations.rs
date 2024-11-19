@@ -106,6 +106,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
         _issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
         credential: &OpenID4VCICredentialOfferCredentialDTO,
         schema_id: &str,
+        offer_id: &str,
     ) -> BasicSchemaData {
         if credential.format == "mso_mdoc" {
             return BasicSchemaData {
@@ -115,12 +116,14 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     .unwrap_or(schema_id)
                     .to_string(),
                 schema_type: CredentialSchemaType::Mdoc.to_string(),
+                offer_id: offer_id.to_owned(),
             };
         }
 
         BasicSchemaData {
             schema_id: schema_id.to_owned(),
             schema_type: CredentialSchemaType::ProcivisOneSchema2024.to_string(),
+            offer_id: offer_id.to_owned(),
         }
     }
 
@@ -199,7 +202,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
                 let metadata_credential = issuer_metadata
                     .credential_configurations_supported
-                    .get(&schema_data.schema_id);
+                    .get(&schema_data.offer_id);
 
                 let element_order = metadata_credential
                     .as_ref()

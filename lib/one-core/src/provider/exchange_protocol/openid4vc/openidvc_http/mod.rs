@@ -892,7 +892,12 @@ async fn handle_credential_invitation(
         .await?;
 
     let schema_data = handle_invitation_operations
-        .find_schema_data(&issuer_metadata, &credential, incoming_schema_id)
+        .find_schema_data(
+            &issuer_metadata,
+            &credential,
+            incoming_schema_id,
+            incoming_schema_id,
+        )
         .await;
 
     let holder_data = HolderInteractionData {

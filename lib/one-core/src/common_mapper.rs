@@ -1,7 +1,7 @@
 use std::any::type_name;
 use std::collections::HashMap;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use ct_codecs::{Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -316,8 +316,14 @@ pub(crate) fn encode_cbor_base64<T: Serialize>(t: T) -> Result<String, Formatter
 }
 
 pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, FormatterError> {
-    let bytes = Base64UrlSafeNoPadding::decode_to_vec(s, None)
-        .map_err(|err| FormatterError::Failed(format!("Base64 decoding failed: {err}")))?;
+    let bytes = match Base64UrlSafeNoPadding::decode_to_vec(s, None) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            // Fallback for EUDI
+            Base64UrlSafe::decode_to_vec(s, None)
+                .map_err(|err| FormatterError::Failed(format!("Base64 decoding failed: {err}")))?
+        }
+    };
 
     let type_name = type_name::<T>();
     ciborium::de::from_reader(&bytes[..]).map_err(|err| {
