@@ -27,7 +27,7 @@ use crate::provider::credential_formatter::model::{
     DetailCredential, ExtractPresentationCtx, Features, FormatPresentationCtx,
     FormatterCapabilities, Issuer, Presentation, VerificationFn,
 };
-use crate::provider::credential_formatter::{json_ld, CredentialFormatter};
+use crate::provider::credential_formatter::{json_ld, CredentialFormatter, StatusListType};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -125,7 +125,7 @@ impl CredentialFormatter for JsonLdClassic {
         Ok(resp)
     }
 
-    async fn format_bitstring_status_list(
+    async fn format_status_list(
         &self,
         revocation_list_url: String,
         issuer_did: &Did,
@@ -133,7 +133,15 @@ impl CredentialFormatter for JsonLdClassic {
         algorithm: String,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
+        status_list_type: StatusListType,
     ) -> Result<String, FormatterError> {
+        if status_list_type != StatusListType::Bitstring {
+            return Err(FormatterError::Failed(
+                "Only BitstringStatusList can be formatted with JSON_LD_CLASSIC formatter"
+                    .to_string(),
+            ));
+        }
+
         let issuer = Issuer::Url(
             issuer_did
                 .did

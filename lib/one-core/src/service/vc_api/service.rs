@@ -21,6 +21,7 @@ use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchemaData, ExtractPresentationCtx, PublishedClaim,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::StatusListType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -157,6 +158,7 @@ impl VCAPIService {
                 &self.base_url,
                 &*formatter,
                 key_id.to_owned(),
+                StatusListType::Bitstring,
             )
             .await
             .unwrap();

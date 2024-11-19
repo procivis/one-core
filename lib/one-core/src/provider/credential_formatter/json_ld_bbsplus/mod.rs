@@ -14,7 +14,7 @@ use url::Url;
 use super::json_ld::context::caching_loader::ContextCache;
 use super::json_ld::jsonld_forbidden_claim_names;
 use super::json_ld::model::{ContextType, LdCredential};
-use super::CredentialFormatter;
+use super::{CredentialFormatter, StatusListType};
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
@@ -81,7 +81,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         .await
     }
 
-    async fn format_bitstring_status_list(
+    async fn format_status_list(
         &self,
         _revocation_list_url: String,
         _issuer_did: &Did,
@@ -89,9 +89,10 @@ impl CredentialFormatter for JsonLdBbsplus {
         _algorithm: String,
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
+        _status_list_type: StatusListType,
     ) -> Result<String, FormatterError> {
         Err(FormatterError::Failed(
-            "Cannot format BitstringStatusList with BBS+ formatter".to_string(),
+            "Cannot format StatusList with BBS+ formatter".to_string(),
         ))
     }
 

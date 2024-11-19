@@ -68,7 +68,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
     let additional_data = Some(CredentialAdditionalData {
         credentials_by_issuer_did: vec![credential.clone()],
         revocation_list_id: Uuid::new_v4(),
-        suspension_list_id: Uuid::new_v4(),
+        suspension_list_id: Some(Uuid::new_v4()),
     });
 
     let result = revocation_list

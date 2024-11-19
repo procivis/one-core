@@ -87,7 +87,7 @@ revocation:
     type: "BITSTRINGSTATUSLIST"
     params:
       public:
-        bitstringCredentialFormat: "JWT"
+        format: "JWT"
   MDOC_MSO_UPDATE_SUSPENSION:
     display: "revocation.mdocMsoUpdateSuspension"
     order: 3
@@ -101,6 +101,14 @@ revocation:
     params:
       private:
         credentialExpiry: 3600
+  TOKENSTATUSLIST:
+    display: "revocation.tokenList"
+    order: 5
+    disabled: false
+    type: "TOKENSTATUSLIST"
+    params:
+      public:
+        format: "JWT"
 did:
   KEY:
     display: "did.key"

@@ -69,3 +69,15 @@ pub struct EnvelopedContent {
     #[serde(rename = "type")]
     pub r#type: Vec<String>,
 }
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct TokenStatusListContent {
+    pub status_list: TokenStatusListSubject,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct TokenStatusListSubject {
+    pub bits: usize,
+    #[serde(rename = "lst")]
+    pub value: String,
+}

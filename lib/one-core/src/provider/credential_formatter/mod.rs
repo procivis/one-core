@@ -52,7 +52,7 @@ pub trait CredentialFormatter: Send + Sync {
     ) -> Result<String, error::FormatterError>;
 
     /// Formats BitStringStatusList credential
-    async fn format_bitstring_status_list(
+    async fn format_status_list(
         &self,
         revocation_list_url: String,
         issuer_did: &Did,
@@ -60,6 +60,7 @@ pub trait CredentialFormatter: Send + Sync {
         algorithm: String,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
+        status_list_type: StatusListType,
     ) -> Result<String, FormatterError>;
 
     /// Parses a received credential and verifies the signature.
@@ -137,4 +138,10 @@ pub trait CredentialFormatter: Send + Sync {
     ) -> Result<String, FormatterError> {
         Ok(format!("{core_base_url}/ssi/schema/v1/{id}"))
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StatusListType {
+    Bitstring,
+    Token,
 }

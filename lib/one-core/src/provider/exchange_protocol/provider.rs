@@ -23,17 +23,17 @@ use crate::model::revocation_list::RevocationListPurpose;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
-use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::{mdoc_formatter, StatusListType};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
 use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
 use crate::provider::exchange_protocol::openid4vc::model::SubmitIssuerResponse;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::revocation::bitstring_status_list::Params;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::CredentialAdditionalData;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::revocation::{bitstring_status_list, token_status_list};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -275,8 +275,8 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
         // TODO: refactor this when refactoring the formatters as it makes no sense for to construct this for LVVC
         if &credential_schema.revocation_method == "BITSTRINGSTATUSLIST" {
             let format: String = {
-                let Params {
-                    bitstring_credential_format,
+                let bitstring_status_list::Params {
+                    format: bitstring_credential_format,
                 } = convert_params(revocation_method.get_params()?)?;
 
                 bitstring_credential_format.unwrap_or_default().into()
@@ -298,19 +298,51 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                     &self.core_base_url,
                     &*formatter,
                     key_id.clone(),
+                    StatusListType::Bitstring,
                 )
                 .await?,
-                suspension_list_id: get_or_create_revocation_list_id(
+                suspension_list_id: Some(
+                    get_or_create_revocation_list_id(
+                        &credentials_by_issuer_did,
+                        issuer_did,
+                        RevocationListPurpose::Suspension,
+                        &*self.revocation_list_repository,
+                        &self.key_provider,
+                        &self.core_base_url,
+                        &*formatter,
+                        key_id,
+                        StatusListType::Bitstring,
+                    )
+                    .await?,
+                ),
+            });
+        } else if &credential_schema.revocation_method == "TOKENSTATUSLIST" {
+            let format: String = {
+                let token_status_list::Params {
+                    format: bitstring_credential_format,
+                } = convert_params(revocation_method.get_params()?)?;
+
+                bitstring_credential_format.unwrap_or_default().into()
+            };
+            let formatter = self
+                .formatter_provider
+                .get_formatter(&format)
+                .ok_or(ValidationError::InvalidFormatter(format))?;
+            credential_additional_data = Some(CredentialAdditionalData {
+                credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
+                revocation_list_id: get_or_create_revocation_list_id(
                     &credentials_by_issuer_did,
                     issuer_did,
-                    RevocationListPurpose::Suspension,
+                    RevocationListPurpose::Revocation,
                     &*self.revocation_list_repository,
                     &self.key_provider,
                     &self.core_base_url,
                     &*formatter,
-                    key_id,
+                    key_id.clone(),
+                    StatusListType::Token,
                 )
                 .await?,
+                suspension_list_id: None,
             });
         }
 

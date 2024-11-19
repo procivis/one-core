@@ -50,6 +50,7 @@ use one_core::provider::revocation::mdoc_mso_update_suspension::MdocMsoUpdateSus
 use one_core::provider::revocation::none::NoneRevocation;
 use one_core::provider::revocation::provider::RevocationMethodProviderImpl;
 use one_core::provider::revocation::status_list_2021::StatusList2021;
+use one_core::provider::revocation::token_status_list::TokenStatusList;
 use one_core::provider::revocation::RevocationMethod;
 use one_core::repository::DataRepository;
 use one_core::{
@@ -507,6 +508,28 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                                 params,
                             ))
                         }) as _
+                    }
+                    RevocationType::TokenStatusList => {
+                        let params = config
+                            .get(key)
+                            .expect("failed to get TokenStatusList params");
+
+                        Arc::new(
+                            TokenStatusList::new(
+                                Some(core_base_url.clone()),
+                                key_algorithm_provider.clone(),
+                                did_method_provider.clone(),
+                                key_provider.clone(),
+                                initialize_statuslist_loader(
+                                    &cache_entities_config,
+                                    data_repository.clone(),
+                                ),
+                                formatter_provider.clone(),
+                                client.clone(),
+                                Some(params),
+                            )
+                            .expect("failed to create TokenStatusList revocation"),
+                        ) as _
                     }
                 };
 

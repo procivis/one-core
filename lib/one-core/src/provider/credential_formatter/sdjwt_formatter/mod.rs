@@ -19,7 +19,7 @@ use crate::provider::credential_formatter::model::{
     ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
     SelectiveDisclosure, VerificationFn,
 };
-use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 
 #[cfg(test)]
@@ -76,7 +76,7 @@ impl CredentialFormatter for SDJWTFormatter {
         .await
     }
 
-    async fn format_bitstring_status_list(
+    async fn format_status_list(
         &self,
         _revocation_list_url: String,
         _issuer_did: &Did,
@@ -84,9 +84,10 @@ impl CredentialFormatter for SDJWTFormatter {
         _algorithm: String,
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
+        _status_list_type: StatusListType,
     ) -> Result<String, FormatterError> {
         Err(FormatterError::Failed(
-            "Cannot format BitstringStatusList with SD-JWT formatter".to_string(),
+            "Cannot format StatusList with SD-JWT formatter".to_string(),
         ))
     }
 

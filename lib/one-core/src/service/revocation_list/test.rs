@@ -18,9 +18,7 @@ use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
-use crate::service::revocation_list::dto::{
-    RevocationListResponse, SupportedBitstringCredentialFormat,
-};
+use crate::service::revocation_list::dto::{RevocationListResponse, SupportedFormat};
 use crate::service::revocation_list::RevocationListService;
 use crate::service::test_utilities::generic_config;
 
@@ -111,7 +109,7 @@ async fn test_get_revocation_list() {
         result,
         RevocationListResponse {
             revocation_list: "revocation-list-credential".to_owned(),
-            format: SupportedBitstringCredentialFormat::default(),
+            format: SupportedFormat::default(),
         }
     );
 }

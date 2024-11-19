@@ -45,7 +45,7 @@ use crate::provider::credential_formatter::model::{
     Features, FormatPresentationCtx, FormatterCapabilities, Presentation, PublishedClaim,
     SelectiveDisclosure, SignatureProvider, TokenVerifier, VerificationFn,
 };
-use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -281,7 +281,7 @@ impl CredentialFormatter for MdocFormatter {
         encode_cbor_base64(issuer_signed)
     }
 
-    async fn format_bitstring_status_list(
+    async fn format_status_list(
         &self,
         _revocation_list_url: String,
         _issuer_did: &Did,
@@ -289,9 +289,10 @@ impl CredentialFormatter for MdocFormatter {
         _algorithm: String,
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
+        _status_list_type: StatusListType,
     ) -> Result<String, FormatterError> {
         Err(FormatterError::Failed(
-            "Cannot format BitstringStatusList with MDOC formatter".to_string(),
+            "Cannot format StatusList with MDOC formatter".to_string(),
         ))
     }
 

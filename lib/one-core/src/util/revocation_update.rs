@@ -12,7 +12,7 @@ use crate::model::revocation_list::{
 };
 use crate::model::validity_credential::Lvvc;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::bitstring_status_list::model::RevocationUpdateData;
 use crate::provider::revocation::bitstring_status_list::{
@@ -20,6 +20,7 @@ use crate::provider::revocation::bitstring_status_list::{
     purpose_to_credential_state_enum, Params,
 };
 use crate::provider::revocation::model::{CredentialAdditionalData, RevocationUpdate};
+use crate::provider::revocation::token_status_list::generate_token_from_credentials;
 use crate::provider::revocation::RevocationMethod;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
@@ -38,16 +39,22 @@ pub(crate) async fn generate_credential_additional_data(
     issuer_key_id: String,
 ) -> Result<Option<CredentialAdditionalData>, ServiceError> {
     let status_type = revocation_method.get_status_type();
-    if status_type != "BitstringStatusListEntry" && status_type != "StatusList2021Entry" {
+    if status_type != "BitstringStatusListEntry"
+        && status_type != "StatusList2021Entry"
+        && status_type != "TokenStatusListEntry"
+    {
         return Ok(None);
     }
 
+    let status_list_type = if status_type == "TokenStatusListEntry" {
+        StatusListType::Token
+    } else {
+        StatusListType::Bitstring
+    };
+
     let params: Params = convert_params(revocation_method.get_params()?)?;
 
-    let bitstring_credential_format: String = params
-        .bitstring_credential_format
-        .unwrap_or_default()
-        .into();
+    let bitstring_credential_format: String = params.format.unwrap_or_default().into();
 
     let issuer_did = credential
         .issuer_did
@@ -83,20 +90,27 @@ pub(crate) async fn generate_credential_additional_data(
         core_base_url,
         &*formatter,
         issuer_key_id.clone(),
+        status_list_type,
     )
     .await?;
 
-    let suspension_list_id = get_or_create_revocation_list_id(
-        &credentials_by_issuer_did,
-        issuer_did,
-        RevocationListPurpose::Suspension,
-        revocation_list_repository,
-        key_provider,
-        core_base_url,
-        &*formatter,
-        issuer_key_id,
-    )
-    .await?;
+    let suspension_list_id = match status_list_type {
+        StatusListType::Bitstring => Some(
+            get_or_create_revocation_list_id(
+                &credentials_by_issuer_did,
+                issuer_did,
+                RevocationListPurpose::Suspension,
+                revocation_list_repository,
+                key_provider,
+                core_base_url,
+                &*formatter,
+                issuer_key_id,
+                status_list_type,
+            )
+            .await?,
+        ),
+        StatusListType::Token => None,
+    };
 
     Ok(Some(CredentialAdditionalData {
         credentials_by_issuer_did,
@@ -114,7 +128,9 @@ pub(crate) async fn process_update(
         let update_data: Lvvc = serde_json::from_slice(&revocation_update.data)
             .map_err(|e| ServiceError::Other(e.to_string()))?;
         lvvc_repository.insert(update_data.into()).await?;
-    } else if revocation_update.status_type == "BitstringStatusListEntry" {
+    } else if revocation_update.status_type == "BitstringStatusListEntry"
+        || revocation_update.status_type == "TokenStatusListEntry"
+    {
         let update_data: RevocationUpdateData = serde_json::from_slice(&revocation_update.data)
             .map_err(|e| ServiceError::Other(e.to_string()))?;
         revocation_list_repository
@@ -134,6 +150,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
     key_id: String,
+    status_list_type: StatusListType,
 ) -> Result<RevocationListId, ServiceError> {
     let revocation_list = revocation_list_repository
         .get_revocation_by_issuer_did_id(
@@ -148,12 +165,19 @@ pub(crate) async fn get_or_create_revocation_list_id(
     Ok(match revocation_list {
         Some(value) => value.id,
         None => {
-            let encoded_list = generate_bitstring_from_credentials(
-                credentials_by_issuer_did,
-                credential_state,
-                None,
-            )
-            .await?;
+            let encoded_list = match status_list_type {
+                StatusListType::Bitstring => {
+                    generate_bitstring_from_credentials(
+                        credentials_by_issuer_did,
+                        credential_state,
+                        None,
+                    )
+                    .await?
+                }
+                StatusListType::Token => {
+                    generate_token_from_credentials(credentials_by_issuer_did, None).await?
+                }
+            };
 
             let revocation_list_id = Uuid::new_v4();
             let list_credential = format_status_list_credential(

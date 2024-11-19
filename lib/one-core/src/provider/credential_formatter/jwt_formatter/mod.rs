@@ -16,20 +16,24 @@ use super::jwt::Jwt;
 use super::model::{Context, CredentialSubject, Features, Issuer};
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::jwt_formatter::model::{
+    TokenStatusListContent, TokenStatusListSubject,
+};
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential,
     ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
     VerificationFn,
 };
-use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::provider::revocation::token_status_list::util::SINGLE_ENTRY_SIZE;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
 #[cfg(test)]
 mod test;
 
 mod mapper;
-mod model;
+pub(crate) mod model;
 
 pub struct JWTFormatter {
     params: Params,
@@ -98,7 +102,7 @@ impl CredentialFormatter for JWTFormatter {
         jwt.tokenize(Some(auth_fn)).await
     }
 
-    async fn format_bitstring_status_list(
+    async fn format_status_list(
         &self,
         revocation_list_url: String,
         issuer_did: &Did,
@@ -106,6 +110,7 @@ impl CredentialFormatter for JWTFormatter {
         algorithm: String,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
+        status_list_type: StatusListType,
     ) -> Result<String, FormatterError> {
         let issuer = Issuer::Url(
             issuer_did
@@ -115,51 +120,80 @@ impl CredentialFormatter for JWTFormatter {
                 .map_err(|_| FormatterError::Failed("Invalid issuer DID".to_string()))?,
         );
 
-        let subject_id = format!("{}#list", revocation_list_url);
-        let credential_subject = CredentialSubject {
-            values: [
-                ("id".into(), json!(subject_id)),
-                ("type".into(), json!("BitstringStatusList")),
-                ("statusPurpose".into(), json!(status_purpose)),
-                ("encodedList".into(), json!(encoded_list)),
-            ]
-            .into_iter()
-            .collect(),
-        };
+        match status_list_type {
+            StatusListType::Bitstring => {
+                let subject_id = format!("{}#list", revocation_list_url);
+                let credential_subject = CredentialSubject {
+                    values: [
+                        ("id".into(), json!(subject_id)),
+                        ("type".into(), json!("BitstringStatusList")),
+                        ("statusPurpose".into(), json!(status_purpose)),
+                        ("encodedList".into(), json!(encoded_list)),
+                    ]
+                    .into_iter()
+                    .collect(),
+                };
 
-        let vc = VC {
-            vc: VCContent {
-                context: vec![ContextType::Url(Context::CredentialsV2.to_url())],
-                id: Some(revocation_list_url.to_owned()),
-                r#type: vec![
-                    "VerifiableCredential".to_string(),
-                    "BitstringStatusListCredential".to_string(),
-                ],
-                issuer: Some(issuer),
-                valid_from: Some(OffsetDateTime::now_utc()),
-                credential_subject,
-                credential_status: vec![],
-                credential_schema: None,
-                valid_until: None,
-            },
-        };
+                let vc = VC {
+                    vc: VCContent {
+                        context: vec![ContextType::Url(Context::CredentialsV2.to_url())],
+                        id: Some(revocation_list_url.to_owned()),
+                        r#type: vec![
+                            "VerifiableCredential".to_string(),
+                            "BitstringStatusListCredential".to_string(),
+                        ],
+                        issuer: Some(issuer),
+                        valid_from: Some(OffsetDateTime::now_utc()),
+                        credential_subject,
+                        credential_status: vec![],
+                        credential_schema: None,
+                        valid_until: None,
+                    },
+                };
 
-        let payload = JWTPayload {
-            issuer: Some(issuer_did.did.to_string()),
-            jwt_id: Some(revocation_list_url),
-            subject: Some(subject_id),
-            custom: vc,
-            issued_at: None,
-            expires_at: None,
-            invalid_before: None,
-            nonce: None,
-            vc_type: None,
-            proof_of_possession_key: None,
-        };
+                let payload = JWTPayload {
+                    issuer: Some(issuer_did.did.to_string()),
+                    jwt_id: None,
+                    subject: Some(subject_id),
+                    custom: vc,
+                    issued_at: Some(OffsetDateTime::now_utc()),
+                    expires_at: None,
+                    invalid_before: None,
+                    nonce: None,
+                    vc_type: None,
+                    proof_of_possession_key: None,
+                };
 
-        let jwt = Jwt::new("JWT".to_owned(), algorithm, None, None, payload);
+                let jwt = Jwt::new("JWT".to_owned(), algorithm, None, None, payload);
 
-        jwt.tokenize(Some(auth_fn)).await
+                jwt.tokenize(Some(auth_fn)).await
+            }
+            StatusListType::Token => {
+                let content = TokenStatusListContent {
+                    status_list: TokenStatusListSubject {
+                        bits: SINGLE_ENTRY_SIZE,
+                        value: encoded_list,
+                    },
+                };
+
+                let payload = JWTPayload {
+                    issuer: Some(issuer_did.did.to_string()),
+                    jwt_id: None,
+                    subject: Some(revocation_list_url),
+                    custom: content,
+                    issued_at: None,
+                    expires_at: None,
+                    invalid_before: None,
+                    nonce: None,
+                    vc_type: None,
+                    proof_of_possession_key: None,
+                };
+
+                let jwt = Jwt::new("statuslist+jwt".to_owned(), algorithm, None, None, payload);
+
+                jwt.tokenize(Some(auth_fn)).await
+            }
+        }
     }
 
     async fn extract_credentials(

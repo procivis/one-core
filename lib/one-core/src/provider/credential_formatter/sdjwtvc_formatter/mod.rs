@@ -3,7 +3,7 @@
 // https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html
 
 mod disclosures;
-mod model;
+pub(crate) mod model;
 
 #[cfg(test)]
 mod test;
@@ -37,9 +37,12 @@ use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
 use crate::provider::credential_formatter::sdjwtvc_formatter::disclosures::{
     extract_claims_from_disclosures, gather_disclosures,
 };
-use crate::provider::credential_formatter::sdjwtvc_formatter::model::SDJWTVCVc;
-use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::{
+    SDJWTVCStatus, SDJWTVCStatusList, SDJWTVCVc,
+};
+use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 pub struct SDJWTVCFormatter {
@@ -83,7 +86,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         .await
     }
 
-    async fn format_bitstring_status_list(
+    async fn format_status_list(
         &self,
         _revocation_list_url: String,
         _issuer_did: &Did,
@@ -91,9 +94,10 @@ impl CredentialFormatter for SDJWTVCFormatter {
         _algorithm: String,
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
+        _status_list_type: StatusListType,
     ) -> Result<String, FormatterError> {
         Err(FormatterError::Failed(
-            "Cannot format BitstringStatusList with SD-JWT VC formatter".to_string(),
+            "Cannot format StatusList with SD-JWT VC formatter".to_string(),
         ))
     }
 
@@ -192,7 +196,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             ],
             issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
             proof_exchange_protocols: vec![],
-            revocation_methods: vec!["NONE".to_string()],
+            revocation_methods: vec!["NONE".to_string(), "TOKENSTATUSLIST".to_string()],
             verification_key_algorithms: vec![],
             verification_key_storages: vec![],
             forbidden_claim_names: vec!["0".to_string()],
@@ -255,7 +259,7 @@ pub(super) async fn extract_credentials_internal(
         claims: CredentialSubject {
             values: to_hashmap(unpack_arrays(&claims)?)?,
         },
-        status: vec![],
+        status: credential_status_from_sdjwt_status(&jwt.payload.custom.status),
         credential_schema: None,
     })
 }
@@ -311,8 +315,17 @@ pub(super) fn format_hashed_credential(
 ) -> Result<(SDJWTVCVc, Vec<String>), FormatterError> {
     let nested = nest_claims_to_json(&sort_published_claims_by_indices(&credential.claims))?;
     let (disclosures, sd_section) = gather_disclosures(&nested, algorithm, crypto)?;
+    let status = credential.status.first().and_then(|status| {
+        let obj: serde_json::Value = status
+            .additional_fields
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
 
-    let vc = vc_from_credential(&sd_section, algorithm)?;
+        serde_json::from_value(obj).ok()
+    });
+
+    let vc = vc_from_credential(&sd_section, algorithm, status)?;
 
     Ok((vc, disclosures))
 }
@@ -320,6 +333,7 @@ pub(super) fn format_hashed_credential(
 pub(crate) fn vc_from_credential(
     sd_section: &[String],
     algorithm: &str,
+    status: Option<SDJWTVCStatusList>,
 ) -> Result<SDJWTVCVc, FormatterError> {
     let mut hashed_claims: Vec<String> = sd_section.to_vec();
     hashed_claims.sort_unstable();
@@ -327,6 +341,9 @@ pub(crate) fn vc_from_credential(
     Ok(SDJWTVCVc {
         disclosures: hashed_claims,
         hash_alg: Some(algorithm.to_owned()),
+        status: status.map(|status| SDJWTVCStatus {
+            status_list: status,
+        }),
         public_claims: Default::default(),
     })
 }

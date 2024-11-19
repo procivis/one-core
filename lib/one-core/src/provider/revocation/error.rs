@@ -12,6 +12,7 @@ use crate::provider::http_client;
 use crate::provider::key_storage::error::KeyStorageProviderError;
 use crate::provider::remote_entity_storage::RemoteEntityStorageError;
 use crate::provider::revocation::bitstring_status_list::util::BitstringError;
+use crate::provider::revocation::token_status_list::util::TokenError;
 
 #[derive(Debug, Error)]
 pub enum RevocationError {
@@ -44,6 +45,8 @@ pub enum RevocationError {
     KeyStorageProviderError(#[from] KeyStorageProviderError),
     #[error("Remote entity storage error: `{0}`")]
     RemoteEntityStorageError(#[from] RemoteEntityStorageError),
+    #[error("Token error: `{0}`")]
+    TokenError(#[from] TokenError),
 
     #[error("From UTF-8 error: `{0}`")]
     FromUtf8Error(#[from] std::string::FromUtf8Error),

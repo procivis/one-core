@@ -9,7 +9,7 @@ use headers::Authorization;
 use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
 use one_core::provider::exchange_protocol::openid4vc::model::OpenID4VCITokenRequestDTO;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use one_core::service::revocation_list::dto::SupportedBitstringCredentialFormat;
+use one_core::service::revocation_list::dto::SupportedFormat;
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, ProofId, ProofSchemaId, TrustAnchorId,
 };
@@ -101,10 +101,8 @@ pub(crate) async fn get_revocation_list_by_id(
     match result {
         Ok(result) => {
             let content_type = match result.format {
-                SupportedBitstringCredentialFormat::Jwt => "application/jwt".to_owned(),
-                SupportedBitstringCredentialFormat::JsonLdClassic => {
-                    "application/ld+json".to_owned()
-                }
+                SupportedFormat::Jwt => "application/jwt".to_owned(),
+                SupportedFormat::JsonLdClassic => "application/ld+json".to_owned(),
             };
             (
                 StatusCode::OK,

@@ -180,7 +180,7 @@ impl RevocationListService {
 
         Ok(RevocationListResponse {
             revocation_list: result.try_into()?,
-            format: params.bitstring_credential_format.unwrap_or_default(),
+            format: params.format.unwrap_or_default(),
         })
     }
 

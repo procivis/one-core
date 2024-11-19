@@ -8,4 +8,4 @@ revocation:
     type: "BITSTRINGSTATUSLIST"
     params:
       public:
-        bitstringCredentialFormat: "JSON_LD_CLASSIC"
+        format: "JSON_LD_CLASSIC"

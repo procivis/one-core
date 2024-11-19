@@ -14,7 +14,7 @@ pub type RevocationListId = Uuid;
 pub struct CredentialAdditionalData {
     pub credentials_by_issuer_did: Vec<Credential>,
     pub revocation_list_id: RevocationListId,
-    pub suspension_list_id: RevocationListId,
+    pub suspension_list_id: Option<RevocationListId>,
 }
 
 #[derive(Clone)]

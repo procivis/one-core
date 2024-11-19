@@ -83,6 +83,7 @@ use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::revocation::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
 use one_core::provider::revocation::none::NoneRevocation;
 use one_core::provider::revocation::status_list_2021::StatusList2021;
+use one_core::provider::revocation::token_status_list::TokenStatusList;
 
 uniffi::include_scaffolding!("one_core");
 
@@ -548,6 +549,22 @@ fn initialize_core(
                                     ))
                                 }) as _
                             }
+                            RevocationType::TokenStatusList => Arc::new(
+                                TokenStatusList::new(
+                                    None,
+                                    key_algorithm_provider.clone(),
+                                    did_method_provider.clone(),
+                                    key_provider.clone(),
+                                    initialize_statuslist_loader(
+                                        &cache_entities_config,
+                                        data_repository.clone(),
+                                    ),
+                                    formatter_provider.clone(),
+                                    client.clone(),
+                                    None,
+                                )
+                                .expect("failed to create TokenStatusList revocation"),
+                            ) as _,
                         };
 
                         revocation_methods.insert(key.to_string(), revocation_method);

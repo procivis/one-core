@@ -1,12 +1,10 @@
 //! Utilities for Bitstring Status List.
 
-use std::io::{Read, Write};
-
 use bit_vec::BitVec;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use flate2::bufread::GzDecoder;
-use flate2::write::GzEncoder;
 use thiserror::Error;
+
+use crate::provider::revocation::utils::{gzip_compress, gzip_decompress};
 
 #[derive(Debug, Error)]
 pub enum BitstringError {
@@ -74,19 +72,6 @@ pub(super) fn generate_bitstring(input: Vec<bool>) -> Result<String, BitstringEr
     Base64UrlSafeNoPadding::encode_to_string(compressed)
         .map_err(BitstringError::Base64Encoding)
         .map(|s| format!("{MULTIBASE_PREFIX}{}", s))
-}
-
-fn gzip_compress(input: Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
-    let mut encoder = GzEncoder::new(Vec::new(), Default::default());
-    encoder.write_all(&input)?;
-    encoder.finish()
-}
-
-fn gzip_decompress(input: Vec<u8>, index: usize) -> Result<Vec<u8>, std::io::Error> {
-    let mut decoder = GzDecoder::new(&input[..]);
-    let mut result: Vec<u8> = vec![0; index / 8 + 1];
-    decoder.read_exact(&mut result)?;
-    Ok(result)
 }
 
 fn calculate_bitstring_size(input_size: usize) -> usize {
