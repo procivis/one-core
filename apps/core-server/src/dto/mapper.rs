@@ -71,19 +71,20 @@ where
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct PartialQueryParamsRest<SortColumn: ToSchema, Include: ToSchema> {
-    /// page index
+    /// The page number to retrieve (0-based indexing).
     pub page: u32,
-    /// limits number of items per page
+    /// Number of items to return per page. If omitted, defaults to 30.
     pub page_size: u32,
 
-    /// order results based on specific field values
+    /// The field value to sort results by.
     #[param(inline, nullable = false)]
     pub sort: Option<SortColumn>,
-    /// default: ASC
+    /// Direction to sort results. If a sorting value is passed, the
+    /// direction defaults to ASC.
     #[param(nullable = false)]
     pub sort_direction: Option<SortDirection>,
 
-    /// additional fields to include in response objects
+    /// Additional fields to include in response objects.
     #[param(rename = "include[]", inline, nullable = false)]
     pub include: Option<Vec<Include>>,
 }
