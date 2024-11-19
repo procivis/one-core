@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use serde_json::json;
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -126,6 +126,15 @@ impl SSIApi {
 
     pub async fn get_proof_schema(&self, id: impl Into<Uuid>) -> Response {
         let url = format!("/ssi/proof-schema/v1/{}", id.into());
+        self.client.get(&url).await
+    }
+
+    pub async fn get_sd_jwt_vc_type_metadata(
+        &self,
+        organisation_id: OrganisationId,
+        vct_type: impl Into<String>,
+    ) -> Response {
+        let url = format!("/ssi/vct/v1/{organisation_id}/{}", vct_type.into());
         self.client.get(&url).await
     }
 

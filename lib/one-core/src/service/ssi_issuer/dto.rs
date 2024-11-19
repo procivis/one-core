@@ -1,10 +1,14 @@
 use std::collections::HashMap;
 
 use serde::Deserialize;
+use serde_json::Value;
 use shared_types::CredentialId;
+use url::Url;
 
 use crate::service::credential::dto::DetailCredentialClaimResponseDTO;
-use crate::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
+use crate::service::credential_schema::dto::{
+    CredentialSchemaDetailResponseDTO, CredentialSchemaLayoutPropertiesRequestDTO,
+};
 use crate::service::did::dto::DidListItemResponseDTO;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -53,4 +57,62 @@ pub struct ConnectIssuerResponseDTO {
     pub issuer_did: DidListItemResponseDTO,
     pub claims: Vec<DetailCredentialClaimResponseDTO>,
     pub redirect_uri: Option<String>,
+}
+
+/// (Partial) SD-JWT VC type metadata.
+/// See https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html#name-type-metadata-format for
+/// more details.
+#[derive(Clone, Debug)]
+pub struct SdJwtVcTypeMetadataResponseDTO {
+    pub vct: String,
+    pub name: Option<String>,
+    pub display: Vec<SdJwtVcDisplayMetadataDTO>,
+    pub claims: Vec<SdJwtVcClaimDTO>,
+    // Non-standard property
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SdJwtVcDisplayMetadataDTO {
+    pub lang: String,
+    pub name: String,
+    pub rendering: Option<SdJwtVcRenderingDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SdJwtVcRenderingDTO {
+    pub simple: Option<SdJwtVcSimpleRenderingDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SdJwtVcSimpleRenderingDTO {
+    pub logo: Option<SdJwtVcSimpleRenderingLogoDTO>,
+    pub background_color: Option<String>,
+    pub text_color: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SdJwtVcSimpleRenderingLogoDTO {
+    pub uri: Url,
+    pub alt_text: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SdJwtVcClaimDTO {
+    pub path: Vec<Value>,
+    pub display: Vec<SdJwtVcClaimDisplayDTO>,
+    pub sd: Option<SdJwtVcClaimSd>,
+}
+
+#[derive(Clone, Debug)]
+pub enum SdJwtVcClaimSd {
+    Always,
+    Allowed,
+    Never,
+}
+
+#[derive(Clone, Debug)]
+pub struct SdJwtVcClaimDisplayDTO {
+    pub lang: String,
+    pub label: String,
 }

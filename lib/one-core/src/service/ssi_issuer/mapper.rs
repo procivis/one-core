@@ -1,11 +1,20 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
+use serde_json::Value;
 use url::Url;
 
-use super::dto::JsonLDContextDTO;
+use super::dto::{
+    JsonLDContextDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO, SdJwtVcClaimSd,
+    SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
+    SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
+};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::model::credential_schema::CredentialSchemaClaim;
+use crate::model::credential_schema::{
+    Arrayed, CredentialSchema, CredentialSchemaClaim, CredentialSchemaClaimsNestedTypeView,
+    CredentialSchemaClaimsNestedView,
+};
+use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO;
 use crate::service::error::ServiceError;
 use crate::service::ssi_issuer::dto::{
     JsonLDEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
@@ -78,4 +87,117 @@ pub fn get_url_with_fragment(base_url: &str, fragment: &str) -> Result<String, S
     // We need to url encode the fragment in case `#` is used in a claim name
     url.set_fragment(Some(&urlencoding::encode(fragment)));
     Ok(url.to_string())
+}
+
+pub(crate) fn credential_schema_to_sd_jwt_vc_metadata(
+    vct_type: String,
+    schema: CredentialSchema,
+) -> Result<SdJwtVcTypeMetadataResponseDTO, ServiceError> {
+    let background_color: Option<String> = schema.layout_properties.as_ref().map(|props| {
+        props
+            .background
+            .iter()
+            .flat_map(|bg| bg.color.clone())
+            .collect()
+    });
+    let logo = vct_logo_from_schema(&schema)?;
+    let rendering = SdJwtVcRenderingDTO {
+        simple: Some(SdJwtVcSimpleRenderingDTO {
+            logo,
+            background_color, // defaults to None
+            text_color: Some("#FFFFFF".to_string()),
+        }),
+    };
+    let display_en_us = SdJwtVcDisplayMetadataDTO {
+        lang: "en-US".to_string(),
+        name: schema.name,
+        rendering: Some(rendering),
+    };
+
+    let nested_claims =
+        CredentialSchemaClaimsNestedView::try_from(schema.claim_schemas.unwrap_or_default())?;
+    let claims = vct_claims_from_nested_view(nested_claims);
+    Ok(SdJwtVcTypeMetadataResponseDTO {
+        vct: schema.schema_id,
+        name: Some(vct_type),
+        display: vec![display_en_us],
+        claims,
+        layout_properties: schema
+            .layout_properties
+            .map(CredentialSchemaLayoutPropertiesRequestDTO::from),
+    })
+}
+
+fn vct_claims_from_nested_view(
+    nested_claims: CredentialSchemaClaimsNestedView,
+) -> Vec<SdJwtVcClaimDTO> {
+    let mut vct_claims = vec![];
+    vct_claims_from_prefix_and_fields(&mut vct_claims, &[], nested_claims.fields);
+    vct_claims
+}
+
+fn vct_claims_from_prefix_and_fields(
+    accumulator: &mut Vec<SdJwtVcClaimDTO>,
+    prefix: &[Value],
+    fields: HashMap<String, Arrayed<CredentialSchemaClaimsNestedTypeView>>,
+) {
+    for (name, claim) in fields {
+        let mut new_prefix = prefix.to_vec();
+        new_prefix.push(Value::String(name.to_string()));
+
+        let claim = match claim {
+            Arrayed::InArray(array_claim) => {
+                accumulator.push(vct_claim_from_path_label(new_prefix.clone(), name));
+
+                // push null to match all array elements when addressing nested claims
+                // see https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html#name-claim-path
+                new_prefix.push(Value::Null);
+                array_claim
+            }
+            Arrayed::Single(single_claim) => {
+                accumulator.push(vct_claim_from_path_label(new_prefix.clone(), name));
+                single_claim
+            }
+        };
+
+        match claim {
+            CredentialSchemaClaimsNestedTypeView::Field(_) => {} // nothing further to do
+            CredentialSchemaClaimsNestedTypeView::Object(object_claim) => {
+                vct_claims_from_prefix_and_fields(
+                    accumulator,
+                    new_prefix.as_slice(),
+                    object_claim.fields,
+                );
+            }
+        }
+    }
+}
+
+fn vct_claim_from_path_label(path: Vec<Value>, label: String) -> SdJwtVcClaimDTO {
+    SdJwtVcClaimDTO {
+        path,
+        display: vec![SdJwtVcClaimDisplayDTO {
+            lang: "en-US".to_string(),
+            label,
+        }],
+        sd: Some(SdJwtVcClaimSd::Allowed),
+    }
+}
+
+fn vct_logo_from_schema(
+    schema: &CredentialSchema,
+) -> Result<Option<SdJwtVcSimpleRenderingLogoDTO>, ServiceError> {
+    Ok(schema
+        .layout_properties
+        .iter()
+        .flat_map(|layout| &layout.logo)
+        .flat_map(|logo| &logo.image)
+        .map(|s| Url::try_from(s.as_str()))
+        .next()
+        .transpose()
+        .map_err(|err| ServiceError::MappingError(format!("failed to parse logo URL: {}", err)))?
+        .map(|uri| SdJwtVcSimpleRenderingLogoDTO {
+            uri,
+            alt_text: None,
+        }))
 }

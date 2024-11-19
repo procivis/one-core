@@ -311,6 +311,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .route(
             "/ssi/trust/v1/:trustAnchorId",
             get(ssi::controller::ssi_get_trust_list),
+        )
+        .route(
+            "/ssi/vct/v1/:organisationId/:vctType",
+            get(ssi::controller::ssi_get_sd_jwt_vc_type_metadata),
         );
 
     let technical_endpoints = Router::new()

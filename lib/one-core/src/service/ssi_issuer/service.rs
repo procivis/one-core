@@ -2,18 +2,27 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use convert_case::{Case, Casing};
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialSchemaId, OrganisationId};
 
 use super::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
+    SdJwtVcTypeMetadataResponseDTO,
 };
 use super::SSIIssuerService;
 use crate::config::core_config::Params;
 use crate::config::ConfigValidationError;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::service::credential_schema::dto::{
+    CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
+    GetCredentialSchemaQueryDTO,
+};
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use crate::service::ssi_issuer::mapper::{generate_jsonld_context_response, get_url_with_fragment};
+use crate::service::ssi_issuer::mapper::{
+    credential_schema_to_sd_jwt_vc_metadata, generate_jsonld_context_response,
+    get_url_with_fragment,
+};
 
 impl SSIIssuerService {
     pub async fn get_json_ld_context(
@@ -165,5 +174,50 @@ impl SSIIssuerService {
                 ..Default::default()
             },
         })
+    }
+
+    pub async fn get_vct_metadata(
+        &self,
+        organisation_id: OrganisationId,
+        vct_type: String,
+    ) -> Result<SdJwtVcTypeMetadataResponseDTO, ServiceError> {
+        let vct = format!(
+            "{}/ssi/vct/v1/{organisation_id}/{vct_type}",
+            self.core_base_url
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "Host URL not specified".to_string()
+                ))?
+        );
+        let mut schema_list = self
+            .credential_schema_repository
+            .get_credential_schema_list(
+                GetCredentialSchemaQueryDTO {
+                    pagination: None,
+                    sorting: None,
+                    filtering: Some(
+                        CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
+                            & CredentialSchemaFilterValue::SchemaId(StringMatch::equals(&vct))
+                                .condition()
+                            & CredentialSchemaFilterValue::Format(StringMatch::equals("SD_JWT_VC"))
+                                .condition(),
+                    ),
+                    include: Some(vec![
+                        CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
+                    ]),
+                },
+                &CredentialSchemaRelations {
+                    claim_schemas: Some(ClaimSchemaRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let Some(credential_schema) = schema_list.values.pop() else {
+            return Err(ServiceError::EntityNotFound(
+                EntityNotFoundError::SdJwtVcTypeMetadata(vct),
+            ));
+        };
+        credential_schema_to_sd_jwt_vc_metadata(vct_type, credential_schema)
     }
 }

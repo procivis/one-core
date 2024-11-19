@@ -103,6 +103,7 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             ssi::controller::ssi_get_credential_schema,
             ssi::controller::ssi_get_proof_schema,
             ssi::controller::ssi_get_trust_list,
+            ssi::controller::ssi_get_sd_jwt_vc_type_metadata,
 
             misc::get_build_info,
             misc::health_check,
@@ -256,6 +257,14 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 ssi::dto::GetTrustAnchorResponseRestDTO,
                 ssi::dto::GetTrustEntityResponseRestDTO,
                 ssi::dto::ProcivisSubjectClaimValueRestDTO,
+                ssi::dto::SdJwtVcTypeMetadataResponseRestDTO,
+                ssi::dto::SdJwtVcDisplayMetadataRestDTO,
+                ssi::dto::SdJwtVcRenderingRestDTO,
+                ssi::dto::SdJwtVcSimpleRenderingRestDTO,
+                ssi::dto::SdJwtVcSimpleRenderingLogoRestDTO,
+                ssi::dto::SdJwtVcClaimRestDTO,
+                ssi::dto::SdJwtVcClaimSdRestEnum,
+                ssi::dto::SdJwtVcClaimDisplayRestDTO,
 
                 interaction::dto::HandleInvitationRequestRestDTO,
                 interaction::dto::HandleInvitationResponseRestDTO,

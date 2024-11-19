@@ -15,6 +15,7 @@ use uuid::Uuid;
 #[derive(Debug, Default, Clone)]
 pub struct TestingCreateSchemaParams {
     pub id: Option<CredentialSchemaId>,
+    pub schema_id: Option<String>,
     pub format: Option<String>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_type: Option<CredentialSchemaType>,
@@ -107,7 +108,7 @@ impl CredentialSchemasDB {
             schema_type: params
                 .schema_type
                 .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
-            schema_id: id.to_string(),
+            schema_id: params.schema_id.unwrap_or_else(|| id.to_string()),
             allow_suspension: params.allow_suspension.unwrap_or(true),
         };
 
@@ -267,7 +268,7 @@ impl CredentialSchemasDB {
             schema_type: params
                 .schema_type
                 .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
-            schema_id: "doctype".to_string(),
+            schema_id: params.schema_id.unwrap_or("doctype".to_string()),
             allow_suspension: true,
         };
 

@@ -11,7 +11,7 @@ use one_core::provider::exchange_protocol::openid4vc::model::OpenID4VCITokenRequ
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use one_core::service::revocation_list::dto::SupportedFormat;
 use shared_types::{
-    CredentialId, CredentialSchemaId, DidId, ProofId, ProofSchemaId, TrustAnchorId,
+    CredentialId, CredentialSchemaId, DidId, OrganisationId, ProofId, ProofSchemaId, TrustAnchorId,
 };
 use uuid::Uuid;
 
@@ -23,7 +23,7 @@ use super::dto::{
     OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
     OpenID4VCITokenResponseRestDTO, OpenID4VPClientMetadataResponseRestDTO,
     OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
-    OpenID4VPPresentationDefinitionResponseRestDTO,
+    OpenID4VPPresentationDefinitionResponseRestDTO, SdJwtVcTypeMetadataResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
@@ -339,7 +339,8 @@ pub(crate) async fn oidc_issuer_get_credential_offer(
 #[utoipa::path(
     post,
     path = "/ssi/oidc-issuer/v1/{id}/token",
-    request_body(content = OpenID4VCITokenRequestRestDTO, description = "Token request", content_type = "application/x-www-form-urlencoded"),
+    request_body(content = OpenID4VCITokenRequestRestDTO, description = "Token request", content_type = "application/x-www-form-urlencoded"
+    ),
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
@@ -485,7 +486,8 @@ pub(crate) async fn oidc_issuer_create_credential(
 #[utoipa::path(
     post,
     path = "/ssi/oidc-verifier/v1/response",
-    request_body(content = OpenID4VPDirectPostRequestRestDTO, description = "Verifier request", content_type = "application/x-www-form-urlencoded"),
+    request_body(content = OpenID4VPDirectPostRequestRestDTO, description = "Verifier request", content_type = "application/x-www-form-urlencoded"
+    ),
     responses(
         (status = 200, description = "OK", body = OpenID4VPDirectPostResponseRestDTO),
         (status = 400, description = "OIDC Verifier errors", body = OpenID4VCIErrorResponseRestDTO),
@@ -862,4 +864,35 @@ pub(crate) async fn ssi_get_proof_schema(
 ) -> OkOrErrorResponse<GetProofSchemaResponseRestDTO> {
     let result = state.core.proof_schema_service.get_proof_schema(&id).await;
     OkOrErrorResponse::from_result(result, state, "getting proof schema")
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/vct/v1/{organisationId}/{vctType}",
+    params(
+        ("organisationId" = OrganisationId, Path, description = "Organization id"),
+        ("vctType" = String, Path, description = "VctType")
+    ),
+    responses(
+        (status = 200, description = "OK", body = SdJwtVcTypeMetadataResponseRestDTO),
+        (status = 404, description = "Type metadata not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+    summary = "Retrieve SD-JWT VC type metadata service",
+    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+)]
+pub(crate) async fn ssi_get_sd_jwt_vc_type_metadata(
+    state: State<AppState>,
+    WithRejection(Path((organisation_id, vct_type)), _): WithRejection<
+        Path<(OrganisationId, String)>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<SdJwtVcTypeMetadataResponseRestDTO> {
+    let result = state
+        .core
+        .ssi_issuer_service
+        .get_vct_metadata(organisation_id, vct_type)
+        .await;
+    OkOrErrorResponse::from_result(result, state, "getting SD-JWT VC type metadata")
 }

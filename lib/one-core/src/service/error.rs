@@ -136,6 +136,9 @@ pub enum EntityNotFoundError {
     #[error("Credential schema `{0}` not found")]
     CredentialSchema(CredentialSchemaId),
 
+    #[error("SD-JWT VC type metadata `{0}` not found")]
+    SdJwtVcTypeMetadata(String),
+
     #[error("Lvvc with credentialId `{0}` not found")]
     Lvvc(CredentialId),
 
@@ -878,6 +881,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Validity constraint out of range")]
     BR_0166,
+
+    #[strum(to_string = "SD-JWT VC type metadata not found")]
+    BR_0172,
 }
 
 impl From<FormatError> for ServiceError {
@@ -957,6 +963,7 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::History(_) => ErrorCode::BR_0100,
             Self::TrustAnchor(_) => ErrorCode::BR_0115,
             Self::TrustEntity(_) => ErrorCode::BR_0121,
+            Self::SdJwtVcTypeMetadata(_) => ErrorCode::BR_0172,
         }
     }
 }

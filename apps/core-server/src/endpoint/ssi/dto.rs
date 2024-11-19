@@ -29,20 +29,27 @@ use one_core::service::key::dto::{
 use one_core::service::oidc::dto::OpenID4VCICredentialResponseDTO;
 use one_core::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
-    JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
+    JsonLDNestedContextDTO, JsonLDNestedEntityDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO,
+    SdJwtVcClaimSd, SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
+    SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
 };
 use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
 use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use serde_with::json::JsonString;
+use serde_with::skip_serializing_none;
 use shared_types::{CredentialId, DidValue, KeyId, ProofId, TrustAnchorId, TrustEntityId};
 use strum_macros::Display;
 use time::OffsetDateTime;
+use url::Url;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use crate::endpoint::credential_schema::dto::{CredentialSchemaType, WalletStorageTypeRestEnum};
+use crate::endpoint::credential_schema::dto::{
+    CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
+};
 use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
 use crate::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use crate::serialize::{front_time, front_time_option};
@@ -716,4 +723,87 @@ pub struct GetTrustEntityResponseRestDTO {
 
     #[from(with_fn = convert_inner)]
     pub trust_anchor: Option<GetTrustAnchorDetailResponseRestDTO>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(SdJwtVcTypeMetadataResponseDTO)]
+pub struct SdJwtVcTypeMetadataResponseRestDTO {
+    pub vct: String,
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[from(with_fn = convert_inner)]
+    pub display: Vec<SdJwtVcDisplayMetadataRestDTO>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<SdJwtVcClaimRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(SdJwtVcDisplayMetadataDTO)]
+pub struct SdJwtVcDisplayMetadataRestDTO {
+    pub lang: String,
+    pub name: String,
+    #[from(with_fn = convert_inner)]
+    pub rendering: Option<SdJwtVcRenderingRestDTO>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(SdJwtVcRenderingDTO)]
+pub struct SdJwtVcRenderingRestDTO {
+    #[from(with_fn = convert_inner)]
+    pub simple: Option<SdJwtVcSimpleRenderingRestDTO>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(SdJwtVcSimpleRenderingDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct SdJwtVcSimpleRenderingRestDTO {
+    #[from(with_fn = convert_inner)]
+    pub logo: Option<SdJwtVcSimpleRenderingLogoRestDTO>,
+    pub background_color: Option<String>,
+    pub text_color: Option<String>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(SdJwtVcSimpleRenderingLogoDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct SdJwtVcSimpleRenderingLogoRestDTO {
+    pub uri: Url,
+    pub alt_text: Option<String>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(SdJwtVcClaimDTO)]
+pub struct SdJwtVcClaimRestDTO {
+    pub path: Vec<Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[from(with_fn = convert_inner)]
+    pub display: Vec<SdJwtVcClaimDisplayRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub sd: Option<SdJwtVcClaimSdRestEnum>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(SdJwtVcClaimSd)]
+#[serde(rename_all = "lowercase")]
+pub enum SdJwtVcClaimSdRestEnum {
+    Always,
+    Allowed,
+    Never,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(SdJwtVcClaimDisplayDTO)]
+pub struct SdJwtVcClaimDisplayRestDTO {
+    pub lang: String,
+    pub label: String,
 }
