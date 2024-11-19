@@ -296,6 +296,7 @@ fn test_schema_id() {
         },
         Arc::new(MockCryptoProvider::default()),
     );
+    let vct_type = "some_vct_type";
     let request_dto = CreateCredentialSchemaRequestDTO {
         name: "".to_string(),
         format: "".to_string(),
@@ -305,7 +306,7 @@ fn test_schema_id() {
         wallet_storage_type: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: Some("schema_id_name".to_string()),
+        schema_id: Some(vct_type.to_string()),
         allow_suspension: None,
     };
 
@@ -317,6 +318,9 @@ fn test_schema_id() {
     assert!(result.is_ok());
     assert_eq!(
         result.unwrap(),
-        "https://example.com/ssi/v1/vct/schema_id_name"
+        format!(
+            "https://example.com/ssi/vct/v1/{}/{vct_type}",
+            request_dto.organisation_id
+        )
     )
 }

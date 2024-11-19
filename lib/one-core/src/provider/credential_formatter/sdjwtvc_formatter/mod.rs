@@ -212,7 +212,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
         request
             .schema_id
             .clone()
-            .map(|schema_id| format!("{core_base_url}/ssi/v1/vct/{schema_id}"))
+            .map(|schema_id| {
+                format!(
+                    "{core_base_url}/ssi/vct/v1/{}/{schema_id}",
+                    request.organisation_id
+                )
+            })
             .ok_or(FormatterError::Failed("Missing schema_id".to_string()))
     }
 }
