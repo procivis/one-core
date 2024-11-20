@@ -38,6 +38,7 @@ use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::model::did::Did;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema,
@@ -45,7 +46,7 @@ use crate::provider::credential_formatter::model::{
     Features, FormatPresentationCtx, FormatterCapabilities, Presentation, PublishedClaim,
     SelectiveDisclosure, SignatureProvider, TokenVerifier, VerificationFn,
 };
-use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;

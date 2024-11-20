@@ -2,7 +2,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
-use super::dto::RevocationListResponse;
+use super::dto::RevocationListResponseDTO;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{Did, DidRelations};
@@ -10,14 +10,12 @@ use crate::model::key::KeyRelations;
 use crate::model::revocation_list::RevocationListRelations;
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::revocation::bitstring_status_list::Params;
 use crate::provider::revocation::lvvc::create_lvvc_with_status;
 use crate::provider::revocation::lvvc::dto::{IssuerResponseDTO, LvvcStatus};
 use crate::provider::revocation::lvvc::mapper::status_from_lvvc_claims;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 use crate::service::revocation_list::dto::RevocationListId;
 use crate::service::revocation_list::RevocationListService;
-use crate::util::params::convert_params;
 
 impl RevocationListService {
     pub async fn get_lvvc_by_credential_id(
@@ -159,28 +157,20 @@ impl RevocationListService {
     pub async fn get_revocation_list_by_id(
         &self,
         id: &RevocationListId,
-    ) -> Result<RevocationListResponse, ServiceError> {
-        let revocation_method = self
-            .revocation_method_provider
-            .get_revocation_method("BITSTRINGSTATUSLIST")
-            .ok_or(MissingProviderError::RevocationMethod(
-                "BITSTRINGSTATUSLIST".to_owned(),
-            ))?;
-
+    ) -> Result<RevocationListResponseDTO, ServiceError> {
         let result = self
             .revocation_list_repository
             .get_revocation_list(id, &RevocationListRelations::default())
             .await?;
 
-        let Some(result) = result else {
+        let Some(list) = result else {
             return Err(EntityNotFoundError::RevocationList(*id).into());
         };
 
-        let params: Params = convert_params(revocation_method.get_params()?)?;
-
-        Ok(RevocationListResponse {
-            revocation_list: result.try_into()?,
-            format: params.format.unwrap_or_default(),
+        Ok(RevocationListResponseDTO {
+            revocation_list: list.get_status_credential()?,
+            format: list.format,
+            r#type: list.r#type,
         })
     }
 

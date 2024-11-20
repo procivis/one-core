@@ -10,7 +10,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::remote_entity_storage::{MockRemoteEntityStorage, RemoteEntityType};
 use crate::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
-use crate::provider::revocation::bitstring_status_list::{BitstringStatusList, Params};
+use crate::provider::revocation::bitstring_status_list::BitstringStatusList;
 use crate::provider::revocation::model::{CredentialAdditionalData, CredentialRevocationInfo};
 use crate::provider::revocation::RevocationMethod;
 use crate::service::test_utilities::{dummy_credential, dummy_did};
@@ -56,7 +56,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
         caching_loader,
         Arc::new(formatter_provider),
         client,
-        Some(Params::default()),
+        None,
     );
 
     let mut credential = dummy_credential();

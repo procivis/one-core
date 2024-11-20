@@ -15,6 +15,7 @@ use url::Url;
 
 use super::json_ld::model::{LdCredentialSubject, DEFAULT_ALLOWED_CONTEXTS};
 use crate::model::did::Did;
+use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     ContextCache, JsonLdCachingLoader,
@@ -27,7 +28,7 @@ use crate::provider::credential_formatter::model::{
     DetailCredential, ExtractPresentationCtx, Features, FormatPresentationCtx,
     FormatterCapabilities, Issuer, Presentation, VerificationFn,
 };
-use crate::provider::credential_formatter::{json_ld, CredentialFormatter, StatusListType};
+use crate::provider::credential_formatter::{json_ld, CredentialFormatter};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -135,7 +136,7 @@ impl CredentialFormatter for JsonLdClassic {
         status_purpose: StatusPurpose,
         status_list_type: StatusListType,
     ) -> Result<String, FormatterError> {
-        if status_list_type != StatusListType::Bitstring {
+        if status_list_type != StatusListType::BitstringStatusList {
             return Err(FormatterError::Failed(
                 "Only BitstringStatusList can be formatted with JSON_LD_CLASSIC formatter"
                     .to_string(),

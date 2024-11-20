@@ -9,10 +9,11 @@ use crate::model::credential::{Credential, CredentialRelations, CredentialStateR
 use crate::model::did::Did;
 use crate::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
+    StatusListCredentialFormat, StatusListType,
 };
 use crate::model::validity_credential::Lvvc;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::bitstring_status_list::model::RevocationUpdateData;
 use crate::provider::revocation::bitstring_status_list::{
@@ -47,14 +48,12 @@ pub(crate) async fn generate_credential_additional_data(
     }
 
     let status_list_type = if status_type == "TokenStatusListEntry" {
-        StatusListType::Token
+        StatusListType::TokenStatusList
     } else {
-        StatusListType::Bitstring
+        StatusListType::BitstringStatusList
     };
 
     let params: Params = convert_params(revocation_method.get_params()?)?;
-
-    let bitstring_credential_format: String = params.format.unwrap_or_default().into();
 
     let issuer_did = credential
         .issuer_did
@@ -74,10 +73,10 @@ pub(crate) async fn generate_credential_additional_data(
     );
 
     let formatter = formatter_provider
-        .get_formatter(&bitstring_credential_format)
+        .get_formatter(params.format.to_string().as_str())
         .ok_or_else(|| {
             ServiceError::MissingProvider(MissingProviderError::Formatter(
-                bitstring_credential_format.to_owned(),
+                params.format.to_string(),
             ))
         })?;
 
@@ -90,12 +89,13 @@ pub(crate) async fn generate_credential_additional_data(
         core_base_url,
         &*formatter,
         issuer_key_id.clone(),
-        status_list_type,
+        &status_list_type,
+        &params.format,
     )
     .await?;
 
     let suspension_list_id = match status_list_type {
-        StatusListType::Bitstring => Some(
+        StatusListType::BitstringStatusList => Some(
             get_or_create_revocation_list_id(
                 &credentials_by_issuer_did,
                 issuer_did,
@@ -105,11 +105,12 @@ pub(crate) async fn generate_credential_additional_data(
                 core_base_url,
                 &*formatter,
                 issuer_key_id,
-                status_list_type,
+                &status_list_type,
+                &params.format,
             )
             .await?,
         ),
-        StatusListType::Token => None,
+        StatusListType::TokenStatusList => None,
     };
 
     Ok(Some(CredentialAdditionalData {
@@ -150,7 +151,8 @@ pub(crate) async fn get_or_create_revocation_list_id(
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
     key_id: String,
-    status_list_type: StatusListType,
+    status_list_type: &StatusListType,
+    revocation_credential_format: &StatusListCredentialFormat,
 ) -> Result<RevocationListId, ServiceError> {
     let revocation_list = revocation_list_repository
         .get_revocation_by_issuer_did_id(
@@ -166,7 +168,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
         Some(value) => value.id,
         None => {
             let encoded_list = match status_list_type {
-                StatusListType::Bitstring => {
+                StatusListType::BitstringStatusList => {
                     generate_bitstring_from_credentials(
                         credentials_by_issuer_did,
                         credential_state,
@@ -174,7 +176,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
                     )
                     .await?
                 }
-                StatusListType::Token => {
+                StatusListType::TokenStatusList => {
                     generate_token_from_credentials(credentials_by_issuer_did, None).await?
                 }
             };
@@ -201,6 +203,8 @@ pub(crate) async fn get_or_create_revocation_list_id(
                     credentials: list_credential.into_bytes(),
                     purpose,
                     issuer_did: Some(issuer_did.to_owned()),
+                    format: revocation_credential_format.to_owned(),
+                    r#type: status_list_type.to_owned(),
                 })
                 .await?
         }

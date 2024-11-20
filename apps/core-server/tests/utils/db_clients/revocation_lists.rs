@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use one_core::model::did::Did;
-use one_core::model::revocation_list::{RevocationList, RevocationListPurpose};
+use one_core::model::revocation_list::{
+    RevocationList, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+};
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sql_data_provider::test_utilities::get_dummy_date;
 
@@ -27,6 +29,8 @@ impl RevocationListsDB {
             credentials: credentials.unwrap_or_default().to_owned(),
             purpose,
             issuer_did: Some(issuer_did.to_owned()),
+            format: StatusListCredentialFormat::Jwt,
+            r#type: StatusListType::BitstringStatusList,
         };
 
         self.repository

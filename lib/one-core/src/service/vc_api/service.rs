@@ -14,14 +14,13 @@ use super::VCAPIService;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
-use crate::model::revocation_list::RevocationListPurpose;
+use crate::model::revocation_list::{RevocationListPurpose, StatusListType};
 use crate::provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
 use crate::provider::credential_formatter::json_ld::model::LdCredential;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchemaData, ExtractPresentationCtx, PublishedClaim,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::StatusListType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -158,7 +157,8 @@ impl VCAPIService {
                 &self.base_url,
                 &*formatter,
                 key_id.to_owned(),
-                StatusListType::Bitstring,
+                &StatusListType::BitstringStatusList,
+                &crate::model::revocation_list::StatusListCredentialFormat::JsonLdClassic,
             )
             .await
             .unwrap();

@@ -13,6 +13,8 @@ pub struct Model {
     #[sea_orm(column_type = "Blob")]
     pub credentials: Vec<u8>,
     pub purpose: RevocationListPurpose,
+    pub format: RevocationListFormat,
+    pub r#type: String,
 
     pub issuer_did_id: DidId,
 }
@@ -58,4 +60,19 @@ pub enum RevocationListPurpose {
     Revocation,
     #[sea_orm(string_value = "SUSPENSION")]
     Suspension,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[from(one_core::model::revocation_list::StatusListCredentialFormat)]
+#[into(one_core::model::revocation_list::StatusListCredentialFormat)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "Enum",
+    enum_name = "revocation_list_type_enum"
+)]
+pub enum RevocationListFormat {
+    #[sea_orm(string_value = "JWT")]
+    Jwt,
+    #[sea_orm(string_value = "JSON_LD_CLASSIC")]
+    JsonLdClassic,
 }

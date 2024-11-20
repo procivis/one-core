@@ -22,7 +22,9 @@ use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use one_core::model::revocation_list::{RevocationList, RevocationListPurpose};
+use one_core::model::revocation_list::{
+    RevocationList, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+};
 use one_core::repository::DataRepository;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
@@ -554,6 +556,8 @@ pub async fn create_revocation_list(
         credentials: credentials.unwrap_or_default().to_owned(),
         purpose: RevocationListPurpose::Revocation,
         issuer_did: Some(issuer_did.to_owned()),
+        format: StatusListCredentialFormat::JsonLdClassic,
+        r#type: StatusListType::BitstringStatusList,
     };
 
     data_layer

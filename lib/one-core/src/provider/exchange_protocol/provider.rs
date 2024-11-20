@@ -19,21 +19,22 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelation
 use crate::model::did::{Did, DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::revocation_list::RevocationListPurpose;
+use crate::model::revocation_list::{RevocationListPurpose, StatusListType};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
+use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::{mdoc_formatter, StatusListType};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
 use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
 use crate::provider::exchange_protocol::openid4vc::model::SubmitIssuerResponse;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::bitstring_status_list::Params;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::CredentialAdditionalData;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::revocation::{bitstring_status_list, token_status_list};
+use crate::provider::revocation::token_status_list;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -273,19 +274,13 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
         let mut credential_additional_data = None;
 
         // TODO: refactor this when refactoring the formatters as it makes no sense for to construct this for LVVC
-        if &credential_schema.revocation_method == "BITSTRINGSTATUSLIST" {
-            let format: String = {
-                let bitstring_status_list::Params {
-                    format: bitstring_credential_format,
-                } = convert_params(revocation_method.get_params()?)?;
-
-                bitstring_credential_format.unwrap_or_default().into()
-            };
+        if credential_schema.revocation_method == StatusListType::BitstringStatusList.to_string() {
+            let Params { format } = convert_params(revocation_method.get_params()?)?;
 
             let formatter = self
                 .formatter_provider
-                .get_formatter(&format)
-                .ok_or(ValidationError::InvalidFormatter(format))?;
+                .get_formatter(&format.to_string())
+                .ok_or(ValidationError::InvalidFormatter(format.to_string()))?;
 
             credential_additional_data = Some(CredentialAdditionalData {
                 credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
@@ -298,7 +293,8 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                     &self.core_base_url,
                     &*formatter,
                     key_id.clone(),
-                    StatusListType::Bitstring,
+                    &StatusListType::BitstringStatusList,
+                    &format,
                 )
                 .await?,
                 suspension_list_id: Some(
@@ -311,23 +307,22 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                         &self.core_base_url,
                         &*formatter,
                         key_id,
-                        StatusListType::Bitstring,
+                        &StatusListType::BitstringStatusList,
+                        &format,
                     )
                     .await?,
                 ),
             });
-        } else if &credential_schema.revocation_method == "TOKENSTATUSLIST" {
-            let format: String = {
-                let token_status_list::Params {
-                    format: bitstring_credential_format,
-                } = convert_params(revocation_method.get_params()?)?;
+        } else if credential_schema.revocation_method == StatusListType::TokenStatusList.to_string()
+        {
+            let token_status_list::Params { format } =
+                convert_params(revocation_method.get_params()?).unwrap_or_default();
 
-                bitstring_credential_format.unwrap_or_default().into()
-            };
             let formatter = self
                 .formatter_provider
-                .get_formatter(&format)
-                .ok_or(ValidationError::InvalidFormatter(format))?;
+                .get_formatter(&format.to_string())
+                .ok_or(ValidationError::InvalidFormatter(format.to_string()))?;
+
             credential_additional_data = Some(CredentialAdditionalData {
                 credentials_by_issuer_did: convert_inner(credentials_by_issuer_did.to_owned()),
                 revocation_list_id: get_or_create_revocation_list_id(
@@ -339,7 +334,8 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                     &self.core_base_url,
                     &*formatter,
                     key_id.clone(),
-                    StatusListType::Token,
+                    &StatusListType::TokenStatusList,
+                    &format,
                 )
                 .await?,
                 suspension_list_id: None,

@@ -19,7 +19,9 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::revocation_list::{RevocationList, RevocationListPurpose};
+use crate::model::revocation_list::{
+    RevocationList, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+};
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -177,6 +179,8 @@ async fn test_issuer_submit_succeeds() {
                 credentials: vec![],
                 purpose: RevocationListPurpose::Revocation,
                 issuer_did: None,
+                format: StatusListCredentialFormat::Jwt,
+                r#type: StatusListType::BitstringStatusList,
             }))
         });
     revocation_list_repository
@@ -190,6 +194,8 @@ async fn test_issuer_submit_succeeds() {
                 credentials: vec![],
                 purpose: RevocationListPurpose::Suspension,
                 issuer_did: None,
+                format: StatusListCredentialFormat::Jwt,
+                r#type: StatusListType::BitstringStatusList,
             }))
         });
 
@@ -631,6 +637,8 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
                 credentials: vec![],
                 purpose: RevocationListPurpose::Revocation,
                 issuer_did: None,
+                format: StatusListCredentialFormat::Jwt,
+                r#type: StatusListType::BitstringStatusList,
             }))
         });
     revocation_list_repository
@@ -644,6 +652,8 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
                 credentials: vec![],
                 purpose: RevocationListPurpose::Suspension,
                 issuer_did: None,
+                format: StatusListCredentialFormat::Jwt,
+                r#type: StatusListType::BitstringStatusList,
             }))
         });
 
@@ -749,6 +759,8 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
                 credentials: vec![],
                 purpose: RevocationListPurpose::Revocation,
                 issuer_did: None,
+                format: StatusListCredentialFormat::Jwt,
+                r#type: StatusListType::BitstringStatusList,
             }))
         });
     revocation_list_repository
@@ -762,6 +774,8 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
                 credentials: vec![],
                 purpose: RevocationListPurpose::Suspension,
                 issuer_did: None,
+                format: StatusListCredentialFormat::Jwt,
+                r#type: StatusListType::BitstringStatusList,
             }))
         });
 

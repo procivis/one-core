@@ -9,12 +9,13 @@ use shared_types::{CredentialId, DidId, DidValue};
 
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{Did, KeyRole};
+use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListContent;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SDJWTVCStatus;
-use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -29,7 +30,6 @@ use crate::provider::revocation::model::{
 use crate::provider::revocation::token_status_list::model::RevocationUpdateData;
 use crate::provider::revocation::token_status_list::resolver::StatusListCachingLoader;
 use crate::provider::revocation::RevocationMethod;
-use crate::service::revocation_list::dto::SupportedFormat;
 use crate::util::key_verification::KeyVerification;
 use crate::util::params::convert_params;
 
@@ -44,14 +44,13 @@ const CREDENTIAL_STATUS_TYPE: &str = "TokenStatusListEntry";
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    #[serde(default)]
-    pub format: Option<SupportedFormat>,
+    pub format: StatusListCredentialFormat,
 }
 
 impl Default for Params {
     fn default() -> Self {
         Self {
-            format: Some(SupportedFormat::default()),
+            format: StatusListCredentialFormat::Jwt,
         }
     }
 }
@@ -80,11 +79,8 @@ impl TokenStatusList {
         params: Option<Params>,
     ) -> Result<Self, RevocationError> {
         let params = params.unwrap_or_default();
-        if params
-            .format
-            .as_ref()
-            .is_some_and(|f| *f != SupportedFormat::Jwt)
-        {
+
+        if params.format != StatusListCredentialFormat::Jwt {
             return Err(RevocationError::ValidationError(
                 "Token revocation format must be JWT".to_string(),
             ));
@@ -225,11 +221,11 @@ impl RevocationMethod for TokenStatusList {
 
 impl TokenStatusList {
     fn get_formatter_for_issuance(&self) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
-        let format: String = self.params.format.clone().unwrap_or_default().into();
+        let format = self.params.format.to_string();
 
         self.formatter_provider
             .get_formatter(&format)
-            .ok_or_else(|| RevocationError::FormatterNotFound(format.to_string()))
+            .ok_or(RevocationError::FormatterNotFound(format))
     }
 
     fn get_credential_index_on_revocation_list(
@@ -415,7 +411,7 @@ pub async fn format_status_list_credential(
             key.key.key_type.to_owned(),
             auth_fn,
             StatusPurpose::Revocation,
-            StatusListType::Token,
+            StatusListType::TokenStatusList,
         )
         .await?;
 

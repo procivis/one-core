@@ -9,10 +9,12 @@ use shared_types::{CredentialId, DidId, DidValue};
 
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{Did, KeyRole};
-use crate::model::revocation_list::RevocationListPurpose;
+use crate::model::revocation_list::{
+    RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+};
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -28,7 +30,6 @@ use crate::provider::revocation::model::{
     RevocationMethodCapabilities, RevocationUpdate,
 };
 use crate::provider::revocation::RevocationMethod;
-use crate::service::revocation_list::dto::SupportedFormat;
 use crate::util::key_verification::KeyVerification;
 use crate::util::params::convert_params;
 
@@ -45,14 +46,13 @@ const CREDENTIAL_STATUS_TYPE: &str = "BitstringStatusListEntry";
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    #[serde(default)]
-    pub format: Option<SupportedFormat>,
+    pub format: StatusListCredentialFormat,
 }
 
 impl Default for Params {
     fn default() -> Self {
         Self {
-            format: Some(SupportedFormat::default()),
+            format: StatusListCredentialFormat::Jwt,
         }
     }
 }
@@ -88,7 +88,9 @@ impl BitstringStatusList {
             caching_loader,
             formatter_provider,
             resolver: Arc::new(StatusListResolver::new(client)),
-            params: params.unwrap_or_default(),
+            params: params.unwrap_or(Params {
+                format: StatusListCredentialFormat::Jwt,
+            }),
         }
     }
 }
@@ -296,11 +298,9 @@ impl RevocationMethod for BitstringStatusList {
 
 impl BitstringStatusList {
     fn get_formatter_for_issuance(&self) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
-        let format: String = self.params.format.clone().unwrap_or_default().into();
-
         self.formatter_provider
-            .get_formatter(&format)
-            .ok_or_else(|| RevocationError::FormatterNotFound(format.to_string()))
+            .get_formatter(self.params.format.to_string().as_str())
+            .ok_or_else(|| RevocationError::FormatterNotFound(self.params.format.to_string()))
     }
 
     fn get_formatter_for_parsing(
@@ -511,7 +511,7 @@ pub async fn format_status_list_credential(
             key.key.key_type.to_owned(),
             auth_fn,
             purpose_to_bitstring_status_purpose(purpose),
-            StatusListType::Bitstring,
+            StatusListType::BitstringStatusList,
         )
         .await?;
 

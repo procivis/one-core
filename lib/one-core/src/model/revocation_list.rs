@@ -1,4 +1,5 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use strum::EnumString;
 use strum_macros::Display;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -13,6 +14,8 @@ pub struct RevocationList {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub credentials: Vec<u8>,
+    pub format: StatusListCredentialFormat,
+    pub r#type: StatusListType,
     pub purpose: RevocationListPurpose,
 
     // Relations:
@@ -28,4 +31,20 @@ pub struct RevocationListRelations {
 pub enum RevocationListPurpose {
     Revocation,
     Suspension,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Display, Serialize, Deserialize)]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum StatusListCredentialFormat {
+    Jwt,
+    JsonLdClassic,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Display, EnumString, Serialize, Deserialize)]
+#[strum(serialize_all = "UPPERCASE")]
+#[serde(rename_all = "UPPERCASE")]
+pub enum StatusListType {
+    BitstringStatusList,
+    TokenStatusList,
 }

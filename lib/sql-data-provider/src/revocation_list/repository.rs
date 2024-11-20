@@ -1,8 +1,10 @@
 use std::str::FromStr;
 
+use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
+    StatusListType,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
@@ -47,6 +49,9 @@ impl RevocationListProvider {
             credentials: revocation_list.credentials,
             purpose: revocation_list.purpose.into(),
             issuer_did,
+            format: revocation_list.format.into(),
+            r#type: StatusListType::from_str(&revocation_list.r#type)
+                .map_err(|_| DataLayerError::Db(anyhow!("Invalid revocation list type")))?,
         })
     }
 }
@@ -67,6 +72,8 @@ impl RevocationListRepository for RevocationListProvider {
             credentials: Set(request.credentials),
             purpose: Set(request.purpose.into()),
             issuer_did_id: Set(issuer_did.id),
+            format: Set(request.format.into()),
+            r#type: Set(request.r#type.to_string()),
         }
         .insert(&self.db)
         .await

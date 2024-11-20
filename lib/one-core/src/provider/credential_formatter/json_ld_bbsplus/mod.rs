@@ -14,8 +14,9 @@ use url::Url;
 use super::json_ld::context::caching_loader::ContextCache;
 use super::json_ld::jsonld_forbidden_claim_names;
 use super::json_ld::model::{ContextType, LdCredential};
-use super::{CredentialFormatter, StatusListType};
+use super::CredentialFormatter;
 use crate::model::did::Did;
+use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use crate::provider::credential_formatter::model::{

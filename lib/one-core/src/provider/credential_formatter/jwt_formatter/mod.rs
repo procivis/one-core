@@ -15,6 +15,7 @@ use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
 use super::model::{Context, CredentialSubject, Features, Issuer};
 use crate::model::did::Did;
+use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt_formatter::model::{
     TokenStatusListContent, TokenStatusListSubject,
@@ -24,7 +25,7 @@ use crate::provider::credential_formatter::model::{
     ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, Presentation,
     VerificationFn,
 };
-use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::util::SINGLE_ENTRY_SIZE;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
@@ -121,7 +122,7 @@ impl CredentialFormatter for JWTFormatter {
         );
 
         match status_list_type {
-            StatusListType::Bitstring => {
+            StatusListType::BitstringStatusList => {
                 let subject_id = format!("{}#list", revocation_list_url);
                 let credential_subject = CredentialSubject {
                     values: [
@@ -168,7 +169,7 @@ impl CredentialFormatter for JWTFormatter {
 
                 jwt.tokenize(Some(auth_fn)).await
             }
-            StatusListType::Token => {
+            StatusListType::TokenStatusList => {
                 let content = TokenStatusListContent {
                     status_list: TokenStatusListSubject {
                         bits: SINGLE_ENTRY_SIZE,

@@ -8,6 +8,7 @@ use model::{
 use shared_types::{CredentialSchemaId, DidValue};
 
 use crate::model::did::Did;
+use crate::model::revocation_list::StatusListType;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
@@ -138,10 +139,4 @@ pub trait CredentialFormatter: Send + Sync {
     ) -> Result<String, FormatterError> {
         Ok(format!("{core_base_url}/ssi/schema/v1/{id}"))
     }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum StatusListType {
-    Bitstring,
-    Token,
 }
