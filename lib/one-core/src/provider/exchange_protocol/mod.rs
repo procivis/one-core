@@ -198,9 +198,10 @@ pub type StorageAccess = dyn StorageProxy;
 
 #[derive(Debug)]
 pub struct BasicSchemaData {
-    pub schema_id: String,
-    pub schema_type: String,
+    pub id: String,
+    pub r#type: String,
     pub offer_id: String,
+    pub vct_endpoint: Option<String>,
 }
 
 pub struct BuildCredentialSchemaResponse {
@@ -218,30 +219,29 @@ pub trait HandleInvitationOperations: Send + Sync {
     async fn get_credential_schema_name(
         &self,
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
-        credential: &OpenID4VCICredentialOfferCredentialDTO,
+        credential_config: &OpenID4VCICredentialOfferCredentialDTO,
         schema_id: &str,
     ) -> Result<String, ExchangeProtocolError>;
 
     /// Utilizes custom logic to find out credential schema
     /// type and id from credential offer
-    async fn find_schema_data(
+    fn find_schema_data(
         &self,
-        issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
-        credential: &OpenID4VCICredentialOfferCredentialDTO,
+        credential_issuer_endpoint: &Url,
+        credential_config: &openid4vc::model::OpenID4VCICredentialConfigurationData,
         schema_id: &str,
         offer_id: &str,
-    ) -> BasicSchemaData;
+    ) -> Result<BasicSchemaData, ExchangeProtocolError>;
 
     /// Allows use of custom logic to create new credential schema for
     /// incoming credential
     async fn create_new_schema(
         &self,
-        schema_data: &BasicSchemaData,
+        schema_data: BasicSchemaData,
         claim_keys: &IndexMap<String, OpenID4VCICredentialValueDetails>,
         credential_id: &CredentialId,
-        credential: &OpenID4VCICredentialOfferCredentialDTO,
+        credential_config: &openid4vc::model::OpenID4VCICredentialConfigurationData,
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
-        credential_schema_name: &str,
         organisation: Organisation,
     ) -> Result<BuildCredentialSchemaResponse, ExchangeProtocolError>;
 }

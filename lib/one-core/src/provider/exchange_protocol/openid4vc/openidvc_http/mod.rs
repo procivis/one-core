@@ -57,7 +57,6 @@ use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
 use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::interaction_from_handle_invitation;
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCICredentialOfferClaimValue;
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::mappers::credential_offer_from_metadata;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -545,7 +544,7 @@ impl OpenID4VCHTTP {
 
         let body = OpenID4VCICredential {
             format: credential_format.to_owned(),
-            vct: Some(schema.name.clone()),
+            vct: Some(schema.schema_id.to_owned()),
             doctype,
             proof: OpenID4VCIProof {
                 proof_type: "jwt".to_string(),
@@ -866,10 +865,10 @@ async fn handle_credential_invitation(
         })?;
 
     let (oicd_discovery, issuer_metadata) =
-        get_discovery_and_issuer_metadata(client, credential_issuer_endpoint.to_owned()).await?;
+        get_discovery_and_issuer_metadata(client.as_ref(), &credential_issuer_endpoint).await?;
 
     // We only support one credential at the time now
-    let incoming_schema_id = credential_offer
+    let configuration_id = credential_offer
         .credential_configuration_ids
         .first()
         .ok_or_else(|| {
@@ -878,27 +877,19 @@ async fn handle_credential_invitation(
 
     let credential_config = issuer_metadata
         .credential_configurations_supported
-        .get(incoming_schema_id)
+        .get(configuration_id)
         .ok_or_else(|| {
             ExchangeProtocolError::Failed(format!(
-                "Credential configuration is missing for {incoming_schema_id}"
+                "Credential configuration is missing for {configuration_id}"
             ))
         })?;
 
-    let credential = credential_offer_from_metadata(credential_config);
-
-    let credential_schema_name = handle_invitation_operations
-        .get_credential_schema_name(&issuer_metadata, &credential, incoming_schema_id)
-        .await?;
-
-    let schema_data = handle_invitation_operations
-        .find_schema_data(
-            &issuer_metadata,
-            &credential,
-            incoming_schema_id,
-            incoming_schema_id,
-        )
-        .await;
+    let schema_data = handle_invitation_operations.find_schema_data(
+        &credential_issuer_endpoint,
+        credential_config,
+        configuration_id,
+        configuration_id,
+    )?;
 
     let holder_data = HolderInteractionData {
         issuer_url: issuer_metadata.credential_issuer.clone(),
@@ -931,16 +922,12 @@ async fn handle_credential_invitation(
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let (claims, credential_schema) = match storage_access
-        .get_schema(
-            &schema_data.schema_id,
-            &schema_data.schema_type,
-            organisation.id,
-        )
+        .get_schema(&schema_data.id, &schema_data.r#type, organisation.id)
         .await
         .map_err(ExchangeProtocolError::StorageAccessError)?
     {
         Some(credential_schema) => {
-            if credential_schema.schema_type.to_string() != schema_data.schema_type {
+            if credential_schema.schema_type.to_string() != schema_data.r#type {
                 return Err(ExchangeProtocolError::IncorrectCredentialSchemaType);
             }
 
@@ -955,12 +942,11 @@ async fn handle_credential_invitation(
         None => {
             let response = handle_invitation_operations
                 .create_new_schema(
-                    &schema_data,
+                    schema_data,
                     &claim_keys,
                     &credential_id,
-                    &credential,
+                    credential_config,
                     &issuer_metadata,
-                    &credential_schema_name,
                     organisation.clone(),
                 )
                 .await?;
@@ -1000,14 +986,6 @@ async fn resolve_credential_offer(
         let credential_offer_url = Url::parse(credential_offer_reference).map_err(|error| {
             ExchangeProtocolError::Failed(format!("Failed decoding credential offer url {error}"))
         })?;
-
-        // TODO: forbid plain-text http requests in production
-        // let url_scheme = credential_offer_url.scheme();
-        // if url_scheme != "https" {
-        //     return Err(ExchangeProtocolError::Failed(format!(
-        //         "Invalid {CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY} url scheme: {url_scheme}"
-        //     )));
-        // }
 
         Ok(client
             .get(credential_offer_url.as_str())
@@ -1085,8 +1063,8 @@ async fn handle_proof_invitation(
 }
 
 async fn get_discovery_and_issuer_metadata(
-    client: &Arc<dyn HttpClient>,
-    credential_issuer_endpoint: Url,
+    client: &dyn HttpClient,
+    credential_issuer_endpoint: &Url,
 ) -> Result<
     (
         OpenID4VCIDiscoveryResponseDTO,
@@ -1095,7 +1073,7 @@ async fn get_discovery_and_issuer_metadata(
     ExchangeProtocolError,
 > {
     async fn fetch<T: DeserializeOwned>(
-        client: &Arc<dyn HttpClient>,
+        client: &dyn HttpClient,
         endpoint: String,
     ) -> Result<T, ExchangeProtocolError> {
         client
@@ -1247,7 +1225,7 @@ fn collect_mandatory_keys(
                 .value_type
                 .as_ref()
                 .cloned()
-                .unwrap_or("string".to_owned()),
+                .unwrap_or("STRING".to_owned()),
         ));
     }
 

@@ -1,13 +1,19 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use indexmap::IndexMap;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
+use url::Url;
 use uuid::Uuid;
 
 use super::mapper::{fetch_procivis_schema, from_create_request, parse_procivis_schema_claim};
+use super::model::OpenID4VCICredentialConfigurationData;
 use crate::config::core_config::CoreConfig;
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
+use crate::model::credential_schema::{
+    BackgroundProperties, CredentialSchema, CredentialSchemaType, LayoutProperties, LayoutType,
+    LogoProperties,
+};
 use crate::model::organisation::Organisation;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
@@ -23,6 +29,7 @@ use crate::provider::exchange_protocol::{
 };
 use crate::provider::http_client::HttpClient;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::util::oidc::map_from_oidc_format_to_core;
 
 pub struct HandleInvitationOperationsImpl {
@@ -101,40 +108,72 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
         Ok(credential_schema_name)
     }
 
-    async fn find_schema_data(
+    fn find_schema_data(
         &self,
-        _issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
-        credential: &OpenID4VCICredentialOfferCredentialDTO,
+        credential_issuer_endpoint: &Url,
+        credential_config: &OpenID4VCICredentialConfigurationData,
         schema_id: &str,
         offer_id: &str,
-    ) -> BasicSchemaData {
-        if credential.format == "mso_mdoc" {
-            return BasicSchemaData {
-                schema_id: credential
+    ) -> Result<BasicSchemaData, ExchangeProtocolError> {
+        let data = match credential_config.format.as_str() {
+            "mso_mdoc" => BasicSchemaData {
+                id: credential_config
                     .doctype
                     .as_deref()
                     .unwrap_or(schema_id)
-                    .to_string(),
-                schema_type: CredentialSchemaType::Mdoc.to_string(),
+                    .to_owned(),
+                r#type: CredentialSchemaType::Mdoc.to_string(),
+                vct_endpoint: None,
                 offer_id: offer_id.to_owned(),
-            };
-        }
+            },
+            // our `vct` naming is a bit different than ".well-known" endpoint
+            "vc+sd-jwt" | "dc+sd-jwt"
+                if credential_config.wallet_storage_type.is_none()
+                    && credential_config.vct.is_some() =>
+            {
+                let Some(vct) = credential_config.vct.as_ref() else {
+                    return Err(ExchangeProtocolError::Failed(
+                        "SD-JWT VC metadata is missing `vct`".to_string(),
+                    ));
+                };
 
-        BasicSchemaData {
-            schema_id: schema_id.to_owned(),
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024.to_string(),
-            offer_id: offer_id.to_owned(),
-        }
+                let maybe_url = Url::parse(vct).ok();
+                let schema_type = maybe_url
+                    .as_ref()
+                    .and_then(|url| {
+                        let segments = url.path_segments()?;
+                        segments.filter(|s| s != &"" && s != &"/").last()
+                    })
+                    .unwrap_or(vct);
+                let issuer = credential_issuer_endpoint.as_str().trim_end_matches('/');
+                let endpoint = format!("{issuer}/.well-known/vct/{schema_type}");
+
+                BasicSchemaData {
+                    id: vct.to_owned(),
+                    r#type: schema_type.to_string(),
+                    vct_endpoint: Some(endpoint),
+                    offer_id: offer_id.to_owned(),
+                }
+            }
+
+            _ => BasicSchemaData {
+                id: schema_id.to_owned(),
+                r#type: CredentialSchemaType::ProcivisOneSchema2024.to_string(),
+                vct_endpoint: credential_config.vct.clone(),
+                offer_id: offer_id.to_owned(),
+            },
+        };
+
+        Ok(data)
     }
 
     async fn create_new_schema(
         &self,
-        schema_data: &BasicSchemaData,
+        schema: BasicSchemaData,
         claim_keys: &IndexMap<String, OpenID4VCICredentialValueDetails>,
         credential_id: &CredentialId,
-        credential: &OpenID4VCICredentialOfferCredentialDTO,
+        credential_config: &OpenID4VCICredentialConfigurationData,
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
-        credential_schema_name: &str,
         organisation: Organisation,
     ) -> Result<BuildCredentialSchemaResponse, ExchangeProtocolError> {
         // The extraction of the schema_url is required for the imported_source_url that it is
@@ -145,12 +184,16 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
             .credential_issuer
             .replace("/ssi/oidc-issuer/v1/", "/ssi/schema/v1/");
 
-        let result = match schema_data.schema_type.as_str() {
-            "ProcivisOneSchema2024" => {
-                let procivis_schema =
-                    fetch_procivis_schema(&schema_data.schema_id, &*self.http_client)
-                        .await
-                        .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
+        let credential_display_name = credential_config.display.as_ref().and_then(|display_info| {
+            let display = display_info.first()?;
+            Some(&display.name)
+        });
+
+        let result = match schema.r#type.as_str() {
+            "ProcivisOneSchema2024" if credential_config.vct.is_none() => {
+                let procivis_schema = fetch_procivis_schema(&schema.id, &*self.http_client)
+                    .await
+                    .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
                 let schema = from_create_request(
                     CreateCredentialSchemaRequestDTO {
@@ -166,7 +209,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         wallet_storage_type: procivis_schema.wallet_storage_type,
                         layout_type: procivis_schema.layout_type.unwrap_or(LayoutType::Card),
                         layout_properties: procivis_schema.layout_properties,
-                        schema_id: Some(schema_data.schema_id.clone()),
+                        schema_id: Some(schema.id.clone()),
                     },
                     self.organisation.clone(),
                     "",
@@ -188,21 +231,21 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
             "mdoc" => {
                 let result = fetch_procivis_schema(&schema_url, &*self.http_client).await;
 
-                let (layout_type, layout_properties) = match result {
+                let (layout_type, layout_properties, schema_name) = match result {
                     Ok(schema) => (
                         schema.layout_type.unwrap_or(LayoutType::Card),
                         schema.layout_properties,
+                        Some(schema.name),
                     ),
-                    Err(_) => (LayoutType::Card, None),
+                    Err(_) => (LayoutType::Card, None, None),
                 };
-                // END OF WORKAROUND
 
-                let credential_format = map_from_oidc_format_to_core(&credential.format)
+                let credential_format = map_from_oidc_format_to_core(&credential_config.format)
                     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
                 let metadata_credential = issuer_metadata
                     .credential_configurations_supported
-                    .get(&schema_data.offer_id);
+                    .get(&schema.offer_id);
 
                 let element_order = metadata_credential
                     .as_ref()
@@ -212,9 +255,18 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     metadata_credential.and_then(|credential| credential.claims.clone());
                 let claims_specified = claim_schemas.is_some();
 
+                let name = schema_name
+                    .as_ref()
+                    .or(credential_display_name)
+                    .or(credential_config.doctype.as_ref())
+                    .cloned()
+                    .ok_or_else(|| {
+                        ExchangeProtocolError::Failed("MDOC metadata missing doctype".to_string())
+                    })?;
+
                 let credential_schema = from_create_request(
                     CreateCredentialSchemaRequestDTO {
-                        name: credential_schema_name.to_owned(),
+                        name,
                         format: credential_format,
                         revocation_method: "NONE".to_string(),
                         organisation_id: self.organisation.id,
@@ -223,10 +275,10 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         } else {
                             vec![]
                         },
-                        wallet_storage_type: credential.wallet_storage_type.to_owned(),
+                        wallet_storage_type: credential_config.wallet_storage_type.to_owned(),
                         layout_type,
                         layout_properties,
-                        schema_id: Some(schema_data.schema_id.clone()),
+                        schema_id: Some(schema.id.clone()),
                     },
                     self.organisation.clone(),
                     "",
@@ -259,12 +311,37 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     }
                 }
             }
+            // external schema
             _ => {
-                let credential_format = map_from_oidc_format_to_core(&credential.format)
-                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+                let credential_format = match credential_config.format.as_str() {
+                    "vc+sd-jwt" if credential_config.vct.is_some() => "SD_JWT_VC".to_string(),
+                    other => map_from_oidc_format_to_core(other)
+                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
+                };
 
                 let (claim_schemas, claims): (Vec<_>, Vec<_>) =
                     create_claims_from_credential_definition(*credential_id, claim_keys)?;
+
+                let (schema_name, layout_properties) =
+                    if let Some(vct_endpoint) = schema.vct_endpoint {
+                        handle_type_metadata(self.http_client.as_ref(), &vct_endpoint).await?
+                    } else {
+                        (None, None)
+                    };
+
+                let name = match schema_name.or_else(|| credential_display_name.cloned()) {
+                    Some(name) => name,
+                    None => credential_config
+                        .credential_definition
+                        .as_ref()
+                        .and_then(|c| c.r#type.first())
+                        .ok_or_else(|| {
+                            ExchangeProtocolError::Failed(
+                                "Credential definition has no type specified".to_string(),
+                            )
+                        })?
+                        .to_owned(),
+                };
 
                 let now = OffsetDateTime::now_utc();
                 let id = Uuid::new_v4();
@@ -273,16 +350,16 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     deleted_at: None,
                     created_date: now,
                     last_modified: now,
-                    name: credential_schema_name.to_owned(),
+                    name,
                     format: credential_format,
                     imported_source_url: schema_url,
-                    wallet_storage_type: credential.wallet_storage_type.to_owned(),
+                    wallet_storage_type: credential_config.wallet_storage_type.to_owned(),
                     revocation_method: "NONE".to_string(),
                     claim_schemas: Some(claim_schemas),
                     layout_type: LayoutType::Card,
-                    layout_properties: None,
-                    schema_type: CredentialSchemaType::Other(schema_data.schema_type.clone()),
-                    schema_id: schema_data.schema_id.clone(),
+                    layout_properties,
+                    schema_type: CredentialSchemaType::Other(schema.r#type),
+                    schema_id: schema.id.clone(),
                     organisation: Some(organisation),
                     allow_suspension: false,
                 };
@@ -306,4 +383,57 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
         Ok(result)
     }
+}
+
+async fn handle_type_metadata(
+    client: &dyn HttpClient,
+    vct_endpoint: &str,
+) -> Result<(Option<String>, Option<LayoutProperties>), ExchangeProtocolError> {
+    let type_metadata: SdJwtVcTypeMetadataResponseDTO = client
+        .get(vct_endpoint)
+        .send()
+        .await
+        .context("send error")
+        .map_err(ExchangeProtocolError::Transport)?
+        .error_for_status()
+        .context("status error")
+        .map_err(ExchangeProtocolError::Transport)?
+        .json()
+        .context("parsing error")
+        .map_err(ExchangeProtocolError::Transport)?;
+
+    let layout_properties = type_metadata
+        .layout_properties
+        .map(LayoutProperties::from)
+        .or_else(|| {
+            let display = type_metadata.display.into_iter().next()?;
+
+            let rendering = display.rendering?.simple?;
+
+            let background = rendering
+                .background_color
+                .map(|color| BackgroundProperties {
+                    color: Some(color),
+                    image: None,
+                });
+
+            let logo = rendering.logo.map(|logo| LogoProperties {
+                font_color: None,
+                background_color: None,
+                image: Some(logo.uri.to_string()),
+            });
+
+            Some(LayoutProperties {
+                background,
+                logo,
+                primary_attribute: None,
+                secondary_attribute: None,
+                picture_attribute: None,
+                code: None,
+            })
+        });
+
+    let schema_name = type_metadata.name;
+
+    Ok((schema_name, layout_properties))
 }

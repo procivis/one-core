@@ -80,7 +80,7 @@ fn credential_configurations_supported(
     let claims = prepare_nested_representation(credential_schema, config)?;
 
     Ok(IndexMap::from([(
-        schema_id,
+        schema_id.clone(),
         match oidc_format {
             "ldp_vc" => {
                 jsonld_configuration(wallet_storage_type, oidc_format, claims, credential_schema)
@@ -88,9 +88,13 @@ fn credential_configurations_supported(
             "jwt_vc_json" => {
                 jwt_configuration(wallet_storage_type, oidc_format, claims, credential_schema)
             }
-            "vc+sd-jwt" => {
-                sdjwt_configuration(wallet_storage_type, oidc_format, claims, credential_schema)
-            }
+            "vc+sd-jwt" => sdjwt_configuration(
+                wallet_storage_type,
+                oidc_format,
+                claims,
+                credential_schema,
+                schema_id,
+            ),
             "mso_mdoc" => credentials_supported_mdoc(credential_schema.clone(), config)
                 .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
             _ => jwt_configuration(wallet_storage_type, oidc_format, claims, credential_schema),
@@ -145,6 +149,7 @@ fn sdjwt_configuration(
     oidc_format: &str,
     claims: OpenID4VCICredentialSubjectItem,
     credential_schema: &CredentialSchema,
+    vct: String,
 ) -> OpenID4VCICredentialConfigurationData {
     let schema_name = credential_schema.name.to_owned();
     OpenID4VCICredentialConfigurationData {
@@ -158,7 +163,7 @@ fn sdjwt_configuration(
         display: Some(vec![
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema_name },
         ]),
-        vct: None, // TODO! Fill for SD-JWT
+        vct: Some(vct),
         ..Default::default()
     }
 }

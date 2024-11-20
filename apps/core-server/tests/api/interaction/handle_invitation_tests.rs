@@ -1915,3 +1915,182 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_n
     // and just create the claims on credential accept
     assert!(!claims.is_empty());
 }
+
+#[tokio::test]
+async fn test_handle_invitation_external_sd_jwt_vc() {
+    let mock_server = MockServer::start().await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let credential_schema_id = Uuid::new_v4();
+    let credential_issuer = format!(
+        "{}/ssi/oidc-issuer/v1/{credential_schema_id}",
+        mock_server.uri()
+    );
+    let credential_offer = json!({
+        "credential_issuer": credential_issuer,
+        "credential_configuration_ids": [
+            "https://betelgeuse.example.com/education_credential"
+        ],
+        "grants": {
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+                "pre-authorized_code": "78db97c3-dbda-4bb2-a17c-b971ae7d6740",
+                "tx_code":{
+                    "input_mode": "numeric",
+                    "length": 5,
+                    "description": "code"
+                }
+            }
+        }
+    });
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-credential-issuer"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{credential_issuer}/credential"),
+                "credential_issuer": credential_issuer,
+                "credential_configurations_supported": {
+                    "https://betelgeuse.example.com/education_credential": {
+                        "format": "vc+sd-jwt",
+                        "display": [
+                            {
+                              "name": "TestNestedHell",
+                              "logo": {
+                                    "uri": "https://university.example.edu/public/logo.png",
+                                    "alt_text": "a square logo of a university"
+                              },
+                              "locale": "en-US",
+                              "background_color": "#12107c",
+                              "text_color": "#FFFFFF"
+                            }
+                        ],
+                        "vct": "https://betelgeuse.example.com/education_credential",
+                        "claims": {
+                            "name": {
+                              "display": [
+                                {
+                                  "name": "The name of the student",
+                                  "locale": "en-US"
+                                }
+                              ]
+                            }
+                        }
+                    }
+              }
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let token_endpoint = format!("{credential_issuer}/token");
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-configuration"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                "grant_types_supported": [
+                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                ],
+                "id_token_signing_alg_values_supported": [],
+                "issuer": credential_issuer,
+                "jwks_uri": format!("{credential_issuer}/jwks"),
+                "response_types_supported": [
+                    "token"
+                ],
+                "subject_types_supported": [
+                    "public"
+                ],
+                "token_endpoint": token_endpoint
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/vct/education_credential"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "vct": "https://betelgeuse.example.com/education_credential",
+            "name": "Betelgeuse Education Credential - Preliminary Version",
+            "description": "This is our development version of the education credential. Don't panic.",
+            "display": [
+              {
+                "lang": "en-US",
+                "name": "Betelgeuse Education Credential",
+                "description": "An education credential for all carbon-based life forms on Betelgeusians",
+                "rendering": {
+                  "simple": {
+                    "logo": {
+                      "uri": "https://betelgeuse.example.com/public/education-logo.png",
+                      "uri#integrity": "sha256-LmXfh-9cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1V",
+                      "alt_text": "Betelgeuse Ministry of Education logo"
+                    },
+                    "background_color": "#12107c",
+                    "text_color": "#FFFFFF"
+                  }
+                }
+              }
+            ],
+            "claims": [
+              {
+                "path": ["name"],
+                "display": [
+                    {
+                        "lang": "en-US",
+                        "label": "Name",
+                        "description": "The name of the student"
+                    }
+                ]
+               }
+            ]
+          })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organisation.id, credential_offer_url.as_ref())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    assert!(resp.get("interactionId").is_some());
+
+    let resp = context
+        .api
+        .credentials
+        .get(&resp["credentialIds"][0].as_str().unwrap())
+        .await
+        .json_value()
+        .await;
+
+    assert_eq!("SD_JWT_VC", resp["schema"]["format"]);
+    assert_eq!(
+        "#12107c",
+        resp["schema"]["layoutProperties"]["background"]["color"]
+    );
+    assert_eq!(
+        "https://betelgeuse.example.com/public/education-logo.png",
+        resp["schema"]["layoutProperties"]["logo"]["image"]
+    );
+    assert_eq!("name", resp["claims"][0]["path"]);
+}
