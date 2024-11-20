@@ -503,6 +503,7 @@ pub fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) ->
                                 Some(core_base_url.clone()),
                                 formatter_provider.clone(),
                                 did_method_provider.clone(),
+                                data_repository.get_validity_credential_repository(),
                                 key_provider.clone(),
                                 client.clone(),
                                 params,

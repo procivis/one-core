@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::ops::Sub;
 use std::sync::Arc;
 
-use dto::IssuerResponseDTO;
+use holder_fetch::holder_get_lvvc;
 use mapper::create_id_claim;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
@@ -15,11 +15,9 @@ use uuid::Uuid;
 
 use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
-use crate::model::credential::{Credential, CredentialRole};
-use crate::model::did::KeyRole;
+use crate::model::credential::Credential;
+use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::credential_formatter::json_ld::model::ContextType;
-use crate::provider::credential_formatter::jwt::model::JWTPayload;
-use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchemaData, CredentialStatus, Issuer,
 };
@@ -36,10 +34,12 @@ use crate::provider::revocation::model::{
     RevocationUpdate, VerifierCredentialData,
 };
 use crate::provider::revocation::RevocationMethod;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::util::params::convert_params;
 use crate::util::vcdm_jsonld_contexts::{vcdm_type, vcdm_v2_base_context};
 
 pub mod dto;
+pub(crate) mod holder_fetch;
 pub mod mapper;
 pub mod util;
 
@@ -66,6 +66,7 @@ pub struct LvvcProvider {
     core_base_url: Option<String>,
     credential_formatter: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     key_provider: Arc<dyn KeyProvider>,
     client: Arc<dyn HttpClient>,
     params: Params,
@@ -77,6 +78,7 @@ impl LvvcProvider {
         core_base_url: Option<String>,
         credential_formatter: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         key_provider: Arc<dyn KeyProvider>,
         client: Arc<dyn HttpClient>,
         params: Params,
@@ -85,6 +87,7 @@ impl LvvcProvider {
             core_base_url,
             credential_formatter,
             did_method_provider,
+            validity_credential_repository,
             key_provider,
             client,
             params,
@@ -140,33 +143,58 @@ impl LvvcProvider {
         })
     }
 
-    async fn check_revocation_status_as_holder_or_issuer(
+    async fn check_revocation_status_as_issuer(
         &self,
         credential: &Credential,
-        credential_status: &CredentialStatus,
     ) -> Result<CredentialRevocationState, RevocationError> {
-        let bearer_token = prepare_bearer_token(credential, self.key_provider.clone()).await?;
+        let latest_lvvc = self
+            .validity_credential_repository
+            .get_latest_by_credential_id(credential.id, ValidityCredentialType::Lvvc)
+            .await
+            .map_err(|err| RevocationError::ValidationError(err.to_string()))?
+            .ok_or(RevocationError::CredentialNotFound(credential.id))?;
 
-        let lvvc_url = credential_status
-            .id
-            .as_ref()
-            .ok_or(RevocationError::ValidationError(
-                "LVVC status id is missing".to_string(),
-            ))?;
-
-        let response: IssuerResponseDTO = self
-            .client
-            .get(lvvc_url.as_str())
-            .bearer_auth(&bearer_token)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()?;
+        let credential_content = std::str::from_utf8(&latest_lvvc.credential)
+            .map_err(|e| RevocationError::MappingError(e.to_string()))?;
 
         let formatter = self.formatter(credential)?;
 
         let lvvc = formatter
-            .extract_credentials_unverified(&response.credential)
+            .extract_credentials_unverified(credential_content)
+            .await?;
+
+        let status = status_from_lvvc_claims(&lvvc.claims.values)?;
+        Ok(match status {
+            LvvcStatus::Accepted => CredentialRevocationState::Valid,
+            LvvcStatus::Revoked => CredentialRevocationState::Revoked,
+            LvvcStatus::Suspended { suspend_end_date } => {
+                CredentialRevocationState::Suspended { suspend_end_date }
+            }
+        })
+    }
+
+    async fn check_revocation_status_as_holder(
+        &self,
+        credential: &Credential,
+        credential_status: &CredentialStatus,
+    ) -> Result<CredentialRevocationState, RevocationError> {
+        let lvvc = holder_get_lvvc(
+            credential,
+            credential_status,
+            &*self.validity_credential_repository,
+            &*self.key_provider,
+            &*self.client,
+            &self.params,
+        )
+        .await?;
+
+        let lvvc_credential_content = std::str::from_utf8(&lvvc.credential)
+            .map_err(|e| RevocationError::MappingError(e.to_string()))?;
+
+        let formatter = self.formatter(credential)?;
+
+        let lvvc = formatter
+            .extract_credentials_unverified(lvvc_credential_content)
             .await?;
 
         let status = status_from_lvvc_claims(&lvvc.claims.values)?;
@@ -314,8 +342,11 @@ impl RevocationMethod for LvvcProvider {
         )?;
 
         match additional_credential_data {
-            CredentialDataByRole::Holder(credential) | CredentialDataByRole::Issuer(credential) => {
-                self.check_revocation_status_as_holder_or_issuer(&credential, credential_status)
+            CredentialDataByRole::Issuer(credential) => {
+                self.check_revocation_status_as_issuer(&credential).await
+            }
+            CredentialDataByRole::Holder(credential) => {
+                self.check_revocation_status_as_holder(&credential, credential_status)
                     .await
             }
             CredentialDataByRole::Verifier(data) => {
@@ -454,62 +485,4 @@ pub async fn create_lvvc_with_status(
     };
 
     Ok(lvvc_credential)
-}
-
-pub async fn prepare_bearer_token(
-    credential: &Credential,
-    key_provider: Arc<dyn KeyProvider>,
-) -> Result<String, RevocationError> {
-    let did = match credential.role {
-        CredentialRole::Holder => {
-            credential
-                .holder_did
-                .as_ref()
-                .ok_or(RevocationError::MappingError(
-                    "holder_did is None".to_string(),
-                ))
-        }
-        CredentialRole::Issuer => {
-            credential
-                .issuer_did
-                .as_ref()
-                .ok_or(RevocationError::MappingError(
-                    "issuer_did is None".to_string(),
-                ))
-        }
-        CredentialRole::Verifier => Err(RevocationError::MappingError(
-            "cannot prepare bearer_token for verifier".to_string(),
-        )),
-    }?;
-
-    let keys = did
-        .keys
-        .as_ref()
-        .ok_or(RevocationError::MappingError("keys is None".to_string()))?;
-
-    let authentication_key = keys
-        .iter()
-        .find(|key| key.role == KeyRole::Authentication)
-        .ok_or(RevocationError::MappingError(
-            "No authentication keys found for DID".to_string(),
-        ))?;
-
-    let payload = JWTPayload {
-        custom: BearerTokenPayload {
-            timestamp: OffsetDateTime::now_utc().unix_timestamp(),
-        },
-        ..Default::default()
-    };
-
-    let signer = key_provider.get_signature_provider(&authentication_key.key.to_owned(), None)?;
-    let bearer_token = Jwt::new("JWT".to_string(), "HS256".to_string(), None, None, payload)
-        .tokenize(Some(signer))
-        .await?;
-
-    Ok(bearer_token)
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-struct BearerTokenPayload {
-    pub timestamp: i64,
 }

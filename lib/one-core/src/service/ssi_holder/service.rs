@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use anyhow::Context;
 use futures::TryFutureExt;
 use shared_types::{CredentialId, DidId, KeyId, OrganisationId, ProofId};
 use time::OffsetDateTime;
@@ -43,8 +42,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     InvitationResponseDTO, PresentedCredential, UpdateResponse,
 };
 use crate::provider::key_storage::model::KeySecurity;
-use crate::provider::revocation::lvvc::dto::IssuerResponseDTO;
-use crate::provider::revocation::lvvc::prepare_bearer_token;
+use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -432,31 +430,27 @@ impl SSIHolderService {
                     ))?
                     .to_owned();
 
-                let bearer_token =
-                    prepare_bearer_token(&credential, self.key_provider.clone()).await?;
+                let revocation_params = self
+                    .config
+                    .revocation
+                    .get(&credential_schema.revocation_method)?;
 
-                let lvvc_url = credential_status.id.ok_or(ServiceError::MappingError(
-                    "credential_status id is None".to_string(),
-                ))?;
+                let lvvc = holder_get_lvvc(
+                    &credential,
+                    &credential_status,
+                    &*self.validity_credential_repository,
+                    &*self.key_provider,
+                    &*self.client,
+                    &revocation_params,
+                )
+                .await?;
 
-                let response: IssuerResponseDTO = self
-                    .client
-                    .get(lvvc_url.as_str())
-                    .bearer_auth(&bearer_token)
-                    .send()
-                    .await
-                    .context("send error")
-                    .map_err(ExchangeProtocolError::Transport)?
-                    .error_for_status()
-                    .context("status error")
-                    .map_err(ExchangeProtocolError::Transport)?
-                    .json()
-                    .context("parsing error")
-                    .map_err(ExchangeProtocolError::Transport)?;
+                let token = std::str::from_utf8(&lvvc.credential)
+                    .map_err(|e| ServiceError::MappingError(e.to_string()))?
+                    .to_string();
 
-                let lvvc_content = response.credential;
                 let lvvc_presentation = CredentialPresentation {
-                    token: lvvc_content.to_owned(),
+                    token,
                     disclosed_keys: vec!["id".to_string(), "status".to_string()],
                 };
 

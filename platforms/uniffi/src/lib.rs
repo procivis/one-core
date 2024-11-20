@@ -543,6 +543,7 @@ fn initialize_core(
                                         None,
                                         formatter_provider.clone(),
                                         did_method_provider.clone(),
+                                        data_repository.get_validity_credential_repository(),
                                         key_provider.clone(),
                                         client.clone(),
                                         params,

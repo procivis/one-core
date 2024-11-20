@@ -64,4 +64,24 @@ impl ValidityCredentialRepository for ValidityCredentialProvider {
             .map(ValidityCredential::try_from)
             .collect::<Result<_, _>>()
     }
+
+    async fn remove_all_by_credential_id(
+        &self,
+        credential_id: CredentialId,
+        credential_type: ValidityCredentialType,
+    ) -> Result<(), DataLayerError> {
+        let credential_type = validity_credential::ValidityCredentialType::from(credential_type);
+
+        validity_credential::Entity::delete_many()
+            .filter(
+                validity_credential::Column::CredentialId
+                    .eq(credential_id)
+                    .and(validity_credential::Column::Type.eq(credential_type)),
+            )
+            .exec(&self.db_conn)
+            .await
+            .map_err(|err| DataLayerError::Db(err.into()))?;
+
+        Ok(())
+    }
 }

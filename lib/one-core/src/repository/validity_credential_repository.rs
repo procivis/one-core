@@ -19,4 +19,10 @@ pub trait ValidityCredentialRepository: Send + Sync + 'static {
         credential_id: CredentialId,
         credential_type: ValidityCredentialType,
     ) -> Result<Vec<ValidityCredential>, DataLayerError>;
+
+    async fn remove_all_by_credential_id(
+        &self,
+        credential_id: CredentialId,
+        credential_type: ValidityCredentialType,
+    ) -> Result<(), DataLayerError>;
 }

@@ -1,17 +1,20 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use mockall::predicate::eq;
 use serde_json::json;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use wiremock::matchers::{header_regex, path};
+use wiremock::http::Method;
+use wiremock::matchers::{header_regex, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::model::credential::{Credential, CredentialRole};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::key::Key;
+use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, MockSignatureProvider,
 };
@@ -23,6 +26,7 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::lvvc::{LvvcProvider, Params};
 use crate::provider::revocation::model::{CredentialDataByRole, CredentialRevocationState};
 use crate::provider::revocation::RevocationMethod;
+use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 
 fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
     let now = OffsetDateTime::now_utc();
@@ -66,7 +70,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
         state: None,
         claims: None,
         issuer_did: Some(did.to_owned()),
-        holder_did: None,
+        holder_did: Some(did.to_owned()),
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
@@ -113,11 +117,13 @@ fn extracted_credential(status: &str) -> DetailCredential {
 fn create_provider(
     formatter_provider: MockCredentialFormatterProvider,
     key_provider: MockKeyProvider,
+    validity_credential_repository: MockValidityCredentialRepository,
 ) -> LvvcProvider {
     LvvcProvider::new(
         None,
         Arc::new(formatter_provider),
         Arc::new(MockDidMethodProvider::new()),
+        Arc::new(validity_credential_repository),
         Arc::new(key_provider),
         Arc::new(ReqwestClient::default()),
         Params {
@@ -127,11 +133,66 @@ fn create_provider(
         },
     )
 }
+
 #[tokio::test]
 async fn test_check_revocation_status_as_issuer() {
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider.expect_get_formatter().returning(|_| {
+        let mut formatter = MockCredentialFormatter::new();
+        formatter
+            .expect_extract_credentials_unverified()
+            .returning(|_| Ok(extracted_credential("ACCEPTED")));
+
+        Some(Arc::new(formatter))
+    });
+
+    let (did, credential) = generic_did_credential(CredentialRole::Issuer);
+
+    let mut validity_credential_repository = MockValidityCredentialRepository::new();
+    let credential_id = credential.id;
+    validity_credential_repository
+        .expect_get_latest_by_credential_id()
+        .once()
+        .returning(move |_, _| {
+            Ok(Some(ValidityCredential {
+                id: Uuid::new_v4(),
+                created_date: OffsetDateTime::now_utc(),
+                credential: "this.is.jwt".to_string().into_bytes(),
+                linked_credential_id: credential_id,
+                r#type: ValidityCredentialType::Lvvc,
+            }))
+        });
+
+    let status = CredentialStatus {
+        id: None,
+        r#type: "".to_string(),
+        status_purpose: None,
+        additional_fields: Default::default(),
+    };
+
+    let provider = create_provider(
+        formatter_provider,
+        MockKeyProvider::new(),
+        validity_credential_repository,
+    );
+
+    let result = provider
+        .check_credential_revocation_status(
+            &status,
+            &did.did,
+            Some(CredentialDataByRole::Issuer(credential)),
+        )
+        .await
+        .unwrap();
+    assert_eq!(CredentialRevocationState::Valid, result);
+}
+
+#[tokio::test]
+async fn test_check_revocation_status_as_holder_not_cached() {
     let mock_server = MockServer::start().await;
 
-    Mock::given(path("/lvvcurl"))
+    Mock::given(method(Method::GET))
+        .and(path("/lvvcurl"))
         .and(header_regex("Authorization", "Bearer .*\\.c2lnbmVk")) // c2lnbmVk == base64("signed")
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "credential": "this.is.jwt",
@@ -162,6 +223,26 @@ async fn test_check_revocation_status_as_issuer() {
         Some(Arc::new(formatter))
     });
 
+    let (did, credential) = generic_did_credential(CredentialRole::Holder);
+
+    let mut validity_credential_repository = MockValidityCredentialRepository::new();
+    validity_credential_repository
+        .expect_get_latest_by_credential_id()
+        .once()
+        .with(eq(credential.id), eq(ValidityCredentialType::Lvvc))
+        .returning(|_, _| Ok(None));
+    validity_credential_repository
+        .expect_remove_all_by_credential_id()
+        .once()
+        .with(eq(credential.id), eq(ValidityCredentialType::Lvvc))
+        .returning(|_, _| Ok(()));
+    let credential_id = credential.id;
+    validity_credential_repository
+        .expect_insert()
+        .once()
+        .withf(move |cred| cred.linked_credential_id == credential_id)
+        .returning(|_| Ok(()));
+
     let lvvc_url = format!("{}/lvvcurl", mock_server.uri()).parse().unwrap();
     let status = CredentialStatus {
         id: Some(lvvc_url),
@@ -170,15 +251,70 @@ async fn test_check_revocation_status_as_issuer() {
         additional_fields: Default::default(),
     };
 
-    let (did, credential) = generic_did_credential(CredentialRole::Issuer);
-
-    let provider = create_provider(formatter_provider, key_provider);
+    let provider = create_provider(
+        formatter_provider,
+        key_provider,
+        validity_credential_repository,
+    );
 
     let result = provider
         .check_credential_revocation_status(
             &status,
             &did.did,
-            Some(CredentialDataByRole::Issuer(credential)),
+            Some(CredentialDataByRole::Holder(credential)),
+        )
+        .await
+        .unwrap();
+    assert_eq!(CredentialRevocationState::Valid, result);
+}
+
+#[tokio::test]
+async fn test_check_revocation_status_as_holder_cached() {
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider.expect_get_formatter().returning(|_| {
+        let mut formatter = MockCredentialFormatter::new();
+        formatter
+            .expect_extract_credentials_unverified()
+            .returning(|_| Ok(extracted_credential("ACCEPTED")));
+
+        Some(Arc::new(formatter))
+    });
+
+    let (did, credential) = generic_did_credential(CredentialRole::Holder);
+
+    let mut validity_credential_repository = MockValidityCredentialRepository::new();
+    let credential_id = credential.id;
+    validity_credential_repository
+        .expect_get_latest_by_credential_id()
+        .once()
+        .returning(move |_, _| {
+            Ok(Some(ValidityCredential {
+                id: Uuid::new_v4(),
+                created_date: OffsetDateTime::now_utc(),
+                credential: "this.is.jwt".to_string().into_bytes(),
+                linked_credential_id: credential_id,
+                r#type: ValidityCredentialType::Lvvc,
+            }))
+        });
+
+    let status = CredentialStatus {
+        id: None,
+        r#type: "".to_string(),
+        status_purpose: None,
+        additional_fields: Default::default(),
+    };
+
+    let provider = create_provider(
+        formatter_provider,
+        MockKeyProvider::new(),
+        validity_credential_repository,
+    );
+
+    let result = provider
+        .check_credential_revocation_status(
+            &status,
+            &did.did,
+            Some(CredentialDataByRole::Holder(credential)),
         )
         .await
         .unwrap();
