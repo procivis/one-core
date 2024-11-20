@@ -73,6 +73,7 @@ pub async fn insert_json_ld_context(
         value: Set(context.to_owned()),
         hit_counter: Set(hit_counter),
         r#type: Set(remote_entity_cache::CacheType::JsonLdContext),
+        media_type: Set(None),
     }
     .insert(database)
     .await?;
@@ -103,6 +104,7 @@ async fn test_create_context() {
         key: "http://www.host.co".parse().unwrap(),
         hit_counter: 1234,
         r#type: CacheType::JsonLdContext,
+        media_type: None,
     };
 
     let result = setup.provider.create(context).await.unwrap();
@@ -160,6 +162,7 @@ async fn test_update_context_success() {
             key: "http://127.0.0.1".parse().unwrap(),
             hit_counter: 1234,
             r#type: CacheType::JsonLdContext,
+            media_type: None,
         })
         .await
         .unwrap();

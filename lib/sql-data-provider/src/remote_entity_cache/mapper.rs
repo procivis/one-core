@@ -14,6 +14,7 @@ impl From<RemoteEntityCache> for remote_entity_cache::ActiveModel {
             value: Set(value.value),
             hit_counter: Set(value.hit_counter),
             r#type: Set(value.r#type.into()),
+            media_type: Set(value.media_type),
         }
     }
 }
@@ -30,6 +31,7 @@ impl TryFrom<remote_entity_cache::Model> for RemoteEntityCache {
             value: value.value,
             hit_counter: value.hit_counter,
             r#type: value.r#type.into(),
+            media_type: value.media_type,
         })
     }
 }

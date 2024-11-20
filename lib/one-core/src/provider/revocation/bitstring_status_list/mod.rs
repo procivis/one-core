@@ -228,14 +228,23 @@ impl RevocationMethod for BitstringStatusList {
             .parse()
             .map_err(|_| RevocationError::ValidationError("Invalid list index".to_string()))?;
 
-        let response: StatusListCacheEntry = serde_json::from_slice(
-            &self
-                .caching_loader
-                .get(list_url, self.resolver.clone())
-                .await?,
-        )?;
+        let (content, media_type) = &self
+            .caching_loader
+            .get(list_url, self.resolver.clone())
+            .await?;
 
+        let response: StatusListCacheEntry = serde_json::from_slice(content)?;
         let response_content = String::from_utf8(response.content)?;
+
+        let content_type = match (media_type, &response.content_type) {
+            (Some(media_type), _) => media_type,
+            (None, Some(content_type)) => content_type,
+            _ => {
+                return Err(RevocationError::ValidationError(
+                    "Missing content type".to_string(),
+                ))
+            }
+        };
 
         let key_verification = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -244,7 +253,7 @@ impl RevocationMethod for BitstringStatusList {
         });
 
         let status_credential = self
-            .get_formatter_for_parsing(&response.content_type)?
+            .get_formatter_for_parsing(content_type)?
             .extract_credentials(&response_content, key_verification)
             .await?;
 

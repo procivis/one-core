@@ -32,7 +32,10 @@ impl Resolver for DidResolver {
         let document = method.resolve(&did_value).await?;
         let dto: DidDocumentDTO = document.into();
 
-        Ok(ResolveResult::NewValue(serde_json::to_vec(&dto)?))
+        Ok(ResolveResult::NewValue {
+            content: serde_json::to_vec(&dto)?,
+            media_type: None,
+        })
     }
 }
 

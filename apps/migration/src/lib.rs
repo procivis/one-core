@@ -59,6 +59,7 @@ mod m20241009_153829_organisation_id_added_to_interaction;
 mod m20241031_095859_redirect_uri_length;
 mod m20241101_092048_clear_statuslist_cache;
 mod m20241104_085435_rename_sdjwt_with_underscore;
+mod m20241115_090000_add_media_type_to_remote_entity;
 mod m20241119_071036_add_revocation_format_type;
 mod m20241119_095859_redirect_uri_length;
 
@@ -124,6 +125,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20241104_085435_rename_sdjwt_with_underscore::Migration),
             Box::new(m20241119_071036_add_revocation_format_type::Migration),
             Box::new(m20241119_095859_redirect_uri_length::Migration),
+            Box::new(m20241115_090000_add_media_type_to_remote_entity::Migration),
         ]
     }
 }

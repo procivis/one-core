@@ -36,9 +36,12 @@ impl Resolver for StatusListResolver {
             .to_owned();
         let cache_entry = StatusListCacheEntry {
             content: response.body,
-            content_type,
+            content_type: content_type.clone(),
         };
-        Ok(ResolveResult::NewValue(serde_json::to_vec(&cache_entry)?))
+        Ok(ResolveResult::NewValue {
+            content: serde_json::to_vec(&cache_entry)?,
+            media_type: Some(content_type),
+        })
     }
 }
 

@@ -40,6 +40,7 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 value: W3_ORG_NS_CREDENTIALS_V2.to_string().into_bytes(),
                 key: url.to_string(),
                 hit_counter: 0,
+                media_type: None,
             }))
         });
 
@@ -54,6 +55,7 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 value: BARCODE_CONTEXT.to_string().into_bytes(),
                 key: url.to_string(),
                 hit_counter: 0,
+                media_type: None,
             }))
         });
 
@@ -68,6 +70,7 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 value: UTOPIA_CONTEXT.to_string().into_bytes(),
                 key: url.to_string(),
                 hit_counter: 0,
+                media_type: None,
             }))
         });
 

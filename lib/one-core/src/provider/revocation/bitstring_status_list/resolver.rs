@@ -17,7 +17,7 @@ pub type StatusListCachingLoader = CachingLoader<RevocationError>;
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct StatusListCacheEntry {
     pub content: Vec<u8>,
-    pub content_type: String,
+    pub content_type: Option<String>,
 }
 
 #[async_trait]
@@ -36,9 +36,13 @@ impl Resolver for StatusListResolver {
             .to_owned();
         let cache_entry = StatusListCacheEntry {
             content: response.body,
-            content_type,
+            // This is also put there for compatibility reason
+            content_type: Some(content_type.clone()),
         };
-        Ok(ResolveResult::NewValue(serde_json::to_vec(&cache_entry)?))
+        Ok(ResolveResult::NewValue {
+            content: serde_json::to_vec(&cache_entry)?,
+            media_type: Some(content_type),
+        })
     }
 }
 

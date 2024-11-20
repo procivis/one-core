@@ -59,7 +59,10 @@ impl Resolver for JsonLdResolver {
             .error_for_status()
             .map_err(|e| JsonLdResolverError::Reqwest(e.to_string()))?;
         if response.status.is_success() {
-            Ok(ResolveResult::NewValue(response.body))
+            Ok(ResolveResult::NewValue {
+                content: response.body,
+                media_type: None,
+            })
         } else if response.status.is_redirection() {
             let result = response.header_get("Last-Modified");
             let last_modified = match result {
@@ -147,7 +150,8 @@ impl Loader<ArcIri, Location<ArcIri>> for ContextCache {
         ArcIri: 'a,
     {
         async move {
-            let context = self.loader.get(url.as_str(), self.resolver.clone()).await?;
+            let (context, media_type) =
+                self.loader.get(url.as_str(), self.resolver.clone()).await?;
             let context_str = String::from_utf8(context)?;
 
             let doc = json_syntax::Value::parse_str(&context_str, |span| {
@@ -158,7 +162,9 @@ impl Loader<ArcIri, Location<ArcIri>> for ContextCache {
             Ok(RemoteDocument::new(
                 Some(url.to_owned()),
                 Some(
-                    "application/ld+json"
+                    media_type
+                        .as_deref()
+                        .unwrap_or("application/ld+json")
                         .parse()
                         .map_err(|e: mime::FromStrError| {
                             JsonLdResolverError::MimeFromStrError(e.to_string())
@@ -178,7 +184,7 @@ impl json_ld_0_21::Loader for ContextCache {
     ) -> Result<json_ld_0_21::RemoteDocument<json_ld_0_21::IriBuf>, json_ld_0_21::LoadError> {
         use json_ld_0_21::syntax::Parse;
 
-        let context = self
+        let (context, media_type) = self
             .loader
             .get(url, self.resolver.clone())
             .await
@@ -188,7 +194,9 @@ impl json_ld_0_21::Loader for ContextCache {
             .map_err(|err| json_ld_0_21::LoadError::new(url.to_owned(), err))?
             .0;
 
-        let content_type = "application/ld+json"
+        let content_type = media_type
+            .as_deref()
+            .unwrap_or("application/ld+json")
             .parse()
             .map(Some)
             .map_err(|err| json_ld_0_21::LoadError::new(url.to_owned(), err))?;

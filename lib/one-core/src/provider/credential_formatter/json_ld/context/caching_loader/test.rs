@@ -37,6 +37,7 @@ fn create_loader(
 async fn test_load_context_success_cache_hit() {
     let url = "http://127.0.0.1/context";
     let response_content = "validstring";
+    let expected_media_type = "MediaType";
 
     let mut storage = MockRemoteEntityStorage::default();
     storage.expect_get_by_key().return_once(|_| {
@@ -47,6 +48,7 @@ async fn test_load_context_success_cache_hit() {
             key: url.to_string(),
             value: response_content.to_string().into_bytes(),
             hit_counter: 0,
+            media_type: Some(expected_media_type.to_owned()),
         }))
     });
 
@@ -65,10 +67,10 @@ async fn test_load_context_success_cache_hit() {
 
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(MockHttpClient::new())));
 
-    assert_eq!(
-        response_content,
-        String::from_utf8(loader.get(url, resolver).await.unwrap()).unwrap()
-    );
+    let (content, media_type) = loader.get(url, resolver).await.unwrap();
+
+    assert_eq!(response_content, String::from_utf8(content).unwrap());
+    assert_eq!(Some(expected_media_type), media_type.as_deref());
 }
 
 pub struct CustomMatcher;
@@ -156,10 +158,9 @@ async fn test_load_context_success_cache_miss_external_fetch_occured() {
 
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    assert_eq!(
-        response_content,
-        String::from_utf8(loader.get(&url, resolver).await.unwrap()).unwrap()
-    );
+    let (content, _media_type) = loader.get(&url, resolver).await.unwrap();
+
+    assert_eq!(response_content, String::from_utf8(content).unwrap());
 }
 
 #[tokio::test]
@@ -187,10 +188,9 @@ async fn test_load_context_success_cache_miss_overfilled_delete_oldest_entry_cal
 
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    assert_eq!(
-        response_content,
-        String::from_utf8(loader.get(&url, resolver).await.unwrap()).unwrap()
-    );
+    let (content, _media_type) = loader.get(&url, resolver).await.unwrap();
+
+    assert_eq!(response_content, String::from_utf8(content).unwrap());
 }
 
 #[tokio::test]
@@ -212,6 +212,7 @@ async fn test_load_context_success_cache_hit_but_too_old_200() {
             key: cloned_url,
             value: old_response_content.to_string().into_bytes(),
             hit_counter: 0,
+            media_type: None,
         }))
     });
     storage.expect_insert().times(1).return_once(|request| {
@@ -232,10 +233,9 @@ async fn test_load_context_success_cache_hit_but_too_old_200() {
 
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    assert_eq!(
-        response_content,
-        String::from_utf8(loader.get(&url, resolver).await.unwrap()).unwrap()
-    );
+    let (content, _media_type) = loader.get(&url, resolver).await.unwrap();
+
+    assert_eq!(response_content, String::from_utf8(content).unwrap());
 }
 
 #[tokio::test]
@@ -256,6 +256,7 @@ async fn test_load_context_success_cache_hit_but_too_old_304_with_last_modified_
             key: cloned_url,
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
+            media_type: None,
         }))
     });
     storage.expect_insert().times(1).return_once(|request| {
@@ -274,10 +275,9 @@ async fn test_load_context_success_cache_hit_but_too_old_304_with_last_modified_
     let loader = create_loader(storage, 1, Duration::seconds(99999), Duration::seconds(300));
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    assert_eq!(
-        response_content,
-        String::from_utf8(loader.get(&url, resolver).await.unwrap()).unwrap()
-    );
+    let (content, _media_type) = loader.get(&url, resolver).await.unwrap();
+
+    assert_eq!(response_content, String::from_utf8(content).unwrap());
 }
 
 #[tokio::test]
@@ -298,6 +298,7 @@ async fn test_load_context_success_cache_hit_but_too_old_304_without_last_modifi
             key: cloned_url.parse().unwrap(),
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
+            media_type: None,
         }))
     });
     let now = OffsetDateTime::now_utc();
@@ -320,10 +321,9 @@ async fn test_load_context_success_cache_hit_but_too_old_304_without_last_modifi
     let loader = create_loader(storage, 1, Duration::seconds(99999), Duration::seconds(300));
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    assert_eq!(
-        response_content,
-        String::from_utf8(loader.get(&url, resolver).await.unwrap()).unwrap()
-    );
+    let (content, _media_type) = loader.get(&url, resolver).await.unwrap();
+
+    assert_eq!(response_content, String::from_utf8(content).unwrap());
 }
 
 #[tokio::test]
@@ -340,6 +340,7 @@ async fn test_load_context_success_cache_hit_older_than_refreshafter_younger_tha
             key: url.to_string(),
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
+            media_type: None,
         }))
     });
     storage.expect_insert().times(1).return_once(|request| {
@@ -360,10 +361,9 @@ async fn test_load_context_success_cache_hit_older_than_refreshafter_younger_tha
     let loader = create_loader(storage, 1, refresh_timeout, Duration::seconds(300));
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    assert_eq!(
-        old_response_content,
-        String::from_utf8(loader.get(url, resolver).await.unwrap()).unwrap()
-    );
+    let (content, _media_type) = loader.get(url, resolver).await.unwrap();
+
+    assert_eq!(old_response_content, String::from_utf8(content).unwrap());
 }
 
 #[tokio::test]
@@ -380,6 +380,7 @@ async fn test_load_context_failed_cache_hit_older_than_refreshafter_and_failed_t
             key: url.to_string(),
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
+            media_type: None,
         }))
     });
 

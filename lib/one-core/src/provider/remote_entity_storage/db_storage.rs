@@ -92,6 +92,7 @@ fn db_context_to_storage_context(
         key: db_context.key,
         value: db_context.value,
         hit_counter: db_context.hit_counter,
+        media_type: db_context.media_type,
     }
 }
 
@@ -107,5 +108,6 @@ fn storage_context_to_db_context(
         key: storage_context.key,
         hit_counter: storage_context.hit_counter,
         r#type: storage_context.entity_type.into(),
+        media_type: storage_context.media_type,
     }
 }

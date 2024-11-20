@@ -26,6 +26,7 @@ impl RemoteEntityCacheDB {
                 key: "https://www.w3.org/2018/credentials/v1".parse().unwrap(),
                 hit_counter: 0,
                 r#type: CacheType::JsonLdContext,
+                media_type: None,
             })
             .await
             .unwrap();
@@ -39,6 +40,7 @@ impl RemoteEntityCacheDB {
                 key: "https://www.w3.org/ns/credentials/v2".parse().unwrap(),
                 hit_counter: 0,
                 r#type: CacheType::JsonLdContext,
+                media_type: None,
             })
             .await
             .unwrap();
@@ -54,6 +56,7 @@ impl RemoteEntityCacheDB {
                     .unwrap(),
                 hit_counter: 0,
                 r#type: CacheType::JsonLdContext,
+                media_type: None,
             })
             .await
             .unwrap();
@@ -68,6 +71,7 @@ impl RemoteEntityCacheDB {
                     key: url.parse().unwrap(),
                     hit_counter: 0,
                     r#type: CacheType::JsonLdContext,
+                    media_type: None,
                 })
                 .await
                 .unwrap();

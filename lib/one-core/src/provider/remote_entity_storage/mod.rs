@@ -48,6 +48,8 @@ pub struct RemoteEntity {
     pub value: Vec<u8>,
 
     pub hit_counter: u32,
+
+    pub media_type: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

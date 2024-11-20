@@ -395,6 +395,7 @@ pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCaching
                 key: "https://www.w3.org/ns/credentials/v2".to_string(),
                 value: W3_ORG_NS_CREDENTIALS_V2.to_string().into_bytes(),
                 hit_counter: 0,
+                media_type: None,
             },
         ),
         (
@@ -405,6 +406,7 @@ pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCaching
                 key: "https://www.w3.org/ns/credentials/examples/v2".to_string(),
                 value: W3_ORG_NS_CREDENTIALS_EXAMPLES_V2.to_string().into_bytes(),
                 hit_counter: 0,
+                media_type: None,
             },
         ),
     ];
@@ -418,6 +420,7 @@ pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCaching
                 key: id.to_string(),
                 value: content.to_string().into_bytes(),
                 hit_counter: 0,
+                media_type: None,
             },
         ))
     }

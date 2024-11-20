@@ -50,8 +50,14 @@ impl RevocationListProvider {
             purpose: revocation_list.purpose.into(),
             issuer_did,
             format: revocation_list.format.into(),
-            r#type: StatusListType::from_str(&revocation_list.r#type)
-                .map_err(|_| DataLayerError::Db(anyhow!("Invalid revocation list type")))?,
+            // TODO fix in ONE-3968
+            r#type: match revocation_list.r#type.as_str() {
+                "BITSTRING_STATUS_LIST" | "BITSTRINGSTATUSLIST" => {
+                    StatusListType::BitstringStatusList
+                }
+                "TOKENSTATUSLIST" => StatusListType::TokenStatusList,
+                _ => return Err(DataLayerError::Db(anyhow!("Invalid revocation list type"))),
+            },
         })
     }
 }

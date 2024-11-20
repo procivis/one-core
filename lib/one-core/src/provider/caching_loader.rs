@@ -32,7 +32,10 @@ pub trait Resolver: Send + Sync {
 }
 
 pub enum ResolveResult {
-    NewValue(Vec<u8>),
+    NewValue {
+        content: Vec<u8>,
+        media_type: Option<String>,
+    },
     LastModificationDateUpdate(OffsetDateTime),
 }
 
@@ -72,22 +75,27 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
         &self,
         url: &str,
         resolver: Arc<dyn Resolver<Error = E>>,
-    ) -> Result<Vec<u8>, E> {
+    ) -> Result<(Vec<u8>, Option<String>), E> {
         let context = match self.storage.get_by_key(url).await? {
             None => {
                 let document = resolver.do_resolve(url, None).await?;
-                if let ResolveResult::NewValue(value) = document {
+                if let ResolveResult::NewValue {
+                    content,
+                    media_type,
+                } = document
+                {
                     self.storage
                         .insert(RemoteEntity {
                             last_modified: OffsetDateTime::now_utc(),
                             entity_type: self.remote_entity_type,
                             key: url.to_string(),
-                            value: value.to_owned(),
+                            value: content.to_owned(),
                             hit_counter: 0,
+                            media_type: media_type.clone(),
                         })
                         .await?;
 
-                    Ok(value)
+                    Ok((content, media_type))
                 } else {
                     Err(CachingLoaderError::UnexpectedResolveResult)
                 }
@@ -104,9 +112,13 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
 
                     match result {
                         Ok(value) => match value {
-                            ResolveResult::NewValue(value) => {
+                            ResolveResult::NewValue {
+                                content,
+                                media_type,
+                            } => {
                                 context.last_modified = OffsetDateTime::now_utc();
-                                context.value = value;
+                                context.value = content;
+                                context.media_type = media_type;
                             }
                             ResolveResult::LastModificationDateUpdate(value) => {
                                 context.last_modified = value;
@@ -123,7 +135,7 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
 
                 self.storage.insert(context.to_owned()).await?;
 
-                Ok(context.value)
+                Ok((context.value, context.media_type))
             }
         }?;
 

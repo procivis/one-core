@@ -51,11 +51,11 @@ impl DidMethodProvider for DidMethodProviderImpl {
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {
-        let result = self
+        let (content, _media_type) = self
             .caching_loader
             .get(did.as_str(), self.resolver.clone())
             .await?;
-        let dto: DidDocumentDTO = serde_json::from_slice(&result)?;
+        let dto: DidDocumentDTO = serde_json::from_slice(&content)?;
         Ok(dto.into())
     }
 }

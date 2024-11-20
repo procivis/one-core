@@ -18,6 +18,8 @@ pub struct Model {
 
     pub hit_counter: u32,
     pub r#type: CacheType,
+
+    pub media_type: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

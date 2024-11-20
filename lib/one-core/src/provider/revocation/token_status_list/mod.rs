@@ -190,12 +190,12 @@ impl RevocationMethod for TokenStatusList {
             .parse()
             .map_err(|_| RevocationError::ValidationError("Invalid list index".to_string()))?;
 
-        let response: StatusListCacheEntry = serde_json::from_slice(
-            &self
-                .caching_loader
-                .get(list_url, self.resolver.clone())
-                .await?,
-        )?;
+        let (content, _media_type) = &self
+            .caching_loader
+            .get(list_url, self.resolver.clone())
+            .await?;
+
+        let response: StatusListCacheEntry = serde_json::from_slice(content)?;
 
         let response_content = String::from_utf8(response.content)?;
         let key_verification = Box::new(KeyVerification {

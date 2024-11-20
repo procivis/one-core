@@ -17,6 +17,8 @@ pub struct RemoteEntityCache {
     pub hit_counter: u32,
 
     pub r#type: CacheType,
+
+    pub media_type: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into)]
