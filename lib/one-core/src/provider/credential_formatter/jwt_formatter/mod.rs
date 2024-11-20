@@ -27,7 +27,7 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-use crate::provider::revocation::token_status_list::util::SINGLE_ENTRY_SIZE;
+use crate::provider::revocation::token_status_list::util::PREFERRED_ENTRY_SIZE;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
 #[cfg(test)]
@@ -172,7 +172,7 @@ impl CredentialFormatter for JWTFormatter {
             StatusListType::TokenStatusList => {
                 let content = TokenStatusListContent {
                     status_list: TokenStatusListSubject {
-                        bits: SINGLE_ENTRY_SIZE,
+                        bits: PREFERRED_ENTRY_SIZE,
                         value: encoded_list,
                     },
                 };

@@ -1,11 +1,16 @@
 //! Utilities for Token Status List.
 
+use std::io::{Read, Write};
+
 use bit_vec::BitVec;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use flate2::read::ZlibDecoder;
+use flate2::write::ZlibEncoder;
+use flate2::Compression;
 use thiserror::Error;
 
+use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListSubject;
 use crate::provider::revocation::model::CredentialRevocationState;
-use crate::provider::revocation::utils::{gzip_compress, gzip_decompress};
 
 #[derive(Debug, Error)]
 pub enum TokenError {
@@ -19,51 +24,47 @@ pub enum TokenError {
     Decompression(std::io::Error),
     #[error("Index `{index}` out of bounds for provided token")]
     IndexOutOfBounds { index: usize },
-    #[error("Encoded list has invalid prefix: {0}")]
-    InvalidPrefix(String),
+    #[error("Suspension requires at least two bits")]
+    SuspensionRequiresAtLeastTwoBits,
 }
 
-// TODO: support different byte sizes (can be 1,2,4,8, specified by "bits" field in JWT statusList.bits field)
-pub(crate) const SINGLE_ENTRY_SIZE: usize = 2;
-const MULTIBASE_PREFIX: char = 'u';
-const GZIP_PREFIX: &str = "H4s";
+pub(crate) const PREFERRED_ENTRY_SIZE: usize = 2;
 
-pub fn extract_token_index(
-    compressed_list: String,
+pub(crate) fn extract_state_from_token(
+    status_list: &TokenStatusListSubject,
     index: usize,
 ) -> Result<CredentialRevocationState, TokenError> {
-    // For backwards compatibility, we allow the compressed list to be passed without the 'u' multibase prefix.
-    // see ONE-3528
-    let compressed_list = compressed_list
-        .strip_prefix(MULTIBASE_PREFIX)
-        .unwrap_or(&compressed_list);
+    let entry_size = status_list.bits;
 
-    if !compressed_list.starts_with(GZIP_PREFIX) {
-        return Err(TokenError::InvalidPrefix(format!(
-            "expected gzip header: {GZIP_PREFIX}, input: {}",
-            compressed_list
-        )));
-    }
-
-    let compressed = Base64UrlSafeNoPadding::decode_to_vec(compressed_list, None)
+    let compressed = Base64UrlSafeNoPadding::decode_to_vec(&status_list.value, None)
         .map_err(TokenError::Base64Decoding)?;
 
-    let bytes = gzip_decompress(compressed, index * SINGLE_ENTRY_SIZE).map_err(|err| {
-        if err.kind() == std::io::ErrorKind::UnexpectedEof {
-            TokenError::IndexOutOfBounds { index }
-        } else {
-            TokenError::Decompression(err)
-        }
-    })?;
+    let decoder = ZlibDecoder::new(&compressed[..]);
+    let bytes: Vec<u8> = decoder
+        .bytes()
+        .collect::<Result<_, std::io::Error>>()
+        .map_err(|err| {
+            if err.kind() == std::io::ErrorKind::UnexpectedEof {
+                TokenError::IndexOutOfBounds { index }
+            } else {
+                TokenError::Decompression(err)
+            }
+        })?;
 
     let bits = BitVec::from_bytes(&bytes);
 
-    let bit_index = index * SINGLE_ENTRY_SIZE;
-    let suspended = bits
-        .get(bit_index)
-        .ok_or(TokenError::IndexOutOfBounds { index })?;
+    let most_significant_bit_index = get_most_significant_bit_index(index, entry_size);
+
+    let suspended = if entry_size > 1 {
+        let suspension_bit_index = most_significant_bit_index + entry_size - 2;
+        bits.get(suspension_bit_index)
+            .ok_or(TokenError::IndexOutOfBounds { index })?
+    } else {
+        false
+    };
+    let revocation_bit_index = most_significant_bit_index + entry_size - 1;
     let revoked = bits
-        .get(bit_index + 1)
+        .get(revocation_bit_index)
         .ok_or(TokenError::IndexOutOfBounds { index })?;
 
     match (revoked, suspended) {
@@ -75,30 +76,62 @@ pub fn extract_token_index(
     }
 }
 
-pub(super) fn generate_token(input: Vec<CredentialRevocationState>) -> Result<String, TokenError> {
-    let size = calculate_token_size(input.len());
-    let mut bits = BitVec::from_elem(size, false);
-    input.into_iter().enumerate().for_each(|(index, state)| {
-        let bit_index = index * SINGLE_ENTRY_SIZE;
-        match state {
-            CredentialRevocationState::Valid => {}
-            CredentialRevocationState::Revoked => bits.set(bit_index + 1, true),
-            CredentialRevocationState::Suspended { .. } => bits.set(bit_index, true),
-        }
-    });
+pub(super) fn generate_token(
+    input: Vec<CredentialRevocationState>,
+    bits: usize,
+    preferred_token_size: usize,
+) -> Result<String, TokenError> {
+    let mut bitvec = BitVec::from_elem(preferred_token_size, false);
+    input
+        .into_iter()
+        .enumerate()
+        .try_for_each(|(index, state)| {
+            let most_significant_bit_index = get_most_significant_bit_index(index, bits);
+            match state {
+                CredentialRevocationState::Valid => {}
+                CredentialRevocationState::Revoked => {
+                    let revocation_bit_index = most_significant_bit_index + bits - 1;
+                    bitvec.set(revocation_bit_index, true)
+                }
+                CredentialRevocationState::Suspended { .. } => {
+                    if bits < PREFERRED_ENTRY_SIZE {
+                        return Err(TokenError::SuspensionRequiresAtLeastTwoBits);
+                    }
 
-    let bytes = bits.to_bytes();
-    let compressed = gzip_compress(bytes).map_err(TokenError::Compression)?;
+                    let suspension_bit_index = most_significant_bit_index + bits - 2;
+                    bitvec.set(suspension_bit_index, true)
+                }
+            }
 
-    Base64UrlSafeNoPadding::encode_to_string(compressed)
-        .map_err(TokenError::Base64Encoding)
-        .map(|s| format!("{MULTIBASE_PREFIX}{}", s))
+            Ok(())
+        })?;
+
+    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::best());
+    encoder
+        .write_all(&bitvec.to_bytes())
+        .map_err(TokenError::Compression)?;
+    let compressed = encoder.finish().map_err(TokenError::Compression)?;
+
+    Base64UrlSafeNoPadding::encode_to_string(compressed).map_err(TokenError::Base64Encoding)
 }
 
-fn calculate_token_size(input_size: usize) -> usize {
+pub(super) fn calculate_preferred_token_size(input_size: usize, bits: usize) -> usize {
     const MINIMUM_INPUT_SIZE: usize = 131072;
-    std::cmp::max(
-        input_size * SINGLE_ENTRY_SIZE,
-        MINIMUM_INPUT_SIZE * SINGLE_ENTRY_SIZE,
-    )
+    std::cmp::max(input_size * bits, MINIMUM_INPUT_SIZE * bits)
+}
+
+pub(super) fn get_most_significant_bit_index(index: usize, bit_size: usize) -> usize {
+    // Take a look here to understand how it works: https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-03.html#section-10.1
+    const BYTE_SIZE: usize = 8;
+
+    let words_in_byte = BYTE_SIZE / bit_size;
+    let word_size = BYTE_SIZE / words_in_byte;
+
+    let byte_number = (index * word_size) / BYTE_SIZE;
+    let byte_start_index = BYTE_SIZE * byte_number;
+
+    let smallest_index_in_byte = byte_number * words_in_byte;
+    let word_index_within_byte = index - smallest_index_in_byte;
+
+    byte_start_index + BYTE_SIZE - (word_index_within_byte * word_size) - word_size
 }

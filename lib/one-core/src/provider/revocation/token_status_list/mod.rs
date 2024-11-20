@@ -29,6 +29,9 @@ use crate::provider::revocation::model::{
 };
 use crate::provider::revocation::token_status_list::model::RevocationUpdateData;
 use crate::provider::revocation::token_status_list::resolver::StatusListCachingLoader;
+use crate::provider::revocation::token_status_list::util::{
+    calculate_preferred_token_size, PREFERRED_ENTRY_SIZE,
+};
 use crate::provider::revocation::RevocationMethod;
 use crate::util::key_verification::KeyVerification;
 use crate::util::params::convert_params;
@@ -36,6 +39,9 @@ use crate::util::params::convert_params;
 pub mod model;
 pub mod resolver;
 pub mod util;
+
+#[cfg(test)]
+mod test;
 
 pub(crate) const URI_KEY: &str = "uri";
 pub(crate) const INDEX_KEY: &str = "idx";
@@ -200,8 +206,10 @@ impl RevocationMethod for TokenStatusList {
         let jwt: Jwt<TokenStatusListContent> =
             Jwt::build_from_token(&response_content, Some(key_verification)).await?;
 
-        let encoded_list = jwt.payload.custom.status_list.value;
-        Ok(util::extract_token_index(encoded_list, list_index)?)
+        Ok(util::extract_state_from_token(
+            &jwt.payload.custom.status_list,
+            list_index,
+        )?)
     }
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
@@ -446,7 +454,9 @@ pub async fn generate_token_from_credentials(
         })
         .collect::<Result<Vec<_>, RevocationError>>()?;
 
-    util::generate_token(states).map_err(RevocationError::from)
+    let preferred_token_size = calculate_preferred_token_size(states.len(), PREFERRED_ENTRY_SIZE);
+    util::generate_token(states, PREFERRED_ENTRY_SIZE, preferred_token_size)
+        .map_err(RevocationError::from)
 }
 
 fn credential_state_into_revocation_state(
