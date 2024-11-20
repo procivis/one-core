@@ -50,8 +50,15 @@ mod test;
 #[derive(Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
+    /// issued LVVC credential expiration duration
     #[serde_as(as = "DurationSeconds<i64>")]
     pub credential_expiry: time::Duration,
+
+    /// time limit whether to reuse an old LVVC or issue a new one
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub minimum_refresh_time: time::Duration,
+
+    /// custom JSON-LD context inside the issued LVVC (defaults to /ssi/context/v1/lvvc.json)
     pub json_ld_context_url: Option<String>,
 }
 

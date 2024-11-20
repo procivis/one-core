@@ -100,7 +100,8 @@ revocation:
     type: "LVVC"
     params:
       private:
-        credentialExpiry: 3600
+        credentialExpiry: 2592000 # 30 days
+        minimumRefreshTime: 3600 # 1 hour
   TOKENSTATUSLIST:
     display: "revocation.tokenList"
     order: 5

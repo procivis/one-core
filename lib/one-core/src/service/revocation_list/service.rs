@@ -8,7 +8,7 @@ use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{Did, DidRelations};
 use crate::model::key::KeyRelations;
 use crate::model::revocation_list::RevocationListRelations;
-use crate::model::validity_credential::ValidityCredentialType;
+use crate::model::validity_credential::{Lvvc, ValidityCredentialType};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::revocation::lvvc::create_lvvc_with_status;
 use crate::provider::revocation::lvvc::dto::{IssuerResponseDTO, LvvcStatus};
@@ -112,39 +112,42 @@ impl RevocationListService {
             LvvcStatus::Accepted => {}
         }
 
-        // If issuanceDate + credentialExpiry < now then a new VC of the LVVC credential needs to be created and saved in database.
+        // If issuanceDate + minimumRefreshTime < now then a new VC of the LVVC credential needs to be created and saved in database.
         let revocation_method = schema.revocation_method.to_string();
         let revocation_params: crate::provider::revocation::lvvc::Params =
             self.config.revocation.get(&revocation_method)?;
-        let expiry = revocation_params.credential_expiry;
 
         let issuance_date = extracted_credential
             .valid_from
             .ok_or(ServiceError::MappingError("issued_at is None".to_string()))?;
 
-        if OffsetDateTime::now_utc() > issuance_date + expiry {
+        if OffsetDateTime::now_utc() > issuance_date + revocation_params.minimum_refresh_time {
             let revocation = self
                 .revocation_method_provider
                 .get_revocation_method(&revocation_method)
                 .ok_or(MissingProviderError::RevocationMethod(revocation_method))?;
 
-            let lvvc = create_lvvc_with_status(
+            let lvvc: Lvvc = create_lvvc_with_status(
                 &credential,
                 status,
                 &self.core_base_url,
-                expiry,
+                revocation_params.credential_expiry,
                 formatter,
                 self.key_provider.clone(),
                 self.did_method_provider.clone(),
                 revocation.get_json_ld_context()?,
             )
-            .await?;
+            .await?
+            .into();
 
             let credential_content = std::str::from_utf8(&lvvc.credential)
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?
+                .to_string();
+
+            self.lvvc_repository.insert(lvvc.into()).await?;
 
             return Ok(IssuerResponseDTO {
-                credential: credential_content.to_string(),
+                credential: credential_content,
             });
         }
 

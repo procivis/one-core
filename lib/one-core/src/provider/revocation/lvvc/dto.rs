@@ -1,3 +1,4 @@
+use one_dto_mapper::Into;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -19,7 +20,8 @@ pub struct IssuerResponseDTO {
     pub credential: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Into)]
+#[into(crate::model::validity_credential::Lvvc)]
 #[serde(rename_all = "camelCase")]
 pub struct Lvvc {
     pub id: Uuid,

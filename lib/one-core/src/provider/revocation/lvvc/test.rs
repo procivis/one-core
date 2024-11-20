@@ -122,6 +122,7 @@ fn create_provider(
         Arc::new(ReqwestClient::default()),
         Params {
             credential_expiry: Default::default(),
+            minimum_refresh_time: Default::default(),
             json_ld_context_url: None,
         },
     )
