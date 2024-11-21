@@ -118,11 +118,12 @@ fn create_provider(
     formatter_provider: MockCredentialFormatterProvider,
     key_provider: MockKeyProvider,
     validity_credential_repository: MockValidityCredentialRepository,
+    did_method_provider: MockDidMethodProvider,
 ) -> LvvcProvider {
     LvvcProvider::new(
         None,
         Arc::new(formatter_provider),
-        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(did_method_provider),
         Arc::new(validity_credential_repository),
         Arc::new(key_provider),
         Arc::new(ReqwestClient::default()),
@@ -174,6 +175,7 @@ async fn test_check_revocation_status_as_issuer() {
         formatter_provider,
         MockKeyProvider::new(),
         validity_credential_repository,
+        MockDidMethodProvider::new(),
     );
 
     let result = provider
@@ -243,6 +245,12 @@ async fn test_check_revocation_status_as_holder_not_cached() {
         .withf(move |cred| cred.linked_credential_id == credential_id)
         .returning(|_| Ok(()));
 
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_get_verification_method_id_from_did_and_key()
+        .once()
+        .returning(|_, _| Ok("verification_method_id".to_string()));
+
     let lvvc_url = format!("{}/lvvcurl", mock_server.uri()).parse().unwrap();
     let status = CredentialStatus {
         id: Some(lvvc_url),
@@ -255,6 +263,7 @@ async fn test_check_revocation_status_as_holder_not_cached() {
         formatter_provider,
         key_provider,
         validity_credential_repository,
+        did_method_provider,
     );
 
     let result = provider
@@ -308,6 +317,7 @@ async fn test_check_revocation_status_as_holder_cached() {
         formatter_provider,
         MockKeyProvider::new(),
         validity_credential_repository,
+        MockDidMethodProvider::new(),
     );
 
     let result = provider

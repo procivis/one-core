@@ -294,12 +294,6 @@ impl OneCore {
             .expect("Key algorithm provider is required")
             .clone();
 
-        let crypto = providers
-            .crypto
-            .as_ref()
-            .expect("Crypto provider is required")
-            .clone();
-
         let key_provider = providers
             .key_storage_provider
             .as_ref()
@@ -426,7 +420,6 @@ impl OneCore {
                 data_provider.get_credential_repository(),
                 data_provider.get_validity_credential_repository(),
                 data_provider.get_revocation_list_repository(),
-                crypto.clone(),
                 did_method_provider.clone(),
                 formatter_provider.clone(),
                 key_provider.clone(),

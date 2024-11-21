@@ -1,21 +1,23 @@
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
 use super::dto::RevocationListResponseDTO;
+use crate::common_validator::validate_expiration_time;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::{Did, DidRelations};
+use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::model::revocation_list::RevocationListRelations;
 use crate::model::validity_credential::{Lvvc, ValidityCredentialType};
-use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::revocation::lvvc::create_lvvc_with_status;
 use crate::provider::revocation::lvvc::dto::{IssuerResponseDTO, LvvcStatus};
+use crate::provider::revocation::lvvc::holder_fetch::BearerTokenPayload;
 use crate::provider::revocation::lvvc::mapper::status_from_lvvc_claims;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 use crate::service::revocation_list::dto::RevocationListId;
 use crate::service::revocation_list::RevocationListService;
+use crate::util::key_verification::KeyVerification;
 
 impl RevocationListService {
     pub async fn get_lvvc_by_credential_id(
@@ -23,6 +25,24 @@ impl RevocationListService {
         id: &CredentialId,
         bearer_token: &str,
     ) -> Result<IssuerResponseDTO, ServiceError> {
+        // first validate bearer token
+        let token_signature_verification = Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::Authentication,
+        });
+
+        let jwt: Jwt<BearerTokenPayload> =
+            Jwt::build_from_token(bearer_token, Some(token_signature_verification)).await?;
+
+        // checking timestamp to prevent replay attack
+        validate_expiration_time(&Some(jwt.payload.custom.timestamp), 60)
+            .map_err(|_| ServiceError::ValidationError("LVVC token expired".to_owned()))?;
+
+        let token_issuer = jwt.payload.issuer.ok_or(ServiceError::ValidationError(
+            "Missing token issuer".to_owned(),
+        ))?;
+
         // The service should search for the credential and check if it exists. If the credential does not exist throw 404 defined in error codes
         let credential = self
             .credential_repository
@@ -46,34 +66,19 @@ impl RevocationListService {
             .map_err(ServiceError::from)?
             .ok_or(EntityNotFoundError::Credential(*id))?;
 
-        // Extract input and signature from token
-        let mut jwt_parts = bearer_token.splitn(3, '.');
-        let (Some(header), Some(payload), Some(signature)) =
-            (jwt_parts.next(), jwt_parts.next(), jwt_parts.next())
-        else {
-            return Err(ServiceError::ValidationError(
-                "Missing token part".to_owned(),
+        // validate JWT token was signed with the holder binding DID
+        let holder_did = credential
+            .holder_did
+            .as_ref()
+            .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
+
+        if holder_did.did != token_issuer.into() {
+            return Err(ServiceError::MappingError(
+                "holder_did mismatch".to_string(),
             ));
-        };
+        }
 
-        let signature = Base64UrlSafeNoPadding::decode_to_vec(signature, None)
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
-
-        let input = format!("{header}.{payload}");
-
-        // Use holder or issuer did to verify jwt
-        match self
-            .verify_signature_with_did(&credential.holder_did, input.as_bytes(), &signature)
-            .await
-        {
-            Err(_) => {
-                self.verify_signature_with_did(&credential.issuer_did, input.as_bytes(), &signature)
-                    .await
-            }
-            value => value,
-        }?;
-
-        // In the next step the latest LVVC credential should be obtained from the asked for credential
+        // In the next step the latest LVVC credential should be obtained from the asked-for credential
         let latest_lvvc = self
             .lvvc_repository
             .get_latest_by_credential_id(id.to_owned(), ValidityCredentialType::Lvvc)
@@ -175,28 +180,5 @@ impl RevocationListService {
             format: list.format,
             r#type: list.r#type,
         })
-    }
-
-    async fn verify_signature_with_did(
-        &self,
-        did: &Option<Did>,
-        input: &[u8],
-        signature: &[u8],
-    ) -> Result<(), ServiceError> {
-        // Use the holder or issuer did and resolve it. Then use the authentication keys to verify the jwt, and check if one is the correct one
-        let did = did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("did is None".to_string()))?;
-        let resolved_did = self.did_method_provider.resolve(&did.did).await?;
-
-        let parsed_jwk = self
-            .key_algorithm_provider
-            .parse_jwk(&resolved_did.verification_method[0].public_key_jwk)?;
-
-        // Check if bearer token is signed with key of the credential holder if not throw error.
-        self.crypto_provider
-            .get_signer(&parsed_jwk.signer_algorithm_id)?
-            .verify(input, signature, &parsed_jwk.public_key_bytes)
-            .map_err(|e| ServiceError::ValidationError(e.to_string()))
     }
 }

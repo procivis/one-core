@@ -77,7 +77,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         if let Some(verification) = verification {
             verification
                 .verify(
-                    payload.issuer.as_ref().map(|v| DidValue::from(v.clone())),
+                    payload.issuer.as_ref().map(DidValue::from),
                     header.key_id.as_deref(),
                     &header.algorithm,
                     unverified_jwt.as_bytes(),

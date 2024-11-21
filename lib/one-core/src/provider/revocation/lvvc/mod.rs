@@ -183,6 +183,7 @@ impl LvvcProvider {
             credential_status,
             &*self.validity_credential_repository,
             &*self.key_provider,
+            &*self.did_method_provider,
             &*self.client,
             &self.params,
         )

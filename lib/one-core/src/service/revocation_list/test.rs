@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use mockall::predicate::eq;
-use one_crypto::MockCryptoProvider;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -26,7 +25,6 @@ struct Repositories {
     pub credential_repository: MockCredentialRepository,
     pub lvvc_repository: MockValidityCredentialRepository,
     pub revocation_list_repository: MockRevocationListRepository,
-    pub crypto_provider: MockCryptoProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub key_provider: MockKeyProvider,
@@ -40,7 +38,6 @@ fn setup_service(repositories: Repositories) -> RevocationListService {
         Arc::new(repositories.credential_repository),
         Arc::new(repositories.lvvc_repository),
         Arc::new(repositories.revocation_list_repository),
-        Arc::new(repositories.crypto_provider),
         Arc::new(repositories.did_method_provider),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.key_provider),

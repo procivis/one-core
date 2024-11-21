@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use one_crypto::CryptoProvider;
-
 use crate::config::core_config;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -24,7 +22,6 @@ pub struct RevocationListService {
     credential_repository: Arc<dyn CredentialRepository>,
     lvvc_repository: Arc<dyn ValidityCredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
-    crypto_provider: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
@@ -40,7 +37,6 @@ impl RevocationListService {
         credential_repository: Arc<dyn CredentialRepository>,
         lvvc_repository: Arc<dyn ValidityCredentialRepository>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
-        crypto_provider: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
@@ -53,7 +49,6 @@ impl RevocationListService {
             credential_repository,
             lvvc_repository,
             revocation_list_repository,
-            crypto_provider,
             did_method_provider,
             formatter_provider,
             key_provider,

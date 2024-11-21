@@ -9,9 +9,10 @@ use super::Params;
 use crate::model::credential::{Credential, CredentialRole};
 use crate::model::did::KeyRole;
 use crate::model::validity_credential::{Lvvc, ValidityCredential, ValidityCredentialType};
-use crate::provider::credential_formatter::jwt::model::JWTPayload;
+use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::error::RevocationError;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -23,6 +24,7 @@ pub(crate) async fn holder_get_lvvc(
     credential_status: &CredentialStatus,
     validity_credential_repository: &dyn ValidityCredentialRepository,
     key_provider: &dyn KeyProvider,
+    did_method_provider: &dyn DidMethodProvider,
     http_client: &dyn HttpClient,
     params: &Params,
 ) -> Result<ValidityCredential, RevocationError> {
@@ -41,6 +43,7 @@ pub(crate) async fn holder_get_lvvc(
         linked_credential,
         credential_status,
         key_provider,
+        did_method_provider,
         http_client,
     )
     .await
@@ -74,6 +77,7 @@ async fn fetch_remote_lvvc(
     linked_credential: &Credential,
     credential_status: &CredentialStatus,
     key_provider: &dyn KeyProvider,
+    did_method_provider: &dyn DidMethodProvider,
     http_client: &dyn HttpClient,
 ) -> Result<Lvvc, RevocationError> {
     let lvvc_url = credential_status
@@ -83,7 +87,8 @@ async fn fetch_remote_lvvc(
             "LVVC status id is missing".to_string(),
         ))?;
 
-    let bearer_token = prepare_bearer_token(linked_credential, key_provider).await?;
+    let bearer_token =
+        prepare_bearer_token(linked_credential, key_provider, did_method_provider).await?;
     let response: IssuerResponseDTO = http_client
         .get(lvvc_url.as_str())
         .bearer_auth(&bearer_token)
@@ -103,6 +108,7 @@ async fn fetch_remote_lvvc(
 async fn prepare_bearer_token(
     credential: &Credential,
     key_provider: &dyn KeyProvider,
+    did_method_provider: &dyn DidMethodProvider,
 ) -> Result<String, RevocationError> {
     if credential.role != CredentialRole::Holder {
         return Err(RevocationError::MappingError(
@@ -110,14 +116,14 @@ async fn prepare_bearer_token(
         ));
     }
 
-    let did = credential
+    let holder_did = credential
         .holder_did
         .as_ref()
         .ok_or(RevocationError::MappingError(
             "holder_did is None".to_string(),
         ))?;
 
-    let keys = did
+    let keys = holder_did
         .keys
         .as_ref()
         .ok_or(RevocationError::MappingError("keys is None".to_string()))?;
@@ -130,21 +136,40 @@ async fn prepare_bearer_token(
         ))?;
 
     let payload = JWTPayload {
-        custom: BearerTokenPayload {
-            timestamp: OffsetDateTime::now_utc().unix_timestamp(),
-        },
+        issuer: Some(holder_did.did.to_string()),
         ..Default::default()
     };
 
-    let signer = key_provider.get_signature_provider(&authentication_key.key, None)?;
-    let bearer_token = Jwt::new("JWT".to_string(), "HS256".to_string(), None, None, payload)
-        .tokenize(Some(signer))
+    let key_id = did_method_provider
+        .get_verification_method_id_from_did_and_key(holder_did, &authentication_key.key)
         .await?;
+
+    let signer = key_provider.get_signature_provider(&authentication_key.key, None)?;
+    let bearer_token = Jwt::<BearerTokenPayload> {
+        header: JWTHeader {
+            algorithm: authentication_key.key.key_type.to_owned(),
+            key_id: Some(key_id),
+            signature_type: None,
+            jwk: None,
+        },
+        payload,
+    }
+    .tokenize(Some(signer))
+    .await?;
 
     Ok(bearer_token)
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
-struct BearerTokenPayload {
-    pub timestamp: i64,
+#[derive(Debug, Deserialize, Serialize)]
+pub(crate) struct BearerTokenPayload {
+    #[serde(with = "time::serde::timestamp")]
+    pub timestamp: OffsetDateTime,
+}
+
+impl Default for BearerTokenPayload {
+    fn default() -> Self {
+        Self {
+            timestamp: OffsetDateTime::now_utc(),
+        }
+    }
 }
