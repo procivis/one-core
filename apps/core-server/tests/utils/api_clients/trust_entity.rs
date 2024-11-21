@@ -1,7 +1,8 @@
 use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
+use one_core::model::did::Did;
 use one_core::model::trust_anchor::TrustAnchor;
 use serde_json::json;
-use shared_types::{OrganisationId, TrustAnchorId, TrustEntityId};
+use shared_types::{TrustAnchorId, TrustEntityId};
 
 use super::{HttpClient, Response};
 
@@ -10,7 +11,7 @@ pub struct TrustEntitiesApi {
 }
 
 pub struct ListFilters {
-    pub organisation_id: OrganisationId,
+    pub role: Option<TrustEntityRoleRest>,
     pub anchor_id: Option<TrustAnchorId>,
     pub name: Option<String>,
 }
@@ -22,16 +23,16 @@ impl TrustEntitiesApi {
 
     pub async fn create(
         &self,
-        entity_id: &str,
         name: &str,
         role: TrustEntityRoleRest,
         trust_anchor: &TrustAnchor,
+        did: &Did,
     ) -> Response {
         let body = json!({
-          "entityId": entity_id,
           "name": name,
           "role": role,
           "trustAnchorId": trust_anchor.id,
+          "didId": did.id,
         });
 
         self.client.post("/api/trust-entity/v1", body).await
@@ -50,14 +51,21 @@ impl TrustEntitiesApi {
 
     pub async fn list(&self, page: usize, filters: ListFilters) -> Response {
         let ListFilters {
-            organisation_id,
+            role,
             name,
             anchor_id,
         } = filters;
 
-        let mut url = format!(
-            "/api/trust-entity/v1?pageSize=20&page={page}&organisationId={organisation_id}"
-        );
+        let mut url = format!("/api/trust-entity/v1?pageSize=20&page={page}");
+
+        if let Some(role) = role {
+            let role = match role {
+                TrustEntityRoleRest::Issuer => "ISSUER",
+                TrustEntityRoleRest::Verifier => "VERIFIER",
+                TrustEntityRoleRest::Both => "BOTH",
+            };
+            url += &format!("&role={role}")
+        }
 
         if let Some(name) = name {
             url += &format!("&name={name}")

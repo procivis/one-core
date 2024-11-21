@@ -8,8 +8,6 @@ use super::mapper::trust_anchor_from_request;
 use super::TrustAnchorService;
 use crate::config::core_config::TrustManagementType;
 use crate::config::validator::trust_management::validate_trust_management;
-use crate::model::organisation::OrganisationRelations;
-use crate::model::trust_anchor::TrustAnchorRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
@@ -22,20 +20,11 @@ impl TrustAnchorService {
         validate_trust_management(&request.r#type, &self.config.trust_management)
             .map_err(|_| BusinessLogicError::UnknownTrustAnchorType)?;
 
-        let organisation = self
-            .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?;
-
-        let Some(organisation) = organisation else {
-            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
-        };
-
         let core_base_url = self.core_base_url.as_ref().ok_or(ServiceError::Other(
             "Missing core_base_url in trust anchor service".to_string(),
         ))?;
 
-        let anchor = trust_anchor_from_request(request, organisation, core_base_url);
+        let anchor = trust_anchor_from_request(request, core_base_url);
 
         self.trust_anchor_repository
             .create(anchor)
@@ -52,12 +41,7 @@ impl TrustAnchorService {
     ) -> Result<GetTrustAnchorResponseDTO, ServiceError> {
         let result = self
             .trust_anchor_repository
-            .get(
-                trust_anchor_id,
-                &TrustAnchorRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get(trust_anchor_id)
             .await?
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::TrustAnchor(trust_anchor_id),
@@ -77,10 +61,7 @@ impl TrustAnchorService {
             .get_by_trust_anchor_id(trust_anchor_id)
             .await?;
 
-        let entities = entities
-            .into_iter()
-            .filter_map(|entry| entry.try_into().ok())
-            .collect();
+        let entities = entities.into_iter().map(Into::into).collect();
 
         Ok(GetTrustAnchorResponseDTO {
             id: result.id,
@@ -95,20 +76,11 @@ impl TrustAnchorService {
         &self,
         anchor_id: TrustAnchorId,
     ) -> Result<GetTrustAnchorDetailResponseDTO, ServiceError> {
-        let response = self
-            .trust_anchor_repository
-            .get(
-                anchor_id,
-                &TrustAnchorRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
-            .await?
-            .ok_or(ServiceError::EntityNotFound(
-                EntityNotFoundError::TrustAnchor(anchor_id),
-            ))?;
+        let response = self.trust_anchor_repository.get(anchor_id).await?.ok_or(
+            ServiceError::EntityNotFound(EntityNotFoundError::TrustAnchor(anchor_id)),
+        )?;
 
-        response.try_into()
+        Ok(response.into())
     }
 
     pub async fn list_trust_anchors(
@@ -123,7 +95,7 @@ impl TrustAnchorService {
 
     pub async fn delete_trust_anchor(&self, anchor_id: TrustAnchorId) -> Result<(), ServiceError> {
         self.trust_anchor_repository
-            .get(anchor_id, &Default::default())
+            .get(anchor_id)
             .await?
             .ok_or(EntityNotFoundError::TrustAnchor(anchor_id))?;
 

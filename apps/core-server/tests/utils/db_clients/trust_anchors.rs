@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use one_core::model::organisation::Organisation;
 use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -15,13 +14,7 @@ impl TrustAnchorDB {
         Self { repository }
     }
 
-    pub async fn create(
-        &self,
-        name: &str,
-        organisation: Organisation,
-        type_: &str,
-        role: TrustAnchorRole,
-    ) -> TrustAnchor {
+    pub async fn create(&self, name: &str, type_: &str, role: TrustAnchorRole) -> TrustAnchor {
         let trust_anchor = TrustAnchor {
             id: Uuid::new_v4().into(),
             name: name.into(),
@@ -30,8 +23,6 @@ impl TrustAnchorDB {
             type_field: type_.into(),
             publisher_reference: Some("123".into()),
             role,
-            priority: Some(10),
-            organisation: Some(organisation),
         };
 
         self.repository.create(trust_anchor.clone()).await.unwrap();

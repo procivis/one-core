@@ -1,5 +1,5 @@
 use autometrics::autometrics;
-use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
+use one_core::model::trust_anchor::TrustAnchor;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::service::trust_anchor::dto::{GetTrustAnchorsResponseDTO, ListTrustAnchorsQueryDTO};
@@ -7,7 +7,8 @@ use one_dto_mapper::convert_inner;
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{Alias, Func};
 use sea_orm::{
-    ActiveModelTrait, EntityTrait, JoinType, PaginatorTrait, QueryOrder, QuerySelect, Related,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, TransactionTrait,
 };
 use shared_types::TrustAnchorId;
 
@@ -22,43 +23,19 @@ use crate::trust_anchor::entities::TrustAnchorsListItemEntityModel;
 #[async_trait::async_trait]
 impl TrustAnchorRepository for TrustAnchorProvider {
     async fn create(&self, anchor: TrustAnchor) -> Result<TrustAnchorId, DataLayerError> {
-        let anchor: trust_anchor::ActiveModel = anchor.clone().try_into()?;
+        let anchor: trust_anchor::ActiveModel = anchor.into();
         let result = anchor.insert(&self.db).await.map_err(to_data_layer_error)?;
 
         Ok(result.id)
     }
 
-    async fn get(
-        &self,
-        id: TrustAnchorId,
-        relations: &TrustAnchorRelations,
-    ) -> Result<Option<TrustAnchor>, DataLayerError> {
-        let anchor_model = trust_anchor::Entity::find_by_id(id)
+    async fn get(&self, id: TrustAnchorId) -> Result<Option<TrustAnchor>, DataLayerError> {
+        let trust_anchor = trust_anchor::Entity::find_by_id(id)
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        let Some(anchor_model) = anchor_model else {
-            return Ok(None);
-        };
-
-        let organisation_id = anchor_model.organisation_id.to_owned();
-
-        let mut anchor = TrustAnchor::from(anchor_model);
-
-        if let Some(organisation_relations) = &relations.organisation {
-            anchor.organisation = Some(
-                self.organisation_repository
-                    .get_organisation(&organisation_id, organisation_relations)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "trust_anchor-organisation",
-                        id: organisation_id.to_string(),
-                    })?,
-            );
-        }
-
-        Ok(Some(anchor))
+        Ok(trust_anchor.map(TrustAnchor::from))
     }
 
     async fn list(
@@ -71,14 +48,14 @@ impl TrustAnchorRepository for TrustAnchorProvider {
             .map(|pagination| pagination.page_size as _);
 
         let query = trust_anchor::Entity::find()
-            .expr_as_(
+            .left_join(trust_entity::Entity)
+            .expr_as(
                 Func::cast_as(
                     Func::count(Expr::col((trust_entity::Entity, trust_entity::Column::Id))),
                     Alias::new("UNSIGNED"),
                 ),
                 "entities",
             )
-            .join_rev(JoinType::LeftJoin, trust_entity::Entity::to())
             .group_by(trust_anchor::Column::Id)
             .with_list_query(&filters)
             .order_by_desc(trust_anchor::Column::CreatedDate)
@@ -104,10 +81,21 @@ impl TrustAnchorRepository for TrustAnchorProvider {
     }
 
     async fn delete(&self, id: TrustAnchorId) -> Result<(), DataLayerError> {
-        trust_anchor::Entity::delete_by_id(id)
-            .exec(&self.db)
+        let tx = self.db.begin().await.map_err(to_data_layer_error)?;
+
+        trust_entity::Entity::delete_many()
+            .filter(trust_entity::Column::TrustAnchorId.eq(id))
+            .exec(&tx)
             .await
-            .map_err(to_data_layer_error)
-            .map(|_| ())
+            .map_err(to_data_layer_error)?;
+
+        trust_anchor::Entity::delete_by_id(id)
+            .exec(&tx)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        tx.commit().await.map_err(to_data_layer_error)?;
+
+        Ok(())
     }
 }

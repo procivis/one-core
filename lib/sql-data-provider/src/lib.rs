@@ -35,7 +35,6 @@ use proof::ProofProvider;
 use proof_schema::history::ProofSchemaHistoryDecorator;
 use proof_schema::ProofSchemaProvider;
 use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
-use trust_anchor::history::TrustAnchorHistoryDecorator;
 use trust_anchor::TrustAnchorProvider;
 use trust_entity::history::TrustEntityHistoryDecorator;
 use trust_entity::TrustEntityProvider;
@@ -173,18 +172,12 @@ impl DataLayer {
             did_repository: did_repository.clone(),
         });
 
-        let trust_anchor_repository = Arc::new(TrustAnchorProvider {
-            db: db.clone(),
-            organisation_repository: organisation_repository.clone(),
-        });
-        let trust_anchor_repository = Arc::new(TrustAnchorHistoryDecorator {
-            inner: trust_anchor_repository,
-            history_repository: history_repository.clone(),
-        });
+        let trust_anchor_repository = Arc::new(TrustAnchorProvider { db: db.clone() });
 
         let trust_entity_repository = Arc::new(TrustEntityProvider {
             db: db.clone(),
             trust_anchor_repository: trust_anchor_repository.clone(),
+            did_repository: did_repository.clone(),
         });
         let trust_entity_repository = Arc::new(TrustEntityHistoryDecorator {
             inner: trust_entity_repository,

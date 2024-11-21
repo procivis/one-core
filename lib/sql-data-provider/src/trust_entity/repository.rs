@@ -8,13 +8,13 @@ use one_core::service::trust_entity::dto::{
 use one_dto_mapper::convert_inner;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, RelationTrait, Set,
+    QuerySelect, Set,
 };
 use shared_types::{TrustAnchorId, TrustEntityId};
 
 use super::TrustEntityProvider;
 use crate::common::calculate_pages_count;
-use crate::entity::{trust_anchor, trust_entity};
+use crate::entity::trust_entity;
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
 use crate::trust_entity::model::TrustEntityListItemEntityModel;
@@ -24,19 +24,21 @@ use crate::trust_entity::model::TrustEntityListItemEntityModel;
 impl TrustEntityRepository for TrustEntityProvider {
     async fn create(&self, entity: TrustEntity) -> Result<TrustEntityId, DataLayerError> {
         let trust_anchor = entity.trust_anchor.ok_or(DataLayerError::MappingError)?;
+        let did = entity.did.ok_or(DataLayerError::MappingError)?;
 
         let value = trust_entity::ActiveModel {
             id: Set(entity.id),
             created_date: Set(entity.created_date),
             last_modified: Set(entity.last_modified),
-            entity_id: Set(entity.entity_id),
             name: Set(entity.name),
-            logo: Set(entity.logo.map(|logo| logo.as_bytes().to_owned())),
+            logo: Set(entity.logo.map(String::into_bytes)),
             website: Set(entity.website),
             terms_url: Set(entity.terms_url),
             privacy_url: Set(entity.privacy_url),
             role: Set(entity.role.into()),
+            state: Set(entity.state.into()),
             trust_anchor_id: Set(trust_anchor.id),
+            did_id: Set(did.id),
         }
         .insert(&self.db)
         .await
@@ -81,16 +83,29 @@ impl TrustEntityRepository for TrustEntityProvider {
         };
 
         let trust_anchor_id = entity_model.trust_anchor_id.to_owned();
+        let did = entity_model.did_id.to_owned();
 
         let mut trust_entity = TrustEntity::from(entity_model);
 
-        if let Some(trust_anchor_relations) = &relations.trust_anchor {
+        if relations.trust_anchor.is_some() {
             trust_entity.trust_anchor = Some(
                 self.trust_anchor_repository
-                    .get(trust_anchor_id, trust_anchor_relations)
+                    .get(trust_anchor_id)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "trust_entity-trust_anchor",
+                        id: trust_anchor_id.to_string(),
+                    })?,
+            );
+        }
+
+        if let Some(did_relations) = &relations.did {
+            trust_entity.did = Some(
+                self.did_repository
+                    .get_did(&did, did_relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "trust_entity-did",
                         id: trust_anchor_id.to_string(),
                     })?,
             );
@@ -114,20 +129,18 @@ impl TrustEntityRepository for TrustEntityProvider {
                 trust_entity::Column::Id,
                 trust_entity::Column::CreatedDate,
                 trust_entity::Column::LastModified,
-                trust_entity::Column::EntityId,
                 trust_entity::Column::Name,
                 trust_entity::Column::Logo,
                 trust_entity::Column::Website,
                 trust_entity::Column::TermsUrl,
                 trust_entity::Column::PrivacyUrl,
                 trust_entity::Column::Role,
+                trust_entity::Column::State,
                 trust_entity::Column::TrustAnchorId,
+                trust_entity::Column::DidId,
             ])
-            .column_as(trust_anchor::Column::OrganisationId, "organisation_id")
-            .join(
-                sea_orm::JoinType::LeftJoin,
-                trust_entity::Relation::TrustAnchor.def(),
-            )
+            .inner_join(crate::entity::trust_anchor::Entity)
+            .inner_join(crate::entity::did::Entity)
             .with_list_query(&filters)
             .order_by_desc(trust_entity::Column::CreatedDate)
             .order_by_desc(trust_entity::Column::Id);

@@ -7,16 +7,12 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_trust_anchor() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let context = TestContext::new().await;
+
     let anchor = context
         .db
         .trust_anchors
-        .create(
-            "name",
-            organisation.clone(),
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
+        .create("name", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
         .await;
 
     // WHEN
@@ -34,8 +30,6 @@ async fn test_get_trust_anchor() {
         anchor.publisher_reference.unwrap()
     );
     assert_eq!(body["role"], "PUBLISHER");
-    assert_eq!(body["priority"], anchor.priority.unwrap());
-    body["organisationId"].assert_eq(&anchor.organisation.unwrap().id);
 }
 
 #[tokio::test]

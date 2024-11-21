@@ -827,8 +827,6 @@ dictionary CreateTrustAnchorRequestBindingDTO {
   string type;
   string? publisher_reference;
   TrustAnchorRoleBinding role;
-  u32? priority;
-  string organisation_id;
 };
 
 dictionary GetTrustAnchorResponseBindingDTO {
@@ -839,16 +837,12 @@ dictionary GetTrustAnchorResponseBindingDTO {
   string type;
   string? publisher_reference;
   TrustAnchorRoleBinding role;
-  u32? priority;
-  string organisation_id;
 };
 
 enum SortableTrustAnchorColumnBindings {
   "Name",
   "CreatedDate",
   "Type",
-  "Role",
-  "Priority",
 };
 
 enum ExactTrustAnchorFilterColumnBindings {
@@ -864,7 +858,6 @@ dictionary ListTrustAnchorsFiltersBindings {
   string? name;
   TrustAnchorRoleBinding? role;
   string? type;
-  string organisation_id;
   sequence<ExactTrustAnchorFilterColumnBindings>? exact;
 };
 
@@ -876,8 +869,6 @@ dictionary TrustAnchorsListItemResponseBindingDTO {
   string type;
   string? publisher_reference;
   TrustAnchorRoleBinding role;
-  u32? priority;
-  string organisation_id;
   u64 entities;
 };
 

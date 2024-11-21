@@ -62,6 +62,7 @@ mod m20241104_085435_rename_sdjwt_with_underscore;
 mod m20241115_090000_add_media_type_to_remote_entity;
 mod m20241119_071036_add_revocation_format_type;
 mod m20241119_095859_redirect_uri_length;
+mod m20241120_164124_update_trust_anchor_and_entity_tables;
 
 pub struct Migrator;
 
@@ -94,17 +95,17 @@ impl MigratorTrait for Migrator {
             Box::new(m20240308_115228_add_metadata_to_history::Migration),
             Box::new(m20240314_101347_recreate_proof_input_schema_and_proof_input_claim_schema_tables::Migration),
             Box::new(m20240314_141907_remove_proof_schema_claim_schema_relation::Migration),
-            Box::new(m20240321_154846_add_layout_type_and_layout_properties_to_credential_schema::Migration),
             Box::new(m20240319_105859_typed_credential_schema::Migration),
+            Box::new(m20240321_154846_add_layout_type_and_layout_properties_to_credential_schema::Migration),
             Box::new(m20240424_124450_add_json_ld_context::Migration),
             Box::new(m20240514_070446_add_trust_model::Migration),
-            Box::new(m20240522_093357_add_errored_variant_to_history_action_enum_in_history_table::Migration),
             Box::new(m20240522_081021_fix_trust_priority_type::Migration),
+            Box::new(m20240522_093357_add_errored_variant_to_history_action_enum_in_history_table::Migration),
             Box::new(m20240523_093449_add_cascade_to_trust_entity_fk::Migration),
-            Box::new(m20240528_093449_make_trust_columns_optional::Migration),
-            Box::new(m20240528_120000_add_shared_imported_history_action::Migration),
             Box::new(m20240528_090016_rename_lvvc_table_to_validity_credential::Migration),
             Box::new(m20240528_092240_add_type_field_to_validity_credential_table::Migration),
+            Box::new(m20240528_093449_make_trust_columns_optional::Migration),
+            Box::new(m20240528_120000_add_shared_imported_history_action::Migration),
             Box::new(m20240611_110000_introduce_path_and_array::Migration),
             Box::new(m20240625_090000_proof_exchange_to_transport::Migration),
             Box::new(m20240628_121021_fix_trust_logo::Migration),
@@ -126,6 +127,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20241119_071036_add_revocation_format_type::Migration),
             Box::new(m20241119_095859_redirect_uri_length::Migration),
             Box::new(m20241115_090000_add_media_type_to_remote_entity::Migration),
+            Box::new(m20241120_164124_update_trust_anchor_and_entity_tables::Migration),
         ]
     }
 }

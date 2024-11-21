@@ -1,11 +1,10 @@
-use one_core::model::trust_entity::TrustEntityRole;
+use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 use one_core::service::trust_entity::dto::{
-    CreateTrustEntityRequestDTO, GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
-    TrustEntitiesResponseItemDTO,
+    GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO,
 };
 use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
-use shared_types::{OrganisationId, TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
@@ -13,24 +12,24 @@ use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
 use crate::serialize::front_time;
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(CreateTrustEntityRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTrustEntityRequestRestDTO {
-    /// Pass a string as an identifier.
-    entity_id: String,
     /// Specify the entity name.
-    name: String,
+    pub(super) name: String,
     /// base64 encoded image.
-    logo: Option<String>,
+    pub(super) logo: Option<String>,
     /// Specify the entity's domain name.
-    website: Option<String>,
+    pub(super) website: Option<String>,
     /// Specify a Terms of Service url.
-    terms_url: Option<String>,
+    pub(super) terms_url: Option<String>,
     /// Specify the Privacy Policy url.
-    privacy_url: Option<String>,
-    role: TrustEntityRoleRest,
-    trust_anchor_id: TrustAnchorId,
+    pub(super) privacy_url: Option<String>,
+    pub(super) role: TrustEntityRoleRest,
+    /// Specify trust anchor ID.
+    pub(super) trust_anchor_id: TrustAnchorId,
+    /// Specify DID ID.
+    pub(super) did_id: DidId,
 }
 
 /// Whether the trust entity issues credentials, verifies credentials, or both.
@@ -42,6 +41,18 @@ pub enum TrustEntityRoleRest {
     Issuer,
     Verifier,
     Both,
+}
+
+/// Trust entity state.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
+#[into(TrustEntityState)]
+#[from(TrustEntityState)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TrustEntityStateRest {
+    Active,
+    Removed,
+    Withdrawn,
+    RemovedAndWithdrawn,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -56,7 +67,6 @@ pub struct GetTrustEntityResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub entity_id: String,
     pub logo: Option<String>,
     pub website: Option<String>,
     pub terms_url: Option<String>,
@@ -87,7 +97,8 @@ pub struct TrustEntityFilterQueryParamsRestDto {
     pub role: Option<TrustEntityRoleRest>,
     #[param(nullable = false)]
     pub trust_anchor_id: Option<TrustAnchorId>,
-    pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub did_id: Option<DidId>,
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
 }
@@ -106,12 +117,11 @@ pub struct ListTrustEntitiesResponseItemRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 
-    pub entity_id: String,
     pub logo: Option<String>,
     pub website: Option<String>,
     pub terms_url: Option<String>,
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
     pub trust_anchor_id: TrustAnchorId,
-    pub organisation_id: OrganisationId,
+    pub did_id: DidId,
 }

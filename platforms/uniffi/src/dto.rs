@@ -1130,8 +1130,6 @@ pub struct CreateTrustAnchorRequestBindingDTO {
     pub r#type: String,
     pub publisher_reference: Option<String>,
     pub role: TrustAnchorRoleBinding,
-    pub priority: Option<u32>,
-    pub organisation_id: String,
 }
 
 #[derive(Clone, Debug, Into, From)]
@@ -1155,9 +1153,6 @@ pub struct GetTrustAnchorResponseBindingDTO {
     pub r#type: String,
     pub publisher_reference: Option<String>,
     pub role: TrustAnchorRoleBinding,
-    pub priority: Option<u32>,
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub organisation_id: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Into)]
@@ -1166,8 +1161,6 @@ pub enum SortableTrustAnchorColumnBindings {
     Name,
     CreatedDate,
     Type,
-    Role,
-    Priority,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1187,7 +1180,6 @@ pub struct ListTrustAnchorsFiltersBindings {
     pub name: Option<String>,
     pub role: Option<TrustAnchorRoleBinding>,
     pub r#type: Option<String>,
-    pub organisation_id: String,
 
     pub exact: Option<Vec<ExactTrustAnchorFilterColumnBindings>>,
 }
@@ -1207,9 +1199,6 @@ pub struct TrustAnchorsListItemResponseBindingDTO {
     pub r#type: String,
     pub publisher_reference: Option<String>,
     pub role: TrustAnchorRoleBinding,
-    pub priority: Option<u32>,
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub organisation_id: String,
     pub entities: u64,
 }
 

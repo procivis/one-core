@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use anyhow::Context;
+use one_core::model::did::DidRelations;
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
-use one_core::model::trust_anchor::TrustAnchorRelations;
+use one_core::model::organisation::OrganisationRelations;
 use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
@@ -33,7 +34,7 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
                 entity_id: Some(trust_entity_id.into()),
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
-                organisation: entity.trust_anchor.and_then(|anchor| anchor.organisation),
+                organisation: entity.did.and_then(|did| did.organisation),
             })
             .await;
 
@@ -57,9 +58,11 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
             .get(
                 id,
                 &TrustEntityRelations {
-                    trust_anchor: Some(TrustAnchorRelations {
-                        organisation: Some(Default::default()),
+                    did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
                     }),
+                    ..Default::default()
                 },
             )
             .await?
@@ -76,9 +79,7 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
                 entity_id: Some(trust_entity.id.into()),
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
-                organisation: trust_entity
-                    .trust_anchor
-                    .and_then(|anchor| anchor.organisation),
+                organisation: trust_entity.did.and_then(|did| did.organisation),
             })
             .await;
 

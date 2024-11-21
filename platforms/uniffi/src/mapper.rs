@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use one_core::model::did::DidType;
-use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
+use one_core::model::list_filter::{
+    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use one_core::provider::exchange_protocol::openid4vc::model::InvitationResponseDTO;
@@ -342,8 +344,6 @@ impl TryFrom<CreateTrustAnchorRequestBindingDTO> for CreateTrustAnchorRequestDTO
             name: value.name,
             r#type: value.r#type,
             role: value.role.into(),
-            priority: value.priority,
-            organisation_id: into_id(&value.organisation_id)?,
         })
     }
 }
@@ -379,10 +379,7 @@ impl TryFrom<ListTrustAnchorsFiltersBindings> for ListTrustAnchorsQueryDTO {
             })
         });
 
-        let organisation_id =
-            TrustAnchorFilterValue::OrganisationId(into_id(&value.organisation_id)?).condition();
-
-        let filtering = organisation_id & name & role & type_;
+        let filtering = ListFilterCondition::<TrustAnchorFilterValue>::from(name) & role & type_;
 
         Ok(Self {
             pagination: Some(ListPagination {

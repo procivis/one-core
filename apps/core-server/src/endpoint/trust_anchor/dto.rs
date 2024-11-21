@@ -5,7 +5,7 @@ use one_core::service::trust_anchor::dto::{
 };
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
-use shared_types::{OrganisationId, TrustAnchorId};
+use shared_types::TrustAnchorId;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
@@ -22,10 +22,6 @@ pub struct CreateTrustAnchorRequestRestDTO {
     /// to. Possible values from the configuration.
     pub r#type: String,
     pub role: TrustAnchorRoleRest,
-    /// When an organization is present in two anchors, use this field to
-    /// specify the priority of the anchor.
-    pub priority: Option<u32>,
-    pub organisation_id: OrganisationId,
 }
 
 /// Whether an organization is the publisher of a trust anchor or
@@ -54,11 +50,8 @@ pub struct GetTrustAnchorResponseRestDTO {
     pub last_modified: OffsetDateTime,
 
     pub r#type: String,
-
     pub publisher_reference: Option<String>,
     pub role: TrustAnchorRoleRest,
-    pub priority: Option<u32>,
-    pub organisation_id: OrganisationId,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -78,8 +71,6 @@ pub struct ListTrustAnchorsResponseItemRestDTO {
     pub r#type: String,
     pub publisher_reference: Option<String>,
     pub role: TrustAnchorRoleRest,
-    pub priority: Option<u32>,
-    pub organisation_id: OrganisationId,
     pub entities: u64,
 }
 
@@ -99,7 +90,6 @@ pub struct TrustAnchorsFilterQueryParamsRest {
     pub role: Option<TrustAnchorRoleRest>,
     #[param(nullable = false)]
     pub r#type: Option<String>,
-    pub organisation_id: OrganisationId,
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactTrustAnchorFilterColumnRestEnum>>,
 }
@@ -111,8 +101,6 @@ pub enum SortableTrustAnchorColumnRestEnum {
     Name,
     CreatedDate,
     Type,
-    Role,
-    Priority,
 }
 
 pub type ListTrustAnchorsQuery =
@@ -134,6 +122,4 @@ pub struct GetTrustAnchorDetailResponseRestDTO {
     pub r#type: String,
     pub publisher_reference: Option<String>,
     pub role: TrustAnchorRoleRest,
-    pub priority: Option<u32>,
-    pub organisation_id: OrganisationId,
 }

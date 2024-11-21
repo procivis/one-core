@@ -1,6 +1,6 @@
 use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
-use one_core::model::trust_entity::TrustEntityRole;
+use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -9,24 +9,19 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_create_trust_entity() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
 
     let anchor = context
         .db
         .trust_anchors
-        .create(
-            "name",
-            organisation.clone(),
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
+        .create("name", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
         .await;
 
     // WHEN
     let resp = context
         .api
         .trust_entities
-        .create("entity", "name", TrustEntityRoleRest::Both, &anchor)
+        .create("name", TrustEntityRoleRest::Both, &anchor, &did)
         .await;
 
     // THEN
@@ -36,7 +31,7 @@ async fn test_create_trust_entity() {
 #[tokio::test]
 async fn test_fail_to_create_trust_entity_unknown_trust_id() {
     // GIVEN
-    let context = TestContext::new().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
 
     let ta = TrustAnchor {
         id: Uuid::new_v4().into(),
@@ -45,8 +40,6 @@ async fn test_fail_to_create_trust_entity_unknown_trust_id() {
         name: "name".to_owned(),
         publisher_reference: Some("test".to_owned()),
         type_field: "test".to_owned(),
-        organisation: None,
-        priority: Some(1),
         role: TrustAnchorRole::Publisher,
     };
 
@@ -54,7 +47,7 @@ async fn test_fail_to_create_trust_entity_unknown_trust_id() {
     let resp = context
         .api
         .trust_entities
-        .create("entity", "name", TrustEntityRoleRest::Both, &ta)
+        .create("name", TrustEntityRoleRest::Both, &ta, &did)
         .await;
 
     // THEN
@@ -65,24 +58,19 @@ async fn test_fail_to_create_trust_entity_unknown_trust_id() {
 #[tokio::test]
 async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
 
     let anchor = context
         .db
         .trust_anchors
-        .create(
-            "name",
-            organisation.clone(),
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Client,
-        )
+        .create("name", "SIMPLE_TRUST_LIST", TrustAnchorRole::Client)
         .await;
 
     // WHEN
     let resp = context
         .api
         .trust_entities
-        .create("entity", "name", TrustEntityRoleRest::Both, &anchor)
+        .create("name", TrustEntityRoleRest::Both, &anchor, &did)
         .await;
 
     // THEN
@@ -91,50 +79,15 @@ async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
 }
 
 #[tokio::test]
-async fn test_fail_to_create_trust_entity_entity_is_present() {
-    // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
-
-    let anchor = context
-        .db
-        .trust_anchors
-        .create(
-            "name",
-            organisation.clone(),
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
-        .await;
-
-    context
-        .db
-        .trust_entities
-        .create("entity", "name", TrustEntityRole::Both, anchor.clone())
-        .await;
-
-    // WHEN
-    let resp = context
-        .api
-        .trust_entities
-        .create("entity", "name", TrustEntityRoleRest::Both, &anchor)
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 400);
-    assert_eq!("BR_0120", resp.error_code().await);
-}
-
-#[tokio::test]
 async fn test_delete_trust_entity() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
 
     let anchor = context
         .db
         .trust_anchors
         .create(
             "trust-anchor",
-            organisation,
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )
@@ -144,10 +97,11 @@ async fn test_delete_trust_entity() {
         .db
         .trust_entities
         .create(
-            "trust-entity-id",
             "trust-entity",
             TrustEntityRole::Both,
+            TrustEntityState::Active,
             anchor,
+            did,
         )
         .await;
 

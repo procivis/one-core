@@ -6,6 +6,7 @@ use super::dto::{
 };
 use super::mapper::trust_entity_from_request;
 use super::TrustEntityService;
+use crate::model::did::DidRelations;
 use crate::model::trust_anchor::{TrustAnchorRelations, TrustAnchorRole};
 use crate::model::trust_entity::TrustEntityRelations;
 use crate::repository::error::DataLayerError;
@@ -20,12 +21,7 @@ impl TrustEntityService {
     ) -> Result<TrustEntityId, ServiceError> {
         let trust_anchor = self
             .trust_anchor_repository
-            .get(
-                request.trust_anchor_id,
-                &TrustAnchorRelations {
-                    organisation: Some(Default::default()),
-                },
-            )
+            .get(request.trust_anchor_id)
             .await?
             .ok_or(EntityNotFoundError::TrustAnchor(request.trust_anchor_id))?;
 
@@ -33,12 +29,18 @@ impl TrustEntityService {
             return Err(BusinessLogicError::TrustAnchorMustBePublish.into());
         }
 
+        let did = self
+            .did_repository
+            .get_did(&request.did_id, &DidRelations::default())
+            .await?
+            .ok_or(EntityNotFoundError::TrustAnchor(request.trust_anchor_id))?;
+
         let trust = self
             .trust_provider
             .get(&trust_anchor.type_field)
             .ok_or_else(|| MissingProviderError::TrustManager(trust_anchor.type_field.clone()))?;
 
-        let entity = trust_entity_from_request(request, trust_anchor.clone());
+        let entity = trust_entity_from_request(request, trust_anchor.clone(), did);
 
         trust.publish_entity(&trust_anchor, &entity).await;
 
@@ -62,15 +64,14 @@ impl TrustEntityService {
             .get(
                 id,
                 &TrustEntityRelations {
-                    trust_anchor: Some(TrustAnchorRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    trust_anchor: Some(TrustAnchorRelations::default()),
+                    ..Default::default()
                 },
             )
             .await?
             .ok_or(EntityNotFoundError::TrustEntity(id))?;
 
-        result.try_into()
+        Ok(result.into())
     }
 
     pub async fn delete_trust_entity(&self, id: TrustEntityId) -> Result<(), ServiceError> {

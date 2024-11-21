@@ -1,6 +1,6 @@
-use one_core::model::organisation::Organisation;
+use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
-use one_core::model::trust_entity::{TrustEntity, TrustEntityRole};
+use one_core::model::trust_entity::{TrustEntity, TrustEntityRole, TrustEntityState};
 use serde_json::Value;
 
 use crate::utils::api_clients::trust_entity::ListFilters;
@@ -10,39 +10,41 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_list_trust_entities() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
     let ta = context
         .db
         .trust_anchors
-        .create(
-            "name1",
-            organisation.clone(),
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
+        .create("name1", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
         .await;
 
     let ta2 = context
         .db
         .trust_anchors
-        .create(
-            "name2",
-            organisation.clone(),
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
+        .create("name2", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
         .await;
 
     let entity1 = context
         .db
         .trust_entities
-        .create("e1id", "e1", TrustEntityRole::Issuer, ta.clone())
+        .create(
+            "e1",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta.clone(),
+            did.clone(),
+        )
         .await;
 
     let entity2 = context
         .db
         .trust_entities
-        .create("e2id", "e2", TrustEntityRole::Issuer, ta2.clone())
+        .create(
+            "e2",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta2.clone(),
+            did.clone(),
+        )
         .await;
 
     // WHEN
@@ -52,7 +54,7 @@ async fn test_list_trust_entities() {
         .list(
             0,
             ListFilters {
-                organisation_id: organisation.id,
+                role: Some(TrustEntityRoleRest::Issuer),
                 anchor_id: None,
                 name: None,
             },
@@ -72,58 +74,67 @@ async fn test_list_trust_entities() {
         .find(|entity| entity["id"].as_str() == Some(&entity1.id.to_string()))
         .unwrap();
 
-    compare_entity(entity, &entity1, &organisation, &ta);
+    compare_entity(entity, &entity1, &ta);
 
     let entity = values
         .iter()
         .find(|entity| entity["id"].as_str() == Some(&entity2.id.to_string()))
         .unwrap();
 
-    compare_entity(entity, &entity2, &organisation, &ta2);
+    compare_entity(entity, &entity2, &ta2);
 }
 
 #[tokio::test]
 async fn test_list_trust_entities_filter_trust_anchor() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
+
     let ta = context
         .db
         .trust_anchors
-        .create(
-            "name1",
-            organisation.clone(),
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
+        .create("name1", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
         .await;
 
     let ta2 = context
         .db
         .trust_anchors
-        .create(
-            "name2",
-            organisation.clone(),
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
+        .create("name2", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
         .await;
 
     let entity1 = context
         .db
         .trust_entities
-        .create("e1id", "e1", TrustEntityRole::Issuer, ta.clone())
+        .create(
+            "e1",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta.clone(),
+            did.clone(),
+        )
         .await;
 
     let entity2 = context
         .db
         .trust_entities
-        .create("e2id", "e2", TrustEntityRole::Issuer, ta.clone())
+        .create(
+            "e2",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta.clone(),
+            did.clone(),
+        )
         .await;
 
     let _ = context
         .db
         .trust_entities
-        .create("e3id", "e3", TrustEntityRole::Issuer, ta2.clone())
+        .create(
+            "e3",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta2.clone(),
+            did.clone(),
+        )
         .await;
 
     // WHEN
@@ -133,8 +144,8 @@ async fn test_list_trust_entities_filter_trust_anchor() {
         .list(
             0,
             ListFilters {
-                organisation_id: organisation.id,
                 anchor_id: Some(ta.id),
+                role: None,
                 name: None,
             },
         )
@@ -158,34 +169,47 @@ async fn test_list_trust_entities_filter_trust_anchor() {
 #[tokio::test]
 async fn test_list_trust_entities_find_by_name() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
     let ta = context
         .db
         .trust_anchors
-        .create(
-            "name1",
-            organisation.clone(),
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
+        .create("name1", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
         .await;
 
     let entity1 = context
         .db
         .trust_entities
-        .create("e1id", "ent11", TrustEntityRole::Issuer, ta.clone())
+        .create(
+            "ent11",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta.clone(),
+            did.clone(),
+        )
         .await;
 
     let entity2 = context
         .db
         .trust_entities
-        .create("e2id", "ent12", TrustEntityRole::Issuer, ta.clone())
+        .create(
+            "ent12",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta.clone(),
+            did.clone(),
+        )
         .await;
 
     let _ = context
         .db
         .trust_entities
-        .create("e3id", "ent", TrustEntityRole::Issuer, ta.clone())
+        .create(
+            "ent",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta.clone(),
+            did.clone(),
+        )
         .await;
 
     // WHEN
@@ -195,7 +219,7 @@ async fn test_list_trust_entities_find_by_name() {
         .list(
             0,
             ListFilters {
-                organisation_id: organisation.id,
+                role: Some(TrustEntityRoleRest::Issuer),
                 anchor_id: None,
                 name: Some("ent1".to_string()),
             },
@@ -217,18 +241,11 @@ async fn test_list_trust_entities_find_by_name() {
     .contains(&entity["id"].as_str().unwrap())));
 }
 
-fn compare_entity(
-    result: &Value,
-    entity: &TrustEntity,
-    organisation: &Organisation,
-    trust_anchor: &TrustAnchor,
-) {
+fn compare_entity(result: &Value, entity: &TrustEntity, trust_anchor: &TrustAnchor) {
     result["name"].assert_eq(&entity.name);
-    result["entityId"].assert_eq(&entity.entity_id);
     result["logo"].assert_eq(entity.logo.as_ref().unwrap());
     result["website"].assert_eq(entity.website.as_ref().unwrap());
     result["termsUrl"].assert_eq(entity.terms_url.as_ref().unwrap());
     result["privacyUrl"].assert_eq(entity.privacy_url.as_ref().unwrap());
-    result["organisationId"].assert_eq(&organisation.id.to_string());
     result["trustAnchorId"].assert_eq(&trust_anchor.id.to_string());
 }

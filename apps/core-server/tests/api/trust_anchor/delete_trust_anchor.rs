@@ -1,27 +1,29 @@
 use one_core::model::trust_anchor::TrustAnchorRole;
-use one_core::model::trust_entity::TrustEntityRole;
+use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 
 use crate::utils::context::TestContext;
 
 #[tokio::test]
 async fn test_delete_trust_anchor() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
+
     let anchor = context
         .db
         .trust_anchors
-        .create(
-            "name",
-            organisation,
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
+        .create("name", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
         .await;
 
     context
         .db
         .trust_entities
-        .create("entity_id", "name", TrustEntityRole::Both, anchor.clone())
+        .create(
+            "name",
+            TrustEntityRole::Both,
+            TrustEntityState::Active,
+            anchor.clone(),
+            did,
+        )
         .await;
 
     // WHEN

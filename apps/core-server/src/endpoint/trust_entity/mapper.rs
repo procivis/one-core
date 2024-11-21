@@ -1,9 +1,8 @@
-use one_core::model::list_filter::{
-    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
-};
-use one_core::service::trust_entity::dto::TrustEntityFilterValue;
+use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
+use one_core::model::trust_entity::TrustEntityState;
+use one_core::service::trust_entity::dto::{CreateTrustEntityRequestDTO, TrustEntityFilterValue};
 
-use super::dto::TrustEntityFilterQueryParamsRestDto;
+use super::dto::{CreateTrustEntityRequestRestDTO, TrustEntityFilterQueryParamsRestDto};
 
 impl From<TrustEntityFilterQueryParamsRestDto> for ListFilterCondition<TrustEntityFilterValue> {
     fn from(value: TrustEntityFilterQueryParamsRestDto) -> Self {
@@ -31,8 +30,24 @@ impl From<TrustEntityFilterQueryParamsRestDto> for ListFilterCondition<TrustEnti
             .trust_anchor_id
             .map(TrustEntityFilterValue::TrustAnchor);
 
-        let organisation = TrustEntityFilterValue::Organisation(value.organisation_id).condition();
+        let did_id = value.did_id.map(TrustEntityFilterValue::DidId);
 
-        organisation & trust_anchor_id & name & role
+        ListFilterCondition::<TrustEntityFilterValue>::from(did_id) & trust_anchor_id & name & role
+    }
+}
+
+impl From<CreateTrustEntityRequestRestDTO> for CreateTrustEntityRequestDTO {
+    fn from(value: CreateTrustEntityRequestRestDTO) -> Self {
+        Self {
+            name: value.name,
+            logo: value.logo,
+            website: value.website,
+            terms_url: value.terms_url,
+            privacy_url: value.privacy_url,
+            role: value.role.into(),
+            state: TrustEntityState::Active,
+            trust_anchor_id: value.trust_anchor_id,
+            did_id: value.did_id,
+        }
     }
 }

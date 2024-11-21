@@ -105,7 +105,7 @@ where
     SortableColumn: IntoSortingColumn,
     FilterValue: IntoFilterCondition,
 {
-    /// applies all `query` declared constraits (filtering, sorting and pagination) on the query
+    /// applies all `query` declared constrains (filtering, sorting and pagination) on the query
     fn with_list_query(self, query: &ListQuery<SortableColumn, FilterValue, Include>) -> Self;
 }
 

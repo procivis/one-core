@@ -1,6 +1,4 @@
-use one_core::model::list_filter::{
-    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
-};
+use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
 use one_core::service::trust_anchor::dto::TrustAnchorFilterValue;
 
 use super::dto::{ExactTrustAnchorFilterColumnRestEnum, TrustAnchorsFilterQueryParamsRest};
@@ -34,9 +32,6 @@ impl From<TrustAnchorsFilterQueryParamsRest> for ListFilterCondition<TrustAnchor
             })
         });
 
-        let organisation_id =
-            TrustAnchorFilterValue::OrganisationId(value.organisation_id).condition();
-
-        organisation_id & name & role & type_
+        ListFilterCondition::<TrustAnchorFilterValue>::from(name) & role & type_
     }
 }

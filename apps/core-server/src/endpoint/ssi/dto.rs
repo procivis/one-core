@@ -51,7 +51,7 @@ use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
 };
 use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
-use crate::endpoint::trust_entity::dto::TrustEntityRoleRest;
+use crate::endpoint::trust_entity::dto::{TrustEntityRoleRest, TrustEntityStateRest};
 use crate::serialize::{front_time, front_time_option};
 // verifier specific
 #[derive(Deserialize, IntoParams)]
@@ -706,7 +706,6 @@ pub struct GetTrustAnchorResponseRestDTO {
 pub struct GetTrustEntityResponseRestDTO {
     pub id: TrustEntityId,
     pub name: String,
-    pub entity_id: String,
 
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
@@ -720,6 +719,7 @@ pub struct GetTrustEntityResponseRestDTO {
     pub terms_url: Option<String>,
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
+    pub state: TrustEntityStateRest,
 
     #[from(with_fn = convert_inner)]
     pub trust_anchor: Option<GetTrustAnchorDetailResponseRestDTO>,

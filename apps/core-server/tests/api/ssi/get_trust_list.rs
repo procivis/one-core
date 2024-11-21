@@ -1,31 +1,19 @@
 use std::collections::HashSet;
 
-use one_core::model::organisation::Organisation;
 use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
-use one_core::model::trust_entity::{TrustEntity, TrustEntityRole};
+use one_core::model::trust_entity::{TrustEntity, TrustEntityRole, TrustEntityState};
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
 use crate::utils::field_match::FieldHelpers;
 
-pub async fn new_with_trust_list() -> (
-    TestContext,
-    Organisation,
-    TrustAnchor,
-    TrustEntity,
-    TrustEntity,
-) {
-    let (context, organisation) = TestContext::new_with_organisation().await;
+pub async fn new_with_trust_list() -> (TestContext, TrustAnchor, TrustEntity, TrustEntity) {
+    let (context, _, did, _) = TestContext::new_with_did().await;
 
     let trust_anchor = context
         .db
         .trust_anchors
-        .create(
-            "ta1",
-            organisation.clone(),
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
+        .create("ta1", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
         .await;
 
     let entity_one = context
@@ -33,9 +21,10 @@ pub async fn new_with_trust_list() -> (
         .trust_entities
         .create(
             "entity1",
-            "entity1",
             TrustEntityRole::Issuer,
+            TrustEntityState::Active,
             trust_anchor.clone(),
+            did.clone(),
         )
         .await;
 
@@ -44,20 +33,20 @@ pub async fn new_with_trust_list() -> (
         .trust_entities
         .create(
             "entity2",
-            "entity2",
             TrustEntityRole::Verifier,
+            TrustEntityState::Active,
             trust_anchor.clone(),
+            did,
         )
         .await;
 
-    (context, organisation, trust_anchor, entity_one, entity_two)
+    (context, trust_anchor, entity_one, entity_two)
 }
 
 #[tokio::test]
 async fn test_get_trust_list_success() {
     // GIVEN
-    let (context, _organisation, trust_anchor, entity_one, entity_two) =
-        new_with_trust_list().await;
+    let (context, trust_anchor, entity_one, entity_two) = new_with_trust_list().await;
 
     // WHEN
     let resp = context.api.ssi.get_trust_list(trust_anchor.id).await;
@@ -92,17 +81,12 @@ async fn test_get_trust_list_failed_missing_trust_anchor() {
 #[tokio::test]
 async fn test_get_trust_list_failed_list_is_not_simple_trust_list() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let context = TestContext::new().await;
 
     let trust_anchor = context
         .db
         .trust_anchors
-        .create(
-            "ta1",
-            organisation.clone(),
-            "COMPLICATED_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
+        .create("ta1", "COMPLICATED_TRUST_LIST", TrustAnchorRole::Publisher)
         .await;
 
     // WHEN
