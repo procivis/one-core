@@ -370,6 +370,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .filter(credential_schema::Column::SchemaId.eq(schema_id))
             .filter(credential_schema::Column::SchemaType.eq(schema_type.to_string()))
             .filter(credential_schema::Column::OrganisationId.eq(organisation_id))
+            .filter(credential_schema::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;

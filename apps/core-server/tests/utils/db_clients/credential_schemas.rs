@@ -3,11 +3,12 @@ use std::sync::Arc;
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, CredentialSchemaClaim,
-    CredentialSchemaRelations, CredentialSchemaType, LayoutProperties, LayoutType, LogoProperties,
-    WalletStorageTypeEnum,
+    CredentialSchemaRelations, CredentialSchemaType, GetCredentialSchemaQuery, LayoutProperties,
+    LayoutType, LogoProperties, WalletStorageTypeEnum,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
+use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use shared_types::CredentialSchemaId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
@@ -845,5 +846,27 @@ impl CredentialSchemasDB {
 
     pub async fn delete(&self, id: &CredentialSchemaId) {
         self.repository.delete_credential_schema(id).await.unwrap();
+    }
+
+    pub async fn list(&self) -> Vec<CredentialSchema> {
+        let response = self
+            .repository
+            .get_credential_schema_list(
+                GetCredentialSchemaQuery {
+                    pagination: None,
+                    sorting: None,
+                    filtering: None,
+                    include: Some(vec![
+                        CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
+                    ]),
+                },
+                &CredentialSchemaRelations {
+                    claim_schemas: Some(ClaimSchemaRelations {}),
+                    organisation: Some(OrganisationRelations {}),
+                },
+            )
+            .await
+            .unwrap();
+        response.values
     }
 }
