@@ -544,7 +544,7 @@ impl OpenID4VCHTTP {
 
         let body = OpenID4VCICredential {
             format: credential_format.to_owned(),
-            vct: Some(schema.schema_id.to_owned()),
+            vct: (schema.format == "SD_JWT_VC").then_some(schema.schema_id.to_owned()),
             doctype,
             proof: OpenID4VCIProof {
                 proof_type: "jwt".to_string(),

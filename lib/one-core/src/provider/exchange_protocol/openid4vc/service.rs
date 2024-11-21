@@ -93,7 +93,7 @@ fn credential_configurations_supported(
                 oidc_format,
                 claims,
                 credential_schema,
-                schema_id,
+                (credential_schema.format == "SD_JWT_VC").then_some(schema_id),
             ),
             "mso_mdoc" => credentials_supported_mdoc(credential_schema.clone(), config)
                 .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
@@ -149,7 +149,7 @@ fn sdjwt_configuration(
     oidc_format: &str,
     claims: OpenID4VCICredentialSubjectItem,
     credential_schema: &CredentialSchema,
-    vct: String,
+    vct: Option<String>,
 ) -> OpenID4VCICredentialConfigurationData {
     let schema_name = credential_schema.name.to_owned();
     OpenID4VCICredentialConfigurationData {
@@ -163,7 +163,7 @@ fn sdjwt_configuration(
         display: Some(vec![
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema_name },
         ]),
-        vct: Some(vct),
+        vct,
         ..Default::default()
     }
 }
