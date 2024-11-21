@@ -325,6 +325,10 @@ async fn test_revoke_check_mdoc_update() {
                         .parse()
                         .unwrap(),
                 ),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: local_key.clone(),
+                }]),
                 ..Default::default()
             },
         )
@@ -824,6 +828,10 @@ async fn test_suspended_to_valid() {
                         .parse()
                         .unwrap(),
                 ),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: local_key.clone(),
+                }]),
                 ..Default::default()
             },
         )

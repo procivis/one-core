@@ -1,8 +1,11 @@
+use std::str::FromStr;
+
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::credential_schema::{CredentialSchemaClaim, WalletStorageTypeEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use serde_json::json;
+use shared_types::DidValue;
 use time::macros::datetime;
 use uuid::Uuid;
 
@@ -44,6 +47,10 @@ async fn test_issuance_accept_openid4vc() {
                     role: KeyRole::Authentication,
                     key,
                 }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
                 ..Default::default()
             },
         )
@@ -173,6 +180,10 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
                     role: KeyRole::Authentication,
                     key: key.clone(),
                 }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
                 ..Default::default()
             },
         )
@@ -643,6 +654,10 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
                     role: KeyRole::Authentication,
                     key: key.clone(),
                 }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
                 ..Default::default()
             },
         )
@@ -737,6 +752,10 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
                     role: KeyRole::Authentication,
                     key,
                 }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
                 ..Default::default()
             },
         )
@@ -869,6 +888,10 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
                     role: KeyRole::Authentication,
                     key,
                 }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
                 ..Default::default()
             },
         )
@@ -1000,6 +1023,10 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                     role: KeyRole::Authentication,
                     key,
                 }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
                 ..Default::default()
             },
         )

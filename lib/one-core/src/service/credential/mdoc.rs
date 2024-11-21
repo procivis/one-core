@@ -3,6 +3,7 @@ use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, CredentialStateEnum, UpdateCredentialRequest};
 use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::model::{
@@ -57,6 +58,7 @@ impl CredentialService {
                     credential,
                     &*self.credential_repository,
                     &*self.key_provider,
+                    &*self.did_method_provider,
                     &interaction_data,
                     &*self.client,
                 )
@@ -77,6 +79,7 @@ async fn obtain_and_update_new_mso(
     credential: &Credential,
     credentials: &dyn CredentialRepository,
     key_provider: &dyn KeyProvider,
+    did_method_provider: &dyn DidMethodProvider,
     interaction_data: &HolderInteractionData,
     client: &dyn HttpClient,
 ) -> Result<(), ServiceError> {
@@ -91,13 +94,17 @@ async fn obtain_and_update_new_mso(
         .ok_or(ServiceError::Other("Missing holder did".to_owned()))?
         .clone();
 
+    let key_id = did_method_provider
+        .get_verification_method_id_from_did_and_key(&holder_did, &key)
+        .await?;
+
     let auth_fn = key_provider
         .get_signature_provider(&key.to_owned(), None)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
         interaction_data.issuer_url.clone(),
-        &holder_did,
+        Some(key_id),
         None,
         key.key_type.to_owned(),
         auth_fn,

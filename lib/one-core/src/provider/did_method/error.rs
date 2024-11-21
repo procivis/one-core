@@ -1,5 +1,6 @@
 //! Enumerates errors related to DID method provider.
 
+use shared_types::{DidId, KeyId};
 use thiserror::Error;
 
 use crate::provider::caching_loader::CachingLoaderError;
@@ -27,6 +28,11 @@ pub enum DidMethodProviderError {
     MissingDidMethodNameInDidValue,
     #[error("Missing did provider: `{0}`")]
     MissingProvider(String),
+
+    #[error(
+        "Verification method id of key `{key_id}` not found in did document for did '{did_id}"
+    )]
+    VerificationMethodIdNotFound { key_id: KeyId, did_id: DidId },
 
     #[error("Other: `{0}`")]
     Other(String),

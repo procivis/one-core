@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -22,7 +21,7 @@ impl OpenID4VCIProofJWTFormatter {
     }
     pub async fn format_proof(
         issuer_url: String,
-        holder_did: &Did,
+        holder_key_id: Option<String>,
         jwk: Option<PublicKeyJwkDTO>,
         algorithm: String,
         auth_fn: AuthenticationFn,
@@ -46,7 +45,7 @@ impl OpenID4VCIProofJWTFormatter {
 
         let key_id = match jwk {
             Some(_) => None,
-            None => Some(holder_did.did.to_string()),
+            None => holder_key_id,
         };
 
         let jwt: Jwt<ProofContent> = Jwt::new(

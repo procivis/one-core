@@ -262,26 +262,10 @@ impl SSIHolderService {
             None => holder_did.find_first_key_by_role(KeyRole::Authentication)?,
         };
 
-        let did_document = self.did_method_provider.resolve(&holder_did.did).await?;
-        let authentication_methods =
-            did_document
-                .authentication
-                .ok_or(ServiceError::MappingError(
-                    "Missing authentication keys".to_owned(),
-                ))?;
-        let holder_jwk_key_id = match authentication_methods
-            .iter()
-            .find(|id| id.contains(&selected_key.id.to_string()))
-            .cloned()
-        {
-            Some(id) => id,
-            None => authentication_methods
-                .first()
-                .ok_or(ServiceError::MappingError(
-                    "Missing first authentication key".to_owned(),
-                ))?
-                .to_owned(),
-        };
+        let holder_jwk_key_id = self
+            .did_method_provider
+            .get_verification_method_id_from_did_and_key(&holder_did, selected_key)
+            .await?;
 
         let exchange_protocol = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
             MissingProviderError::ExchangeProtocol(proof.exchange.clone()),
@@ -584,6 +568,11 @@ impl SSIHolderService {
             None => did.find_first_key_by_role(KeyRole::Authentication)?,
         };
 
+        let holder_jwk_key_id = self
+            .did_method_provider
+            .get_verification_method_id_from_did_and_key(&did, selected_key)
+            .await?;
+
         let key_security = self
             .key_provider
             .get_key_storage(&selected_key.storage_type)
@@ -641,7 +630,7 @@ impl SSIHolderService {
                     &credential,
                     &did,
                     selected_key,
-                    None,
+                    Some(holder_jwk_key_id.clone()),
                     &format,
                     &storage_access,
                     tx_code.clone(),

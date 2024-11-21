@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
@@ -16,12 +15,10 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::provider::credential_formatter::model::{CredentialSubject, DetailCredential};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
@@ -355,31 +352,9 @@ async fn test_submit_proof_succeeds() {
 
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
-        .expect_resolve()
+        .expect_get_verification_method_id_from_did_and_key()
         .once()
-        .returning(move |_| {
-            Ok(DidDocument {
-                context: json!({}),
-                id: dummy_did().did,
-                verification_method: vec![DidVerificationMethod {
-                    id: "did-vm-id".to_string(),
-                    r#type: "did-vm-type".to_string(),
-                    controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-                        r#use: None,
-                        crv: "P-256".to_string(),
-                        x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
-                        y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
-                    }),
-                }],
-                authentication: Some(vec!["did-vm-id".to_string()]),
-                assertion_method: None,
-                key_agreement: None,
-                capability_invocation: None,
-                capability_delegation: None,
-                rest: Default::default(),
-            })
-        });
+        .returning(|_, _| Ok("did:key:dummy_verification_method_id#0".to_string()));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -602,31 +577,9 @@ async fn test_submit_proof_repeating_claims() {
 
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
-        .expect_resolve()
+        .expect_get_verification_method_id_from_did_and_key()
         .once()
-        .returning(move |_| {
-            Ok(DidDocument {
-                context: json!({}),
-                id: dummy_did().did,
-                verification_method: vec![DidVerificationMethod {
-                    id: "did-vm-id".to_string(),
-                    r#type: "did-vm-type".to_string(),
-                    controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-                        r#use: None,
-                        crv: "P-256".to_string(),
-                        x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
-                        y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
-                    }),
-                }],
-                authentication: Some(vec!["did-vm-id".to_string()]),
-                assertion_method: None,
-                key_agreement: None,
-                capability_invocation: None,
-                capability_delegation: None,
-                rest: Default::default(),
-            })
-        });
+        .returning(|_, _| Ok("did:key:dummy_verification_method_id#0".to_string()));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -828,6 +781,11 @@ async fn test_reject_credential() {
 }
 
 fn mock_ssi_holder_service() -> SSIHolderService {
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_get_verification_method_id_from_did_and_key()
+        .returning(|_, _| Ok("did:key:dummy_verification_method_id#0".to_string()));
+
     SSIHolderService {
         credential_repository: Arc::new(MockCredentialRepository::new()),
         proof_repository: Arc::new(MockProofRepository::new()),
@@ -840,7 +798,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         key_provider: Arc::new(MockKeyProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         protocol_provider: Arc::new(MockExchangeProtocolProviderExtra::new()),
-        did_method_provider: Arc::new(MockDidMethodProvider::new()),
+        did_method_provider: Arc::new(did_method_provider),
         config: Arc::new(generic_config().core),
         client: Arc::new(ReqwestClient::default()),
     }
