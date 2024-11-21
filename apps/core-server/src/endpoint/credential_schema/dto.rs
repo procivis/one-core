@@ -246,11 +246,9 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     pub layout_type: CredentialSchemaLayoutType,
     #[into(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
-    /// For `mdoc` credentials, specify the `DocType` here. For physical
-    /// credential verification, specify the `schemaId` here. For all other
-    /// credential formats do not pass a value here. See the [mdoc
-    /// implementation](/guides/mdocs) and [physical
-    /// credentials](/guides/physical_credentials) guides.
+    /// For credential formats requiring a schema ID, pass it here.
+    /// For other formats, pass no value here.
+    /// See the [schema ID](/api/resources/credential_schemas#schemaid) guide.
     pub schema_id: Option<String>,
     /// If `true` and the chosen revocation method allows for suspension,
     /// credentials issued with this schema can be suspended.
