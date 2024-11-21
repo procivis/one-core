@@ -5,7 +5,7 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::macros::{impl_display, impl_from};
+use crate::macros::impl_display;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
@@ -16,12 +16,6 @@ pub struct DidValue(String);
 impl DidValue {
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-}
-
-impl From<Url> for DidValue {
-    fn from(url: Url) -> Self {
-        url.to_string().into()
     }
 }
 
@@ -39,11 +33,28 @@ impl FromStr for DidValue {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(s.to_owned()))
+        Ok(DidValue::from(s))
     }
 }
 
-impl_from!(DidValue; String);
+impl<T> From<T> for DidValue
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        Self(
+            value
+                .as_ref()
+                // Drop everything starting from the first # to allow parsing a did from a
+                // verification method reference as well.
+                .split('#')
+                .next()
+                .unwrap_or_default()
+                .to_string(),
+        )
+    }
+}
+
 impl_display!(DidValue);
 
 #[cfg(feature = "sea-orm")]
