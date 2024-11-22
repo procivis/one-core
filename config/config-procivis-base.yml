@@ -2,14 +2,14 @@ format:
   PHYSICAL_CARD:
     type: "PHYSICAL_CARD"
     display: "format.physicalCard"
-    order: 5
+    order: 340
     params:
       public:
         embedLayoutProperties: false
   JWT:
     type: "JWT"
     display: "format.jwt"
-    order: 0
+    order: 300
     params:
       public:
         leeway: 60
@@ -17,7 +17,7 @@ format:
   SD_JWT:
     type: "SD_JWT"
     display: "format.sdjwt"
-    order: 1
+    order: 310
     params:
       public:
         leeway: 60
@@ -25,7 +25,7 @@ format:
   JSON_LD_CLASSIC:
     type: "JSON_LD_CLASSIC"
     display: "format.jsonld_classic"
-    order: 2
+    order: 320
     params:
       public:
         leeway: 60
@@ -33,7 +33,7 @@ format:
   JSON_LD_BBSPLUS:
     type: "JSON_LD_BBSPLUS"
     display: "format.jsonld_bbsplus"
-    order: 3
+    order: 330
     params:
       public:
         leeway: 60
@@ -41,7 +41,7 @@ format:
   MDOC:
     type: "MDOC"
     display: "format.mdoc"
-    order: 4
+    order: 100
     params:
       public:
         msoExpiresIn: 259200 # 72h in seconds
@@ -51,7 +51,7 @@ format:
   SD_JWT_VC:
     type: "SD_JWT_VC"
     display: "format.sdjwt_vc"
-    order: 1
+    order: 200
     params:
       public:
         leeway: 60
