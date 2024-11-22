@@ -13,7 +13,7 @@ use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Discl
 
 pub(crate) const SELECTIVE_DISCLOSURE_MARKER: &str = "_sd";
 
-pub(crate) fn gather_hashes_from_disclosures(
+pub(crate) fn gather_hashes_from_original_disclosures(
     disclosures: &[Disclosure],
     hasher: &dyn Hasher,
 ) -> Result<Vec<String>, FormatterError> {
@@ -24,12 +24,12 @@ pub(crate) fn gather_hashes_from_disclosures(
 }
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct SelectiveDisclosureArray {
+struct SelectiveDisclosureArray {
     #[serde(rename = "_sd")]
     pub sd: Vec<String>,
 }
 
-pub(crate) fn gather_hash(
+fn gather_hash(
     disclosure: &Disclosure,
     hasher: &dyn Hasher,
 ) -> Result<Vec<String>, FormatterError> {
@@ -71,7 +71,7 @@ pub(crate) fn get_disclosures_by_claim_name(
     hasher: &dyn Hasher,
 ) -> Result<Vec<Disclosure>, FormatterError> {
     let mut result = vec![];
-    let hashes = gather_hashes_from_disclosures(disclosures, hasher)?;
+    let hashes = gather_hashes_from_original_disclosures(disclosures, hasher)?;
 
     if let Some(index) = claim_name.find(NESTED_CLAIM_MARKER) {
         let prefix = &claim_name[0..index];
@@ -119,7 +119,7 @@ pub(crate) fn get_disclosures_by_claim_name(
     Err(FormatterError::MissingClaim)
 }
 
-pub(crate) fn resolve_disclosure_by_hash(
+fn resolve_disclosure_by_hash(
     hash: &str,
     disclosures: &[Disclosure],
     hashes: &[String],
@@ -162,7 +162,7 @@ impl Disclosure {
     pub fn has_subdisclosures(&self) -> bool {
         self.value
             .as_object()
-            .is_some_and(|obj| obj.contains_key("_sd"))
+            .is_some_and(|obj| obj.contains_key(SELECTIVE_DISCLOSURE_MARKER))
     }
 
     pub fn hash_original_disclosure(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
@@ -312,106 +312,68 @@ pub(crate) fn gather_disclosures(
     Ok((disclosures, hashed_disclosures))
 }
 
+#[derive(Debug)]
+struct DisclosureWithHash {
+    pub disclosure: Disclosure,
+    pub hash: String,
+}
+
 pub(crate) fn extract_claims_from_disclosures(
     disclosures: &[Disclosure],
     hasher: &dyn Hasher,
 ) -> Result<serde_json::Value, FormatterError> {
-    let hashes_used_by_disclosures = gather_hashes_from_disclosures(disclosures, hasher)?;
+    let hashes_used_by_disclosures = gather_hashes_from_original_disclosures(disclosures, hasher)?;
 
-    let mut result = serde_json::Value::Object(Default::default());
-
-    let object = result.as_object_mut().ok_or(FormatterError::JsonMapping(
-        "freshly created map is not a map".to_string(),
-    ))?;
-
-    let disclosures_to_resolve = disclosures
-        .iter()
-        .filter_map(|disclosure| {
-            if disclosure.has_subdisclosures() {
-                Some(disclosure.hash_original_disclosure(hasher))
-            } else {
-                None
-            }
+    let all_disclosures: Vec<_> = hashes_used_by_disclosures
+        .into_iter()
+        .zip(disclosures)
+        .map(|(hash, disclosure)| DisclosureWithHash {
+            hash,
+            disclosure: disclosure.to_owned(),
         })
-        .collect::<Result<Vec<String>, FormatterError>>()?;
+        .collect();
 
-    if disclosures_to_resolve.is_empty() {
-        let (json, _) = get_subdisclosures(disclosures, &hashes_used_by_disclosures, hasher)?;
+    let root_disclosures: Vec<_> = all_disclosures
+        .iter()
+        .filter(|DisclosureWithHash { hash, .. }| {
+            // root disclosures are those whose hash is not mentioned by any other disclosure
+            !all_disclosures
+                .iter()
+                .any(|DisclosureWithHash { disclosure, .. }| {
+                    disclosure.has_subdisclosures()
+                        && disclosure
+                            .get_subdisclosure_hashes()
+                            .is_ok_and(|subdisclosures| subdisclosures.contains(hash))
+                })
+        })
+        .collect();
 
-        json.as_object()
-            .ok_or(FormatterError::JsonMapping(
-                "subdisclosures are not a map".to_string(),
-            ))?
-            .into_iter()
-            .for_each(|(k, v)| {
-                object.insert(k.to_owned(), v.to_owned());
-            });
-    } else {
-        let (json, resolved_hashes) =
-            get_subdisclosures(disclosures, &disclosures_to_resolve, hasher)?;
-
-        json.as_object()
-            .ok_or(FormatterError::JsonMapping(
-                "subdisclosures are not a map".to_string(),
-            ))?
-            .into_iter()
-            .for_each(|(k, v)| {
-                object.insert(k.to_owned(), v.to_owned());
-            });
-
-        disclosures
-            .iter()
-            .zip(hashes_used_by_disclosures)
-            .for_each(|(disclosure, hash)| {
-                if !resolved_hashes.contains(&hash) {
-                    object.insert(disclosure.key.to_owned(), disclosure.value.to_owned());
-                }
-            });
+    let mut object: serde_json::Map<String, serde_json::Value> = Default::default();
+    for DisclosureWithHash { disclosure, .. } in root_disclosures {
+        let value = extract_claim_value_from_disclosure(disclosure, &all_disclosures)?;
+        object.insert(disclosure.key.to_owned(), value);
     }
-
-    Ok(result)
+    Ok(serde_json::Value::Object(object))
 }
 
-pub(crate) fn get_subdisclosures(
-    disclosures: &[Disclosure],
-    subdisclosures: &[String],
-    hasher: &dyn Hasher,
-) -> Result<(serde_json::Value, Vec<String>), FormatterError> {
-    let mut result = serde_json::Value::Object(Default::default());
-    let mut resolved_subdisclosures = vec![];
-
-    let object = result.as_object_mut().ok_or(FormatterError::JsonMapping(
-        "freshly created map is not a map".to_string(),
-    ))?;
-
-    for hash in subdisclosures {
-        let Some(disclosure) = disclosures.iter().find(|disclosure| {
-            if let Ok(disclosure_hash) = disclosure.hash_original_disclosure(hasher) {
-                disclosure_hash == *hash
-            } else {
-                false
-            }
-        }) else {
-            continue;
-        };
-
-        if disclosure.has_subdisclosures() {
-            let subdisclosures = disclosure.get_subdisclosure_hashes()?;
-
-            let (object_value, resolved) =
-                get_subdisclosures(disclosures, &subdisclosures, hasher)?;
-
-            object.insert(disclosure.key.to_owned(), object_value);
-
-            resolved_subdisclosures.extend(resolved);
-            resolved_subdisclosures.push(hash.to_owned());
-        } else {
-            object.insert(disclosure.key.to_owned(), disclosure.value.to_owned());
-            resolved_subdisclosures.push(hash.to_owned());
+fn extract_claim_value_from_disclosure(
+    disclosure: &Disclosure,
+    all_disclosures: &[DisclosureWithHash],
+) -> Result<serde_json::Value, FormatterError> {
+    if disclosure.has_subdisclosures() {
+        let subdisclosures = disclosure.get_subdisclosure_hashes()?;
+        let mut object: serde_json::Map<String, serde_json::Value> = Default::default();
+        for DisclosureWithHash { disclosure, .. } in all_disclosures
+            .iter()
+            .filter(|DisclosureWithHash { hash, .. }| subdisclosures.contains(hash))
+        {
+            let value = extract_claim_value_from_disclosure(disclosure, all_disclosures)?;
+            object.insert(disclosure.key.to_owned(), value);
         }
+        Ok(serde_json::Value::Object(object))
+    } else {
+        Ok(disclosure.value.to_owned())
     }
-
-    Ok((result, resolved_subdisclosures))
 }
 
 pub(crate) fn extract_disclosures(token: &str) -> Result<DecomposedToken, FormatterError> {

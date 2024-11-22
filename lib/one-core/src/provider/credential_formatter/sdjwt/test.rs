@@ -13,7 +13,7 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     extract_claims_from_disclosures, gather_disclosures, get_disclosures_by_claim_name,
-    get_subdisclosures, parse_disclosure, sort_published_claims_by_indices, DisclosureArray,
+    parse_disclosure, sort_published_claims_by_indices, DisclosureArray,
 };
 use crate::provider::credential_formatter::sdjwt::model::Disclosure;
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
@@ -330,71 +330,47 @@ fn test_extract_claims_from_disclosures() {
     let disclosures = generic_disclosures();
     let first_two_disclosures = disclosures[0..2].to_vec();
 
-    let expected = json!({
-        "str": "stronk",
-        "another": "week"
-    });
     assert_eq!(
-        expected,
-        extract_claims_from_disclosures(&first_two_disclosures, &hasher).unwrap()
+        extract_claims_from_disclosures(&first_two_disclosures, &hasher).unwrap(),
+        json!({
+            "str": "stronk",
+            "another": "week"
+        })
     );
 
-    let expected = json!({
-        "obj": {
-            "str": "stronk",
-            "another": "week"
-        }
-    });
     assert_eq!(
-        expected,
-        extract_claims_from_disclosures(&disclosures, &hasher).unwrap()
+        extract_claims_from_disclosures(&disclosures, &hasher).unwrap(),
+        json!({
+            "obj": {
+                "str": "stronk",
+                "another": "week"
+            }
+        })
     );
-}
 
-#[test]
-fn test_get_subdisclosures() {
-    let hasher = SHA256 {};
-
-    let disclosures = generic_disclosures();
-    let first_two_disclosures = disclosures[0..2].to_vec();
-
-    let disclosure_hashes = disclosures
-        .iter()
-        .map(|d| d.hash_original_disclosure(&hasher).unwrap())
-        .collect::<Vec<String>>();
-    let first_two_to_resolve = disclosure_hashes[0..2].to_vec();
-    let resolve_only_objects = disclosure_hashes[2..3].to_vec();
-
-    let expected = json!({
-        "str": "stronk",
-        "another": "week"
-    });
-    let (result, resolved) =
-        get_subdisclosures(&first_two_disclosures, &first_two_to_resolve, &hasher).unwrap();
-    assert_eq!(expected, result);
-    assert_eq!(resolved, first_two_to_resolve);
-
-    let expected = json!({
-        "obj": {
-            "str": "stronk",
-            "another": "week"
-        }
-    });
-    let (result, resolved) =
-        get_subdisclosures(&disclosures, &resolve_only_objects, &hasher).unwrap();
-    assert_eq!(expected, result);
-    assert_eq!(resolved, disclosure_hashes);
-
-    let expected = json!({
-        "obj": {
-            "str": "stronk",
-            "another": "week"
-        }
-    });
-    let (result, resolved) =
-        get_subdisclosures(&disclosures, &resolve_only_objects, &hasher).unwrap();
-    assert_eq!(expected, result);
-    assert_eq!(resolved, disclosure_hashes);
+    let additional_level = Disclosure {
+        salt: "pggVbYzzu6oOGXrmNVGPHP".to_string(),
+        key: "root".to_string(),
+        value: json!({
+          "_sd": [
+            "bvvBS7QQFb8-9K8PVvZ4W3iJNfafA51YUF6wNOW807I"
+          ]
+        }),
+        original_disclosure: "[\"pggVbYzzu6oOGXrmNVGPHP\",\"root\",{\"_sd\":[\"bvvBS7QQFb8-9K8PVvZ4W3iJNfafA51YUF6wNOW807I\"]}]".to_string(),
+        base64_encoded_disclosure:"WyJwZ2dWYll6enU2b09HWHJtTlZHUEhQIiwicm9vdCIseyJfc2QiOlsiYnZ2QlM3UVFGYjgtOUs4UFZ2WjRXM2lKTmZhZkE1MVlVRjZ3Tk9XODA3SSJdfV0".to_string(),
+    };
+    assert_eq!(
+        extract_claims_from_disclosures(&[disclosures, vec![additional_level]].concat(), &hasher)
+            .unwrap(),
+        json!({
+            "root": {
+                "obj": {
+                    "str": "stronk",
+                    "another": "week"
+                }
+            }
+        })
+    );
 }
 
 #[test]
