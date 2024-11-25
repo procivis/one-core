@@ -1,6 +1,3 @@
-use core_server::endpoint::trust_anchor::dto::TrustAnchorRoleRest;
-use one_core::model::trust_anchor::TrustAnchorRole;
-
 use crate::utils::context::TestContext;
 
 #[tokio::test]
@@ -12,7 +9,7 @@ async fn test_create_anchor() {
     let resp = context
         .api
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", TrustAnchorRoleRest::Publisher)
+        .create("name", "SIMPLE_TRUST_LIST", true)
         .await;
 
     // THEN
@@ -28,11 +25,7 @@ async fn test_fail_to_create_anchor_unknown_format() {
     let resp = context
         .api
         .trust_anchors
-        .create(
-            "name",
-            "NOT_SO_SIMPLE_TRUST_LIST",
-            TrustAnchorRoleRest::Publisher,
-        )
+        .create("name", "NOT_SO_SIMPLE_TRUST_LIST", true)
         .await;
 
     // THEN
@@ -47,14 +40,14 @@ async fn test_fail_to_create_anchor_name_already_taken() {
     context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("name", "SIMPLE_TRUST_LIST", true)
         .await;
 
     // WHEN
     let resp = context
         .api
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", TrustAnchorRoleRest::Publisher)
+        .create("name", "SIMPLE_TRUST_LIST", true)
         .await;
 
     // THEN

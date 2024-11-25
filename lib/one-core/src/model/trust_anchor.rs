@@ -7,21 +7,9 @@ pub struct TrustAnchor {
     pub name: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub type_field: String,
-    pub publisher_reference: Option<String>,
-    pub role: TrustAnchorRole,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum TrustAnchorRole {
-    Publisher,
-    Client,
-}
-
-impl TrustAnchorRole {
-    pub fn is_publisher(&self) -> bool {
-        matches!(self, Self::Publisher)
-    }
+    pub r#type: String,
+    pub publisher_reference: String,
+    pub is_publisher: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

@@ -280,7 +280,6 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 task::dto::TaskResponseRestDTO,
 
                 trust_anchor::dto::CreateTrustAnchorRequestRestDTO,
-                trust_anchor::dto::TrustAnchorRoleRest,
                 trust_anchor::dto::GetTrustAnchorResponseRestDTO,
                 trust_anchor::dto::ListTrustAnchorsResponseItemRestDTO,
                 trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO,

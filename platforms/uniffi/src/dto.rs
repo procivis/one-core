@@ -9,7 +9,6 @@ use one_core::model::did::{DidType, KeyRole, SortableDidColumn};
 use one_core::model::history::{HistoryAction, HistoryEntityType, HistorySearchEnum};
 use one_core::model::proof::{ProofStateEnum, SortableProofColumn};
 use one_core::model::proof_schema::SortableProofSchemaColumn;
-use one_core::model::trust_anchor::TrustAnchorRole;
 use one_core::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, CharacteristicUUID,
     CharacteristicWriteType, ConnectionEvent, CreateCharacteristicOptions, DeviceAddress,
@@ -58,8 +57,8 @@ use one_core::service::proof_schema::dto::{
 };
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::service::trust_anchor::dto::{
-    GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO, SortableTrustAnchorColumn,
-    TrustAnchorsListItemResponseDTO,
+    CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO,
+    SortableTrustAnchorColumn, TrustAnchorsListItemResponseDTO,
 };
 use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 
@@ -1124,20 +1123,13 @@ pub struct UnexportableEntitiesBindingDTO {
     pub total_dids: u64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Into)]
+#[into(CreateTrustAnchorRequestDTO)]
 pub struct CreateTrustAnchorRequestBindingDTO {
     pub name: String,
     pub r#type: String,
+    pub is_publisher: Option<bool>,
     pub publisher_reference: Option<String>,
-    pub role: TrustAnchorRoleBinding,
-}
-
-#[derive(Clone, Debug, Into, From)]
-#[into(TrustAnchorRole)]
-#[from(TrustAnchorRole)]
-pub enum TrustAnchorRoleBinding {
-    Publisher,
-    Client,
 }
 
 #[derive(Clone, Debug, From)]
@@ -1151,8 +1143,8 @@ pub struct GetTrustAnchorResponseBindingDTO {
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
     pub r#type: String,
-    pub publisher_reference: Option<String>,
-    pub role: TrustAnchorRoleBinding,
+    pub is_publisher: bool,
+    pub publisher_reference: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Into)]
@@ -1178,7 +1170,7 @@ pub struct ListTrustAnchorsFiltersBindings {
     pub sort_direction: Option<SortDirection>,
 
     pub name: Option<String>,
-    pub role: Option<TrustAnchorRoleBinding>,
+    pub is_publisher: Option<bool>,
     pub r#type: Option<String>,
 
     pub exact: Option<Vec<ExactTrustAnchorFilterColumnBindings>>,
@@ -1197,8 +1189,8 @@ pub struct TrustAnchorsListItemResponseBindingDTO {
     pub last_modified: String,
 
     pub r#type: String,
-    pub publisher_reference: Option<String>,
-    pub role: TrustAnchorRoleBinding,
+    pub is_publisher: bool,
+    pub publisher_reference: String,
     pub entities: u64,
 }
 

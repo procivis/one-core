@@ -297,6 +297,9 @@ pub enum BusinessLogicError {
     #[error("Trust anchor must be publish")]
     TrustAnchorMustBePublish,
 
+    #[error("Trust anchor invalid request: {reason}")]
+    TrustAnchorInvalidCreateRequest { reason: String },
+
     #[error("trustAnchorId and entityId are already present")]
     TrustEntityAlreadyPresent,
 
@@ -884,6 +887,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "SD-JWT VC type metadata not found")]
     BR_0172,
+
+    #[strum(to_string = "Invalid create trust anchor request")]
+    BR_0177,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1014,6 +1020,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::TrustAnchorNameTaken => ErrorCode::BR_0113,
             Self::UnknownTrustAnchorType => ErrorCode::BR_0114,
             Self::TrustAnchorMustBePublish => ErrorCode::BR_0123,
+            Self::TrustAnchorInvalidCreateRequest { .. } => ErrorCode::BR_0177,
             Self::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
             Self::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,
             Self::ProofSchemaImport(_) => ErrorCode::BR_0135,

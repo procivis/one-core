@@ -21,17 +21,15 @@ impl From<TrustAnchorsFilterQueryParamsRest> for ListFilterCondition<TrustAnchor
             })
         });
 
-        let role = value
-            .role
-            .map(|role| TrustAnchorFilterValue::Role(role.into()));
+        let is_publisher = value.is_publisher.map(TrustAnchorFilterValue::is_publisher);
 
-        let type_ = value.r#type.map(|type_| {
+        let r#type = value.r#type.map(|r#type| {
             TrustAnchorFilterValue::Type(StringMatch {
                 r#match: get_string_match_type(ExactTrustAnchorFilterColumnRestEnum::Type),
-                value: type_,
+                value: r#type,
             })
         });
 
-        ListFilterCondition::<TrustAnchorFilterValue>::from(name) & role & type_
+        ListFilterCondition::<TrustAnchorFilterValue>::from(name) & is_publisher & r#type
     }
 }

@@ -1,5 +1,5 @@
 use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
-use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
+use one_core::model::trust_anchor::TrustAnchor;
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
@@ -14,7 +14,7 @@ async fn test_create_trust_entity() {
     let anchor = context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("name", "SIMPLE_TRUST_LIST", true)
         .await;
 
     // WHEN
@@ -38,9 +38,9 @@ async fn test_fail_to_create_trust_entity_unknown_trust_id() {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "name".to_owned(),
-        publisher_reference: Some("test".to_owned()),
-        type_field: "test".to_owned(),
-        role: TrustAnchorRole::Publisher,
+        publisher_reference: "test".to_string(),
+        r#type: "test".to_owned(),
+        is_publisher: true,
     };
 
     // WHEN
@@ -63,7 +63,7 @@ async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
     let anchor = context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", TrustAnchorRole::Client)
+        .create("name", "SIMPLE_TRUST_LIST", false)
         .await;
 
     // WHEN
@@ -86,11 +86,7 @@ async fn test_delete_trust_entity() {
     let anchor = context
         .db
         .trust_anchors
-        .create(
-            "trust-anchor",
-            "SIMPLE_TRUST_LIST",
-            TrustAnchorRole::Publisher,
-        )
+        .create("trust-anchor", "SIMPLE_TRUST_LIST", true)
         .await;
 
     let trust_entity = context

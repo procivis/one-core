@@ -12,10 +12,8 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    #[sea_orm(column_name = "type")]
-    pub type_field: String,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub publisher_reference: Option<String>,
+    pub r#type: String,
+    pub publisher_reference: String,
     pub is_publisher: bool,
 }
 

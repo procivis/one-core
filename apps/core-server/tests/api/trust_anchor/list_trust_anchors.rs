@@ -1,5 +1,3 @@
-use core_server::endpoint::trust_anchor::dto::TrustAnchorRoleRest;
-use one_core::model::trust_anchor::TrustAnchorRole;
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 
 use crate::utils::api_clients::trust_anchors::ListFilters;
@@ -13,12 +11,12 @@ async fn test_list_trust_anchors() {
     context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("name1", "SIMPLE_TRUST_LIST", true)
         .await;
     context
         .db
         .trust_anchors
-        .create("name2", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("name2", "SIMPLE_TRUST_LIST", true)
         .await;
 
     // WHEN
@@ -28,7 +26,7 @@ async fn test_list_trust_anchors() {
         .list(
             0,
             ListFilters {
-                role: Some(TrustAnchorRoleRest::Publisher),
+                is_publisher: Some(true),
                 name: None,
             },
         )
@@ -51,11 +49,7 @@ async fn test_list_trust_anchors_with_entities() {
         let anchor = context
             .db
             .trust_anchors
-            .create(
-                &format!("name{id}"),
-                "SIMPLE_TRUST_LIST",
-                TrustAnchorRole::Publisher,
-            )
+            .create(&format!("name{id}"), "SIMPLE_TRUST_LIST", true)
             .await;
 
         context
@@ -90,7 +84,7 @@ async fn test_list_trust_anchors_with_entities() {
         .list(
             0,
             ListFilters {
-                role: Some(TrustAnchorRoleRest::Publisher),
+                is_publisher: Some(true),
                 name: None,
             },
         )
@@ -113,13 +107,13 @@ async fn test_filter_trust_anchor_by_name() {
     let anchor = context
         .db
         .trust_anchors
-        .create("foo", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("foo", "SIMPLE_TRUST_LIST", true)
         .await;
 
     context
         .db
         .trust_anchors
-        .create("bar", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("bar", "SIMPLE_TRUST_LIST", true)
         .await;
 
     // WHEN
@@ -130,7 +124,7 @@ async fn test_filter_trust_anchor_by_name() {
             0,
             ListFilters {
                 name: Some("foo".to_string()),
-                role: None,
+                is_publisher: None,
             },
         )
         .await;

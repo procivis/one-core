@@ -817,16 +817,11 @@ dictionary MetadataBindingDTO {
   string created_at;
 };
 
-enum TrustAnchorRoleBinding {
-  "Publisher",
-  "Client",
-};
-
 dictionary CreateTrustAnchorRequestBindingDTO {
   string name;
   string type;
+  boolean? is_publisher;
   string? publisher_reference;
-  TrustAnchorRoleBinding role;
 };
 
 dictionary GetTrustAnchorResponseBindingDTO {
@@ -835,8 +830,8 @@ dictionary GetTrustAnchorResponseBindingDTO {
   string created_date;
   string last_modified;
   string type;
-  string? publisher_reference;
-  TrustAnchorRoleBinding role;
+  boolean is_publisher;
+  string publisher_reference;
 };
 
 enum SortableTrustAnchorColumnBindings {
@@ -856,7 +851,7 @@ dictionary ListTrustAnchorsFiltersBindings {
   SortableTrustAnchorColumnBindings? sort;
   SortDirection? sort_direction;
   string? name;
-  TrustAnchorRoleBinding? role;
+  boolean? is_publisher;
   string? type;
   sequence<ExactTrustAnchorFilterColumnBindings>? exact;
 };
@@ -867,8 +862,8 @@ dictionary TrustAnchorsListItemResponseBindingDTO {
   string created_date;
   string last_modified;
   string type;
-  string? publisher_reference;
-  TrustAnchorRoleBinding role;
+  boolean is_publisher;
+  string publisher_reference;
   u64 entities;
 };
 

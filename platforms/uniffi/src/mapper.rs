@@ -25,9 +25,7 @@ use one_core::service::proof::dto::{GetProofQueryDTO, ProofDetailResponseDTO, Pr
 use one_core::service::proof_schema::dto::{
     GetProofSchemaQueryDTO, ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterValue,
 };
-use one_core::service::trust_anchor::dto::{
-    CreateTrustAnchorRequestDTO, ListTrustAnchorsQueryDTO, TrustAnchorFilterValue,
-};
+use one_core::service::trust_anchor::dto::{ListTrustAnchorsQueryDTO, TrustAnchorFilterValue};
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde_json::json;
 use shared_types::KeyId;
@@ -42,10 +40,10 @@ use crate::dto::{
 use crate::error::BindingError;
 use crate::utils::{into_id, into_timestamp, TimestampFormat};
 use crate::{
-    CreateTrustAnchorRequestBindingDTO, CredentialSchemaTypeBindingEnum, DeviceInfoBindingDTO,
-    ExactTrustAnchorFilterColumnBindings, HistoryListItemBindingDTO, HistoryMetadataBinding,
-    ImportCredentialSchemaClaimSchemaBindingDTO, ImportProofSchemaClaimSchemaBindingDTO,
-    ListProofSchemasFiltersBindingDTO, ListTrustAnchorsFiltersBindings, ProofListQueryBindingDTO,
+    CredentialSchemaTypeBindingEnum, DeviceInfoBindingDTO, ExactTrustAnchorFilterColumnBindings,
+    HistoryListItemBindingDTO, HistoryMetadataBinding, ImportCredentialSchemaClaimSchemaBindingDTO,
+    ImportProofSchemaClaimSchemaBindingDTO, ListProofSchemasFiltersBindingDTO,
+    ListTrustAnchorsFiltersBindings, ProofListQueryBindingDTO,
     ProofListQueryExactColumnBindingEnum, ProofSchemaListQueryExactColumnBinding,
 };
 
@@ -337,17 +335,6 @@ impl From<CredentialSchemaTypeBindingEnum>
     }
 }
 
-impl TryFrom<CreateTrustAnchorRequestBindingDTO> for CreateTrustAnchorRequestDTO {
-    type Error = ServiceError;
-    fn try_from(value: CreateTrustAnchorRequestBindingDTO) -> Result<Self, Self::Error> {
-        Ok(Self {
-            name: value.name,
-            r#type: value.r#type,
-            role: value.role.into(),
-        })
-    }
-}
-
 impl TryFrom<ListTrustAnchorsFiltersBindings> for ListTrustAnchorsQueryDTO {
     type Error = BindingError;
 
@@ -368,18 +355,17 @@ impl TryFrom<ListTrustAnchorsFiltersBindings> for ListTrustAnchorsQueryDTO {
             })
         });
 
-        let role = value
-            .role
-            .map(|role| TrustAnchorFilterValue::Role(role.into()));
+        let is_publisher = value.is_publisher.map(TrustAnchorFilterValue::IsPublisher);
 
-        let type_ = value.r#type.map(|type_| {
+        let r#type = value.r#type.map(|r#type| {
             TrustAnchorFilterValue::Type(StringMatch {
                 r#match: get_string_match_type(ExactTrustAnchorFilterColumnBindings::Type),
-                value: type_,
+                value: r#type,
             })
         });
 
-        let filtering = ListFilterCondition::<TrustAnchorFilterValue>::from(name) & role & type_;
+        let filtering =
+            ListFilterCondition::<TrustAnchorFilterValue>::from(name) & is_publisher & r#type;
 
         Ok(Self {
             pagination: Some(ListPagination {

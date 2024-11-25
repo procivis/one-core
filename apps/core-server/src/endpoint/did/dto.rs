@@ -9,7 +9,7 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use crate::dto::common::ListQueryParamsRest;
+use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
@@ -162,19 +162,6 @@ pub enum KeyRoleRestEnum {
     KeyAgreement,
     CapabilityInvocation,
     CapabilityDelegation,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub enum Boolean {
-    True,
-    False,
-}
-
-impl From<Boolean> for bool {
-    fn from(boolean: Boolean) -> Self {
-        matches!(boolean, Boolean::True)
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]

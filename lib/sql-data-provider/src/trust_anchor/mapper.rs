@@ -1,4 +1,4 @@
-use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
+use one_core::model::trust_anchor::TrustAnchor;
 use one_core::service::trust_anchor::dto::{SortableTrustAnchorColumn, TrustAnchorFilterValue};
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{IntoSimpleExpr, Set};
@@ -15,9 +15,9 @@ impl From<TrustAnchor> for trust_anchor::ActiveModel {
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             name: Set(value.name),
-            type_field: Set(value.type_field),
+            r#type: Set(value.r#type),
+            is_publisher: Set(value.is_publisher),
             publisher_reference: Set(value.publisher_reference),
-            is_publisher: Set(value.role.is_publisher()),
         }
     }
 }
@@ -29,13 +29,9 @@ impl From<trust_anchor::Model> for TrustAnchor {
             name: value.name,
             created_date: value.created_date,
             last_modified: value.last_modified,
-            type_field: value.type_field,
+            r#type: value.r#type,
+            is_publisher: value.is_publisher,
             publisher_reference: value.publisher_reference,
-            role: if value.is_publisher {
-                TrustAnchorRole::Publisher
-            } else {
-                TrustAnchorRole::Client
-            },
         }
     }
 }
@@ -45,8 +41,7 @@ impl IntoSortingColumn for SortableTrustAnchorColumn {
         match self {
             Self::Name => trust_anchor::Column::Name.into_simple_expr(),
             Self::CreatedDate => trust_anchor::Column::CreatedDate.into_simple_expr(),
-            Self::Type => trust_anchor::Column::TypeField.into_simple_expr(),
-            Self::Role => trust_anchor::Column::IsPublisher.into_simple_expr(),
+            Self::Type => trust_anchor::Column::Type.into_simple_expr(),
         }
     }
 }
@@ -57,11 +52,11 @@ impl IntoFilterCondition for TrustAnchorFilterValue {
             Self::Name(string_match) => {
                 get_string_match_condition(trust_anchor::Column::Name, string_match)
             }
-            Self::Role(role) => {
-                get_equals_condition(trust_anchor::Column::IsPublisher, role.is_publisher())
+            Self::IsPublisher(is_publisher) => {
+                get_equals_condition(trust_anchor::Column::IsPublisher, is_publisher)
             }
             Self::Type(string_match) => {
-                get_string_match_condition(trust_anchor::Column::TypeField, string_match)
+                get_string_match_condition(trust_anchor::Column::Type, string_match)
             }
         }
     }

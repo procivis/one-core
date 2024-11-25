@@ -10,7 +10,7 @@ impl OneCoreBinding {
             let core = self.use_core().await?;
             let id = core
                 .trust_anchor_service
-                .create_trust_anchor(anchor.try_into()?)
+                .create_trust_anchor(anchor.into())
                 .await?;
             Ok(id.to_string())
         })

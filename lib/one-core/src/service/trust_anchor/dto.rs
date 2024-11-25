@@ -1,28 +1,31 @@
+use one_dto_mapper::From;
 use shared_types::TrustAnchorId;
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
-use crate::model::trust_anchor::TrustAnchorRole;
+use crate::model::trust_anchor::TrustAnchor;
 use crate::service::trust_entity::dto::GetTrustEntityResponseDTO;
 
 #[derive(Clone, Debug)]
 pub struct CreateTrustAnchorRequestDTO {
     pub name: String,
     pub r#type: String,
-    pub role: TrustAnchorRole,
+    pub is_publisher: Option<bool>,
+    pub publisher_reference: Option<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From)]
+#[from(TrustAnchor)]
 pub struct GetTrustAnchorDetailResponseDTO {
     pub id: TrustAnchorId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub r#type: String,
-    pub publisher_reference: Option<String>,
-    pub role: TrustAnchorRole,
+    pub is_publisher: bool,
+    pub publisher_reference: String,
 }
 
 #[derive(Clone, Debug)]
@@ -39,14 +42,19 @@ pub enum SortableTrustAnchorColumn {
     Name,
     CreatedDate,
     Type,
-    Role,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TrustAnchorFilterValue {
     Name(StringMatch),
-    Role(TrustAnchorRole),
+    IsPublisher(bool),
     Type(StringMatch),
+}
+
+impl TrustAnchorFilterValue {
+    pub fn is_publisher(v: impl Into<bool>) -> Self {
+        Self::IsPublisher(v.into())
+    }
 }
 
 impl ListFilterValue for TrustAnchorFilterValue {}
@@ -60,8 +68,8 @@ pub struct TrustAnchorsListItemResponseDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub r#type: String,
-    pub publisher_reference: Option<String>,
-    pub role: TrustAnchorRole,
+    pub is_publisher: bool,
+    pub publisher_reference: String,
     pub entities: u32,
 }
 

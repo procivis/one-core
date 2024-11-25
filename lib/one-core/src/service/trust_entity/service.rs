@@ -7,7 +7,7 @@ use super::dto::{
 use super::mapper::trust_entity_from_request;
 use super::TrustEntityService;
 use crate::model::did::DidRelations;
-use crate::model::trust_anchor::{TrustAnchorRelations, TrustAnchorRole};
+use crate::model::trust_anchor::TrustAnchorRelations;
 use crate::model::trust_entity::TrustEntityRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
@@ -25,7 +25,7 @@ impl TrustEntityService {
             .await?
             .ok_or(EntityNotFoundError::TrustAnchor(request.trust_anchor_id))?;
 
-        if trust_anchor.role != TrustAnchorRole::Publisher {
+        if !trust_anchor.is_publisher {
             return Err(BusinessLogicError::TrustAnchorMustBePublish.into());
         }
 
@@ -37,8 +37,8 @@ impl TrustEntityService {
 
         let trust = self
             .trust_provider
-            .get(&trust_anchor.type_field)
-            .ok_or_else(|| MissingProviderError::TrustManager(trust_anchor.type_field.clone()))?;
+            .get(&trust_anchor.r#type)
+            .ok_or_else(|| MissingProviderError::TrustManager(trust_anchor.r#type.to_owned()))?;
 
         let entity = trust_entity_from_request(request, trust_anchor.clone(), did);
 

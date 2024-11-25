@@ -20,11 +20,31 @@ impl TrustAnchorService {
         validate_trust_management(&request.r#type, &self.config.trust_management)
             .map_err(|_| BusinessLogicError::UnknownTrustAnchorType)?;
 
-        let core_base_url = self.core_base_url.as_ref().ok_or(ServiceError::Other(
-            "Missing core_base_url in trust anchor service".to_string(),
-        ))?;
+        let core_base_url = if request
+            .is_publisher
+            .is_some_and(|is_publisher| is_publisher)
+        {
+            if request.publisher_reference.is_some() {
+                return Err(BusinessLogicError::TrustAnchorInvalidCreateRequest {
+                    reason: "Invalid publisher_reference".to_string(),
+                }
+                .into());
+            }
 
-        let anchor = trust_anchor_from_request(request, core_base_url);
+            Some(self.core_base_url.as_ref().ok_or(ServiceError::Other(
+                "Missing core_base_url in trust anchor service".to_string(),
+            ))?)
+        } else {
+            if request.publisher_reference.is_none() {
+                return Err(BusinessLogicError::TrustAnchorInvalidCreateRequest {
+                    reason: "Missing publisher_reference".to_string(),
+                }
+                .into());
+            }
+            None
+        };
+
+        let anchor = trust_anchor_from_request(request, core_base_url)?;
 
         self.trust_anchor_repository
             .create(anchor)
@@ -50,7 +70,7 @@ impl TrustAnchorService {
         let trust_list_type = self
             .config
             .trust_management
-            .get_fields(&result.type_field)?
+            .get_fields(&result.r#type)?
             .r#type;
         if trust_list_type != TrustManagementType::SimpleTrustList {
             return Err(BusinessLogicError::TrustAnchorTypeIsNotSimpleTrustList.into());

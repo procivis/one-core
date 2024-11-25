@@ -104,3 +104,16 @@ where
 pub struct EntityShareResponseRestDTO {
     pub url: String,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum Boolean {
+    True,
+    False,
+}
+
+impl From<Boolean> for bool {
+    fn from(boolean: Boolean) -> Self {
+        matches!(boolean, Boolean::True)
+    }
+}

@@ -1,4 +1,3 @@
-use one_core::model::trust_anchor::TrustAnchorRole;
 use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO, SortableTrustAnchorColumn,
     TrustAnchorsListItemResponseDTO,
@@ -9,30 +8,27 @@ use shared_types::TrustAnchorId;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
-use crate::dto::common::ListQueryParamsRest;
+use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::serialize::front_time;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateTrustAnchorRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTrustAnchorRequestRestDTO {
-    /// Must be unique within an organization.
+    /// Must be unique
     pub name: String,
     /// Specify the type of trust management anchor to publish or subscribe
     /// to. Possible values from the configuration.
     pub r#type: String,
-    pub role: TrustAnchorRoleRest,
-}
-
-/// Whether an organization is the publisher of a trust anchor or
-/// is subscribed to a trust anchor.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
-#[into(TrustAnchorRole)]
-#[from(TrustAnchorRole)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TrustAnchorRoleRest {
-    Publisher,
-    Client,
+    /// If true the created trust anchor will be published. If subscribing
+    /// to an existing trust anchor, omit or set to false. The remote anchor has
+    /// to be specified via `publisherReference`.
+    #[schema(nullable = false)]
+    pub is_publisher: Option<bool>,
+    /// URL of the remote trust anchor to subscribe to.
+    /// It must be provided if and only if `isPublisher=false`.
+    #[schema(nullable = false)]
+    pub publisher_reference: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
@@ -50,8 +46,8 @@ pub struct GetTrustAnchorResponseRestDTO {
     pub last_modified: OffsetDateTime,
 
     pub r#type: String,
-    pub publisher_reference: Option<String>,
-    pub role: TrustAnchorRoleRest,
+    pub is_publisher: bool,
+    pub publisher_reference: String,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -69,8 +65,8 @@ pub struct ListTrustAnchorsResponseItemRestDTO {
     pub last_modified: OffsetDateTime,
 
     pub r#type: String,
-    pub publisher_reference: Option<String>,
-    pub role: TrustAnchorRoleRest,
+    pub is_publisher: bool,
+    pub publisher_reference: String,
     pub entities: u64,
 }
 
@@ -86,8 +82,8 @@ pub enum ExactTrustAnchorFilterColumnRestEnum {
 pub struct TrustAnchorsFilterQueryParamsRest {
     #[param(nullable = false)]
     pub name: Option<String>,
-    #[param(nullable = false)]
-    pub role: Option<TrustAnchorRoleRest>,
+    #[param(inline, nullable = false)]
+    pub is_publisher: Option<Boolean>,
     #[param(nullable = false)]
     pub r#type: Option<String>,
     #[param(rename = "exact[]", inline, nullable = false)]
@@ -120,6 +116,6 @@ pub struct GetTrustAnchorDetailResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub r#type: String,
-    pub publisher_reference: Option<String>,
-    pub role: TrustAnchorRoleRest,
+    pub is_publisher: bool,
+    pub publisher_reference: String,
 }

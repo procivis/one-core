@@ -149,7 +149,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum TrustAnchor {
+pub enum TrustAnchor {
     Table,
     Id,
     CreatedDate,

@@ -1,4 +1,3 @@
-use one_core::model::trust_anchor::TrustAnchorRole;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
@@ -12,7 +11,7 @@ async fn test_get_trust_anchor() {
     let anchor = context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("name", "SIMPLE_TRUST_LIST", true)
         .await;
 
     // WHEN
@@ -24,12 +23,9 @@ async fn test_get_trust_anchor() {
     let body = resp.json_value().await;
     body["id"].assert_eq(&anchor.id);
     assert_eq!(body["name"], anchor.name);
-    assert_eq!(body["type"], anchor.type_field);
-    assert_eq!(
-        body["publisherReference"],
-        anchor.publisher_reference.unwrap()
-    );
-    assert_eq!(body["role"], "PUBLISHER");
+    assert_eq!(body["type"], anchor.r#type);
+    assert_eq!(body["publisherReference"], anchor.publisher_reference);
+    assert_eq!(body["isPublisher"], true);
 }
 
 #[tokio::test]

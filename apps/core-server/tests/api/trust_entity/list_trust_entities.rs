@@ -1,5 +1,5 @@
 use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
-use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
+use one_core::model::trust_anchor::TrustAnchor;
 use one_core::model::trust_entity::{TrustEntity, TrustEntityRole, TrustEntityState};
 use serde_json::Value;
 
@@ -14,13 +14,13 @@ async fn test_list_trust_entities() {
     let ta = context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("name1", "SIMPLE_TRUST_LIST", true)
         .await;
 
     let ta2 = context
         .db
         .trust_anchors
-        .create("name2", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("name2", "SIMPLE_TRUST_LIST", true)
         .await;
 
     let entity1 = context
@@ -92,13 +92,13 @@ async fn test_list_trust_entities_filter_trust_anchor() {
     let ta = context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("name1", "SIMPLE_TRUST_LIST", true)
         .await;
 
     let ta2 = context
         .db
         .trust_anchors
-        .create("name2", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("name2", "SIMPLE_TRUST_LIST", true)
         .await;
 
     let entity1 = context
@@ -173,7 +173,7 @@ async fn test_list_trust_entities_find_by_name() {
     let ta = context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("name1", "SIMPLE_TRUST_LIST", true)
         .await;
 
     let entity1 = context

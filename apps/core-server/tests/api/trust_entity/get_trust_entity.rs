@@ -1,4 +1,3 @@
-use one_core::model::trust_anchor::TrustAnchorRole;
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 use uuid::Uuid;
 
@@ -12,7 +11,7 @@ async fn test_get_trust_anchor() {
     let anchor = context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", TrustAnchorRole::Publisher)
+        .create("name", "SIMPLE_TRUST_LIST", true)
         .await;
 
     let entity = context
