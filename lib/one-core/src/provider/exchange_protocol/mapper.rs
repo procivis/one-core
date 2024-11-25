@@ -7,10 +7,13 @@ use uuid::Uuid;
 
 use super::dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionFieldDTO};
 use super::{ExchangeProtocolError, StorageAccess};
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeConfig, DatatypeType};
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialState, CredentialStateEnum, UpdateCredentialRequest,
 };
+use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
@@ -103,7 +106,7 @@ pub fn credential_model_to_credential_dto(
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
 }
 
-pub async fn get_relevant_credentials_to_credential_schemas(
+pub(crate) async fn get_relevant_credentials_to_credential_schemas(
     storage_access: &StorageAccess,
     mut credential_groups: Vec<CredentialGroup>,
     group_id_to_schema_id_mapping: HashMap<String, String>,
@@ -158,7 +161,7 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                 continue;
             }
 
-            let claim_schemas = if let Some(claim_schemas) = schema.claim_schemas.clone() {
+            let claim_schemas = if let Some(claim_schemas) = schema.claim_schemas.as_ref() {
                 claim_schemas
             } else {
                 return Err(ExchangeProtocolError::Failed(
@@ -184,7 +187,7 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                                     claim_schema
                                         .schema
                                         .key
-                                        .starts_with(&format!("{}/", &other_schema.schema.key))
+                                        .starts_with(&format!("{}{NESTED_CLAIM_MARKER}", &other_schema.schema.key))
                                 })
                                 .any(|other_schema| other_schema.schema.array)
                     })
@@ -194,43 +197,35 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                     ));
                 }
 
-                let claims = credential
+                let credential_claims_schemas = credential
                     .claims
                     .as_ref()
-                    .ok_or(ExchangeProtocolError::Failed("claims are None".to_string()))?;
+                    .ok_or(ExchangeProtocolError::Failed("claims are None".to_string()))?
+                    .iter()
+                    .map(|claim| {
+                        claim.schema.as_ref().ok_or(ExchangeProtocolError::Failed(
+                            "claim_schemas are None".to_string(),
+                        ))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
 
-                // For each requested claim
-                if group.claims.iter().any(|requested_claim| {
-                    // Check if all required claims are present
-                    if !requested_claim.required {
-                        return false;
-                    }
-
-                    let schema = claim_schemas.iter().find(|claim_schema| {
-                        // Find the claim schema
-                        claim_schema.schema.key == requested_claim.key
-                    });
-
-                    if let Some(schema) = schema {
-                        if object_datatypes.contains(schema.schema.data_type.as_str()) {
-                            return false;
-                        }
-
-                        // Find if claim is present
-                        !claims.iter().any(|claim| {
-                            if let Some(schema) = claim.schema.as_ref() {
-                                schema.key == requested_claim.key
-                            } else {
-                                false
-                            }
-                        })
-                    } else {
-                        false
-                    }
-                }) {
-                    group.inapplicable_credentials.push(credential.to_owned());
-                } else {
+                // For each required requested claim, check whether such a claim is present
+                if group
+                    .claims
+                    .iter()
+                    .filter(|requested_claim| requested_claim.required)
+                    .all(|required_claim| {
+                        is_requested_claim_present_in_credential(
+                            required_claim,
+                            &credential_claims_schemas,
+                            claim_schemas,
+                            object_datatypes,
+                        )
+                    })
+                {
                     group.applicable_credentials.push(credential.to_owned());
+                } else {
+                    group.inapplicable_credentials.push(credential.to_owned());
                 }
 
                 relevant_credentials.push(credential.to_owned());
@@ -241,7 +236,40 @@ pub async fn get_relevant_credentials_to_credential_schemas(
     Ok((relevant_credentials, credential_groups))
 }
 
-pub fn create_presentation_definition_field(
+fn is_requested_claim_present_in_credential(
+    requested_claim: &CredentialGroupItem,
+    credential_claims_schemas: &[&ClaimSchema],
+    credential_schema_claim_schemas: &[CredentialSchemaClaim],
+    object_datatypes: &HashSet<&str>,
+) -> bool {
+    // Find the claim schema
+    let requested_claim_schema = credential_schema_claim_schemas
+        .iter()
+        .find(|claim_schema| claim_schema.schema.key == requested_claim.key);
+
+    if let Some(requested_claim_schema) = requested_claim_schema {
+        // in case a whole object is requested, then we need to search for any claim under this object
+        if object_datatypes.contains(requested_claim_schema.schema.data_type.as_str()) {
+            credential_claims_schemas.iter().any(|schema| {
+                schema
+                    .key
+                    .starts_with(&format!("{}{NESTED_CLAIM_MARKER}", requested_claim.key))
+            })
+        } else {
+            // a simple claim requested, try to find exact match
+            credential_claims_schemas
+                .iter()
+                .any(|schema| schema.key == requested_claim.key)
+        }
+    } else {
+        // This means the proof request mentions a claim,
+        // for which we don't have a claim schema.
+        // In such case we also cannot have the desired claim.
+        false
+    }
+}
+
+pub(crate) fn create_presentation_definition_field(
     field: CredentialGroupItem,
     credentials: &[Credential],
 ) -> Result<PresentationDefinitionFieldDTO, ExchangeProtocolError> {
@@ -274,7 +302,7 @@ pub fn create_presentation_definition_field(
     })
 }
 
-pub fn gather_object_datatypes_from_config(config: &DatatypeConfig) -> HashSet<&str> {
+pub(crate) fn gather_object_datatypes_from_config(config: &DatatypeConfig) -> HashSet<&str> {
     config
         .iter()
         .filter_map(|(name, fields)| {

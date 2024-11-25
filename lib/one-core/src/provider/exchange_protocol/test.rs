@@ -535,7 +535,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_se
         .expect_get_credentials_by_credential_schema_id()
         .return_once(|_| Ok(vec![credential_copy]));
 
-    let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
+    let (result_credentials, result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
         vec![CredentialGroup {
             id: "input_0".to_string(),
@@ -558,6 +558,112 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_se
     .unwrap();
 
     assert_eq!(1, result_credentials.len());
+    assert_eq!(1, result_group.len());
+    assert_eq!(1, result_group[0].applicable_credentials.len());
+    assert_eq!(0, result_group[0].inapplicable_credentials.len());
+}
+
+fn mdoc_credential_with_optional_namespace() -> Credential {
+    let mut credential = mdoc_credential();
+
+    let new_claim_schemas = [
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "namespaceReq".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+        },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "namespaceReq/name".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+        },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "namespaceOpt".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+        },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "namespaceOpt/obj".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+        },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "namespaceOpt/obj/name".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            array: false,
+        },
+    ];
+
+    let schema = credential.schema.as_mut().unwrap();
+    *schema.claim_schemas.as_mut().unwrap() = new_claim_schemas
+        .iter()
+        .map(|claim_schema| CredentialSchemaClaim {
+            schema: claim_schema.to_owned(),
+            required: claim_schema.key.as_str() != "namespaceOpt",
+        })
+        .collect();
+    *credential.claims.as_mut().unwrap() = vec![Claim {
+        id: Uuid::new_v4(),
+        credential_id: credential.id.to_owned(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        value: "john".to_string(),
+        path: new_claim_schemas[1].key.clone(),
+        schema: Some(new_claim_schemas[1].to_owned()),
+    }];
+
+    credential
+}
+
+#[tokio::test]
+async fn test_get_relevant_credentials_to_credential_schemas_when_missing_object_selected() {
+    let mut storage = MockStorageProxy::new();
+    let credential = mdoc_credential_with_optional_namespace();
+    storage
+        .expect_get_credentials_by_credential_schema_id()
+        .return_once(|_| Ok(vec![credential]));
+
+    let (result_credentials, result_group) = get_relevant_credentials_to_credential_schemas(
+        &storage,
+        vec![CredentialGroup {
+            id: "input_0".to_string(),
+            name: None,
+            purpose: None,
+            claims: vec![CredentialGroupItem {
+                id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
+                key: "namespaceOpt/obj".to_string(),
+                required: true,
+            }],
+            applicable_credentials: vec![],
+            inapplicable_credentials: vec![],
+            validity_credential_nbf: None,
+        }],
+        HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
+        &HashSet::from(["MDOC"]),
+        &object_datatypes(),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(1, result_credentials.len());
+    assert_eq!(1, result_group.len());
+    assert_eq!(0, result_group[0].applicable_credentials.len());
+    assert_eq!(1, result_group[0].inapplicable_credentials.len());
 }
 
 #[tokio::test]
