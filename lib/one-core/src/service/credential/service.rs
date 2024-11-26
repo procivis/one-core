@@ -41,7 +41,7 @@ use crate::service::credential::CredentialService;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use crate::util::history::{log_history_event_credential, log_history_event_credential_revocation};
+use crate::util::history::log_history_event_credential;
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_credentials_interaction,
 };
@@ -163,13 +163,6 @@ impl CredentialService {
             .credential_repository
             .create_credential(credential.to_owned())
             .await?;
-
-        let _ = log_history_event_credential(
-            &*self.history_repository,
-            &credential,
-            HistoryAction::Created,
-        )
-        .await;
 
         Ok(result)
     }
@@ -493,7 +486,7 @@ impl CredentialService {
         let _ = log_history_event_credential(
             &*self.history_repository,
             &credential,
-            HistoryAction::Offered,
+            HistoryAction::Shared,
         )
         .await;
 
@@ -683,13 +676,6 @@ impl CredentialService {
                 claims: None,
             })
             .await?;
-
-        let _ = log_history_event_credential_revocation(
-            &*self.history_repository,
-            &credential,
-            revocation_state,
-        )
-        .await;
 
         Ok(())
     }
@@ -910,13 +896,6 @@ impl CredentialService {
                     claims: None,
                 })
                 .await?;
-
-            let _ = log_history_event_credential_revocation(
-                &*self.history_repository,
-                &credential,
-                worst_revocation_state,
-            )
-            .await;
         }
 
         Ok(CredentialRevocationCheckResponseDTO {

@@ -17,14 +17,20 @@ use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::{Organisation, OrganisationRelations};
-use one_core::repository::claim_repository::MockClaimRepository;
+use one_core::repository::claim_repository::{ClaimRepository, MockClaimRepository};
 use one_core::repository::credential_repository::CredentialRepository;
-use one_core::repository::credential_schema_repository::MockCredentialSchemaRepository;
-use one_core::repository::did_repository::MockDidRepository;
+use one_core::repository::credential_schema_repository::{
+    CredentialSchemaRepository, MockCredentialSchemaRepository,
+};
+use one_core::repository::did_repository::{DidRepository, MockDidRepository};
 use one_core::repository::error::DataLayerError;
-use one_core::repository::interaction_repository::MockInteractionRepository;
-use one_core::repository::key_repository::MockKeyRepository;
-use one_core::repository::revocation_list_repository::MockRevocationListRepository;
+use one_core::repository::interaction_repository::{
+    InteractionRepository, MockInteractionRepository,
+};
+use one_core::repository::key_repository::{KeyRepository, MockKeyRepository};
+use one_core::repository::revocation_list_repository::{
+    MockRevocationListRepository, RevocationListRepository,
+};
 use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::CredentialId;
@@ -32,7 +38,9 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::CredentialProvider;
+use crate::credential::history::CredentialHistoryDecorator;
 use crate::entity::claim;
+use crate::history::HistoryProvider;
 use crate::test_utilities;
 use crate::test_utilities::*;
 
@@ -186,6 +194,48 @@ async fn setup_with_credential() -> TestSetupWithCredential {
     }
 }
 
+struct Repositories {
+    pub credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    pub claim_repository: Arc<dyn ClaimRepository>,
+    pub did_repository: Arc<dyn DidRepository>,
+    pub interaction_repository: Arc<dyn InteractionRepository>,
+    pub revocation_list_repository: Arc<dyn RevocationListRepository>,
+    pub key_repository: Arc<dyn KeyRepository>,
+}
+
+impl Default for Repositories {
+    fn default() -> Self {
+        Self {
+            credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
+            claim_repository: Arc::from(MockClaimRepository::default()),
+            did_repository: Arc::from(MockDidRepository::default()),
+            interaction_repository: Arc::from(MockInteractionRepository::default()),
+            revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+            key_repository: Arc::new(MockKeyRepository::default()),
+        }
+    }
+}
+
+fn credential_repository(
+    db: DatabaseConnection,
+    repositories: Option<Repositories>,
+) -> impl CredentialRepository {
+    let repositories = repositories.unwrap_or_default();
+    let credential_provider = CredentialProvider {
+        db: db.clone(),
+        credential_schema_repository: repositories.credential_schema_repository,
+        claim_repository: repositories.claim_repository,
+        did_repository: repositories.did_repository,
+        interaction_repository: repositories.interaction_repository,
+        revocation_list_repository: repositories.revocation_list_repository,
+        key_repository: repositories.key_repository,
+    };
+    CredentialHistoryDecorator {
+        history_repository: Arc::new(HistoryProvider { db }),
+        inner: Arc::new(credential_provider),
+    }
+}
+
 #[tokio::test]
 async fn test_create_credential_success() {
     let mut claim_repository = MockClaimRepository::default();
@@ -202,15 +252,20 @@ async fn test_create_credential_success() {
         ..
     } = setup_empty().await;
 
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
-        claim_repository: Arc::from(claim_repository),
-        did_repository: Arc::from(MockDidRepository::default()),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let mut schema_repository = MockCredentialSchemaRepository::default();
+    let credential_schema_result = Ok(Some(credential_schema.clone()));
+    schema_repository
+        .expect_get_credential_schema()
+        .return_once(move |_, _| credential_schema_result);
+
+    let provider = credential_repository(
+        db.clone(),
+        Some(Repositories {
+            claim_repository: Arc::new(claim_repository),
+            credential_schema_repository: Arc::new(schema_repository),
+            ..Repositories::default()
+        }),
+    );
 
     let credential_id = Uuid::new_v4().into();
     let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
@@ -248,7 +303,11 @@ async fn test_create_credential_success() {
             exchange: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
-            state: None,
+            state: Some(vec![CredentialState {
+                created_date: OffsetDateTime::now_utc(),
+                state: CredentialStateEnum::Created,
+                suspend_end_date: None,
+            }]),
             claims: Some(claims),
             issuer_did: Some(did),
             holder_did: None,
@@ -270,6 +329,16 @@ async fn test_create_credential_success() {
             .len(),
         1
     );
+
+    let history = crate::entity::history::Entity::find()
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(history.len(), 1);
+    assert_eq!(
+        history[0].action,
+        crate::entity::history::HistoryAction::Created
+    );
 }
 
 #[tokio::test]
@@ -281,15 +350,7 @@ async fn test_create_credential_empty_claims() {
         ..
     } = setup_empty().await;
 
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
-        claim_repository: Arc::from(MockClaimRepository::default()),
-        did_repository: Arc::from(MockDidRepository::default()),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(db.clone(), None);
 
     let credential_id = Uuid::new_v4().into();
     let result = provider
@@ -336,15 +397,7 @@ async fn test_create_credential_already_exists() {
         db,
     } = setup_with_credential().await;
 
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
-        claim_repository: Arc::from(MockClaimRepository::default()),
-        did_repository: Arc::from(MockDidRepository::default()),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(db.clone(), None);
 
     let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
         .to_owned()
@@ -382,6 +435,11 @@ async fn test_create_credential_already_exists() {
         .await;
 
     assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
+    let history = crate::entity::history::Entity::find()
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(history.len(), 0);
 }
 
 #[tokio::test]
@@ -404,15 +462,7 @@ async fn test_delete_credential_success() {
     .await
     .unwrap();
 
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
-        claim_repository: Arc::from(MockClaimRepository::default()),
-        did_repository: Arc::from(MockDidRepository::default()),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(db, None);
 
     provider.delete_credential(&credential_id).await.unwrap();
 
@@ -430,15 +480,7 @@ async fn test_delete_credential_failed_not_found() {
 
     let credential_id = Uuid::new_v4().into();
 
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
-        claim_repository: Arc::from(MockClaimRepository::default()),
-        did_repository: Arc::from(MockDidRepository::default()),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(db, None);
 
     let result = provider.delete_credential(&credential_id).await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
@@ -485,15 +527,7 @@ async fn test_get_credential_list_success() {
     .await
     .unwrap();
 
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
-        claim_repository: Arc::from(MockClaimRepository::default()),
-        did_repository: Arc::from(MockDidRepository::default()),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(db, None);
 
     let credentials = provider
         .get_credential_list(GetCredentialQueryDTO {
@@ -545,15 +579,7 @@ async fn test_get_credential_list_success_verify_state_sorting() {
     .await
     .unwrap();
 
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
-        claim_repository: Arc::from(MockClaimRepository::default()),
-        did_repository: Arc::from(MockDidRepository::default()),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(db, None);
 
     let credentials = provider
         .get_credential_list(GetCredentialQueryDTO {
@@ -637,15 +663,7 @@ async fn test_get_credential_list_success_filter_state() {
     .await
     .unwrap();
 
-    let provider = CredentialProvider {
-        db,
-        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
-        claim_repository: Arc::from(MockClaimRepository::default()),
-        did_repository: Arc::from(MockDidRepository::default()),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(db, None);
 
     let credentials = provider
         .get_credential_list(GetCredentialQueryDTO {
@@ -708,15 +726,7 @@ async fn test_get_credential_list_success_filter_suspend_end_date() {
     .await
     .unwrap();
 
-    let provider = CredentialProvider {
-        db,
-        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
-        claim_repository: Arc::from(MockClaimRepository::default()),
-        did_repository: Arc::from(MockDidRepository::default()),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(db, None);
 
     let credentials = provider
         .get_credential_list(GetCredentialQueryDTO {
@@ -869,15 +879,15 @@ async fn test_get_credential_success() {
                 .collect())
         });
 
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(credential_schema_repository),
-        claim_repository: Arc::from(claim_repository),
-        did_repository: Arc::from(did_repository),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(
+        db.clone(),
+        Some(Repositories {
+            credential_schema_repository: Arc::new(credential_schema_repository),
+            claim_repository: Arc::new(claim_repository),
+            did_repository: Arc::new(did_repository),
+            ..Repositories::default()
+        }),
+    );
 
     let credential = provider
         .get_credential(
@@ -926,15 +936,15 @@ async fn test_get_credential_fail_not_found() {
 
     let TestSetup { db, .. } = setup_empty().await;
 
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(credential_schema_repository),
-        claim_repository: Arc::from(claim_repository),
-        did_repository: Arc::from(did_repository),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(
+        db.clone(),
+        Some(Repositories {
+            credential_schema_repository: Arc::new(credential_schema_repository),
+            claim_repository: Arc::new(claim_repository),
+            did_repository: Arc::new(did_repository),
+            ..Repositories::default()
+        }),
+    );
 
     let credential = provider
         .get_credential(&Uuid::new_v4().into(), &CredentialRelations::default())
@@ -948,7 +958,6 @@ async fn test_get_credential_fail_not_found() {
 async fn test_update_credential_success() {
     let claim_repository = MockClaimRepository::default();
     let did_repository = MockDidRepository::default();
-    let credential_schema_repository = MockCredentialSchemaRepository::default();
 
     let TestSetup {
         credential_schema,
@@ -956,6 +965,11 @@ async fn test_update_credential_success() {
         db,
         ..
     } = setup_empty().await;
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let credential_schema_clone = credential_schema.clone();
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
 
     let credential_id = insert_credential(
         &db,
@@ -983,15 +997,16 @@ async fn test_update_credential_success() {
             }))
         });
 
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(credential_schema_repository),
-        claim_repository: Arc::from(claim_repository),
-        did_repository: Arc::from(did_repository),
-        interaction_repository: Arc::from(interaction_repository),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(
+        db.clone(),
+        Some(Repositories {
+            credential_schema_repository: Arc::new(credential_schema_repository),
+            claim_repository: Arc::new(claim_repository),
+            did_repository: Arc::new(did_repository),
+            interaction_repository: Arc::new(interaction_repository),
+            ..Repositories::default()
+        }),
+    );
 
     let credential_before_update = provider
         .get_credential(&credential_id, &CredentialRelations::default())
@@ -1020,7 +1035,11 @@ async fn test_update_credential_success() {
             credential: Some(token.to_owned()),
             holder_did_id: None,
             issuer_did_id: None,
-            state: None,
+            state: Some(CredentialState {
+                created_date: OffsetDateTime::now_utc(),
+                state: CredentialStateEnum::Pending,
+                suspend_end_date: None,
+            }),
             interaction: Some(interaction_id),
             key: None,
             redirect_uri: None,
@@ -1043,6 +1062,16 @@ async fn test_update_credential_success() {
     assert_eq!(
         interaction_id,
         credential_after_update.interaction.unwrap().id
+    );
+
+    let history = crate::entity::history::Entity::find()
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(history.len(), 1);
+    assert_eq!(
+        history[0].action,
+        crate::entity::history::HistoryAction::Pending
     );
 }
 
@@ -1104,15 +1133,7 @@ async fn test_get_credential_by_claim_id_success() {
     .await
     .unwrap();
 
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
-        claim_repository: Arc::from(MockClaimRepository::default()),
-        did_repository: Arc::from(MockDidRepository::default()),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
-        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
-        key_repository: Arc::new(MockKeyRepository::default()),
-    };
+    let provider = credential_repository(db, None);
 
     let credential = provider
         .get_credential_by_claim_id(&claim.id, &CredentialRelations::default())

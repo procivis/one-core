@@ -8,7 +8,6 @@ use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
-use crate::provider::revocation::model::CredentialRevocationState;
 use crate::repository::history_repository::HistoryRepository;
 use crate::service::error::ServiceError;
 
@@ -74,21 +73,6 @@ pub(crate) async fn log_history_event_credential(
 
     Ok(())
 }
-
-pub(crate) async fn log_history_event_credential_revocation(
-    history_repository: &dyn HistoryRepository,
-    credential: &Credential,
-    new_state: CredentialRevocationState,
-) -> Result<(), ServiceError> {
-    let action = match new_state {
-        CredentialRevocationState::Revoked => HistoryAction::Revoked,
-        CredentialRevocationState::Valid => HistoryAction::Reactivated,
-        CredentialRevocationState::Suspended { .. } => HistoryAction::Suspended,
-    };
-
-    log_history_event_credential(history_repository, credential, action).await
-}
-
 pub(crate) async fn log_history_event_credential_schema(
     history_repository: &dyn HistoryRepository,
     schema: &CredentialSchema,

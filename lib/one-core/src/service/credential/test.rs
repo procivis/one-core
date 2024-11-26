@@ -717,12 +717,6 @@ async fn test_create_credential_success() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .times(1)
-        .returning(|history| Ok(history.id));
-
     let credential = generic_credential();
     {
         let clone = credential.clone();
@@ -762,7 +756,7 @@ async fn test_create_credential_success() {
         credential_repository,
         credential_schema_repository,
         did_repository,
-        history_repository,
+        history_repository: MockHistoryRepository::default(),
         formatter_provider,
         config: generic_config().core,
         ..Default::default()
@@ -916,12 +910,6 @@ async fn test_create_credential_one_required_claim_missing_success() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .times(1)
-        .returning(|history| Ok(history.id));
-
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
         claim_schemas: Some(vec![
@@ -984,7 +972,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         credential_repository,
         credential_schema_repository,
         did_repository,
-        history_repository,
+        history_repository: MockHistoryRepository::default(),
         formatter_provider,
         config: generic_config().core,
         ..Default::default()
@@ -2203,15 +2191,9 @@ async fn test_revoke_credential_success_with_accepted_credential() {
         .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .once()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
-
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository,
+        history_repository: MockHistoryRepository::default(),
         revocation_method_provider,
         did_method_provider,
         config: generic_config().core,
@@ -2284,15 +2266,9 @@ async fn test_revoke_credential_success_with_suspended_credential() {
         .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .once()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
-
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository,
+        history_repository: MockHistoryRepository::default(),
         revocation_method_provider,
         did_method_provider,
         config: generic_config().core,
@@ -2374,15 +2350,9 @@ async fn test_suspend_credential_success() {
         .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .once()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
-
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository,
+        history_repository: MockHistoryRepository::default(),
         revocation_method_provider,
         did_method_provider,
         config: generic_config().core,
@@ -2511,15 +2481,9 @@ async fn test_reactivate_credential_success() {
         .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .once()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
-
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository,
+        history_repository: MockHistoryRepository::default(),
         did_method_provider,
         revocation_method_provider,
         config: generic_config().core,

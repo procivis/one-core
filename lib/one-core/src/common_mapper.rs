@@ -19,6 +19,7 @@ use crate::model::credential_schema::{
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
+use crate::model::history::HistoryAction;
 use crate::model::key::PublicKeyJwk;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
@@ -430,6 +431,21 @@ impl CredentialSchemaClaimsNestedTypeView {
         match self {
             Self::Field(claim) => &claim.schema.key,
             Self::Object(object) => &object.claim.schema.key,
+        }
+    }
+}
+
+impl From<CredentialState> for HistoryAction {
+    fn from(state: CredentialState) -> Self {
+        match state.state {
+            CredentialStateEnum::Created => HistoryAction::Created,
+            CredentialStateEnum::Pending => HistoryAction::Pending,
+            CredentialStateEnum::Offered => HistoryAction::Offered,
+            CredentialStateEnum::Accepted => HistoryAction::Accepted,
+            CredentialStateEnum::Rejected => HistoryAction::Rejected,
+            CredentialStateEnum::Revoked => HistoryAction::Revoked,
+            CredentialStateEnum::Suspended => HistoryAction::Suspended,
+            CredentialStateEnum::Error => HistoryAction::Errored,
         }
     }
 }

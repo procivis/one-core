@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
-use uuid::Uuid;
 
 use super::SuspendCheckProvider;
 use crate::model::credential::{Credential, CredentialStateEnum, GetCredentialList};
-use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -15,7 +13,6 @@ use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::task::suspend_check::dto::SuspendCheckResultDTO;
 use crate::provider::task::Task;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::test_utilities::{dummy_credential, dummy_did_document};
@@ -24,7 +21,6 @@ use crate::service::test_utilities::{dummy_credential, dummy_did_document};
 struct TestDependencies {
     pub credential_repository: MockCredentialRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
-    pub history_repository: MockHistoryRepository,
     pub revocation_list_repository: MockRevocationListRepository,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
@@ -37,7 +33,6 @@ fn setup(dependencies: TestDependencies) -> impl Task {
     SuspendCheckProvider::new(
         Arc::new(dependencies.credential_repository),
         Arc::new(dependencies.revocation_method_provider),
-        Arc::new(dependencies.history_repository),
         Arc::new(dependencies.revocation_list_repository),
         Arc::new(dependencies.validity_credential_repository),
         Arc::new(dependencies.formatter_provider),
@@ -155,26 +150,10 @@ async fn test_run_one_update() {
         .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf({
-            let id = credential.id;
-            move |entry| {
-                assert_eq!(entry.entity_id, Some(id.into()));
-                assert_eq!(entry.entity_type, HistoryEntityType::Credential);
-                assert_eq!(entry.action, HistoryAction::Reactivated);
-                true
-            }
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let task = setup(TestDependencies {
         credential_repository,
         revocation_method_provider,
         did_method_provider,
-        history_repository,
         ..Default::default()
     });
 

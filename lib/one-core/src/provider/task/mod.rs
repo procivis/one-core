@@ -53,7 +53,6 @@ pub(crate) fn tasks_from_config(
             TaskType::SuspendCheck => Arc::new(SuspendCheckProvider::new(
                 credential_repository.to_owned(),
                 revocation_method_provider.to_owned(),
-                history_repository.to_owned(),
                 revocation_list_repository.to_owned(),
                 validity_credential_repository.to_owned(),
                 formatter_provider.to_owned(),

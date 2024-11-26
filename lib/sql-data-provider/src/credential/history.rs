@@ -3,13 +3,12 @@ use std::sync::Arc;
 use anyhow::Context;
 use one_core::model::claim::ClaimId;
 use one_core::model::credential::{
-    Credential, CredentialRelations, CredentialStateEnum, GetCredentialList, GetCredentialQuery,
+    Credential, CredentialRelations, CredentialState, GetCredentialList, GetCredentialQuery,
     UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::CredentialSchemaRelations;
-use one_core::model::did::DidRelations;
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
-use one_core::model::interaction::{InteractionId, InteractionRelations};
+use one_core::model::interaction::InteractionId;
 use one_core::model::organisation::Organisation;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
@@ -23,7 +22,7 @@ pub struct CredentialHistoryDecorator {
 }
 
 impl CredentialHistoryDecorator {
-    async fn get_organisation_for_credentail(
+    async fn get_organisation_for_credential(
         &self,
         credential_id: &CredentialId,
     ) -> Result<Organisation, DataLayerError> {
@@ -32,16 +31,9 @@ impl CredentialHistoryDecorator {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    holder_did: Some(DidRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(Default::default()),
                         ..Default::default()
-                    }),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
                     }),
                     ..Default::default()
                 },
@@ -51,15 +43,33 @@ impl CredentialHistoryDecorator {
 
         if let Some(organisation) = credential.schema.and_then(|schema| schema.organisation) {
             Ok(organisation)
-        } else if let Some(organisation) = credential
-            .interaction
-            .and_then(|interaction| interaction.organisation)
-        {
-            Ok(organisation)
-        } else if let Some(organisation) = credential.holder_did.and_then(|did| did.organisation) {
-            Ok(organisation)
         } else {
             Err(anyhow::anyhow!("organisation is None").into())
+        }
+    }
+
+    async fn create_history_entry(&self, credential_id: CredentialId, state: CredentialState) {
+        let organisation = match self.get_organisation_for_credential(&credential_id).await {
+            Ok(org) => org,
+            Err(err) => {
+                tracing::debug!("failed to retrieve organisation for credential (while creating a history event): {err:?}");
+                return;
+            }
+        };
+
+        let entry = History {
+            id: Uuid::new_v4().into(),
+            created_date: state.created_date,
+            action: HistoryAction::from(state),
+            entity_id: Some(credential_id.into()),
+            entity_type: HistoryEntityType::Credential,
+            metadata: None,
+            organisation: Some(organisation),
+        };
+        let result = self.history_repository.create_history(entry).await;
+
+        if let Err(err) = result {
+            tracing::debug!("failed to insert credential history event: {err:?}");
         }
     }
 }
@@ -67,7 +77,16 @@ impl CredentialHistoryDecorator {
 #[async_trait::async_trait]
 impl CredentialRepository for CredentialHistoryDecorator {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
-        self.inner.create_credential(request).await
+        let state = request.state.clone();
+        let credential_id = self.inner.create_credential(request).await?;
+
+        if let Some(states) = state {
+            for state in states {
+                self.create_history_entry(credential_id, state).await;
+            }
+        };
+
+        Ok(credential_id)
     }
 
     async fn delete_credential(&self, id: &CredentialId) -> Result<(), DataLayerError> {
@@ -115,39 +134,9 @@ impl CredentialRepository for CredentialHistoryDecorator {
     ) -> Result<(), DataLayerError> {
         self.inner.update_credential(credential.clone()).await?;
 
-        let Some(state) = credential.state else {
-            return Ok(());
+        if let Some(state) = credential.state {
+            self.create_history_entry(credential.id, state).await;
         };
-
-        let organisation = self.get_organisation_for_credentail(&credential.id).await?;
-
-        let action = match state.state {
-            CredentialStateEnum::Created => HistoryAction::Created,
-            CredentialStateEnum::Pending => HistoryAction::Pending,
-            CredentialStateEnum::Offered => HistoryAction::Offered,
-            CredentialStateEnum::Accepted => HistoryAction::Accepted,
-            CredentialStateEnum::Rejected => HistoryAction::Rejected,
-            CredentialStateEnum::Revoked => HistoryAction::Revoked,
-            CredentialStateEnum::Suspended => HistoryAction::Suspended,
-            CredentialStateEnum::Error => HistoryAction::Errored,
-        };
-
-        let result = self
-            .history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: state.created_date,
-                action,
-                entity_id: Some(credential.id.into()),
-                entity_type: HistoryEntityType::Credential,
-                metadata: None,
-                organisation: Some(organisation),
-            })
-            .await;
-
-        if let Err(err) = result {
-            tracing::debug!("failed to insert credential history event: {err:?}");
-        }
 
         Ok(())
     }

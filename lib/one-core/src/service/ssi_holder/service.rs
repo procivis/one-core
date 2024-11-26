@@ -106,29 +106,9 @@ impl SSIHolderService {
         match &response {
             InvitationResponseDTO::Credential { credentials, .. } => {
                 for credential in credentials {
-                    let _ = self
-                        .history_repository
-                        .create_history(history_event(
-                            credential.id,
-                            organisation_id,
-                            HistoryEntityType::Credential,
-                            HistoryAction::Offered,
-                        ))
-                        .await;
-
                     self.credential_repository
                         .create_credential(credential.to_owned())
                         .await?;
-
-                    let _ = self
-                        .history_repository
-                        .create_history(history_event(
-                            credential.id,
-                            organisation_id,
-                            HistoryEntityType::Credential,
-                            HistoryAction::Pending,
-                        ))
-                        .await;
                 }
             }
             InvitationResponseDTO::ProofRequest { proof, .. } => {

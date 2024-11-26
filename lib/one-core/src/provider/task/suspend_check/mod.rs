@@ -21,12 +21,10 @@ use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::CredentialFilterValue;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
-use crate::util::history::log_history_event_credential_revocation;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 
 pub mod dto;
@@ -34,7 +32,6 @@ pub mod dto;
 pub(crate) struct SuspendCheckProvider {
     credential_repository: Arc<dyn CredentialRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-    history_repository: Arc<dyn HistoryRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -48,7 +45,6 @@ impl SuspendCheckProvider {
     pub fn new(
         credential_repository: Arc<dyn CredentialRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-        history_repository: Arc<dyn HistoryRepository>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -59,7 +55,6 @@ impl SuspendCheckProvider {
         SuspendCheckProvider {
             credential_repository,
             revocation_method_provider,
-            history_repository,
             revocation_list_repository,
             validity_credential_repository,
             did_method_provider,
@@ -179,13 +174,6 @@ impl Task for SuspendCheckProvider {
                     claims: None,
                 })
                 .await?;
-
-            let _ = log_history_event_credential_revocation(
-                &*self.history_repository,
-                &credential,
-                CredentialRevocationState::Valid,
-            )
-            .await;
         }
 
         let result = SuspendCheckResultDTO {
