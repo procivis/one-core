@@ -372,7 +372,7 @@ tests:e2e:
       artifacts: true
   extends:
     - .run_e2e_tests
-    - .only_main_or_tag
+    - .only_main_or_tag_manual
 
 tests:api:
   stage: api_tests
@@ -407,34 +407,29 @@ deploy:dev:
 deploy:test:
   extends:
     - .deploy_trigger
+    - .rule:deploy:test
   variables:
     VALUES_PATH: values/test
     K8S_NAMESPACE: one-test
-  rules:
-    - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
-      when: on_success
 
 deploy:demo:
   extends:
     - .deploy_trigger
+    - .rule:deploy:demo
   variables:
     VALUES_PATH: values/demo
     K8S_NAMESPACE: default
     RESOURCE_GROUP: $DEMO_RESOURCE_GROUP
     CLUSTER_NAME: $DEMO_CLUSTER_NAME
-  rules:
-    - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
-      when: manual
 
 deploy:canivc:
   extends:
     - .deploy_trigger
+    - .rule:deploy:demo
   variables:
     VALUES_PATH: values/canivc
     K8S_NAMESPACE: canivc
-  rules:
-    - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
-      when: manual
+
 
 test:build:
   stage: tests
