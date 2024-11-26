@@ -64,8 +64,8 @@ pub struct DidResponseRestDTO {
     pub last_modified: OffsetDateTime,
     #[try_from(infallible)]
     pub name: String,
-    #[try_from(infallible)]
-    pub organisation_id: Uuid,
+    #[try_from(infallible, with_fn = "convert_inner")]
+    pub organisation_id: Option<Uuid>,
     #[try_from(infallible)]
     pub did: DidValue,
     #[try_from(infallible)]

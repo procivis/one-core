@@ -10,7 +10,8 @@ use one_core::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
 use one_core::provider::exchange_protocol::openid4vc::model::OpenID4VCITokenRequestDTO;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use shared_types::{
-    CredentialId, CredentialSchemaId, DidId, OrganisationId, ProofId, ProofSchemaId, TrustAnchorId,
+    CredentialId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofId, ProofSchemaId,
+    TrustAnchorId,
 };
 use uuid::Uuid;
 
@@ -22,12 +23,15 @@ use super::dto::{
     OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
     OpenID4VCITokenResponseRestDTO, OpenID4VPClientMetadataResponseRestDTO,
     OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
-    OpenID4VPPresentationDefinitionResponseRestDTO, SdJwtVcTypeMetadataResponseRestDTO,
+    OpenID4VPPresentationDefinitionResponseRestDTO, PatchTrustEntityRequestRestDTO,
+    PostTrustEntityRequestRestDTO, SdJwtVcTypeMetadataResponseRestDTO,
 };
+use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::OkOrErrorResponse;
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO;
 use crate::endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO;
+use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -801,6 +805,96 @@ pub(crate) async fn ssi_get_trust_list(
         .await;
 
     OkOrErrorResponse::from_result(result, state, "getting trust list")
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/trust-entity/v1/{didValue}",
+    params(
+        ("didValue" = DidValue, Path, description = "DID value")
+    ),
+    responses(OkOrErrorResponse<GetTrustEntityResponseRestDTO>),
+    security(
+        ("trust-entity" = [])
+    ),
+    tag = "ssi",
+    summary = "Retrieve a trust entity",
+    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+)]
+pub(crate) async fn ssi_get_trust_entity(
+    state: State<AppState>,
+    WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, ErrorResponseRestDTO>,
+    TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
+) -> OkOrErrorResponse<GetTrustEntityResponseRestDTO> {
+    let result = state
+        .core
+        .trust_entity_service
+        .get_trust_entity_for_did(did_value, bearer.token())
+        .await;
+
+    OkOrErrorResponse::from_result(result, state, "getting trust entity")
+}
+
+#[utoipa::path(
+    patch,
+    path = "/ssi/trust-entity/v1/{didValue}",
+    params(
+        ("didValue" = DidValue, Path, description = "DID value")
+    ),
+    request_body = PostTrustEntityRequestRestDTO,
+    responses(EmptyOrErrorResponse),
+    security(
+        ("trust-entity" = [])
+    ),
+    tag = "ssi",
+    summary = "Update a trust entity",
+    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+)]
+pub(crate) async fn ssi_patch_trust_entity(
+    state: State<AppState>,
+    TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
+    WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<PatchTrustEntityRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .trust_entity_service
+        .update_trust_entity_for_did(did_value, request.into(), bearer.token())
+        .await;
+
+    EmptyOrErrorResponse::from_result(result, state, "getting trust entity")
+}
+
+#[utoipa::path(
+    post,
+    path = "/ssi/trust-entity/v1",
+    request_body = PostTrustEntityRequestRestDTO,
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
+    security(
+        ("trust-entity" = [])
+    ),
+    tag = "ssi",
+    summary = "Create a trust entity",
+    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+)]
+pub(crate) async fn ssi_post_trust_entity(
+    state: State<AppState>,
+    TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<PostTrustEntityRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let result = state
+        .core
+        .trust_entity_service
+        .create_trust_entity_for_did(request.into(), bearer.token())
+        .await;
+
+    CreatedOrErrorResponse::from_result(result, state, "getting trust entity")
 }
 
 #[utoipa::path(

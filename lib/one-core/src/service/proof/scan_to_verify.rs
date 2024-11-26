@@ -4,7 +4,7 @@ use time::OffsetDateTime;
 use super::dto::ScanToVerifyRequestDTO;
 use super::mapper::proof_for_scan_to_verify;
 use super::ProofService;
-use crate::common_mapper::{extracted_credential_to_model, get_or_create_did};
+use crate::common_mapper::{extracted_credential_to_model, get_or_create_did, DidRole};
 use crate::config::validator::transport::get_first_available_transport_type;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -203,7 +203,7 @@ impl ProofService {
             &*self.did_repository,
             &proof_schema.organisation,
             issuer_did,
-            "issuer ",
+            DidRole::Issuer,
         )
         .await?;
 

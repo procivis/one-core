@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use shared_types::{CredentialSchemaId, DidId, DidValue, OrganisationId};
 
-use crate::common_mapper::get_or_create_did;
+use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::{Credential, CredentialRelations};
 use crate::model::credential_schema::{
@@ -132,10 +132,10 @@ impl StorageProxy for StorageProxyImpl {
     async fn get_or_create_did(
         &self,
         organisation: &Option<Organisation>,
-        holder_did_value: &DidValue,
-        did_name_prefix: &str,
+        did_value: &DidValue,
+        did_role: DidRole,
     ) -> anyhow::Result<Did> {
-        get_or_create_did(&*self.dids, organisation, holder_did_value, did_name_prefix)
+        get_or_create_did(&*self.dids, organisation, did_value, did_role)
             .await
             .context("get or create did")
     }

@@ -1,4 +1,4 @@
-use shared_types::{DidId, TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -18,6 +18,18 @@ pub struct CreateTrustEntityRequestDTO {
     pub state: TrustEntityState,
     pub trust_anchor_id: TrustAnchorId,
     pub did_id: DidId,
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateTrustEntityFromDidRequestDTO {
+    pub trust_anchor_id: Option<TrustAnchorId>,
+    pub did: DidValue,
+    pub name: String,
+    pub logo: Option<String>,
+    pub terms_url: Option<String>,
+    pub privacy_url: Option<String>,
+    pub website: Option<String>,
+    pub role: TrustEntityRole,
 }
 
 #[derive(Clone, Debug)]
@@ -76,3 +88,19 @@ pub enum TrustEntityFilterValue {
 }
 
 impl ListFilterValue for TrustEntityFilterValue {}
+
+pub struct UpdateTrustEntityFromDidRequestDTO {
+    pub action: UpdateTrustEntityActionFromDidRequestDTO,
+
+    pub name: Option<String>,
+    pub logo: Option<Option<String>>,
+    pub website: Option<Option<String>>,
+    pub terms_url: Option<Option<String>>,
+    pub privacy_url: Option<Option<String>>,
+    pub role: Option<TrustEntityRole>,
+}
+
+pub enum UpdateTrustEntityActionFromDidRequestDTO {
+    Activate,
+    Withdraw,
+}

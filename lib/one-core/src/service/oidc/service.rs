@@ -15,7 +15,7 @@ use super::OIDCService;
 use crate::common_mapper::{
     encode_cbor_base64, get_encryption_key_jwk_from_proof,
     get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
-    get_exchange_param_token_expires_in, get_or_create_did,
+    get_exchange_param_token_expires_in, get_or_create_did, DidRole,
 };
 use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
@@ -436,7 +436,7 @@ impl OIDCService {
                 &*self.did_repository,
                 &schema.organisation,
                 &holder_did_value,
-                "holder ",
+                DidRole::Holder,
             )
             .await
         } else {

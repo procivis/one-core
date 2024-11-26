@@ -12,6 +12,7 @@ pub trait TrustManagement: Send + Sync {
     fn get_capabilities(&self) -> TrustCapabilities;
     async fn publish_entity(&self, anchor: &TrustAnchor, entity: &TrustEntity);
     async fn lookup_did(&self, anchor: &TrustAnchor, did: &DidValue);
+    fn is_enabled(&self) -> bool;
 }
 
 #[derive(Clone, Debug, Serialize)]

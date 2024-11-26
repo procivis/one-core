@@ -4,14 +4,14 @@ use anyhow::Context;
 use one_core::model::did::DidRelations;
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
 use one_core::model::organisation::OrganisationRelations;
-use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations};
+use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations, UpdateTrustEntityRequest};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::service::trust_entity::dto::{
     GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO,
 };
-use shared_types::{TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -43,6 +43,10 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
         }
 
         Ok(trust_entity_id)
+    }
+
+    async fn get_by_did_id(&self, did_id: DidId) -> Result<Vec<TrustEntity>, DataLayerError> {
+        self.inner.get_by_did_id(did_id).await
     }
 
     async fn get_by_trust_anchor_id(
@@ -103,5 +107,13 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
         filters: ListTrustEntitiesQueryDTO,
     ) -> Result<GetTrustEntitiesResponseDTO, DataLayerError> {
         self.inner.list(filters).await
+    }
+
+    async fn update(
+        &self,
+        id: TrustEntityId,
+        request: UpdateTrustEntityRequest,
+    ) -> Result<(), DataLayerError> {
+        self.inner.update(id, request).await
     }
 }

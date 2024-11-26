@@ -21,6 +21,8 @@ pub enum ErrorResponse {
     Unauthorized,
     #[response(status = 400, description = "Bad Request")]
     BadRequest(#[to_schema] ErrorResponseRestDTO),
+    #[response(status = 403, description = "Forbidden")]
+    Forbidden,
     #[response(status = 404, description = "Entity Not Found")]
     NotFound(#[to_schema] ErrorResponseRestDTO),
     #[response(status = 500, description = "Internal error")]
@@ -47,6 +49,7 @@ impl ErrorResponse {
             | ServiceError::Validation(ValidationError::MissingLayoutAttribute(_)) => {
                 Self::NotFound(response)
             }
+            ServiceError::Validation(ValidationError::Unauthorized) => Self::Forbidden,
             ServiceError::Validation(_)
             | ServiceError::BusinessLogic(_)
             | ServiceError::FormatterError(FormatterError::BBSOnly)
@@ -82,6 +85,7 @@ impl IntoResponse for ErrorResponse {
             Self::ServerError(error) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, Json(error)).into_response()
             }
+            Self::Forbidden => StatusCode::FORBIDDEN.into_response(),
         }
     }
 }

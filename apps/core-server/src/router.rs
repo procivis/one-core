@@ -313,6 +313,15 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(ssi::controller::ssi_get_trust_list),
         )
         .route(
+            "/ssi/trust-entity/v1/:didValue",
+            get(ssi::controller::ssi_get_trust_entity)
+                .patch(ssi::controller::ssi_patch_trust_entity),
+        )
+        .route(
+            "/ssi/trust-entity/v1",
+            post(ssi::controller::ssi_post_trust_entity),
+        )
+        .route(
             "/ssi/vct/v1/:organisationId/:vctType",
             get(ssi::controller::ssi_get_sd_jwt_vc_type_metadata),
         );

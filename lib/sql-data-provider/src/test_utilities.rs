@@ -420,7 +420,7 @@ pub async fn insert_did(
         name: Set(name.to_owned()),
         type_field: Set(did_type),
         method: Set(method.into()),
-        organisation_id: Set(organisation_id),
+        organisation_id: Set(Some(organisation_id)),
         deactivated: Set(deactivated.into().unwrap_or_default()),
         deleted_at: NotSet,
     }

@@ -13,7 +13,7 @@ pub struct DidResponseDTO {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
     pub did: DidValue,
     pub did_type: DidType,
     pub did_method: String,

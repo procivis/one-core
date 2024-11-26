@@ -5,7 +5,9 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId, DidValue};
 use time::OffsetDateTime;
 
 use super::common::to_cbor;
-use crate::common_mapper::{extracted_credential_to_model, get_or_create_did, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{
+    extracted_credential_to_model, get_or_create_did, DidRole, NESTED_CLAIM_MARKER,
+};
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -374,7 +376,7 @@ pub async fn accept_proof(
         did_repository,
         &proof_schema.organisation,
         &holder_did,
-        "holder ",
+        DidRole::Holder,
     )
     .await?;
 
@@ -400,7 +402,7 @@ pub async fn accept_proof(
             did_repository,
             &proof_schema.organisation,
             issuer_did,
-            "issuer ",
+            DidRole::Issuer,
         )
         .await?;
 

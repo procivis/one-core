@@ -6,6 +6,7 @@ use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use shared_types::{CredentialId, DidId, DidValue, KeyId};
+use strum::Display;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -84,31 +85,38 @@ pub(crate) fn get_exchange_param_refresh_token_expires_in(
     Ok(Duration::seconds(params.refresh_expires_in as _))
 }
 
+#[derive(Debug, Display)]
+pub enum DidRole {
+    #[strum(to_string = "holder")]
+    Holder,
+    #[strum(to_string = "issuer")]
+    Issuer,
+    #[strum(to_string = "verifier")]
+    Verifier,
+}
+
 pub(crate) async fn get_or_create_did(
     did_repository: &dyn DidRepository,
     organisation: &Option<Organisation>,
-    holder_did_value: &DidValue,
-    did_name_prefix: &str,
+    did_value: &DidValue,
+    did_role: DidRole,
 ) -> Result<Did, ServiceError> {
     Ok(
         match did_repository
-            .get_did_by_value(holder_did_value, &DidRelations::default())
+            .get_did_by_value(did_value, &DidRelations::default())
             .await?
         {
             Some(did) => did,
             None => {
                 let id = Uuid::new_v4();
-                let did_method = did_method_id_from_value(holder_did_value)?;
-                let organisation = organisation.as_ref().ok_or(ServiceError::MappingError(
-                    "organisation is None".to_string(),
-                ))?;
+                let did_method = did_method_id_from_value(did_value)?;
                 let did = Did {
                     id: DidId::from(id),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
-                    name: format!("{did_name_prefix}{id}"),
-                    organisation: Some(organisation.to_owned()),
-                    did: holder_did_value.to_owned(),
+                    name: format!("{did_role} {id}"),
+                    organisation: organisation.to_owned(),
+                    did: did_value.to_owned(),
                     did_method,
                     did_type: DidType::Remote,
                     keys: None,

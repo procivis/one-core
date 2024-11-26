@@ -118,6 +118,9 @@ pub enum EntityNotFoundError {
     #[error("Did `{0}` not found")]
     Did(DidId),
 
+    #[error("Did value `{0}` not found")]
+    DidValue(DidValue),
+
     #[error("Revocation list `{0}` not found")]
     RevocationList(RevocationListId),
 
@@ -311,6 +314,15 @@ pub enum BusinessLogicError {
 
     #[error("Layout properties are not supported")]
     LayoutPropertiesNotSupported,
+
+    #[error("Multiple matching trust anchors")]
+    MultipleMatchingTrustAnchors,
+
+    #[error("Trust entity has duplicates")]
+    TrustEntityHasDuplicates,
+
+    #[error("Trust anchor is disabled")]
+    TrustAnchorIsDisabled,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -435,6 +447,12 @@ pub enum ValidationError {
 
     #[error("ValidityConstraintOutOfRange")]
     ValidityConstraintOutOfRange,
+
+    #[error("Unauthorized")]
+    Unauthorized,
+
+    #[error("Invalid update request")]
+    InvalidUpdateRequest,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -891,11 +909,26 @@ pub enum ErrorCode {
     #[strum(to_string = "Invalid create trust anchor request")]
     BR_0177,
 
+    #[strum(to_string = "Unauthorized")]
+    BR_0178,
+
+    #[strum(to_string = "Multiple matching trust anchors")]
+    BR_0179,
+
+    #[strum(to_string = "Trust entity has duplicates")]
+    BR_0180,
+
+    #[strum(to_string = "Invalid update request")]
+    BR_0181,
+
     #[strum(to_string = "Initialization error")]
     BR_0183,
 
     #[strum(to_string = "Not initialized")]
     BR_0184,
+
+    #[strum(to_string = "Trust anchor is disabled")]
+    BR_0187,
 }
 
 impl From<FormatError> for ServiceError {
@@ -964,7 +997,7 @@ impl ErrorCodeMixin for EntityNotFoundError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::Credential(_) => ErrorCode::BR_0001,
-            Self::Did(_) => ErrorCode::BR_0024,
+            Self::Did(_) | Self::DidValue(_) => ErrorCode::BR_0024,
             Self::RevocationList(_) => ErrorCode::BR_0034,
             Self::ProofSchema(_) => ErrorCode::BR_0014,
             Self::Proof(_) => ErrorCode::BR_0012,
@@ -1034,6 +1067,9 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::SchemaIdNotAllowed => ErrorCode::BR_0139,
             Self::LayoutPropertiesNotSupported => ErrorCode::BR_0131,
             Self::SuspensionNotAvailableForSelectedRevocationMethod => ErrorCode::BR_0162,
+            Self::MultipleMatchingTrustAnchors => ErrorCode::BR_0179,
+            Self::TrustEntityHasDuplicates => ErrorCode::BR_0180,
+            Self::TrustAnchorIsDisabled => ErrorCode::BR_0187,
         }
     }
 }
@@ -1078,6 +1114,8 @@ impl ErrorCodeMixin for ValidationError {
             Self::TransportsCombinationNotAllowed => ErrorCode::BR_0159,
             Self::InvalidTransportType { .. } => ErrorCode::BR_0112,
             Self::ValidityConstraintOutOfRange => ErrorCode::BR_0166,
+            Self::Unauthorized => ErrorCode::BR_0178,
+            Self::InvalidUpdateRequest => ErrorCode::BR_0181,
         }
     }
 }

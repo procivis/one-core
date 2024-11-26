@@ -42,3 +42,14 @@ pub struct TrustEntityRelations {
     pub trust_anchor: Option<TrustAnchorRelations>,
     pub did: Option<DidRelations>,
 }
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct UpdateTrustEntityRequest {
+    pub state: Option<TrustEntityState>,
+    pub logo: Option<Option<String>>,
+    pub privacy_url: Option<Option<String>>,
+    pub website: Option<Option<String>>,
+    pub name: Option<String>,
+    pub terms_url: Option<Option<String>>,
+    pub role: Option<TrustEntityRole>,
+}

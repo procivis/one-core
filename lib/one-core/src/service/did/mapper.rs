@@ -15,9 +15,7 @@ use crate::service::key::dto::{KeyListItemResponseDTO, PublicKeyJwkDTO};
 impl TryFrom<Did> for DidResponseDTO {
     type Error = ServiceError;
     fn try_from(value: Did) -> Result<Self, Self::Error> {
-        let organisation = value.organisation.ok_or(ServiceError::MappingError(
-            "organisation is None".to_string(),
-        ))?;
+        let organisation_id = value.organisation.map(|value| value.id);
 
         let keys = value
             .keys
@@ -34,7 +32,7 @@ impl TryFrom<Did> for DidResponseDTO {
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
-            organisation_id: organisation.id,
+            organisation_id,
             did: value.did,
             did_type: value.did_type,
             did_method: value.did_method,

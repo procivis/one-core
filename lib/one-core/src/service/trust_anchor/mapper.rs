@@ -1,7 +1,7 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::CreateTrustAnchorRequestDTO;
+use super::dto::{CreateTrustAnchorRequestDTO, TrustAnchorsListItemResponseDTO};
 use crate::model::trust_anchor::TrustAnchor;
 use crate::service::error::ServiceError;
 
@@ -31,4 +31,18 @@ pub(super) fn trust_anchor_from_request(
         is_publisher: request.is_publisher.unwrap_or(false),
         publisher_reference,
     })
+}
+
+impl From<TrustAnchorsListItemResponseDTO> for TrustAnchor {
+    fn from(value: TrustAnchorsListItemResponseDTO) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            r#type: value.r#type,
+            publisher_reference: value.publisher_reference,
+            is_publisher: value.is_publisher,
+        }
+    }
 }

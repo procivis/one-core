@@ -120,7 +120,7 @@ impl TryFrom<Did> for did::ActiveModel {
     type Error = DataLayerError;
 
     fn try_from(value: Did) -> Result<Self, Self::Error> {
-        let organisation = value.organisation.ok_or(DataLayerError::MappingError)?;
+        let organisation_id = value.organisation.map(|f| f.id);
 
         Ok(Self {
             id: Set(value.id),
@@ -130,7 +130,7 @@ impl TryFrom<Did> for did::ActiveModel {
             name: Set(value.name),
             type_field: Set(value.did_type.into()),
             method: Set(value.did_method),
-            organisation_id: Set(organisation.id),
+            organisation_id: Set(organisation_id),
             deactivated: Set(value.deactivated),
             deleted_at: NotSet,
         })

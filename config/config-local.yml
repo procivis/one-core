@@ -27,7 +27,7 @@ trustManagement:
     disabled: false
     params:
       public:
-        disablePublishing: false
+        enablePublishing: true
 cacheEntities:
   STATUS_LIST_CREDENTIAL:
     cacheType: DB

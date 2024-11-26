@@ -379,6 +379,8 @@ impl OneCore {
                 data_provider.get_trust_anchor_repository(),
                 data_provider.get_trust_entity_repository(),
                 data_provider.get_did_repository(),
+                did_method_provider.clone(),
+                key_algorithm_provider.clone(),
                 trust_management_provider,
             ),
             backup_service: BackupService::new(

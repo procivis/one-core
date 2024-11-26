@@ -137,7 +137,7 @@ async fn insert_did_to_database(
         name: Set(Uuid::new_v4().to_string()),
         type_field: Set(DidType::Local),
         method: Set("method".into()),
-        organisation_id: Set(organisation_id),
+        organisation_id: Set(Some(organisation_id)),
         deactivated: Set(false),
         deleted_at: if deleted {
             Set(Some(get_dummy_date()))

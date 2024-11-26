@@ -1,6 +1,6 @@
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
-use crate::common_mapper::get_or_create_did;
+use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::interaction::Interaction;
@@ -50,14 +50,14 @@ pub(super) async fn credential_from_proved(
         did_repository,
         &Some(organisation.to_owned()),
         &proved_credential.issuer_did_value,
-        "issuer ",
+        DidRole::Issuer,
     )
     .await?;
     let holder_did = get_or_create_did(
         did_repository,
         &Some(organisation.to_owned()),
         &proved_credential.holder_did_value,
-        "holder ",
+        DidRole::Holder,
     )
     .await?;
 

@@ -1,5 +1,5 @@
 use autometrics::autometrics;
-use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations};
+use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations, UpdateTrustEntityRequest};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::service::trust_entity::dto::{
@@ -8,13 +8,15 @@ use one_core::service::trust_entity::dto::{
 use one_dto_mapper::convert_inner;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, Set,
+    QuerySelect, Set, Unchanged,
 };
-use shared_types::{TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, TrustAnchorId, TrustEntityId};
+use time::OffsetDateTime;
 
 use super::TrustEntityProvider;
 use crate::common::calculate_pages_count;
 use crate::entity::trust_entity;
+use crate::entity::trust_entity::{TrustEntityRole, TrustEntityState};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
 use crate::trust_entity::model::TrustEntityListItemEntityModel;
@@ -45,6 +47,16 @@ impl TrustEntityRepository for TrustEntityProvider {
         .map_err(to_data_layer_error)?;
 
         Ok(value.id)
+    }
+
+    async fn get_by_did_id(&self, did_id: DidId) -> Result<Vec<TrustEntity>, DataLayerError> {
+        let entities = trust_entity::Entity::find()
+            .filter(trust_entity::Column::DidId.eq(did_id))
+            .all(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        Ok(entities.into_iter().map(Into::into).collect())
     }
 
     async fn get_by_trust_anchor_id(
@@ -162,5 +174,49 @@ impl TrustEntityRepository for TrustEntityProvider {
             total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
             total_items: items_count,
         })
+    }
+
+    async fn update(
+        &self,
+        id: TrustEntityId,
+        request: UpdateTrustEntityRequest,
+    ) -> Result<(), DataLayerError> {
+        let role = match request.role {
+            None => Unchanged(TrustEntityRole::Issuer),
+            Some(role) => Set(TrustEntityRole::from(role)),
+        };
+        let state = match request.state {
+            None => Unchanged(TrustEntityState::Active),
+            Some(state) => Set(TrustEntityState::from(state)),
+        };
+
+        let _value = trust_entity::ActiveModel {
+            id: Unchanged(id),
+            last_modified: Set(OffsetDateTime::now_utc()),
+            name: option_to_active_value(request.name),
+            logo: option_to_active_value(request.logo.map(|f| f.map(|v| v.into_bytes()))),
+            website: option_to_active_value(request.website),
+            terms_url: option_to_active_value(request.terms_url),
+            privacy_url: option_to_active_value(request.privacy_url),
+            role,
+            state,
+            ..Default::default()
+        }
+        .update(&self.db)
+        .await
+        .map_err(to_data_layer_error)?;
+
+        Ok(())
+    }
+}
+
+fn option_to_active_value<T>(param: Option<T>) -> sea_orm::ActiveValue<T>
+where
+    sea_orm::Value: From<T>,
+    T: Default,
+{
+    match param {
+        None => Unchanged(Default::default()),
+        Some(value) => Set(value),
     }
 }

@@ -104,6 +104,9 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             ssi::controller::ssi_get_proof_schema,
             ssi::controller::ssi_get_trust_list,
             ssi::controller::ssi_get_sd_jwt_vc_type_metadata,
+            ssi::controller::ssi_get_trust_entity,
+            ssi::controller::ssi_post_trust_entity,
+            ssi::controller::ssi_patch_trust_entity,
 
             misc::get_build_info,
             misc::health_check,
@@ -336,6 +339,16 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                         .scheme(HttpAuthScheme::Bearer)
                         .bearer_format("JWT")
                         .description(Some("LVVC holder fetch token"))
+                        .build(),
+                ),
+            );
+            components.add_security_scheme(
+                "trust-entity",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Bearer)
+                        .bearer_format("JWT")
+                        .description(Some("Trust entity token"))
                         .build(),
                 ),
             );

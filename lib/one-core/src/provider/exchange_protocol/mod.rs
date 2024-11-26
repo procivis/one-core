@@ -20,6 +20,7 @@ use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue, KeyId, Org
 use url::Url;
 
 use super::mqtt_client::MqttClient;
+use crate::common_mapper::DidRole;
 use crate::config::core_config::{CoreConfig, ExchangeType, TransportType};
 use crate::config::ConfigValidationError;
 use crate::model::claim::Claim;
@@ -198,8 +199,8 @@ pub trait StorageProxy: Send + Sync {
     async fn get_or_create_did(
         &self,
         organisation: &Option<Organisation>,
-        holder_did_value: &DidValue,
-        did_name_prefix: &str,
+        did_value: &DidValue,
+        did_role: DidRole,
     ) -> anyhow::Result<Did>;
 }
 pub type StorageAccess = dyn StorageProxy;

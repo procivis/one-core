@@ -6,4 +6,4 @@ trustManagement:
     disabled: false
     params:
       public:
-        disablePublishing: false
+        enablePublishing: true

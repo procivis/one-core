@@ -179,11 +179,17 @@ async fn test_create_did() {
 async fn test_create_did_invalid_organisation() {
     let TestSetup { provider, .. } = setup_empty(Repositories::default()).await;
 
+    let non_existing_organisation = Organisation {
+        id: Uuid::new_v4().into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+    };
+
     let result = provider
         .create_did(Did {
             id: Uuid::new_v4().into(),
             name: "Name".to_string(),
-            organisation: None,
+            organisation: Some(non_existing_organisation),
             did: "did:key:123".parse().unwrap(),
             did_type: DidType::Local,
             created_date: get_dummy_date(),
@@ -193,7 +199,7 @@ async fn test_create_did_invalid_organisation() {
             deactivated: false,
         })
         .await;
-    assert!(matches!(result, Err(DataLayerError::MappingError)));
+    assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
 }
 
 #[tokio::test]
@@ -584,7 +590,7 @@ async fn test_get_did_list_sorting() {
         name: Set("a".to_owned()),
         type_field: Set(did::DidType::Local),
         method: Set("KEY".to_string()),
-        organisation_id: Set(organisation.id),
+        organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,
     }
@@ -600,7 +606,7 @@ async fn test_get_did_list_sorting() {
         name: Set("b".to_owned()),
         type_field: Set(did::DidType::Local),
         method: Set("KEY".to_string()),
-        organisation_id: Set(organisation.id),
+        organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,
     }
@@ -770,7 +776,7 @@ async fn test_get_did_list_complex_filter_condition() {
         name: Set("a".to_owned()),
         type_field: Set(did::DidType::Local),
         method: Set("KEY".to_string()),
-        organisation_id: Set(organisation.id),
+        organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,
     }
@@ -786,7 +792,7 @@ async fn test_get_did_list_complex_filter_condition() {
         name: Set("b".to_owned()),
         type_field: Set(did::DidType::Local),
         method: Set("KEY".to_string()),
-        organisation_id: Set(organisation.id),
+        organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,
     }

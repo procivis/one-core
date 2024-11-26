@@ -1,10 +1,14 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::{CreateTrustEntityRequestDTO, GetTrustEntityResponseDTO};
+use super::dto::{
+    CreateTrustEntityFromDidRequestDTO, CreateTrustEntityRequestDTO, GetTrustEntityResponseDTO,
+    UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
+};
 use crate::model::did::Did;
 use crate::model::trust_anchor::TrustAnchor;
-use crate::model::trust_entity::TrustEntity;
+use crate::model::trust_entity::{TrustEntity, TrustEntityState, UpdateTrustEntityRequest};
+use crate::service::error::{ServiceError, ValidationError};
 
 pub(super) fn trust_entity_from_request(
     request: CreateTrustEntityRequestDTO,
@@ -30,6 +34,30 @@ pub(super) fn trust_entity_from_request(
     }
 }
 
+pub(super) fn trust_entity_from_did_request(
+    request: CreateTrustEntityFromDidRequestDTO,
+    trust_anchor: TrustAnchor,
+    did: Did,
+) -> TrustEntity {
+    let id = Uuid::new_v4().into();
+    let now = OffsetDateTime::now_utc();
+
+    TrustEntity {
+        id,
+        created_date: now,
+        last_modified: now,
+        name: request.name,
+        logo: request.logo,
+        website: request.website,
+        terms_url: request.terms_url,
+        privacy_url: request.privacy_url,
+        role: request.role,
+        state: TrustEntityState::Active,
+        trust_anchor: Some(trust_anchor),
+        did: Some(did),
+    }
+}
+
 impl From<TrustEntity> for GetTrustEntityResponseDTO {
     fn from(value: TrustEntity) -> Self {
         Self {
@@ -46,4 +74,36 @@ impl From<TrustEntity> for GetTrustEntityResponseDTO {
             state: value.state,
         }
     }
+}
+
+pub(super) fn update_request_from_dto(
+    state: TrustEntityState,
+    request: UpdateTrustEntityFromDidRequestDTO,
+) -> Result<UpdateTrustEntityRequest, ServiceError> {
+    let new_state = match (request.action, state) {
+        (UpdateTrustEntityActionFromDidRequestDTO::Activate, TrustEntityState::Withdrawn) => {
+            Ok(TrustEntityState::Active)
+        }
+        (
+            UpdateTrustEntityActionFromDidRequestDTO::Activate,
+            TrustEntityState::RemovedAndWithdrawn,
+        ) => Ok(TrustEntityState::Removed),
+        (UpdateTrustEntityActionFromDidRequestDTO::Withdraw, TrustEntityState::Active) => {
+            Ok(TrustEntityState::Withdrawn)
+        }
+        (UpdateTrustEntityActionFromDidRequestDTO::Withdraw, TrustEntityState::Removed) => {
+            Ok(TrustEntityState::RemovedAndWithdrawn)
+        }
+        _ => Err(ValidationError::InvalidUpdateRequest),
+    }?;
+
+    Ok(UpdateTrustEntityRequest {
+        state: Some(new_state),
+        logo: request.logo,
+        privacy_url: request.privacy_url,
+        website: request.website,
+        name: request.name,
+        terms_url: request.terms_url,
+        role: request.role,
+    })
 }

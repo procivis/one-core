@@ -39,7 +39,7 @@ use super::{
     ExchangeProtocolError, FormatMapper, HandleInvitationOperationsAccess, StorageAccess,
     TypeToDescriptorMapper,
 };
-use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_mapper::{DidRole, NESTED_CLAIM_MARKER};
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::UpdateCredentialSchemaRequest;
 use crate::model::did::{Did, DidType, KeyRole};
@@ -927,7 +927,7 @@ async fn handle_credential_invitation(
     let issuer_did = match credential_offer.issuer_did {
         Some(issuer_did) => Some(
             storage_access
-                .get_or_create_did(&Some(organisation.clone()), &issuer_did, "issuer ")
+                .get_or_create_did(&Some(organisation.clone()), &issuer_did, DidRole::Issuer)
                 .await
                 .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
         ),

@@ -34,7 +34,10 @@ use one_core::service::ssi_issuer::dto::{
     SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
 };
 use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
-use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
+use one_core::service::trust_entity::dto::{
+    CreateTrustEntityFromDidRequestDTO, GetTrustEntityResponseDTO,
+    UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
+};
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -808,4 +811,55 @@ pub enum SdJwtVcClaimSdRestEnum {
 pub struct SdJwtVcClaimDisplayRestDTO {
     pub lang: String,
     pub label: String,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(UpdateTrustEntityFromDidRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct PatchTrustEntityRequestRestDTO {
+    pub action: PatchTrustEntityActionRestDTO,
+
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub logo: Option<Option<String>>,
+    #[serde(default)]
+    pub website: Option<Option<String>>,
+    #[serde(default)]
+    pub terms_url: Option<Option<String>>,
+    #[serde(default)]
+    pub privacy_url: Option<Option<String>>,
+    #[into(with_fn = "convert_inner")]
+    #[serde(default)]
+    pub role: Option<TrustEntityRoleRest>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(UpdateTrustEntityActionFromDidRequestDTO)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PatchTrustEntityActionRestDTO {
+    Activate,
+    Withdraw,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(CreateTrustEntityFromDidRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct PostTrustEntityRequestRestDTO {
+    /// Specify trust anchor ID.
+    #[serde(default)]
+    pub trust_anchor_id: Option<TrustAnchorId>,
+    /// Specify DID value.
+    pub did: DidValue,
+    /// Specify the entity name.
+    pub name: String,
+    /// base64 encoded image.
+    pub logo: Option<String>,
+    /// Specify the entity's domain name.
+    pub website: Option<String>,
+    /// Specify a Terms of Service url.
+    pub terms_url: Option<String>,
+    /// Specify the Privacy Policy url.
+    pub privacy_url: Option<String>,
+    pub role: TrustEntityRoleRest,
 }

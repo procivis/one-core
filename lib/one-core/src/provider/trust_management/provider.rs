@@ -4,7 +4,7 @@ use std::sync::Arc;
 use serde_json::json;
 
 use super::simple_list::SimpleList;
-use super::TrustManagement;
+use super::{simple_list, TrustManagement};
 use crate::config::core_config::{TrustManagementConfig, TrustManagementType};
 use crate::config::ConfigError;
 use crate::model::credential::Credential;
@@ -61,7 +61,10 @@ pub(crate) fn from_config(
         }
 
         let management = match fields.r#type {
-            TrustManagementType::SimpleTrustList => Arc::new(SimpleList {}) as _,
+            TrustManagementType::SimpleTrustList => {
+                let params: simple_list::Params = config.get(key)?;
+                Arc::new(SimpleList { params }) as _
+            }
         };
 
         providers.insert(key.to_string(), management);

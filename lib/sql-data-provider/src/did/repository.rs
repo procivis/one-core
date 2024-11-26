@@ -28,15 +28,17 @@ impl DidProvider {
         let mut result: Did = model.clone().into();
 
         if let Some(organisation_relations) = &relations.organisation {
-            result.organisation = Some(
-                self.organisation_repository
-                    .get_organisation(&model.organisation_id, organisation_relations)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "did-organisation",
-                        id: model.organisation_id.to_string(),
-                    })?,
-            );
+            if let Some(organisation_id) = &model.organisation_id {
+                result.organisation = Some(
+                    self.organisation_repository
+                        .get_organisation(organisation_id, organisation_relations)
+                        .await?
+                        .ok_or(DataLayerError::MissingRequiredRelation {
+                            relation: "did-organisation",
+                            id: organisation_id.to_string(),
+                        })?,
+                );
+            }
         }
 
         if let Some(key_relations) = &relations.keys {

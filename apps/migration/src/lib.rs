@@ -65,6 +65,7 @@ mod m20241119_095859_redirect_uri_length;
 mod m20241120_164124_update_trust_anchor_and_entity_tables;
 mod m20241125_170909_trust_anchor_publisher_reference_mandatory;
 mod m20241126_105830_drop_reactivated_history_action;
+mod m20241127_112144_did_organisation_id_optional;
 
 pub struct Migrator;
 
@@ -132,6 +133,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20241120_164124_update_trust_anchor_and_entity_tables::Migration),
             Box::new(m20241125_170909_trust_anchor_publisher_reference_mandatory::Migration),
             Box::new(m20241126_105830_drop_reactivated_history_action::Migration),
+            Box::new(m20241127_112144_did_organisation_id_optional::Migration),
         ]
     }
 }
