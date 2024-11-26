@@ -284,6 +284,7 @@ impl OIDCService {
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
+                    issuer_did: Some(DidRelations::default()),
                     state: Some(CredentialStateRelations::default()),
                     schema: Some(CredentialSchemaRelations {
                         claim_schemas: Some(ClaimSchemaRelations::default()),
@@ -345,6 +346,10 @@ impl OIDCService {
         Ok(create_credential_offer(
             &url,
             &interaction.id.to_string(),
+            credential
+                .issuer_did
+                .ok_or(ServiceError::MappingError("issuer did missing".to_string()))?
+                .did,
             &credential_schema_id,
             &credential_schema.schema_id,
             credential_subject,

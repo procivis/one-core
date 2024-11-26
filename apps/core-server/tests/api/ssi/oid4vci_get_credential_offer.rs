@@ -56,6 +56,7 @@ async fn test_get_credential_offer_success_jwt() {
             context.config.app.core_base_url, credential_schema.id
         )
     );
+    assert_eq!(offer["issuer_did"], did.did.to_string(),);
     offer["grants"]["urn:ietf:params:oauth:grant-type:pre-authorized_code"]["pre-authorized_code"]
         .assert_eq(&interaction.id);
 
@@ -125,6 +126,8 @@ async fn test_get_credential_offer_success_mdoc() {
             context.config.app.core_base_url, credential_schema.id
         )
     );
+    assert_eq!(offer["issuer_did"], did.did.to_string(),);
+
     offer["grants"]["urn:ietf:params:oauth:grant-type:pre-authorized_code"]["pre-authorized_code"]
         .assert_eq(&interaction.id);
 

@@ -193,6 +193,7 @@ async fn test_generate_offer() {
     let offer = create_credential_offer(
         &base_url,
         &interaction_id.to_string(),
+        credential.issuer_did.unwrap().did,
         &credential.schema.as_ref().unwrap().id,
         &credential.schema.as_ref().unwrap().schema_id,
         credential_subject,
@@ -200,9 +201,10 @@ async fn test_generate_offer() {
     .unwrap();
 
     assert_eq!(
-        serde_json::json!(&offer),
-        serde_json::json!({
+        json!(&offer),
+        json!({
             "credential_issuer": "BASE_URL/ssi/oidc-issuer/v1/c322aa7f-9803-410d-b891-939b279fb965",
+            "issuer_did": "did1",
             "credential_configuration_ids" : [
                 credential.schema.as_ref().unwrap().schema_id,
             ],
@@ -256,12 +258,12 @@ async fn test_generate_share_credentials_offer_by_value() {
         .issuer_share_credential(&credential, "jwt_vc_json")
         .await
         .unwrap();
-
     // Everything except for interaction id is here.
     // Generating token with predictable interaction id is tested somewhere else.
     assert!(
-        result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%"#)
-    )
+        result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
+    );
+    assert!(result.url.contains("%22issuer_did%22%3A%22did1%22"))
 }
 
 #[tokio::test]

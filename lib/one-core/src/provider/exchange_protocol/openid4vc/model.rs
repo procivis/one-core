@@ -632,6 +632,8 @@ pub struct OpenID4VCICredentialOfferDTO {
 
     // This is a custom field with credential values
     pub credential_subject: Option<ExtendedSubjectDTO>,
+    // This is a custom field with the issuer did
+    pub issuer_did: Option<DidValue>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

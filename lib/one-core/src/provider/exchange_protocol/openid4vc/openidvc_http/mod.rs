@@ -747,9 +747,18 @@ impl OpenID4VCHTTP {
             .map_err(|e| ExchangeProtocolError::Other(e.into()))?;
 
         if self.params.credential_offer_by_value {
+            let issuer_did = credential
+                .issuer_did
+                .as_ref()
+                .ok_or(ExchangeProtocolError::Failed(
+                    "Missing issuer did".to_owned(),
+                ))?
+                .did
+                .clone();
             let offer = create_credential_offer(
                 url,
                 &interaction_id.to_string(),
+                issuer_did,
                 &credential_schema.id,
                 &credential_schema.schema_id,
                 credential_subject,

@@ -443,6 +443,8 @@ pub struct OpenID4VCICredentialOfferRestDTO {
 
     #[from(with_fn = convert_inner)]
     pub credential_subject: Option<ExtendedSubjectRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub issuer_did: Option<DidValue>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]

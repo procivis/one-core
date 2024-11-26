@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use one_crypto::utilities;
-use shared_types::{CredentialSchemaId, KeyId};
+use shared_types::{CredentialSchemaId, DidValue, KeyId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -652,12 +652,14 @@ async fn accept_proof(
 pub fn create_credential_offer(
     base_url: &str,
     pre_authorized_code: &str,
+    issuer_did: DidValue,
     credential_schema_uuid: &CredentialSchemaId,
     credential_schema_id: &str,
     credential_subject: ExtendedSubjectDTO,
 ) -> Result<OpenID4VCICredentialOfferDTO, OpenID4VCError> {
     Ok(OpenID4VCICredentialOfferDTO {
         credential_issuer: format!("{}/ssi/oidc-issuer/v1/{}", base_url, credential_schema_uuid),
+        issuer_did: Some(issuer_did),
         credential_configuration_ids: vec![credential_schema_id.to_string()],
         grants: OpenID4VCIGrants {
             code: OpenID4VCIGrant {
