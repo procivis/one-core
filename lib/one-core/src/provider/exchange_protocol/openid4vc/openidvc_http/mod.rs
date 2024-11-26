@@ -897,6 +897,16 @@ async fn handle_credential_invitation(
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let credential_offer = resolve_credential_offer(client, invitation_url).await?;
 
+    let issuer_did = match credential_offer.issuer_did {
+        Some(issuer_did) => Some(
+            storage_access
+                .get_or_create_did(&Some(organisation.clone()), &issuer_did, "issuer ")
+                .await
+                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
+        ),
+        None => None,
+    };
+
     let tx_code = credential_offer.grants.code.tx_code.clone();
 
     let credential_issuer_endpoint: Url =
@@ -997,7 +1007,14 @@ async fn handle_credential_invitation(
         }
     };
 
-    let credential = create_credential(credential_id, credential_schema, claims, interaction, None);
+    let credential = create_credential(
+        credential_id,
+        credential_schema,
+        claims,
+        interaction,
+        None,
+        issuer_did,
+    );
 
     Ok(InvitationResponseDTO::Credential {
         interaction_id,

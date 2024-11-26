@@ -57,4 +57,18 @@ impl DidsDB {
             .unwrap()
             .unwrap()
     }
+
+    pub async fn get_did_by_value(&self, did: &DidValue) -> Did {
+        self.repository
+            .get_did_by_value(
+                did,
+                &DidRelations {
+                    keys: Some(KeyRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap()
+            .unwrap()
+    }
 }

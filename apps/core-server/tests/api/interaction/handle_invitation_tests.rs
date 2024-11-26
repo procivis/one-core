@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use one_core::model::credential_schema::WalletStorageTypeEnum;
+use one_core::model::did::DidType;
 use one_core::provider::exchange_protocol::openid4vc::model::{
     OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
 };
@@ -25,8 +26,10 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         "{}/ssi/oidc-issuer/v1/{credential_schema_id}",
         mock_server.uri()
     );
+    let issuer_did = "did:test:123abc";
     let credential_offer = json!({
         "credential_issuer": credential_issuer,
+        "issuer_did": issuer_did,
         "credential_configuration_ids": [
             "doctype"
         ],
@@ -294,6 +297,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         credential.schema.unwrap().wallet_storage_type,
         Some(WalletStorageTypeEnum::Software)
     );
+    let did = context.db.dids.get_did_by_value(&issuer_did.into()).await;
+    assert_eq!(did.did_type, DidType::Remote);
 }
 
 #[tokio::test]

@@ -193,6 +193,13 @@ pub trait StorageProxy: Send + Sync {
     async fn create_did(&self, did: Did) -> anyhow::Result<DidId>;
     /// Obtain a DID by its address, from a chosen storage layer.
     async fn get_did_by_value(&self, value: &DidValue) -> anyhow::Result<Option<Did>>;
+
+    async fn get_or_create_did(
+        &self,
+        organisation: &Option<Organisation>,
+        holder_did_value: &DidValue,
+        did_name_prefix: &str,
+    ) -> anyhow::Result<Did>;
 }
 pub type StorageAccess = dyn StorageProxy;
 

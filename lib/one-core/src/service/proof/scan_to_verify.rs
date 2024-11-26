@@ -203,6 +203,7 @@ impl ProofService {
             &*self.did_repository,
             &proof_schema.organisation,
             issuer_did,
+            "issuer ",
         )
         .await?;
 

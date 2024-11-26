@@ -50,12 +50,14 @@ pub(super) async fn credential_from_proved(
         did_repository,
         &Some(organisation.to_owned()),
         &proved_credential.issuer_did_value,
+        "issuer ",
     )
     .await?;
     let holder_did = get_or_create_did(
         did_repository,
         &Some(organisation.to_owned()),
         &proved_credential.holder_did_value,
+        "holder ",
     )
     .await?;
 

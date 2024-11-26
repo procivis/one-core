@@ -5,7 +5,8 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indexmap::{indexmap, IndexMap};
-use serde_json::json;
+use serde_json::{json, Value};
+use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -39,7 +40,8 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 use crate::provider::exchange_protocol::openid4vc::service::create_credential_offer;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::provider::exchange_protocol::{
-    FormatMapper, MockHandleInvitationOperations, MockStorageProxy, TypeToDescriptorMapper,
+    BasicSchemaData, BuildCredentialSchemaResponse, FormatMapper, MockHandleInvitationOperations,
+    MockStorageProxy, TypeToDescriptorMapper,
 };
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -473,6 +475,189 @@ async fn test_share_proof_with_use_request_uri() {
         ]),
         query_pairs
     );
+}
+
+#[tokio::test]
+async fn test_handle_invitation_credential_by_ref_with_did_success() {
+    let credential = generic_credential();
+
+    let mut storage_proxy = MockStorageProxy::default();
+    let credential_clone = credential.clone();
+    storage_proxy
+        .expect_get_or_create_did()
+        .times(1)
+        .returning(move |_, _, _| Ok(credential_clone.issuer_did.as_ref().unwrap().clone()));
+
+    inner_test_handle_invitation_credential_by_ref_success(
+        storage_proxy,
+        credential,
+        Some("did1".to_string()),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_handle_invitation_credential_by_ref_without_did_success() {
+    inner_test_handle_invitation_credential_by_ref_success(
+        MockStorageProxy::default(),
+        generic_credential(),
+        None,
+    )
+    .await;
+}
+
+async fn inner_test_handle_invitation_credential_by_ref_success(
+    mut storage_proxy: MockStorageProxy,
+    credential: Credential,
+    issuer_did: Option<String>,
+) {
+    let mock_server = MockServer::start().await;
+    let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
+    let credential_schema_id = credential.schema.clone().unwrap().id;
+    let credential_issuer = format!("{issuer_url}ssi/oidc-issuer/v1/{credential_schema_id}");
+
+    let mut credential_offer = json!({
+        "credential_issuer": credential_issuer,
+        "credential_configuration_ids" : [credential_schema_id],
+        "grants": {
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
+        },
+        "credential_subject": {
+            "keys": {
+                "NUMBER": {
+                    "value": "123",
+                    "value_type": "NUMBER"
+                }
+            },
+            "wallet_storage_type": "SOFTWARE"
+        }
+    });
+    if let Some(ref issuer_did) = issuer_did {
+        credential_offer
+            .as_object_mut()
+            .unwrap()
+            .insert("issuer_did".into(), Value::String(issuer_did.to_owned()));
+    };
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{}/offer/{}",
+            credential_schema_id, credential.id
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(credential_offer))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+    let token_endpoint = format!("{credential_issuer}/token");
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-configuration"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                "grant_types_supported": [
+                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                ],
+                "id_token_signing_alg_values_supported": [],
+                "issuer": credential_issuer,
+                "jwks_uri": format!("{credential_issuer}/jwks"),
+                "response_types_supported": [
+                    "token"
+                ],
+                "subject_types_supported": [
+                    "public"
+                ],
+                "token_endpoint": token_endpoint
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-credential-issuer"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{credential_issuer}/credential"),
+                "credential_issuer": credential_issuer,
+                "credential_configurations_supported": {
+                    credential_schema_id.to_string(): {
+                        "credential_definition": {
+                            "type": [
+                                "VerifiableCredential"
+                            ],
+                            "credentialSubject" : {
+                                "address": {
+                                    "value_type": "STRING",
+                                }
+                            }
+                        },
+                        "format": "vc+sd-jwt",
+                    }
+              }
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    storage_proxy
+        .expect_create_interaction()
+        .times(1)
+        .returning(|_| Ok(Uuid::new_v4()));
+    storage_proxy
+        .expect_get_schema()
+        .times(1)
+        .returning(|_, _, _| Ok(None));
+
+    let mut operations = MockHandleInvitationOperations::default();
+    let credential_clone = credential.clone();
+    operations
+        .expect_find_schema_data()
+        .once()
+        .returning(move |_, _, _, _| {
+            Ok(BasicSchemaData {
+                id: credential_schema_id.to_string(),
+                r#type: "SD_JWT_VC".to_string(),
+                offer_id: credential_clone.id.to_string(),
+                vct_endpoint: None,
+            })
+        });
+    operations
+        .expect_create_new_schema()
+        .once()
+        .returning(move |_, _, _, _, _, _| {
+            Ok(BuildCredentialSchemaResponse {
+                claims: credential.claims.clone().unwrap(),
+                schema: credential.schema.clone().unwrap(),
+            })
+        });
+
+    let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Foidc-issuer%2Fv1%2F{}%2Foffer%2F{}", issuer_url.authority(), credential_schema_id, credential.id)).unwrap();
+
+    let protocol = setup_protocol(Default::default());
+    let result = protocol
+        .holder_handle_invitation(url, generic_organisation(), &storage_proxy, &operations)
+        .await
+        .unwrap();
+
+    match result {
+        InvitationResponseDTO::Credential { credentials, .. } => {
+            assert_eq!(credentials.len(), 1);
+
+            if let Some(issuer_did) = issuer_did {
+                assert_eq!(
+                    credentials[0].issuer_did.as_ref().unwrap().did,
+                    DidValue::from_str(issuer_did.as_str()).unwrap()
+                );
+            } else {
+                assert!(credentials[0].issuer_did.is_none());
+            }
+        }
+        InvitationResponseDTO::ProofRequest { .. } => panic!("expected credential"),
+    }
 }
 
 #[tokio::test]

@@ -370,8 +370,13 @@ pub async fn accept_proof(
             .push(proved_claim);
     }
 
-    let holder_did =
-        get_or_create_did(did_repository, &proof_schema.organisation, &holder_did).await?;
+    let holder_did = get_or_create_did(
+        did_repository,
+        &proof_schema.organisation,
+        &holder_did,
+        "holder ",
+    )
+    .await?;
 
     let mut proof_claims: Vec<Claim> = vec![];
     for (_, credential_claims) in claims_per_credential {
@@ -391,8 +396,13 @@ pub async fn accept_proof(
                 .ok_or(ServiceError::MappingError(
                     "issuer_did is missing".to_string(),
                 ))?;
-        let issuer_did =
-            get_or_create_did(did_repository, &proof_schema.organisation, issuer_did).await?;
+        let issuer_did = get_or_create_did(
+            did_repository,
+            &proof_schema.organisation,
+            issuer_did,
+            "issuer ",
+        )
+        .await?;
 
         let credential_schema = &first_claim.credential_schema;
         let claim_schemas =

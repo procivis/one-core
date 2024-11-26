@@ -436,6 +436,7 @@ impl OIDCService {
                 &*self.did_repository,
                 &schema.organisation,
                 &holder_did_value,
+                "holder ",
             )
             .await
         } else {

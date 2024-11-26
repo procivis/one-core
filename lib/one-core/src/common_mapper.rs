@@ -88,6 +88,7 @@ pub(crate) async fn get_or_create_did(
     did_repository: &dyn DidRepository,
     organisation: &Option<Organisation>,
     holder_did_value: &DidValue,
+    did_name_prefix: &str,
 ) -> Result<Did, ServiceError> {
     Ok(
         match did_repository
@@ -105,7 +106,7 @@ pub(crate) async fn get_or_create_did(
                     id: DidId::from(id),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
-                    name: format!("holder {id}"),
+                    name: format!("{did_name_prefix}{id}"),
                     organisation: Some(organisation.to_owned()),
                     did: holder_did_value.to_owned(),
                     did_method,

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use shared_types::{CredentialSchemaId, DidId, DidValue, OrganisationId};
 
+use crate::common_mapper::get_or_create_did;
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::{Credential, CredentialRelations};
 use crate::model::credential_schema::{
@@ -10,6 +11,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::Did;
 use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::organisation::Organisation;
 use crate::provider::exchange_protocol::StorageProxy;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -117,7 +119,7 @@ impl StorageProxy for StorageProxyImpl {
         self.dids
             .create_did(did)
             .await
-            .context("Could not fetch did by value")
+            .context("Could not create did")
     }
 
     async fn get_did_by_value(&self, value: &DidValue) -> anyhow::Result<Option<Did>> {
@@ -125,5 +127,16 @@ impl StorageProxy for StorageProxyImpl {
             .get_did_by_value(value, &Default::default())
             .await
             .context("Could not fetch did by value")
+    }
+
+    async fn get_or_create_did(
+        &self,
+        organisation: &Option<Organisation>,
+        holder_did_value: &DidValue,
+        did_name_prefix: &str,
+    ) -> anyhow::Result<Did> {
+        get_or_create_did(&*self.dids, organisation, holder_did_value, did_name_prefix)
+            .await
+            .context("get or create did")
     }
 }

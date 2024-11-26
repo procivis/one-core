@@ -1005,6 +1005,7 @@ pub fn create_credential(
     claims: Vec<Claim>,
     interaction: Interaction,
     redirect_uri: Option<String>,
+    issuer_did: Option<Did>,
 ) -> Credential {
     let now = OffsetDateTime::now_utc();
 
@@ -1024,7 +1025,7 @@ pub fn create_credential(
             suspend_end_date: None,
         }]),
         claims: Some(claims),
-        issuer_did: None,
+        issuer_did,
         holder_did: None,
         schema: Some(credential_schema),
         key: None,
