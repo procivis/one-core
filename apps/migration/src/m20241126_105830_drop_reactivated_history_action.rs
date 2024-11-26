@@ -1,7 +1,6 @@
 use sea_orm::{EnumIter, Iterable};
 use sea_orm_migration::prelude::*;
 
-use crate::extension::postgres::Type;
 use crate::m20240130_105023_add_history::{History, HistoryAction};
 
 #[derive(DeriveMigrationName)]
@@ -10,35 +9,33 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager.exec_stmt(
+            Query::delete()
+                .from_table(History::Table)
+                .and_where(
+                    Expr::col(History::Action)
+                        .eq(crate::m20240307_103000_add_reactivated_history_action::UpdatedHistoryAction::Reactivated.as_expr()),
+                )
+                .to_owned()
+        ).await?;
+
         match manager.get_database_backend() {
-            sea_orm::DatabaseBackend::Postgres => {
-                manager
-                    .exec_stmt(
-                        Type::alter()
-                            .name(HistoryAction::Table)
-                            .add_value(UpdatedHistoryAction::Suspended)
-                            .to_owned(),
-                    )
-                    .await?;
-            }
             sea_orm::DatabaseBackend::MySql => {
                 manager
                     .alter_table(
                         Table::alter()
                             .table(History::Table)
                             .modify_column(
-                                ColumnDef::new(History::Action).enumeration(
-                                    HistoryAction::Table,
-                                    UpdatedHistoryAction::iter(),
-                                ),
+                                ColumnDef::new(History::Action)
+                                    .enumeration(HistoryAction::Table, UpdatedHistoryAction::iter())
+                                    .not_null(),
                             )
                             .to_owned(),
                     )
                     .await?;
             }
-            sea_orm::DatabaseBackend::Sqlite => {}
+            sea_orm::DatabaseBackend::Postgres | sea_orm::DatabaseBackend::Sqlite => {}
         };
-
         Ok(())
     }
 }
@@ -57,26 +54,24 @@ pub enum UpdatedHistoryAction {
     Issued,
     #[iden = "OFFERED"]
     Offered,
-    #[iden = "REACTIVATED"]
-    Reactivated,
     #[iden = "REJECTED"]
     Rejected,
     #[iden = "REQUESTED"]
     Requested,
+    #[iden = "RESTORED"]
+    Restored,
     #[iden = "REVOKED"]
     Revoked,
     #[iden = "PENDING"]
     Pending,
     #[iden = "SUSPENDED"]
     Suspended,
-}
-
-impl UpdatedHistoryAction {
-    pub(crate) fn as_expr(&self) -> Expr {
-        let mut s = String::new();
-
-        self.unquoted(&mut s);
-
-        Expr::val(s)
-    }
+    #[iden = "ERRORED"]
+    Errored,
+    #[iden = "SHARED"]
+    Shared,
+    #[iden = "IMPORTED"]
+    Imported,
+    #[iden = "CLAIMS_REMOVED"]
+    ClaimsRemoved,
 }

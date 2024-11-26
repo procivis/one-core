@@ -1003,7 +1003,6 @@ pub enum HistoryActionBindingEnum {
     Errored,
     Issued,
     Offered,
-    Reactivated,
     Rejected,
     Requested,
     Revoked,
