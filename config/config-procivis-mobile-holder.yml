@@ -34,3 +34,19 @@ exchange:
     type: "ISO_MDL"
     display: "exchange.isoMdl"
     order: 3
+datatype:
+  FULL-DATE:
+    display: "datatype.string"
+    type: "STRING"
+    order: 101
+    params: null
+  UINT:
+    display: "datatype.string"
+    type: "STRING"
+    order: 102
+    params: null
+  BOOL:
+    display: "datatype.string"
+    type: "STRING"
+    order: 103
+    params: null
