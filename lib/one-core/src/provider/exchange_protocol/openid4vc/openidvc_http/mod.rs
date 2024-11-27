@@ -54,6 +54,7 @@ use crate::provider::credential_formatter::model::{DetailCredential, FormatPrese
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
+use crate::provider::exchange_protocol::error::TxCodeError;
 use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::interaction_from_handle_invitation;
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCICredentialOfferClaimValue;
@@ -445,25 +446,58 @@ impl OpenID4VCHTTP {
                 "grants data is missing".to_string(),
             ))?;
 
-        let token_response: OpenID4VCITokenResponseDTO = self
-            .client
-            .post(token_endpoint.as_str())
-            .form(&OpenID4VCITokenRequestDTO::PreAuthorizedCode {
-                pre_authorized_code: grants.code.pre_authorized_code.clone(),
-                tx_code,
-            })
-            .context("form error")
-            .map_err(ExchangeProtocolError::Transport)?
-            .send()
-            .await
-            .context("send error")
-            .map_err(ExchangeProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(ExchangeProtocolError::Transport)?
-            .json()
-            .context("parsing error")
-            .map_err(ExchangeProtocolError::Transport)?;
+        let token_response: OpenID4VCITokenResponseDTO = async {
+            let has_sent_tx_code = tx_code.is_some();
+
+            let request = self
+                .client
+                .post(token_endpoint.as_str())
+                .form(&OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                    pre_authorized_code: grants.code.pre_authorized_code.clone(),
+                    tx_code,
+                })
+                .context("Invalid token_endpoint request")
+                .map_err(ExchangeProtocolError::Transport)?;
+
+            let response = request
+                .send()
+                .await
+                .context("Error during token_endpoint response")
+                .map_err(ExchangeProtocolError::Transport)?;
+
+            if response.status.is_client_error() && has_sent_tx_code {
+                #[derive(Deserialize)]
+                struct ErrorResponse {
+                    error: OpenId4VciError,
+                }
+
+                #[derive(Deserialize)]
+                #[serde(rename_all = "snake_case")]
+                enum OpenId4VciError {
+                    InvalidGrant,
+                    InvalidRequest,
+                }
+
+                match serde_json::from_slice::<ErrorResponse>(&response.body).map(|r| r.error) {
+                    Ok(OpenId4VciError::InvalidGrant) => {
+                        return Err(ExchangeProtocolError::TxCode(TxCodeError::IncorrectCode));
+                    }
+                    Ok(OpenId4VciError::InvalidRequest) => {
+                        return Err(ExchangeProtocolError::TxCode(TxCodeError::InvalidCodeUse));
+                    }
+                    Err(_) => {}
+                }
+            }
+
+            response
+                .error_for_status()
+                .context("status error")
+                .map_err(ExchangeProtocolError::Transport)?
+                .json()
+                .context("parsing error")
+                .map_err(ExchangeProtocolError::Transport)
+        }
+        .await?;
 
         interaction_data.access_token = Some(token_response.access_token.clone());
         interaction_data.access_token_expires_at =

@@ -6,6 +6,7 @@ use axum::response::IntoResponse;
 use axum::Json;
 use one_core::provider::credential_formatter::error::FormatterError;
 use one_core::provider::did_method::error::DidMethodProviderError;
+use one_core::provider::exchange_protocol::error::ExchangeProtocolError;
 use one_core::service::error::{MissingProviderError, ServiceError, ValidationError};
 use one_dto_mapper::convert_inner;
 use serde::Serialize;
@@ -50,6 +51,7 @@ impl ErrorResponse {
             | ServiceError::BusinessLogic(_)
             | ServiceError::FormatterError(FormatterError::BBSOnly)
             | ServiceError::ConfigValidationError(_)
+            | ServiceError::ExchangeProtocolError(ExchangeProtocolError::TxCode(_))
             | ServiceError::DidMdlValidationError(_) => Self::BadRequest(response),
             _ => Self::ServerError(response),
         }

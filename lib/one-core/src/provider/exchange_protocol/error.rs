@@ -22,4 +22,14 @@ pub enum ExchangeProtocolError {
     Other(anyhow::Error),
     #[error(transparent)]
     StorageAccessError(anyhow::Error),
+    #[error(transparent)]
+    TxCode(TxCodeError),
+}
+
+#[derive(Debug, Error)]
+pub enum TxCodeError {
+    #[error("Incorrect tx_code")]
+    IncorrectCode,
+    #[error("Invalid use of tx_code")]
+    InvalidCodeUse,
 }

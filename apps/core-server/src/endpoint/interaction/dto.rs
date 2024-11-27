@@ -28,7 +28,6 @@ pub struct HandleInvitationRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct HandleInvitationResponseRestDTO {
     pub interaction_id: Uuid,
-
     pub credential_ids: Option<Vec<CredentialId>>,
     pub proof_id: Option<ProofId>,
     pub tx_code: Option<OpenID4VCITxCodeRestDTO>,
@@ -37,21 +36,24 @@ pub struct HandleInvitationResponseRestDTO {
 #[derive(Clone, Serialize, Deserialize, Debug, From, ToSchema)]
 #[from(OpenID4VCITxCode)]
 pub struct OpenID4VCITxCodeRestDTO {
+    #[schema(value_type = String, example = "numeric", default = "numeric")]
+    #[serde(default)]
+    pub input_mode: OpenID4VCITxCodeInputModeRestDTO,
     #[from(with_fn = convert_inner)]
-    #[schema(value_type = String, example = "numeric")]
-    pub input_mode: Option<OpenID4VCITxCodeInputModeRestDTO>,
-    #[from(with_fn = convert_inner)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub length: Option<i64>,
     #[from(with_fn = convert_inner)]
-    #[schema(value_type = String, example = "Pin number")]
+    #[schema(value_type = String, example = "Pin number", max_length = 300)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display, From)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display, From, Default)]
 #[from(OpenID4VCITxCodeInputMode)]
 pub enum OpenID4VCITxCodeInputModeRestDTO {
     #[serde(rename = "numeric")]
     #[strum(serialize = "numeric")]
+    #[default]
     Numeric,
     #[serde(rename = "text")]
     #[strum(serialize = "text")]

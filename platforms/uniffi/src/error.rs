@@ -1,6 +1,6 @@
 use one_core::config::{ConfigError, ConfigParsingError};
 use one_core::provider::bluetooth_low_energy::BleError;
-use one_core::provider::exchange_protocol::error::ExchangeProtocolError;
+use one_core::provider::exchange_protocol::error::{ExchangeProtocolError, TxCodeError};
 use one_core::provider::key_storage::error::KeyStorageError;
 use one_core::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use one_crypto::SignerError;
@@ -10,20 +10,31 @@ use thiserror::Error;
 pub enum BindingError {
     #[error("Already exists: `{0}`")]
     AlreadyExists(String),
+
     #[error("Database error: `{0}`")]
     DbErr(String),
+
     #[error("Not found: `{0}`")]
     NotFound(String),
+
     #[error("Not supported: `{0}`")]
     NotSupported(String),
+
     #[error("Validation error: `{0}`")]
     ValidationError(String),
+
     #[error("Config validation error: `{0}`")]
     ConfigValidationError(String),
+
     #[error("Core uninitialized")]
     Uninitialized,
+
     #[error("IO error: `{0}`")]
     IOError(String),
+
+    #[error("Provided TX code is incorrect")]
+    IncorrectTxCode,
+
     #[error("Unknown error: `{0}`")]
     Unknown(String),
 }
@@ -44,6 +55,7 @@ impl From<ServiceError> for BindingError {
                 ExchangeProtocolError::OperationNotSupported => {
                     Self::NotSupported(error.to_string())
                 }
+                ExchangeProtocolError::TxCode(TxCodeError::IncorrectCode) => Self::IncorrectTxCode,
                 error => Self::Unknown(error.to_string()),
             },
             ServiceError::BusinessLogic(e) => match e {

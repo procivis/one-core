@@ -676,15 +676,19 @@ pub struct OpenID4VCIGrant {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCITxCode {
-    pub input_mode: Option<OpenID4VCITxCodeInputMode>,
+    #[serde(default)]
+    pub input_mode: OpenID4VCITxCodeInputMode,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub length: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display, Default)]
 pub enum OpenID4VCITxCodeInputMode {
     #[serde(rename = "numeric")]
     #[strum(serialize = "numeric")]
+    #[default]
     Numeric,
     #[serde(rename = "text")]
     #[strum(serialize = "text")]

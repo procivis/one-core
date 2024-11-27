@@ -17,7 +17,7 @@ use crate::model::revocation_list::RevocationListId;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::did_method::mdl::DidMdlValidationError;
-use crate::provider::exchange_protocol::error::ExchangeProtocolError;
+use crate::provider::exchange_protocol::error::{ExchangeProtocolError, TxCodeError};
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
@@ -888,6 +888,12 @@ pub enum ErrorCode {
     #[strum(to_string = "SD-JWT VC type metadata not found")]
     BR_0172,
 
+    #[strum(to_string = "User Provided incorrect user code")]
+    BR_0169,
+
+    #[strum(to_string = "Invalid Transaction Code Use")]
+    BR_0170,
+
     #[strum(to_string = "Invalid create trust anchor request")]
     BR_0177,
 }
@@ -1089,6 +1095,10 @@ impl ErrorCodeMixin for ExchangeProtocolError {
             Self::Disabled(_) => ErrorCode::BR_0085,
             Self::Other(_) => ErrorCode::BR_0062,
             Self::StorageAccessError(_) => ErrorCode::BR_0062,
+            Self::TxCode(tx_code_error) => match tx_code_error {
+                TxCodeError::IncorrectCode => ErrorCode::BR_0169,
+                TxCodeError::InvalidCodeUse => ErrorCode::BR_0170,
+            },
         }
     }
 }

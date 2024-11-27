@@ -613,8 +613,7 @@ pub enum HandleInvitationResponseBindingEnum {
 #[derive(Debug, Clone, From)]
 #[from(OpenID4VCITxCode)]
 pub struct OpenID4VCITxCodeBindingDTO {
-    #[from(with_fn = convert_inner)]
-    pub input_mode: Option<OpenID4VCITxCodeInputModeBindingEnum>,
+    pub input_mode: OpenID4VCITxCodeInputModeBindingEnum,
     #[from(with_fn = convert_inner)]
     pub length: Option<i64>,
     #[from(with_fn = convert_inner)]

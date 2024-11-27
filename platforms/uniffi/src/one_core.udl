@@ -19,6 +19,7 @@ enum BindingError {
   "Uninitialized",
   "IOError",
   "Unknown",
+  "IncorrectTxCode",
 };
 
 [Error]
@@ -469,7 +470,7 @@ dictionary PresentationSubmitCredentialRequestBindingDTO {
 };
 
 dictionary OpenID4VCITxCodeBindingDTO {
-  OpenID4VCITxCodeInputModeBindingEnum? input_mode;
+  OpenID4VCITxCodeInputModeBindingEnum input_mode = "Numeric";
   i64? length;
   string? description;
 };
