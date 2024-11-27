@@ -110,6 +110,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
                     did_method_provider.clone(),
+                    key_algorithm_provider.clone(),
                     key_provider.clone(),
                     client.clone(),
                     params,

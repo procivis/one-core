@@ -52,6 +52,10 @@ impl ErrorResponse {
             | ServiceError::FormatterError(FormatterError::BBSOnly)
             | ServiceError::ConfigValidationError(_)
             | ServiceError::ExchangeProtocolError(ExchangeProtocolError::TxCode(_))
+            | ServiceError::ExchangeProtocolError(
+                ExchangeProtocolError::CredentialVerificationFailed(_),
+            )
+            | ServiceError::ExchangeProtocolError(ExchangeProtocolError::DidMismatch)
             | ServiceError::DidMdlValidationError(_) => Self::BadRequest(response),
             _ => Self::ServerError(response),
         }

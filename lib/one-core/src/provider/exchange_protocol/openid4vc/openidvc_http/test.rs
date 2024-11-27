@@ -44,6 +44,7 @@ use crate::provider::exchange_protocol::{
     MockStorageProxy, TypeToDescriptorMapper,
 };
 use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
@@ -54,6 +55,7 @@ use crate::service::test_utilities::get_dummy_date;
 struct TestInputs {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
+    pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub params: Option<OpenID4VCParams>,
@@ -65,6 +67,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),
         Arc::new(inputs.did_method_provider),
+        Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
         Arc::new(ReqwestClient::default()),
         inputs.params.unwrap_or(OpenID4VCParams {

@@ -896,6 +896,11 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Invalid create trust anchor request")]
     BR_0177,
+
+    #[strum(
+        to_string = "Proof of possession of issuer did for issued credential could not be verified"
+    )]
+    BR_0173,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1099,6 +1104,8 @@ impl ErrorCodeMixin for ExchangeProtocolError {
                 TxCodeError::IncorrectCode => ErrorCode::BR_0169,
                 TxCodeError::InvalidCodeUse => ErrorCode::BR_0170,
             },
+            ExchangeProtocolError::DidMismatch
+            | ExchangeProtocolError::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
         }
     }
 }

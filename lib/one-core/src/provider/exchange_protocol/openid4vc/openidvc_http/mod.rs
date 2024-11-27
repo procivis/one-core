@@ -42,7 +42,7 @@ use super::{
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::UpdateCredentialSchemaRequest;
-use crate::model::did::{Did, DidType};
+use crate::model::did::{Did, DidType, KeyRole};
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -59,10 +59,12 @@ use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::interaction_from_handle_invitation;
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCICredentialOfferClaimValue;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::oidc::service::credentials_format;
+use crate::util::key_verification::KeyVerification;
 
 pub mod mappers;
 mod mdoc;
@@ -83,6 +85,7 @@ pub struct OpenID4VCHTTP {
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
     base_url: Option<String>,
     params: OpenID4VCParams,
@@ -118,6 +121,7 @@ impl OpenID4VCHTTP {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
         client: Arc<dyn HttpClient>,
         params: OpenID4VCParams,
@@ -127,6 +131,7 @@ impl OpenID4VCHTTP {
             formatter_provider,
             revocation_provider,
             did_method_provider,
+            key_algorithm_provider,
             key_provider,
             client,
             params,
@@ -612,16 +617,30 @@ impl OpenID4VCHTTP {
             map_external_format_to_external_detailed(&schema.format, &response_value.credential)
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-        // revocation method must be updated based on the issued credential (unknown in credential offer)
-        let response_credential = self
+        let formatter = self
             .formatter_provider
             .get_formatter(&real_format)
             .ok_or_else(|| {
                 ExchangeProtocolError::Failed(format!("{} formatter not found", schema.format))
-            })?
-            .extract_credentials_unverified(&response_value.credential)
-            .await
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+            })?;
+
+        // TODO: Implement credential extraction _with_ verification for JSON_LD_BBSPLUS too.
+        let response_credential = if real_format == "JSON_LD_BBSPLUS" {
+            formatter
+                .extract_credentials_unverified(&response_value.credential)
+                .await
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+        } else {
+            let verification_fn = Box::new(KeyVerification {
+                key_algorithm_provider: self.key_algorithm_provider.clone(),
+                did_method_provider: self.did_method_provider.clone(),
+                key_role: KeyRole::AssertionMethod,
+            });
+            formatter
+                .extract_credentials(&response_value.credential, verification_fn)
+                .await
+                .map_err(|e| ExchangeProtocolError::CredentialVerificationFailed(e.into()))?
+        };
 
         let layout = schema.layout_properties.clone();
 
@@ -636,7 +655,8 @@ impl OpenID4VCHTTP {
             (None, None)
         };
 
-        // Revocation method should be the same for every credential in list
+        // Revocation method must be updated based on the issued credential (unknown in credential offer).
+        // Revocation method should be the same for every credential in list.
         let revocation_method = if let Some(credential_status) = response_credential.status.first()
         {
             let (_, revocation_method) = self
@@ -651,13 +671,20 @@ impl OpenID4VCHTTP {
             None
         };
 
-        // issuer_did must be set based on issued credential (unknown in credential offer)
+        // issuer_did must be set based on issued credential (might be unknown in credential offer)
         let issuer_did_value =
             response_credential
                 .issuer_did
                 .ok_or(ExchangeProtocolError::Failed(
                     "issuer_did missing".to_string(),
                 ))?;
+
+        // check did is consistent with what was offered
+        if let Some(ref credential_offer_did) = credential.issuer_did {
+            if issuer_did_value != credential_offer_did.did {
+                return Err(ExchangeProtocolError::DidMismatch);
+            }
+        }
 
         let now = OffsetDateTime::now_utc();
         let (issuer_did_id, create_did) = match storage_access

@@ -24,6 +24,10 @@ pub enum ExchangeProtocolError {
     StorageAccessError(anyhow::Error),
     #[error(transparent)]
     TxCode(TxCodeError),
+    #[error("Credential offer issuer did does not match credential issuer did")]
+    DidMismatch,
+    #[error("Credential signature verification failed: `{0}`")]
+    CredentialVerificationFailed(anyhow::Error),
 }
 
 #[derive(Debug, Error)]
