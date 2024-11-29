@@ -155,6 +155,7 @@ pub enum ErrorCode {
     BR_0186,
     BR_0187,
     BR_0188,
+    BR_0189,
 }
 
 #[derive(Serialize, ToSchema)]

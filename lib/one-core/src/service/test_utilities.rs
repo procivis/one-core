@@ -85,6 +85,12 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                         preAuthorizedCodeExpiresIn: 300
                         tokenExpiresIn: 86400
                         refreshExpiresIn: 886400
+                        presentation:
+                            verifier:
+                                supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
+                                defaultClientIdSchema: verifier_attestation
+                            holder:
+                                supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
             ISO_MDL:
                 type: 'ISO_MDL'
                 display: 'exchange.isoMdl'

@@ -1,11 +1,13 @@
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
+use one_core::service::error::{ServiceError, ValidationError};
 use shared_types::ProofId;
 
 use super::dto::{
     CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionResponseRestDTO,
-    ProofDetailResponseRestDTO,
+    ProofDetailResponseRestDTO, ShareProofRequestRestDTO,
 };
 use crate::dto::common::{
     EntityResponseRestDTO, EntityShareResponseRestDTO, GetProofsResponseRestDTO,
@@ -112,6 +114,10 @@ pub(crate) async fn post_proof(
 #[utoipa::path(
     post,
     path = "/api/proof-request/v1/{id}/share",
+    request_body(
+        content((Option<ShareProofRequestRestDTO>)),
+        example = json!({ "params": { "clientIdSchema": "redirect_uri" } }),
+    ),
     responses(OkOrErrorResponse<EntityShareResponseRestDTO>),
     params(
         ("id" = ProofId, Path, description = "Proof id")
@@ -123,11 +129,27 @@ pub(crate) async fn post_proof(
     summary = "Request a proof",
     description = "Creates a share endpoint URL from a proof request. A wallet holder can use this URL to access the proof request.",
 )]
+#[axum::debug_handler]
 pub(crate) async fn share_proof(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
+    request: Result<Json<ShareProofRequestRestDTO>, JsonRejection>,
 ) -> OkOrErrorResponse<EntityShareResponseRestDTO> {
-    let result = state.core.proof_service.share_proof(&id, None).await;
+    if let Err(JsonRejection::JsonDataError(error)) = &request {
+        return OkOrErrorResponse::from_result(
+            Err::<EntityShareResponseRestDTO, ServiceError>(
+                ValidationError::DeserializationError(error.body_text()).into(),
+            ),
+            state,
+            "sharing proof",
+        );
+    }
+
+    let result = state
+        .core
+        .proof_service
+        .share_proof(&id, request.unwrap_or_default().0.into(), None)
+        .await;
     OkOrErrorResponse::from_result(result, state, "sharing proof")
 }
 

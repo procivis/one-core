@@ -38,6 +38,7 @@ use crate::provider::exchange_protocol::iso_mdl::IsoMdl;
 use crate::provider::exchange_protocol::openid4vc::model::{
     InvitationResponseDTO, PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::provider::{ExchangeProtocol, ExchangeProtocolProvider};
 use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
@@ -352,6 +353,7 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
+        client_id_schema: ClientIdSchemaType,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError>;
 
     /// Checks if the submitted presentation complies with the given proof request.
@@ -512,6 +514,7 @@ where
         vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
+        client_id_schema: ClientIdSchemaType,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         self.inner
             .verifier_share_proof(
@@ -522,6 +525,7 @@ where
                 vp_formats,
                 type_to_descriptor,
                 callback,
+                client_id_schema,
             )
             .await
             .map(|resp| ShareResponse {

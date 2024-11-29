@@ -463,6 +463,9 @@ pub enum ValidationError {
 
     #[error("Invalid update request")]
     InvalidUpdateRequest,
+
+    #[error("Deserialization error: `{0}`")]
+    DeserializationError(String),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -948,6 +951,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Trust anchor must be client")]
     BR_0188,
+
+    #[strum(to_string = "JSON deserialization error")]
+    BR_0189,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1138,6 +1144,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::ValidityConstraintOutOfRange => ErrorCode::BR_0166,
             Self::Unauthorized => ErrorCode::BR_0178,
             Self::InvalidUpdateRequest => ErrorCode::BR_0181,
+            Self::DeserializationError(_) => ErrorCode::BR_0189,
         }
     }
 }

@@ -37,6 +37,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
     SubmitIssuerResponse, UpdateResponse,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -269,6 +270,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         _vp_formats: HashMap<String, OpenID4VPFormat>,
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
+        _client_id_schema: ClientIdSchemaType,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         unimplemented!()
     }

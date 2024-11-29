@@ -14,7 +14,11 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use super::{build_claims_keys_for_mdoc, OpenID4VCHTTP, OpenID4VCParams};
+use super::{
+    build_claims_keys_for_mdoc, ClientIdSchemaType, OpenID4VCHTTP, OpenID4VCParams,
+    OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
+    OpenID4VCPresentationVerifierParams,
+};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
@@ -79,8 +83,27 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
             allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
             use_request_uri: false,
+            presentation: generic_presentation_params(),
         }),
     )
+}
+
+fn generic_presentation_params() -> OpenID4VCPresentationParams {
+    OpenID4VCPresentationParams {
+        holder: OpenID4VCPresentationHolderParams {
+            supported_client_id_schemes: vec![
+                ClientIdSchemaType::RedirectUri,
+                ClientIdSchemaType::VerifierAttestation,
+            ],
+        },
+        verifier: OpenID4VCPresentationVerifierParams {
+            default_client_id_schema: ClientIdSchemaType::RedirectUri,
+            supported_client_id_schemes: vec![
+                ClientIdSchemaType::RedirectUri,
+                ClientIdSchemaType::VerifierAttestation,
+            ],
+        },
+    }
 }
 
 fn generic_organisation() -> Organisation {
@@ -255,6 +278,7 @@ async fn test_generate_share_credentials_offer_by_value() {
             allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
             use_request_uri: false,
+            presentation: generic_presentation_params(),
         }),
         ..Default::default()
     });
@@ -332,6 +356,7 @@ async fn test_share_proof() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
+            ClientIdSchemaType::RedirectUri,
         )
         .await
         .unwrap();
@@ -402,6 +427,7 @@ async fn test_share_proof_with_use_request_uri() {
             allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
             use_request_uri: true,
+            presentation: generic_presentation_params(),
         }),
         ..Default::default()
     });
@@ -459,6 +485,7 @@ async fn test_share_proof_with_use_request_uri() {
             encryption_key_jwk,
             vp_formats,
             type_to_descriptor_mapper,
+            ClientIdSchemaType::RedirectUri,
         )
         .await
         .unwrap();
@@ -675,7 +702,7 @@ async fn test_handle_invitation_proof_success() {
                 alg: vec!["EdDSA".to_string()],
             },
         )]),
-        client_id_scheme: "redirect_uri".to_string(),
+        client_id_scheme: ClientIdSchemaType::RedirectUri,
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })
@@ -756,6 +783,7 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
             presentation_definition_by_value: false,
             allow_insecure_http_transport: true,
             use_request_uri: true,
+            presentation: generic_presentation_params(),
         }),
         ..Default::default()
     });
@@ -877,7 +905,7 @@ async fn test_handle_invitation_proof_failed() {
                 alg: vec!["EdDSA".to_string()],
             },
         )]),
-        client_id_scheme: "redirect_uri".to_string(),
+        client_id_scheme: ClientIdSchemaType::RedirectUri,
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })
@@ -963,7 +991,7 @@ async fn test_handle_invitation_proof_failed() {
     let metadata_missing_jwt_vp_json = serde_json::to_string(&OpenID4VPClientMetadata {
         jwks: vec![],
         vp_formats: Default::default(),
-        client_id_scheme: "redirect_uri".to_string(),
+        client_id_scheme: ClientIdSchemaType::RedirectUri,
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })
@@ -1016,6 +1044,7 @@ async fn test_handle_invitation_proof_failed() {
             allow_insecure_http_transport: false,
             refresh_expires_in: 1000,
             use_request_uri: false,
+            presentation: generic_presentation_params(),
         }),
         ..Default::default()
     });
@@ -1059,7 +1088,7 @@ fn test_serialize_and_deserialize_interaction_data() {
                 alg: vec!["EdDSA".to_string()],
             },
         )]),
-        client_id_scheme: "redirect_uri".to_string(),
+        client_id_scheme: ClientIdSchemaType::RedirectUri,
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })

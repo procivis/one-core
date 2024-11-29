@@ -29,6 +29,7 @@ use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::exchange_protocol::dto::PresentationDefinitionRequestedCredentialResponseDTO;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::key::dto::PublicKeyJwkDTO;
 
@@ -365,7 +366,7 @@ pub struct OpenID4VPClientMetadata {
     #[serde(default)]
     pub jwks: Vec<OpenID4VPClientMetadataJwkDTO>,
     pub vp_formats: HashMap<String, OpenID4VPFormat>,
-    pub client_id_scheme: String,
+    pub client_id_scheme: ClientIdSchemaType,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authorization_encrypted_response_alg: Option<AuthorizationEncryptedResponseAlgorithm>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -384,6 +385,12 @@ pub struct OpenID4VPClientRequestResponse {
     pub response_uri: String,
     pub nonce: String,
     pub state: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct OpenID4VPRequestDataResponse {
+    pub client_metadata: OpenID4VPClientMetadata,
+    pub presentation_definition: OpenID4VPPresentationDefinition,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -892,12 +899,14 @@ pub struct OpenID4VPInteractionData {
     pub response_type: String,
     pub state: Option<String>,
     pub nonce: String,
-    pub client_id_scheme: String,
+    pub client_id_scheme: ClientIdSchemaType,
     pub client_id: Url,
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub client_metadata: Option<OpenID4VPClientMetadata>,
     pub client_metadata_uri: Option<Url>,
+    #[serde(default)]
+    pub request_uri: Option<Url>,
     pub response_mode: String,
     pub response_uri: Url,
     #[serde(default)]

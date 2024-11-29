@@ -1,3 +1,4 @@
+use std::ops::Add;
 use std::str::FromStr;
 
 use anyhow::Context;
@@ -6,7 +7,7 @@ use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use shared_types::{CredentialId, CredentialSchemaId, KeyId, ProofId};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::dto::OpenID4VCICredentialResponseDTO;
@@ -37,8 +38,11 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::model::validity_credential::Mdoc;
-use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
+use crate::provider::credential_formatter::jwt::model::{
+    JWTHeader, JWTPayload, ProofOfPossessionKey,
+};
 use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_formats;
 use crate::provider::exchange_protocol::openid4vc::model::{
@@ -48,8 +52,9 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
     OpenID4VCITokenResponseDTO, OpenID4VPClientMetadata, OpenID4VPClientRequestResponse,
     OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO, OpenID4VPInteractionContent,
-    OpenID4VPPresentationDefinition, RequestData,
+    OpenID4VPPresentationDefinition, OpenID4VPRequestDataResponse, RequestData,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::exchange_protocol::openid4vc::service::{
     create_credential_offer, create_issuer_metadata_response,
@@ -140,8 +145,12 @@ impl OIDCService {
         let formats = create_open_id_for_vp_formats();
         let jwk = get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider)?;
 
-        let client_metadata =
-            create_open_id_for_vp_client_metadata(jwk.key_id, jwk.jwk.into(), formats);
+        let client_metadata = create_open_id_for_vp_client_metadata(
+            jwk.key_id,
+            jwk.jwk.into(),
+            formats,
+            ClientIdSchemaType::RedirectUri,
+        );
 
         let interaction = proof
             .interaction
@@ -200,6 +209,134 @@ impl OIDCService {
         Ok(unsigned_jwt.tokenize(None).await?)
     }
 
+    pub async fn oidc_verifier_get_request_data(
+        &self,
+        id: ProofId,
+    ) -> Result<String, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
+        let proof = self
+            .proof_repository
+            .get_proof(
+                &id,
+                &ProofRelations {
+                    state: Some(Default::default()),
+                    interaction: Some(Default::default()),
+                    verifier_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
+                    verifier_key: Some(Default::default()),
+                    schema: Some(ProofSchemaRelations {
+                        proof_inputs: Some(ProofInputSchemaRelations {
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
+
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+        validate_exchange_type(ExchangeType::OpenId4Vc, &self.config, &proof.exchange)?;
+
+        let verifier_did = proof
+            .verifier_did
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "verifier_did is None".to_string(),
+            ))?;
+        let verifier_key = proof
+            .verifier_key
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "verifier_key is None".to_string(),
+            ))?;
+
+        let formats = create_open_id_for_vp_formats();
+        let jwk = get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider)?;
+
+        let client_metadata = create_open_id_for_vp_client_metadata(
+            jwk.key_id,
+            jwk.jwk.into(),
+            formats,
+            ClientIdSchemaType::VerifierAttestation,
+        );
+
+        let interaction = proof
+            .interaction
+            .as_ref()
+            .ok_or(ServiceError::OpenID4VCIError(
+                OpenID4VCIError::InvalidRequest,
+            ))?;
+
+        let OpenID4VPInteractionContent {
+            presentation_definition,
+            client_id: Some(client_id),
+            ..
+        } = parse_interaction_content(interaction.data.as_ref())?
+        else {
+            tracing::error!(proof_id=%id, "Interaction data missing client_it/response uri. Make sure /share-proof is called before /client-request");
+
+            return Err(OpenID4VCError::Other("Invalid interaction data".to_string()).into());
+        };
+
+        let presentation_definition = crate::provider::exchange_protocol::openid4vc::service::oidc_verifier_presentation_definition(&proof, presentation_definition)?;
+
+        let client_response = OpenID4VPRequestDataResponse {
+            client_metadata,
+            presentation_definition,
+        };
+
+        let issuer = Some(verifier_did.did.to_string());
+        let subject = Some(client_id);
+        let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
+        let key_algorithm = self
+            .key_algorithm_provider
+            .get_key_algorithm(&verifier_key.key_type)
+            .ok_or(ServiceError::OpenID4VCIError(
+                OpenID4VCIError::RuntimeError("algorithm not found".to_string()),
+            ))?;
+        let jwk = key_algorithm
+            .bytes_to_jwk(&verifier_key.public_key, None)
+            .map_err(|e| {
+                ServiceError::OpenID4VCIError(OpenID4VCIError::RuntimeError(e.to_string()))
+            })?;
+        let proof_of_possession_key = Some(ProofOfPossessionKey {
+            key_id: None,
+            jwk: jwk.into(),
+        });
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(verifier_key, None)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let unsigned_jwt = Jwt {
+            header: JWTHeader {
+                algorithm: verifier_key.key_type.clone(),
+                key_id: None,
+                signature_type: Some("verifier-attestation+jwt".to_string()),
+                jwk: None,
+            },
+            payload: JWTPayload {
+                issued_at: None,
+                expires_at,
+                invalid_before: None,
+                issuer,
+                subject,
+                jwt_id: None,
+                nonce: None,
+                custom: client_response,
+                proof_of_possession_key,
+                vc_type: None,
+            },
+        };
+
+        Ok(unsigned_jwt.tokenize(Some(auth_fn)).await?)
+    }
+
     pub async fn oidc_verifier_get_client_metadata(
         &self,
         id: ProofId,
@@ -233,6 +370,7 @@ impl OIDCService {
             jwk.key_id,
             jwk.jwk.into(),
             formats,
+            ClientIdSchemaType::RedirectUri,
         ))
     }
 

@@ -30,6 +30,7 @@ use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::model::*;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
@@ -1808,7 +1809,7 @@ async fn test_get_client_metadata_success() {
                     }
                 ),
             ]),
-            client_id_scheme: "redirect_uri".to_string(),
+            client_id_scheme: ClientIdSchemaType::RedirectUri,
             authorization_encrypted_response_alg: Some(
                 AuthorizationEncryptedResponseAlgorithm::EcdhEs
             ),

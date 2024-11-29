@@ -24,6 +24,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
     SubmitIssuerResponse, UpdateResponse,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::ScanToVerifyRequestDTO;
@@ -140,6 +141,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
         _vp_formats: HashMap<String, OpenID4VPFormat>,
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
+        _client_id_schema: ClientIdSchemaType,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         unimplemented!()
     }

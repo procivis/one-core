@@ -60,7 +60,7 @@ pub struct JWTPayload<CustomPayload> {
     pub vc_type: Option<String>,
 
     #[serde(rename = "cnf", default, skip_serializing_if = "Option::is_none")]
-    pub proof_of_possession_key: Option<serde_json::Value>,
+    pub proof_of_possession_key: Option<ProofOfPossessionKey>,
 
     #[serde(flatten)]
     pub custom: CustomPayload,

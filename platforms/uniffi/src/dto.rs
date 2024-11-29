@@ -23,6 +23,7 @@ use one_core::provider::exchange_protocol::dto::{
 use one_core::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
 };
+use one_core::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use one_core::provider::key_storage::model::StorageGeneratedKey;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
@@ -48,7 +49,7 @@ use one_core::service::key::dto::{KeyCheckCertificateRequestDTO, KeyListItemResp
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, ProofClaimDTO, ProofClaimValueDTO,
     ProofInputDTO, ProofListItemResponseDTO, ProposeProofResponseDTO, ScanToVerifyBarcodeTypeEnum,
-    ScanToVerifyRequestDTO,
+    ScanToVerifyRequestDTO, ShareProofRequestDTO, ShareProofRequestParamsDTO,
 };
 use one_core::service::proof_schema::dto::{
     GetProofSchemaListItemDTO, GetProofSchemaListResponseDTO, GetProofSchemaResponseDTO,
@@ -1488,6 +1489,27 @@ pub enum ScanToVerifyBarcodeTypeBindingEnum {
     #[allow(clippy::upper_case_acronyms)]
     MRZ,
     PDF417,
+}
+
+#[derive(Into)]
+#[into(ShareProofRequestDTO)]
+pub struct ShareProofRequestBindingDTO {
+    #[into(with_fn = "convert_inner")]
+    pub params: Option<ShareProofRequestParamsBindingDTO>,
+}
+
+#[derive(Into)]
+#[into(ShareProofRequestParamsDTO)]
+pub struct ShareProofRequestParamsBindingDTO {
+    #[into(with_fn = "convert_inner")]
+    pub client_id_schema: Option<ShareProofRequestClientIdSchemaTypeBindingDTO>,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(ClientIdSchemaType)]
+pub enum ShareProofRequestClientIdSchemaTypeBindingDTO {
+    RedirectUri,
+    VerifierAttestation,
 }
 
 #[derive(From)]

@@ -66,13 +66,13 @@ impl HttpClient {
     pub async fn post(&self, url: &str, body: impl Into<Option<Value>>) -> Response {
         let url = format!("{}{url}", self.base_url);
 
-        let resp = http_client()
-            .post(url)
-            .bearer_auth(&self.token)
-            .json(&body.into())
-            .send()
-            .await
-            .unwrap();
+        let mut builder = http_client().post(url).bearer_auth(&self.token);
+
+        if let Some(body) = body.into() {
+            builder = builder.json(&body);
+        }
+
+        let resp = builder.send().await.unwrap();
 
         Response { resp }
     }

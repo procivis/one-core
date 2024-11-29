@@ -1033,6 +1033,18 @@ enum ScanToVerifyBarcodeTypeBindingEnum {
   "MRZ", "PDF417"
 };
 
+dictionary ShareProofRequestBindingDTO {
+   ShareProofRequestParamsBindingDTO? params;
+};
+
+dictionary ShareProofRequestParamsBindingDTO {
+   ShareProofRequestClientIdSchemaTypeBindingDTO? client_id_schema;
+};
+
+enum ShareProofRequestClientIdSchemaTypeBindingDTO {
+  "RedirectUri", "VerifierAttestation"
+};
+
 dictionary ShareProofResponseBindingDTO {
    string url;
 };
@@ -1138,7 +1150,7 @@ interface OneCoreBinding {
   string create_proof(CreateProofRequestBindingDTO request);
 
   [Throws=BindingError]
-  ShareProofResponseBindingDTO share_proof(string proof_id);
+  ShareProofResponseBindingDTO share_proof(string proof_id, ShareProofRequestBindingDTO request);
 
   [Throws=BindingError]
   void delete_proof_claims(string proof_id);

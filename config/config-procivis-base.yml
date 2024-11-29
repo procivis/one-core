@@ -67,6 +67,12 @@ exchange:
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
         useRequestUri: false
+        presentation:
+          verifier:
+            supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
+            defaultClientIdSchema: verifier_attestation
+          holder:
+            supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
 transport:
   HTTP:
     type: "HTTP"

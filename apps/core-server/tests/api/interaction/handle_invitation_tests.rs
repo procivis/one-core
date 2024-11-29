@@ -6,6 +6,7 @@ use one_core::model::did::DidType;
 use one_core::provider::exchange_protocol::openid4vc::model::{
     OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
 };
+use one_core::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use serde_json::json;
 use url::Url;
 use uuid::Uuid;
@@ -1388,7 +1389,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
                 alg: vec!["EdDSA".to_string()],
             },
         )]),
-        client_id_scheme: "redirect_uri".to_string(),
+        client_id_scheme: ClientIdSchemaType::RedirectUri,
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })
@@ -1445,7 +1446,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
                 alg: vec!["EdDSA".to_string()],
             },
         )]),
-        client_id_scheme: "redirect_uri".to_string(),
+        client_id_scheme: ClientIdSchemaType::RedirectUri,
         authorization_encrypted_response_alg: None,
         authorization_encrypted_response_enc: None,
     })

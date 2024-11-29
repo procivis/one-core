@@ -701,6 +701,71 @@ pub(crate) async fn oidc_verifier_client_request(
         .await;
 
     match result {
+        Ok(jwt) => (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/verifier-attestation+jwt")],
+            jwt,
+        )
+            .into_response(),
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {error}");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                }),
+            )
+                .into_response()
+        }
+        Err(error @ ServiceError::BusinessLogic(BusinessLogicError::InvalidProofState { .. })) => {
+            tracing::error!("BAD_REQUEST validation error: {error}");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                }),
+            )
+                .into_response()
+        }
+        Err(ServiceError::EntityNotFound(_)) => StatusCode::NOT_FOUND.into_response(),
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/oidc-verifier/v1/{id}/request-data",
+    params(
+        ("id" = ProofId, Path, description = "Proof id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = String, content_type = "application/verifier-attestation+jwt"),
+        (status = 400, description = "OIDC Verifier errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 404, description = "Proof does not exist"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+    summary = "OID4VC - Proof request data",
+    description = indoc::formatdoc! {"
+        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
+        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
+        specifications](https://openid.net/sg/openid4vc/specifications/).
+    "},
+)]
+pub(crate) async fn oidc_verifier_request_data(
+    state: State<AppState>,
+    WithRejection(Path(proof_id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .oidc_service
+        .oidc_verifier_get_request_data(proof_id)
+        .await;
+
+    match result {
         Ok(jwt) => (StatusCode::OK, jwt).into_response(),
         Err(ServiceError::ConfigValidationError(error)) => {
             tracing::error!("Config validation error: {error}");

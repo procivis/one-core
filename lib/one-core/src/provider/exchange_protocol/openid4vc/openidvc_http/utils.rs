@@ -5,9 +5,15 @@ use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::{Deserialize, Serialize};
 
-use crate::provider::exchange_protocol::openid4vc::model::OpenID4VPInteractionData;
+use crate::provider::credential_formatter::jwt::model::DecomposedToken;
+use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::exchange_protocol::openid4vc::model::{
+    OpenID4VPInteractionData, OpenID4VPRequestDataResponse,
+};
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<Vec<u8>>,
@@ -54,6 +60,7 @@ pub async fn interaction_data_from_query(
     query: &str,
     client: &Arc<dyn HttpClient>,
     allow_insecure_http_transport: bool,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
     let mut interaction_data: OpenID4VPInteractionData = serde_qs::from_str(query)
         .map_err(|e| ExchangeProtocolError::InvalidRequest(e.to_string()))?;
@@ -120,6 +127,70 @@ pub async fn interaction_data_from_query(
         interaction_data.presentation_definition = Some(presentation_definition);
     }
 
+    if interaction_data.client_id_scheme == ClientIdSchemaType::VerifierAttestation {
+        let request_uri =
+            interaction_data
+                .request_uri
+                .as_ref()
+                .ok_or(ExchangeProtocolError::Failed(
+                    "Missing request_uri for verifier_attestation scheme type".to_string(),
+                ))?;
+
+        let token = String::from_utf8(
+            client
+                .get(request_uri.as_str())
+                .send()
+                .await
+                .context("send error")
+                .map_err(ExchangeProtocolError::Transport)?
+                .error_for_status()
+                .context("status error")
+                .map_err(ExchangeProtocolError::Transport)?
+                .body,
+        )
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let decomposed_token: DecomposedToken<OpenID4VPRequestDataResponse> =
+            Jwt::decompose_token(&token)
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let alg = key_algorithm_provider
+            .get_key_algorithm(&decomposed_token.header.algorithm)
+            .ok_or(ExchangeProtocolError::Failed(format!(
+                "Missing algorithm: {}",
+                decomposed_token.header.algorithm
+            )))?;
+
+        let public_key = alg
+            .jwk_to_bytes(
+                &decomposed_token
+                    .payload
+                    .proof_of_possession_key
+                    .ok_or(ExchangeProtocolError::Failed(
+                        "missing `cnf` in JWT token".to_string(),
+                    ))?
+                    .jwk
+                    .into(),
+            )
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let signer = key_algorithm_provider
+            .get_signer(&decomposed_token.header.algorithm)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        signer
+            .verify(
+                decomposed_token.unverified_jwt.as_bytes(),
+                &decomposed_token.signature,
+                &public_key,
+            )
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        interaction_data.client_metadata = Some(decomposed_token.payload.custom.client_metadata);
+        interaction_data.presentation_definition =
+            Some(decomposed_token.payload.custom.presentation_definition);
+    }
+
     Ok(interaction_data)
 }
 
@@ -132,11 +203,6 @@ pub fn validate_interaction_data(
         ));
     }
     assert_query_param(&interaction_data.response_type, "vp_token", "response_type")?;
-    assert_query_param(
-        &interaction_data.client_id_scheme,
-        "redirect_uri",
-        "client_id_scheme",
-    )?;
     assert_query_param(
         &interaction_data.response_mode,
         "direct_post",

@@ -64,7 +64,7 @@ use crate::service::error::{
 };
 use crate::service::proof::dto::{
     CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
-    ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
+    ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO, ShareProofRequestDTO,
 };
 use crate::service::proof::validator::validate_mdl_exchange;
 use crate::service::test_utilities::{dummy_did, generic_config, get_dummy_date};
@@ -2704,7 +2704,7 @@ async fn test_share_proof_created_success() {
         .inner
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _, _, _, _| {
+        .returning(move |_, _, _, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -2771,10 +2771,11 @@ async fn test_share_proof_created_success() {
         ..Default::default()
     });
 
-    let result = service.share_proof(&proof_id, None).await;
+    let result = service
+        .share_proof(&proof_id, ShareProofRequestDTO::default(), None)
+        .await
+        .unwrap();
 
-    assert!(result.is_ok());
-    let result = result.unwrap();
     assert_eq!(result.url, expected_url);
 }
 
@@ -2810,7 +2811,7 @@ async fn test_share_proof_pending_success() {
         .inner
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _, _, _, _| {
+        .returning(move |_, _, _, _, _, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -2864,7 +2865,9 @@ async fn test_share_proof_pending_success() {
         ..Default::default()
     });
 
-    let result = service.share_proof(&proof_id, None).await;
+    let result = service
+        .share_proof(&proof_id, ShareProofRequestDTO::default(), None)
+        .await;
     assert!(result.is_ok());
 }
 
@@ -2888,7 +2891,9 @@ async fn test_share_proof_invalid_state() {
         ..Default::default()
     });
 
-    let result = service.share_proof(&proof_id, None).await;
+    let result = service
+        .share_proof(&proof_id, ShareProofRequestDTO::default(), None)
+        .await;
     assert!(matches!(
         result,
         Err(ServiceError::BusinessLogic(

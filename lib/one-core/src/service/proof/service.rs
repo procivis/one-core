@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use super::dto::{
     CreateProofInteractionData, CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO,
-    ProofDetailResponseDTO, ProposeProofResponseDTO,
+    ProofDetailResponseDTO, ProposeProofResponseDTO, ShareProofRequestDTO,
 };
 use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
@@ -55,6 +55,7 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
 use crate::provider::exchange_protocol::openid4vc::model::ShareResponse;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::OpenID4VCParams;
 use crate::provider::exchange_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
@@ -422,6 +423,7 @@ impl ProofService {
     pub async fn share_proof(
         &self,
         id: &ProofId,
+        request: ShareProofRequestDTO,
         callback: Option<BoxFuture<'static, ()>>,
     ) -> Result<EntityShareResponseDTO, ServiceError> {
         let (proof, proof_state) = self.get_proof_with_state(id).await?;
@@ -451,6 +453,19 @@ impl ProofService {
             MissingProviderError::ExchangeProtocol(proof.exchange.to_owned()),
         )?;
 
+        let exchange_params: OpenID4VCParams = self.config.exchange.get(&proof.exchange)?;
+
+        let client_id_schema = request
+            .params
+            .unwrap_or_default()
+            .client_id_schema
+            .unwrap_or(
+                exchange_params
+                    .presentation
+                    .verifier
+                    .default_client_id_schema,
+            );
+
         let formats = create_open_id_for_vp_formats();
         let jwk = get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider)?;
 
@@ -479,6 +494,7 @@ impl ProofService {
                 formats,
                 type_to_descriptor_mapper,
                 callback,
+                client_id_schema,
             )
             .await?;
 

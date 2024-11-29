@@ -55,8 +55,10 @@ use uuid::Uuid;
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
 };
+use crate::endpoint::proof::dto::ClientIdSchemaTypeRestDTO;
 use crate::endpoint::trust_entity::dto::{TrustEntityRoleRest, TrustEntityStateRest};
 use crate::serialize::{front_time, front_time_option};
+
 // verifier specific
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
@@ -657,7 +659,7 @@ pub struct OpenID4VPClientMetadataResponseRestDTO {
     pub jwks: Vec<OpenID4VPClientMetadataJwkRestDTO>,
     #[from(with_fn = convert_inner)]
     pub vp_formats: HashMap<String, OpenID4VPFormatRestDTO>,
-    pub client_id_scheme: String,
+    pub client_id_scheme: ClientIdSchemaTypeRestDTO,
     #[from(with_fn = convert_inner)]
     pub authorization_encrypted_response_alg: Option<OID4VPAuthorizationEncryptedResponseAlgorithm>,
     #[from(with_fn = convert_inner)]

@@ -6,9 +6,11 @@ use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
+use one_core::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
     ProofInputDTO, ProofListItemResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
+    ShareProofRequestDTO, ShareProofRequestParamsDTO,
 };
 use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
@@ -343,4 +345,30 @@ pub struct ProofInputRestDTO {
     /// Defines the maximum age at which an LVVC will be validated.
     /// See the [LVVC guide](/guides/lvvc).
     pub validity_constraint: Option<i64>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
+#[into(ShareProofRequestDTO)]
+pub struct ShareProofRequestRestDTO {
+    #[into(with_fn = "convert_inner")]
+    #[serde(default)]
+    pub params: Option<ShareProofRequestParamsRestDTO>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
+#[into(ShareProofRequestParamsDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ShareProofRequestParamsRestDTO {
+    #[into(with_fn = "convert_inner")]
+    #[serde(default)]
+    pub client_id_schema: Option<ClientIdSchemaTypeRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]
+#[from(ClientIdSchemaType)]
+#[into(ClientIdSchemaType)]
+#[serde(rename_all = "snake_case")]
+pub enum ClientIdSchemaTypeRestDTO {
+    RedirectUri,
+    VerifierAttestation,
 }

@@ -38,6 +38,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     BLEOpenID4VPInteractionData, InvitationResponseDTO, MQTTOpenID4VPInteractionData,
     OpenID4VPFormat, PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::CreateProofInteractionData;
@@ -276,6 +277,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
         vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
+        client_id_schema: ClientIdSchemaType,
     ) -> Result<ShareResponse<Self::VPInteractionContext>, ExchangeProtocolError> {
         let transport = get_transport(proof)?;
         let callback = callback.map(|fut| fut.shared());
@@ -311,6 +313,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     encryption_key_jwk,
                     vp_formats,
                     type_to_descriptor,
+                    client_id_schema,
                 )
                 .await
                 .map(|context| ShareResponse {
