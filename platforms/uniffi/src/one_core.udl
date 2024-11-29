@@ -1,25 +1,9 @@
 namespace one_core {
   [Throws=BindingError]
   OneCoreBinding initialize_verifier_core(string data_dir_path, NativeKeyStorage? key_storage, BleCentral? ble_central, BlePeripheral? ble_peripheral);
-};
 
-namespace one_core {
   [Throws=BindingError]
   OneCoreBinding initialize_holder_core(string data_dir_path, NativeKeyStorage? key_storage, BleCentral? ble_central, BlePeripheral? ble_peripheral);
-};
-
-[Error]
-enum BindingError {
-  "AlreadyExists",
-  "DbErr",
-  "NotFound",
-  "NotSupported",
-  "ValidationError",
-  "ConfigValidationError",
-  "Uninitialized",
-  "IOError",
-  "Unknown",
-  "IncorrectTxCode",
 };
 
 [Error]
@@ -1056,6 +1040,21 @@ dictionary ProposeProofResponseBindingDTO {
 
 dictionary KeyCheckCertificateRequestBindingDTO {
   string certificate;
+};
+
+dictionary Cause {
+  string message;
+};
+
+dictionary ErrorResponseBindingDTO {
+  string code;
+  string message;
+  Cause? cause;
+};
+
+[Error]
+interface BindingError {
+    ErrorResponse(ErrorResponseBindingDTO data);
 };
 
 interface OneCoreBinding {

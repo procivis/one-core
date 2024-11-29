@@ -1,5 +1,5 @@
 use shared_types::OrganisationId;
-use strum_macros::EnumString;
+use strum::EnumString;
 use uuid::Uuid;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

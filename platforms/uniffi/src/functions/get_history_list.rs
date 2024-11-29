@@ -1,6 +1,7 @@
 use one_core::model::history::{HistoryFilterValue, HistoryListQuery, HistorySearchEnum};
 use one_core::model::list_filter::{ComparisonType, ListFilterCondition, ValueComparison};
 use one_core::model::list_query::ListPagination;
+use one_core::service::error::ServiceError;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
@@ -47,7 +48,8 @@ impl OneCoreBinding {
                 )));
             }
             if let Some(value) = query.created_date_from {
-                let created_date_from = deserialize_timestamp(&value)?;
+                let created_date_from = deserialize_timestamp(&value)
+                    .map_err(|e| ServiceError::ValidationError(e.to_string()))?;
                 conditions.push(ListFilterCondition::Value(HistoryFilterValue::CreatedDate(
                     ValueComparison {
                         comparison: ComparisonType::GreaterThanOrEqual,
@@ -56,7 +58,8 @@ impl OneCoreBinding {
                 )));
             }
             if let Some(value) = query.created_date_to {
-                let created_date_to = deserialize_timestamp(&value)?;
+                let created_date_to = deserialize_timestamp(&value)
+                    .map_err(|e| ServiceError::ValidationError(e.to_string()))?;
                 conditions.push(ListFilterCondition::Value(HistoryFilterValue::CreatedDate(
                     ValueComparison {
                         comparison: ComparisonType::LessThanOrEqual,

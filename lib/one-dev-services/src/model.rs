@@ -1,4 +1,4 @@
-use strum_macros::{Display, EnumString};
+use strum::{Display, EnumString};
 
 #[derive(Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyAlgorithmType {

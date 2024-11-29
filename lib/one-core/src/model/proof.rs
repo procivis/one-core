@@ -1,5 +1,5 @@
 use shared_types::{DidId, ProofId};
-use strum_macros::Display;
+use strum::Display;
 use time::OffsetDateTime;
 
 use super::claim::{Claim, ClaimRelations};

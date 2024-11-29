@@ -24,6 +24,7 @@ serde.workspace          = true
 serde_json.workspace     = true
 shared-types             = { version = "0.1.0", path = "../../lib/shared-types" }
 sql-data-provider        = { version = "0.1.0", path = "../../lib/sql-data-provider" }
+strum.workspace          = true
 thiserror.workspace      = true
 time.workspace           = true
 tokio                    = { workspace = true, features = ['rt-multi-thread'] }

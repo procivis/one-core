@@ -1,3 +1,4 @@
+use one_core::service::error::ServiceError;
 use serde_json::to_string;
 
 use crate::error::BindingError;
@@ -9,7 +10,7 @@ impl OneCoreBinding {
             let core = self.use_core().await?;
             let run_task = core.task_service.run(&task).await?;
             to_string(&run_task)
-                .map_err(|_| BindingError::Unknown("Error serializing json".to_string()))
+                .map_err(|_| ServiceError::Other("Error serializing json".to_string()).into())
         })
     }
 }

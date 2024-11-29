@@ -62,7 +62,7 @@ use one_core::service::trust_anchor::dto::{
 };
 use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 
-use crate::error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
+use crate::error::{BleErrorWrapper, ErrorResponseBindingDTO, NativeKeyStorageError};
 use crate::mapper::{optional_did_string, optional_time, serialize_config_entity};
 use crate::utils::{format_timestamp_opt, into_id, into_id_opt, into_timestamp, TimestampFormat};
 
@@ -433,7 +433,7 @@ pub struct CredentialSchemaBindingDTO {
 }
 
 #[derive(Debug, Clone, TryInto)]
-#[try_into(T = ImportProofSchemaCredentialSchemaDTO, Error = BindingError)]
+#[try_into(T = ImportProofSchemaCredentialSchemaDTO, Error = ErrorResponseBindingDTO)]
 pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     #[try_into(with_fn_ref = into_id)]
     pub id: String,
@@ -1253,7 +1253,7 @@ pub struct ProofSchemaListBindingDTO {
 }
 
 #[derive(Debug, TryInto)]
-#[try_into(T = ImportProofSchemaRequestDTO, Error = BindingError)]
+#[try_into(T = ImportProofSchemaRequestDTO, Error = ErrorResponseBindingDTO)]
 pub struct ImportProofSchemaRequestBindingsDTO {
     pub schema: ImportProofSchemaBindingDTO,
     #[try_into(with_fn_ref = into_id)]
@@ -1261,7 +1261,7 @@ pub struct ImportProofSchemaRequestBindingsDTO {
 }
 
 #[derive(Debug, TryInto)]
-#[try_into(T = ImportProofSchemaDTO, Error = BindingError)]
+#[try_into(T = ImportProofSchemaDTO, Error = ErrorResponseBindingDTO)]
 pub struct ImportProofSchemaBindingDTO {
     #[try_into(with_fn_ref = into_id)]
     pub id: String,
@@ -1310,7 +1310,7 @@ pub struct ProofInputSchemaBindingDTO {
 }
 
 #[derive(Debug, TryInto)]
-#[try_into(T = ImportProofSchemaInputSchemaDTO, Error = BindingError)]
+#[try_into(T = ImportProofSchemaInputSchemaDTO, Error = ErrorResponseBindingDTO)]
 pub struct ImportProofSchemaInputSchemaBindingDTO {
     #[try_into(with_fn = try_convert_inner)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaBindingDTO>,

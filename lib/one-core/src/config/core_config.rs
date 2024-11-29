@@ -13,8 +13,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use serde_with::{serde_as, DurationSeconds};
-use strum::AsRefStr;
-use strum_macros::{Display, EnumString};
+use strum::{AsRefStr, Display, EnumString};
 
 use super::{ConfigParsingError, ConfigValidationError};
 

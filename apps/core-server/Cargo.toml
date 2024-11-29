@@ -37,7 +37,6 @@ shadow-rs.workspace = true
 shared-types = { version = "0.1.0", path = "../../lib/shared-types", features = ["utoipa"] }
 sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["mysql"] }
 strum.workspace = true
-strum_macros = { version = "0.26" }
 thiserror.workspace = true
 time.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

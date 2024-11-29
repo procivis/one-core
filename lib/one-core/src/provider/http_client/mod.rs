@@ -7,7 +7,7 @@ use std::sync::Arc;
 use itertools::Itertools;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use strum_macros::Display;
+use strum::Display;
 use thiserror::Error;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]

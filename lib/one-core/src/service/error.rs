@@ -3,7 +3,7 @@ use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
     OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
 };
-use strum_macros::Display;
+use strum::Display;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -470,17 +470,6 @@ pub enum MissingProviderError {
     TrustManager(String),
 }
 
-// #[derive(Debug, thiserror::Error)]
-// pub enum KeyStorageError {
-//     #[error("Password decryption failure")]
-//     PasswordDecryptionFailure,
-
-//     #[error("Signer error: `{0}`")]
-//     SignerError(#[from] SignerError),
-//     #[error("Rcgen error: `{0}`")]
-//     RcgenError(#[from] rcgen::Error),
-// }
-
 impl MissingProviderError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
@@ -885,22 +874,28 @@ pub enum ErrorCode {
     #[strum(to_string = "Validity constraint out of range")]
     BR_0166,
 
-    #[strum(to_string = "SD-JWT VC type metadata not found")]
-    BR_0172,
-
     #[strum(to_string = "User Provided incorrect user code")]
     BR_0169,
 
     #[strum(to_string = "Invalid Transaction Code Use")]
     BR_0170,
 
-    #[strum(to_string = "Invalid create trust anchor request")]
-    BR_0177,
+    #[strum(to_string = "SD-JWT VC type metadata not found")]
+    BR_0172,
 
     #[strum(
         to_string = "Proof of possession of issuer did for issued credential could not be verified"
     )]
     BR_0173,
+
+    #[strum(to_string = "Invalid create trust anchor request")]
+    BR_0177,
+
+    #[strum(to_string = "Initialization error")]
+    BR_0183,
+
+    #[strum(to_string = "Not initialized")]
+    BR_0184,
 }
 
 impl From<FormatError> for ServiceError {

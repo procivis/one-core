@@ -37,7 +37,7 @@ use crate::dto::{
     DidRequestKeysBindingDTO, HandleInvitationResponseBindingEnum, KeyRequestBindingDTO,
     MdocMsoValidityResponseBindingDTO, ProofRequestBindingDTO,
 };
-use crate::error::BindingError;
+use crate::error::ErrorResponseBindingDTO;
 use crate::utils::{into_id, into_timestamp, TimestampFormat};
 use crate::{
     CredentialSchemaTypeBindingEnum, DeviceInfoBindingDTO, ExactTrustAnchorFilterColumnBindings,
@@ -336,7 +336,7 @@ impl From<CredentialSchemaTypeBindingEnum>
 }
 
 impl TryFrom<ListTrustAnchorsFiltersBindings> for ListTrustAnchorsQueryDTO {
-    type Error = BindingError;
+    type Error = ErrorResponseBindingDTO;
 
     fn try_from(value: ListTrustAnchorsFiltersBindings) -> Result<Self, Self::Error> {
         let exact = value.exact.unwrap_or_default();
@@ -383,7 +383,7 @@ impl TryFrom<ListTrustAnchorsFiltersBindings> for ListTrustAnchorsQueryDTO {
 }
 
 impl TryFrom<ListProofSchemasFiltersBindingDTO> for GetProofSchemaQueryDTO {
-    type Error = BindingError;
+    type Error = ErrorResponseBindingDTO;
 
     fn try_from(value: ListProofSchemasFiltersBindingDTO) -> Result<Self, Self::Error> {
         let exact = value.exact.unwrap_or_default();
@@ -425,7 +425,7 @@ impl TryFrom<ListProofSchemasFiltersBindingDTO> for GetProofSchemaQueryDTO {
 }
 
 impl TryFrom<ProofListQueryBindingDTO> for GetProofQueryDTO {
-    type Error = BindingError;
+    type Error = ErrorResponseBindingDTO;
 
     fn try_from(value: ProofListQueryBindingDTO) -> Result<Self, Self::Error> {
         let exact = value.exact.unwrap_or_default();
@@ -479,7 +479,7 @@ impl TryFrom<ProofListQueryBindingDTO> for GetProofQueryDTO {
 }
 
 impl TryFrom<ImportProofSchemaClaimSchemaBindingDTO> for ImportProofSchemaClaimSchemaDTO {
-    type Error = BindingError;
+    type Error = ErrorResponseBindingDTO;
 
     fn try_from(value: ImportProofSchemaClaimSchemaBindingDTO) -> Result<Self, Self::Error> {
         let claims = value.claims.unwrap_or_default();

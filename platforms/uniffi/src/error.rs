@@ -1,103 +1,84 @@
-use one_core::config::{ConfigError, ConfigParsingError};
 use one_core::provider::bluetooth_low_energy::BleError;
-use one_core::provider::exchange_protocol::error::{ExchangeProtocolError, TxCodeError};
 use one_core::provider::key_storage::error::KeyStorageError;
-use one_core::service::error::{BusinessLogicError, ServiceError, ValidationError};
+use one_core::service::error::ErrorCodeMixin;
 use one_crypto::SignerError;
 use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum BindingError {
-    #[error("Already exists: `{0}`")]
-    AlreadyExists(String),
+use super::error_code::ErrorCode;
 
-    #[error("Database error: `{0}`")]
-    DbErr(String),
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum SDKError {
+    #[error("Initialization failure: {0}")]
+    InitializationFailure(String),
 
-    #[error("Not found: `{0}`")]
-    NotFound(String),
-
-    #[error("Not supported: `{0}`")]
-    NotSupported(String),
-
-    #[error("Validation error: `{0}`")]
-    ValidationError(String),
-
-    #[error("Config validation error: `{0}`")]
-    ConfigValidationError(String),
-
-    #[error("Core uninitialized")]
-    Uninitialized,
-
-    #[error("IO error: `{0}`")]
-    IOError(String),
-
-    #[error("Provided TX code is incorrect")]
-    IncorrectTxCode,
-
-    #[error("Unknown error: `{0}`")]
-    Unknown(String),
+    #[error("Not initialized")]
+    NotInitialized,
 }
 
-impl From<ServiceError> for BindingError {
-    fn from(error: ServiceError) -> Self {
-        match &error {
-            ServiceError::EntityNotFound(error) => Self::NotFound(error.to_string()),
-            ServiceError::ValidationError(_) => Self::ValidationError(error.to_string()),
-            ServiceError::Validation(e) => match e {
-                ValidationError::UnsupportedKeyOperation => Self::NotSupported(error.to_string()),
-                error => Self::ValidationError(error.to_string()),
-            },
-            ServiceError::ConfigValidationError(_) => {
-                Self::ConfigValidationError(error.to_string())
-            }
-            ServiceError::ExchangeProtocolError(e) => match e {
-                ExchangeProtocolError::OperationNotSupported => {
-                    Self::NotSupported(error.to_string())
-                }
-                ExchangeProtocolError::TxCode(TxCodeError::IncorrectCode) => Self::IncorrectTxCode,
-                error => Self::Unknown(error.to_string()),
-            },
-            ServiceError::BusinessLogic(e) => match e {
-                BusinessLogicError::OrganisationAlreadyExists => {
-                    Self::AlreadyExists(error.to_string())
-                }
-                error => Self::Unknown(error.to_string()),
-            },
-            ServiceError::KeyStorageError(e) => match e {
-                KeyStorageError::NotSupported(description) => {
-                    Self::NotSupported(description.to_string())
-                }
-                error => Self::Unknown(error.to_string()),
-            },
-            error => Self::Unknown(error.to_string()),
+impl ErrorCodeMixin for SDKError {
+    fn error_code(&self) -> one_core::service::error::ErrorCode {
+        match self {
+            Self::InitializationFailure(_) => one_core::service::error::ErrorCode::BR_0183,
+            Self::NotInitialized => one_core::service::error::ErrorCode::BR_0184,
         }
     }
 }
 
-impl From<ConfigParsingError> for BindingError {
-    fn from(error: ConfigParsingError) -> Self {
-        Self::ConfigValidationError(error.to_string())
+#[derive(Debug, Clone)]
+pub struct ErrorResponseBindingDTO {
+    pub code: String,
+    pub message: String,
+    pub cause: Option<Cause>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Cause {
+    pub message: String,
+}
+
+impl Cause {
+    pub fn with_message_from_error(error: &impl std::error::Error) -> Cause {
+        Cause {
+            message: error.to_string(),
+        }
     }
 }
 
-impl From<ConfigError> for BindingError {
-    fn from(error: ConfigError) -> Self {
-        Self::ConfigValidationError(error.to_string())
+#[derive(Error, Debug)]
+pub enum BindingError {
+    #[error("Error: {data:?}")]
+    ErrorResponse { data: ErrorResponseBindingDTO },
+}
+
+impl<T: Into<ErrorResponseBindingDTO>> From<T> for BindingError {
+    fn from(value: T) -> Self {
+        Self::ErrorResponse { data: value.into() }
     }
 }
 
-impl From<time::error::Parse> for BindingError {
-    fn from(error: time::error::Parse) -> Self {
-        Self::ValidationError(format!("OffsetDateTime parse error: {}", error))
+impl ErrorResponseBindingDTO {
+    pub fn hide_cause(mut self, hide: bool) -> ErrorResponseBindingDTO {
+        if hide {
+            self.cause = None;
+        }
+
+        self
     }
 }
 
-impl From<std::io::Error> for BindingError {
-    fn from(error: std::io::Error) -> Self {
-        Self::IOError(error.to_string())
+impl<T: ErrorCodeMixin + std::error::Error> From<T> for ErrorResponseBindingDTO {
+    fn from(error: T) -> Self {
+        let code = error.error_code();
+        let cause = Cause::with_message_from_error(&error);
+
+        ErrorResponseBindingDTO {
+            code: ErrorCode::from(code).to_string(),
+            message: code.to_string(),
+            cause: Some(cause),
+        }
     }
 }
+
 #[derive(Debug, Error)]
 pub enum NativeKeyStorageError {
     #[error("Failed to generate key: {reason:?}")]
@@ -170,11 +151,5 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for BleErrorWrapper {
                 reason: e.to_string(),
             },
         }
-    }
-}
-
-impl From<BleErrorWrapper> for BindingError {
-    fn from(error: BleErrorWrapper) -> Self {
-        Self::Unknown(error.to_string())
     }
 }

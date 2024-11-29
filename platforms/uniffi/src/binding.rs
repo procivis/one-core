@@ -1,11 +1,12 @@
 use std::future::Future;
 use std::pin::Pin;
 
+use one_core::service::error::ServiceError;
 use tokio::fs;
 use tokio::runtime::Runtime;
 use tokio::sync::{RwLock, RwLockReadGuard};
 
-use crate::error::BindingError;
+use crate::error::{BindingError, SDKError};
 
 type CoreBuilder = Box<
     dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<one_core::OneCore, BindingError>>>>
@@ -50,7 +51,7 @@ impl OneCoreBinding {
         self.block_on(async {
             let mut guard = self.inner.write().await;
             if guard.take().is_none() {
-                return Err(BindingError::Uninitialized);
+                return Err(SDKError::NotInitialized.into());
             }
 
             if !delete_data {
@@ -58,7 +59,9 @@ impl OneCoreBinding {
             }
 
             let _ = fs::remove_file(&self.backup_db_path).await;
-            fs::remove_file(&self.main_db_path).await?;
+            fs::remove_file(&self.main_db_path)
+                .await
+                .map_err(|err| ServiceError::Other(err.to_string()))?;
 
             Ok(())
         })
@@ -71,7 +74,7 @@ impl OneCoreBinding {
     ) -> Result<RwLockReadGuard<'_, one_core::OneCore>, BindingError> {
         let guard = self.inner.read().await;
         RwLockReadGuard::try_map(guard, |core| core.as_ref())
-            .map_err(|_| BindingError::Uninitialized)
+            .map_err(|_| SDKError::NotInitialized.into())
     }
 
     pub(crate) fn block_on<F: Future>(&self, future: F) -> F::Output {

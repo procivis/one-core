@@ -41,7 +41,7 @@ use serde_json::Value;
 use serde_with::json::JsonString;
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialId, DidValue, KeyId, ProofId, TrustAnchorId, TrustEntityId};
-use strum_macros::Display;
+use strum::Display;
 use time::OffsetDateTime;
 use url::Url;
 use utoipa::{IntoParams, ToSchema};

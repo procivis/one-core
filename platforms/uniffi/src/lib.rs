@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use error::{BindingError, BleErrorWrapper, NativeKeyStorageError};
+use error::{BleErrorWrapper, NativeKeyStorageError, SDKError};
 use one_core::config::core_config::{self, AppConfig, CacheEntityCacheType, CacheEntityConfig};
 use one_core::config::{ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::bluetooth_low_energy::BleError;
@@ -46,7 +46,9 @@ use one_core::provider::revocation::bitstring_status_list::BitstringStatusList;
 use one_core::provider::revocation::lvvc::LvvcProvider;
 use one_core::provider::revocation::provider::RevocationMethodProviderImpl;
 use one_core::provider::revocation::RevocationMethod;
+use one_core::repository::error::DataLayerError;
 use one_core::repository::DataRepository;
+use one_core::service::error::ServiceError;
 use one_core::{
     DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyAlgorithmCreator,
     KeyStorageCreator, OneCoreBuilder, RevocationMethodCreator,
@@ -66,11 +68,13 @@ use utils::native_ble_peripheral::BlePeripheralWrapper;
 use utils::native_key_storage::NativeKeyStorageWrapper;
 
 use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
+use crate::error::{BindingError, Cause, ErrorResponseBindingDTO};
 
 mod binding;
 mod did_config;
 mod dto;
 mod error;
+mod error_code;
 mod functions;
 mod mapper;
 mod utils;
@@ -119,12 +123,13 @@ fn initialize_core(
     let config_base = include_str!("../../../config/config-procivis-base.yml");
 
     let placeholder_config: AppConfig<MobileConfig> =
-        core_config::AppConfig::from_yaml_str_configs(vec![config, config_base, config_mobile])?;
+        core_config::AppConfig::from_yaml_str_configs(vec![config, config_base, config_mobile])
+            .map_err(|err| SDKError::InitializationFailure(err.to_string()))?;
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .map_err(|e| BindingError::Unknown(e.to_string()))?;
+        .map_err(|err| SDKError::InitializationFailure(err.to_string()))?;
 
     let main_db_path = format!("{data_dir_path}/one_core_db.sqlite");
     let backup_db_path = format!("{data_dir_path}/backup_one_core_db.sqlite");
@@ -141,7 +146,7 @@ fn initialize_core(
             let db_url = format!("sqlite:{db_path}?mode=rwc");
             let db_conn = sql_data_provider::db_conn(db_url, true)
                 .await
-                .map_err(|e| BindingError::DbErr(e.to_string()))?;
+                .map_err(|e| ServiceError::Repository(DataLayerError::Db(e.into())))?;
 
             let hashers: Vec<(String, Arc<dyn Hasher>)> =
                 vec![("sha-256".to_string(), Arc::new(SHA256 {}))];
@@ -604,7 +609,7 @@ fn initialize_core(
                 .with_revocation_method_provider(revocation_method_creator)
                 .with_client(client)
                 .build()
-                .map_err(|e| BindingError::DbErr(e.to_string()))
+                .map_err(|err| SDKError::InitializationFailure(err.to_string()).into())
         }) as _
     };
 

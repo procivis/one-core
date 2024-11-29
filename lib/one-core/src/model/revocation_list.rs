@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-use strum::EnumString;
-use strum_macros::Display;
+use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 

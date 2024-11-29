@@ -1,3 +1,4 @@
+use one_core::service::error::ServiceError;
 use url::Url;
 
 use crate::dto::HandleInvitationResponseBindingEnum;
@@ -12,7 +13,7 @@ impl OneCoreBinding {
         organisation_id: String,
         transport: Option<Vec<String>>,
     ) -> Result<HandleInvitationResponseBindingEnum, BindingError> {
-        let url = Url::parse(&url).map_err(|e| BindingError::ValidationError(e.to_string()))?;
+        let url = Url::parse(&url).map_err(|e| ServiceError::ValidationError(e.to_string()))?;
 
         self.block_on(async {
             let organisation_id = into_id(&organisation_id)?;

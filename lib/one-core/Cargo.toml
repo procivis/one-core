@@ -59,7 +59,6 @@ sophia_api               = { version = "0.8" }
 sophia_c14n              = { version = "0.8" }
 sophia_jsonld            = { version = "0.8", features = ["http_client"] }
 strum.workspace          = true
-strum_macros             = { version = "0.26" }
 tempfile.workspace       = true
 thiserror.workspace      = true
 time.workspace           = true

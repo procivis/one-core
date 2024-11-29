@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use one_core::service::error::ServiceError;
+
 use crate::error::BindingError;
 use crate::{MetadataBindingDTO, OneCoreBinding};
 
@@ -10,9 +12,7 @@ impl OneCoreBinding {
         input_path: String,
     ) -> Result<MetadataBindingDTO, BindingError> {
         if Path::new(&self.backup_db_path).exists() {
-            return Err(BindingError::AlreadyExists(
-                "backup file already exists".into(),
-            ));
+            return Err(ServiceError::ValidationError("backup file already exists".into()).into());
         }
 
         let metadata = self.block_on(async {

@@ -10,7 +10,7 @@ use one_core::service::ssi_holder::dto::{
 use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, KeyId, OrganisationId, ProofId};
-use strum_macros::Display;
+use strum::Display;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
