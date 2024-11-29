@@ -641,6 +641,7 @@ impl OIDCService {
                     vp_token: response.vp_token,
                     state,
                     mdoc_generated_nonce: interaction_data.identity_request_nonce,
+                    encryption_key: None,
                 };
 
                 anyhow::Ok(request_data)
@@ -659,6 +660,7 @@ impl OIDCService {
                     vp_token: response.vp_token,
                     state,
                     mdoc_generated_nonce: Some(interaction_data.identity_request_nonce),
+                    encryption_key: None,
                 };
 
                 anyhow::Ok(request_data)
@@ -708,6 +710,7 @@ impl OIDCService {
                     }),
                     interaction: Some(InteractionRelations::default()),
                     state: Some(ProofStateRelations::default()),
+                    verifier_key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
             )
@@ -750,6 +753,20 @@ impl OIDCService {
             .ok_or(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::InvalidRequest,
             ))?;
+
+        if let Some(used_key_id) = unpacked_request.encryption_key {
+            let verifier_key = proof
+                .verifier_key
+                .as_ref()
+                .ok_or(OpenID4VCIError::InvalidRequest)?;
+
+            if used_key_id != verifier_key.id {
+                tracing::info!("Proof encrypted with an incorrect key");
+                return Err(ServiceError::OpenID4VCIError(
+                    OpenID4VCIError::InvalidRequest,
+                ));
+            }
+        }
 
         match crate::provider::exchange_protocol::openid4vc::service::oidc_verifier_direct_post(
             unpacked_request,
@@ -894,6 +911,7 @@ impl OIDCService {
                 vp_token,
                 state,
                 mdoc_generated_nonce: None,
+                encryption_key: None,
             }),
             OpenID4VPDirectPostRequestDTO {
                 response: Some(jwe),
@@ -907,6 +925,7 @@ impl OIDCService {
                     ServiceError::ValidationError(format!("JWE key_id value invalid format: {err}"))
                 })?;
 
+                // KeyId can't be verified here since we don't know related proof yet.
                 let key = self
                     .key_repository
                     .get_key(&key_id, &KeyRelations::default())
@@ -935,6 +954,7 @@ impl OIDCService {
                     vp_token: payload.vp_token,
                     state: payload.state.parse()?,
                     mdoc_generated_nonce: Some(jwe_header.agreement_partyuinfo),
+                    encryption_key: Some(key_id),
                 })
             }
             _ => Err(ServiceError::OpenID4VCIError(

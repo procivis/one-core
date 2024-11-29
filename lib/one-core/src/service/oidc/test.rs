@@ -5,7 +5,7 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 use mockall::predicate::{always, eq};
 use serde_json::json;
-use shared_types::{DidId, DidValue, ProofId};
+use shared_types::{DidId, DidValue, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -2042,4 +2042,50 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
         .unwrap();
 
     assert2::assert!(let ServiceError::OpenID4VCError(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidToken)) = result);
+}
+
+#[tokio::test]
+async fn test_verify_submission_incorrect_decryption_key_fails() {
+    let service = setup_service(Mocks {
+        ..Default::default()
+    });
+
+    let mut proof = dummy_proof_with_protocol("OPENID4VC");
+
+    let key_id1 = KeyId::from(Uuid::new_v4());
+    let key_id2 = KeyId::from(Uuid::new_v4());
+    let state = Uuid::new_v4();
+
+    proof.verifier_key = Some(Key {
+        id: key_id1,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        public_key: vec![],
+        name: "key1".to_string(),
+        key_reference: vec![],
+        storage_type: "".to_string(),
+        key_type: "".to_string(),
+        organisation: None,
+    });
+
+    let uncecked_request = RequestData {
+        encryption_key: Some(key_id2),
+        mdoc_generated_nonce: None,
+        presentation_submission: PresentationSubmissionMappingDTO {
+            id: "id".to_string(),
+            definition_id: "definition_id".to_string(),
+            descriptor_map: vec![],
+        },
+        state,
+        vp_token: "vp_token".to_string(),
+    };
+
+    let result = service
+        .oidc_verifier_verify_submission(proof, uncecked_request)
+        .await;
+
+    assert!(matches!(
+        result.unwrap_err(),
+        ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest)
+    ));
 }

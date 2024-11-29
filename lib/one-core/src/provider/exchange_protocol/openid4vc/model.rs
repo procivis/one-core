@@ -498,6 +498,7 @@ pub struct RequestData {
     pub vp_token: String,
     pub state: Uuid,
     pub mdoc_generated_nonce: Option<String>,
+    pub encryption_key: Option<KeyId>,
 }
 
 #[derive(Clone, Debug)]
