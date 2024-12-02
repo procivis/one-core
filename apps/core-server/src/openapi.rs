@@ -558,7 +558,8 @@ fn get_tags() -> Vec<Tag> {
 
                 :::warning
 
-                These endpoints handle the SSI interactions between agents and should **not** be used.
+                These endpoints handle low-level mechanisms in interactions between agents.
+                Deep understanding of the involved protocols is recommended.
 
                 :::
 

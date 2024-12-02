@@ -40,9 +40,8 @@ use crate::router::AppState;
     tag = "ssi",
     summary = "Retrieve did:web document",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the
-        [did:web Method Specification](https://w3c-ccg.github.io/did-method-web/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn get_did_web_document(
@@ -83,8 +82,8 @@ pub(crate) async fn get_did_web_document(
     tag = "ssi",
     summary = "Revocation - retrieve list",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        See the [W3C Verifiable Credentials Status List 2021 specification](https://www.w3.org/TR/2023/WD-vc-status-list-20230427/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn get_revocation_list_by_id(
@@ -136,7 +135,10 @@ pub(crate) async fn get_revocation_list_by_id(
     ),
     tag = "ssi",
     summary = "Get LVVC by credential",
-    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
 )]
 pub(crate) async fn get_lvvc_by_credential_id(
     state: State<AppState>,
@@ -184,9 +186,8 @@ pub(crate) async fn get_lvvc_by_credential_id(
     tag = "ssi",
     summary = "OID4VC - Retrieve issuer metadata",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
-        specifications](https://openid.net/sg/openid4vc/specifications/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn oidc_issuer_get_issuer_metadata(
@@ -234,9 +235,8 @@ pub(crate) async fn oidc_issuer_get_issuer_metadata(
     tag = "ssi",
     summary = "OID4VC - Service discovery",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
-        specifications](https://openid.net/sg/openid4vc/specifications/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn oidc_issuer_service_discovery(
@@ -286,9 +286,8 @@ pub(crate) async fn oidc_issuer_service_discovery(
     tag = "ssi",
     summary = "OID4VC - Retrieve credential offer",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
-        specifications](https://openid.net/sg/openid4vc/specifications/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn oidc_issuer_get_credential_offer(
@@ -347,9 +346,8 @@ pub(crate) async fn oidc_issuer_get_credential_offer(
     tag = "ssi",
     summary = "OID4VC - Create token",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
-        specifications](https://openid.net/sg/openid4vc/specifications/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn oidc_issuer_create_token(
@@ -420,9 +418,8 @@ pub(crate) async fn oidc_issuer_create_token(
     tag = "ssi",
     summary = "OID4VC - Create credential",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
-        specifications](https://openid.net/sg/openid4vc/specifications/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn oidc_issuer_create_credential(
@@ -490,9 +487,8 @@ pub(crate) async fn oidc_issuer_create_credential(
     tag = "ssi",
     summary = "OID4VC - Verifier direct post",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
-        specifications](https://openid.net/sg/openid4vc/specifications/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn oidc_verifier_direct_post(
@@ -563,9 +559,8 @@ pub(crate) async fn oidc_verifier_direct_post(
     tag = "ssi",
     summary = "OID4VC - Verifier presentation definition",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
-        specifications](https://openid.net/sg/openid4vc/specifications/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn oidc_verifier_presentation_definition(
@@ -624,9 +619,8 @@ pub(crate) async fn oidc_verifier_presentation_definition(
     tag = "ssi",
     summary = "OID4VC - Client metadata",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
-        specifications](https://openid.net/sg/openid4vc/specifications/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn oidc_verifier_client_metadata(
@@ -688,9 +682,8 @@ pub(crate) async fn oidc_verifier_client_metadata(
     tag = "ssi",
     summary = "OID4VC - Client request",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the [OpenID for Verifiable Credentials
-        specifications](https://openid.net/sg/openid4vc/specifications/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn oidc_verifier_client_request(
@@ -747,9 +740,8 @@ pub(crate) async fn oidc_verifier_client_request(
     tag = "ssi",
     summary = "Retrieve @context",
     description = indoc::formatdoc! {"
-        This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.
-        For information on this endpoint, see directly the
-        [W3C Verifiable Credentials Data Model](https://www.w3.org/TR/vc-data-model/).
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
     "},
 )]
 pub(crate) async fn get_json_ld_context(
@@ -790,7 +782,10 @@ pub(crate) async fn get_json_ld_context(
     ),
     tag = "ssi",
     summary = "Retrieve Trust List",
-    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
 )]
 pub(crate) async fn ssi_get_trust_list(
     state: State<AppState>,
@@ -821,7 +816,10 @@ pub(crate) async fn ssi_get_trust_list(
     ),
     tag = "ssi",
     summary = "Retrieve credential schema service",
-    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
 )]
 pub(crate) async fn ssi_get_credential_schema(
     state: State<AppState>,
@@ -849,7 +847,10 @@ pub(crate) async fn ssi_get_credential_schema(
     ),
     tag = "ssi",
     summary = "Retrieve proof schema service",
-    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
 )]
 pub(crate) async fn ssi_get_proof_schema(
     state: State<AppState>,
@@ -873,7 +874,10 @@ pub(crate) async fn ssi_get_proof_schema(
     ),
     tag = "ssi",
     summary = "Retrieve SD-JWT VC type metadata service",
-    description = "This endpoint handles an aspect of the SSI interactions between agents and should **not** be used.",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
 )]
 pub(crate) async fn ssi_get_sd_jwt_vc_type_metadata(
     state: State<AppState>,
