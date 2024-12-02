@@ -9,6 +9,7 @@ use one_core::model::did::{DidType, KeyRole, SortableDidColumn};
 use one_core::model::history::{HistoryAction, HistoryEntityType, HistorySearchEnum};
 use one_core::model::proof::{ProofStateEnum, SortableProofColumn};
 use one_core::model::proof_schema::SortableProofSchemaColumn;
+use one_core::model::trust_entity::TrustEntityRole;
 use one_core::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, CharacteristicUUID,
     CharacteristicWriteType, ConnectionEvent, CreateCharacteristicOptions, DeviceAddress,
@@ -60,6 +61,7 @@ use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO,
     SortableTrustAnchorColumn, TrustAnchorsListItemResponseDTO,
 };
+use one_core::service::trust_entity::dto::CreateRemoteTrustEntityRequestDTO;
 use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 
 use crate::error::{BleErrorWrapper, ErrorResponseBindingDTO, NativeKeyStorageError};
@@ -1199,6 +1201,35 @@ pub struct TrustAnchorsListBindingDTO {
     pub values: Vec<TrustAnchorsListItemResponseBindingDTO>,
     pub total_pages: u64,
     pub total_items: u64,
+}
+
+#[derive(TryInto)]
+#[try_into(T = CreateRemoteTrustEntityRequestDTO, Error = ErrorResponseBindingDTO)]
+pub struct CreateRemoteTrustEntityRequestBindingDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub did_id: String,
+    #[try_into(with_fn = into_id_opt)]
+    pub trust_anchor_id: Option<String>,
+    #[try_into(infallible)]
+    pub name: String,
+    #[try_into(infallible)]
+    pub logo: Option<String>,
+    #[try_into(infallible)]
+    pub terms_url: Option<String>,
+    #[try_into(infallible)]
+    pub privacy_url: Option<String>,
+    #[try_into(infallible)]
+    pub website: Option<String>,
+    #[try_into(infallible)]
+    pub role: TrustEntityRoleBindingEnum,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(TrustEntityRole)]
+pub enum TrustEntityRoleBindingEnum {
+    Issuer,
+    Verifier,
+    Both,
 }
 
 #[derive(Clone, Debug, Into)]

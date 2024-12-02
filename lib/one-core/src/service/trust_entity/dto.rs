@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
@@ -20,10 +21,34 @@ pub struct CreateTrustEntityRequestDTO {
     pub did_id: DidId,
 }
 
-#[derive(Clone, Debug)]
-pub struct CreateTrustEntityFromDidRequestDTO {
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTrustEntityFromDidPublisherRequestDTO {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trust_anchor_id: Option<TrustAnchorId>,
     pub did: DidValue,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub terms_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub privacy_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub website: Option<String>,
+    pub role: TrustEntityRole,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTrustEntityFromDidPublisherResponseDTO {
+    pub id: TrustEntityId,
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateRemoteTrustEntityRequestDTO {
+    pub did_id: DidId,
+    pub trust_anchor_id: Option<TrustAnchorId>,
     pub name: String,
     pub logo: Option<String>,
     pub terms_url: Option<String>,

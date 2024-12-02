@@ -14,7 +14,7 @@ async fn test_create_trust_entity() {
     let anchor = context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", true)
+        .create("name", "SIMPLE_TRUST_LIST", true, "reference".to_string())
         .await;
 
     // WHEN
@@ -63,7 +63,7 @@ async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
     let anchor = context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", false)
+        .create("name", "SIMPLE_TRUST_LIST", false, "reference".to_string())
         .await;
 
     // WHEN
@@ -86,7 +86,12 @@ async fn test_delete_trust_entity() {
     let anchor = context
         .db
         .trust_anchors
-        .create("trust-anchor", "SIMPLE_TRUST_LIST", true)
+        .create(
+            "trust-anchor",
+            "SIMPLE_TRUST_LIST",
+            true,
+            "reference".to_string(),
+        )
         .await;
 
     let trust_entity = context

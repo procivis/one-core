@@ -14,13 +14,13 @@ async fn test_list_trust_entities() {
     let ta = context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", true)
+        .create("name1", "SIMPLE_TRUST_LIST", true, "reference1".to_string())
         .await;
 
     let ta2 = context
         .db
         .trust_anchors
-        .create("name2", "SIMPLE_TRUST_LIST", true)
+        .create("name2", "SIMPLE_TRUST_LIST", true, "reference2".to_string())
         .await;
 
     let entity1 = context
@@ -92,13 +92,13 @@ async fn test_list_trust_entities_filter_trust_anchor() {
     let ta = context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", true)
+        .create("name1", "SIMPLE_TRUST_LIST", true, "reference1".to_string())
         .await;
 
     let ta2 = context
         .db
         .trust_anchors
-        .create("name2", "SIMPLE_TRUST_LIST", true)
+        .create("name2", "SIMPLE_TRUST_LIST", true, "reference2".to_string())
         .await;
 
     let entity1 = context
@@ -173,7 +173,7 @@ async fn test_list_trust_entities_find_by_name() {
     let ta = context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", true)
+        .create("name1", "SIMPLE_TRUST_LIST", true, "reference".to_string())
         .await;
 
     let entity1 = context

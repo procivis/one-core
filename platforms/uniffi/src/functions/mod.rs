@@ -7,6 +7,7 @@ mod create_did;
 mod create_organisation;
 mod create_proof;
 mod create_proof_schema;
+mod create_remote_trust_entity;
 mod delete_credential;
 mod delete_credential_schema;
 mod delete_proof_claims;

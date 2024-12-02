@@ -13,7 +13,7 @@ pub async fn new_with_trust_list() -> (TestContext, TrustAnchor, TrustEntity, Tr
     let trust_anchor = context
         .db
         .trust_anchors
-        .create("ta1", "SIMPLE_TRUST_LIST", true)
+        .create("ta1", "SIMPLE_TRUST_LIST", true, "reference".to_string())
         .await;
 
     let entity_one = context
@@ -86,7 +86,12 @@ async fn test_get_trust_list_failed_list_is_not_simple_trust_list() {
     let trust_anchor = context
         .db
         .trust_anchors
-        .create("ta1", "COMPLICATED_TRUST_LIST", true)
+        .create(
+            "ta1",
+            "COMPLICATED_TRUST_LIST",
+            true,
+            "reference".to_string(),
+        )
         .await;
 
     // WHEN

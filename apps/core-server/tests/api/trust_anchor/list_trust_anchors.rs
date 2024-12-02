@@ -11,12 +11,12 @@ async fn test_list_trust_anchors() {
     context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", true)
+        .create("name1", "SIMPLE_TRUST_LIST", true, "reference1".to_string())
         .await;
     context
         .db
         .trust_anchors
-        .create("name2", "SIMPLE_TRUST_LIST", true)
+        .create("name2", "SIMPLE_TRUST_LIST", true, "reference2".to_string())
         .await;
 
     // WHEN
@@ -49,7 +49,12 @@ async fn test_list_trust_anchors_with_entities() {
         let anchor = context
             .db
             .trust_anchors
-            .create(&format!("name{id}"), "SIMPLE_TRUST_LIST", true)
+            .create(
+                &format!("name{id}"),
+                "SIMPLE_TRUST_LIST",
+                true,
+                "reference".to_string(),
+            )
             .await;
 
         context
@@ -107,13 +112,13 @@ async fn test_filter_trust_anchor_by_name() {
     let anchor = context
         .db
         .trust_anchors
-        .create("foo", "SIMPLE_TRUST_LIST", true)
+        .create("foo", "SIMPLE_TRUST_LIST", true, "reference1".to_string())
         .await;
 
     context
         .db
         .trust_anchors
-        .create("bar", "SIMPLE_TRUST_LIST", true)
+        .create("bar", "SIMPLE_TRUST_LIST", true, "reference2".to_string())
         .await;
 
     // WHEN

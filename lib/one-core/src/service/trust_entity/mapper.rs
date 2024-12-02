@@ -2,8 +2,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateTrustEntityFromDidRequestDTO, CreateTrustEntityRequestDTO, GetTrustEntityResponseDTO,
-    UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
+    CreateTrustEntityFromDidPublisherRequestDTO, CreateTrustEntityRequestDTO,
+    GetTrustEntityResponseDTO, UpdateTrustEntityActionFromDidRequestDTO,
+    UpdateTrustEntityFromDidRequestDTO,
 };
 use crate::model::did::Did;
 use crate::model::trust_anchor::TrustAnchor;
@@ -35,7 +36,7 @@ pub(super) fn trust_entity_from_request(
 }
 
 pub(super) fn trust_entity_from_did_request(
-    request: CreateTrustEntityFromDidRequestDTO,
+    request: CreateTrustEntityFromDidPublisherRequestDTO,
     trust_anchor: TrustAnchor,
     did: Did,
 ) -> TrustEntity {

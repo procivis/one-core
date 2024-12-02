@@ -242,6 +242,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 .get(trust_entity::controller::get_trust_entity_details),
         )
         .route(
+            "/api/trust-entity/remote/v1",
+            post(trust_entity::controller::create_remote_trust_entity),
+        )
+        .route(
             "/api/jsonld-context/v1",
             get(jsonld::controller::resolve_jsonld_context),
         )

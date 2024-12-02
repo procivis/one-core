@@ -77,4 +77,21 @@ impl TrustEntitiesApi {
 
         self.client.get(&url).await
     }
+
+    pub async fn create_remote(
+        &self,
+        name: &str,
+        role: TrustEntityRoleRest,
+        trust_anchor: Option<TrustAnchor>,
+        did: &Did,
+    ) -> Response {
+        let body = json!({
+          "name": name,
+          "role": role,
+          "trustAnchorId": trust_anchor.map(|anchor| anchor.id),
+          "didId": did.id,
+        });
+
+        self.client.post("/api/trust-entity/remote/v1", body).await
+    }
 }

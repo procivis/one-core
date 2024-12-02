@@ -14,14 +14,20 @@ impl TrustAnchorDB {
         Self { repository }
     }
 
-    pub async fn create(&self, name: &str, r#type: &str, is_publisher: bool) -> TrustAnchor {
+    pub async fn create(
+        &self,
+        name: &str,
+        r#type: &str,
+        is_publisher: bool,
+        publisher_reference: String,
+    ) -> TrustAnchor {
         let trust_anchor = TrustAnchor {
             id: Uuid::new_v4().into(),
             name: name.into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             r#type: r#type.into(),
-            publisher_reference: "123".to_string(),
+            publisher_reference,
             is_publisher,
         };
 

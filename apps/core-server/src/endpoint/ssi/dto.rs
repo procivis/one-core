@@ -35,7 +35,7 @@ use one_core::service::ssi_issuer::dto::{
 };
 use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
 use one_core::service::trust_entity::dto::{
-    CreateTrustEntityFromDidRequestDTO, GetTrustEntityResponseDTO,
+    CreateTrustEntityFromDidPublisherRequestDTO, GetTrustEntityResponseDTO,
     UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
 };
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
@@ -843,9 +843,9 @@ pub enum PatchTrustEntityActionRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(CreateTrustEntityFromDidRequestDTO)]
+#[into(CreateTrustEntityFromDidPublisherRequestDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct PostTrustEntityRequestRestDTO {
+pub struct SSIPostTrustEntityRequestRestDTO {
     /// Specify trust anchor ID.
     #[serde(default)]
     pub trust_anchor_id: Option<TrustAnchorId>,

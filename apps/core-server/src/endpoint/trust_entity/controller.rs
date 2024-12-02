@@ -3,7 +3,9 @@ use axum::Json;
 use axum_extra::extract::WithRejection;
 use shared_types::TrustEntityId;
 
-use super::dto::{CreateTrustEntityRequestRestDTO, ListTrustEntitiesQuery};
+use super::dto::{
+    CreateRemoteTrustEntityRequestRestDTO, CreateTrustEntityRequestRestDTO, ListTrustEntitiesQuery,
+};
 use crate::dto::common::{EntityResponseRestDTO, GetTrustEntityListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
@@ -110,4 +112,32 @@ pub(crate) async fn get_trust_entities(
         .list_trust_entities(query.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "listing trust entities")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/trust-entity/remote/v1",
+    request_body = CreateRemoteTrustEntityRequestRestDTO,
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
+    security(
+        ("bearer" = [])
+    ),
+    tag = "trust_entity",
+    summary = "Create a remote trust entity",
+    description = "Create a trust entity inside a remote trust anchor",
+)]
+pub(crate) async fn create_remote_trust_entity(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CreateRemoteTrustEntityRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let result = state
+        .core
+        .trust_entity_service
+        .create_remote_trust_entity_for_did(request.into())
+        .await;
+
+    CreatedOrErrorResponse::from_result(result, state, "creating remote trust entity")
 }

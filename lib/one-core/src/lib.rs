@@ -402,6 +402,8 @@ impl OneCore {
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 trust_management_provider,
+                key_provider.clone(),
+                client.clone(),
             ),
             backup_service: BackupService::new(
                 data_provider.get_backup_repository(),

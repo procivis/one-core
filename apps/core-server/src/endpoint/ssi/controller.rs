@@ -24,7 +24,7 @@ use super::dto::{
     OpenID4VCITokenResponseRestDTO, OpenID4VPClientMetadataResponseRestDTO,
     OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
     OpenID4VPPresentationDefinitionResponseRestDTO, PatchTrustEntityRequestRestDTO,
-    PostTrustEntityRequestRestDTO, SdJwtVcTypeMetadataResponseRestDTO,
+    SSIPostTrustEntityRequestRestDTO, SdJwtVcTypeMetadataResponseRestDTO,
 };
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
@@ -135,7 +135,7 @@ pub(crate) async fn get_revocation_list_by_id(
         (status = 500, description = "Server error"),
     ),
     security(
-        ("lvvc-fetch" = [])
+        ("remote-agent" = [])
     ),
     tag = "ssi",
     summary = "Get LVVC by credential",
@@ -815,7 +815,7 @@ pub(crate) async fn ssi_get_trust_list(
     ),
     responses(OkOrErrorResponse<GetTrustEntityResponseRestDTO>),
     security(
-        ("trust-entity" = [])
+        ("remote-agent" = [])
     ),
     tag = "ssi",
     summary = "Retrieve a trust entity",
@@ -829,7 +829,7 @@ pub(crate) async fn ssi_get_trust_entity(
     let result = state
         .core
         .trust_entity_service
-        .get_trust_entity_for_did(did_value, bearer.token())
+        .publisher_get_trust_entity_for_did(did_value, bearer.token())
         .await;
 
     OkOrErrorResponse::from_result(result, state, "getting trust entity")
@@ -841,10 +841,10 @@ pub(crate) async fn ssi_get_trust_entity(
     params(
         ("didValue" = DidValue, Path, description = "DID value")
     ),
-    request_body = PostTrustEntityRequestRestDTO,
+    request_body = PatchTrustEntityRequestRestDTO,
     responses(EmptyOrErrorResponse),
     security(
-        ("trust-entity" = [])
+        ("remote-agent" = [])
     ),
     tag = "ssi",
     summary = "Update a trust entity",
@@ -862,7 +862,7 @@ pub(crate) async fn ssi_patch_trust_entity(
     let result = state
         .core
         .trust_entity_service
-        .update_trust_entity_for_did(did_value, request.into(), bearer.token())
+        .publisher_update_trust_entity_for_did(did_value, request.into(), bearer.token())
         .await;
 
     EmptyOrErrorResponse::from_result(result, state, "getting trust entity")
@@ -871,10 +871,10 @@ pub(crate) async fn ssi_patch_trust_entity(
 #[utoipa::path(
     post,
     path = "/ssi/trust-entity/v1",
-    request_body = PostTrustEntityRequestRestDTO,
+    request_body = SSIPostTrustEntityRequestRestDTO,
     responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     security(
-        ("trust-entity" = [])
+        ("remote-agent" = [])
     ),
     tag = "ssi",
     summary = "Create a trust entity",
@@ -884,14 +884,14 @@ pub(crate) async fn ssi_post_trust_entity(
     state: State<AppState>,
     TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
     WithRejection(Json(request), _): WithRejection<
-        Json<PostTrustEntityRequestRestDTO>,
+        Json<SSIPostTrustEntityRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state
         .core
         .trust_entity_service
-        .create_trust_entity_for_did(request.into(), bearer.token())
+        .publisher_create_trust_entity_for_did(request.into(), bearer.token())
         .await;
 
     CreatedOrErrorResponse::from_result(result, state, "getting trust entity")

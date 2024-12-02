@@ -2,22 +2,19 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 
 use super::dto::RevocationListResponseDTO;
-use crate::common_validator::validate_expiration_time;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::{DidRelations, KeyRole};
+use crate::model::did::DidRelations;
 use crate::model::key::KeyRelations;
 use crate::model::revocation_list::RevocationListRelations;
 use crate::model::validity_credential::{Lvvc, ValidityCredentialType};
-use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::revocation::lvvc::create_lvvc_with_status;
 use crate::provider::revocation::lvvc::dto::{IssuerResponseDTO, LvvcStatus};
-use crate::provider::revocation::lvvc::holder_fetch::BearerTokenPayload;
 use crate::provider::revocation::lvvc::mapper::status_from_lvvc_claims;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 use crate::service::revocation_list::dto::RevocationListId;
 use crate::service::revocation_list::RevocationListService;
-use crate::util::key_verification::KeyVerification;
+use crate::util::bearer_token::validate_bearer_token;
 
 impl RevocationListService {
     pub async fn get_lvvc_by_credential_id(
@@ -25,19 +22,12 @@ impl RevocationListService {
         id: &CredentialId,
         bearer_token: &str,
     ) -> Result<IssuerResponseDTO, ServiceError> {
-        // first validate bearer token
-        let token_signature_verification = Box::new(KeyVerification {
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            did_method_provider: self.did_method_provider.clone(),
-            key_role: KeyRole::Authentication,
-        });
-
-        let jwt: Jwt<BearerTokenPayload> =
-            Jwt::build_from_token(bearer_token, Some(token_signature_verification)).await?;
-
-        // checking timestamp to prevent replay attack
-        validate_expiration_time(&Some(jwt.payload.custom.timestamp), 60)
-            .map_err(|_| ServiceError::ValidationError("LVVC token expired".to_owned()))?;
+        let jwt = validate_bearer_token(
+            bearer_token,
+            self.did_method_provider.clone(),
+            self.key_algorithm_provider.clone(),
+        )
+        .await?;
 
         let token_issuer = jwt.payload.issuer.ok_or(ServiceError::ValidationError(
             "Missing token issuer".to_owned(),

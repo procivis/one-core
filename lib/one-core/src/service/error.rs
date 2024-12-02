@@ -300,6 +300,9 @@ pub enum BusinessLogicError {
     #[error("Trust anchor must be publish")]
     TrustAnchorMustBePublish,
 
+    #[error("Trust anchor must be client")]
+    TrustAnchorMustBeClient,
+
     #[error("Trust anchor invalid request: {reason}")]
     TrustAnchorInvalidCreateRequest { reason: String },
 
@@ -929,6 +932,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Trust anchor is disabled")]
     BR_0187,
+
+    #[strum(to_string = "Trust anchor must be client")]
+    BR_0188,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1059,6 +1065,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::TrustAnchorNameTaken => ErrorCode::BR_0113,
             Self::UnknownTrustAnchorType => ErrorCode::BR_0114,
             Self::TrustAnchorMustBePublish => ErrorCode::BR_0123,
+            Self::TrustAnchorMustBeClient => ErrorCode::BR_0188,
             Self::TrustAnchorInvalidCreateRequest { .. } => ErrorCode::BR_0177,
             Self::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
             Self::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,

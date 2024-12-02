@@ -857,6 +857,23 @@ dictionary TrustAnchorsListBindingDTO {
   u64 total_items;
 };
 
+dictionary CreateRemoteTrustEntityRequestBindingDTO {
+  string did_id;
+  string? trust_anchor_id;
+  string name;
+  string? logo;
+  string? terms_url;
+  string? privacy_url;
+  string? website;
+  TrustEntityRoleBindingEnum role;
+};
+
+enum TrustEntityRoleBindingEnum {
+  "Issuer",
+  "Verifier",
+  "Both",
+};
+
 enum SortableProofSchemaColumnBinding {
   "Name",
   "CreatedDate",
@@ -1173,6 +1190,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   TrustAnchorsListBindingDTO list_trust_anchors(ListTrustAnchorsFiltersBindings filters);
+
+  [Throws=BindingError]
+  string create_remote_trust_entity(CreateRemoteTrustEntityRequestBindingDTO request);
 
   [Throws=BindingError]
   string create_proof_schema(CreateProofSchemaRequestDTO request);

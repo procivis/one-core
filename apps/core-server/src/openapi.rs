@@ -82,6 +82,7 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             trust_entity::controller::get_trust_entity_details,
             trust_entity::controller::create_trust_entity,
             trust_entity::controller::delete_trust_entity,
+            trust_entity::controller::create_remote_trust_entity,
 
             jsonld::controller::resolve_jsonld_context,
 
@@ -291,6 +292,7 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 trust_entity::dto::TrustEntityRoleRest,
                 trust_entity::dto::GetTrustEntityResponseRestDTO,
                 trust_entity::dto::ListTrustEntitiesResponseItemRestDTO,
+                trust_entity::dto::CreateRemoteTrustEntityRequestRestDTO,
 
                 jsonld::dto::ResolveJsonLDContextResponseRestDTO,
 
@@ -319,7 +321,7 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 SecurityScheme::Http(
                     HttpBuilder::new()
                         .scheme(HttpAuthScheme::Bearer)
-                        .description(Some("Access token"))
+                        .description(Some("Local management access token"))
                         .build(),
                 ),
             );
@@ -333,22 +335,14 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 ),
             );
             components.add_security_scheme(
-                "lvvc-fetch",
+                "remote-agent",
                 SecurityScheme::Http(
                     HttpBuilder::new()
                         .scheme(HttpAuthScheme::Bearer)
                         .bearer_format("JWT")
-                        .description(Some("LVVC holder fetch token"))
-                        .build(),
-                ),
-            );
-            components.add_security_scheme(
-                "trust-entity",
-                SecurityScheme::Http(
-                    HttpBuilder::new()
-                        .scheme(HttpAuthScheme::Bearer)
-                        .bearer_format("JWT")
-                        .description(Some("Trust entity token"))
+                        .description(Some(
+                            "LVVC holder or remote Trust-entity owner access token",
+                        ))
                         .build(),
                 ),
             );

@@ -1,6 +1,7 @@
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 use one_core::service::trust_entity::dto::{
-    GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO,
+    CreateRemoteTrustEntityRequestDTO, GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
+    TrustEntitiesResponseItemDTO,
 };
 use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
@@ -124,4 +125,31 @@ pub struct ListTrustEntitiesResponseItemRestDTO {
     pub role: TrustEntityRoleRest,
     pub trust_anchor_id: TrustAnchorId,
     pub did_id: DidId,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(CreateRemoteTrustEntityRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateRemoteTrustEntityRequestRestDTO {
+    /// Specify trust anchor ID.
+    #[serde(default)]
+    #[schema(nullable = false)]
+    pub trust_anchor_id: Option<TrustAnchorId>,
+    /// Specify local DID.
+    pub did_id: DidId,
+    /// Specify the entity name.
+    pub name: String,
+    /// image URL
+    #[schema(nullable = false)]
+    pub logo: Option<String>,
+    /// Specify the entity's domain name.
+    #[schema(nullable = false)]
+    pub website: Option<String>,
+    /// Specify a Terms of Service URL.
+    #[schema(nullable = false)]
+    pub terms_url: Option<String>,
+    /// Specify the Privacy Policy URL.
+    #[schema(nullable = false)]
+    pub privacy_url: Option<String>,
+    pub role: TrustEntityRoleRest,
 }

@@ -11,7 +11,7 @@ async fn test_get_trust_anchor() {
     let anchor = context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", true)
+        .create("name", "SIMPLE_TRUST_LIST", true, "reference".to_string())
         .await;
 
     // WHEN
