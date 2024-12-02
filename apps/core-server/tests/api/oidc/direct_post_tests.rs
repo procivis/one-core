@@ -163,7 +163,7 @@ async fn test_direct_post_one_credential_correct() {
     ];
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
 
@@ -306,7 +306,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     ];
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
 
@@ -559,7 +559,7 @@ async fn test_direct_post_multiple_presentations() {
     ];
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
 

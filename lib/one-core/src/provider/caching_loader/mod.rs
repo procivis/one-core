@@ -20,6 +20,9 @@ use super::remote_entity_storage::{
     RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
 };
 
+pub mod json_schema;
+pub mod vct;
+
 #[async_trait]
 pub trait Resolver: Send + Sync {
     type Error: From<RemoteEntityStorageError>;
@@ -49,6 +52,7 @@ pub struct CachingLoader<E> {
     pub refresh_after: time::Duration,
 
     clean_old_mutex: Arc<Mutex<()>>,
+
     _marker: std::marker::PhantomData<E>,
 }
 
@@ -92,6 +96,7 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
                             value: content.to_owned(),
                             hit_counter: 0,
                             media_type: media_type.clone(),
+                            persistent: false,
                         })
                         .await?;
 
@@ -100,6 +105,7 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
                     Err(CachingLoaderError::UnexpectedResolveResult)
                 }
             }
+            Some(context) if context.persistent => Ok((context.value, context.media_type)),
             Some(mut context) => {
                 let requires_update = context_requires_update(
                     context.last_modified,
@@ -142,6 +148,12 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
         self.clean_old_entries_if_needed().await?;
 
         Ok(context)
+    }
+
+    pub async fn get_if_cached(&self, key: &str) -> Result<Option<Vec<u8>>, E> {
+        let entity = self.storage.get_by_key(key).await?;
+
+        Ok(entity.map(|v| v.value))
     }
 
     async fn clean_old_entries_if_needed(&self) -> Result<(), RemoteEntityStorageError> {

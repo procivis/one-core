@@ -42,7 +42,7 @@ async fn test_get_did_web_document_es256_success() {
     // WHEN
     let url = format!("{base_url}/ssi/did-web/v1/{}/did.json", did.id);
 
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let resp = utils::client().get(url).send().await.unwrap();
 
@@ -133,7 +133,7 @@ async fn test_get_did_web_document_eddsa_success() {
     // WHEN
     let url = format!("{base_url}/ssi/did-web/v1/{}/did.json", did.id);
 
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let resp = utils::client().get(url).send().await.unwrap();
 
@@ -181,7 +181,7 @@ async fn test_get_did_web_document_wrong_did_method() {
     // WHEN
     let url = format!("{base_url}/ssi/did-web/v1/{}/did.json", did.id);
 
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let resp = utils::client().get(url).send().await.unwrap();
 
@@ -211,7 +211,7 @@ async fn test_get_did_web_document_deactivated() {
     // WHEN
     let url = format!("{base_url}/ssi/did-web/v1/{}/did.json", did.id);
 
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let resp = utils::client().get(url).send().await.unwrap();
 

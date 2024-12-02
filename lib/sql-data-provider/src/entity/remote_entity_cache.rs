@@ -20,6 +20,7 @@ pub struct Model {
     pub r#type: CacheType,
 
     pub media_type: Option<String>,
+    pub persistent: bool,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -34,8 +35,16 @@ pub enum Relation {}
 pub enum CacheType {
     #[sea_orm(string_value = "DID_DOCUMENT")]
     DidDocument,
+
     #[sea_orm(string_value = "JSON_LD_CONTEXT")]
     JsonLdContext,
+
     #[sea_orm(string_value = "STATUSLIST_CREDENTIAL")]
     StatusListCredential,
+
+    #[sea_orm(string_value = "VCT_METADATA")]
+    VctMetadata,
+
+    #[sea_orm(string_value = "JSON_SCHEMA")]
+    JsonSchema,
 }

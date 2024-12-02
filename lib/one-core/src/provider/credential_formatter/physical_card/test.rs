@@ -41,6 +41,7 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 key: url.to_string(),
                 hit_counter: 0,
                 media_type: None,
+                persistent: false,
             }))
         });
 
@@ -56,6 +57,7 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 key: url.to_string(),
                 hit_counter: 0,
                 media_type: None,
+                persistent: false,
             }))
         });
 
@@ -71,6 +73,7 @@ fn prepare_caching_loader() -> JsonLdCachingLoader {
                 key: url.to_string(),
                 hit_counter: 0,
                 media_type: None,
+                persistent: false,
             }))
         });
 

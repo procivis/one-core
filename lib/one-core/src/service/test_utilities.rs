@@ -396,6 +396,7 @@ pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCaching
                 value: W3_ORG_NS_CREDENTIALS_V2.to_string().into_bytes(),
                 hit_counter: 0,
                 media_type: None,
+                persistent: false,
             },
         ),
         (
@@ -407,6 +408,7 @@ pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCaching
                 value: W3_ORG_NS_CREDENTIALS_EXAMPLES_V2.to_string().into_bytes(),
                 hit_counter: 0,
                 media_type: None,
+                persistent: false,
             },
         ),
     ];
@@ -421,6 +423,7 @@ pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCaching
                 value: content.to_string().into_bytes(),
                 hit_counter: 0,
                 media_type: None,
+                persistent: false,
             },
         ))
     }

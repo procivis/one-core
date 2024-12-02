@@ -22,7 +22,7 @@ async fn test_get_revocation_list_success() {
     // WHEN
     let url = format!("{base_url}/ssi/revocation/v1/list/{}", revocation_list.id);
 
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let resp = utils::client().get(url).send().await.unwrap();
 

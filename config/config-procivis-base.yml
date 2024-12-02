@@ -326,3 +326,13 @@ cacheEntities:
     refreshAfter: 86400
     cacheRefreshTimeout: 86400
     cacheSize: 1000
+  VCT_METADATA:
+    cacheType: DB
+    refreshAfter: 86400
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000
+  JSON_SCHEMA:
+    cacheType: DB
+    refreshAfter: 86400
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000

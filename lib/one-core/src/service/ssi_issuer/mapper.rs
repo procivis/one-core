@@ -125,6 +125,8 @@ pub(crate) fn credential_schema_to_sd_jwt_vc_metadata(
         layout_properties: schema
             .layout_properties
             .map(CredentialSchemaLayoutPropertiesRequestDTO::from),
+        schema: None,
+        schema_uri: None,
     })
 }
 

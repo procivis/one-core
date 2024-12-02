@@ -51,7 +51,7 @@ impl TestContext {
             }),
         );
         let db = fixtures::create_db(&config).await;
-        let handle = run_server(listener, config.to_owned(), &db);
+        let handle = run_server(listener, config.to_owned(), &db).await;
 
         let filter = tracing_subscriber::EnvFilter::try_from_default_env()
             .or_else(|_| {

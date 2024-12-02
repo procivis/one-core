@@ -44,7 +44,7 @@ async fn test_list_proof_schema_success() {
         .await;
     }
 
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     // WHEN
     let url = format!(

@@ -19,6 +19,7 @@ pub struct RemoteEntityCache {
     pub r#type: CacheType,
 
     pub media_type: Option<String>,
+    pub persistent: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into)]
@@ -28,6 +29,8 @@ pub enum CacheType {
     DidDocument,
     JsonLdContext,
     StatusListCredential,
+    VctMetadata,
+    JsonSchema,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

@@ -7,11 +7,11 @@ use one_core::config::core_config::AppConfig;
 use sql_data_provider::DbConn;
 use tokio::task::JoinHandle;
 
-pub fn run_server(
+pub async fn run_server(
     listener: TcpListener,
     config: AppConfig<ServerConfig>,
     db: &DbConn,
 ) -> JoinHandle<()> {
-    let core = initialize_core(&config, db.to_owned());
+    let core = initialize_core(&config, db.to_owned()).await;
     tokio::spawn(async move { start_server(listener, config.app, core).await })
 }

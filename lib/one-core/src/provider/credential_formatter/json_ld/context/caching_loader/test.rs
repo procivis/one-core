@@ -49,6 +49,7 @@ async fn test_load_context_success_cache_hit() {
             value: response_content.to_string().into_bytes(),
             hit_counter: 0,
             media_type: Some(expected_media_type.to_owned()),
+            persistent: false,
         }))
     });
 
@@ -213,6 +214,7 @@ async fn test_load_context_success_cache_hit_but_too_old_200() {
             value: old_response_content.to_string().into_bytes(),
             hit_counter: 0,
             media_type: None,
+            persistent: false,
         }))
     });
     storage.expect_insert().times(1).return_once(|request| {
@@ -257,6 +259,7 @@ async fn test_load_context_success_cache_hit_but_too_old_304_with_last_modified_
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
             media_type: None,
+            persistent: false,
         }))
     });
     storage.expect_insert().times(1).return_once(|request| {
@@ -299,6 +302,7 @@ async fn test_load_context_success_cache_hit_but_too_old_304_without_last_modifi
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
             media_type: None,
+            persistent: false,
         }))
     });
     let now = OffsetDateTime::now_utc();
@@ -341,6 +345,7 @@ async fn test_load_context_success_cache_hit_older_than_refreshafter_younger_tha
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
             media_type: None,
+            persistent: false,
         }))
     });
     storage.expect_insert().times(1).return_once(|request| {
@@ -381,6 +386,7 @@ async fn test_load_context_failed_cache_hit_older_than_refreshafter_and_failed_t
             hit_counter: 0,
             entity_type: RemoteEntityType::JsonLdContext,
             media_type: None,
+            persistent: false,
         }))
     });
 

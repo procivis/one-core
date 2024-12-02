@@ -27,6 +27,7 @@ impl RemoteEntityCacheDB {
                 hit_counter: 0,
                 r#type: CacheType::JsonLdContext,
                 media_type: None,
+                persistent: false,
             })
             .await
             .unwrap();
@@ -41,6 +42,7 @@ impl RemoteEntityCacheDB {
                 hit_counter: 0,
                 r#type: CacheType::JsonLdContext,
                 media_type: None,
+                persistent: false,
             })
             .await
             .unwrap();
@@ -57,6 +59,7 @@ impl RemoteEntityCacheDB {
                 hit_counter: 0,
                 r#type: CacheType::JsonLdContext,
                 media_type: None,
+                persistent: false,
             })
             .await
             .unwrap();
@@ -72,6 +75,7 @@ impl RemoteEntityCacheDB {
                     hit_counter: 0,
                     r#type: CacheType::JsonLdContext,
                     media_type: None,
+                    persistent: false,
                 })
                 .await
                 .unwrap();

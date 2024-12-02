@@ -8,6 +8,8 @@ use config::ConfigError;
 use one_crypto::CryptoProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
+use provider::caching_loader::json_schema::JsonSchemaCache;
+use provider::caching_loader::vct::VctTypeMetadataCache;
 use provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderCoreImpl;
 use provider::exchange_protocol::ExchangeProtocolProviderImpl;
@@ -139,6 +141,8 @@ pub struct OneCoreBuilder {
     mqtt_client: Option<Arc<dyn MqttClient>>,
     data_provider_creator: Option<DataProviderCreator>,
     jsonld_caching_loader: Option<JsonLdCachingLoader>,
+    vct_type_metadata_cache: Option<Arc<VctTypeMetadataCache>>,
+    json_schema_cache: Option<Arc<JsonSchemaCache>>,
     client: Option<Arc<dyn HttpClient>>,
 }
 
@@ -239,6 +243,16 @@ impl OneCoreBuilder {
         self
     }
 
+    pub fn with_vct_type_metadata_cache(mut self, cache: Arc<VctTypeMetadataCache>) -> Self {
+        self.vct_type_metadata_cache = Some(cache);
+        self
+    }
+
+    pub fn with_json_schema_cache(mut self, cache: Arc<JsonSchemaCache>) -> Self {
+        self.json_schema_cache = Some(cache);
+        self
+    }
+
     pub fn build(self) -> Result<OneCore, ConfigError> {
         OneCore::new(
             self.data_provider_creator
@@ -250,6 +264,10 @@ impl OneCoreBuilder {
             self.providers,
             self.jsonld_caching_loader,
             self.client.unwrap_or(Arc::new(ReqwestClient::default())),
+            self.vct_type_metadata_cache
+                .expect("VCT type metadata cache is required"),
+            self.json_schema_cache
+                .expect("JSON schema cache is required"),
         )
     }
 }
@@ -265,6 +283,8 @@ impl OneCore {
         providers: OneCoreBuilderProviders,
         jsonld_caching_loader: Option<JsonLdCachingLoader>,
         client: Arc<dyn HttpClient>,
+        vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
+        json_schema_cache: Arc<JsonSchemaCache>,
     ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
@@ -510,6 +530,7 @@ impl OneCore {
                 ContextCache::new(jsonld_caching_loader.clone(), client.clone()),
                 providers.core_base_url,
             ),
+
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
@@ -525,6 +546,8 @@ impl OneCore {
                 did_method_provider,
                 config.clone(),
                 client.clone(),
+                vct_type_metadata_cache,
+                json_schema_cache,
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),

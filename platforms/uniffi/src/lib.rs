@@ -7,6 +7,8 @@ use error::{BleErrorWrapper, NativeKeyStorageError, SDKError};
 use one_core::config::core_config::{self, AppConfig, CacheEntityCacheType, CacheEntityConfig};
 use one_core::config::{ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::bluetooth_low_energy::BleError;
+use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
+use one_core::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use one_core::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_core::provider::credential_formatter::json_ld_bbsplus::JsonLdBbsplus;
 use one_core::provider::credential_formatter::json_ld_classic::JsonLdClassic;
@@ -386,6 +388,24 @@ fn initialize_core(
                 data_repository.to_owned(),
             );
 
+            let vct_type_metadata_cache = Arc::new(
+                initialize_vct_type_metadata_cache(
+                    core_config.cache_entities.to_owned(),
+                    data_repository.to_owned(),
+                    client.clone(),
+                )
+                .await,
+            );
+
+            let json_schema_cache = Arc::new(
+                initialize_json_schema_cache(
+                    core_config.cache_entities.to_owned(),
+                    data_repository.to_owned(),
+                    client.clone(),
+                )
+                .await,
+            );
+
             let formatter_provider_creator: FormatterProviderCreator = {
                 let caching_loader = caching_loader.clone();
                 let client = client.clone();
@@ -607,6 +627,8 @@ fn initialize_core(
                 .with_ble(ble_peripheral, ble_central)
                 .with_mqtt_client(Arc::new(RumqttcClient::default()))
                 .with_revocation_method_provider(revocation_method_creator)
+                .with_vct_type_metadata_cache(vct_type_metadata_cache)
+                .with_json_schema_cache(json_schema_cache)
                 .with_client(client)
                 .build()
                 .map_err(|err| SDKError::InitializationFailure(err.to_string()).into())
@@ -752,4 +774,78 @@ pub fn initialize_statuslist_loader(
         config.cache_refresh_timeout,
         config.refresh_after,
     )
+}
+
+pub async fn initialize_vct_type_metadata_cache(
+    cache_entities_config: CacheEntitiesConfig,
+    data_provider: Arc<dyn DataRepository>,
+    client: Arc<dyn HttpClient>,
+) -> VctTypeMetadataCache {
+    let config = cache_entities_config
+        .entities
+        .get("JSON_SCHEMA")
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        });
+
+    let remote_entity_storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            data_provider.get_remote_entity_cache_repository(),
+        )),
+        CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
+    };
+    let resolver = VctTypeMetadataResolver::new(client);
+
+    let cache = VctTypeMetadataCache::new(
+        Arc::new(resolver),
+        remote_entity_storage,
+        config.cache_size as usize,
+        config.cache_refresh_timeout,
+        config.refresh_after,
+    );
+
+    cache.initialize_from_static_resources().await;
+
+    cache
+}
+
+pub async fn initialize_json_schema_cache(
+    cache_entities_config: CacheEntitiesConfig,
+    data_provider: Arc<dyn DataRepository>,
+    client: Arc<dyn HttpClient>,
+) -> JsonSchemaCache {
+    let config = cache_entities_config
+        .entities
+        .get("JSON_SCHEMA")
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        });
+
+    let remote_entity_storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(
+            data_provider.get_remote_entity_cache_repository(),
+        )),
+        CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
+    };
+    let resolver = JsonSchemaResolver::new(client);
+
+    let cache = JsonSchemaCache::new(
+        Arc::new(resolver),
+        remote_entity_storage,
+        config.cache_size as usize,
+        config.cache_refresh_timeout,
+        config.refresh_after,
+    );
+
+    cache.initialize_from_static_resources().await;
+
+    cache
 }

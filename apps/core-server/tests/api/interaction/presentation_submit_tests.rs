@@ -90,7 +90,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let claims = credential.claims.clone().unwrap();
     let interaction = fixtures::create_interaction(
@@ -328,7 +328,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let claims = credential.claims.clone().unwrap();
     let interaction = fixtures::create_interaction(

@@ -15,6 +15,8 @@ use crate::model::credential_schema::{
     LogoProperties,
 };
 use crate::model::organisation::Organisation;
+use crate::provider::caching_loader::json_schema::JsonSchemaCache;
+use crate::provider::caching_loader::vct::VctTypeMetadataCache;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_claims_from_credential_definition, map_offered_claims_to_credential_schema,
@@ -35,6 +37,8 @@ use crate::util::oidc::map_from_oidc_format_to_core;
 pub struct HandleInvitationOperationsImpl {
     pub organisation: Organisation,
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
+    pub vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
+    pub json_schema_cache: Arc<JsonSchemaCache>,
     pub config: Arc<CoreConfig>,
     pub http_client: Arc<dyn HttpClient>,
 }
@@ -43,12 +47,16 @@ impl HandleInvitationOperationsImpl {
     pub fn new(
         organisation: Organisation,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
+        vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
+        json_schema_cache: Arc<JsonSchemaCache>,
         config: Arc<CoreConfig>,
         http_client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
             organisation,
             credential_schemas,
+            vct_type_metadata_cache,
+            json_schema_cache,
             config,
             http_client,
         }

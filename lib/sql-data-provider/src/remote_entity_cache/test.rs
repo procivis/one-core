@@ -74,6 +74,7 @@ pub async fn insert_json_ld_context(
         hit_counter: Set(hit_counter),
         r#type: Set(remote_entity_cache::CacheType::JsonLdContext),
         media_type: Set(None),
+        persistent: Set(false),
     }
     .insert(database)
     .await?;
@@ -105,6 +106,7 @@ async fn test_create_context() {
         hit_counter: 1234,
         r#type: CacheType::JsonLdContext,
         media_type: None,
+        persistent: false,
     };
 
     let result = setup.provider.create(context).await.unwrap();
@@ -163,6 +165,7 @@ async fn test_update_context_success() {
             hit_counter: 1234,
             r#type: CacheType::JsonLdContext,
             media_type: None,
+            persistent: false,
         })
         .await
         .unwrap();

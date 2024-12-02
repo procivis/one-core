@@ -1,0 +1,138 @@
+use std::sync::Arc;
+
+use time::OffsetDateTime;
+
+use super::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};
+use crate::provider::http_client::{self, HttpClient};
+use crate::provider::remote_entity_storage::{
+    RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
+};
+use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
+
+#[derive(Debug, thiserror::Error)]
+pub enum VctTypeMetadataResolverError {
+    #[error("Http client error: {0}")]
+    HttpClient(#[from] http_client::Error),
+
+    #[error("Failed deserializing response body: {0}")]
+    InvalidResponseBody(#[from] serde_json::Error),
+
+    #[error("Storage error: {0}")]
+    Storage(#[from] RemoteEntityStorageError),
+
+    #[error("Caching loader error: {0}")]
+    CachingLoader(#[from] CachingLoaderError),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum VctCacheError {
+    #[error(transparent)]
+    Resolver(#[from] VctTypeMetadataResolverError),
+
+    #[error("Failed deserializing value: {0}")]
+    InvalidValue(#[from] serde_json::Error),
+}
+
+pub struct VctTypeMetadataCache {
+    inner: CachingLoader<VctTypeMetadataResolverError>,
+    resolver: Arc<dyn Resolver<Error = VctTypeMetadataResolverError>>,
+}
+
+impl VctTypeMetadataCache {
+    pub fn new(
+        resolver: Arc<dyn Resolver<Error = VctTypeMetadataResolverError>>,
+        storage: Arc<dyn RemoteEntityStorage>,
+        cache_size: usize,
+        cache_refresh_timeout: time::Duration,
+        refresh_after: time::Duration,
+    ) -> Self {
+        Self {
+            inner: CachingLoader::new(
+                RemoteEntityType::VctMetadata,
+                storage,
+                cache_size,
+                cache_refresh_timeout,
+                refresh_after,
+            ),
+            resolver,
+        }
+    }
+
+    // Fills the empty cache with values from `resource/sd_jwt_vc_vcts.json`
+    // Panics if file contains invalid data
+    pub async fn initialize_from_static_resources(&self) {
+        let schemas = include_str!("../../../../../resource/sd_jwt_vc_vcts.json");
+
+        let vcts: Vec<SdJwtVcTypeMetadataResponseDTO> =
+            serde_json::from_str(schemas).expect("Invalid VCT type metadata resource file");
+
+        for vct in vcts {
+            let request = RemoteEntity {
+                last_modified: OffsetDateTime::now_utc(),
+                entity_type: self.inner.remote_entity_type,
+                value: serde_json::to_vec(&vct).unwrap(),
+                key: vct.vct,
+                hit_counter: 0,
+                media_type: None,
+                persistent: true,
+            };
+
+            self.inner
+                .storage
+                .insert(request)
+                .await
+                .expect("Failed inserting JSON schema");
+        }
+    }
+
+    pub async fn get(
+        &self,
+        vct: &str,
+    ) -> Result<Option<SdJwtVcTypeMetadataResponseDTO>, VctCacheError> {
+        if url::Url::parse(vct).is_ok() {
+            let (metadata, _) = self.inner.get(vct, self.resolver.clone()).await?;
+
+            Ok(Some(serde_json::from_slice(&metadata)?))
+        } else {
+            let metadata = self
+                .inner
+                .get_if_cached(vct)
+                .await?
+                .as_deref()
+                .map(serde_json::from_slice)
+                .transpose()?;
+
+            Ok(metadata)
+        }
+    }
+}
+
+pub struct VctTypeMetadataResolver {
+    client: Arc<dyn HttpClient>,
+}
+
+impl VctTypeMetadataResolver {
+    pub fn new(client: Arc<dyn HttpClient>) -> Self {
+        Self { client }
+    }
+}
+
+#[async_trait::async_trait]
+impl Resolver for VctTypeMetadataResolver {
+    type Error = VctTypeMetadataResolverError;
+
+    async fn do_resolve(
+        &self,
+        key: &str,
+        _last_modified: Option<&OffsetDateTime>,
+    ) -> Result<ResolveResult, Self::Error> {
+        let response = self.client.get(key).send().await?.error_for_status()?;
+
+        let _: SdJwtVcTypeMetadataResponseDTO = serde_json::from_slice(&response.body)?;
+
+        Ok(ResolveResult::NewValue {
+            content: response.body,
+            media_type: None,
+        })
+    }
+}

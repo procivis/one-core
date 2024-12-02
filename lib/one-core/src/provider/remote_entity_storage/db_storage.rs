@@ -15,9 +15,9 @@ pub struct DbStorage {
 }
 
 impl DbStorage {
-    pub fn new(json_ld_context_repository: Arc<dyn RemoteEntityCacheRepository>) -> Self {
+    pub fn new(remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>) -> Self {
         Self {
-            remote_entity_cache_repository: json_ld_context_repository,
+            remote_entity_cache_repository,
         }
     }
 }
@@ -93,6 +93,7 @@ fn db_context_to_storage_context(
         value: db_context.value,
         hit_counter: db_context.hit_counter,
         media_type: db_context.media_type,
+        persistent: db_context.persistent,
     }
 }
 
@@ -109,5 +110,6 @@ fn storage_context_to_db_context(
         hit_counter: storage_context.hit_counter,
         r#type: storage_context.entity_type.into(),
         media_type: storage_context.media_type,
+        persistent: storage_context.persistent,
     }
 }

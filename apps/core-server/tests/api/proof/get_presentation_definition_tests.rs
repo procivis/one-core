@@ -80,7 +80,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
     .await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
         proof.id
@@ -364,7 +364,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     .await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
         proof.id
@@ -604,7 +604,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
     .await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
         proof.id

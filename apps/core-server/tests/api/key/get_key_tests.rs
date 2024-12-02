@@ -15,7 +15,7 @@ async fn test_get_key_ok() {
     let key = fixtures::create_key(&db_conn, &organisation, None).await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
     let url = format!("{base_url}/api/key/v1/{}", key.id);
 
     let resp = utils::client()
@@ -43,7 +43,7 @@ async fn test_get_key_not_found() {
     let db_conn = fixtures::create_db(&config).await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
     let url = format!("{base_url}/api/key/v1/{}", Uuid::new_v4());
 
     let resp = utils::client()

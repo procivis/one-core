@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::provider::caching_loader::json_schema::JsonSchemaCache;
+use crate::provider::caching_loader::vct::VctTypeMetadataCache;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProviderExtra;
@@ -39,6 +41,8 @@ pub struct SSIHolderService {
     did_method_provider: Arc<dyn DidMethodProvider>,
     config: Arc<core_config::CoreConfig>,
     client: Arc<dyn HttpClient>,
+    vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
+    json_schema_cache: Arc<JsonSchemaCache>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -58,6 +62,8 @@ impl SSIHolderService {
         did_method_provider: Arc<dyn DidMethodProvider>,
         config: Arc<core_config::CoreConfig>,
         client: Arc<dyn HttpClient>,
+        vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
+        json_schema_cache: Arc<JsonSchemaCache>,
     ) -> Self {
         Self {
             credential_repository,
@@ -74,6 +80,8 @@ impl SSIHolderService {
             did_method_provider,
             config,
             client,
+            vct_type_metadata_cache,
+            json_schema_cache,
         }
     }
 }

@@ -179,7 +179,7 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
     .await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
     let url = format!("{base_url}/api/proof-request/v1");
 
     let resp = utils::client()
@@ -258,7 +258,7 @@ async fn test_create_proof_scan_to_verify_invalid_credential() {
     .await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
     let url = format!("{base_url}/api/proof-request/v1");
 
     let resp = utils::client()

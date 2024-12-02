@@ -50,6 +50,7 @@ pub struct RemoteEntity {
     pub hit_counter: u32,
 
     pub media_type: Option<String>,
+    pub persistent: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -57,6 +58,8 @@ pub enum RemoteEntityType {
     DidDocument,
     JsonLdContext,
     StatusListCredential,
+    VctMetadata,
+    JsonSchema,
 }
 
 #[derive(Clone, Error, Debug)]

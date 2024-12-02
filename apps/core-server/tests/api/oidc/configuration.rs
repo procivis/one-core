@@ -14,7 +14,7 @@ async fn test_get_issuer_configuration() {
     let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let url = format!(
         "{base_url}/ssi/oidc-issuer/v1/{}/.well-known/openid-configuration",

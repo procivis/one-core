@@ -16,6 +16,8 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
+use crate::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use crate::provider::credential_formatter::model::{CredentialSubject, DetailCredential};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -32,6 +34,7 @@ use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::key_storage::MockKeyStorage;
+use crate::provider::remote_entity_storage::MockRemoteEntityStorage;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -786,6 +789,9 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         .expect_get_verification_method_id_from_did_and_key()
         .returning(|_, _| Ok("did:key:dummy_verification_method_id#0".to_string()));
 
+    let client = Arc::new(ReqwestClient::default());
+    let remote_entity_storage = Arc::new(MockRemoteEntityStorage::new());
+
     SSIHolderService {
         credential_repository: Arc::new(MockCredentialRepository::new()),
         proof_repository: Arc::new(MockProofRepository::new()),
@@ -800,7 +806,21 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         protocol_provider: Arc::new(MockExchangeProtocolProviderExtra::new()),
         did_method_provider: Arc::new(did_method_provider),
         config: Arc::new(generic_config().core),
-        client: Arc::new(ReqwestClient::default()),
+        client: client.clone(),
+        vct_type_metadata_cache: Arc::new(VctTypeMetadataCache::new(
+            Arc::new(VctTypeMetadataResolver::new(client.clone())),
+            remote_entity_storage.clone(),
+            0,
+            Duration::seconds(60),
+            Duration::seconds(60),
+        )),
+        json_schema_cache: Arc::new(JsonSchemaCache::new(
+            Arc::new(JsonSchemaResolver::new(client)),
+            remote_entity_storage,
+            0,
+            Duration::seconds(60),
+            Duration::seconds(60),
+        )),
     }
 }
 

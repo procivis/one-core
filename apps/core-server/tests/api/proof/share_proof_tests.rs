@@ -80,7 +80,7 @@ async fn test_share_proof_success() {
     .await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let _handle = run_server(listener, config, &db_conn).await;
 
     let url = format!("{base_url}/api/proof-request/v1/{}/share", proof.id);
     let resp = utils::client()
