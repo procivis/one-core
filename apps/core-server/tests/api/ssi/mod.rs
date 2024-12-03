@@ -6,6 +6,7 @@ mod get_json_ld_context;
 mod get_proof_schema;
 mod get_revocation_list_tests;
 mod get_sd_jwt_vc_metadata;
+mod get_trust_entity;
 mod get_trust_list;
 mod oid4vci_get_credential_offer;
 mod oid4vci_presentation_definition;

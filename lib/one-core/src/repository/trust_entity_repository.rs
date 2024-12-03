@@ -9,7 +9,7 @@ use crate::service::trust_entity::dto::{GetTrustEntitiesResponseDTO, ListTrustEn
 pub trait TrustEntityRepository: Send + Sync {
     async fn create(&self, entity: TrustEntity) -> Result<TrustEntityId, DataLayerError>;
 
-    async fn get_by_did_id(&self, did_id: DidId) -> Result<Vec<TrustEntity>, DataLayerError>;
+    async fn get_by_did_id(&self, did_id: DidId) -> Result<Option<TrustEntity>, DataLayerError>;
 
     async fn get_by_trust_anchor_id(
         &self,

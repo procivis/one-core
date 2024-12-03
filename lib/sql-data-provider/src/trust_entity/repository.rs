@@ -49,14 +49,21 @@ impl TrustEntityRepository for TrustEntityProvider {
         Ok(value.id)
     }
 
-    async fn get_by_did_id(&self, did_id: DidId) -> Result<Vec<TrustEntity>, DataLayerError> {
-        let entities = trust_entity::Entity::find()
+    async fn get_by_did_id(&self, did_id: DidId) -> Result<Option<TrustEntity>, DataLayerError> {
+        let Some((entity_model, trust_anchor)) = trust_entity::Entity::find()
             .filter(trust_entity::Column::DidId.eq(did_id))
-            .all(&self.db)
+            .find_also_related(trust_anchor::Entity)
+            .one(&self.db)
             .await
-            .map_err(to_data_layer_error)?;
+            .map_err(to_data_layer_error)?
+        else {
+            return Ok(None);
+        };
 
-        Ok(entities.into_iter().map(Into::into).collect())
+        let mut entity = TrustEntity::from(entity_model);
+        entity.trust_anchor = trust_anchor.map(Into::into);
+
+        Ok(Some(entity))
     }
 
     async fn get_by_trust_anchor_id(

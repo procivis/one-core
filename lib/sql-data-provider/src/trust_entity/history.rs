@@ -45,7 +45,7 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
         Ok(trust_entity_id)
     }
 
-    async fn get_by_did_id(&self, did_id: DidId) -> Result<Vec<TrustEntity>, DataLayerError> {
+    async fn get_by_did_id(&self, did_id: DidId) -> Result<Option<TrustEntity>, DataLayerError> {
         self.inner.get_by_did_id(did_id).await
     }
 

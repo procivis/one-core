@@ -99,11 +99,11 @@ impl TrustEntityService {
         let did =
             get_or_create_did(&*self.did_repository, &None, &did_value, DidRole::Verifier).await?;
 
-        if !self
+        if self
             .trust_entity_repository
             .get_by_did_id(did.id)
             .await?
-            .is_empty()
+            .is_some()
         {
             return Err(BusinessLogicError::TrustEntityAlreadyPresent.into());
         }
@@ -252,8 +252,6 @@ impl TrustEntityService {
             .trust_entity_repository
             .get_by_did_id(did.id)
             .await?
-            .first()
-            .cloned()
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::TrustEntity(did_id_as_uuid.into()),
             ))?;
@@ -326,14 +324,9 @@ impl TrustEntityService {
             .await?
             .ok_or(EntityNotFoundError::DidValue(did_value))?;
 
-        let entities = self.trust_entity_repository.get_by_did_id(did.id).await?;
-        if entities.len() != 1 {
+        let Some(entity) = self.trust_entity_repository.get_by_did_id(did.id).await? else {
             return Err(BusinessLogicError::TrustEntityHasDuplicates.into());
-        }
-
-        let entity = entities
-            .first()
-            .ok_or(ServiceError::MappingError("first is None".to_string()))?;
+        };
 
         self.update_trust_entity(entity.clone(), request).await?;
 
