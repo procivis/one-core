@@ -288,23 +288,7 @@ impl JsonLdBbsplus {
         ]
         .concat();
 
-        let bbs_messages: Vec<Vec<u8>> = hash_data
-            .transformed_document
-            .non_mandatory
-            .value
-            .iter()
-            .map(|entry| entry.entry.as_bytes().to_vec())
-            .collect();
-
-        let bbs_input = BbsInput {
-            header: bbs_header.clone(),
-            messages: bbs_messages.clone(),
-        };
-
-        let signature_input = serde_json::to_vec(&bbs_input).map_err(|e| {
-            FormatterError::CouldNotSign(format!("Could not serialize bbs_input: {e}"))
-        })?;
-
+        let signature_input = prepare_signature_input(bbs_header.clone(), hash_data)?;
         let bbs_signature = auth_fn
             .sign(&signature_input)
             .await
@@ -331,6 +315,23 @@ impl JsonLdBbsplus {
         // For multibase output
         Ok(format!("u{b64}"))
     }
+}
+
+pub(crate) fn prepare_signature_input(
+    header: Vec<u8>,
+    hash_data: &HashData,
+) -> Result<Vec<u8>, FormatterError> {
+    let messages: Vec<Vec<u8>> = hash_data
+        .transformed_document
+        .non_mandatory
+        .value
+        .iter()
+        .map(|entry| entry.entry.as_bytes().to_vec())
+        .collect();
+
+    let signature_input = serde_json::to_vec(&BbsInput { header, messages })
+        .map_err(|e| FormatterError::CouldNotSign(format!("Could not serialize bbs_input: {e}")))?;
+    Ok(signature_input)
 }
 
 fn prepare_mandatory_pointers(credential_status: &[CredentialStatus]) -> Vec<String> {

@@ -113,6 +113,11 @@ impl TryFrom<ciborium::Value> for BbsProofComponents {
     }
 }
 
+pub enum BbsProofType {
+    BaseProof(BbsProofComponents),
+    DerivedProof(BbsDerivedProofComponents),
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(into = "ciborium::Value")]
 #[serde(try_from = "ciborium::Value")]

@@ -8,17 +8,21 @@ use super::super::json_ld::model::LdCredential;
 use super::JsonLdBbsplus;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld;
-use crate::provider::credential_formatter::json_ld::model::DEFAULT_ALLOWED_CONTEXTS;
+use crate::provider::credential_formatter::json_ld::model::{LdProof, DEFAULT_ALLOWED_CONTEXTS};
+use crate::provider::credential_formatter::json_ld_bbsplus::base_proof::prepare_signature_input;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::{
-    BbsDerivedProofComponents, CBOR_PREFIX_DERIVED,
+    BbsDerivedProofComponents, BbsProofComponents, BbsProofType, CBOR_PREFIX_BASE,
+    CBOR_PREFIX_DERIVED,
 };
-use crate::provider::credential_formatter::model::{DetailCredential, VerificationFn};
+use crate::provider::credential_formatter::model::{
+    DetailCredential, TokenVerifier, VerificationFn,
+};
 
 impl JsonLdBbsplus {
     pub(super) async fn verify(
         &self,
         credential: &str,
-        _verification_fn: VerificationFn,
+        verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
         let mut ld_credential: LdCredential = serde_json::from_str(credential).map_err(|e| {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
@@ -55,7 +59,82 @@ impl JsonLdBbsplus {
 
         let canonical_proof_config =
             json_ld::canonize_any(&ld_proof, self.caching_loader.to_owned()).await?;
+        let proof_components = extract_proof_value_components(&ld_proof_value)?;
 
+        match proof_components {
+            BbsProofType::BaseProof(proof_components) => {
+                self.verify_base_proof(
+                    ld_credential,
+                    ld_proof,
+                    proof_components,
+                    canonical_proof_config,
+                    verification,
+                )
+                .await
+            }
+            BbsProofType::DerivedProof(proof_components) => {
+                self.verify_derived_proof(
+                    ld_credential,
+                    proof_components,
+                    &ld_proof,
+                    canonical_proof_config,
+                )
+                .await
+            }
+        }
+    }
+
+    async fn verify_base_proof(
+        &self,
+        ld_credential: LdCredential,
+        ld_proof: LdProof,
+        proof_components: BbsProofComponents,
+        canonical_proof_config: String,
+        verification: VerificationFn,
+    ) -> Result<DetailCredential, FormatterError> {
+        let canonical =
+            json_ld::canonize_any(&ld_credential, self.caching_loader.to_owned()).await?;
+        let identifier_map =
+            self.create_blank_node_identifier_map(&canonical, &proof_components.hmac_key)?;
+
+        let transformed = self.transform_canonical(&identifier_map, &canonical)?;
+        let grouped = self.create_grouped_transformation(&transformed)?;
+        let hash_data = self.prepare_proof_hashes(&canonical_proof_config, &grouped)?;
+
+        let bbs_header = [
+            hash_data.proof_config_hash.as_slice(),
+            hash_data.mandatory_hash.as_slice(),
+        ]
+        .concat();
+
+        if proof_components.bbs_header != bbs_header {
+            return Err(FormatterError::CouldNotVerify(
+                "Invalid bbs header".to_string(),
+            ));
+        }
+
+        let signature_input = prepare_signature_input(bbs_header, &hash_data)?;
+        let credential: DetailCredential = ld_credential.try_into()?;
+        verification
+            .verify(
+                credential.issuer_did.clone(),
+                Some(&ld_proof.verification_method),
+                "BBS_PLUS",
+                &signature_input,
+                &proof_components.bbs_signature,
+            )
+            .await
+            .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
+        Ok(credential)
+    }
+
+    async fn verify_derived_proof(
+        &self,
+        ld_credential: LdCredential,
+        proof_components: BbsDerivedProofComponents,
+        ld_proof: &LdProof,
+        canonical_proof_config: String,
+    ) -> Result<DetailCredential, FormatterError> {
         let hashing_function = "sha-256";
         let hasher = self.crypto.get_hasher(hashing_function).map_err(|_| {
             FormatterError::CouldNotVerify(format!("Hasher {} unavailable", hashing_function))
@@ -64,8 +143,6 @@ impl JsonLdBbsplus {
         let transformed_proof_config_hash = hasher
             .hash(canonical_proof_config.as_bytes())
             .map_err(|e| FormatterError::CouldNotVerify(format!("Hasher error: `{}`", e)))?;
-
-        let proof_components = extract_proof_value_components(&ld_proof_value)?;
 
         let identifier_map: HashMap<String, String> =
             decompress_label_map(&proof_components.compressed_label_map);
@@ -169,9 +246,7 @@ fn decompress_label_map(compressed_label_map: &HashMap<usize, usize>) -> HashMap
         .collect()
 }
 
-fn extract_proof_value_components(
-    proof_value: &str,
-) -> Result<BbsDerivedProofComponents, FormatterError> {
+fn extract_proof_value_components(proof_value: &str) -> Result<BbsProofType, FormatterError> {
     let Some(proof_value) = proof_value.strip_prefix('u') else {
         return Err(FormatterError::CouldNotVerify(
             "Only base64url multibase encoding is supported for proof".to_string(),
@@ -181,14 +256,21 @@ fn extract_proof_value_components(
     let proof_decoded = Base64UrlSafeNoPadding::decode_to_vec(proof_value, None)
         .map_err(|e| FormatterError::CouldNotVerify(format!("Base64url decoding failed: {}", e)))?;
 
-    let Some(proof_decoded) = proof_decoded.strip_prefix(&CBOR_PREFIX_DERIVED) else {
-        return Err(FormatterError::CouldNotVerify(
-            "Expected derived proof prefix".to_string(),
-        ));
+    if let Some(proof_decoded) = proof_decoded.strip_prefix(&CBOR_PREFIX_BASE) {
+        let components = ciborium::de::from_reader(proof_decoded).map_err(|e| {
+            FormatterError::CouldNotVerify(format!("CBOR deserialization failed: {e}"))
+        })?;
+        return Ok(BbsProofType::BaseProof(components));
     };
 
-    let components = ciborium::de::from_reader(proof_decoded)
-        .map_err(|e| FormatterError::CouldNotVerify(format!("CBOR deserialization failed: {e}")))?;
+    if let Some(proof_decoded) = proof_decoded.strip_prefix(&CBOR_PREFIX_DERIVED) {
+        let components = ciborium::de::from_reader(proof_decoded).map_err(|e| {
+            FormatterError::CouldNotVerify(format!("CBOR deserialization failed: {e}"))
+        })?;
+        return Ok(BbsProofType::DerivedProof(components));
+    };
 
-    Ok(components)
+    Err(FormatterError::CouldNotVerify(
+        "Expected proof prefix".to_string(),
+    ))
 }

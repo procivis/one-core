@@ -5,16 +5,21 @@ use std::sync::Arc;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indexmap::{indexset, IndexSet};
 use mockall::predicate::eq;
-use one_crypto::{MockCryptoProvider, MockHasher};
+use one_crypto::hasher::sha256::SHA256;
+use one_crypto::signer::bbs::BBSSigner;
+use one_crypto::{CryptoProviderImpl, Hasher, MockCryptoProvider, MockHasher, Signer};
 use serde_json::json;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;
+use uuid::Uuid;
 
 use super::derived_proof::find_selective_indices;
 use super::model::{GroupEntry, TransformedEntry};
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::did::KeyRole;
+use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::is_context_list_valid;
 use crate::provider::credential_formatter::json_ld::model::{
     ContextType, LdCredential, LdCredentialSubject,
@@ -27,12 +32,21 @@ use crate::provider::credential_formatter::model::{
     MockSignatureProvider, PublishedClaim, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
-use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
+use crate::provider::did_method::resolver::DidCachingLoader;
+use crate::provider::did_method::DidMethod;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::http_client::{HttpClient, MockHttpClient};
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_algorithm::bbs::BBS;
+use crate::provider::key_algorithm::provider::{
+    KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
+};
+use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
+use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
+use crate::provider::remote_entity_storage::RemoteEntityType;
+use crate::util::key_verification::KeyVerification;
 
 #[tokio::test]
 async fn test_canonize_any() {
@@ -442,6 +456,236 @@ async fn test_format_with_layout() {
 async fn test_format_with_layout_disabled() {
     let token = create_token(false).await;
     assert!(token["credentialSchema"]["metadata"].is_null());
+}
+
+#[tokio::test]
+async fn test_format_extract_round_trip() {
+    let now = OffsetDateTime::now_utc();
+    let params = Params {
+        leeway: Duration::seconds(60),
+        embed_layout_properties: Some(false),
+        allowed_contexts: None,
+    };
+
+    let crypto = Arc::new(CryptoProviderImpl::new(
+        HashMap::from_iter(vec![(
+            "sha-256".to_string(),
+            Arc::new(SHA256 {}) as Arc<dyn Hasher>,
+        )]),
+        HashMap::from_iter(vec![(
+            "BBS".to_string(),
+            Arc::new(BBSSigner {}) as Arc<dyn Signer>,
+        )]),
+    ));
+
+    let caching_loader = DidCachingLoader::new(
+        RemoteEntityType::DidDocument,
+        Arc::new(InMemoryStorage::new(HashMap::new())),
+        100,
+        Duration::minutes(1),
+        Duration::minutes(1),
+    );
+
+    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+        HashMap::from_iter(vec![(
+            "BBS_PLUS".to_owned(),
+            Arc::new(BBS) as Arc<dyn KeyAlgorithm>,
+        )]),
+        crypto.clone(),
+    ));
+
+    let key_raw = BBSSigner::generate_key_pair();
+    let key = Key {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        public_key: key_raw.public.clone(),
+        name: "issuer key".to_string(),
+        key_reference: vec![],
+        storage_type: "INTERNAL".to_string(),
+        key_type: "BBS_PLUS".to_string(),
+        organisation: None,
+    };
+    let issuer_did = JWKDidMethod::new(key_algorithm_provider.clone())
+        .create(None, &None, Some(vec![key]))
+        .await
+        .unwrap();
+
+    let credential_data = CredentialData {
+        id: None,
+        issuance_date: now,
+        valid_for: Duration::seconds(10),
+        claims: vec![PublishedClaim {
+            key: "a/b/c".to_string(),
+            value: PublishedClaimValue::String("15".to_string()),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        }],
+        issuer_did: Issuer::Url(issuer_did.to_string().parse().unwrap()),
+        status: vec![],
+        schema: CredentialSchemaData {
+            id: Some("credential-schema-id".to_string()),
+            r#type: Some("FallbackSchema2024".to_string()),
+            context: None,
+            name: "credential-schema-name".to_string(),
+            metadata: None,
+        },
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
+        related_resource: None,
+    };
+
+    let did_method_provider = Arc::new(DidMethodProviderImpl::new(
+        caching_loader,
+        HashMap::from_iter(vec![(
+            "JWK".to_owned(),
+            Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
+        )]),
+        None,
+    ));
+    let formatter = JsonLdBbsplus::new(
+        params,
+        crypto,
+        Some("http://base_url".into()),
+        did_method_provider.clone(),
+        key_algorithm_provider.clone(),
+        prepare_caching_loader(),
+        Arc::new(ReqwestClient::default()),
+    );
+
+    let mut auth_fn = MockSignatureProvider::new();
+    let public_key_clone = key_raw.public.clone();
+    let private_key_clone = key_raw.private.clone();
+    auth_fn.expect_sign().returning(move |msg| {
+        BBSSigner {}.sign(msg, &public_key_clone.clone(), &private_key_clone.clone())
+    });
+    auth_fn
+        .expect_get_key_id()
+        .returning(move || Some(format!("{}#0", issuer_did)));
+    let public_key_clone = key_raw.public.clone();
+    auth_fn
+        .expect_get_public_key()
+        .returning(move || public_key_clone.clone());
+
+    let holder_did =
+        &DidValue::from_str("did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX").unwrap();
+    let key_verification = Box::new(KeyVerification {
+        key_algorithm_provider,
+        did_method_provider,
+        key_role: KeyRole::AssertionMethod,
+    });
+
+    let token = formatter
+        .format(
+            credential_data,
+            Some(holder_did),
+            "BBS_PLUS",
+            vec![],
+            vec![],
+            Box::new(auth_fn),
+            false,
+        )
+        .await
+        .unwrap();
+    let result = formatter
+        .extract_credentials(token.as_str(), key_verification)
+        .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_extract_invalid_signature() {
+    let params = Params {
+        leeway: Duration::seconds(60),
+        embed_layout_properties: Some(false),
+        allowed_contexts: None,
+    };
+
+    let crypto = Arc::new(CryptoProviderImpl::new(
+        HashMap::from_iter(vec![(
+            "sha-256".to_string(),
+            Arc::new(SHA256 {}) as Arc<dyn Hasher>,
+        )]),
+        HashMap::from_iter(vec![(
+            "BBS".to_string(),
+            Arc::new(BBSSigner {}) as Arc<dyn Signer>,
+        )]),
+    ));
+
+    let caching_loader = DidCachingLoader::new(
+        RemoteEntityType::DidDocument,
+        Arc::new(InMemoryStorage::new(HashMap::new())),
+        100,
+        Duration::minutes(1),
+        Duration::minutes(1),
+    );
+
+    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+        HashMap::from_iter(vec![(
+            "BBS_PLUS".to_owned(),
+            Arc::new(BBS) as Arc<dyn KeyAlgorithm>,
+        )]),
+        crypto.clone(),
+    ));
+
+    let did_method_provider = Arc::new(DidMethodProviderImpl::new(
+        caching_loader,
+        HashMap::from_iter(vec![(
+            "JWK".to_owned(),
+            Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
+        )]),
+        None,
+    ));
+    let formatter = JsonLdBbsplus::new(
+        params,
+        crypto,
+        Some("http://base_url".into()),
+        did_method_provider.clone(),
+        key_algorithm_provider.clone(),
+        prepare_caching_loader(),
+        Arc::new(ReqwestClient::default()),
+    );
+
+    let key_verification = Box::new(KeyVerification {
+        key_algorithm_provider,
+        did_method_provider,
+        key_role: KeyRole::AssertionMethod,
+    });
+
+    let token = json!({
+        "@context": [],
+        "type": [],
+        "issuer": "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJCbHMxMjM4MUcyIiwieCI6IkQ3ejRnRlpMcnVYR2wwMWRvX2F3OTVPUnZSOW82alpLMHRzSjVZaTI2a1pWVUZiOXlsUEtMWi14R1Rhb3Q1YVNDbUFaXzRMOUVmbXhwdjJsZTRZYzdmTVFROVQzeVZzTlNzNVJRYWw1M09ja0hzQklwY0g4SS1oaFNWSU1wWjlNIiwieSI6IkNPYV9DNm9LYmlsVTRCZ3hWa0tHM0MtcXAyZ3YzaWlNTGF3dXNhVUlicTVYVG1NNnVNQW1lUTJuajFJSmxLUERGTG1kRGtKbDRnSjFMOUg3bXpuWGloVXVDb3hvSkdhSWplUzI0Wm5wNG1MV1hlejB3cUw1SnlNN2tlRWxSTTg4In0",
+        "validFrom": "2024-12-02T13:05:22.055897Z",
+        "credentialSubject": {
+            "id": "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX",
+            "a": {
+                "b": {
+                    "c": "15"
+                }
+            }
+        },
+        "proof": {
+            "type": "DataIntegrityProof",
+            "created": "2024-12-02T13:05:22.067433Z",
+            "cryptosuite": "bbs-2023",
+            "verificationMethod": "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJCbHMxMjM4MUcyIiwieCI6IkQ3ejRnRlpMcnVYR2wwMWRvX2F3OTVPUnZSOW82alpLMHRzSjVZaTI2a1pWVUZiOXlsUEtMWi14R1Rhb3Q1YVNDbUFaXzRMOUVmbXhwdjJsZTRZYzdmTVFROVQzeVZzTlNzNVJRYWw1M09ja0hzQklwY0g4SS1oaFNWSU1wWjlNIiwieSI6IkNPYV9DNm9LYmlsVTRCZ3hWa0tHM0MtcXAyZ3YzaWlNTGF3dXNhVUlicTVYVG1NNnVNQW1lUTJuajFJSmxLUERGTG1kRGtKbDRnSjFMOUg3bXpuWGloVXVDb3hvSkdhSWplUzI0Wm5wNG1MV1hlejB3cUw1SnlNN2tlRWxSTTg4In0#0",
+            "proofPurpose": "assertionMethod",
+            "proofValue": "u2V0ChVhQt0PoKLugKk2IOgLGEjRaJpAM0ZXp0S_OLZ0oGDgRkeoVVDmMQ4WfV0baLLzNeuz9JkNFFrodxhmzbaC0kpmfAv16eE7GHneKuLM1p2qjlHNYQOOwxEKY_BwUmvv0yJlvuSQnrkHkZJuTTKSVmRt4UrhV47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFVYYI-8-IBWS67lxpdNXaP2sPeTkb0faOo2StLbCeWItupGVVBW_cpTyi2fsRk2qLeWkgpgGf-C_RH5sab9pXuGHO3zEEPU98lbDUrOUUGpedznJB7ASKXB_CPoYUlSDKWfTFgg-i5bSrA9inuqti9QYAd1OtpEBf-xZfktzJkpcaLh-j2DZy9pc3N1ZXJtL2lzc3VhbmNlRGF0ZWUvdHlwZQ"
+        },
+        "credentialSchema": {
+            "id": "credential-schema-id",
+            "type": "FallbackSchema2024"
+        }
+    });
+    let result = formatter
+        .extract_credentials(&token.to_string(), key_verification)
+        .await;
+
+    assert!(matches!(result, Err(FormatterError::CouldNotVerify(_))));
 }
 
 async fn create_token(include_layout: bool) -> serde_json::Value {

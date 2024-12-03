@@ -624,23 +624,15 @@ impl OpenID4VCHTTP {
                 ExchangeProtocolError::Failed(format!("{} formatter not found", schema.format))
             })?;
 
-        // TODO: Implement credential extraction _with_ verification for JSON_LD_BBSPLUS too.
-        let response_credential = if real_format == "JSON_LD_BBSPLUS" {
-            formatter
-                .extract_credentials_unverified(&response_value.credential)
-                .await
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
-        } else {
-            let verification_fn = Box::new(KeyVerification {
-                key_algorithm_provider: self.key_algorithm_provider.clone(),
-                did_method_provider: self.did_method_provider.clone(),
-                key_role: KeyRole::AssertionMethod,
-            });
-            formatter
-                .extract_credentials(&response_value.credential, verification_fn)
-                .await
-                .map_err(|e| ExchangeProtocolError::CredentialVerificationFailed(e.into()))?
-        };
+        let verification_fn = Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+        });
+        let response_credential = formatter
+            .extract_credentials(&response_value.credential, verification_fn)
+            .await
+            .map_err(|e| ExchangeProtocolError::CredentialVerificationFailed(e.into()))?;
 
         let layout = schema.layout_properties.clone();
 

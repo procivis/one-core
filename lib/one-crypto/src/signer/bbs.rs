@@ -35,25 +35,14 @@ impl Signer for BBSSigner {
         let public_key = PublicKey::from_vec(public_key)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 
-        // Here we accept BbsInput if serialization succeeded or try to use the input
-        // just as plain key. The latter is used for e.g. revocation lists signature.
-        let input: BbsInput = if let Ok(parsed_input) = serde_json::from_slice(input) {
-            parsed_input
-        } else {
-            BbsInput {
-                header: input.to_owned(),
-                messages: vec![],
-            }
-        };
-
+        let input = parse_bbs_input(input);
         let signature = sign(&BbsSignRequest {
             secret_key: &secret_key.to_bytes(),
             public_key: &public_key.to_octets(),
-            header: Some(input.header),
+            header: Some(input.header.clone()),
             messages: Some(&input.messages),
         })
         .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
-
         Ok(signature.to_vec())
     }
 
@@ -61,10 +50,11 @@ impl Signer for BBSSigner {
         let public_key = PublicKey::from_vec(public_key)
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 
+        let input = parse_bbs_input(input);
         let result = verify(&BbsVerifyRequest {
             public_key: &public_key.to_octets(),
-            header: Some(input.to_vec()),
-            messages: None,
+            header: Some(input.header.clone()),
+            messages: Some(&input.messages),
             signature: signature
                 .try_into()
                 .map_err(|_| SignerError::InvalidSignature)?,
@@ -76,6 +66,19 @@ impl Signer for BBSSigner {
         }
 
         Ok(())
+    }
+}
+
+/// The BBS signature input is structured. Try to parse it, otherwise use the input
+/// just as plain key. The latter is used for e.g. revocation lists signature.
+fn parse_bbs_input(input: &[u8]) -> BbsInput {
+    if let Ok(parsed_input) = serde_json::from_slice(input) {
+        parsed_input
+    } else {
+        BbsInput {
+            header: input.to_owned(),
+            messages: vec![],
+        }
     }
 }
 
