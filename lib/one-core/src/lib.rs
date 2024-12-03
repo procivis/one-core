@@ -352,6 +352,7 @@ impl OneCore {
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
 
         let trust_managers = crate::provider::trust_management::provider::from_config(
+            client.clone(),
             &mut core_config.trust_management,
         )?;
         let trust_management_provider = Arc::new(TrustManagementProviderImpl::new(trust_managers));

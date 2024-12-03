@@ -23,6 +23,7 @@ use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProvi
 use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
 use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::error::RevocationError;
+use crate::provider::trust_management::error::TrustManagementError;
 use crate::repository::error::DataLayerError;
 use crate::util::oidc::FormatError;
 
@@ -108,6 +109,9 @@ pub enum ServiceError {
 
     #[error("Revocation error: {0}")]
     Revocation(#[from] RevocationError),
+
+    #[error("Trust management error `{0}`")]
+    TrustManagementError(#[from] TrustManagementError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -311,6 +315,9 @@ pub enum BusinessLogicError {
 
     #[error("Trust anchor type is not SIMPLE_TRUST_LIST")]
     TrustAnchorTypeIsNotSimpleTrustList,
+
+    #[error("No trust entity found for the given did: {0}")]
+    MissingTrustEntity(DidId),
 
     #[error("Error while importing proof request schema: {0}")]
     ProofSchemaImport(#[from] ProofSchemaImportError),
@@ -930,6 +937,12 @@ pub enum ErrorCode {
     #[strum(to_string = "Not initialized")]
     BR_0184,
 
+    #[strum(to_string = "Unable to resolve trust entity by did")]
+    BR_0185,
+
+    #[strum(to_string = "No trust entity found for the given did")]
+    BR_0186,
+
     #[strum(to_string = "Trust anchor is disabled")]
     BR_0187,
 
@@ -982,6 +995,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::DidMdlValidationError(error) => error.error_code(),
             Self::ValidationError(_) | Self::Other(_) => ErrorCode::BR_0000,
             Self::Revocation(_) => ErrorCode::BR_0101,
+            Self::TrustManagementError(_) => ErrorCode::BR_0185,
         }
     }
 }
@@ -1077,6 +1091,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::MultipleMatchingTrustAnchors => ErrorCode::BR_0179,
             Self::TrustEntityHasDuplicates => ErrorCode::BR_0180,
             Self::TrustAnchorIsDisabled => ErrorCode::BR_0187,
+            Self::MissingTrustEntity(_) => ErrorCode::BR_0186,
         }
     }
 }

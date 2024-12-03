@@ -183,6 +183,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(organisation::controller::get_organisation),
         )
         .route("/api/did/v1/:id", get(did::controller::get_did))
+        .route(
+            "/api/did/v1/:id/trust-entity",
+            get(did::controller::get_did_trust_entity),
+        )
         .route("/api/did/v1/:id", patch(did::controller::update_did))
         .route("/api/did/v1", get(did::controller::get_did_list))
         .route("/api/did/v1", post(did::controller::post_did))

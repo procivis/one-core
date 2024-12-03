@@ -29,6 +29,7 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             did::controller::get_did,
             did::controller::post_did,
             did::controller::update_did,
+            did::controller::get_did_trust_entity,
             did_resolver::controller::resolve_did,
 
             credential_schema::controller::get_credential_schema_list,

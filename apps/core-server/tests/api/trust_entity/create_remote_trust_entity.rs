@@ -6,6 +6,7 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -27,12 +28,12 @@ async fn test_create_remote_trust_entity() {
     let anchor = context
         .db
         .trust_anchors
-        .create(
-            "name",
-            "SIMPLE_TRUST_LIST",
-            false,
-            format!("{}/ssi/trust/v1/{}", mock_server.uri(), Uuid::new_v4()),
-        )
+        .create(TestingTrustAnchorParams {
+            name: "name".to_string(),
+            publisher_reference: format!("{}/ssi/trust/v1/{}", mock_server.uri(), Uuid::new_v4()),
+            is_publisher: false,
+            ..Default::default()
+        })
         .await;
 
     // WHEN

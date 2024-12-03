@@ -9,6 +9,7 @@ use super::dto::{
 use crate::model::did::Did;
 use crate::model::trust_anchor::TrustAnchor;
 use crate::model::trust_entity::{TrustEntity, TrustEntityState, UpdateTrustEntityRequest};
+use crate::provider::trust_management::model::TrustEntityByDid;
 use crate::service::error::{ServiceError, ValidationError};
 
 pub(super) fn trust_entity_from_request(
@@ -152,4 +153,25 @@ pub(super) fn update_request_from_dto(
         terms_url: request.terms_url,
         role: request.role,
     })
+}
+
+pub(super) fn trust_entity_from_partial_and_did_and_anchor(
+    trust_entity: TrustEntityByDid,
+    did: Did,
+    trust_anchor: TrustAnchor,
+) -> GetTrustEntityResponseDTO {
+    GetTrustEntityResponseDTO {
+        id: trust_entity.id,
+        name: trust_entity.name,
+        created_date: trust_entity.created_date,
+        last_modified: trust_entity.last_modified,
+        logo: trust_entity.logo,
+        website: trust_entity.website,
+        terms_url: trust_entity.terms_url,
+        privacy_url: trust_entity.privacy_url,
+        role: trust_entity.role,
+        state: trust_entity.state,
+        did: did.into(),
+        trust_anchor: trust_anchor.into(),
+    }
 }

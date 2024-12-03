@@ -6,6 +6,7 @@ use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 
 #[tokio::test]
 async fn test_create_trust_entity() {
@@ -15,7 +16,7 @@ async fn test_create_trust_entity() {
     let anchor = context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", true, "reference".to_string())
+        .create(TestingTrustAnchorParams::default())
         .await;
 
     // WHEN
@@ -64,7 +65,10 @@ async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
     let anchor = context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", false, "reference".to_string())
+        .create(TestingTrustAnchorParams {
+            is_publisher: false,
+            ..Default::default()
+        })
         .await;
 
     // WHEN
@@ -87,12 +91,7 @@ async fn test_patch_trust_entity() {
     let anchor = context
         .db
         .trust_anchors
-        .create(
-            "trust-anchor",
-            "SIMPLE_TRUST_LIST",
-            true,
-            "reference".to_string(),
-        )
+        .create(TestingTrustAnchorParams::default())
         .await;
 
     let trust_entity = context

@@ -144,6 +144,8 @@ pub enum ErrorCode {
     BR_0181,
     BR_0183,
     BR_0184,
+    BR_0185,
+    BR_0186,
     BR_0187,
     BR_0188,
 }

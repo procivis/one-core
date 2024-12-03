@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use crate::utils::api_clients::trust_entity::ListFilters;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -14,13 +15,19 @@ async fn test_list_trust_entities() {
     let ta = context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", true, "reference1".to_string())
+        .create(TestingTrustAnchorParams {
+            name: "name1".to_string(),
+            ..Default::default()
+        })
         .await;
 
     let ta2 = context
         .db
         .trust_anchors
-        .create("name2", "SIMPLE_TRUST_LIST", true, "reference2".to_string())
+        .create(TestingTrustAnchorParams {
+            name: "name2".to_string(),
+            ..Default::default()
+        })
         .await;
 
     let entity1 = context
@@ -92,13 +99,19 @@ async fn test_list_trust_entities_filter_trust_anchor() {
     let ta = context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", true, "reference1".to_string())
+        .create(TestingTrustAnchorParams {
+            name: "name1".to_string(),
+            ..Default::default()
+        })
         .await;
 
     let ta2 = context
         .db
         .trust_anchors
-        .create("name2", "SIMPLE_TRUST_LIST", true, "reference2".to_string())
+        .create(TestingTrustAnchorParams {
+            name: "name2".to_string(),
+            ..Default::default()
+        })
         .await;
 
     let entity1 = context
@@ -173,7 +186,7 @@ async fn test_list_trust_entities_find_by_name() {
     let ta = context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", true, "reference".to_string())
+        .create(TestingTrustAnchorParams::default())
         .await;
 
     let entity1 = context

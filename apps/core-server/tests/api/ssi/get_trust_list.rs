@@ -5,6 +5,7 @@ use one_core::model::trust_entity::{TrustEntity, TrustEntityRole, TrustEntitySta
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 use crate::utils::field_match::FieldHelpers;
 
 pub async fn new_with_trust_list() -> (TestContext, TrustAnchor, TrustEntity, TrustEntity) {
@@ -13,7 +14,7 @@ pub async fn new_with_trust_list() -> (TestContext, TrustAnchor, TrustEntity, Tr
     let trust_anchor = context
         .db
         .trust_anchors
-        .create("ta1", "SIMPLE_TRUST_LIST", true, "reference".to_string())
+        .create(TestingTrustAnchorParams::default())
         .await;
 
     let entity_one = context
@@ -96,12 +97,10 @@ async fn test_get_trust_list_failed_list_is_not_simple_trust_list() {
     let trust_anchor = context
         .db
         .trust_anchors
-        .create(
-            "ta1",
-            "COMPLICATED_TRUST_LIST",
-            true,
-            "reference".to_string(),
-        )
+        .create(TestingTrustAnchorParams {
+            r#type: "COMPLICATED_TRUST_LIST".to_string(),
+            ..Default::default()
+        })
         .await;
 
     // WHEN

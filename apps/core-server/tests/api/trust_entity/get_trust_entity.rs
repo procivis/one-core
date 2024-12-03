@@ -2,6 +2,7 @@ use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -11,7 +12,7 @@ async fn test_get_trust_anchor() {
     let anchor = context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", true, "reference".to_string())
+        .create(TestingTrustAnchorParams::default())
         .await;
 
     let entity = context

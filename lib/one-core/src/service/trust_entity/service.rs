@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use shared_types::{DidValue, TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId};
 use uuid::Uuid;
 
 use super::dto::{
@@ -9,13 +9,15 @@ use super::dto::{
     ListTrustEntitiesQueryDTO, UpdateTrustEntityFromDidRequestDTO,
 };
 use super::mapper::{
-    trust_entity_from_did_request, trust_entity_from_request, update_request_from_dto,
+    trust_entity_from_did_request, trust_entity_from_partial_and_did_and_anchor,
+    trust_entity_from_request, update_request_from_dto,
 };
 use super::TrustEntityService;
 use crate::common_mapper::{get_or_create_did, DidRole};
+use crate::config::core_config::TrustManagementType::SimpleTrustList;
 use crate::model::did::{DidRelations, DidType};
 use crate::model::key::KeyRelations;
-use crate::model::list_filter::ListFilterCondition;
+use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use crate::model::trust_entity::{TrustEntity, TrustEntityRelations};
@@ -58,15 +60,7 @@ impl TrustEntityService {
             .into());
         }
 
-        let trust = self
-            .trust_provider
-            .get(&trust_anchor.r#type)
-            .ok_or_else(|| MissingProviderError::TrustManager(trust_anchor.r#type.to_owned()))?;
-
         let entity = trust_entity_from_request(request, trust_anchor.clone(), did);
-
-        trust.publish_entity(&trust_anchor, &entity).await;
-
         self.trust_entity_repository
             .create(entity)
             .await
@@ -404,5 +398,56 @@ impl TrustEntityService {
                     .ok_or(EntityNotFoundError::TrustAnchor(trust_anchor_id))?)
             }
         }
+    }
+    pub async fn lookup_did(
+        &self,
+        did_id: DidId,
+    ) -> Result<GetTrustEntityResponseDTO, ServiceError> {
+        let trust_anchor_list = self
+            .trust_anchor_repository
+            .list(ListTrustAnchorsQueryDTO {
+                pagination: None,
+                sorting: None,
+                filtering: Some(
+                    TrustAnchorFilterValue::Type(StringMatch::equals(SimpleTrustList.to_string()))
+                        .condition(),
+                ),
+                include: None,
+            })
+            .await?;
+
+        for trust_anchor in trust_anchor_list.values.into_iter().map(TrustAnchor::from) {
+            let trust = self
+                .trust_provider
+                .get(&trust_anchor.r#type)
+                .ok_or_else(|| {
+                    MissingProviderError::TrustManager(trust_anchor.r#type.to_owned())
+                })?;
+
+            let did = self
+                .did_repository
+                .get_did(&did_id, &DidRelations::default())
+                .await?
+                .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Did(
+                    did_id,
+                )))?;
+
+            let maybe_entity = trust
+                .lookup_did(&trust_anchor, &did.did)
+                .await
+                .map_err(ServiceError::TrustManagementError)?;
+
+            if let Some(trust_entity) = maybe_entity {
+                return Ok(trust_entity_from_partial_and_did_and_anchor(
+                    trust_entity,
+                    did,
+                    trust_anchor,
+                ));
+            }
+        }
+
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::MissingTrustEntity(did_id),
+        ))
     }
 }

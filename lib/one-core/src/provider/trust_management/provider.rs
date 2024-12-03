@@ -10,6 +10,7 @@ use crate::config::ConfigError;
 use crate::model::credential::Credential;
 use crate::model::interaction::Interaction;
 use crate::model::trust_entity::TrustEntityRole;
+use crate::provider::http_client::HttpClient;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait TrustManagementProvider: Send + Sync {
@@ -51,6 +52,7 @@ impl TrustManagementProvider for TrustManagementProviderImpl {
 }
 
 pub(crate) fn from_config(
+    client: Arc<dyn HttpClient>,
     config: &mut TrustManagementConfig,
 ) -> Result<HashMap<String, Arc<dyn TrustManagement>>, ConfigError> {
     let mut providers: HashMap<String, Arc<dyn TrustManagement>> = HashMap::new();
@@ -63,7 +65,10 @@ pub(crate) fn from_config(
         let management = match fields.r#type {
             TrustManagementType::SimpleTrustList => {
                 let params: simple_list::Params = config.get(key)?;
-                Arc::new(SimpleList { params }) as _
+                Arc::new(SimpleList {
+                    params,
+                    client: client.clone(),
+                }) as _
             }
         };
 

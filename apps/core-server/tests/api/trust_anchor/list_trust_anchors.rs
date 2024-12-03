@@ -2,6 +2,7 @@ use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 
 use crate::utils::api_clients::trust_anchors::ListFilters;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -11,12 +12,18 @@ async fn test_list_trust_anchors() {
     context
         .db
         .trust_anchors
-        .create("name1", "SIMPLE_TRUST_LIST", true, "reference1".to_string())
+        .create(TestingTrustAnchorParams {
+            name: "name1".to_string(),
+            ..Default::default()
+        })
         .await;
     context
         .db
         .trust_anchors
-        .create("name2", "SIMPLE_TRUST_LIST", true, "reference2".to_string())
+        .create(TestingTrustAnchorParams {
+            name: "name2".to_string(),
+            ..Default::default()
+        })
         .await;
 
     // WHEN
@@ -49,12 +56,10 @@ async fn test_list_trust_anchors_with_entities() {
         let anchor = context
             .db
             .trust_anchors
-            .create(
-                &format!("name{id}"),
-                "SIMPLE_TRUST_LIST",
-                true,
-                "reference".to_string(),
-            )
+            .create(TestingTrustAnchorParams {
+                name: format!("name{id}"),
+                ..Default::default()
+            })
             .await;
 
         context
@@ -112,13 +117,19 @@ async fn test_filter_trust_anchor_by_name() {
     let anchor = context
         .db
         .trust_anchors
-        .create("foo", "SIMPLE_TRUST_LIST", true, "reference1".to_string())
+        .create(TestingTrustAnchorParams {
+            name: "foo".to_string(),
+            ..Default::default()
+        })
         .await;
 
     context
         .db
         .trust_anchors
-        .create("bar", "SIMPLE_TRUST_LIST", true, "reference2".to_string())
+        .create(TestingTrustAnchorParams {
+            name: "bar".to_string(),
+            ..Default::default()
+        })
         .await;
 
     // WHEN

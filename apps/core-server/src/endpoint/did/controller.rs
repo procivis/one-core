@@ -10,6 +10,7 @@ use super::dto::{
 use crate::dto::common::{EntityResponseRestDTO, GetDidsResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -137,4 +138,27 @@ pub(crate) async fn update_did(
 ) -> EmptyOrErrorResponse {
     let result = state.core.did_service.update_did(&id, request.into()).await;
     EmptyOrErrorResponse::from_result(result, state, "updating DID")
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/did/v1/{id}/trust-entity",
+    responses(OkOrErrorResponse<GetTrustEntityResponseRestDTO>),
+    params(
+        ("id" = DidId, Path, description = "DID id")
+    ),
+    tag = "did_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Retrieve the matching trust entity for a DID",
+    description = "Returns details on the matching trust entity for a DID.",
+)]
+pub(crate) async fn get_did_trust_entity(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<GetTrustEntityResponseRestDTO> {
+    let result = state.core.trust_entity_service.lookup_did(id).await;
+
+    OkOrErrorResponse::from_result(result, state, "getting trust entity by did id")
 }

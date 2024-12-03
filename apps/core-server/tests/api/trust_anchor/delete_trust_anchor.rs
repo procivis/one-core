@@ -1,6 +1,7 @@
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 
 #[tokio::test]
 async fn test_delete_trust_anchor() {
@@ -10,7 +11,7 @@ async fn test_delete_trust_anchor() {
     let anchor = context
         .db
         .trust_anchors
-        .create("name", "SIMPLE_TRUST_LIST", true, "reference".to_string())
+        .create(TestingTrustAnchorParams::default())
         .await;
 
     context

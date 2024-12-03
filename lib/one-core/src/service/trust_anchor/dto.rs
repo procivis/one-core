@@ -1,4 +1,4 @@
-use one_dto_mapper::From;
+use one_dto_mapper::{From, Into};
 use shared_types::{TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
@@ -80,7 +80,8 @@ impl ListFilterValue for TrustAnchorFilterValue {}
 
 pub type ListTrustAnchorsQueryDTO = ListQuery<SortableTrustAnchorColumn, TrustAnchorFilterValue>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Into)]
+#[into(TrustAnchor)]
 pub struct TrustAnchorsListItemResponseDTO {
     pub id: TrustAnchorId,
     pub created_date: OffsetDateTime,
@@ -89,6 +90,7 @@ pub struct TrustAnchorsListItemResponseDTO {
     pub r#type: String,
     pub is_publisher: bool,
     pub publisher_reference: String,
+    #[into(skip)]
     pub entities: u32,
 }
 

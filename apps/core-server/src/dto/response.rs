@@ -7,7 +7,9 @@ use axum::Json;
 use one_core::provider::credential_formatter::error::FormatterError;
 use one_core::provider::did_method::error::DidMethodProviderError;
 use one_core::provider::exchange_protocol::error::ExchangeProtocolError;
-use one_core::service::error::{MissingProviderError, ServiceError, ValidationError};
+use one_core::service::error::{
+    BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
+};
 use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -46,7 +48,8 @@ impl ErrorResponse {
             ServiceError::EntityNotFound(_) => Self::NotFound(response),
             ServiceError::MissingProvider(MissingProviderError::DidMethod(_))
             | ServiceError::DidMethodProviderError(DidMethodProviderError::MissingProvider(_))
-            | ServiceError::Validation(ValidationError::MissingLayoutAttribute(_)) => {
+            | ServiceError::Validation(ValidationError::MissingLayoutAttribute(_))
+            | ServiceError::BusinessLogic(BusinessLogicError::MissingTrustEntity(_)) => {
                 Self::NotFound(response)
             }
             ServiceError::Validation(ValidationError::Unauthorized) => Self::Forbidden,
@@ -59,7 +62,8 @@ impl ErrorResponse {
                 ExchangeProtocolError::CredentialVerificationFailed(_),
             )
             | ServiceError::ExchangeProtocolError(ExchangeProtocolError::DidMismatch)
-            | ServiceError::DidMdlValidationError(_) => Self::BadRequest(response),
+            | ServiceError::DidMdlValidationError(_)
+            | ServiceError::TrustManagementError(_) => Self::BadRequest(response),
             _ => Self::ServerError(response),
         }
     }

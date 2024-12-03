@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use shared_types::TrustEntityId;
 use time::OffsetDateTime;
 
@@ -23,7 +23,7 @@ pub struct TrustEntity {
     pub did: Option<Did>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TrustEntityRole {
     Issuer,
@@ -31,7 +31,8 @@ pub enum TrustEntityRole {
     Both,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TrustEntityState {
     Active,
     Removed,

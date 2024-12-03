@@ -106,6 +106,11 @@ impl DidsApi {
         });
         self.client.patch(&url, body).await
     }
+
+    pub async fn get_trust_entity(&self, did_id: &impl Display) -> Response {
+        let url = format!("/api/did/v1/{did_id}/trust-entity");
+        self.client.get(&url).await
+    }
 }
 
 pub struct DidKeys {
