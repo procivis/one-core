@@ -817,8 +817,8 @@ pub struct SdJwtVcClaimDisplayRestDTO {
 #[into(UpdateTrustEntityFromDidRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchTrustEntityRequestRestDTO {
-    pub action: PatchTrustEntityActionRestDTO,
-
+    #[into(with_fn = "convert_inner")]
+    pub action: Option<PatchTrustEntityActionRestDTO>,
     #[serde(default)]
     pub name: Option<String>,
     #[serde(default)]
@@ -834,12 +834,13 @@ pub struct PatchTrustEntityRequestRestDTO {
     pub role: Option<TrustEntityRoleRest>,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
 #[into(UpdateTrustEntityActionFromDidRequestDTO)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PatchTrustEntityActionRestDTO {
     Activate,
     Withdraw,
+    Remove,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]

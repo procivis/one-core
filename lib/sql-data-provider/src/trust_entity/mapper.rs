@@ -1,10 +1,13 @@
 use one_core::model::trust_entity::TrustEntity;
+use one_core::service::did::dto::DidListItemResponseDTO;
+use one_core::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
 use one_core::service::trust_entity::dto::{
     SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO, TrustEntityFilterValue,
 };
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::IntoSimpleExpr;
 
+use crate::entity::did;
 use crate::entity::trust_entity::{self, TrustEntityRole};
 use crate::list_query_generic::{
     get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
@@ -26,8 +29,25 @@ impl From<TrustEntityListItemEntityModel> for TrustEntitiesResponseItemDTO {
             privacy_url: val.privacy_url,
             role: val.role.into(),
             state: val.state.into(),
-            trust_anchor_id: val.trust_anchor_id,
-            did_id: val.did_id,
+            trust_anchor: GetTrustAnchorDetailResponseDTO {
+                id: val.trust_anchor_id,
+                created_date: val.trust_anchor_created_date,
+                last_modified: val.trust_anchor_last_modified,
+                name: val.trust_anchor_name,
+                r#type: val.trust_anchor_type,
+                is_publisher: val.trust_anchor_is_publisher,
+                publisher_reference: val.trust_anchor_publisher_reference,
+            },
+            did: DidListItemResponseDTO {
+                id: val.did_id,
+                created_date: val.did_created_date,
+                last_modified: val.did_last_modified,
+                name: val.did_name,
+                did: val.did,
+                did_type: val.did_type.into(),
+                did_method: val.did_method,
+                deactivated: val.did_deactivated,
+            },
         }
     }
 }
@@ -73,6 +93,7 @@ impl IntoFilterCondition for TrustEntityFilterValue {
             }
             Self::TrustAnchor(id) => get_equals_condition(trust_entity::Column::TrustAnchorId, id),
             Self::DidId(id) => get_equals_condition(trust_entity::Column::DidId, id),
+            Self::OrganisationId(id) => get_equals_condition(did::Column::OrganisationId, id),
         }
     }
 }

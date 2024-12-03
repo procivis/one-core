@@ -238,7 +238,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         )
         .route(
             "/api/trust-entity/v1/:id",
-            delete(trust_entity::controller::delete_trust_entity)
+            patch(trust_entity::controller::update_trust_entity)
                 .get(trust_entity::controller::get_trust_entity_details),
         )
         .route(

@@ -9,6 +9,7 @@ use super::dto::{
 use crate::dto::common::{EntityResponseRestDTO, GetTrustEntityListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::endpoint::ssi::dto::PatchTrustEntityRequestRestDTO;
 use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -41,9 +42,10 @@ pub(crate) async fn create_trust_entity(
 }
 
 #[utoipa::path(
-    delete,
+    patch,
     path = "/api/trust-entity/v1/{id}",
     responses(EmptyOrErrorResponse),
+    request_body(content = PatchTrustEntityRequestRestDTO),
     params(
         ("id" = TrustEntityId, Path, description = "Trust entity ID"),
     ),
@@ -51,17 +53,21 @@ pub(crate) async fn create_trust_entity(
     security(
         ("bearer" = [])
     ),
-    summary = "Delete a trust entity",
-    description = "Deletes a trust entity from a trust anchor.",
+    summary = "Update a trust entity",
+    description = "Updates a trust entity in a trust anchor.",
 )]
-pub(crate) async fn delete_trust_entity(
+pub(crate) async fn update_trust_entity(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<TrustEntityId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request_body), _): WithRejection<
+        Json<PatchTrustEntityRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
         .trust_entity_service
-        .delete_trust_entity(id)
+        .update_trust_entity_by_trust_entity(id, request_body.into())
         .await;
 
     EmptyOrErrorResponse::from_result(result, state, "deleting trust entity")

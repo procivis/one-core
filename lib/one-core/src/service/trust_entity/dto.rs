@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, DidValue, OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -72,7 +72,6 @@ pub struct GetTrustEntityResponseDTO {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRole,
     pub state: TrustEntityState,
-
     pub did: DidListItemResponseDTO,
     pub trust_anchor: GetTrustAnchorDetailResponseDTO,
 }
@@ -102,8 +101,8 @@ pub struct TrustEntitiesResponseItemDTO {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRole,
     pub state: TrustEntityState,
-    pub trust_anchor_id: TrustAnchorId,
-    pub did_id: DidId,
+    pub trust_anchor: GetTrustAnchorDetailResponseDTO,
+    pub did: DidListItemResponseDTO,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -112,12 +111,13 @@ pub enum TrustEntityFilterValue {
     Role(TrustEntityRole),
     TrustAnchor(TrustAnchorId),
     DidId(DidId),
+    OrganisationId(OrganisationId),
 }
 
 impl ListFilterValue for TrustEntityFilterValue {}
 
 pub struct UpdateTrustEntityFromDidRequestDTO {
-    pub action: UpdateTrustEntityActionFromDidRequestDTO,
+    pub action: Option<UpdateTrustEntityActionFromDidRequestDTO>,
 
     pub name: Option<String>,
     pub logo: Option<Option<String>>,
@@ -130,4 +130,5 @@ pub struct UpdateTrustEntityFromDidRequestDTO {
 pub enum UpdateTrustEntityActionFromDidRequestDTO {
     Activate,
     Withdraw,
+    Remove,
 }

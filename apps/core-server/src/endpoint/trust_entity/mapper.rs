@@ -32,7 +32,15 @@ impl From<TrustEntityFilterQueryParamsRestDto> for ListFilterCondition<TrustEnti
 
         let did_id = value.did_id.map(TrustEntityFilterValue::DidId);
 
-        ListFilterCondition::<TrustEntityFilterValue>::from(did_id) & trust_anchor_id & name & role
+        let organisation_id = value
+            .organisation_id
+            .map(TrustEntityFilterValue::OrganisationId);
+
+        ListFilterCondition::<TrustEntityFilterValue>::from(did_id)
+            & trust_anchor_id
+            & name
+            & role
+            & organisation_id
     }
 }
 

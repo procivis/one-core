@@ -247,5 +247,5 @@ fn compare_entity(result: &Value, entity: &TrustEntity, trust_anchor: &TrustAnch
     result["website"].assert_eq(entity.website.as_ref().unwrap());
     result["termsUrl"].assert_eq(entity.terms_url.as_ref().unwrap());
     result["privacyUrl"].assert_eq(entity.privacy_url.as_ref().unwrap());
-    result["trustAnchorId"].assert_eq(&trust_anchor.id.to_string());
+    result["trustAnchor"]["id"].assert_eq(&trust_anchor.id.to_string());
 }

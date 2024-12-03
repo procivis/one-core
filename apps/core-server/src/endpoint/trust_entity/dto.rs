@@ -5,13 +5,15 @@ use one_core::service::trust_entity::dto::{
 };
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, TrustAnchorId, TrustEntityId};
+use shared_types::{DidId, OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
-use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
+use crate::endpoint::trust_anchor::dto::{
+    GetTrustAnchorDetailResponseRestDTO, GetTrustAnchorResponseRestDTO,
+};
 use crate::serialize::front_time;
 
 #[derive(Clone, Debug, Deserialize, ToSchema)]
@@ -74,9 +76,9 @@ pub struct GetTrustEntityResponseRestDTO {
     pub terms_url: Option<String>,
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
-
     pub trust_anchor: GetTrustAnchorDetailResponseRestDTO,
     pub did: DidListItemResponseRestDTO,
+    pub state: TrustEntityStateRest,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
@@ -103,6 +105,7 @@ pub struct TrustEntityFilterQueryParamsRestDto {
     pub did_id: Option<DidId>,
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
+    pub organisation_id: Option<OrganisationId>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -122,10 +125,11 @@ pub struct ListTrustEntitiesResponseItemRestDTO {
     pub logo: Option<String>,
     pub website: Option<String>,
     pub terms_url: Option<String>,
+    pub state: TrustEntityStateRest,
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
-    pub trust_anchor_id: TrustAnchorId,
-    pub did_id: DidId,
+    pub trust_anchor: GetTrustAnchorResponseRestDTO,
+    pub did: DidListItemResponseRestDTO,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]

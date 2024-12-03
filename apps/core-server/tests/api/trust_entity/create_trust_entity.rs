@@ -1,3 +1,4 @@
+use core_server::endpoint::ssi::dto::PatchTrustEntityActionRestDTO;
 use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use one_core::model::trust_anchor::TrustAnchor;
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
@@ -79,7 +80,7 @@ async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
 }
 
 #[tokio::test]
-async fn test_delete_trust_entity() {
+async fn test_patch_trust_entity() {
     // GIVEN
     let (context, _, did, _) = TestContext::new_with_did().await;
 
@@ -107,17 +108,25 @@ async fn test_delete_trust_entity() {
         .await;
 
     // WHEN
-    let resp = context.api.trust_entities.delete(trust_entity.id).await;
+    let resp = context
+        .api
+        .trust_entities
+        .patch(trust_entity.id, PatchTrustEntityActionRestDTO::Remove)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 204);
 
-    assert!(context
-        .db
-        .trust_entities
-        .get(trust_entity.id)
-        .await
-        .is_none());
+    assert_eq!(
+        context
+            .db
+            .trust_entities
+            .get(trust_entity.id)
+            .await
+            .unwrap()
+            .state,
+        TrustEntityState::Removed
+    );
 }
 
 #[tokio::test]
@@ -129,7 +138,7 @@ async fn test_delete_trust_entity_fails_if_entity_not_found() {
     let resp = context
         .api
         .trust_entities
-        .delete(Uuid::new_v4().into())
+        .patch(Uuid::new_v4().into(), PatchTrustEntityActionRestDTO::Remove)
         .await;
 
     // THEN

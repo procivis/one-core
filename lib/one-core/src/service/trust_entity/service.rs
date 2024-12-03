@@ -18,13 +18,16 @@ use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::list_query::ListPagination;
 use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
-use crate::model::trust_entity::TrustEntityRelations;
+use crate::model::trust_entity::{TrustEntity, TrustEntityRelations};
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::trust_anchor::dto::{ListTrustAnchorsQueryDTO, TrustAnchorFilterValue};
-use crate::service::trust_entity::dto::CreateTrustEntityFromDidPublisherResponseDTO;
+use crate::service::trust_entity::dto::{
+    CreateTrustEntityFromDidPublisherResponseDTO, UpdateTrustEntityActionFromDidRequestDTO,
+};
+use crate::service::trust_entity::mapper::get_detail_trust_entity_response;
 use crate::util::bearer_token::{prepare_bearer_token, validate_bearer_token};
 
 impl TrustEntityService {
@@ -47,6 +50,13 @@ impl TrustEntityService {
             .get_did(&request.did_id, &DidRelations::default())
             .await?
             .ok_or(EntityNotFoundError::TrustAnchor(request.trust_anchor_id))?;
+
+        if did.did_type == DidType::Remote {
+            return Err(BusinessLogicError::IncompatibleDidType {
+                reason: "Only local DIDs allowed".to_string(),
+            }
+            .into());
+        }
 
         let trust = self
             .trust_provider
@@ -254,22 +264,7 @@ impl TrustEntityService {
                 EntityNotFoundError::TrustEntity(did_id_as_uuid.into()),
             ))?;
 
-        // reload the single relevant entity with its relations
-        self.get_trust_entity(result.id).await
-    }
-
-    pub async fn delete_trust_entity(&self, id: TrustEntityId) -> Result<(), ServiceError> {
-        self.trust_entity_repository
-            .get(id, &Default::default())
-            .await?
-            .ok_or(ServiceError::EntityNotFound(
-                EntityNotFoundError::TrustEntity(id),
-            ))?;
-
-        self.trust_entity_repository
-            .delete(id)
-            .await
-            .map_err(Into::into)
+        get_detail_trust_entity_response(result, did)
     }
 
     pub async fn list_trust_entities(
@@ -282,13 +277,54 @@ impl TrustEntityService {
             .map_err(Into::into)
     }
 
-    pub async fn publisher_update_trust_entity_for_did(
+    async fn update_trust_entity(
+        &self,
+        entity: TrustEntity,
+        request: UpdateTrustEntityFromDidRequestDTO,
+    ) -> Result<(), ServiceError> {
+        let request = update_request_from_dto(entity.state.clone(), request)?;
+
+        self.trust_entity_repository
+            .update(entity.id, request)
+            .await?;
+
+        Ok(())
+    }
+
+    // PUBLISHER
+    pub async fn update_trust_entity_by_trust_entity(
+        &self,
+        id: TrustEntityId,
+        update_request: UpdateTrustEntityFromDidRequestDTO,
+    ) -> Result<(), ServiceError> {
+        let entity = self
+            .trust_entity_repository
+            .get(
+                id,
+                &TrustEntityRelations {
+                    ..Default::default()
+                },
+            )
+            .await?
+            .ok_or(EntityNotFoundError::TrustEntity(id))?;
+
+        self.update_trust_entity(entity, update_request).await?;
+
+        Ok(())
+    }
+
+    // NON-PUBLISHER
+    pub async fn update_trust_entity_by_did(
         &self,
         did_value: DidValue,
         request: UpdateTrustEntityFromDidRequestDTO,
         bearer_token: &str,
     ) -> Result<(), ServiceError> {
         self.validate_bearer_token(&did_value, bearer_token).await?;
+
+        if let Some(UpdateTrustEntityActionFromDidRequestDTO::Remove) = request.action {
+            return Err(ValidationError::InvalidUpdateRequest.into());
+        }
 
         let did = self
             .did_repository
@@ -305,11 +341,7 @@ impl TrustEntityService {
             .first()
             .ok_or(ServiceError::MappingError("first is None".to_string()))?;
 
-        let request = update_request_from_dto(entity.state.clone(), request)?;
-
-        self.trust_entity_repository
-            .update(entity.id, request)
-            .await?;
+        self.update_trust_entity(entity.clone(), request).await?;
 
         Ok(())
     }

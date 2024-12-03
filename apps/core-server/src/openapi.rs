@@ -81,8 +81,8 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             trust_entity::controller::get_trust_entities,
             trust_entity::controller::get_trust_entity_details,
             trust_entity::controller::create_trust_entity,
-            trust_entity::controller::delete_trust_entity,
             trust_entity::controller::create_remote_trust_entity,
+            trust_entity::controller::update_trust_entity,
 
             jsonld::controller::resolve_jsonld_context,
 

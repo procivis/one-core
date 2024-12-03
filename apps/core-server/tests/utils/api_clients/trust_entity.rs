@@ -1,3 +1,4 @@
+use core_server::endpoint::ssi::dto::PatchTrustEntityActionRestDTO;
 use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use one_core::model::did::Did;
 use one_core::model::trust_anchor::TrustAnchor;
@@ -38,9 +39,16 @@ impl TrustEntitiesApi {
         self.client.post("/api/trust-entity/v1", body).await
     }
 
-    pub async fn delete(&self, id: TrustEntityId) -> Response {
+    pub async fn patch(
+        &self,
+        id: TrustEntityId,
+        action: PatchTrustEntityActionRestDTO,
+    ) -> Response {
+        let body = json!({
+          "action": action,
+        });
         self.client
-            .delete(&format!("/api/trust-entity/v1/{id}"))
+            .patch(&format!("/api/trust-entity/v1/{id}"), body)
             .await
     }
 

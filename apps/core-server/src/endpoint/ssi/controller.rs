@@ -862,7 +862,7 @@ pub(crate) async fn ssi_patch_trust_entity(
     let result = state
         .core
         .trust_entity_service
-        .publisher_update_trust_entity_for_did(did_value, request.into(), bearer.token())
+        .update_trust_entity_by_did(did_value, request.into(), bearer.token())
         .await;
 
     EmptyOrErrorResponse::from_result(result, state, "getting trust entity")

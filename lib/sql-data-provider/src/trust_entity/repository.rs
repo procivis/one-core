@@ -16,7 +16,7 @@ use time::OffsetDateTime;
 use super::TrustEntityProvider;
 use crate::common::calculate_pages_count;
 use crate::entity::trust_entity::{TrustEntityRole, TrustEntityState};
-use crate::entity::{did, trust_entity};
+use crate::entity::{did, trust_anchor, trust_entity};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
 use crate::trust_entity::model::TrustEntityListItemEntityModel;
@@ -160,7 +160,32 @@ impl TrustEntityRepository for TrustEntityProvider {
                 trust_entity::Column::DidId,
             ])
             .inner_join(crate::entity::trust_anchor::Entity)
+            .column_as(
+                trust_anchor::Column::CreatedDate,
+                "trust_anchor_created_date",
+            )
+            .column_as(
+                trust_anchor::Column::LastModified,
+                "trust_anchor_last_modified",
+            )
+            .column_as(trust_anchor::Column::Name, "trust_anchor_name")
+            .column_as(trust_anchor::Column::Type, "trust_anchor_type")
+            .column_as(
+                trust_anchor::Column::PublisherReference,
+                "trust_anchor_publisher_reference",
+            )
+            .column_as(
+                trust_anchor::Column::IsPublisher,
+                "trust_anchor_is_publisher",
+            )
             .inner_join(crate::entity::did::Entity)
+            .column_as(did::Column::Did, "did")
+            .column_as(did::Column::CreatedDate, "did_created_date")
+            .column_as(did::Column::LastModified, "did_last_modified")
+            .column_as(did::Column::Name, "did_name")
+            .column_as(did::Column::TypeField, "did_type")
+            .column_as(did::Column::Method, "did_method")
+            .column_as(did::Column::Deactivated, "did_deactivated")
             .with_list_query(&filters)
             .order_by_desc(trust_entity::Column::CreatedDate)
             .order_by_desc(trust_entity::Column::Id);
