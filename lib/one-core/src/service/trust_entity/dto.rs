@@ -6,6 +6,7 @@ use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
 use crate::model::trust_entity::{TrustEntityRole, TrustEntityState};
+use crate::service::did::dto::DidListItemResponseDTO;
 use crate::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
 
 #[derive(Clone, Debug)]
@@ -72,7 +73,8 @@ pub struct GetTrustEntityResponseDTO {
     pub role: TrustEntityRole,
     pub state: TrustEntityState,
 
-    pub trust_anchor: Option<GetTrustAnchorDetailResponseDTO>,
+    pub did: DidListItemResponseDTO,
+    pub trust_anchor: GetTrustAnchorDetailResponseDTO,
 }
 
 pub type GetTrustEntitiesResponseDTO = GetListResponse<TrustEntitiesResponseItemDTO>;

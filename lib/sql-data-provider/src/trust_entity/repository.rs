@@ -15,8 +15,8 @@ use time::OffsetDateTime;
 
 use super::TrustEntityProvider;
 use crate::common::calculate_pages_count;
-use crate::entity::trust_entity;
 use crate::entity::trust_entity::{TrustEntityRole, TrustEntityState};
+use crate::entity::{did, trust_entity};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
 use crate::trust_entity::model::TrustEntityListItemEntityModel;
@@ -63,13 +63,21 @@ impl TrustEntityRepository for TrustEntityProvider {
         &self,
         trust_anchor_id: TrustAnchorId,
     ) -> Result<Vec<TrustEntity>, DataLayerError> {
-        let entities = trust_entity::Entity::find()
+        let entities: Vec<(trust_entity::Model, Option<did::Model>)> = trust_entity::Entity::find()
             .filter(trust_entity::Column::TrustAnchorId.eq(trust_anchor_id))
+            .find_also_related(did::Entity)
             .all(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(entities.into_iter().map(Into::into).collect())
+        Ok(entities
+            .into_iter()
+            .map(|(entity_model, did_model)| {
+                let mut trust_entity_dto = TrustEntity::from(entity_model);
+                trust_entity_dto.did = convert_inner(did_model);
+                trust_entity_dto
+            })
+            .collect())
     }
 
     async fn delete(&self, id: TrustEntityId) -> Result<(), DataLayerError> {

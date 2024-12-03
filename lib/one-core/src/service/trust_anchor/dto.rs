@@ -1,12 +1,13 @@
 use one_dto_mapper::From;
-use shared_types::TrustAnchorId;
+use shared_types::{TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
 use crate::model::trust_anchor::TrustAnchor;
-use crate::service::trust_entity::dto::GetTrustEntityResponseDTO;
+use crate::model::trust_entity::{TrustEntityRole, TrustEntityState};
+use crate::service::did::dto::DidListItemResponseDTO;
 
 #[derive(Clone, Debug)]
 pub struct CreateTrustAnchorRequestDTO {
@@ -34,7 +35,25 @@ pub struct GetTrustAnchorResponseDTO {
     pub name: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub entities: Vec<GetTrustEntityResponseDTO>,
+    pub entities: Vec<GetTrustAnchorEntityListResponseDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct GetTrustAnchorEntityListResponseDTO {
+    pub id: TrustEntityId,
+    pub name: String,
+
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+
+    pub logo: Option<String>,
+    pub website: Option<String>,
+    pub terms_url: Option<String>,
+    pub privacy_url: Option<String>,
+    pub role: TrustEntityRole,
+    pub state: TrustEntityState,
+
+    pub did: DidListItemResponseDTO,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

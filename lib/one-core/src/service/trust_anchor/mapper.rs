@@ -1,8 +1,12 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::{CreateTrustAnchorRequestDTO, TrustAnchorsListItemResponseDTO};
+use super::dto::{
+    CreateTrustAnchorRequestDTO, GetTrustAnchorEntityListResponseDTO,
+    TrustAnchorsListItemResponseDTO,
+};
 use crate::model::trust_anchor::TrustAnchor;
+use crate::model::trust_entity::TrustEntity;
 use crate::service::error::ServiceError;
 
 pub(super) fn trust_anchor_from_request(
@@ -44,5 +48,31 @@ impl From<TrustAnchorsListItemResponseDTO> for TrustAnchor {
             publisher_reference: value.publisher_reference,
             is_publisher: value.is_publisher,
         }
+    }
+}
+
+impl TryFrom<TrustEntity> for GetTrustAnchorEntityListResponseDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: TrustEntity) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            logo: value.logo,
+            website: value.website,
+            terms_url: value.terms_url,
+            privacy_url: value.privacy_url,
+            role: value.role,
+            state: value.state,
+            did: value
+                .did
+                .map(Into::into)
+                .ok_or(ServiceError::MappingError(format!(
+                    "missing did for trust entity {}",
+                    value.id
+                )))?,
+        })
     }
 }

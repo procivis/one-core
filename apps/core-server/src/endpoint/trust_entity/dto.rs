@@ -3,13 +3,14 @@ use one_core::service::trust_entity::dto::{
     CreateRemoteTrustEntityRequestDTO, GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
     TrustEntitiesResponseItemDTO,
 };
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
+use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
 use crate::serialize::front_time;
 
@@ -74,8 +75,8 @@ pub struct GetTrustEntityResponseRestDTO {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
 
-    #[from(with_fn = convert_inner)]
-    pub trust_anchor: Option<GetTrustAnchorDetailResponseRestDTO>,
+    pub trust_anchor: GetTrustAnchorDetailResponseRestDTO,
+    pub did: DidListItemResponseRestDTO,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

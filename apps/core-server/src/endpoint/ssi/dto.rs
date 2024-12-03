@@ -33,10 +33,12 @@ use one_core::service::ssi_issuer::dto::{
     SdJwtVcClaimSd, SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
     SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
 };
-use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
+use one_core::service::trust_anchor::dto::{
+    GetTrustAnchorEntityListResponseDTO, GetTrustAnchorResponseDTO,
+};
 use one_core::service::trust_entity::dto::{
-    CreateTrustEntityFromDidPublisherRequestDTO, GetTrustEntityResponseDTO,
-    UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
+    CreateTrustEntityFromDidPublisherRequestDTO, UpdateTrustEntityActionFromDidRequestDTO,
+    UpdateTrustEntityFromDidRequestDTO,
 };
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
 use serde::{Deserialize, Serialize};
@@ -53,7 +55,6 @@ use uuid::Uuid;
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
 };
-use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
 use crate::endpoint::trust_entity::dto::{TrustEntityRoleRest, TrustEntityStateRest};
 use crate::serialize::{front_time, front_time_option};
 // verifier specific
@@ -706,7 +707,7 @@ pub struct GetTrustAnchorResponseRestDTO {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, ToSchema, From)]
-#[from(GetTrustEntityResponseDTO)]
+#[from(GetTrustAnchorEntityListResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct GetTrustEntityResponseRestDTO {
     pub id: TrustEntityId,
@@ -726,8 +727,7 @@ pub struct GetTrustEntityResponseRestDTO {
     pub role: TrustEntityRoleRest,
     pub state: TrustEntityStateRest,
 
-    #[from(with_fn = convert_inner)]
-    pub trust_anchor: Option<GetTrustAnchorDetailResponseRestDTO>,
+    pub did: DidValue,
 }
 
 #[skip_serializing_none]

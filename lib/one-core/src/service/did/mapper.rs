@@ -4,7 +4,10 @@ use one_dto_mapper::convert_inner;
 use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 
-use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
+use super::dto::{
+    CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO, DidResponseKeysDTO,
+    GetDidListResponseDTO,
+};
 use crate::model::did::{Did, GetDidList, KeyRole, RelatedKey};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -166,4 +169,10 @@ pub(super) fn map_key_to_verification_method(
         controller: did_value.to_string(),
         public_key_jwk,
     })
+}
+
+impl From<DidListItemResponseDTO> for DidValue {
+    fn from(value: DidListItemResponseDTO) -> Self {
+        value.did
+    }
 }

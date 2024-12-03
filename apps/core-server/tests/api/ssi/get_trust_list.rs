@@ -64,6 +64,16 @@ async fn test_get_trust_list_success() {
             .collect::<HashSet<_>>(),
         HashSet::from_iter([entity_one.name, entity_two.name])
     );
+    assert_eq!(
+        [&resp["entities"][0]["did"], &resp["entities"][1]["did"]]
+            .into_iter()
+            .map(|v| v.as_str().unwrap().to_owned())
+            .collect::<HashSet<_>>(),
+        HashSet::from_iter([
+            entity_one.did.unwrap().did.to_string(),
+            entity_two.did.unwrap().did.to_string()
+        ])
+    );
 }
 
 #[tokio::test]

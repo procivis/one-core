@@ -220,13 +220,13 @@ impl TrustEntityService {
                 id,
                 &TrustEntityRelations {
                     trust_anchor: Some(TrustAnchorRelations::default()),
-                    ..Default::default()
+                    did: Some(DidRelations::default()),
                 },
             )
             .await?
             .ok_or(EntityNotFoundError::TrustEntity(id))?;
 
-        Ok(result.into())
+        result.try_into()
     }
 
     pub async fn publisher_get_trust_entity_for_did(
@@ -254,7 +254,8 @@ impl TrustEntityService {
                 EntityNotFoundError::TrustEntity(did_id_as_uuid.into()),
             ))?;
 
-        Ok(result.into())
+        // reload the single relevant entity with its relations
+        self.get_trust_entity(result.id).await
     }
 
     pub async fn delete_trust_entity(&self, id: TrustEntityId) -> Result<(), ServiceError> {

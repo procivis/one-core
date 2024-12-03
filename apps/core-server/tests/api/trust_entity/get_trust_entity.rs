@@ -42,6 +42,7 @@ async fn test_get_trust_anchor() {
     body["privacyUrl"].assert_eq(&entity.privacy_url);
     body["role"].assert_eq(&"ISSUER".to_owned());
     body["trustAnchor"]["id"].assert_eq(&anchor.id);
+    body["did"]["id"].assert_eq(&did.id);
 }
 
 #[tokio::test]

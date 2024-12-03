@@ -1,8 +1,8 @@
 use shared_types::TrustAnchorId;
 
 use super::dto::{
-    CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO,
-    ListTrustAnchorsQueryDTO,
+    CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO,
+    GetTrustAnchorEntityListResponseDTO, GetTrustAnchorsResponseDTO, ListTrustAnchorsQueryDTO,
 };
 use super::mapper::trust_anchor_from_request;
 use super::TrustAnchorService;
@@ -81,7 +81,10 @@ impl TrustAnchorService {
             .get_by_trust_anchor_id(trust_anchor_id)
             .await?;
 
-        let entities = entities.into_iter().map(Into::into).collect();
+        let entities = entities
+            .into_iter()
+            .map(TryInto::<GetTrustAnchorEntityListResponseDTO>::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(GetTrustAnchorResponseDTO {
             id: result.id,

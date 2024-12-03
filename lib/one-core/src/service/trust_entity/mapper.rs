@@ -59,9 +59,11 @@ pub(super) fn trust_entity_from_did_request(
     }
 }
 
-impl From<TrustEntity> for GetTrustEntityResponseDTO {
-    fn from(value: TrustEntity) -> Self {
-        Self {
+impl TryFrom<TrustEntity> for GetTrustEntityResponseDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: TrustEntity) -> Result<Self, Self::Error> {
+        Ok(Self {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
@@ -71,9 +73,22 @@ impl From<TrustEntity> for GetTrustEntityResponseDTO {
             terms_url: value.terms_url,
             privacy_url: value.privacy_url,
             role: value.role,
-            trust_anchor: value.trust_anchor.map(Into::into),
+            trust_anchor: value
+                .trust_anchor
+                .map(Into::into)
+                .ok_or(ServiceError::MappingError(format!(
+                    "missing trust_anchor for trust entity {}",
+                    value.id
+                )))?,
             state: value.state,
-        }
+            did: value
+                .did
+                .map(Into::into)
+                .ok_or(ServiceError::MappingError(format!(
+                    "missing did for trust entity {}",
+                    value.id
+                )))?,
+        })
     }
 }
 
