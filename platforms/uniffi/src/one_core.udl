@@ -1220,6 +1220,9 @@ interface OneCoreBinding {
   string create_trust_anchor(CreateTrustAnchorRequestBindingDTO anchor);
 
   [Throws=BindingError]
+  void delete_trust_anchor(string anchor_id);
+
+  [Throws=BindingError]
   GetTrustAnchorResponseBindingDTO get_trust_anchor(string anchor_id);
 
   [Throws=BindingError]
