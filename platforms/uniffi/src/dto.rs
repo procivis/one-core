@@ -63,7 +63,8 @@ use one_core::service::trust_anchor::dto::{
     SortableTrustAnchorColumn, TrustAnchorsListItemResponseDTO,
 };
 use one_core::service::trust_entity::dto::{
-    CreateRemoteTrustEntityRequestDTO, GetTrustEntityResponseDTO,
+    CreateRemoteTrustEntityRequestDTO, CreateTrustEntityRequestDTO, GetTrustEntitiesResponseDTO,
+    GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum, TrustEntitiesResponseItemDTO,
     UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
 };
 use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
@@ -1207,7 +1208,90 @@ pub struct TrustAnchorsListBindingDTO {
     pub total_items: u64,
 }
 
-#[derive(TryInto)]
+#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[into(SortableTrustEntityColumnEnum)]
+pub enum SortableTrustEntityColumnBindings {
+    Name,
+    Role,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ExactTrustEntityFilterColumnBindings {
+    Name,
+}
+
+#[derive(Clone, Debug)]
+pub struct ListTrustEntitiesFiltersBindings {
+    pub page: u32,
+    pub page_size: u32,
+
+    pub sort: Option<SortableTrustEntityColumnBindings>,
+    pub sort_direction: Option<SortDirection>,
+
+    pub name: Option<String>,
+    pub role: Option<TrustEntityRoleBindingEnum>,
+    pub trust_anchor: Option<String>,
+    pub did_id: Option<String>,
+    pub organisation_id: Option<String>,
+
+    pub exact: Option<Vec<ExactTrustEntityFilterColumnBindings>>,
+}
+
+#[derive(Clone, Debug, From)]
+#[from(TrustEntitiesResponseItemDTO)]
+pub struct TrustEntitiesListItemResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    pub name: String,
+
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+
+    pub logo: Option<String>,
+    pub website: Option<String>,
+    pub terms_url: Option<String>,
+    pub state: TrustEntityStateBindingEnum,
+    pub privacy_url: Option<String>,
+    pub role: TrustEntityRoleBindingEnum,
+    pub trust_anchor: GetTrustAnchorResponseBindingDTO,
+    pub did: DidListItemBindingDTO,
+}
+
+#[derive(Clone, Debug, From)]
+#[from(GetTrustEntitiesResponseDTO)]
+pub struct TrustEntitiesListBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub values: Vec<TrustEntitiesListItemResponseBindingDTO>,
+    pub total_pages: u64,
+    pub total_items: u64,
+}
+
+#[derive(Clone, Debug, TryInto)]
+#[try_into(T = CreateTrustEntityRequestDTO, Error = ErrorResponseBindingDTO)]
+pub struct CreateTrustEntityRequestBindingDTO {
+    #[try_into(infallible)]
+    pub name: String,
+    #[try_into(infallible)]
+    pub logo: Option<String>,
+    #[try_into(infallible)]
+    pub website: Option<String>,
+    #[try_into(infallible)]
+    pub terms_url: Option<String>,
+    #[try_into(infallible)]
+    pub privacy_url: Option<String>,
+    #[try_into(infallible)]
+    pub role: TrustEntityRoleBindingEnum,
+    #[try_into(infallible)]
+    pub state: TrustEntityStateBindingEnum,
+    #[try_into(with_fn_ref = into_id)]
+    pub trust_anchor_id: String,
+    #[try_into(with_fn_ref = into_id)]
+    pub did_id: String,
+}
+
+#[derive(Clone, Debug, TryInto)]
 #[try_into(T = CreateRemoteTrustEntityRequestDTO, Error = ErrorResponseBindingDTO)]
 pub struct CreateRemoteTrustEntityRequestBindingDTO {
     #[try_into(with_fn_ref = into_id)]
@@ -1228,17 +1312,18 @@ pub struct CreateRemoteTrustEntityRequestBindingDTO {
     pub role: TrustEntityRoleBindingEnum,
 }
 
-#[derive(Clone, Debug, Into, From)]
-#[into(TrustEntityRole)]
+#[derive(Clone, Debug, From, Into)]
 #[from(TrustEntityRole)]
+#[into(TrustEntityRole)]
 pub enum TrustEntityRoleBindingEnum {
     Issuer,
     Verifier,
     Both,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, Into)]
 #[from(TrustEntityState)]
+#[into(TrustEntityState)]
 pub enum TrustEntityStateBindingEnum {
     Active,
     Removed,

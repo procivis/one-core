@@ -26,12 +26,16 @@ use one_core::service::proof_schema::dto::{
     GetProofSchemaQueryDTO, ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterValue,
 };
 use one_core::service::trust_anchor::dto::{ListTrustAnchorsQueryDTO, TrustAnchorFilterValue};
+use one_core::service::trust_entity::dto::{ListTrustEntitiesQueryDTO, TrustEntityFilterValue};
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde_json::json;
 use shared_types::KeyId;
 use time::OffsetDateTime;
 
-use super::dto::{ClaimBindingDTO, ClaimValueBindingDTO, CredentialSchemaBindingDTO};
+use super::dto::{
+    ClaimBindingDTO, ClaimValueBindingDTO, CredentialSchemaBindingDTO,
+    ExactTrustEntityFilterColumnBindings, ListTrustEntitiesFiltersBindings,
+};
 use crate::dto::{
     CredentialDetailBindingDTO, CredentialListItemBindingDTO, DidRequestBindingDTO,
     DidRequestKeysBindingDTO, HandleInvitationResponseBindingEnum, KeyRequestBindingDTO,
@@ -366,6 +370,67 @@ impl TryFrom<ListTrustAnchorsFiltersBindings> for ListTrustAnchorsQueryDTO {
 
         let filtering =
             ListFilterCondition::<TrustAnchorFilterValue>::from(name) & is_publisher & r#type;
+
+        Ok(Self {
+            pagination: Some(ListPagination {
+                page: value.page,
+                page_size: value.page_size,
+            }),
+            sorting: value.sort.map(|column| ListSorting {
+                column: column.into(),
+                direction: convert_inner(value.sort_direction),
+            }),
+            filtering: Some(filtering),
+            include: None,
+        })
+    }
+}
+
+impl TryFrom<ListTrustEntitiesFiltersBindings> for ListTrustEntitiesQueryDTO {
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(value: ListTrustEntitiesFiltersBindings) -> Result<Self, Self::Error> {
+        let exact = value.exact.unwrap_or_default();
+        let get_string_match_type = |column| {
+            if exact.contains(&column) {
+                StringMatchType::Equals
+            } else {
+                StringMatchType::StartsWith
+            }
+        };
+
+        let name = value.name.map(|name| {
+            TrustEntityFilterValue::Name(StringMatch {
+                r#match: get_string_match_type(ExactTrustEntityFilterColumnBindings::Name),
+                value: name,
+            })
+        });
+
+        let role = value
+            .role
+            .map(|role| Ok::<_, ServiceError>(TrustEntityFilterValue::Role(role.into())))
+            .transpose()?;
+
+        let trust_anchor = value
+            .trust_anchor
+            .map(|id| Ok::<_, ServiceError>(TrustEntityFilterValue::TrustAnchor(into_id(&id)?)))
+            .transpose()?;
+
+        let did_id = value
+            .did_id
+            .map(|id| Ok::<_, ServiceError>(TrustEntityFilterValue::DidId(into_id(&id)?)))
+            .transpose()?;
+
+        let organisation_id = value
+            .organisation_id
+            .map(|id| Ok::<_, ServiceError>(TrustEntityFilterValue::OrganisationId(into_id(&id)?)))
+            .transpose()?;
+
+        let filtering = ListFilterCondition::<TrustEntityFilterValue>::from(name)
+            & role
+            & trust_anchor
+            & did_id
+            & organisation_id;
 
         Ok(Self {
             pagination: Some(ListPagination {

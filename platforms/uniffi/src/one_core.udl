@@ -857,6 +857,62 @@ dictionary TrustAnchorsListBindingDTO {
   u64 total_items;
 };
 
+enum SortableTrustEntityColumnBindings {
+  "Name",
+  "Role",
+};
+
+enum ExactTrustEntityFilterColumnBindings {
+  "Name",
+};
+
+dictionary ListTrustEntitiesFiltersBindings {
+  u32 page;
+  u32 page_size;
+  SortableTrustEntityColumnBindings? sort;
+  SortDirection? sort_direction;
+  string? name;
+  TrustEntityRoleBindingEnum? role;
+  string? trust_anchor;
+  string? did_id;
+  string? organisation_id;
+  sequence<ExactTrustEntityFilterColumnBindings>? exact;
+};
+
+dictionary TrustEntitiesListItemResponseBindingDTO {
+  string id;
+  string name;
+  string created_date;
+  string last_modified;
+
+  string? logo;
+  string? website;
+  string? terms_url;
+  TrustEntityStateBindingEnum state;
+  string? privacy_url;
+  TrustEntityRoleBindingEnum role;
+  GetTrustAnchorResponseBindingDTO trust_anchor;
+  DidListItemBindingDTO did;
+};
+
+dictionary TrustEntitiesListBindingDTO {
+  sequence<TrustEntitiesListItemResponseBindingDTO> values;
+  u64 total_pages;
+  u64 total_items;
+};
+
+dictionary CreateTrustEntityRequestBindingDTO {
+  string name;
+  string? logo;
+  string? website;
+  string? terms_url;
+  string? privacy_url;
+  TrustEntityRoleBindingEnum role;
+  TrustEntityStateBindingEnum state;
+  string trust_anchor_id;
+  string did_id;
+};
+
 dictionary CreateRemoteTrustEntityRequestBindingDTO {
   string did_id;
   string? trust_anchor_id;
@@ -1262,6 +1318,15 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   GetTrustEntityResponseBindingDTO get_trust_entity_by_did(string did_id);
+
+  [Throws=BindingError]
+  GetTrustEntityResponseBindingDTO get_trust_entity(string trust_entity_id);
+
+  [Throws=BindingError]
+  TrustEntitiesListBindingDTO list_trust_entities(ListTrustEntitiesFiltersBindings filters);
+
+  [Throws=BindingError]
+  string create_trust_entity(CreateTrustEntityRequestBindingDTO anchor);
 
   [Throws=BindingError]
   string create_proof_schema(CreateProofSchemaRequestDTO request);
