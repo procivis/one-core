@@ -399,6 +399,14 @@ async fn process_proof_submission(
             .as_ref()
             .ok_or(OpenID4VCIError::InvalidRequest)?;
 
+        if !input_descriptor
+            .format
+            .keys()
+            .any(|format| *format == path_nested.format)
+        {
+            return Err(OpenID4VCError::OpenID4VCI(OpenID4VCIError::InvalidRequest));
+        }
+
         // ONE-1924: there must be a specific schemaId filter
         let schema_id_filter = input_descriptor
             .constraints

@@ -596,3 +596,146 @@ async fn test_direct_post_multiple_presentations() {
 
     // TODO: Add additional checks when https://procivis.atlassian.net/browse/ONE-1133 is implemented
 }
+
+#[tokio::test]
+async fn test_direct_post_wrong_claim_format() {
+    // GIVEN
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let config = fixtures::create_config(&base_url, None);
+    let db_conn = fixtures::create_db(&config).await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let nonce = "nonce123";
+
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "cat1", true, "STRING", false), // Presentation 2 token 1
+        (Uuid::new_v4(), "cat2", false, "STRING", false), // Optional - not provided
+    ];
+
+    let credential_schema = create_credential_schema_with_claims(
+        &db_conn,
+        "NewCredentialSchema",
+        &organisation,
+        "NONE",
+        &new_claim_schemas,
+    )
+    .await;
+
+    let proof_schema = create_proof_schema(
+        &db_conn,
+        "Schema1",
+        &organisation,
+        &[CreateProofInputSchema::from((
+            &new_claim_schemas[..],
+            &credential_schema,
+        ))],
+    )
+    .await;
+
+    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
+
+    let interaction_data = json!({
+        "nonce": nonce,
+        "presentation_definition": {
+            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
+            "input_descriptors": [{
+                "format": {
+                    "vc+sd-jwt": {
+                        "alg": ["EdDSA", "ES256"]
+                    }
+                },
+                "id": "input_0",
+                "constraints": {
+                    "fields": [
+                        {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": credential_schema.schema_id
+                            }
+                        },
+                        {
+                            "id": new_claim_schemas[0].0,
+                            "path": ["$.vc.credentialSubject.cat1"],
+                            "optional": false
+                        },
+                        {
+                            "id": new_claim_schemas[1].0,
+                            "path": ["$.vc.credentialSubject.cat2"],
+                            "optional": true
+                        }
+                    ]
+                }
+            }]
+        }
+    });
+
+    let interaction = fixtures::create_interaction(
+        &db_conn,
+        &base_url,
+        interaction_data.to_string().as_bytes(),
+        &organisation,
+    )
+    .await;
+
+    let proof = create_proof(
+        &db_conn,
+        &verifier_did,
+        None,
+        Some(&proof_schema),
+        ProofStateEnum::Pending,
+        "OPENID4VC",
+        Some(&interaction),
+    )
+    .await;
+
+    let presentation_submission = json!({
+        "definition_id": interaction.id,
+        "descriptor_map": [
+            {
+                "format": "jwt_vp_json",
+                "id": "input_0",
+                "path": "$",
+                "path_nested": {
+                        "format": "jwt_vc_json",
+                        "path": "$.verifiableCredential[0]"
+                    }
+            },
+        ],
+        "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
+    });
+
+    let params = [
+        (
+            "presentation_submission",
+            presentation_submission.to_string(),
+        ),
+        ("vp_token", TOKEN2.to_owned()),
+        ("state", interaction.id.to_string()),
+    ];
+
+    // WHEN
+    let _handle = run_server(listener, config, &db_conn).await;
+
+    let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
+
+    let resp = utils::client()
+        .post(url)
+        .form(&params)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    let status_code = resp.status();
+    println!("{}", resp.text().await.unwrap());
+    assert_eq!(status_code, 400);
+
+    let proof = get_proof(&db_conn, &proof.id).await;
+    assert_eq!(
+        proof.state.unwrap().first().unwrap().state,
+        ProofStateEnum::Error
+    );
+    let claims = proof.claims.unwrap();
+    assert!(claims.is_empty());
+}
