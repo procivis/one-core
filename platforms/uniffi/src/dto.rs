@@ -9,7 +9,7 @@ use one_core::model::did::{DidType, KeyRole, SortableDidColumn};
 use one_core::model::history::{HistoryAction, HistoryEntityType, HistorySearchEnum};
 use one_core::model::proof::{ProofStateEnum, SortableProofColumn};
 use one_core::model::proof_schema::SortableProofSchemaColumn;
-use one_core::model::trust_entity::TrustEntityRole;
+use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};
 use one_core::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, CharacteristicUUID,
     CharacteristicWriteType, ConnectionEvent, CreateCharacteristicOptions, DeviceAddress,
@@ -62,7 +62,9 @@ use one_core::service::trust_anchor::dto::{
     CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO,
     SortableTrustAnchorColumn, TrustAnchorsListItemResponseDTO,
 };
-use one_core::service::trust_entity::dto::CreateRemoteTrustEntityRequestDTO;
+use one_core::service::trust_entity::dto::{
+    CreateRemoteTrustEntityRequestDTO, GetTrustEntityResponseDTO,
+};
 use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 
 use crate::error::{BleErrorWrapper, ErrorResponseBindingDTO, NativeKeyStorageError};
@@ -1225,12 +1227,42 @@ pub struct CreateRemoteTrustEntityRequestBindingDTO {
     pub role: TrustEntityRoleBindingEnum,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, From)]
 #[into(TrustEntityRole)]
+#[from(TrustEntityRole)]
 pub enum TrustEntityRoleBindingEnum {
     Issuer,
     Verifier,
     Both,
+}
+
+#[derive(Clone, Debug, From)]
+#[from(TrustEntityState)]
+pub enum TrustEntityStateBindingEnum {
+    Active,
+    Removed,
+    Withdrawn,
+    RemovedAndWithdrawn,
+}
+
+#[derive(Clone, Debug, From)]
+#[from(GetTrustEntityResponseDTO)]
+pub struct GetTrustEntityResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    pub logo: Option<String>,
+    pub website: Option<String>,
+    pub terms_url: Option<String>,
+    pub privacy_url: Option<String>,
+    pub role: TrustEntityRoleBindingEnum,
+    pub trust_anchor: GetTrustAnchorResponseBindingDTO,
+    pub did: DidListItemBindingDTO,
+    pub state: TrustEntityStateBindingEnum,
 }
 
 #[derive(Clone, Debug, Into)]

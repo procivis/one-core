@@ -28,6 +28,7 @@ mod get_proof_schema;
 mod get_proof_schemas;
 mod get_proofs;
 mod get_trust_anchor;
+mod get_trust_entity_by_did;
 mod handle_invitation;
 mod holder_accept_credential;
 mod holder_reject_credential;
