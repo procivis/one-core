@@ -115,4 +115,10 @@ impl TrustEntitiesApi {
             .patch(&format!("/api/trust-entity/remote/v1/{}", did.id), body)
             .await
     }
+
+    pub async fn get_remote(&self, did: &Did) -> Response {
+        self.client
+            .get(&format!("/api/trust-entity/remote/v1/{}", did.id))
+            .await
+    }
 }

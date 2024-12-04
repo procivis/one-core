@@ -28,6 +28,7 @@ mod get_proof;
 mod get_proof_schema;
 mod get_proof_schemas;
 mod get_proofs;
+mod get_remote_trust_entity;
 mod get_trust_anchor;
 mod get_trust_entity_by_did;
 mod handle_invitation;

@@ -251,7 +251,8 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         )
         .route(
             "/api/trust-entity/remote/v1/:did_id",
-            patch(trust_entity::controller::update_remote_trust_entity),
+            get(trust_entity::controller::get_remote_trust_entity)
+                .patch(trust_entity::controller::update_remote_trust_entity),
         )
         .route(
             "/api/jsonld-context/v1",

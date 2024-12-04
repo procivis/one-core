@@ -71,9 +71,13 @@ pub struct GetTrustEntityResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub logo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub website: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub terms_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
     pub trust_anchor: GetTrustAnchorDetailResponseRestDTO,

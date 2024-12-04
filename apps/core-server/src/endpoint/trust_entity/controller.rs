@@ -179,3 +179,30 @@ pub(crate) async fn update_remote_trust_entity(
 
     EmptyOrErrorResponse::from_result(result, state, "updating remote trust entity")
 }
+
+#[utoipa::path(
+    get,
+    path = "/api/trust-entity/remote/v1/{did_id}",
+    responses(OkOrErrorResponse<GetTrustEntityResponseRestDTO>),
+    params(
+        ("did_id" = DidId, Path, description = "DID id"),
+    ),
+    tag = "trust_entity",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Retrieve a remote trust entity",
+    description = "Returns details of a remote trust entity.",
+)]
+pub(crate) async fn get_remote_trust_entity(
+    state: State<AppState>,
+    WithRejection(Path(did_id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<GetTrustEntityResponseRestDTO> {
+    let result = state
+        .core
+        .trust_entity_service
+        .get_remote_trust_entity_for_did(did_id)
+        .await;
+
+    OkOrErrorResponse::from_result(result, state, "getting remote trust entity")
+}

@@ -4,7 +4,7 @@ use shared_types::{DidId, TrustAnchorId, TrustEntityId};
 
 use super::dto::{
     CreateRemoteTrustEntityRequestDTO, CreateTrustEntityFromDidPublisherRequestDTO,
-    UpdateTrustEntityFromDidRequestDTO,
+    GetTrustEntityResponseDTO, UpdateTrustEntityFromDidRequestDTO,
 };
 use super::TrustEntityService;
 use crate::model::did::{Did, DidRelations, DidType};
@@ -93,6 +93,33 @@ impl TrustEntityService {
             .map_err(|e| ServiceError::Other(e.to_string()))?;
 
         Ok(())
+    }
+
+    pub async fn get_remote_trust_entity_for_did(
+        &self,
+        did_id: DidId,
+    ) -> Result<GetTrustEntityResponseDTO, ServiceError> {
+        let RemoteOperationProperties {
+            did,
+            remote_anchor_base_url,
+            bearer_token,
+            ..
+        } = self.prepare_remote_operation_for_did(&did_id, None).await?;
+
+        let url = format!("{remote_anchor_base_url}/ssi/trust-entity/v1/{}", did.did);
+        let response: GetTrustEntityResponseDTO = self
+            .client
+            .get(&url)
+            .bearer_auth(&bearer_token)
+            .send()
+            .await
+            .map_err(|e| ServiceError::Other(e.to_string()))?
+            .error_for_status()
+            .map_err(|e| ServiceError::Other(e.to_string()))?
+            .json()
+            .map_err(|e| ServiceError::Other(e.to_string()))?;
+
+        Ok(response)
     }
 
     async fn prepare_remote_operation_for_did(

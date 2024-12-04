@@ -58,12 +58,15 @@ pub struct CreateRemoteTrustEntityRequestDTO {
     pub role: TrustEntityRole,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GetTrustEntityResponseDTO {
     pub id: TrustEntityId,
     pub name: String,
 
+    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub created_date: OffsetDateTime,
+    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub last_modified: OffsetDateTime,
 
     pub logo: Option<String>,

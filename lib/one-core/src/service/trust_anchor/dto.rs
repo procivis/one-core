@@ -1,4 +1,5 @@
 use one_dto_mapper::{From, Into};
+use serde::Deserialize;
 use shared_types::{TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
@@ -17,11 +18,14 @@ pub struct CreateTrustAnchorRequestDTO {
     pub publisher_reference: Option<String>,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, Deserialize)]
 #[from(TrustAnchor)]
+#[serde(rename_all = "camelCase")]
 pub struct GetTrustAnchorDetailResponseDTO {
     pub id: TrustAnchorId,
+    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub created_date: OffsetDateTime,
+    #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub r#type: String,
