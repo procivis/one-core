@@ -47,4 +47,7 @@ pub enum CacheType {
 
     #[sea_orm(string_value = "JSON_SCHEMA")]
     JsonSchema,
+
+    #[sea_orm(string_value = "TRUST_LIST")]
+    TrustList,
 }

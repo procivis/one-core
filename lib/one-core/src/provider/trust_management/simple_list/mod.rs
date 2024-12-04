@@ -9,6 +9,7 @@ use shared_types::DidValue;
 use super::{TrustCapabilities, TrustManagement, TrustOperations};
 use crate::model::trust_anchor::TrustAnchor;
 use crate::model::trust_entity::TrustEntity;
+use crate::provider::caching_loader::trust_list::TrustListCache;
 use crate::provider::http_client::HttpClient;
 use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::trust_management::model::TrustEntityByDid;
@@ -23,6 +24,7 @@ pub struct Params {
 pub struct SimpleList {
     pub params: Params,
     pub client: Arc<dyn HttpClient>,
+    pub trust_list_cache: Arc<TrustListCache>,
 }
 
 #[async_trait::async_trait]
@@ -45,19 +47,17 @@ impl TrustManagement for SimpleList {
         anchor: &TrustAnchor,
         did: &DidValue,
     ) -> Result<Option<TrustEntityByDid>, TrustManagementError> {
-        // todo: use remote entity cache
-
-        let trust_list: GetTrustAnchorResponseRestDTO = self
-            .client
+        let response = self
+            .trust_list_cache
             .get(&anchor.publisher_reference)
-            .send()
             .await
             .context(format!(
                 "Failed to fetch trust list from publisher reference '{}'",
                 anchor.publisher_reference
             ))
-            .map_err(TrustManagementError::Transport)?
-            .json()
+            .map_err(TrustManagementError::Transport)?;
+
+        let trust_list: GetTrustAnchorResponseRestDTO = serde_json::from_value(response)
             .context("Failed to parse trust list response")
             .map_err(TrustManagementError::MappingError)?;
 

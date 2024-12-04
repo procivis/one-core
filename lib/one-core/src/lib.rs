@@ -9,6 +9,7 @@ use one_crypto::CryptoProvider;
 use provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use provider::caching_loader::json_schema::JsonSchemaCache;
+use provider::caching_loader::trust_list::TrustListCache;
 use provider::caching_loader::vct::VctTypeMetadataCache;
 use provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
 use provider::exchange_protocol::provider::ExchangeProtocolProviderCoreImpl;
@@ -143,6 +144,7 @@ pub struct OneCoreBuilder {
     jsonld_caching_loader: Option<JsonLdCachingLoader>,
     vct_type_metadata_cache: Option<Arc<VctTypeMetadataCache>>,
     json_schema_cache: Option<Arc<JsonSchemaCache>>,
+    trust_list_cache: Option<Arc<TrustListCache>>,
     client: Option<Arc<dyn HttpClient>>,
 }
 
@@ -253,6 +255,11 @@ impl OneCoreBuilder {
         self
     }
 
+    pub fn with_trust_listcache(mut self, cache: Arc<TrustListCache>) -> Self {
+        self.trust_list_cache = Some(cache);
+        self
+    }
+
     pub fn build(self) -> Result<OneCore, ConfigError> {
         OneCore::new(
             self.data_provider_creator
@@ -268,6 +275,7 @@ impl OneCoreBuilder {
                 .expect("VCT type metadata cache is required"),
             self.json_schema_cache
                 .expect("JSON schema cache is required"),
+            self.trust_list_cache.expect("Trust list cache is required"),
         )
     }
 }
@@ -285,6 +293,7 @@ impl OneCore {
         client: Arc<dyn HttpClient>,
         vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
         json_schema_cache: Arc<JsonSchemaCache>,
+        trust_list_cache: Arc<TrustListCache>,
     ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
@@ -354,6 +363,7 @@ impl OneCore {
         let trust_managers = crate::provider::trust_management::provider::from_config(
             client.clone(),
             &mut core_config.trust_management,
+            trust_list_cache,
         )?;
         let trust_management_provider = Arc::new(TrustManagementProviderImpl::new(trust_managers));
 

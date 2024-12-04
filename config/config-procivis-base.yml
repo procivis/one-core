@@ -342,3 +342,8 @@ cacheEntities:
     refreshAfter: 86400
     cacheRefreshTimeout: 86400
     cacheSize: 1000
+  TRUST_LIST:
+    cacheType: DB
+    refreshAfter: 300
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000

@@ -21,6 +21,7 @@ use super::remote_entity_storage::{
 };
 
 pub mod json_schema;
+pub mod trust_list;
 pub mod vct;
 
 #[async_trait]

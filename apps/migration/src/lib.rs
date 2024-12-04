@@ -67,6 +67,7 @@ mod m20241125_170909_trust_anchor_publisher_reference_mandatory;
 mod m20241126_105830_drop_reactivated_history_action;
 mod m20241126_154001_update_remote_entity_type_enum_in_remote_entity_cache_table;
 mod m20241127_112144_did_organisation_id_optional;
+mod m20241203_08000_update_remote_entity_type_enum_trust_list;
 
 pub struct Migrator;
 
@@ -136,6 +137,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20241126_105830_drop_reactivated_history_action::Migration),
             Box::new(m20241127_112144_did_organisation_id_optional::Migration),
             Box::new(m20241126_154001_update_remote_entity_type_enum_in_remote_entity_cache_table::Migration),
+            Box::new(m20241203_08000_update_remote_entity_type_enum_trust_list::Migration),
         ]
     }
 }

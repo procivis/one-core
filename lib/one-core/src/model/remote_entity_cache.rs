@@ -31,6 +31,7 @@ pub enum CacheType {
     StatusListCredential,
     VctMetadata,
     JsonSchema,
+    TrustList,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
