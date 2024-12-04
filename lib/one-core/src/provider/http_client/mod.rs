@@ -15,6 +15,7 @@ use thiserror::Error;
 pub trait HttpClient: Send + Sync {
     fn get(&self, url: &str) -> RequestBuilder;
     fn post(&self, url: &str) -> RequestBuilder;
+    fn patch(&self, url: &str) -> RequestBuilder;
 
     async fn send(
         &self,
@@ -153,6 +154,8 @@ pub enum Method {
     Get,
     #[strum(serialize = "POST")]
     Post,
+    #[strum(serialize = "PATCH")]
+    Patch,
 }
 
 pub struct RequestBuilder {

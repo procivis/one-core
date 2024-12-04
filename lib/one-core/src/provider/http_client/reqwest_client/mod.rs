@@ -32,6 +32,10 @@ impl HttpClient for ReqwestClient {
         RequestBuilder::new(Arc::new(self.clone()), Method::Post, url)
     }
 
+    fn patch(&self, url: &str) -> RequestBuilder {
+        RequestBuilder::new(Arc::new(self.clone()), Method::Patch, url)
+    }
+
     #[track_caller]
     async fn send(
         &self,
@@ -50,6 +54,7 @@ impl HttpClient for ReqwestClient {
         let mut builder = match method {
             Method::Get => self.client.get(url),
             Method::Post => self.client.post(url),
+            Method::Patch => self.client.patch(url),
         };
 
         if let Some(headers) = headers {

@@ -11,6 +11,7 @@ use crate::repository::trust_entity_repository::TrustEntityRepository;
 
 pub mod dto;
 pub mod mapper;
+pub mod remote;
 pub mod service;
 
 #[derive(Clone)]

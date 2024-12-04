@@ -526,3 +526,19 @@ pub fn optional_time(value: Option<OffsetDateTime>) -> Option<String> {
 pub fn optional_did_string(value: Option<DidListItemResponseDTO>) -> Option<String> {
     value.map(|inner| inner.id.to_string())
 }
+
+/// uniffi does not support double option.
+/// workaround for `Option<Option<String>>`
+pub enum OptionalString {
+    None,
+    Some { value: String },
+}
+
+impl From<OptionalString> for Option<String> {
+    fn from(value: OptionalString) -> Self {
+        match value {
+            OptionalString::None => None,
+            OptionalString::Some { value } => Some(value),
+        }
+    }
+}

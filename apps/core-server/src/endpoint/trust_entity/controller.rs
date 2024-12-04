@@ -1,7 +1,7 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use shared_types::TrustEntityId;
+use shared_types::{DidId, TrustEntityId};
 
 use super::dto::{
     CreateRemoteTrustEntityRequestRestDTO, CreateTrustEntityRequestRestDTO, ListTrustEntitiesQuery,
@@ -146,4 +146,36 @@ pub(crate) async fn create_remote_trust_entity(
         .await;
 
     CreatedOrErrorResponse::from_result(result, state, "creating remote trust entity")
+}
+
+#[utoipa::path(
+    patch,
+    path = "/api/trust-entity/remote/v1/{did_id}",
+    responses(EmptyOrErrorResponse),
+    request_body(content = PatchTrustEntityRequestRestDTO),
+    params(
+        ("did_id" = DidId, Path, description = "DID id"),
+    ),
+    tag = "trust_entity",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Update a remote trust entity",
+    description = "Updates a trust entity inside a remote trust anchor.",
+)]
+pub(crate) async fn update_remote_trust_entity(
+    state: State<AppState>,
+    WithRejection(Path(did_id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request_body), _): WithRejection<
+        Json<PatchTrustEntityRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .trust_entity_service
+        .update_remote_trust_entity_for_did(did_id, request_body.into())
+        .await;
+
+    EmptyOrErrorResponse::from_result(result, state, "updating remote trust entity")
 }

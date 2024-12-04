@@ -64,11 +64,12 @@ use one_core::service::trust_anchor::dto::{
 };
 use one_core::service::trust_entity::dto::{
     CreateRemoteTrustEntityRequestDTO, GetTrustEntityResponseDTO,
+    UpdateTrustEntityActionFromDidRequestDTO, UpdateTrustEntityFromDidRequestDTO,
 };
 use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 
 use crate::error::{BleErrorWrapper, ErrorResponseBindingDTO, NativeKeyStorageError};
-use crate::mapper::{optional_did_string, optional_time, serialize_config_entity};
+use crate::mapper::{optional_did_string, optional_time, serialize_config_entity, OptionalString};
 use crate::utils::{format_timestamp_opt, into_id, into_id_opt, into_timestamp, TimestampFormat};
 
 #[derive(From)]
@@ -1263,6 +1264,35 @@ pub struct GetTrustEntityResponseBindingDTO {
     pub trust_anchor: GetTrustAnchorResponseBindingDTO,
     pub did: DidListItemBindingDTO,
     pub state: TrustEntityStateBindingEnum,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(UpdateTrustEntityActionFromDidRequestDTO)]
+pub enum TrustEntityUpdateActionBindingEnum {
+    Activate,
+    Withdraw,
+    Remove,
+}
+
+#[derive(TryInto)]
+#[try_into(T = UpdateTrustEntityFromDidRequestDTO, Error = ErrorResponseBindingDTO)]
+pub struct UpdateRemoteTrustEntityFromDidRequestBindingDTO {
+    #[try_into(skip)]
+    pub did_id: String,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub action: Option<TrustEntityUpdateActionBindingEnum>,
+    #[try_into(infallible)]
+    pub name: Option<String>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub logo: Option<OptionalString>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub website: Option<OptionalString>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub terms_url: Option<OptionalString>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub privacy_url: Option<OptionalString>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub role: Option<TrustEntityRoleBindingEnum>,
 }
 
 #[derive(Clone, Debug, Into)]

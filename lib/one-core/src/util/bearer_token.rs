@@ -33,6 +33,9 @@ pub(crate) async fn prepare_bearer_token(
 
     let payload = JWTPayload {
         issuer: Some(did.did.to_string()),
+        custom: BearerTokenPayload {
+            timestamp: OffsetDateTime::now_utc(),
+        },
         ..Default::default()
     };
 
@@ -84,10 +87,13 @@ pub(crate) struct BearerTokenPayload {
     pub timestamp: OffsetDateTime,
 }
 
+// provide default so that JWTPayload can have Default too
 impl Default for BearerTokenPayload {
     fn default() -> Self {
         Self {
-            timestamp: OffsetDateTime::now_utc(),
+            // use invalid (always expired unix epoch) as default,
+            // to not accidentally extract a valid timestamp while decoding an incoming JWT token
+            timestamp: OffsetDateTime::UNIX_EPOCH,
         }
     }
 }

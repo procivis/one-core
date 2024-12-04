@@ -116,17 +116,39 @@ pub enum TrustEntityFilterValue {
 
 impl ListFilterValue for TrustEntityFilterValue {}
 
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateTrustEntityFromDidRequestDTO {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub action: Option<UpdateTrustEntityActionFromDidRequestDTO>,
-
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
     pub logo: Option<Option<String>>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
     pub website: Option<Option<String>>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
     pub terms_url: Option<Option<String>>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
     pub privacy_url: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub role: Option<TrustEntityRole>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum UpdateTrustEntityActionFromDidRequestDTO {
     Activate,
     Withdraw,

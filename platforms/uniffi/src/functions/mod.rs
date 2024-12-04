@@ -47,4 +47,5 @@ mod share_credential_schema;
 mod share_proof;
 mod share_proof_schema;
 mod unpack_backup;
+mod update_remote_trust_entity;
 mod version;

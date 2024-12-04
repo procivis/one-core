@@ -815,24 +815,44 @@ pub struct SdJwtVcClaimDisplayRestDTO {
     pub label: String,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
 #[into(UpdateTrustEntityFromDidRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchTrustEntityRequestRestDTO {
     #[into(with_fn = "convert_inner")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
     pub action: Option<PatchTrustEntityActionRestDTO>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
     pub name: Option<String>,
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
     pub logo: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
     pub website: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
     pub terms_url: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
     pub privacy_url: Option<Option<String>>,
     #[into(with_fn = "convert_inner")]
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
     pub role: Option<TrustEntityRoleRest>,
 }
 

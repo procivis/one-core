@@ -71,6 +71,7 @@ use utils::native_key_storage::NativeKeyStorageWrapper;
 
 use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
 use crate::error::{BindingError, Cause, ErrorResponseBindingDTO};
+use crate::mapper::OptionalString;
 
 mod binding;
 mod did_config;

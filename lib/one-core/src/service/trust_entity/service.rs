@@ -1,12 +1,10 @@
-use std::str::FromStr;
-
 use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId};
 use uuid::Uuid;
 
 use super::dto::{
-    CreateRemoteTrustEntityRequestDTO, CreateTrustEntityFromDidPublisherRequestDTO,
-    CreateTrustEntityRequestDTO, GetTrustEntitiesResponseDTO, GetTrustEntityResponseDTO,
-    ListTrustEntitiesQueryDTO, UpdateTrustEntityFromDidRequestDTO,
+    CreateTrustEntityFromDidPublisherRequestDTO, CreateTrustEntityRequestDTO,
+    GetTrustEntitiesResponseDTO, GetTrustEntityResponseDTO, ListTrustEntitiesQueryDTO,
+    UpdateTrustEntityFromDidRequestDTO,
 };
 use super::mapper::{
     trust_entity_from_did_request, trust_entity_from_partial_and_did_and_anchor,
@@ -16,7 +14,6 @@ use super::TrustEntityService;
 use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::config::core_config::TrustManagementType::SimpleTrustList;
 use crate::model::did::{DidRelations, DidType};
-use crate::model::key::KeyRelations;
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
@@ -26,11 +23,9 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::trust_anchor::dto::{ListTrustAnchorsQueryDTO, TrustAnchorFilterValue};
-use crate::service::trust_entity::dto::{
-    CreateTrustEntityFromDidPublisherResponseDTO, UpdateTrustEntityActionFromDidRequestDTO,
-};
+use crate::service::trust_entity::dto::UpdateTrustEntityActionFromDidRequestDTO;
 use crate::service::trust_entity::mapper::get_detail_trust_entity_response;
-use crate::util::bearer_token::{prepare_bearer_token, validate_bearer_token};
+use crate::util::bearer_token::validate_bearer_token;
 
 impl TrustEntityService {
     pub async fn create_trust_entity(
@@ -121,97 +116,6 @@ impl TrustEntityService {
                 }
                 err => err.into(),
             })
-    }
-
-    pub async fn create_remote_trust_entity_for_did(
-        &self,
-        request: CreateRemoteTrustEntityRequestDTO,
-    ) -> Result<TrustEntityId, ServiceError> {
-        let did = self
-            .did_repository
-            .get_did(
-                &request.did_id,
-                &DidRelations {
-                    keys: Some(KeyRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await?
-            .ok_or(EntityNotFoundError::Did(request.did_id))?;
-
-        if did.did_type != DidType::Local {
-            return Err(BusinessLogicError::IncompatibleDidType {
-                reason: "Only local DIDs allowed".to_string(),
-            }
-            .into());
-        }
-
-        let trust_anchor = self
-            .get_trust_anchor(request.trust_anchor_id, false)
-            .await?;
-        if trust_anchor.is_publisher {
-            return Err(BusinessLogicError::TrustAnchorMustBeClient.into());
-        }
-
-        let trust = self
-            .trust_provider
-            .get(&trust_anchor.r#type)
-            .ok_or_else(|| MissingProviderError::TrustManager(trust_anchor.r#type.clone()))?;
-
-        if !trust.is_enabled() {
-            return Err(BusinessLogicError::TrustAnchorIsDisabled.into());
-        }
-
-        // the published reference should look like: {scheme://domain}/ssi/trust/v1/{trustAnchorId}
-        let base_url = trust_anchor
-            .publisher_reference
-            .split_once("/ssi/")
-            .ok_or(ServiceError::MappingError(
-                "Invalid publisher reference".to_string(),
-            ))?
-            .0;
-
-        let trust_anchor_id = trust_anchor
-            .publisher_reference
-            .rsplit_once('/')
-            .ok_or(ServiceError::MappingError(
-                "Invalid publisher reference".to_string(),
-            ))?
-            .1;
-
-        let trust_anchor_id = TrustAnchorId::from_str(trust_anchor_id)
-            .map_err(|e| ServiceError::MappingError(format!("Invalid publisher reference: {e}")))?;
-
-        let bearer_token =
-            prepare_bearer_token(&did, &*self.key_provider, &*self.did_method_provider).await?;
-
-        let request = CreateTrustEntityFromDidPublisherRequestDTO {
-            trust_anchor_id: Some(trust_anchor_id),
-            did: did.did,
-            name: request.name,
-            logo: request.logo,
-            terms_url: request.terms_url,
-            privacy_url: request.privacy_url,
-            website: request.website,
-            role: request.role,
-        };
-
-        let url = format!("{base_url}/ssi/trust-entity/v1");
-        let response: CreateTrustEntityFromDidPublisherResponseDTO = self
-            .client
-            .post(&url)
-            .bearer_auth(&bearer_token)
-            .json(request)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?
-            .send()
-            .await
-            .map_err(|e| ServiceError::Other(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| ServiceError::Other(e.to_string()))?
-            .json()
-            .map_err(|e| ServiceError::Other(e.to_string()))?;
-
-        Ok(response.id)
     }
 
     pub async fn get_trust_entity(
@@ -354,7 +258,7 @@ impl TrustEntityService {
         Ok(())
     }
 
-    async fn get_trust_anchor(
+    pub(super) async fn get_trust_anchor(
         &self,
         trust_anchor_id: Option<TrustAnchorId>,
         is_publisher: bool,
@@ -392,6 +296,7 @@ impl TrustEntityService {
             }
         }
     }
+
     pub async fn lookup_did(
         &self,
         did_id: DidId,

@@ -1,4 +1,6 @@
-use core_server::endpoint::ssi::dto::PatchTrustEntityActionRestDTO;
+use core_server::endpoint::ssi::dto::{
+    PatchTrustEntityActionRestDTO, PatchTrustEntityRequestRestDTO,
+};
 use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use one_core::model::did::Did;
 use one_core::model::trust_anchor::TrustAnchor;
@@ -101,5 +103,16 @@ impl TrustEntitiesApi {
         });
 
         self.client.post("/api/trust-entity/remote/v1", body).await
+    }
+
+    pub async fn update_remote(
+        &self,
+        did: &Did,
+        request: PatchTrustEntityRequestRestDTO,
+    ) -> Response {
+        let body = json!(request);
+        self.client
+            .patch(&format!("/api/trust-entity/remote/v1/{}", did.id), body)
+            .await
     }
 }

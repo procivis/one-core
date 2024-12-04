@@ -896,6 +896,29 @@ dictionary GetTrustEntityResponseBindingDTO {
   TrustEntityStateBindingEnum state;
 };
 
+enum TrustEntityUpdateActionBindingEnum {
+  "Activate",
+  "Withdraw",
+  "Remove",
+};
+
+[Enum]
+interface OptionalString {
+  None();
+  Some(string value);
+};
+
+dictionary UpdateRemoteTrustEntityFromDidRequestBindingDTO {
+  string did_id;
+  TrustEntityUpdateActionBindingEnum? action;
+  string? name;
+  OptionalString? logo;
+  OptionalString? website;
+  OptionalString? terms_url;
+  OptionalString? privacy_url;
+  TrustEntityRoleBindingEnum? role;
+};
+
 enum SortableProofSchemaColumnBinding {
   "Name",
   "CreatedDate",
@@ -1230,6 +1253,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   string create_remote_trust_entity(CreateRemoteTrustEntityRequestBindingDTO request);
+
+  [Throws=BindingError]
+  void update_remote_trust_entity(UpdateRemoteTrustEntityFromDidRequestBindingDTO request);
 
   [Throws=BindingError]
   GetTrustEntityResponseBindingDTO get_trust_entity_by_did(string did_id);
