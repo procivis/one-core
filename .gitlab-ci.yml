@@ -15,6 +15,7 @@ variables:
   CI_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/
   GITHUB_PROJECT: "procivis/one-core"
   GITHUB_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/
+  CARGO_TARGET_DIR: "/build-cache/target"
 
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
@@ -67,39 +68,29 @@ stages:
 before_script:
   - *app_settings
 
-.only_main_or_tag:
-  rules:
-    - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "release"
-
-.only_main_or_tag_manual:
-  when: manual
-  rules:
-    - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
-      when: manual
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "release"
-      when: manual
-
 .only_main_or_tag_or_manual:
   rules:
-    - !reference [.only_main_or_tag, rules]
+    - !reference [.rule:only_main_or_tag, rules]
     - when: manual
 
 .rule:run_tests:
   rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: never
     - when: manual
 
 .rule:except_main_branch:
   rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: never
     - when: on_success
 
 .cargo_build:
   script:
     - cargo build --release
+  after_script:
+    - mkdir -p target/release
+    - mv ${CARGO_TARGET_DIR}/release/core-server target/release/core-server
   artifacts:
     expire_in: 1 hour
     paths:
@@ -149,10 +140,11 @@ build:
   stage: build
   extends:
     - .cargo_build
-    - .only_main_or_tag
+    - .rule:only_main_or_tag
 
 tests:mariadb:
   interruptible: true
+  needs: []
   extends:
     - .cargo_tests
   variables:
@@ -166,31 +158,39 @@ tests:mariadb:
   when: manual
   allow_failure: true
   rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: always
-    - if: $CI_COMMIT_BRANCH != "main"
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
       when: manual
 
 tests:sqlite:
   interruptible: true
+  needs: []
   extends:
     - .cargo_tests
   rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: always
-    - if: $CI_COMMIT_BRANCH != "main"
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
       when: always
 
 linter:clippy:
   interruptible: true
   stage: test
+  needs: []
   script:
-    - cargo clippy --all-targets -- -D warnings
-    - cargo clippy --package sql-data-provider -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used
+    - cargo clippy --all-targets --message-format=json -- -D warnings > clippy.json
+    - cargo clippy --package sql-data-provider --message-format=json -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used >> clippy.json
+  artifacts:
+    expire_in: 1 day
+    when: always
+    paths:
+      - clippy.json
 
 linter:rustfmt:
   interruptible: true
   stage: test
+  needs: []
   script:
     - TOOLCHAIN_VERSION=$(rustup toolchain list | grep nightly | head -n1 | awk '{print $1}')
     - cargo +$TOOLCHAIN_VERSION fmt --all -- --check
@@ -224,14 +224,16 @@ sonarqube-check:
     - sonar-scanner
   allow_failure: true
   extends:
-    - .only_main_or_tag
+    - .rule:only_main_or_tag
 
 publish:
   stage: publish
-  dependencies: [build]
+  needs:
+    - job: build
+      artifacts: true
   extends:
     - .docker_publish
-    - .only_main_or_tag
+    - .rule:only_main_or_tag
 
 sdk:ios:bitrise:
   stage: sdk_build
@@ -266,6 +268,9 @@ sdk:android:build:
     - export HOSTNAME=$(docker ps -ql)
     - export CROSS_CONTAINER_OPTS='--env="CI_PIPELINE_ID='$CI_PIPELINE_ID'"'
     - makers build_android
+  after_script:
+    - mkdir -p target/bindings/android
+    - mv ${CARGO_TARGET_DIR}/bindings/android target/bindings/android
   artifacts:
     paths:
       - target/bindings/android
@@ -354,8 +359,7 @@ sdk:react-native:
 sdk:generate_binding_files:
   stage: sdk_build
   needs:
-    - build
-    - tests:mariadb
+    - job: build
   script:
     - makers generateuniffi_android
     - makers generateuniffi_ios
@@ -365,16 +369,17 @@ sdk:generate_binding_files:
       - target/uniffi/ios/one_core.swift
     expire_in: 10 days
   extends:
-    - .only_main_or_tag
+    - .rule:only_main_or_tag
 
 tests:e2e:
   stage: e2e_tests
+  when: manual
   needs:
     - job: publish
       artifacts: true
   extends:
     - .run_e2e_tests
-    - .only_main_or_tag_manual
+    - .rule:manual_main_or_tag
 
 tests:api:
   stage: api_tests
@@ -383,7 +388,7 @@ tests:api:
       artifacts: true
   extends:
     - .run_api_tests
-    - .only_main_or_tag
+    - .rule:only_main_or_tag
 
 .deploy_trigger:
   stage: deploy
@@ -471,6 +476,7 @@ api:trigger_tests:
 
 dtrack:upload-bom:
   stage: scan
+  needs: []
   variables:
     D_TRACK_PATH: ${DEPENDENCY_TRACK_BASE_URL}/api/v1/bom
     SBOM_FILE_PATH: "one-core.json"
@@ -483,7 +489,7 @@ dtrack:upload-bom:
       platforms/uniffi-bindgen/uniffi-bindgen.cdx.json
       platforms/uniffi/one-core-uniffi.cdx.json
   extends:
-    - .only_main_or_tag
+    - .rule:only_main_or_tag
   script:
     - cargo cyclonedx -f json
     - cyclonedx-cli merge --input-files ${SBOM_FILES} --input-format=json --output-format=json --group apps > ${SBOM_FILE_PATH}
@@ -525,7 +531,7 @@ dtrack:policy_violations:
   needs:
     - job: dtrack:upload-bom
   extends:
-    - .only_main_or_tag
+    - .rule:only_main_or_tag
   script:
     - *dTrack_metrics
     - violated_licences=$(echo ${metrics} | jq -r .policyViolationsFail)
@@ -542,7 +548,7 @@ dtrack:metrics:
   needs:
     - job: dtrack:upload-bom
   extends:
-    - .only_main_or_tag
+    - .rule:only_main_or_tag
   script:
     - *dTrack_metrics
     - critical=$(echo ${metrics} | jq -r .critical)

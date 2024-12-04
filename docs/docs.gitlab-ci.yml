@@ -6,6 +6,9 @@ build:docs:
   needs: []
   script:
     - cargo doc --no-deps --release
+  after_script:
+    - mkdir -p target/doc
+    - mv ${CARGO_TARGET_DIR}/doc target/doc
   artifacts:
     expire_in: 2 day
     paths:
