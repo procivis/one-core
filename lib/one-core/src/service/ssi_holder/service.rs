@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use futures::TryFutureExt;
 use shared_types::{CredentialId, DidId, KeyId, OrganisationId, ProofId};
 use time::OffsetDateTime;
@@ -37,7 +35,6 @@ use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
 use crate::provider::exchange_protocol::openid4vc::handle_invitation_operations::HandleInvitationOperationsImpl;
-use crate::provider::exchange_protocol::openid4vc::mapper::fetch_procivis_schema;
 use crate::provider::exchange_protocol::openid4vc::model::{
     InvitationResponseDTO, PresentedCredential, UpdateResponse,
 };
@@ -597,7 +594,7 @@ impl SSIHolderService {
                 schema.format.to_owned()
             };
 
-            let mut issuer_response = self
+            let issuer_response = self
                 .protocol_provider
                 .get_protocol(&credential.exchange)
                 .ok_or(MissingProviderError::ExchangeProtocol(
@@ -614,29 +611,6 @@ impl SSIHolderService {
                     detect_format_with_crypto_suite,
                 )
                 .await?;
-
-            let layout_missing = issuer_response
-                .update_credential_schema
-                .as_ref()
-                .and_then(|schema| schema.layout_properties.as_ref())
-                .is_none();
-
-            // Retry fetching layout if it's not provided via VC
-            if layout_missing {
-                let url_result = Url::from_str(&schema.schema_id);
-
-                if let Ok(url) = url_result {
-                    let result = fetch_procivis_schema(url.as_ref(), &*self.client).await;
-
-                    if let (Ok(response_schema), Some(schema_update_request)) =
-                        (result, issuer_response.update_credential_schema.as_mut())
-                    {
-                        schema_update_request.layout_type = response_schema.layout_type;
-                        schema_update_request.layout_properties =
-                            response_schema.layout_properties.map(Into::into);
-                    }
-                }
-            }
 
             let issuer_response = self.resolve_update_response(None, issuer_response).await?;
 

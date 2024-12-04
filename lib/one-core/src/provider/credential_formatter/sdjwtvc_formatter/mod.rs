@@ -15,6 +15,7 @@ use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use shared_types::{CredentialSchemaId, DidValue};
 use time::Duration;
+use url::Url;
 
 use super::json_ld::model::ContextType;
 use crate::model::did::Did;
@@ -26,9 +27,7 @@ use crate::provider::credential_formatter::model::{
     ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
     SelectiveDisclosure, VerificationFn,
 };
-use crate::provider::credential_formatter::sdjwt::disclosures::{
-    extract_disclosures, sort_published_claims_by_indices, to_hashmap,
-};
+use crate::provider::credential_formatter::sdjwt::disclosures::{extract_disclosures, to_hashmap};
 use crate::provider::credential_formatter::sdjwt::mapper::{
     nest_claims_to_json, tokenize_claims, unpack_arrays,
 };
@@ -209,16 +208,23 @@ impl CredentialFormatter for SDJWTVCFormatter {
         request: &CreateCredentialSchemaRequestDTO,
         core_base_url: &str,
     ) -> Result<String, FormatterError> {
-        request
-            .schema_id
-            .clone()
-            .map(|schema_id| {
-                format!(
-                    "{core_base_url}/ssi/vct/v1/{}/{schema_id}",
-                    request.organisation_id
-                )
-            })
-            .ok_or(FormatterError::Failed("Missing schema_id".to_string()))
+        let Some(schema_id) = request.schema_id.as_ref() else {
+            return Err(FormatterError::Failed("Missing schema_id".to_string()));
+        };
+
+        let mut url = Url::parse(core_base_url)
+            .map_err(|error| FormatterError::Failed(format!("Invalid base URL: {error}")))?;
+
+        {
+            let mut segments = url
+                .path_segments_mut()
+                .map_err(|_| FormatterError::Failed("Invalid base URL".to_string()))?;
+            let organisation_id = request.organisation_id.to_string();
+            // /ssi/vct/v1/:organisation_id/:schema_id
+            segments.extend(["ssi", "vct", "v1", &organisation_id, schema_id]);
+        }
+
+        Ok(url.to_string())
     }
 }
 
@@ -318,8 +324,10 @@ pub(super) fn format_hashed_credential(
     algorithm: &str,
     crypto: &dyn CryptoProvider,
 ) -> Result<(SDJWTVCVc, Vec<String>), FormatterError> {
-    let nested = nest_claims_to_json(&sort_published_claims_by_indices(&credential.claims))?;
-    let (disclosures, sd_section) = gather_disclosures(&nested, algorithm, crypto)?;
+    let nested = nest_claims_to_json(&credential.claims)?;
+    let hasher = crypto.get_hasher("sha-256")?;
+
+    let (disclosures, sd_section) = gather_disclosures(&nested, &*hasher)?;
     let status = credential.status.first().and_then(|status| {
         let obj: serde_json::Value = status
             .additional_fields
@@ -330,17 +338,16 @@ pub(super) fn format_hashed_credential(
         serde_json::from_value(obj).ok()
     });
 
-    let vc = vc_from_credential(&sd_section, algorithm, status)?;
+    let vc = vc_from_credential(sd_section, algorithm, status)?;
 
     Ok((vc, disclosures))
 }
 
 pub(crate) fn vc_from_credential(
-    sd_section: &[String],
+    mut hashed_claims: Vec<String>,
     algorithm: &str,
     status: Option<SDJWTVCStatusList>,
 ) -> Result<SDJWTVCVc, FormatterError> {
-    let mut hashed_claims: Vec<String> = sd_section.to_vec();
     hashed_claims.sort_unstable();
 
     Ok(SDJWTVCVc {

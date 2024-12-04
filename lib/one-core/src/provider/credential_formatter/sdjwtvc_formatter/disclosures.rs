@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use one_crypto::{CryptoProvider, Hasher};
+use one_crypto::Hasher;
 use serde_json::Value;
 
 use crate::provider::credential_formatter::error::FormatterError;
@@ -95,124 +95,53 @@ fn gather_insertables_from_value(
  */
 pub(crate) fn gather_disclosures(
     value: &serde_json::Value,
-    algorithm: &str,
-    crypto: &dyn CryptoProvider,
+    hasher: &dyn Hasher,
 ) -> Result<(Vec<String>, Vec<String>), FormatterError> {
-    let hasher = crypto.get_hasher(algorithm)?;
-
-    let value_as_object = value.as_object().ok_or(FormatterError::JsonMapping(
+    let object = value.as_object().ok_or(FormatterError::JsonMapping(
         "value is not an Object".to_string(),
     ))?;
     let mut disclosures = vec![];
     let mut hashed_disclosures = vec![];
 
-    value_as_object.iter().try_for_each(|(k, v)| {
-        match v {
-            serde_json::Value::Array(array) => {
-                let salt = one_crypto::utilities::generate_salt_base64_16();
+    for (key, value) in object {
+        match value {
+            serde_json::Value::Object(_) => {
+                let (nested_disclosures, nested_sd_hashes) = gather_disclosures(value, hasher)?;
+                disclosures.extend(nested_disclosures);
 
-                let value = serde_json::to_string(array)
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let result = serde_json::to_string(&[&salt, k, &value])
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let b64_encoded = string_to_b64url_string(&result)?;
-
-                let hashed_disclosure = hasher
-                    .hash_base64(b64_encoded.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-                disclosures.push(b64_encoded);
-                hashed_disclosures.push(hashed_disclosure);
-            }
-            serde_json::Value::Object(_object) => {
-                let (subdisclosures, sd_hashes) =
-                    crate::provider::credential_formatter::sdjwt::disclosures::gather_disclosures(
-                        v, algorithm, crypto,
-                    )?;
-                disclosures.extend(subdisclosures);
-
-                let salt = one_crypto::utilities::generate_salt_base64_16();
-
-                let sd_hashes_json = serde_json::json!({
-                    SELECTIVE_DISCLOSURE_MARKER: sd_hashes
+                let nested_sd = serde_json::json!({
+                    SELECTIVE_DISCLOSURE_MARKER: nested_sd_hashes
                 });
-                let sd_disclosure = format!(
-                    r#"["{salt}","{k}",{}]"#,
-                    serde_json::to_string(&sd_hashes_json)
-                        .map_err(|e| FormatterError::JsonMapping(e.to_string()))?
-                );
-
-                let sd_disclosure_as_b64 = string_to_b64url_string(&sd_disclosure)?;
-
-                let hashed_subdisclosure = hasher
-                    .hash_base64(sd_disclosure.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-                disclosures.push(sd_disclosure_as_b64);
-                hashed_disclosures.push(hashed_subdisclosure);
-            }
-            serde_json::Value::String(value) => {
-                let salt = one_crypto::utilities::generate_salt_base64_16();
-
-                let result = serde_json::to_string(&[&salt, k, value])
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let b64_encoded = string_to_b64url_string(&result)?;
-
-                let hashed_disclosure: String = hasher
-                    .hash_base64(b64_encoded.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-                disclosures.push(b64_encoded);
-                hashed_disclosures.push(hashed_disclosure);
-            }
-            serde_json::Value::Number(number) => {
-                let salt = one_crypto::utilities::generate_salt_base64_16();
-
-                let value = serde_json::to_string(number)
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let result = serde_json::to_string(&[&salt, k, &value])
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let b64_encoded = string_to_b64url_string(&result)?;
+                let disclosure = compute_disclosure(key, &nested_sd)?;
 
                 let hashed_disclosure = hasher
-                    .hash_base64(b64_encoded.as_bytes())
+                    .hash_base64(disclosure.as_bytes())
                     .map_err(|e| FormatterError::Failed(e.to_string()))?;
 
-                disclosures.push(b64_encoded);
+                disclosures.push(disclosure);
                 hashed_disclosures.push(hashed_disclosure);
             }
-            serde_json::Value::Bool(bool) => {
-                let salt = one_crypto::utilities::generate_salt_base64_16();
 
-                let value = serde_json::to_string(bool)
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let result = serde_json::to_string(&[&salt, k, &value])
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let b64_encoded = string_to_b64url_string(&result)?;
-
-                let hashed_disclosure = hasher
-                    .hash_base64(b64_encoded.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-                disclosures.push(b64_encoded);
-                hashed_disclosures.push(hashed_disclosure);
-            }
             _ => {
-                return Err(FormatterError::Failed(
-                    "unsupported JSON variant".to_string(),
-                ))
+                let disclosure = compute_disclosure(key, value)?;
+
+                let hashed_disclosure = hasher
+                    .hash_base64(disclosure.as_bytes())
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+
+                disclosures.push(disclosure);
+                hashed_disclosures.push(hashed_disclosure);
             }
         }
-
-        Ok::<(), FormatterError>(())
-    })?;
+    }
 
     Ok((disclosures, hashed_disclosures))
+}
+
+fn compute_disclosure(key: &str, value: &Value) -> Result<String, FormatterError> {
+    let salt = one_crypto::utilities::generate_salt_base64_16();
+
+    let array = serde_json::json!([salt, key, value]).to_string();
+
+    string_to_b64url_string(&array)
 }

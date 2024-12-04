@@ -1,28 +1,44 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use maplit::hashmap;
 use mockall::predicate::eq;
 use one_crypto::hasher::sha256::SHA256;
-use one_crypto::{MockCryptoProvider, MockHasher};
+use one_crypto::signer::eddsa::EDDSASigner;
+use one_crypto::{CryptoProviderImpl, Hasher, MockCryptoProvider, MockHasher, Signer};
 use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
-use time::Duration;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::model::credential_schema::LayoutType;
+use crate::model::did::KeyRole;
+use crate::model::key::Key;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, ExtractPresentationCtx, MockTokenVerifier,
+    CredentialData, CredentialSchemaData, CredentialStatus, ExtractPresentationCtx, Issuer,
+    MockSignatureProvider, MockTokenVerifier, PublishedClaim, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SDJWTVCVc;
 use crate::provider::credential_formatter::sdjwtvc_formatter::{Params, SDJWTVCFormatter};
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::did_method::jwk::JWKDidMethod;
+use crate::provider::did_method::provider::DidMethodProviderImpl;
+use crate::provider::did_method::resolver::DidCachingLoader;
+use crate::provider::did_method::DidMethod;
+use crate::provider::key_algorithm::eddsa::{Eddsa, EddsaParams};
+use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
+use crate::provider::key_algorithm::KeyAlgorithm;
+use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
+use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
+use crate::util::key_verification::KeyVerification;
 
 #[tokio::test]
 async fn test_format_credential() {
@@ -296,7 +312,7 @@ fn test_schema_id() {
         },
         Arc::new(MockCryptoProvider::default()),
     );
-    let vct_type = "some_vct_type";
+    let vct_type = "xyz some_vct_type";
     let request_dto = CreateCredentialSchemaRequestDTO {
         name: "".to_string(),
         format: "".to_string(),
@@ -319,8 +335,169 @@ fn test_schema_id() {
     assert_eq!(
         result.unwrap(),
         format!(
-            "https://example.com/ssi/vct/v1/{}/{vct_type}",
+            "https://example.com/ssi/vct/v1/{}/xyz%20some_vct_type",
             request_dto.organisation_id
         )
+    )
+}
+
+#[tokio::test]
+async fn test_format_extract_round_trip() {
+    let now = OffsetDateTime::now_utc();
+    let params = Params {
+        leeway: 60,
+        embed_layout_properties: false,
+    };
+
+    let caching_loader = DidCachingLoader::new(
+        RemoteEntityType::DidDocument,
+        Arc::new(InMemoryStorage::new(HashMap::new())),
+        100,
+        Duration::minutes(1),
+        Duration::minutes(1),
+    );
+
+    let hashers = hashmap! {
+        "sha-256".to_string() => Arc::new(SHA256 {}) as Arc<dyn Hasher>
+    };
+    let signers = hashmap! {
+        "Ed25519".to_string() => Arc::new(EDDSASigner {}) as Arc<dyn Signer>,
+    };
+    let crypto = Arc::new(CryptoProviderImpl::new(hashers, signers));
+
+    let key_alg = Eddsa::new(EddsaParams {
+        algorithm: crate::provider::key_algorithm::eddsa::Algorithm::Ed25519,
+    });
+    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+        HashMap::from_iter(vec![(
+            "EDDSA".to_owned(),
+            Arc::new(key_alg) as Arc<dyn KeyAlgorithm>,
+        )]),
+        crypto.clone(),
+    ));
+    let key_pair = EDDSASigner::generate_key_pair();
+    let key = Key {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        public_key: key_pair.public.clone(),
+        name: "issuer key".to_string(),
+        key_reference: vec![],
+        storage_type: "INTERNAL".to_string(),
+        key_type: "EDDSA".to_string(),
+        organisation: None,
+    };
+
+    let issuer_did = JWKDidMethod::new(key_algorithm_provider.clone())
+        .create(None, &None, Some(vec![key]))
+        .await
+        .unwrap();
+
+    let credential_data = CredentialData {
+        id: None,
+        issuance_date: now,
+        valid_for: Duration::seconds(10),
+        claims: vec![
+            PublishedClaim {
+                key: "age".to_string(),
+                value: PublishedClaimValue::Integer(22),
+                datatype: Some("NUMBER".to_string()),
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "object/name".to_string(),
+                value: PublishedClaimValue::String("Mike".to_string()),
+                datatype: Some("STRING".to_string()),
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "is_over_18".to_string(),
+                value: PublishedClaimValue::Bool(true),
+                datatype: Some("BOOLEAN".to_string()),
+                array_item: false,
+            },
+            PublishedClaim {
+                key: "object/measurements/0/air pollution".to_string(),
+                value: PublishedClaimValue::Float(24.6),
+                datatype: Some("NUMBER".to_string()),
+                array_item: true,
+            },
+        ],
+        issuer_did: Issuer::Url(issuer_did.to_string().parse().unwrap()),
+        status: vec![],
+        schema: CredentialSchemaData {
+            id: Some("credential-schema-id".to_string()),
+            r#type: Some("FallbackSchema2024".to_string()),
+            context: None,
+            name: "credential-schema-name".to_string(),
+            metadata: None,
+        },
+        name: None,
+        description: None,
+        terms_of_use: vec![],
+        evidence: vec![],
+        related_resource: None,
+    };
+
+    let did_method_provider = Arc::new(DidMethodProviderImpl::new(
+        caching_loader,
+        HashMap::from_iter(vec![(
+            "JWK".to_owned(),
+            Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
+        )]),
+        None,
+    ));
+    let formatter = SDJWTVCFormatter::new(params, crypto);
+
+    let mut auth_fn = MockSignatureProvider::new();
+    let public_key = key_pair.public.clone();
+    let private_key = key_pair.private.clone();
+    auth_fn
+        .expect_sign()
+        .returning(move |msg| EDDSASigner {}.sign(msg, &public_key.clone(), &private_key.clone()));
+    auth_fn
+        .expect_get_key_id()
+        .returning(move || Some(format!("{}#0", issuer_did)));
+    let public_key_clone = key_pair.public.clone();
+    auth_fn
+        .expect_get_public_key()
+        .returning(move || public_key_clone.clone());
+
+    let holder_did =
+        DidValue::from_str("did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX").unwrap();
+    let key_verification = Box::new(KeyVerification {
+        key_algorithm_provider,
+        did_method_provider,
+        key_role: KeyRole::AssertionMethod,
+    });
+
+    let token = formatter
+        .format_credentials(
+            credential_data,
+            &Some(holder_did),
+            "EDDSA",
+            vec![],
+            vec![],
+            Box::new(auth_fn),
+        )
+        .await
+        .unwrap();
+    let result = formatter
+        .extract_credentials(token.as_str(), key_verification)
+        .await;
+
+    assert2::let_assert!(Ok(credential) = result);
+    assert_eq!(
+        credential.claims.values,
+        hashmap! {
+            "object".into() => json!({
+                "name": "Mike",
+                "measurements": [{
+                    "air pollution": 24.6
+                }]
+            }),
+            "age".into() => json!(22),
+            "is_over_18".into() => json!(true)
+        }
     )
 }

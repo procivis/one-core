@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
-use anyhow::Context;
 use indexmap::IndexMap;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
-use url::Url;
 use uuid::Uuid;
 
 use super::mapper::{fetch_procivis_schema, from_create_request, parse_procivis_schema_claim};
@@ -118,48 +116,30 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
     fn find_schema_data(
         &self,
-        credential_issuer_endpoint: &Url,
         credential_config: &OpenID4VCICredentialConfigurationData,
         schema_id: &str,
         offer_id: &str,
     ) -> Result<BasicSchemaData, ExchangeProtocolError> {
-        let data = match credential_config.format.as_str() {
-            "mso_mdoc" => BasicSchemaData {
+        let format = credential_config.format.as_str();
+        let vct = credential_config.vct.as_ref();
+
+        let data = match (format, vct) {
+            ("mso_mdoc", _) => BasicSchemaData {
                 id: credential_config
                     .doctype
                     .as_deref()
                     .unwrap_or(schema_id)
                     .to_owned(),
                 r#type: CredentialSchemaType::Mdoc.to_string(),
-                vct_endpoint: None,
                 offer_id: offer_id.to_owned(),
             },
-            // our `vct` naming is a bit different than ".well-known" endpoint
-            "vc+sd-jwt" | "dc+sd-jwt"
-                if credential_config.wallet_storage_type.is_none()
-                    && credential_config.vct.is_some() =>
+            // external sd-jwt vc
+            ("vc+sd-jwt" | "dc+sd-jwt", Some(vct))
+                if credential_config.wallet_storage_type.is_none() =>
             {
-                let Some(vct) = credential_config.vct.as_ref() else {
-                    return Err(ExchangeProtocolError::Failed(
-                        "SD-JWT VC metadata is missing `vct`".to_string(),
-                    ));
-                };
-
-                let maybe_url = Url::parse(vct).ok();
-                let schema_type = maybe_url
-                    .as_ref()
-                    .and_then(|url| {
-                        let segments = url.path_segments()?;
-                        segments.filter(|s| s != &"" && s != &"/").last()
-                    })
-                    .unwrap_or(vct);
-                let issuer = credential_issuer_endpoint.as_str().trim_end_matches('/');
-                let endpoint = format!("{issuer}/.well-known/vct/{schema_type}");
-
                 BasicSchemaData {
-                    id: vct.to_owned(),
-                    r#type: schema_type.to_string(),
-                    vct_endpoint: Some(endpoint),
+                    id: schema_id.to_owned(),
+                    r#type: vct.to_owned(),
                     offer_id: offer_id.to_owned(),
                 }
             }
@@ -167,7 +147,6 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
             _ => BasicSchemaData {
                 id: schema_id.to_owned(),
                 r#type: CredentialSchemaType::ProcivisOneSchema2024.to_string(),
-                vct_endpoint: credential_config.vct.clone(),
                 offer_id: offer_id.to_owned(),
             },
         };
@@ -198,8 +177,8 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
         });
 
         let result = match schema.r#type.as_str() {
-            "ProcivisOneSchema2024" if credential_config.vct.is_none() => {
-                let procivis_schema = fetch_procivis_schema(&schema.id, &*self.http_client)
+            "ProcivisOneSchema2024" => {
+                let procivis_schema = fetch_procivis_schema(&schema_url, &*self.http_client)
                     .await
                     .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
@@ -330,12 +309,25 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 let (claim_schemas, claims): (Vec<_>, Vec<_>) =
                     create_claims_from_credential_definition(*credential_id, claim_keys)?;
 
-                let (schema_name, layout_properties) =
-                    if let Some(vct_endpoint) = schema.vct_endpoint {
-                        handle_type_metadata(self.http_client.as_ref(), &vct_endpoint).await?
-                    } else {
-                        (None, None)
-                    };
+                let (schema_name, layout_properties) = {
+                    let mut schema_name = None;
+                    let mut layout_properties = None;
+
+                    if let Some(vct) = &credential_config.vct {
+                        let metadata = self
+                            .vct_type_metadata_cache
+                            .get(vct)
+                            .await
+                            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+                        if let Some(metadata) = metadata {
+                            schema_name = metadata.name.clone();
+                            layout_properties = map_layout_properties(metadata);
+                        }
+                    }
+
+                    (schema_name, layout_properties)
+                };
 
                 let name = match schema_name.or_else(|| credential_display_name.cloned()) {
                     Some(name) => name,
@@ -393,24 +385,10 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
     }
 }
 
-async fn handle_type_metadata(
-    client: &dyn HttpClient,
-    vct_endpoint: &str,
-) -> Result<(Option<String>, Option<LayoutProperties>), ExchangeProtocolError> {
-    let type_metadata: SdJwtVcTypeMetadataResponseDTO = client
-        .get(vct_endpoint)
-        .send()
-        .await
-        .context("send error")
-        .map_err(ExchangeProtocolError::Transport)?
-        .error_for_status()
-        .context("status error")
-        .map_err(ExchangeProtocolError::Transport)?
-        .json()
-        .context("parsing error")
-        .map_err(ExchangeProtocolError::Transport)?;
-
-    let layout_properties = type_metadata
+fn map_layout_properties(
+    type_metadata: SdJwtVcTypeMetadataResponseDTO,
+) -> Option<LayoutProperties> {
+    type_metadata
         .layout_properties
         .map(LayoutProperties::from)
         .or_else(|| {
@@ -439,9 +417,5 @@ async fn handle_type_metadata(
                 picture_attribute: None,
                 code: None,
             })
-        });
-
-    let schema_name = type_metadata.name;
-
-    Ok((schema_name, layout_properties))
+        })
 }

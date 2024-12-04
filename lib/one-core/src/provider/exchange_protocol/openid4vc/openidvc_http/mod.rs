@@ -991,7 +991,6 @@ async fn handle_credential_invitation(
         })?;
 
     let schema_data = handle_invitation_operations.find_schema_data(
-        &credential_issuer_endpoint,
         credential_config,
         configuration_id,
         configuration_id,

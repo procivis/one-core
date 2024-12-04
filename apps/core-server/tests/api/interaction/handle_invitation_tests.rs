@@ -2111,6 +2111,9 @@ async fn test_handle_invitation_external_sd_jwt_vc() {
         "{}/ssi/oidc-issuer/v1/{credential_schema_id}",
         mock_server.uri()
     );
+
+    let vct = format!("{}/education_credential", mock_server.uri());
+
     let credential_offer = json!({
         "credential_issuer": credential_issuer,
         "credential_configuration_ids": [
@@ -2151,7 +2154,7 @@ async fn test_handle_invitation_external_sd_jwt_vc() {
                               "text_color": "#FFFFFF"
                             }
                         ],
-                        "vct": "https://betelgeuse.example.com/education_credential",
+                        "vct": vct,
                         "claims": {
                             "name": {
                               "display": [
@@ -2198,12 +2201,11 @@ async fn test_handle_invitation_external_sd_jwt_vc() {
         .mount(&mock_server)
         .await;
 
+    // vct endpoint
     Mock::given(method(Method::GET))
-        .and(path(format!(
-            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/vct/education_credential"
-        )))
+        .and(path("/education_credential"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "vct": "https://betelgeuse.example.com/education_credential",
+            "vct": vct,
             "name": "Betelgeuse Education Credential - Preliminary Version",
             "description": "This is our development version of the education credential. Don't panic.",
             "display": [

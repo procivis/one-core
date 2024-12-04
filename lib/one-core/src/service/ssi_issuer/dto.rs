@@ -66,6 +66,7 @@ pub struct ConnectIssuerResponseDTO {
 pub struct SdJwtVcTypeMetadataResponseDTO {
     // StringOrURI
     pub vct: String,
+
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 

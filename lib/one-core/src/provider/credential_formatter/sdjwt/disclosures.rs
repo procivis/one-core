@@ -427,11 +427,10 @@ pub(crate) fn sort_published_claims_by_indices(claims: &[PublishedClaim]) -> Vec
     let mut claims = claims.to_owned();
 
     claims.sort_by(|a, b| {
-        let splits_a = a.key.split(NESTED_CLAIM_MARKER).collect::<Vec<&str>>();
-        let splits_b = b.key.split(NESTED_CLAIM_MARKER).collect::<Vec<&str>>();
+        let splits_a = a.key.split(NESTED_CLAIM_MARKER);
+        let splits_b = b.key.split(NESTED_CLAIM_MARKER);
 
         splits_a
-            .into_iter()
             .zip(splits_b)
             .find_map(|(a, b)| {
                 // Non equal segments means we don't care about anything that's after that

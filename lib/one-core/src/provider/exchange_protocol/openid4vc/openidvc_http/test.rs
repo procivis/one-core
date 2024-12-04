@@ -647,12 +647,11 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     operations
         .expect_find_schema_data()
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _| {
             Ok(BasicSchemaData {
                 id: credential_schema_id.to_string(),
                 r#type: "SD_JWT_VC".to_string(),
                 offer_id: credential_clone.id.to_string(),
-                vct_endpoint: None,
             })
         });
     operations

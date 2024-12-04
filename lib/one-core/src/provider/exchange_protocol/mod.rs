@@ -211,7 +211,6 @@ pub struct BasicSchemaData {
     pub id: String,
     pub r#type: String,
     pub offer_id: String,
-    pub vct_endpoint: Option<String>,
 }
 
 pub struct BuildCredentialSchemaResponse {
@@ -237,7 +236,6 @@ pub trait HandleInvitationOperations: Send + Sync {
     /// type and id from credential offer
     fn find_schema_data(
         &self,
-        credential_issuer_endpoint: &Url,
         credential_config: &openid4vc::model::OpenID4VCICredentialConfigurationData,
         schema_id: &str,
         offer_id: &str,

@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use convert_case::{Case, Casing};
 use shared_types::{CredentialSchemaId, OrganisationId};
+use url::Url;
 
 use super::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
@@ -181,14 +182,30 @@ impl SSIIssuerService {
         organisation_id: OrganisationId,
         vct_type: String,
     ) -> Result<SdJwtVcTypeMetadataResponseDTO, ServiceError> {
-        let vct = format!(
-            "{}/ssi/vct/v1/{organisation_id}/{vct_type}",
-            self.core_base_url
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "Host URL not specified".to_string()
-                ))?
-        );
+        let base_url = self
+            .core_base_url
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "Host URL not specified".to_string(),
+            ))?;
+
+        let vct = {
+            let mut vct = Url::parse(base_url).map_err(|error| {
+                ServiceError::MappingError(format!("Invalid base URL: {error}"))
+            })?;
+
+            {
+                let mut segments = vct
+                    .path_segments_mut()
+                    .map_err(|_| ServiceError::MappingError("Invalid base URL".to_string()))?;
+                let organisation_id = organisation_id.to_string();
+                // /ssi/vct/v1/:organisation_id/:vct_type
+                segments.extend(["ssi", "vct", "v1", &organisation_id, &vct_type]);
+            }
+
+            vct.to_string()
+        };
+
         let mut schema_list = self
             .credential_schema_repository
             .get_credential_schema_list(
