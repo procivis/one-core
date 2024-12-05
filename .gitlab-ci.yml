@@ -562,17 +562,13 @@ dtrack:metrics:
       fi
 
 github:push:
-  extends:
-    - .github:push
-
-github:release:
+  stage: github
   variables:
     FILES_TO_ATTACH: >-
       one-core.json
   extends:
-    - .github:release
+    - .ci-tool:open_source_release
   needs:
-    - job: github:push
     - job: dtrack:upload-bom
       artifacts: true
 
