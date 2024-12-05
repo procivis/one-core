@@ -50,3 +50,8 @@ datatype:
     type: "STRING"
     order: 103
     params: null
+trustManagement:
+  SIMPLE_TRUST_LIST:
+    params:
+      public:
+        enablePublishing: false

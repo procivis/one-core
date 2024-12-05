@@ -1,9 +1,0 @@
-trustManagement:
-  SIMPLE_TRUST_LIST:
-    display: "trustManagement.simpleTrustList"
-    type: "SIMPLE_TRUST_LIST"
-    order: 1
-    disabled: false
-    params:
-      public:
-        enablePublishing: true

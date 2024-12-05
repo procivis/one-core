@@ -36,3 +36,8 @@ exchange:
     type: "ISO_MDL"
     display: "exchange.isoMdl"
     order: 3
+trustManagement:
+  SIMPLE_TRUST_LIST:
+    params:
+      public:
+        enablePublishing: false
