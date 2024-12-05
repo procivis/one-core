@@ -30,6 +30,9 @@ pub struct HandleInvitationResponseRestDTO {
     pub interaction_id: Uuid,
     pub credential_ids: Option<Vec<CredentialId>>,
     pub proof_id: Option<ProofId>,
+    /// If a pre-authorized code is issued with a transaction code object, the
+    /// wallet user must input a transaction code to receive the offered credential.
+    /// This code is typically sent through a separate channel such as SMS or email.
     pub tx_code: Option<OpenID4VCITxCodeRestDTO>,
 }
 
@@ -38,13 +41,18 @@ pub struct HandleInvitationResponseRestDTO {
 pub struct OpenID4VCITxCodeRestDTO {
     #[schema(value_type = String, example = "numeric", default = "numeric")]
     #[serde(default)]
+    /// Type of code expected.
     pub input_mode: OpenID4VCITxCodeInputModeRestDTO,
     #[from(with_fn = convert_inner)]
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Length of transaction code, to pass to the frontend for guiding the
+    /// wallet holder.
     pub length: Option<i64>,
     #[from(with_fn = convert_inner)]
     #[schema(value_type = String, example = "Pin number", max_length = 300)]
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Information about the transaction code, to pass to the frontend for
+    /// guiding the wallet holder.
     pub description: Option<String>,
 }
 
