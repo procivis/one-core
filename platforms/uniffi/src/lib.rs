@@ -85,12 +85,14 @@ mod utils;
 use binding::OneCoreBinding;
 use dto::*;
 use one_core::config::core_config::{CacheEntitiesConfig, RevocationType};
+use one_core::provider::caching_loader::trust_list::{TrustListCache, TrustListResolver};
 use one_core::provider::did_method::sd_jwt_vc_issuer_metadata::SdJwtVcIssuerMetadataDidMethod;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::revocation::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
 use one_core::provider::revocation::none::NoneRevocation;
 use one_core::provider::revocation::status_list_2021::StatusList2021;
 use one_core::provider::revocation::token_status_list::TokenStatusList;
+use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
 
 uniffi::include_scaffolding!("one_core");
 
@@ -407,6 +409,15 @@ fn initialize_core(
                 .await,
             );
 
+            let trust_list_cache = Arc::new(
+                initialize_trust_list_cache(
+                    &core_config.cache_entities,
+                    data_repository.get_remote_entity_cache_repository().clone(),
+                    client.clone(),
+                )
+                .await,
+            );
+
             let formatter_provider_creator: FormatterProviderCreator = {
                 let caching_loader = caching_loader.clone();
                 let client = client.clone();
@@ -631,6 +642,7 @@ fn initialize_core(
                 .with_vct_type_metadata_cache(vct_type_metadata_cache)
                 .with_json_schema_cache(json_schema_cache)
                 .with_client(client)
+                .with_trust_listcache(trust_list_cache)
                 .build()
                 .map_err(|err| SDKError::InitializationFailure(err.to_string()).into())
         }) as _
@@ -849,4 +861,34 @@ pub async fn initialize_json_schema_cache(
     cache.initialize_from_static_resources().await;
 
     cache
+}
+
+pub async fn initialize_trust_list_cache(
+    cache_entities_config: &CacheEntitiesConfig,
+    repo: Arc<dyn RemoteEntityCacheRepository>,
+    client: Arc<dyn HttpClient>,
+) -> TrustListCache {
+    let config = cache_entities_config
+        .entities
+        .get("TRUST_LIST")
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        });
+
+    let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(repo)),
+        CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
+    };
+
+    TrustListCache::new(
+        Arc::new(TrustListResolver::new(client)),
+        storage,
+        config.cache_size as usize,
+        config.cache_refresh_timeout,
+        config.refresh_after,
+    )
 }
