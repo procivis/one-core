@@ -235,7 +235,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
     let credential_copy = credential.to_owned();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_| Ok(vec![credential_copy]));
+        .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -255,6 +255,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["JWT"]),
         &object_datatypes(),
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -299,7 +300,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
     let credential_copy = credential.to_owned();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_| Ok(vec![credential_copy]));
+        .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -326,6 +327,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["JWT"]),
         &object_datatypes(),
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -341,7 +343,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
     let credential_copy = credential.to_owned();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_| Ok(vec![credential_copy]));
+        .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -361,6 +363,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["JWT"]),
         &object_datatypes(),
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -383,7 +386,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
     let credential_copy = credential.to_owned();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_| Ok(vec![credential_copy]));
+        .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -403,6 +406,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["SD_JWT"]),
         &object_datatypes(),
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -498,7 +502,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
     let credential_copy = credential.to_owned();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_| Ok(vec![credential_copy]));
+        .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -518,6 +522,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["MDOC"]),
         &object_datatypes(),
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -533,7 +538,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_se
     let credential_copy = credential.to_owned();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_| Ok(vec![credential_copy]));
+        .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -553,6 +558,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_se
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["MDOC"]),
         &object_datatypes(),
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();
@@ -636,7 +642,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_missing_object
     let credential = mdoc_credential_with_optional_namespace();
     storage
         .expect_get_credentials_by_credential_schema_id()
-        .return_once(|_| Ok(vec![credential]));
+        .return_once(|_, _| Ok(vec![credential]));
 
     let (result_credentials, result_group) = get_relevant_credentials_to_credential_schemas(
         &storage,
@@ -656,6 +662,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_missing_object
         HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
         &HashSet::from(["MDOC"]),
         &object_datatypes(),
+        Uuid::new_v4().into(),
     )
     .await
     .unwrap();

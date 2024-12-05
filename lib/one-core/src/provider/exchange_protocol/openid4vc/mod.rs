@@ -516,12 +516,21 @@ impl ExchangeProtocolImpl for OpenID4VC {
             })
             .collect::<Result<_, _>>()?;
 
+        let organisation = proof
+            .interaction
+            .as_ref()
+            .and_then(|interaction| interaction.organisation.as_ref())
+            .ok_or(ExchangeProtocolError::Failed(
+                "proof organisation missing".to_string(),
+            ))?;
+
         let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
             storage_access,
             convert_inner(credential_groups),
             group_id_to_schema_id,
             &allowed_schema_formats,
             &gather_object_datatypes_from_config(&self.config.datatype),
+            organisation.id,
         )
         .await?;
 

@@ -80,6 +80,7 @@ impl StorageProxy for StorageProxyImpl {
     async fn get_credentials_by_credential_schema_id(
         &self,
         schema_id: &str,
+        organisation_id: OrganisationId,
     ) -> anyhow::Result<Vec<Credential>> {
         Ok(self
             .credentials
@@ -102,6 +103,14 @@ impl StorageProxy for StorageProxyImpl {
             .context("Error while fetching credential by credential schema id")?
             .into_iter()
             .filter(|cred| cred.deleted_at.is_none())
+            .filter(|cred| {
+                cred.schema.as_ref().is_some_and(|schema| {
+                    schema
+                        .organisation
+                        .as_ref()
+                        .is_some_and(|o| o.id == organisation_id)
+                })
+            })
             .collect::<Vec<_>>())
     }
 

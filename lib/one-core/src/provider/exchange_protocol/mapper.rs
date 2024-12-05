@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use shared_types::{CredentialId, DidId, ProofId};
+use shared_types::{CredentialId, DidId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -112,6 +112,7 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
     group_id_to_schema_id_mapping: HashMap<String, String>,
     allowed_schema_formats: &HashSet<&str>,
     object_datatypes: &HashSet<&str>,
+    organisation_id: OrganisationId,
 ) -> Result<(Vec<Credential>, Vec<CredentialGroup>), ExchangeProtocolError> {
     let mut relevant_credentials: Vec<Credential> = Vec::new();
     for group in &mut credential_groups {
@@ -123,7 +124,7 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
                 ))?;
 
         let relevant_credentials_inner = storage_access
-            .get_credentials_by_credential_schema_id(credential_schema_id)
+            .get_credentials_by_credential_schema_id(credential_schema_id, organisation_id)
             .await
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 

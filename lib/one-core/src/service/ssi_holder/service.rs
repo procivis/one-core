@@ -209,7 +209,9 @@ impl SSIHolderService {
                         ..Default::default()
                     }),
                     state: Some(ProofStateRelations::default()),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
                     ..Default::default()
                 },
             )

@@ -186,6 +186,7 @@ pub trait StorageProxy: Send + Sync {
     async fn get_credentials_by_credential_schema_id(
         &self,
         schema_id: &str,
+        organisation_id: OrganisationId,
     ) -> anyhow::Result<Vec<Credential>>;
     /// Create a credential schema in a chosen storage layer.
     async fn create_credential_schema(

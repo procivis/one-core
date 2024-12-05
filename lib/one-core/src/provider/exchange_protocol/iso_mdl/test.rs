@@ -398,8 +398,8 @@ async fn test_get_presentation_definition_ok() {
     let mut storage_access = MockStorageProxy::new();
     storage_access
         .expect_get_credentials_by_credential_schema_id()
-        .with(eq(schema_id))
-        .return_once(move |_| {
+        .with(eq(schema_id), eq(organisation_id))
+        .return_once(move |_, _| {
             Ok(vec![Credential {
                 id: credential_id,
                 created_date: OffsetDateTime::now_utc(),

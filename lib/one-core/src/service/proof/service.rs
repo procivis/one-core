@@ -183,7 +183,9 @@ impl ProofService {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
                     ..Default::default()
                 },
             )

@@ -305,7 +305,7 @@ impl ExchangeProtocolImpl for IsoMdl {
             let namespaces = items_request.name_spaces;
 
             let credentials: Vec<_> = storage_access
-                .get_credentials_by_credential_schema_id(&schema_id)
+                .get_credentials_by_credential_schema_id(&schema_id, organisation_id)
                 .await
                 .map_err(|err| {
                     ExchangeProtocolError::Failed(format!(
