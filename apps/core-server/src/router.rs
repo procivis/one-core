@@ -412,6 +412,9 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .merge(technical_endpoints)
         .layer(CatchPanicLayer::custom(handle_panic))
         .layer(Extension(config))
+        .layer(middleware::from_fn(
+            crate::middleware::add_disable_cache_headers,
+        ))
         .with_state(state)
 }
 

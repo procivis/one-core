@@ -6,6 +6,7 @@ use axum::extract::MatchedPath;
 use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::Extension;
+use headers::HeaderValue;
 use sentry::{Hub, SentryFutureExt};
 
 use crate::ServerConfig;
@@ -139,4 +140,18 @@ pub async fn metrics_counter(
     );
 
     Ok(resp)
+}
+
+pub async fn add_disable_cache_headers(
+    request: Request<Body>,
+    next: Next,
+) -> Result<axum::response::Response, StatusCode> {
+    let mut response = next.run(request).await;
+    response
+        .headers_mut()
+        .insert("Cache-Control", HeaderValue::from_static("no-store"));
+    response
+        .headers_mut()
+        .insert("Pragma", HeaderValue::from_static("no-cache"));
+    Ok(response)
 }
