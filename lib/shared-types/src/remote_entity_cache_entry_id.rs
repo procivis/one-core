@@ -7,12 +7,12 @@ use crate::macros::impls_for_uuid_newtype;
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(transparent)]
 #[repr(transparent)]
-pub struct RemoteEntityCacheId(Uuid);
+pub struct RemoteEntityCacheEntryId(Uuid);
 
-impls_for_uuid_newtype!(RemoteEntityCacheId);
+impls_for_uuid_newtype!(RemoteEntityCacheEntryId);
 
 #[cfg(feature = "sea-orm")]
 use crate::macros::impls_for_seaorm_newtype;
 
 #[cfg(feature = "sea-orm")]
-impls_for_seaorm_newtype!(RemoteEntityCacheId);
+impls_for_seaorm_newtype!(RemoteEntityCacheEntryId);

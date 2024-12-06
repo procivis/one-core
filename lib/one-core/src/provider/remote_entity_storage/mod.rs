@@ -14,8 +14,11 @@
 
 use std::cmp::Ordering;
 
+use one_dto_mapper::From;
 use thiserror::Error;
 use time::OffsetDateTime;
+
+use crate::model::remote_entity_cache::RemoteEntityCacheEntry;
 
 pub mod db_storage;
 pub mod in_memory;
@@ -39,10 +42,12 @@ pub trait RemoteEntityStorage: Send + Sync {
     async fn insert(&self, request: RemoteEntity) -> Result<(), RemoteEntityStorageError>;
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(RemoteEntityCacheEntry)]
 pub struct RemoteEntity {
     pub last_modified: OffsetDateTime,
 
+    #[from(rename = "r#type")]
     pub entity_type: RemoteEntityType,
     pub key: String,
     pub value: Vec<u8>,

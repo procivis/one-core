@@ -11,7 +11,7 @@ mod macros;
 mod organisation_id;
 mod proof_id;
 mod proof_schema_id;
-mod remote_entity_cache_id;
+mod remote_entity_cache_entry_id;
 mod trust_anchor_id;
 mod trust_entity_id;
 
@@ -27,6 +27,6 @@ pub use key_id::KeyId;
 pub use organisation_id::OrganisationId;
 pub use proof_id::ProofId;
 pub use proof_schema_id::ProofSchemaId;
-pub use remote_entity_cache_id::RemoteEntityCacheId;
+pub use remote_entity_cache_entry_id::RemoteEntityCacheEntryId;
 pub use trust_anchor_id::TrustAnchorId;
 pub use trust_entity_id::TrustEntityId;

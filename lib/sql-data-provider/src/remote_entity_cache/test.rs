@@ -1,11 +1,11 @@
 use std::vec;
 
 use one_core::model::remote_entity_cache::{
-    CacheType, RemoteEntityCache, RemoteEntityCacheRelations,
+    CacheType, RemoteEntityCacheEntry, RemoteEntityCacheRelations,
 };
 use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
-use shared_types::RemoteEntityCacheId;
+use shared_types::RemoteEntityCacheEntryId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -31,7 +31,7 @@ async fn setup() -> TestSetup {
 struct TestSetupWithContext {
     pub db: sea_orm::DatabaseConnection,
     pub provider: RemoteEntityCacheProvider,
-    pub id: RemoteEntityCacheId,
+    pub id: RemoteEntityCacheEntryId,
     pub context: Vec<u8>,
     pub url: String,
     pub hit_counter: u32,
@@ -64,7 +64,7 @@ pub async fn insert_json_ld_context(
     url: &str,
     hit_counter: u32,
     last_modified: Option<OffsetDateTime>,
-) -> Result<RemoteEntityCacheId, DbErr> {
+) -> Result<RemoteEntityCacheEntryId, DbErr> {
     let json_ld_context = remote_entity_cache::ActiveModel {
         id: Set(Uuid::new_v4().into()),
         created_date: Set(get_dummy_date()),
@@ -84,7 +84,7 @@ pub async fn insert_json_ld_context(
 
 pub async fn get_json_ld_context(
     database: &DatabaseConnection,
-    id: &RemoteEntityCacheId,
+    id: &RemoteEntityCacheEntryId,
 ) -> Result<remote_entity_cache::Model, DbErr> {
     remote_entity_cache::Entity::find_by_id(id)
         .one(database)
@@ -97,7 +97,7 @@ async fn test_create_context() {
     let setup = setup().await;
 
     let id = Uuid::new_v4();
-    let context = RemoteEntityCache {
+    let context = RemoteEntityCacheEntry {
         id: id.into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
@@ -156,7 +156,7 @@ async fn test_update_context_success() {
 
     setup
         .provider
-        .update(RemoteEntityCache {
+        .update(RemoteEntityCacheEntry {
             id: setup.id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),

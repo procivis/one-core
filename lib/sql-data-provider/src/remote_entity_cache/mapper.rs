@@ -1,11 +1,11 @@
-use one_core::model::remote_entity_cache::RemoteEntityCache;
+use one_core::model::remote_entity_cache::RemoteEntityCacheEntry;
 use one_core::repository::error::DataLayerError;
 use sea_orm::Set;
 
 use crate::entity::remote_entity_cache;
 
-impl From<RemoteEntityCache> for remote_entity_cache::ActiveModel {
-    fn from(value: RemoteEntityCache) -> Self {
+impl From<RemoteEntityCacheEntry> for remote_entity_cache::ActiveModel {
+    fn from(value: RemoteEntityCacheEntry) -> Self {
         Self {
             id: Set(value.id),
             created_date: Set(value.created_date),
@@ -20,7 +20,7 @@ impl From<RemoteEntityCache> for remote_entity_cache::ActiveModel {
     }
 }
 
-impl TryFrom<remote_entity_cache::Model> for RemoteEntityCache {
+impl TryFrom<remote_entity_cache::Model> for RemoteEntityCacheEntry {
     type Error = DataLayerError;
 
     fn try_from(value: remote_entity_cache::Model) -> Result<Self, Self::Error> {

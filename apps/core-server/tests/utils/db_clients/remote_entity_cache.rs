@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCache};
+use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
 use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -18,7 +18,7 @@ impl RemoteEntityCacheDB {
         let now = OffsetDateTime::now_utc();
 
         self.repository
-            .create(RemoteEntityCache {
+            .create(RemoteEntityCacheEntry {
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
@@ -33,7 +33,7 @@ impl RemoteEntityCacheDB {
             .unwrap();
 
         self.repository
-            .create(RemoteEntityCache {
+            .create(RemoteEntityCacheEntry {
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
@@ -48,7 +48,7 @@ impl RemoteEntityCacheDB {
             .unwrap();
 
         self.repository
-            .create(RemoteEntityCache {
+            .create(RemoteEntityCacheEntry {
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
@@ -66,7 +66,7 @@ impl RemoteEntityCacheDB {
 
         for (url, context) in additional {
             self.repository
-                .create(RemoteEntityCache {
+                .create(RemoteEntityCacheEntry {
                     id: Uuid::new_v4().into(),
                     created_date: now,
                     last_modified: now,

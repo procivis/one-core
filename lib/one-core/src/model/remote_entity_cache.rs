@@ -1,12 +1,12 @@
 use one_dto_mapper::{From, Into};
-use shared_types::RemoteEntityCacheId;
+use shared_types::RemoteEntityCacheEntryId;
 use time::OffsetDateTime;
 
 use crate::provider::remote_entity_storage::RemoteEntityType;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RemoteEntityCache {
-    pub id: RemoteEntityCacheId,
+pub struct RemoteEntityCacheEntry {
+    pub id: RemoteEntityCacheEntryId,
 
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,

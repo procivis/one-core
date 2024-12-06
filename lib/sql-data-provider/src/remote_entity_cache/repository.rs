@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use one_core::model::remote_entity_cache::{
-    CacheType, RemoteEntityCache, RemoteEntityCacheRelations,
+    CacheType, RemoteEntityCacheEntry, RemoteEntityCacheRelations,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
@@ -8,7 +8,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
     QueryOrder,
 };
-use shared_types::RemoteEntityCacheId;
+use shared_types::RemoteEntityCacheEntryId;
 
 use crate::entity::remote_entity_cache;
 use crate::mapper::to_data_layer_error;
@@ -18,8 +18,8 @@ use crate::remote_entity_cache::RemoteEntityCacheProvider;
 impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
     async fn create(
         &self,
-        request: RemoteEntityCache,
-    ) -> Result<RemoteEntityCacheId, DataLayerError> {
+        request: RemoteEntityCacheEntry,
+    ) -> Result<RemoteEntityCacheEntryId, DataLayerError> {
         let context = remote_entity_cache::ActiveModel::from(request)
             .insert(&self.db)
             .await
@@ -50,9 +50,9 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
 
     async fn get_by_id(
         &self,
-        id: &RemoteEntityCacheId,
+        id: &RemoteEntityCacheEntryId,
         _relations: &RemoteEntityCacheRelations,
-    ) -> Result<Option<RemoteEntityCache>, DataLayerError> {
+    ) -> Result<Option<RemoteEntityCacheEntry>, DataLayerError> {
         let context = remote_entity_cache::Entity::find_by_id(id)
             .one(&self.db)
             .await
@@ -61,7 +61,10 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
         Ok(context.map(|context| context.try_into()).transpose()?)
     }
 
-    async fn get_by_key(&self, key: &str) -> Result<Option<RemoteEntityCache>, DataLayerError> {
+    async fn get_by_key(
+        &self,
+        key: &str,
+    ) -> Result<Option<RemoteEntityCacheEntry>, DataLayerError> {
         let context = remote_entity_cache::Entity::find()
             .filter(remote_entity_cache::Column::Key.eq(key))
             .one(&self.db)
@@ -81,7 +84,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
             .map_err(|e| DataLayerError::Db(e.into()))? as u32)
     }
 
-    async fn update(&self, request: RemoteEntityCache) -> Result<(), DataLayerError> {
+    async fn update(&self, request: RemoteEntityCacheEntry) -> Result<(), DataLayerError> {
         remote_entity_cache::ActiveModel::from(request)
             .update(&self.db)
             .await

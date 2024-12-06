@@ -1,13 +1,13 @@
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
-use shared_types::RemoteEntityCacheId;
+use shared_types::RemoteEntityCacheEntryId;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "remote_entity_cache")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: RemoteEntityCacheId,
+    pub id: RemoteEntityCacheEntryId,
 
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,

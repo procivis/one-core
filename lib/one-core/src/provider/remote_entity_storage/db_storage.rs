@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use shared_types::RemoteEntityCacheId;
+use shared_types::RemoteEntityCacheEntryId;
 use uuid::Uuid;
 
-use crate::model;
+use crate::model::remote_entity_cache::RemoteEntityCacheEntry;
 use crate::provider::remote_entity_storage::{
     RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
 };
@@ -43,7 +43,7 @@ impl RemoteEntityStorage for DbStorage {
             .get_by_key(key)
             .await
             .map_err(|e| RemoteEntityStorageError::GetByKey(e.to_string()))?
-            .map(db_context_to_storage_context))
+            .map(Into::into))
     }
 
     async fn get_storage_size(
@@ -83,25 +83,11 @@ impl RemoteEntityStorage for DbStorage {
     }
 }
 
-fn db_context_to_storage_context(
-    db_context: model::remote_entity_cache::RemoteEntityCache,
-) -> RemoteEntity {
-    RemoteEntity {
-        last_modified: db_context.last_modified,
-        entity_type: db_context.r#type.into(),
-        key: db_context.key,
-        value: db_context.value,
-        hit_counter: db_context.hit_counter,
-        media_type: db_context.media_type,
-        persistent: db_context.persistent,
-    }
-}
-
 fn storage_context_to_db_context(
-    id: RemoteEntityCacheId,
+    id: RemoteEntityCacheEntryId,
     storage_context: RemoteEntity,
-) -> model::remote_entity_cache::RemoteEntityCache {
-    model::remote_entity_cache::RemoteEntityCache {
+) -> RemoteEntityCacheEntry {
+    RemoteEntityCacheEntry {
         id,
         created_date: storage_context.last_modified,
         last_modified: storage_context.last_modified,
