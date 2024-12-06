@@ -1395,7 +1395,7 @@ fn handle_bytes(bytes: &[u8]) -> Result<serde_json::Value, FormatterError> {
     let value = Base64::encode_to_string(bytes)
         .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
     Ok(serde_json::Value::String(format!(
-        "data:image/jpg;base64,{value}"
+        "data:image/jpeg;base64,{value}"
     )))
 }
 

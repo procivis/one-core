@@ -536,7 +536,7 @@ mod tests {
         assert!(valid.is_ok());
 
         let invalid = validate_datatype_value(
-            "data:image/jpg;base64,dGVzdGNvbnRlbnQ=",
+            "data:image/svg+xml;base64,dGVzdGNvbnRlbnQ=",
             "PICTURE",
             &datatype_config,
         );
@@ -595,7 +595,7 @@ mod tests {
         assert!(valid.is_ok());
 
         let valid = validate_datatype_value(
-            "data:image/jpg;base64,dGVzdGNvbnRlbnQ=",
+            "data:image/jpeg;base64,dGVzdGNvbnRlbnQ=",
             "FILE",
             &datatype_config,
         );
