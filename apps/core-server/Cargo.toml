@@ -26,6 +26,7 @@ indoc = { version = "2.0" }
 one-core = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json", "config_yaml", "config_env"] }
 one-crypto = { version = "0.1.0", path = "../../lib/one-crypto" }
 one-dto-mapper.workspace = true
+futures.workspace        = true
 prometheus = { version = "0.13", features = ["process"] }
 reqwest.workspace = true
 sentry = { version = "0.34", default-features = false, features = ["backtrace", "panic", "reqwest", "tracing"] }

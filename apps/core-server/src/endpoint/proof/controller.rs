@@ -2,6 +2,7 @@ use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
+use futures::future::FutureExt;
 use one_core::service::error::{ServiceError, ValidationError};
 use shared_types::ProofId;
 
@@ -145,10 +146,18 @@ pub(crate) async fn share_proof(
         );
     }
 
+    let service = state.core.oidc_service.clone();
+    let callback = Some(
+        async move {
+            service.oidc_verifier_ble_mqtt_presentation(id).await;
+        }
+        .boxed(),
+    );
+
     let result = state
         .core
         .proof_service
-        .share_proof(&id, request.unwrap_or_default().0.into(), None)
+        .share_proof(&id, request.unwrap_or_default().0.into(), callback)
         .await;
     OkOrErrorResponse::from_result(result, state, "sharing proof")
 }

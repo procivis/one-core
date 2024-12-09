@@ -14,6 +14,15 @@ exchange:
     params:
       public:
         allowInsecureHttpTransport: true
+transport:
+  MQTT:
+    type: "MQTT"
+    display: "transport.mqtt"
+    disabled: false
+    order: 1
+    params:
+      private:
+        brokerUrl: "mqtts://mqtt.dev.procivis-one.com:8883"
 did:
   WEB:
     params:

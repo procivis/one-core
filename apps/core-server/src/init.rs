@@ -43,6 +43,7 @@ use one_core::provider::key_storage::internal::InternalKeyProvider;
 use one_core::provider::key_storage::pkcs11::PKCS11KeyProvider;
 use one_core::provider::key_storage::provider::KeyProviderImpl;
 use one_core::provider::key_storage::KeyStorage;
+use one_core::provider::mqtt_client::rumqttc_client::RumqttcClient;
 use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use one_core::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
@@ -602,6 +603,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
         .with_json_schema_cache(json_schema_cache)
         .with_trust_listcache(trust_list_cache)
         .with_client(client)
+        .with_mqtt_client(Arc::new(RumqttcClient::default()))
         .build()
         .expect("Failed to initialize core")
 }
