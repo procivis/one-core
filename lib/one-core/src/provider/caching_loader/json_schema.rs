@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use time::OffsetDateTime;
 
 use super::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};
@@ -58,25 +59,18 @@ impl JsonSchemaCache {
     }
 
     // Fills the empty cache with values from `resource/sd_jwt_vc_schemas.json`
-    // Panics if file contains invalid data
-    pub async fn initialize_from_static_resources(&self) {
+    pub async fn initialize_from_static_resources(&self) -> anyhow::Result<()> {
         let schemas = include_str!("../../../../../resource/sd_jwt_vc_schemas.json");
 
-        #[derive(serde::Deserialize)]
-        struct JsonSchema {
-            key: String,
-            schema: serde_json::Value,
-        }
-
         let schemas: Vec<JsonSchema> =
-            serde_json::from_str(schemas).expect("Invalid JSON schema resource file");
+            serde_json::from_str(schemas).context("Invalid JSON schema resource file")?;
 
         for schema in schemas {
             let request = RemoteEntity {
                 last_modified: OffsetDateTime::now_utc(),
                 entity_type: self.inner.remote_entity_type,
-                key: schema.key,
-                value: serde_json::to_vec(&schema.schema).unwrap(),
+                key: schema.key.clone(),
+                value: serde_json::to_vec(&schema).unwrap(),
                 hit_counter: 0,
                 media_type: None,
                 persistent: true,
@@ -86,7 +80,17 @@ impl JsonSchemaCache {
                 .storage
                 .insert(request)
                 .await
-                .expect("Failed inserting JSON schema");
+                .context("Failed inserting JSON schema")?;
+        }
+
+        return Ok(());
+
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct JsonSchema {
+            #[serde(rename = "$id")]
+            key: String,
+            #[serde(flatten)]
+            schema: serde_json::Value,
         }
     }
 
@@ -118,11 +122,23 @@ impl Resolver for JsonSchemaResolver {
     ) -> Result<ResolveResult, Self::Error> {
         let response = self.client.get(key).send().await?.error_for_status()?;
 
-        let _: serde_json::Value = serde_json::from_slice(&response.body)?;
-
         Ok(ResolveResult::NewValue {
             content: response.body,
             media_type: None,
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_validate_static_json_schemas() {
+        let schemas = include_str!("../../../../../resource/sd_jwt_vc_schemas.json");
+
+        let schemas: Vec<serde_json::Value> = serde_json::from_str(schemas).unwrap();
+
+        for schema in schemas {
+            let _ = jsonschema::draft202012::new(&schema).unwrap();
+        }
     }
 }

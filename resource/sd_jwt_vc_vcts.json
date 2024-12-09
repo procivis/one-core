@@ -1,1 +1,427 @@
-[]
+[
+    {
+        "vct": "https://example.eudi.eu/credential/pid/1.0",
+        "vct#integrity": "sha256-jo8433ot48utul8ura33",
+        "family_name": "Dougherty",
+        "given_name": "Jack",
+        "birthdate": "1980-05-23",
+        "source_document_type": "id_card",
+        "address": {
+            "street_address": "123 Via Appia",
+            "locality": "Rome",
+            "region": "Lazio",
+            "postal_code": "00100",
+            "country": "IT"
+        },
+        "nationalities": [
+            "DE",
+            "IT"
+        ],
+        "gender": "male",
+        "middle_name": "",
+        "birth_given_name": "",
+        "birth_family_name": "",
+        "place_of_birth": {
+            "locality": "Leipzig",
+            "region": "Saxony",
+            "country": "DD"
+        },
+        "title": "Dr.",
+        "salutation": "Mr.",
+        "also_known_as": "Jeff",
+        "age_equal_or_over": {
+            "12": true,
+            "14": true,
+            "16": true,
+            "18": true,
+            "21": true,
+            "65": false
+        },
+        "issuance_date": "2020-05-23",
+        "expiry_date": "2030-05-23",
+        "issuing_authority": "DE",
+        "issuing_country": "DE",
+        "cnf": {
+            "jwk": {
+                "kty": "EC",
+                "crv": "P-256",
+                "x": "52aDI_ur05n1f_p3jiYGUU82oKZr3m4LsAErM536crQ",
+                "y": "ckhZ-KQ5aXNL91R8Eufg1aOf8Z5pZJnIvuCzNGfdnzo"
+            }
+        }
+    },
+    {
+        "vct": "https://example.eudi.eu/credential/pid/1.0",
+        "name": "Credential - Preliminary Version",
+        "description": "This is our development version of the credential.",
+        "extends": "https://galaxy.example.com/galactic-education-credential-0.9",
+        "extends#integrity": "sha256-9cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1VLmXfh-WRL5",
+        "display": [
+            {
+                "lang": "en-US",
+                "name": "Betelgeuse Education Credential",
+                "description": "An education credential for all carbon-based life forms on Betelgeusians",
+                "rendering": {
+                    "simple": {
+                        "logo": {
+                            "uri": "https://betelgeuse.example.com/public/education-logo.png",
+                            "uri#integrity": "sha256-LmXfh-9cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1V",
+                            "alt_text": "Betelgeuse Ministry of Education logo"
+                        },
+                        "background_color": "#12107c",
+                        "text_color": "#FFFFFF"
+                    },
+                    "svg_templates": [
+                        {
+                            "uri": "https://betelgeuse.example.com/public/credential-english.svg",
+                            "uri#integrity": "sha256-8cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1VLmXfh-9c",
+                            "properties": {
+                                "orientation": "landscape",
+                                "color_scheme": "light",
+                                "contrast": "high"
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "lang": "de-DE",
+                "name": "Betelgeuse-Bildungsnachweis",
+                "rendering": {
+                    "simple": {
+                        "logo": {
+                            "uri": "https://betelgeuse.example.com/public/education-logo-de.png",
+                            "uri#integrity": "sha256-LmXfh-9cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1V",
+                            "alt_text": "Logo des Betelgeusischen Bildungsministeriums"
+                        },
+                        "background_color": "#12107c",
+                        "text_color": "#FFFFFF"
+                    },
+                    "svg_templates": [
+                        {
+                            "uri": "https://betelgeuse.example.com/public/credential-german.svg",
+                            "uri#integrity": "sha256-8cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1VLmXfh-9c",
+                            "properties": {
+                                "orientation": "landscape",
+                                "color_scheme": "light",
+                                "contrast": "high"
+                            }
+                        }
+                    ]
+                }
+            }
+        ],
+        "claims": [
+            {
+                "path": [
+                    "family_name"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Nachname",
+                        "description": "Der Name"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Family Name",
+                        "description": "The name"
+                    }
+                ],
+                "sd": "allowed"
+            },
+            {
+                "path": [
+                    "given_name"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Vorname",
+                        "description": "Der Name"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Given Name",
+                        "description": "The given name"
+                    }
+                ],
+                "sd": "allowed"
+            },
+            {
+                "path": [
+                    "birthdate"
+                ],
+                "display": [
+                    {
+                        "lang": "en-US",
+                        "label": "Birth Date",
+                        "description": "Birth Date"
+                    }
+                ],
+                "sd": "allowed"
+            },
+            {
+                "path": [
+                    "source_document_type"
+                ],
+                "display": [
+                    {
+                        "lang": "en-US",
+                        "label": "Document Type",
+                        "description": "Document Type"
+                    }
+                ],
+                "sd": "allowed"
+            },
+            {
+                "path": [
+                    "address"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Adresse",
+                        "description": "Adresse zum Zeitpunkt des Abschlusses"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Address",
+                        "description": "Address at the time of graduation"
+                    }
+                ],
+                "sd": "always"
+            },
+            {
+                "path": [
+                    "address",
+                    "street_address"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Straße"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Street Address"
+                    }
+                ],
+                "sd": "always",
+                "svg_id": "address_street_address"
+            },
+            {
+                "path": [
+                    "address",
+                    "locality"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Locality"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Locality"
+                    }
+                ],
+                "sd": "always",
+                "svg_id": "address_locality"
+            },
+            {
+                "path": [
+                    "address",
+                    "region"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Region"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Region"
+                    }
+                ],
+                "sd": "always",
+                "svg_id": "address_region"
+            },
+            {
+                "path": [
+                    "address",
+                    "postal_code"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Postal Code"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Postal Code"
+                    }
+                ],
+                "sd": "always",
+                "svg_id": "address_postal_code"
+            },
+            {
+                "path": [
+                    "address",
+                    "country"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Country"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Country"
+                    }
+                ],
+                "sd": "always",
+                "svg_id": "address_country"
+            },
+            {
+                "path": [
+                    "age_equal_or_over"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Age",
+                        "description": "Age"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Age",
+                        "description": "Age"
+                    }
+                ],
+                "sd": "allowed"
+            },
+            {
+                "path": [
+                    "age_equal_or_over",
+                    "12"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Age",
+                        "description": "Age over 12"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Age",
+                        "description": "Age over 12"
+                    }
+                ],
+                "sd": "allowed",
+                "svg_id": "age_equal_or_over_12"
+            },
+            {
+                "path": [
+                    "age_equal_or_over",
+                    "14"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Age",
+                        "description": "Age over 14"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Age",
+                        "description": "Age over 14"
+                    }
+                ],
+                "sd": "allowed",
+                "svg_id": "age_equal_or_over_14"
+            },
+            {
+                "path": [
+                    "age_equal_or_over",
+                    "16"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Age",
+                        "description": "Age over 16"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Age",
+                        "description": "Age over 16"
+                    }
+                ],
+                "sd": "allowed",
+                "svg_id": "age_equal_or_over_16"
+            },
+            {
+                "path": [
+                    "age_equal_or_over",
+                    "18"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Age",
+                        "description": "Age over 18"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Age",
+                        "description": "Age over 18"
+                    }
+                ],
+                "sd": "allowed",
+                "svg_id": "age_equal_or_over_18"
+            },
+            {
+                "path": [
+                    "age_equal_or_over",
+                    "21"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Age",
+                        "description": "Age over 21"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Age",
+                        "description": "Age over 21"
+                    }
+                ],
+                "sd": "allowed",
+                "svg_id": "age_equal_or_over_21"
+            },
+            {
+                "path": [
+                    "age_equal_or_over",
+                    "65"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Age",
+                        "description": "Age over 65"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Age",
+                        "description": "Age over 65"
+                    }
+                ],
+                "sd": "allowed",
+                "svg_id": "age_equal_or_over_65"
+            }
+        ],
+        "schema_url": "https://exampleuniversity.com/public/credential-schema-0.9",
+        "schema_url#integrity": "sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5ca_xGgX3c1VLmXfh"
+    }
+]

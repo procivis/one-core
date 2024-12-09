@@ -808,7 +808,10 @@ pub async fn initialize_vct_type_metadata_cache(
         config.refresh_after,
     );
 
-    cache.initialize_from_static_resources().await;
+    cache
+        .initialize_from_static_resources()
+        .await
+        .expect("Failed initializing VCT type metadata cache");
 
     cache
 }
@@ -842,7 +845,10 @@ pub async fn initialize_json_schema_loader(
         config.refresh_after,
     );
 
-    cache.initialize_from_static_resources().await;
+    cache
+        .initialize_from_static_resources()
+        .await
+        .expect("Failed initializing JSON schema cache");
 
     cache
 }

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use time::OffsetDateTime;
 
 use super::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};
@@ -59,18 +60,17 @@ impl VctTypeMetadataCache {
     }
 
     // Fills the empty cache with values from `resource/sd_jwt_vc_vcts.json`
-    // Panics if file contains invalid data
-    pub async fn initialize_from_static_resources(&self) {
+    pub async fn initialize_from_static_resources(&self) -> anyhow::Result<()> {
         let schemas = include_str!("../../../../../resource/sd_jwt_vc_vcts.json");
 
         let vcts: Vec<SdJwtVcTypeMetadataResponseDTO> =
-            serde_json::from_str(schemas).expect("Invalid VCT type metadata resource file");
+            serde_json::from_str(schemas).context("Invalid VCT type metadata resource file")?;
 
         for vct in vcts {
             let request = RemoteEntity {
                 last_modified: OffsetDateTime::now_utc(),
                 entity_type: self.inner.remote_entity_type,
-                value: serde_json::to_vec(&vct).unwrap(),
+                value: serde_json::to_vec(&vct).context("Serializing what we just deserialized")?,
                 key: vct.vct,
                 hit_counter: 0,
                 media_type: None,
@@ -81,8 +81,10 @@ impl VctTypeMetadataCache {
                 .storage
                 .insert(request)
                 .await
-                .expect("Failed inserting JSON schema");
+                .context("Failed inserting JSON schema")?;
         }
+
+        Ok(())
     }
 
     pub async fn get(

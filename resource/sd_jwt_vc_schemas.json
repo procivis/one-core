@@ -1,1 +1,316 @@
-[]
+[
+    {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://www.procivis.ch/specs/v1/eudi/schemas/pid.json",
+        "type": "object",
+        "required": [
+            "vct",
+            "vct#integrity",
+            "family_name",
+            "given_name",
+            "birthdate",
+            "age_equal_or_over",
+            "issuance_date",
+            "expiry_date",
+            "issuing_authority",
+            "issuing_country"
+        ],
+        "properties": {
+            "vct": {
+                "type": "string",
+                "format": "uri-reference"
+            },
+            "vct#integrity": {
+                "type": "string"
+            },
+            "family_name": {
+                "type": "string"
+            },
+            "given_name": {
+                "type": "string"
+            },
+            "birthdate": {
+                "type": "string"
+            },
+            "source_document_type": {
+                "type": "string",
+                "enum": [
+                    "id_card",
+                    "residence_permit",
+                    "eu_citizen_eid_card"
+                ]
+            },
+            "nationalities": {
+                "type": "string"
+            },
+            "gender": {
+                "type": "string"
+            },
+            "middle_name": {
+                "type": "string"
+            },
+            "birth_given_name": {
+                "type": "string"
+            },
+            "birth_family_name": {
+                "type": "string"
+            },
+            "title": {
+                "type": "string"
+            },
+            "salutation": {
+                "type": "string"
+            },
+            "also_known_as": {
+                "type": "string"
+            },
+            "issuance_date": {
+                "type": "string"
+            },
+            "expiry_date": {
+                "type": "string"
+            },
+            "issuing_authority": {
+                "type": "string"
+            },
+            "issuing_country": {
+                "type": "string"
+            },
+            "place_of_birth": {
+                "type": "object",
+                "properties": {
+                    "locality": {
+                        "type": "string"
+                    },
+                    "region": {
+                        "type": "string"
+                    },
+                    "country": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": true
+            },
+            "address": {
+                "type": "object",
+                "properties": {
+                    "street_address": {
+                        "type": "string"
+                    },
+                    "locality": {
+                        "type": "string"
+                    },
+                    "region": {
+                        "type": "string"
+                    },
+                    "postal_code": {
+                        "type": "string"
+                    },
+                    "country": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": true
+            },
+            "age_equal_or_over": {
+                "type": "object",
+                "required": [
+                    "12",
+                    "14",
+                    "16",
+                    "18",
+                    "21",
+                    "65"
+                ],
+                "properties": {
+                    "12": {
+                        "type": "boolean"
+                    },
+                    "14": {
+                        "type": "boolean"
+                    },
+                    "16": {
+                        "type": "boolean"
+                    },
+                    "18": {
+                        "type": "boolean"
+                    },
+                    "21": {
+                        "type": "boolean"
+                    },
+                    "65": {
+                        "type": "boolean"
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
+        "additionalProperties": true
+    },
+    {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://www.procivis.ch/specs/v1/eudi/schemas/pid-metadata.json",
+        "type": "object",
+        "required": [
+            "vct",
+            "name",
+            "description",
+            "display",
+            "claims",
+            "schema_url"
+        ],
+        "properties": {
+            "vct": {
+                "type": "string",
+                "format": "uri-reference"
+            },
+            "vct#integrity": {
+                "type": "string"
+            },
+            "extends": {
+                "type": "string",
+                "format": "uri-reference"
+            },
+            "extends#integrity": {
+                "type": "string"
+            },
+            "schema_url": {
+                "type": "string",
+                "format": "uri-reference"
+            },
+            "schema_url#integrity": {
+                "type": "string"
+            },
+            "name": {
+                "type": "string"
+            },
+            "description": {
+                "type": "string"
+            },
+            "display": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "lang": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "description": {
+                            "type": "string"
+                        },
+                        "rendering": {
+                            "type": "object",
+                            "properties": {
+                                "simple": {
+                                    "type": "object",
+                                    "properties": {
+                                        "logo": {
+                                            "type": "object",
+                                            "properties": {
+                                                "uri": {
+                                                    "type": "string",
+                                                    "format": "uri-reference"
+                                                },
+                                                "uri#integrity": {
+                                                    "type": "string"
+                                                },
+                                                "alt_text": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "additionalProperties": false
+                                        },
+                                        "background_color": {
+                                            "type": "string"
+                                        },
+                                        "text_color": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "additionalProperties": false
+                                },
+                                "svg_templates": {
+                                    "type": "object",
+                                    "properties": {
+                                        "uri": {
+                                            "type": "string",
+                                            "format": "uri-reference"
+                                        },
+                                        "uri#integrity": {
+                                            "type": "string"
+                                        },
+                                        "properties": {
+                                            "type": "object",
+                                            "properties": {
+                                                "orientation": {
+                                                    "type": "string"
+                                                },
+                                                "color_scheme": {
+                                                    "type": "string"
+                                                },
+                                                "contrast": {
+                                                    "type": "string"
+                                                },
+                                                "additionalProperties": false
+                                            }
+                                        }
+                                    },
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "additionalProperties": false
+            }
+        },
+        "claims": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "display": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "lang": {
+                                    "type": "string"
+                                },
+                                "label": {
+                                    "type": "string"
+                                },
+                                "description": {
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    },
+                    "sd": {
+                        "type": "string"
+                    },
+                    "svg_id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "path",
+                    "sd"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "additionalProperties": true
+    }
+]
