@@ -28,7 +28,7 @@ use crate::endpoint::proof_schema::dto::{
 };
 use crate::serialize::{front_time, front_time_option};
 
-/// See the [proof request states](/api/resources/proof_requests#proof-request-states) guide.
+/// See the [proof request states](../api/proofRequests.mdx#proof-request-states) guide.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(ProofStateEnum)]
@@ -43,7 +43,7 @@ pub enum ProofStateRestEnum {
 }
 
 /// Exchange protocol being used. See the [exchange
-/// protocols](/guides/api#exchange-protocols) guide.
+/// protocols](../api/exchangeProtocols.mdx) guide.
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -73,7 +73,7 @@ pub struct CreateProofRequestRestDTO {
     pub transport: Option<Vec<String>>,
 }
 
-/// Only for use when verifying physical credentials. See the [physical credentials](/guides/physical_credentials) guide.
+/// Only for use when verifying physical credentials. See the [physical credentials](../guides/physicalCredentials.mdx) guide.
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(ScanToVerifyRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -163,7 +163,7 @@ pub struct ProofListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub verifier_did: Option<DidListItemResponseRestDTO>,
     pub exchange: String,
-    /// Exchange protocol being used. See the [exchange protocols](/api/exchange_protocols) guide.
+    /// Exchange protocol being used. See the [exchange protocols](../api/exchangeProtocols.mdx) guide.
     pub transport: String,
     pub state: ProofStateRestEnum,
     #[from(with_fn = convert_inner)]
@@ -335,7 +335,7 @@ pub enum ProofClaimValueRestDTO {
 #[from(ProofInputDTO)]
 pub struct ProofInputRestDTO {
     /// The set of claims being asserted by the credential shared during the proof request.
-    /// See the [claims object](/api/resources/credential_schemas#claims-object) guide.
+    /// See the [claims object](../api/credentialSchemas.mdx#claims-object) guide.
     #[from(with_fn = convert_inner)]
     pub claims: Vec<ProofClaimRestDTO>,
     /// The credentials exchanged as part of the successfully shared proof.
@@ -343,7 +343,7 @@ pub struct ProofInputRestDTO {
     pub credential: Option<GetCredentialResponseRestDTO>,
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
     /// Defines the maximum age at which an LVVC will be validated.
-    /// See the [LVVC guide](/guides/lvvc).
+    /// See the [LVVC guide](../guides/lvvc.mdx).
     pub validity_constraint: Option<i64>,
 }
 

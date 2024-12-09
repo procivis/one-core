@@ -357,7 +357,7 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
     docs.info.title = "Procivis One Core API".into();
     docs.info.description = Some(indoc::formatdoc! {"
             The Procivis One Core API enables the full lifecycle of credentials.
-            Download the [specification](/APIspec/core.yaml).
+            Download the [specification](../APIspec/core.yaml).
         "});
     docs.info.version = "1.0.0".into();
     docs.info.contact = Some(
@@ -393,7 +393,7 @@ fn get_tags() -> Vec<Tag> {
             .name("other")
             .description(Some(indoc::formatdoc! {"
                 Returns the system configuration, along with other system information.
-                See the [Configuration](/api/configuration) guide for more
+                See the [Configuration](../api/configuration.mdx) guide for more
                 information.
             "}))
             .extensions(Some(
@@ -406,7 +406,7 @@ fn get_tags() -> Vec<Tag> {
             .name("organisation_management")
             .description(Some(indoc::formatdoc! {"
                 Create organizations. See the
-                [Organization](/api/organizations) guide for more
+                [Organization](../api/organizations.mdx) guide for more
                 information.
             "}))
             .extensions(Some(
@@ -420,7 +420,7 @@ fn get_tags() -> Vec<Tag> {
             .description(Some(indoc::formatdoc! {"
                 Create keys and retrieve information on keys created within the current organization.
                 Keys are required to create DIDs and issue credentials.
-                See the [Keys](/api/resources/keys) guide for more information.
+                See the [Keys](../api/keys.mdx) guide for more information.
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -433,7 +433,7 @@ fn get_tags() -> Vec<Tag> {
             .description(Some(indoc::formatdoc! {"
                 Create DIDs, deactivate DIDs, and retrieve information on DIDs within the current organization.
                 A DID is required to issue credentials, request a proof, and verify credentials.
-                See the [DIDs](/api/resources/dids) guide for more information.
+                See the [DIDs](../api/dids.mdx) guide for more information.
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -445,7 +445,7 @@ fn get_tags() -> Vec<Tag> {
             .name("credential_schema_management")
             .description(Some(indoc::formatdoc! {"
                 Create, retrieve, and delete credential schemas.
-                See the [Credential schemas](/api/resources/credential_schemas) guide
+                See the [Credential schemas](../api/credentialSchemas.mdx) guide
                 for more information.
             "}))
             .extensions(Some(
@@ -458,7 +458,7 @@ fn get_tags() -> Vec<Tag> {
             .name("credential_management")
             .description(Some(indoc::formatdoc! {"
                 Issue, revoke, and retrieve credentials. See the
-                [Credentials](/api/resources/credentials) guide for more
+                [Credentials](../api/credentials.mdx) guide for more
                 information.
             "}))
             .extensions(Some(
@@ -471,7 +471,7 @@ fn get_tags() -> Vec<Tag> {
             .name("proof_schema_management")
             .description(Some(indoc::formatdoc! {"
                 Create, delete, and retrieve proof schemas.
-                See the [Proof schemas](/api/resources/proof_schemas) guide for more
+                See the [Proof schemas](../api/proofSchemas.mdx) guide for more
                 information.
             "}))
             .extensions(Some(
@@ -484,7 +484,7 @@ fn get_tags() -> Vec<Tag> {
             .name("proof_management")
             .description(Some(indoc::formatdoc! {"
                 Request proofs and retrieve proof requests.
-                See the [Proof requests](/api/resources/proof_requests) guide for
+                See the [Proof requests](../api/proofRequests.mdx) guide for
                 more information.
             "}))
             .extensions(Some(
@@ -497,7 +497,7 @@ fn get_tags() -> Vec<Tag> {
             .name("interaction")
             .description(Some(indoc::formatdoc! {"
                 For wallet agents, handle interactions with issuers and verifiers.
-                See the [Wallet interaction](/api/resources/wallet_interaction) guide for more
+                See the [Wallet interaction](../api/walletInteraction.mdx) guide for more
                 information.
             "}))
             .extensions(Some(
@@ -510,7 +510,7 @@ fn get_tags() -> Vec<Tag> {
             .name("history_management")
             .description(Some(indoc::formatdoc! {"
                 Retrieve event history. See the
-                [History](/api/resources/history) guide for more
+                [History](../api/history.mdx) guide for more
                 information.
             "}))
             .extensions(Some(
@@ -522,7 +522,8 @@ fn get_tags() -> Vec<Tag> {
         Tag::builder()
             .name("trust_anchor")
             .description(Some(indoc::formatdoc! {"
-                Publish new trust anchors and subscribe to existing trust anchors.
+                Manage trust anchors as a publisher or subscribe to trust anchors as a consumer.
+                See the [trust management](../api/trustManagement.mdx) guide for more information.
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -533,7 +534,8 @@ fn get_tags() -> Vec<Tag> {
         Tag::builder()
             .name("trust_entity")
             .description(Some(indoc::formatdoc! {"
-                Add and remove trust entities to and from trust anchors.
+                Manage trust entities on an anchor. See the [trust management](../api/trustManagement.mdx)
+                guide for more information.
             "}))
             .extensions(Some(
                 Extensions::builder()

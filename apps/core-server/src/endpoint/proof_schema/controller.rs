@@ -25,7 +25,7 @@ use crate::router::AppState;
     summary = "Create proof schema",
     description = indoc::formatdoc! {"
         Creates a proof schema, for creating proof requests. See the
-        [proof schemas](/api/resources/proof_schemas) guide.
+        [proof schemas](../api/proofSchemas.mdx) guide.
     "},
 )]
 pub(crate) async fn post_proof_schema(
@@ -53,7 +53,7 @@ pub(crate) async fn post_proof_schema(
         ("bearer" = [])
     ),
     summary = "Retrieve proof schemas",
-    description = "Returns a list of proof schemas. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
+    description = "Returns a list of proof schemas. See the [guidelines](../api/guidelines.mdx) for handling list endpoints.",
 )]
 pub(crate) async fn get_proof_schemas(
     state: State<AppState>,
@@ -149,7 +149,7 @@ pub(crate) async fn share_proof_schema(
     summary = "Import proof schema",
     description = indoc::formatdoc! {"
         Imports a shared proof schema to a mobile verifier, for use in creating proof requests. After previewing
-        the proof schema from the [share proof schema](/core/share-proof-schema) endpoint, pass the schema here, along with
+        the proof schema from the [share proof schema](../core/share-proof-schema.api.mdx) endpoint, pass the schema here, along with
         the uuid of the mobile verifier's organization, to import the proof schema.
     "},
 )]

@@ -30,7 +30,7 @@ use crate::router::AppState;
     ),
     summary = "Retrieve presentation definition",
     description = indoc::formatdoc! {"
-        For wallets; after a wallet connects to a verifier's request for proof via the [Handle Invitation](/core/handle-invitation)
+        For wallets; after a wallet connects to a verifier's request for proof via the [Handle Invitation](../core/handle-invitation.api.mdx)
         endpoint, the presentation definition endpoint takes the resulting `proofId` and filters the wallet, returning credentials which match the verifier's request.
     "},
 )]
@@ -78,7 +78,7 @@ pub(crate) async fn get_proof_details(
         ("bearer" = [])
     ),
     summary = "List proof requests",
-    description = "Returns a list of proof requests in an organization. See the [guidelines](/api/general_guidelines) for handling list endpoints.",
+    description = "Returns a list of proof requests in an organization. See the [guidelines](../api/guidelines.mdx) for handling list endpoints.",
 )]
 pub(crate) async fn get_proofs(
     state: State<AppState>,
@@ -168,7 +168,7 @@ pub(crate) async fn share_proof(
     description = indoc::formatdoc! {"
         Retracts a proof request. For those proof requests still in `PENDING` or `REQUESTED`, use this endpoint to
         retract the request, effectively renewing it. This is helpful for preventing the creation of excess proof requests
-        during verification workflows. See the [proof request states](/api/resources/proof_requests#proof-request-states) guide.
+        during verification workflows. See the [proof request states](../api/proofRequests.mdx#proof-request-states) guide.
     "},
 )]
 pub(crate) async fn retract_proof(

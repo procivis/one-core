@@ -89,7 +89,7 @@ pub struct GetCredentialResponseRestDTO {
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRoleRestEnum,
-    /// See the [LVVC guide](/guides/lvvc).
+    /// See the [LVVC guide](../guides/lvvc.mdx).
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub lvvc_issuance_date: Option<OffsetDateTime>,
@@ -102,7 +102,7 @@ pub struct GetCredentialResponseRestDTO {
     pub holder_did: Option<DidListItemResponseRestDTO>,
 }
 
-/// See the [credential roles](/api/resources/credentials#credential-roles) guide.
+/// See the [credential roles](../api/credentials.mdx#credential-roles) guide.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[from(CredentialRole)]
 #[into(CredentialRole)]
@@ -135,10 +135,10 @@ pub struct CredentialDetailSchemaResponseRestDTO {
     pub format: String,
     pub revocation_method: String,
     pub organisation_id: Uuid,
-    /// Indication of what type of key storage the wallet should use. See the [wallet storage type](/api/resources/credential_schemas#wallet-storage-type) guide.
+    /// Indication of what type of key storage the wallet should use. See the [wallet storage type](../api/credentialSchemas.mdx#wallet-storage-type) guide.
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
-    /// See the [credentialSchema property](/api/resources/credential_schemas#credentialschema-property) guide.
+    /// See the [credentialSchema property](../api/credentialSchemas.mdx#credentialschema-property) guide.
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     #[from(with_fn = convert_inner)]
@@ -169,7 +169,7 @@ pub enum CredentialDetailClaimValueResponseRestDTO {
     Nested(#[from(with_fn = convert_inner)] Vec<CredentialDetailClaimResponseRestDTO>),
 }
 
-/// See the [credential states](/api/resources/credentials#credential-states) guide.
+/// See the [credential states](../api/credentials.mdx#credential-states) guide.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(CredentialStateEnum)]
@@ -252,11 +252,11 @@ pub struct CreateCredentialRequestRestDTO {
     #[into(with_fn = convert_inner)]
     pub issuer_key: Option<KeyId>,
     /// Exchange protocol used. See the [exchange
-    /// protocols](/api/exchange_protocols) guide.
+    /// protocols](../api/exchangeProtocols.mdx) guide.
     pub exchange: String,
     /// Attribute from the credential schema, together with the
     /// corresponding claim being made. See the
-    /// [claimValues](/api/resources/credentials#claimvalues) guide.
+    /// [claimValues](../api/credentials.mdx#claimvalues) guide.
     #[into(with_fn = convert_inner)]
     pub claim_values: Vec<CredentialRequestClaimRestDTO>,
     /// When a credential is accepted, the holder will be redirected to the

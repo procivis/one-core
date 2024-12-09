@@ -27,7 +27,7 @@ pub enum DidType {
 }
 
 /// DID details.
-/// See the [DIDs](/api/resources/dids) guide.
+/// See the [DIDs](../api/dids.mdx) guide.
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(DidListItemResponseDTO)]
@@ -80,7 +80,7 @@ pub struct DidResponseRestDTO {
 }
 
 /// The key, or keys, defining the verification relationships of the DID.
-/// See the [keys object](/api/resources/dids#keys-object) guide.
+/// See the [keys object](../api/dids.mdx#keys-object) guide.
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, TryFrom)]
 #[try_from(T = DidResponseKeysDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
@@ -106,18 +106,18 @@ pub struct CreateDidRequestRestDTO {
     pub organisation_id: OrganisationId,
     /// Choose a DID method to create the DID. Corresponds to the associated
     /// `property name*` of the `did` object of the configuration. See the
-    /// [DID method](/api/resources/dids) guide.
+    /// [DID method](../api/dids.mdx) guide.
     pub method: String,
     pub keys: CreateDidRequestKeysRestDTO,
     /// The parameters passed into the DID method. See the [DID
-    /// parameters](/api/resources/dids#did-parameters) guide.
+    /// parameters](../api/dids.mdx#did-parameters) guide.
     #[schema(value_type = Object)]
     pub params: Option<serde_json::Value>,
 }
 
 /// Each DID has five verification relationships defining the verification
 /// method used for different purposes. See the [keys
-/// object](/api/resources/dids#keys-object) guide.
+/// object](../api/dids.mdx#keys-object) guide.
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
 #[into(CreateDidRequestKeysDTO)]
 #[serde(rename_all = "camelCase")]

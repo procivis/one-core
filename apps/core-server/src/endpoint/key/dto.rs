@@ -22,20 +22,20 @@ pub struct KeyRequestRestDTO {
     /// Specify the organization.
     pub organisation_id: Uuid,
     /// Corresponds to the associated `property name*` of the `keyAlgorithm`
-    /// object of the configuration. See the [key algorithm](/api/resources/keys) guide.
+    /// object of the configuration. See the [key algorithm](../api/keys.mdx#key-algorithms) guide.
     #[schema(example = "EDDSA")]
     pub key_type: String,
     /// The parameters passed into the key algorithm.
-    /// See the [key algorithm parameters](/api/resources/keys#keyparams) guide.
+    /// See the [key algorithm parameters](../api/keys.mdx#keyparams) guide.
     #[schema(value_type = Object)]
     pub key_params: serde_json::Value,
     pub name: String,
     /// Corresponds to the associated `property name*` of the `keyStorage`
-    /// object of the configuration. See the [key storage](/api/resources/keys#key-storage) guide.
+    /// object of the configuration. See the [key storage](../api/keys.mdx#key-storage) guide.
     #[schema(example = "INTERNAL")]
     pub storage_type: String,
     /// The parameters passed into the storage type. See the
-    /// [key storage parameters](/api/resources/keys#storageparams) guide.
+    /// [key storage parameters](../api/keys.mdx#storageparams) guide.
     #[schema(value_type = Object)]
     pub storage_params: serde_json::Value,
 }

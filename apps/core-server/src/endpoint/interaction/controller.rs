@@ -170,7 +170,7 @@ pub(crate) async fn presentation_submit(
     summary = "Propose a proof",
     description = indoc::formatdoc! {"
         For digital wallets, creates an engagement QR code which can be scanned by a
-        mobile verifier to establish a Bluetooth Low Energy connection. See the [SDK](/sdk/propose_proof).
+        mobile verifier to establish a Bluetooth Low Energy connection. See the [SDK](../sdk/proposeProof.mdx).
     "},
 )]
 pub(crate) async fn propose_proof(
