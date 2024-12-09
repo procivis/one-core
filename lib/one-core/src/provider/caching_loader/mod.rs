@@ -138,9 +138,19 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
                         }
                     }
                 }
-                context.hit_counter = context.hit_counter.to_owned() + 1;
 
-                self.storage.insert(context.to_owned()).await?;
+                context.hit_counter += 1;
+
+                if let Err(error) = self.storage.insert(context.to_owned()).await {
+                    match error {
+                        RemoteEntityStorageError::NotUpdated => {
+                            // ONE-4160: ignoring potential failure when update fails due to missing entry
+                            // the updated entry might be deleted at this point by another thread
+                            tracing::debug!("Cache entry deleted while updating. It will be recreated on next usage.");
+                        }
+                        _ => return Err(error.into()),
+                    }
+                }
 
                 Ok((context.value, context.media_type))
             }

@@ -8,6 +8,7 @@ use crate::model::remote_entity_cache::RemoteEntityCacheEntry;
 use crate::provider::remote_entity_storage::{
     RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
 };
+use crate::repository::error::DataLayerError;
 use crate::repository::json_ld_context_repository::RemoteEntityCacheRepository;
 
 pub struct DbStorage {
@@ -68,7 +69,10 @@ impl RemoteEntityStorage for DbStorage {
             self.remote_entity_cache_repository
                 .update(storage_context_to_db_context(db_context.id, request))
                 .await
-                .map_err(|e| RemoteEntityStorageError::Insert(e.to_string()))?;
+                .map_err(|e| match e {
+                    DataLayerError::RecordNotUpdated => RemoteEntityStorageError::NotUpdated,
+                    e => RemoteEntityStorageError::Insert(e.to_string()),
+                })?;
         } else {
             self.remote_entity_cache_repository
                 .create(storage_context_to_db_context(

@@ -78,6 +78,8 @@ pub enum RemoteEntityStorageError {
     GetStorageSize(String),
     #[error("Insert: `{0}`")]
     Insert(String),
+    #[error("Not updated")]
+    NotUpdated,
 }
 
 impl PartialOrd<Self> for RemoteEntity {
