@@ -59,7 +59,6 @@ exceptions = [
     { allow = ["MPL-2.0"], name = "resiter", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_bindgen", version = "*" },
-    { allow = ["MPL-2.0"], name = "uniffi_build", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_checksum_derive", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_core", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_macros", version = "*" },

@@ -358,18 +358,15 @@ sdk:react-native:
 
 sdk:generate_binding_files:
   stage: sdk_build
-  needs:
-    - job: build
+  needs: []
+  when: manual
   script:
-    - makers generateuniffi_android
-    - makers generateuniffi_ios
+    - makers generate_uniffi_interfaces
   artifacts:
     paths:
-      - target/uniffi/android/java/ch/procivis/one/core/one_core.kt
-      - target/uniffi/ios/one_core.swift
+      - target/uniffi-interface/ch/procivis/one/core/one_core_uniffi.kt
+      - target/uniffi-interface/one_core.swift
     expire_in: 10 days
-  extends:
-    - .rule:only_main_or_tag
 
 tests:e2e:
   stage: e2e_tests

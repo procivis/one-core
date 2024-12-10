@@ -5,6 +5,7 @@ use one_core::model::list_filter::{
     ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
 };
 use one_core::model::list_query::{ListPagination, ListSorting};
+use one_core::model::proof_schema::GetProofSchemaQuery;
 use one_core::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use one_core::provider::exchange_protocol::openid4vc::model::InvitationResponseDTO;
 use one_core::service::credential::dto::{
@@ -21,9 +22,11 @@ use one_core::service::did::dto::{
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDTO};
 use one_core::service::key::dto::KeyRequestDTO;
-use one_core::service::proof::dto::{GetProofQueryDTO, ProofDetailResponseDTO, ProofFilterValue};
+use one_core::service::proof::dto::{
+    GetProofQueryDTO, ProofClaimValueDTO, ProofDetailResponseDTO, ProofFilterValue,
+};
 use one_core::service::proof_schema::dto::{
-    GetProofSchemaQueryDTO, ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterValue,
+    ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterValue,
 };
 use one_core::service::trust_anchor::dto::{ListTrustAnchorsQueryDTO, TrustAnchorFilterValue};
 use one_core::service::trust_entity::dto::{ListTrustEntitiesQueryDTO, TrustEntityFilterValue};
@@ -48,7 +51,8 @@ use crate::{
     HistoryListItemBindingDTO, HistoryMetadataBinding, ImportCredentialSchemaClaimSchemaBindingDTO,
     ImportProofSchemaClaimSchemaBindingDTO, ListProofSchemasFiltersBindingDTO,
     ListTrustAnchorsFiltersBindings, ProofListQueryBindingDTO,
-    ProofListQueryExactColumnBindingEnum, ProofSchemaListQueryExactColumnBinding,
+    ProofListQueryExactColumnBindingEnum, ProofRequestClaimValueBindingDTO,
+    ProofSchemaListQueryExactColumnBinding,
 };
 
 pub(crate) fn serialize_config_entity(
@@ -448,7 +452,7 @@ impl TryFrom<ListTrustEntitiesFiltersBindings> for ListTrustEntitiesQueryDTO {
     }
 }
 
-impl TryFrom<ListProofSchemasFiltersBindingDTO> for GetProofSchemaQueryDTO {
+impl TryFrom<ListProofSchemasFiltersBindingDTO> for GetProofSchemaQuery {
     type Error = ErrorResponseBindingDTO;
 
     fn try_from(value: ListProofSchemasFiltersBindingDTO) -> Result<Self, Self::Error> {
@@ -585,6 +589,17 @@ impl From<DeviceInfoBindingDTO> for DeviceInfo {
     }
 }
 
+impl From<ProofClaimValueDTO> for ProofRequestClaimValueBindingDTO {
+    fn from(value: ProofClaimValueDTO) -> Self {
+        match value {
+            ProofClaimValueDTO::Value(value) => Self::Value { value },
+            ProofClaimValueDTO::Claims(claims) => ProofRequestClaimValueBindingDTO::Claims {
+                value: convert_inner(claims),
+            },
+        }
+    }
+}
+
 pub fn optional_time(value: Option<OffsetDateTime>) -> Option<String> {
     value.as_ref().map(TimestampFormat::format_timestamp)
 }
@@ -595,6 +610,7 @@ pub fn optional_did_string(value: Option<DidListItemResponseDTO>) -> Option<Stri
 
 /// uniffi does not support double option.
 /// workaround for `Option<Option<String>>`
+#[derive(Clone, Debug, uniffi::Enum)]
 pub enum OptionalString {
     None,
     Some { value: String },

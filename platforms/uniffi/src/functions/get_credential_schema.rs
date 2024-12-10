@@ -4,7 +4,9 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::{CredentialSchemaDetailBindingDTO, OneCoreBinding};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn get_credential_schema(
         &self,
         credential_schema_id: String,

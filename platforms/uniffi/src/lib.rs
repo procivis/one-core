@@ -3,10 +3,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use error::{BleErrorWrapper, NativeKeyStorageError, SDKError};
+use error::SDKError;
 use one_core::config::core_config::{self, AppConfig, CacheEntityCacheType, CacheEntityConfig};
 use one_core::config::{ConfigError, ConfigParsingError, ConfigValidationError};
-use one_core::provider::bluetooth_low_energy::BleError;
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
 use one_core::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use one_core::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
@@ -70,8 +69,7 @@ use utils::native_ble_peripheral::BlePeripheralWrapper;
 use utils::native_key_storage::NativeKeyStorageWrapper;
 
 use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
-use crate::error::{BindingError, Cause, ErrorResponseBindingDTO};
-use crate::mapper::OptionalString;
+use crate::error::BindingError;
 
 mod binding;
 mod did_config;
@@ -94,7 +92,7 @@ use one_core::provider::revocation::status_list_2021::StatusList2021;
 use one_core::provider::revocation::token_status_list::TokenStatusList;
 use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
 
-uniffi::include_scaffolding!("one_core");
+uniffi::setup_scaffolding!();
 
 fn initialize_core(
     data_dir_path: String,
@@ -660,6 +658,7 @@ fn initialize_core(
     Ok(core_binding)
 }
 
+#[uniffi::export]
 fn initialize_verifier_core(
     data_dir_path: String,
     native_key_storage: Option<Box<dyn NativeKeyStorage>>,
@@ -675,6 +674,7 @@ fn initialize_verifier_core(
     )
 }
 
+#[uniffi::export]
 fn initialize_holder_core(
     data_dir_path: String,
     native_key_storage: Option<Box<dyn NativeKeyStorage>>,

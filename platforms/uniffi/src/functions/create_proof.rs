@@ -1,7 +1,9 @@
 use crate::error::BindingError;
 use crate::{CreateProofRequestBindingDTO, OneCoreBinding};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn create_proof(
         &self,
         request: CreateProofRequestBindingDTO,

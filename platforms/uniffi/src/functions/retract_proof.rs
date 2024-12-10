@@ -2,7 +2,9 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::OneCoreBinding;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn retract_proof(&self, proof_id: String) -> Result<String, BindingError> {
         let proof_id = into_id(&proof_id)?;
 

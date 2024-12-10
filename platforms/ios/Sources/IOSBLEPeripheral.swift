@@ -77,10 +77,10 @@ extension IOSBLEPeripheral: BlePeripheral {
     @discardableResult
     func startAdvertisement(deviceName: String?, services: [ServiceDescriptionBindingDto]) async throws -> String? {
         guard try await isAdapterEnabled() else {
-            throw BleErrorWrapper.Ble(error: BleError.AdapterNotEnabled)
+            throw BleError.AdapterNotEnabled
         }
         guard !peripheralManager.isAdvertising else {
-            throw BleErrorWrapper.Ble(error: BleError.BroadcastAlreadyStarted)
+            throw BleError.BroadcastAlreadyStarted
         }
         setupServicesAndCharacteristics(servicesWithCharacteristics: services)
         let uuids = services.compactMap { $0.advertise ? CBUUID(string: $0.uuid) : nil }
@@ -138,9 +138,9 @@ extension IOSBLEPeripheral: BlePeripheral {
         return peripheralManager.isAdvertising
     }
     
-    func setCharacteristicData(serviceUuid: String, characteristicUuid: String, data: Data) async throws {
-        let service = CBUUID(string: serviceUuid)
-        let characteristic = CBUUID(string: characteristicUuid)
+    func setCharacteristicData(service: String, characteristic: String, data: Data) async throws {
+        let service = CBUUID(string: service)
+        let characteristic = CBUUID(string: characteristic)
         let characteristicValueKey = characteristicValueKey(service: service, characteristic: characteristic)
         readLock.withLock {
             characteristicValues[characteristicValueKey] = data
@@ -148,10 +148,10 @@ extension IOSBLEPeripheral: BlePeripheral {
         }
     }
     
-    func notifyCharacteristicData(deviceAddress: String, serviceUuid: String, characteristicUuid: String, data: Data) async throws {
-        try await setCharacteristicData(serviceUuid: serviceUuid, characteristicUuid: characteristicUuid, data: data)
-        let service = CBUUID(string: serviceUuid)
-        let characteristic = CBUUID(string: characteristicUuid)
+    func notifyCharacteristicData(deviceAddress: String, service: String, characteristic: String, data: Data) async throws {
+        try await setCharacteristicData(service: service, characteristic: characteristic, data: data)
+        let service = CBUUID(string: service)
+        let characteristic = CBUUID(string: characteristic)
         let cbCharacteristic = try retrieveCharacteristic(service: service, characteristic: characteristic)
         let subscribedCentrals = retrieveCentralsSubscribedToCharacteristic(characteristic: characteristic).filter { central in
             central.identifier == UUID(uuidString: deviceAddress)
@@ -173,16 +173,16 @@ extension IOSBLEPeripheral: BlePeripheral {
                 
                 readyToUpdateSubscribersCallbacks.append({ [weak self] in
                     guard let self = self else {
-                        continuation.resume(throwing: BleErrorWrapper.Ble(error: BleError.InvalidCharacteristicOperation(service: serviceUuid,
-                                                                                                                         characteristic: characteristicUuid,
-                                                                                                                         operation: "notify")))
+                        continuation.resume(throwing: BleError.InvalidCharacteristicOperation(service: service.uuidString,
+                                                                                              characteristic: characteristic.uuidString,
+                                                                                                                         operation: "notify"))
                         return
                     }
                     
                     do {
                         try await self.notifyCharacteristicData(deviceAddress: deviceAddress,
-                                                                serviceUuid: serviceUuid,
-                                                                characteristicUuid: characteristicUuid,
+                                                                service: service.uuidString,
+                                                                characteristic: characteristic.uuidString,
                                                                 data: data)
                         continuation.resume()
                     } catch {
@@ -212,7 +212,7 @@ extension IOSBLEPeripheral: BlePeripheral {
     
     func getCharacteristicWrites(device: String, service: String, characteristic: String) async throws -> [Data] {
         guard let centralUuid = UUID(uuidString: device) else {
-            throw BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: device))
+            throw BleError.InvalidUuid(uuid: device)
         }
         let serviceUuid = CBUUID(string: service)
         let characteristicUuid = CBUUID(string: characteristic)
@@ -234,7 +234,7 @@ extension IOSBLEPeripheral: BlePeripheral {
     
     func waitForCharacteristicRead(device: String, service: String, characteristic: String) async throws {
         guard let centralUuid = UUID(uuidString: device) else {
-            throw BleErrorWrapper.Ble(error: BleError.InvalidUuid(uuid: device))
+            throw BleError.InvalidUuid(uuid: device)
         }
         let serviceUuid = CBUUID(string: service)
         let characteristicUuid = CBUUID(string: characteristic)
@@ -262,7 +262,7 @@ private extension IOSBLEPeripheral {
     
     private func retrieveService(service: CBUUID) throws -> CBMutableService {
         guard let cbService = services.first(where: { $0.uuid == service }) else {
-            throw BleErrorWrapper.Ble(error: BleError.ServiceNotFound(service: service.uuidString))
+            throw BleError.ServiceNotFound(service: service.uuidString)
         }
         return cbService
     }
@@ -270,7 +270,7 @@ private extension IOSBLEPeripheral {
     private func retrieveCharacteristic(service: CBUUID, characteristic: CBUUID) throws -> CBMutableCharacteristic {
         let service = try retrieveService(service: service)
         guard let cbCharacteristic = service.characteristics?.first(where: { $0.uuid == characteristic }) as? CBMutableCharacteristic else {
-            throw BleErrorWrapper.Ble(error: BleError.CharacteristicNotFound(characteristic: characteristic.uuidString))
+            throw BleError.CharacteristicNotFound(characteristic: characteristic.uuidString)
         }
         return cbCharacteristic
     }

@@ -91,6 +91,10 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
 
     override fun sign(keyReference: ByteArray, message: ByteArray): ByteArray {
         try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+                throw NativeKeyStorageException.KeyGenerationFailure("Insufficient SDK version `${Build.VERSION.SDK_INT}`");
+            }
+
             val keyAlias = keyReference.toString(Charsets.UTF_8)
 
             val keyStore = getAndroidKeyStore()
@@ -131,6 +135,10 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
     }
 
     private fun keyInfo(privateKey: PrivateKey): KeyInfo {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            throw NativeKeyStorageException.KeyGenerationFailure("Insufficient SDK version `${Build.VERSION.SDK_INT}`");
+        }
+
         val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
         return factory.getKeySpec(privateKey, KeyInfo::class.java)
     }

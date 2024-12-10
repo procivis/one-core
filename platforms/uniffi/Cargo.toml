@@ -36,8 +36,5 @@ uuid.workspace           = true
 tracing-android    = { version = "0.2" }
 tracing-subscriber = { version = "0.3" }
 
-[build-dependencies]
-uniffi = { workspace = true, features = ["build"] }
-
 [lints]
 workspace = true

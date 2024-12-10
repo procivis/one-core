@@ -4,7 +4,9 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::OneCoreBinding;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn delete_trust_anchor(&self, anchor_id: String) -> Result<(), BindingError> {
         let trust_anchor_id: TrustAnchorId = into_id(&anchor_id)?;
 

@@ -1,7 +1,9 @@
 use crate::error::BindingError;
 use crate::{CreateTrustAnchorRequestBindingDTO, OneCoreBinding};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn create_trust_anchor(
         &self,
         anchor: CreateTrustAnchorRequestBindingDTO,

@@ -2,7 +2,9 @@ use crate::dto::{ListTrustEntitiesFiltersBindings, TrustEntitiesListBindingDTO};
 use crate::error::BindingError;
 use crate::OneCoreBinding;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn list_trust_entities(
         &self,
         filters: ListTrustEntitiesFiltersBindings,

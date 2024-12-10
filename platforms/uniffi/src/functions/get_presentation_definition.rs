@@ -3,7 +3,9 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::OneCoreBinding;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn get_presentation_definition(
         &self,
         proof_id: String,

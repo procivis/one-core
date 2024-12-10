@@ -3,7 +3,9 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::OneCoreBinding;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn check_certificate(
         &self,
         key_id: String,

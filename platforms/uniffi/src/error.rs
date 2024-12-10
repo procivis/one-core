@@ -1,12 +1,12 @@
-use one_core::provider::bluetooth_low_energy::BleError;
 use one_core::provider::key_storage::error::KeyStorageError;
 use one_core::service::error::ErrorCodeMixin;
 use one_crypto::SignerError;
+use one_dto_mapper::{From, Into};
 use thiserror::Error;
 
 use super::error_code::ErrorCode;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Error)]
 pub(crate) enum SDKError {
     #[error("Initialization failure: {0}")]
     InitializationFailure(String),
@@ -24,14 +24,14 @@ impl ErrorCodeMixin for SDKError {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct ErrorResponseBindingDTO {
     pub code: String,
     pub message: String,
     pub cause: Option<Cause>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct Cause {
     pub message: String,
 }
@@ -44,7 +44,7 @@ impl Cause {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, uniffi::Error)]
 pub enum BindingError {
     #[error("Error: {data:?}")]
     ErrorResponse { data: ErrorResponseBindingDTO },
@@ -79,7 +79,7 @@ impl<T: ErrorCodeMixin + std::error::Error> From<T> for ErrorResponseBindingDTO 
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, uniffi::Error)]
 pub enum NativeKeyStorageError {
     #[error("Failed to generate key: {reason:?}")]
     KeyGenerationFailure { reason: String },
@@ -121,35 +121,54 @@ impl From<NativeKeyStorageError> for SignerError {
     }
 }
 
-// BleError is defined in core, we need to implement UnexpectedUniFFICallbackError for it
-// therefore the wrapper
-
-#[derive(Debug, Error)]
-#[error(transparent)]
-pub enum BleErrorWrapper {
-    Ble { error: BleError },
+#[derive(Debug, Clone, From, Into, Error, uniffi::Error)]
+#[from(one_core::provider::bluetooth_low_energy::BleError)]
+#[into(one_core::provider::bluetooth_low_energy::BleError)]
+pub enum BleError {
+    #[error("BLE adapter not enabled")]
+    AdapterNotEnabled,
+    #[error("BLE scan already started")]
+    ScanAlreadyStarted,
+    #[error("BLE scan not started")]
+    ScanNotStarted,
+    #[error("Advertisement already started")]
+    BroadcastAlreadyStarted,
+    #[error("Advertisement not started")]
+    BroadcastNotStarted,
+    #[error("Another write or read operation is in progress")]
+    AnotherOperationInProgress,
+    #[error("Data too long")]
+    WriteDataTooLong,
+    #[error("No device with address {address} found")]
+    DeviceAddressNotFound { address: String },
+    #[error("Service with UUID {service} not found")]
+    ServiceNotFound { service: String },
+    #[error("Characteristic with UUID {characteristic} not found")]
+    CharacteristicNotFound { characteristic: String },
+    #[error("Invalid UUID: {uuid}")]
+    InvalidUUID { uuid: String },
+    #[error("Not connected to device {address}")]
+    DeviceNotConnected { address: String },
+    #[error("Operation {operation} can not be performed on characteristic {characteristic}, service UUID {service}")]
+    InvalidCharacteristicOperation {
+        service: String,
+        characteristic: String,
+        operation: String,
+    },
+    #[error("The device does not support BLE")]
+    NotSupported,
+    #[error("Application not authorized to use BLE")]
+    NotAuthorized,
+    #[error("GATT server not running")]
+    ServerNotRunning,
+    #[error("Unknown BLE error: {reason}")]
+    Unknown { reason: String },
 }
 
-impl From<BleError> for BleErrorWrapper {
-    fn from(error: BleError) -> Self {
-        Self::Ble { error }
-    }
-}
-
-impl From<BleErrorWrapper> for BleError {
-    fn from(error: BleErrorWrapper) -> Self {
-        match error {
-            BleErrorWrapper::Ble { error } => error,
-        }
-    }
-}
-
-impl From<uniffi::UnexpectedUniFFICallbackError> for BleErrorWrapper {
+impl From<uniffi::UnexpectedUniFFICallbackError> for BleError {
     fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {
-        Self::Ble {
-            error: BleError::Unknown {
-                reason: e.to_string(),
-            },
+        BleError::Unknown {
+            reason: e.to_string(),
         }
     }
 }

@@ -1,7 +1,9 @@
 use crate::error::BindingError;
 use crate::{ListTrustAnchorsFiltersBindings, OneCoreBinding, TrustAnchorsListBindingDTO};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn list_trust_anchors(
         &self,
         filters: ListTrustAnchorsFiltersBindings,

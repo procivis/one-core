@@ -2,7 +2,9 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::{OneCoreBinding, ProposeProofResponseBindingDTO};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn propose_proof(
         &self,
         exchange: String,

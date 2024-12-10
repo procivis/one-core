@@ -43,7 +43,7 @@ serde_with         = { version = "3.8", features = ["json", "time_0_3"] }
 shadow-rs          = { version = "0.35" }
 strum              = { version = "0.26", features = ["derive"] }
 tempfile           = { version = "3.10" }
-thiserror          = { version = "1.0" }
+thiserror          = { version = "2.0" }
 time               = { version = "0.3", features = ["macros", "serde"] }
 tokio              = { version = "1.38" }
 tracing            = { version = "0.1" }

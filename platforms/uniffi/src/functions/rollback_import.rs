@@ -5,7 +5,9 @@ use one_core::service::error::ServiceError;
 use crate::error::BindingError;
 use crate::OneCoreBinding;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn rollback_import(&self) -> Result<(), BindingError> {
         if !Path::new(&self.backup_db_path).exists() {
             return Err(

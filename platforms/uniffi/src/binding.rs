@@ -14,12 +14,37 @@ type CoreBuilder = Box<
         + Sync,
 >;
 
+#[derive(uniffi::Object)]
 pub(crate) struct OneCoreBinding {
     runtime: Runtime,
     inner: RwLock<Option<one_core::OneCore>>,
     pub(crate) main_db_path: String,
     pub(crate) backup_db_path: String,
     core_builder: CoreBuilder,
+}
+
+#[uniffi::export]
+impl OneCoreBinding {
+    #[uniffi::method]
+    pub fn uninitialize(&self, delete_data: bool) -> Result<(), BindingError> {
+        self.block_on(async {
+            let mut guard = self.inner.write().await;
+            if guard.take().is_none() {
+                return Err(SDKError::NotInitialized.into());
+            }
+
+            if !delete_data {
+                return Ok(());
+            }
+
+            let _ = fs::remove_file(&self.backup_db_path).await;
+            fs::remove_file(&self.main_db_path)
+                .await
+                .map_err(|err| ServiceError::Other(err.to_string()))?;
+
+            Ok(())
+        })
+    }
 }
 
 impl OneCoreBinding {
@@ -38,31 +63,11 @@ impl OneCoreBinding {
         }
     }
 
-    pub fn initialize(&self, db_path: String) -> Result<(), BindingError> {
+    pub(crate) fn initialize(&self, db_path: String) -> Result<(), BindingError> {
         self.runtime.block_on(async {
             let mut guard = self.inner.write().await;
             let new_core = (self.core_builder)(db_path).await?;
             guard.replace(new_core);
-            Ok(())
-        })
-    }
-
-    pub fn uninitialize(&self, delete_data: bool) -> Result<(), BindingError> {
-        self.block_on(async {
-            let mut guard = self.inner.write().await;
-            if guard.take().is_none() {
-                return Err(SDKError::NotInitialized.into());
-            }
-
-            if !delete_data {
-                return Ok(());
-            }
-
-            let _ = fs::remove_file(&self.backup_db_path).await;
-            fs::remove_file(&self.main_db_path)
-                .await
-                .map_err(|err| ServiceError::Other(err.to_string()))?;
-
             Ok(())
         })
     }

@@ -1,7 +1,9 @@
 use crate::error::BindingError;
 use crate::{ListProofSchemasFiltersBindingDTO, OneCoreBinding, ProofSchemaListBindingDTO};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn get_proof_schemas(
         &self,
         filter: ListProofSchemasFiltersBindingDTO,

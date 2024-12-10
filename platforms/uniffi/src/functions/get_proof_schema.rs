@@ -4,7 +4,9 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::{GetProofSchemaBindingDTO, OneCoreBinding};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn get_proof_schema(
         &self,
         proof_schema_id: String,

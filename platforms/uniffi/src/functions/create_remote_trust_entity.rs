@@ -1,7 +1,9 @@
 use crate::error::BindingError;
 use crate::{CreateRemoteTrustEntityRequestBindingDTO, OneCoreBinding};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn create_remote_trust_entity(
         &self,
         request: CreateRemoteTrustEntityRequestBindingDTO,

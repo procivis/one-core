@@ -9,7 +9,9 @@ use crate::{
     DidListBindingDTO, DidListQueryBindingDTO, ExactDidFilterColumnBindingEnum, OneCoreBinding,
 };
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn get_dids(
         &self,
         query: DidListQueryBindingDTO,

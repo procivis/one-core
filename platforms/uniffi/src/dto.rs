@@ -47,8 +47,8 @@ use one_core::service::error::ServiceError;
 use one_core::service::history::dto::GetHistoryListResponseDTO;
 use one_core::service::key::dto::{KeyCheckCertificateRequestDTO, KeyListItemResponseDTO};
 use one_core::service::proof::dto::{
-    CreateProofRequestDTO, GetProofListResponseDTO, ProofClaimDTO, ProofClaimValueDTO,
-    ProofInputDTO, ProofListItemResponseDTO, ProposeProofResponseDTO, ScanToVerifyBarcodeTypeEnum,
+    CreateProofRequestDTO, GetProofListResponseDTO, ProofClaimDTO, ProofInputDTO,
+    ProofListItemResponseDTO, ProposeProofResponseDTO, ScanToVerifyBarcodeTypeEnum,
     ScanToVerifyRequestDTO, ShareProofRequestDTO, ShareProofRequestParamsDTO,
 };
 use one_core::service::proof_schema::dto::{
@@ -69,11 +69,11 @@ use one_core::service::trust_entity::dto::{
 };
 use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 
-use crate::error::{BleErrorWrapper, ErrorResponseBindingDTO, NativeKeyStorageError};
+use crate::error::{BleError, ErrorResponseBindingDTO, NativeKeyStorageError};
 use crate::mapper::{optional_did_string, optional_time, serialize_config_entity, OptionalString};
 use crate::utils::{format_timestamp_opt, into_id, into_id_opt, into_timestamp, TimestampFormat};
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ConfigDTO)]
 pub struct ConfigBindingDTO {
     #[from(with_fn = serialize_config_entity)]
@@ -98,9 +98,9 @@ pub struct ConfigBindingDTO {
     pub cache_entities: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, From, Into)]
+#[derive(Clone, Debug, From, Into, uniffi::Enum)]
 #[from(CredentialStateEnum)]
-#[into("one_core::model::credential::CredentialStateEnum")]
+#[into(one_core::model::credential::CredentialStateEnum)]
 pub enum CredentialStateBindingEnum {
     Created,
     Pending,
@@ -112,7 +112,7 @@ pub enum CredentialStateBindingEnum {
     Error,
 }
 
-#[derive(From, Into)]
+#[derive(Clone, Debug, From, Into, uniffi::Enum)]
 #[from(ProofStateEnum)]
 #[into(ProofStateEnum)]
 pub enum ProofStateBindingEnum {
@@ -124,9 +124,19 @@ pub enum ProofStateBindingEnum {
     Error,
 }
 
-pub type VersionBindingDTO = one_core::Version;
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(one_core::Version)]
+pub struct VersionBindingDTO {
+    pub target: String,
+    pub build_time: String,
+    pub branch: String,
+    pub tag: String,
+    pub commit: String,
+    pub rust_version: String,
+    pub pipeline_id: String,
+}
 
-#[derive(Debug, Clone, Into, From)]
+#[derive(Clone, Debug, Into, From, uniffi::Enum)]
 #[from(CredentialRole)]
 #[into(CredentialRole)]
 pub enum CredentialRoleBindingDTO {
@@ -135,6 +145,7 @@ pub enum CredentialRoleBindingDTO {
     Verifier,
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct CredentialSchemaListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
@@ -147,13 +158,13 @@ pub struct CredentialSchemaListQueryBindingDTO {
     pub include: Option<Vec<CredentialSchemaListIncludeEntityType>>,
 }
 
-#[derive(Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(CredentialSchemaListIncludeEntityTypeEnum)]
 pub enum CredentialSchemaListIncludeEntityType {
     LayoutProperties,
 }
 
-#[derive(Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(SortableCredentialSchemaColumn)]
 pub enum SortableCredentialSchemaColumnBindingEnum {
     Name,
@@ -161,13 +172,13 @@ pub enum SortableCredentialSchemaColumnBindingEnum {
     CreatedDate,
 }
 
-#[derive(Clone, Debug, PartialEq, Into)]
+#[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]
 #[into(ExactColumn)]
 pub enum CredentialSchemaListQueryExactColumnBindingEnum {
     Name,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetCredentialSchemaListResponseDTO)]
 pub struct CredentialSchemaListBindingDTO {
     #[from(with_fn = convert_inner)]
@@ -176,20 +187,20 @@ pub struct CredentialSchemaListBindingDTO {
     pub total_items: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Into)]
+#[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]
 #[into(ExactColumn)]
 pub enum CredentialListQueryExactColumnBindingEnum {
     Name,
 }
 
-#[derive(Clone, Debug, Into)]
-#[into("one_core::model::common::SortDirection")]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
+#[into(one_core::model::common::SortDirection)]
 pub enum SortDirection {
     Ascending,
     Descending,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(SortableCredentialColumn)]
 pub enum SortableCredentialColumnBindingEnum {
     CreatedDate,
@@ -198,14 +209,14 @@ pub enum SortableCredentialColumnBindingEnum {
     State,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, uniffi::Enum)]
 pub enum SearchTypeBindingEnum {
     ClaimName,
     ClaimValue,
     CredentialSchemaName,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct CredentialListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
@@ -224,14 +235,14 @@ pub struct CredentialListQueryBindingDTO {
     pub include: Option<Vec<CredentialListIncludeEntityTypeBindingEnum>>,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(CredentialListIncludeEntityTypeEnum)]
 pub enum CredentialListIncludeEntityTypeBindingEnum {
     LayoutProperties,
     Credential,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetCredentialListResponseDTO)]
 pub struct CredentialListBindingDTO {
     #[from(with_fn = convert_inner)]
@@ -240,13 +251,13 @@ pub struct CredentialListBindingDTO {
     pub total_items: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Into)]
+#[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]
 #[into(ExactColumn)]
 pub enum ProofListQueryExactColumnBindingEnum {
     Name,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(SortableProofColumn)]
 pub enum SortableProofListColumnBinding {
     SchemaName,
@@ -254,6 +265,8 @@ pub enum SortableProofListColumnBinding {
     State,
     CreatedDate,
 }
+
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct ProofListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
@@ -267,7 +280,7 @@ pub struct ProofListQueryBindingDTO {
     pub exact: Option<Vec<ProofListQueryExactColumnBindingEnum>>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ProofListItemResponseDTO)]
 pub struct ProofListItemBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -293,7 +306,7 @@ pub struct ProofListItemBindingDTO {
     pub retain_until_date: Option<String>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetProofListResponseDTO)]
 pub struct ProofListBindingDTO {
     #[from(with_fn = convert_inner)]
@@ -302,7 +315,7 @@ pub struct ProofListBindingDTO {
     pub total_items: u64,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetDidListResponseDTO)]
 pub struct DidListBindingDTO {
     #[from(with_fn = convert_inner)]
@@ -311,7 +324,7 @@ pub struct DidListBindingDTO {
     pub total_items: u64,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(SortableDidColumn)]
 pub enum SortableDidColumnBindingEnum {
     Name,
@@ -322,13 +335,13 @@ pub enum SortableDidColumnBindingEnum {
     Deactivated,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, uniffi::Enum)]
 pub enum ExactDidFilterColumnBindingEnum {
     Name,
     Did,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(KeyRole)]
 pub enum KeyRoleBindingEnum {
     Authentication,
@@ -338,6 +351,7 @@ pub enum KeyRoleBindingEnum {
     CapabilityDelegation,
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct DidListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
@@ -355,7 +369,7 @@ pub struct DidListQueryBindingDTO {
     pub key_roles: Option<Vec<KeyRoleBindingEnum>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct CredentialDetailBindingDTO {
     pub id: String,
     pub created_date: String,
@@ -374,13 +388,14 @@ pub struct CredentialDetailBindingDTO {
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseBindingDTO>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct MdocMsoValidityResponseBindingDTO {
     pub expiration: String,
     pub next_update: String,
     pub last_update: String,
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct CredentialListItemBindingDTO {
     pub id: String,
     pub created_date: String,
@@ -394,7 +409,7 @@ pub struct CredentialListItemBindingDTO {
     pub suspend_end_date: Option<String>,
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(KeyListItemResponseDTO)]
 pub struct KeyListItemBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -409,7 +424,7 @@ pub struct KeyListItemBindingDTO {
     pub storage_type: String,
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(DidListItemResponseDTO)]
 pub struct DidListItemBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -426,7 +441,7 @@ pub struct DidListItemBindingDTO {
     pub deactivated: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct CredentialSchemaBindingDTO {
     pub id: String,
     pub created_date: String,
@@ -442,7 +457,7 @@ pub struct CredentialSchemaBindingDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
 }
 
-#[derive(Debug, Clone, TryInto)]
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = ImportProofSchemaCredentialSchemaDTO, Error = ErrorResponseBindingDTO)]
 pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     #[try_into(with_fn_ref = into_id)]
@@ -471,7 +486,7 @@ pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(CredentialSchemaDetailResponseDTO)]
 pub struct CredentialSchemaDetailBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -496,7 +511,7 @@ pub struct CredentialSchemaDetailBindingDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(CredentialClaimSchemaDTO)]
 pub struct CredentialClaimSchemaBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -513,7 +528,7 @@ pub struct CredentialClaimSchemaBindingDTO {
     pub claims: Vec<CredentialClaimSchemaBindingDTO>,
 }
 
-#[derive(Debug, Clone, From, Into)]
+#[derive(Clone, Debug, From, Into, uniffi::Record)]
 #[from(CredentialSchemaLayoutPropertiesRequestDTO)]
 #[into(CredentialSchemaLayoutPropertiesRequestDTO)]
 pub struct CredentialSchemaLayoutPropertiesBindingDTO {
@@ -531,7 +546,7 @@ pub struct CredentialSchemaLayoutPropertiesBindingDTO {
     pub code: Option<CredentialSchemaCodePropertiesBindingDTO>,
 }
 
-#[derive(Debug, Clone, From, Into)]
+#[derive(Clone, Debug, From, Into, uniffi::Record)]
 #[from(CredentialSchemaBackgroundPropertiesRequestDTO)]
 #[into(CredentialSchemaBackgroundPropertiesRequestDTO)]
 pub struct CredentialSchemaBackgroundPropertiesBindingDTO {
@@ -539,7 +554,7 @@ pub struct CredentialSchemaBackgroundPropertiesBindingDTO {
     pub image: Option<String>,
 }
 
-#[derive(Debug, Clone, From, Into)]
+#[derive(Clone, Debug, From, Into, uniffi::Record)]
 #[from(CredentialSchemaLogoPropertiesRequestDTO)]
 #[into(CredentialSchemaLogoPropertiesRequestDTO)]
 pub struct CredentialSchemaLogoPropertiesBindingDTO {
@@ -548,7 +563,7 @@ pub struct CredentialSchemaLogoPropertiesBindingDTO {
     pub image: Option<String>,
 }
 
-#[derive(Debug, Clone, From, Into)]
+#[derive(Clone, Debug, From, Into, uniffi::Record)]
 #[from(CredentialSchemaCodePropertiesRequestDTO)]
 #[into(CredentialSchemaCodePropertiesRequestDTO)]
 pub struct CredentialSchemaCodePropertiesBindingDTO {
@@ -556,7 +571,7 @@ pub struct CredentialSchemaCodePropertiesBindingDTO {
     pub r#type: CredentialSchemaCodeTypeBindingDTO,
 }
 
-#[derive(Debug, Clone, From, Into)]
+#[derive(Clone, Debug, From, Into, uniffi::Enum)]
 #[from(CredentialSchemaCodeTypeEnum)]
 #[into(CredentialSchemaCodeTypeEnum)]
 pub enum CredentialSchemaCodeTypeBindingDTO {
@@ -565,7 +580,7 @@ pub enum CredentialSchemaCodeTypeBindingDTO {
     QrCode,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum CredentialSchemaTypeBindingEnum {
     ProcivisOneSchema2024 {},
     FallbackSchema2024 {},
@@ -573,7 +588,7 @@ pub enum CredentialSchemaTypeBindingEnum {
     Other { value: String },
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, From, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
 #[from(LayoutType)]
 #[into(LayoutType)]
 pub enum LayoutTypeBindingEnum {
@@ -582,7 +597,7 @@ pub enum LayoutTypeBindingEnum {
     SingleAttribute,
 }
 
-#[derive(From, Clone, Debug, Into)]
+#[derive(From, Clone, Debug, Into, uniffi::Enum)]
 #[from(WalletStorageTypeEnum)]
 #[into(WalletStorageTypeEnum)]
 pub enum WalletStorageTypeBindingEnum {
@@ -590,7 +605,7 @@ pub enum WalletStorageTypeBindingEnum {
     Software,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct ClaimBindingDTO {
     pub id: String,
     pub key: String,
@@ -599,7 +614,7 @@ pub struct ClaimBindingDTO {
     pub value: ClaimValueBindingDTO,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, uniffi::Enum)]
 pub enum ClaimValueBindingDTO {
     Boolean { value: bool },
     Float { value: f64 },
@@ -608,6 +623,7 @@ pub enum ClaimValueBindingDTO {
     Nested { value: Vec<ClaimBindingDTO> },
 }
 
+#[derive(Clone, Debug, uniffi::Enum)]
 pub enum HandleInvitationResponseBindingEnum {
     CredentialIssuance {
         interaction_id: String,
@@ -620,7 +636,7 @@ pub enum HandleInvitationResponseBindingEnum {
     },
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(OpenID4VCITxCode)]
 pub struct OpenID4VCITxCodeBindingDTO {
     pub input_mode: OpenID4VCITxCodeInputModeBindingEnum,
@@ -630,13 +646,14 @@ pub struct OpenID4VCITxCodeBindingDTO {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Clone, Debug, From, uniffi::Enum)]
 #[from(OpenID4VCITxCodeInputMode)]
 pub enum OpenID4VCITxCodeInputModeBindingEnum {
     Numeric,
     Text,
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct ProofRequestBindingDTO {
     pub id: String,
     pub created_date: String,
@@ -651,7 +668,7 @@ pub struct ProofRequestBindingDTO {
     pub retain_until_date: Option<String>,
 }
 
-#[derive(TryInto)]
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = PresentationSubmitCredentialRequestDTO, Error = ServiceError)]
 pub struct PresentationSubmitCredentialRequestBindingDTO {
     #[try_into(with_fn_ref = into_id)]
@@ -660,13 +677,14 @@ pub struct PresentationSubmitCredentialRequestBindingDTO {
     pub submit_claims: Vec<String>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(PresentationDefinitionResponseDTO)]
 pub struct PresentationDefinitionBindingDTO {
     #[from(with_fn = convert_inner)]
     pub request_groups: Vec<PresentationDefinitionRequestGroupBindingDTO>,
 }
 
+#[derive(Clone, Debug, uniffi::Enum)]
 pub enum ProofRequestClaimValueBindingDTO {
     Value {
         value: String,
@@ -676,18 +694,7 @@ pub enum ProofRequestClaimValueBindingDTO {
     },
 }
 
-impl From<ProofClaimValueDTO> for ProofRequestClaimValueBindingDTO {
-    fn from(value: ProofClaimValueDTO) -> Self {
-        match value {
-            ProofClaimValueDTO::Value(value) => Self::Value { value },
-            ProofClaimValueDTO::Claims(claims) => ProofRequestClaimValueBindingDTO::Claims {
-                value: convert_inner(claims),
-            },
-        }
-    }
-}
-
-#[derive(Debug, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ProofClaimSchemaResponseDTO)]
 pub struct ProofClaimSchemaBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -701,7 +708,7 @@ pub struct ProofClaimSchemaBindingDTO {
     pub array: bool,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct ImportProofSchemaClaimSchemaBindingDTO {
     pub id: String,
     pub requested: bool,
@@ -712,7 +719,7 @@ pub struct ImportProofSchemaClaimSchemaBindingDTO {
     pub array: bool,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ProofClaimDTO)]
 pub struct ProofRequestClaimBindingDTO {
     pub schema: ProofClaimSchemaBindingDTO,
@@ -720,7 +727,7 @@ pub struct ProofRequestClaimBindingDTO {
     pub value: Option<ProofRequestClaimValueBindingDTO>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ProofInputDTO)]
 pub struct ProofInputBindingDTO {
     #[from(with_fn = convert_inner)]
@@ -731,7 +738,7 @@ pub struct ProofInputBindingDTO {
     pub validity_constraint: Option<i64>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(PresentationDefinitionRequestGroupResponseDTO)]
 pub struct PresentationDefinitionRequestGroupBindingDTO {
     pub id: String,
@@ -742,7 +749,7 @@ pub struct PresentationDefinitionRequestGroupBindingDTO {
     pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialBindingDTO>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(PresentationDefinitionRequestedCredentialResponseDTO)]
 pub struct PresentationDefinitionRequestedCredentialBindingDTO {
     pub id: String,
@@ -758,7 +765,7 @@ pub struct PresentationDefinitionRequestedCredentialBindingDTO {
     pub validity_credential_nbf: Option<String>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(PresentationDefinitionFieldDTO)]
 pub struct PresentationDefinitionFieldBindingDTO {
     pub id: String,
@@ -769,14 +776,14 @@ pub struct PresentationDefinitionFieldBindingDTO {
     pub key_map: HashMap<String, String>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Enum)]
 #[from(PresentationDefinitionRuleTypeEnum)]
 pub enum PresentationDefinitionRuleTypeBindingEnum {
     All,
     Pick,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(PresentationDefinitionRuleDTO)]
 pub struct PresentationDefinitionRuleBindingDTO {
     pub r#type: PresentationDefinitionRuleTypeBindingEnum,
@@ -785,6 +792,7 @@ pub struct PresentationDefinitionRuleBindingDTO {
     pub count: Option<u32>,
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct KeyRequestBindingDTO {
     pub organisation_id: String,
     pub key_type: String,
@@ -794,7 +802,7 @@ pub struct KeyRequestBindingDTO {
     pub storage_params: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, Into, From)]
+#[derive(Clone, Debug, Into, From, uniffi::Enum)]
 #[into(DidType)]
 #[from(DidType)]
 pub enum DidTypeBindingEnum {
@@ -802,6 +810,7 @@ pub enum DidTypeBindingEnum {
     Remote,
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct DidRequestBindingDTO {
     pub organisation_id: String,
     pub name: String,
@@ -810,6 +819,7 @@ pub struct DidRequestBindingDTO {
     pub params: HashMap<String, String>,
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct DidRequestKeysBindingDTO {
     pub authentication: Vec<String>,
     pub assertion_method: Vec<String>,
@@ -818,7 +828,7 @@ pub struct DidRequestKeysBindingDTO {
     pub capability_delegation: Vec<String>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(CredentialRevocationCheckResponseDTO)]
 pub struct CredentialRevocationCheckResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -828,13 +838,14 @@ pub struct CredentialRevocationCheckResponseBindingDTO {
     pub reason: Option<String>,
 }
 
-#[derive(Into)]
+#[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(StorageGeneratedKey)]
 pub struct GeneratedKeyBindingDTO {
     pub key_reference: Vec<u8>,
     pub public_key: Vec<u8>,
 }
 
+#[uniffi::export(callback_interface)]
 pub trait NativeKeyStorage: Send + Sync {
     fn generate_key(
         &self,
@@ -847,7 +858,7 @@ pub trait NativeKeyStorage: Send + Sync {
     ) -> Result<Vec<u8>, NativeKeyStorageError>;
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ServiceDescription)]
 pub struct ServiceDescriptionBindingDTO {
     pub uuid: String,
@@ -857,7 +868,7 @@ pub struct ServiceDescriptionBindingDTO {
     pub characteristics: Vec<CharacteristicBindingDTO>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(CreateCharacteristicOptions)]
 pub struct CharacteristicBindingDTO {
     pub uuid: String,
@@ -867,14 +878,14 @@ pub struct CharacteristicBindingDTO {
     pub properties: Vec<CharacteristicPropertyBindingEnum>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Enum)]
 #[from(CharacteristicPermissions)]
 pub enum CharacteristicPermissionBindingEnum {
     Read,
     Write,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Enum)]
 #[from(CharacteristicProperties)]
 pub enum CharacteristicPropertyBindingEnum {
     Read,
@@ -884,67 +895,69 @@ pub enum CharacteristicPropertyBindingEnum {
     Indicate,
 }
 
-#[derive(Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(ConnectionEvent)]
 pub enum ConnectionEventBindingEnum {
     Connected { device_info: DeviceInfoBindingDTO },
     Disconnected { device_address: DeviceAddress },
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct DeviceInfoBindingDTO {
     pub address: String,
     pub mtu: u16,
 }
 
+#[uniffi::export(with_foreign)]
 #[async_trait::async_trait]
 pub trait BlePeripheral: Send + Sync {
-    async fn is_adapter_enabled(&self) -> Result<bool, BleErrorWrapper>;
+    async fn is_adapter_enabled(&self) -> Result<bool, BleError>;
     async fn start_advertisement(
         &self,
         device_name: Option<String>,
         services: Vec<ServiceDescriptionBindingDTO>,
-    ) -> Result<Option<MacAddress>, BleErrorWrapper>;
-    async fn stop_advertisement(&self) -> Result<(), BleErrorWrapper>;
-    async fn is_advertising(&self) -> Result<bool, BleErrorWrapper>;
+    ) -> Result<Option<MacAddress>, BleError>;
+    async fn stop_advertisement(&self) -> Result<(), BleError>;
+    async fn is_advertising(&self) -> Result<bool, BleError>;
     async fn set_characteristic_data(
         &self,
         service: ServiceUUID,
         characteristic: CharacteristicUUID,
         data: Vec<u8>,
-    ) -> Result<(), BleErrorWrapper>;
+    ) -> Result<(), BleError>;
     async fn notify_characteristic_data(
         &self,
         device_address: DeviceAddress,
         service: ServiceUUID,
         characteristic: CharacteristicUUID,
         data: Vec<u8>,
-    ) -> Result<(), BleErrorWrapper>;
+    ) -> Result<(), BleError>;
     async fn get_connection_change_events(
         &self,
-    ) -> Result<Vec<ConnectionEventBindingEnum>, BleErrorWrapper>;
+    ) -> Result<Vec<ConnectionEventBindingEnum>, BleError>;
     async fn get_characteristic_writes(
         &self,
         device: DeviceAddress,
         service: ServiceUUID,
         characteristic: CharacteristicUUID,
-    ) -> Result<Vec<Vec<u8>>, BleErrorWrapper>;
+    ) -> Result<Vec<Vec<u8>>, BleError>;
     async fn wait_for_characteristic_read(
         &self,
         device: DeviceAddress,
         service: ServiceUUID,
         characteristic: CharacteristicUUID,
-    ) -> Result<(), BleErrorWrapper>;
-    async fn stop_server(&self) -> Result<(), BleErrorWrapper>;
+    ) -> Result<(), BleError>;
+    async fn stop_server(&self) -> Result<(), BleError>;
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Enum)]
 #[from(CharacteristicWriteType)]
 pub enum CharacteristicWriteTypeBindingEnum {
     WithResponse,
     WithoutResponse,
 }
 
-#[derive(Into)]
+#[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(PeripheralDiscoveryData)]
 pub struct PeripheralDiscoveryDataBindingDTO {
     pub device_address: DeviceAddress,
@@ -953,15 +966,13 @@ pub struct PeripheralDiscoveryDataBindingDTO {
     pub advertised_service_data: Option<HashMap<ServiceUUID, Vec<u8>>>,
 }
 
+#[uniffi::export(with_foreign)]
 #[async_trait::async_trait]
 pub trait BleCentral: Send + Sync {
-    async fn is_adapter_enabled(&self) -> Result<bool, BleErrorWrapper>;
-    async fn start_scan(
-        &self,
-        filter_services: Option<Vec<ServiceUUID>>,
-    ) -> Result<(), BleErrorWrapper>;
-    async fn stop_scan(&self) -> Result<(), BleErrorWrapper>;
-    async fn is_scanning(&self) -> Result<bool, BleErrorWrapper>;
+    async fn is_adapter_enabled(&self) -> Result<bool, BleError>;
+    async fn start_scan(&self, filter_services: Option<Vec<ServiceUUID>>) -> Result<(), BleError>;
+    async fn stop_scan(&self) -> Result<(), BleError>;
+    async fn is_scanning(&self) -> Result<bool, BleError>;
     async fn write_data(
         &self,
         peripheral: DeviceAddress,
@@ -969,39 +980,39 @@ pub trait BleCentral: Send + Sync {
         characteristic: CharacteristicUUID,
         data: Vec<u8>,
         write_type: CharacteristicWriteTypeBindingEnum,
-    ) -> Result<(), BleErrorWrapper>;
+    ) -> Result<(), BleError>;
     async fn read_data(
         &self,
         peripheral: DeviceAddress,
         service: ServiceUUID,
         characteristic: CharacteristicUUID,
-    ) -> Result<Vec<u8>, BleErrorWrapper>;
-    async fn connect(&self, peripheral: DeviceAddress) -> Result<u16, BleErrorWrapper>;
-    async fn disconnect(&self, peripheral: DeviceAddress) -> Result<(), BleErrorWrapper>;
+    ) -> Result<Vec<u8>, BleError>;
+    async fn connect(&self, peripheral: DeviceAddress) -> Result<u16, BleError>;
+    async fn disconnect(&self, peripheral: DeviceAddress) -> Result<(), BleError>;
     async fn get_discovered_devices(
         &self,
-    ) -> Result<Vec<PeripheralDiscoveryDataBindingDTO>, BleErrorWrapper>;
+    ) -> Result<Vec<PeripheralDiscoveryDataBindingDTO>, BleError>;
     async fn subscribe_to_characteristic_notifications(
         &self,
         peripheral: DeviceAddress,
         service: ServiceUUID,
         characteristic: CharacteristicUUID,
-    ) -> Result<(), BleErrorWrapper>;
+    ) -> Result<(), BleError>;
     async fn unsubscribe_from_characteristic_notifications(
         &self,
         peripheral: DeviceAddress,
         service: ServiceUUID,
         characteristic: CharacteristicUUID,
-    ) -> Result<(), BleErrorWrapper>;
+    ) -> Result<(), BleError>;
     async fn get_notifications(
         &self,
         peripheral: DeviceAddress,
         service: ServiceUUID,
         characteristic: CharacteristicUUID,
-    ) -> Result<Vec<Vec<u8>>, BleErrorWrapper>;
+    ) -> Result<Vec<Vec<u8>>, BleError>;
 }
 
-#[derive(From, Into)]
+#[derive(Clone, Debug, From, Into, uniffi::Enum)]
 #[from(HistoryAction)]
 #[into(HistoryAction)]
 pub enum HistoryActionBindingEnum {
@@ -1023,7 +1034,7 @@ pub enum HistoryActionBindingEnum {
     ClaimsRemoved,
 }
 
-#[derive(From, Into)]
+#[derive(Clone, Debug, From, Into, uniffi::Enum)]
 #[from(HistoryEntityType)]
 #[into(HistoryEntityType)]
 pub enum HistoryEntityTypeBindingEnum {
@@ -1039,13 +1050,14 @@ pub enum HistoryEntityTypeBindingEnum {
     TrustEntity,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, uniffi::Enum)]
 pub enum HistoryMetadataBinding {
     UnexportableEntities {
         value: UnexportableEntitiesBindingDTO,
     },
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct HistoryListItemBindingDTO {
     pub id: String,
     pub created_date: String,
@@ -1056,6 +1068,7 @@ pub struct HistoryListItemBindingDTO {
     pub organisation_id: String,
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct HistoryListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
@@ -1072,7 +1085,7 @@ pub struct HistoryListQueryBindingDTO {
     pub search: Option<HistorySearchBindingDTO>,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetHistoryListResponseDTO)]
 pub struct HistoryListBindingDTO {
     #[from(with_fn = convert_inner)]
@@ -1081,7 +1094,7 @@ pub struct HistoryListBindingDTO {
     pub total_items: u64,
 }
 
-#[derive(Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(HistorySearchEnum)]
 pub enum HistorySearchEnumBindingEnum {
     ClaimName,
@@ -1094,12 +1107,13 @@ pub enum HistorySearchEnumBindingEnum {
     ProofSchemaName,
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct HistorySearchBindingDTO {
     pub text: String,
     pub r#type: Option<HistorySearchEnumBindingEnum>,
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(BackupCreateResponseDTO)]
 pub struct BackupCreateBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -1108,7 +1122,7 @@ pub struct BackupCreateBindingDTO {
     pub unexportable: UnexportableEntitiesBindingDTO,
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(MetadataDTO)]
 pub struct MetadataBindingDTO {
     pub db_version: String,
@@ -1117,7 +1131,7 @@ pub struct MetadataBindingDTO {
     pub created_at: String,
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(UnexportableEntitiesResponseDTO)]
 pub struct UnexportableEntitiesBindingDTO {
     #[from(with_fn = convert_inner)]
@@ -1131,7 +1145,7 @@ pub struct UnexportableEntitiesBindingDTO {
     pub total_dids: u64,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(CreateTrustAnchorRequestDTO)]
 pub struct CreateTrustAnchorRequestBindingDTO {
     pub name: String,
@@ -1140,7 +1154,7 @@ pub struct CreateTrustAnchorRequestBindingDTO {
     pub publisher_reference: Option<String>,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetTrustAnchorDetailResponseDTO)]
 pub struct GetTrustAnchorResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -1155,7 +1169,7 @@ pub struct GetTrustAnchorResponseBindingDTO {
     pub publisher_reference: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Into, uniffi::Enum)]
 #[into(SortableTrustAnchorColumn)]
 pub enum SortableTrustAnchorColumnBindings {
     Name,
@@ -1163,13 +1177,13 @@ pub enum SortableTrustAnchorColumnBindings {
     Type,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, uniffi::Enum)]
 pub enum ExactTrustAnchorFilterColumnBindings {
     Name,
     Type,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct ListTrustAnchorsFiltersBindings {
     pub page: u32,
     pub page_size: u32,
@@ -1184,7 +1198,7 @@ pub struct ListTrustAnchorsFiltersBindings {
     pub exact: Option<Vec<ExactTrustAnchorFilterColumnBindings>>,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(TrustAnchorsListItemResponseDTO)]
 pub struct TrustAnchorsListItemResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -1202,7 +1216,7 @@ pub struct TrustAnchorsListItemResponseBindingDTO {
     pub entities: u64,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetTrustAnchorsResponseDTO)]
 pub struct TrustAnchorsListBindingDTO {
     #[from(with_fn = convert_inner)]
@@ -1211,19 +1225,19 @@ pub struct TrustAnchorsListBindingDTO {
     pub total_items: u64,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Into, uniffi::Enum)]
 #[into(SortableTrustEntityColumnEnum)]
 pub enum SortableTrustEntityColumnBindings {
     Name,
     Role,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, uniffi::Enum)]
 pub enum ExactTrustEntityFilterColumnBindings {
     Name,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct ListTrustEntitiesFiltersBindings {
     pub page: u32,
     pub page_size: u32,
@@ -1240,7 +1254,7 @@ pub struct ListTrustEntitiesFiltersBindings {
     pub exact: Option<Vec<ExactTrustEntityFilterColumnBindings>>,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(TrustEntitiesResponseItemDTO)]
 pub struct TrustEntitiesListItemResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -1262,7 +1276,7 @@ pub struct TrustEntitiesListItemResponseBindingDTO {
     pub did: DidListItemBindingDTO,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetTrustEntitiesResponseDTO)]
 pub struct TrustEntitiesListBindingDTO {
     #[from(with_fn = convert_inner)]
@@ -1271,7 +1285,7 @@ pub struct TrustEntitiesListBindingDTO {
     pub total_items: u64,
 }
 
-#[derive(Clone, Debug, TryInto)]
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = CreateTrustEntityRequestDTO, Error = ErrorResponseBindingDTO)]
 pub struct CreateTrustEntityRequestBindingDTO {
     #[try_into(infallible)]
@@ -1294,7 +1308,7 @@ pub struct CreateTrustEntityRequestBindingDTO {
     pub did_id: String,
 }
 
-#[derive(Clone, Debug, TryInto)]
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = CreateRemoteTrustEntityRequestDTO, Error = ErrorResponseBindingDTO)]
 pub struct CreateRemoteTrustEntityRequestBindingDTO {
     #[try_into(with_fn_ref = into_id)]
@@ -1315,7 +1329,7 @@ pub struct CreateRemoteTrustEntityRequestBindingDTO {
     pub role: TrustEntityRoleBindingEnum,
 }
 
-#[derive(Clone, Debug, From, Into)]
+#[derive(Clone, Debug, From, Into, uniffi::Enum)]
 #[from(TrustEntityRole)]
 #[into(TrustEntityRole)]
 pub enum TrustEntityRoleBindingEnum {
@@ -1324,7 +1338,7 @@ pub enum TrustEntityRoleBindingEnum {
     Both,
 }
 
-#[derive(Clone, Debug, From, Into)]
+#[derive(Clone, Debug, From, Into, uniffi::Enum)]
 #[from(TrustEntityState)]
 #[into(TrustEntityState)]
 pub enum TrustEntityStateBindingEnum {
@@ -1334,7 +1348,7 @@ pub enum TrustEntityStateBindingEnum {
     RemovedAndWithdrawn,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetTrustEntityResponseDTO)]
 pub struct GetTrustEntityResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -1354,7 +1368,7 @@ pub struct GetTrustEntityResponseBindingDTO {
     pub state: TrustEntityStateBindingEnum,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(UpdateTrustEntityActionFromDidRequestDTO)]
 pub enum TrustEntityUpdateActionBindingEnum {
     Activate,
@@ -1362,7 +1376,7 @@ pub enum TrustEntityUpdateActionBindingEnum {
     Remove,
 }
 
-#[derive(TryInto)]
+#[derive(TryInto, uniffi::Record)]
 #[try_into(T = UpdateTrustEntityFromDidRequestDTO, Error = ErrorResponseBindingDTO)]
 pub struct UpdateRemoteTrustEntityFromDidRequestBindingDTO {
     #[try_into(skip)]
@@ -1383,20 +1397,20 @@ pub struct UpdateRemoteTrustEntityFromDidRequestBindingDTO {
     pub role: Option<TrustEntityRoleBindingEnum>,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(SortableProofSchemaColumn)]
 pub enum SortableProofSchemaColumnBinding {
     Name,
     CreatedDate,
 }
 
-#[derive(Clone, Debug, Into, PartialEq)]
+#[derive(Clone, Debug, Into, PartialEq, uniffi::Enum)]
 #[into(ExactColumn)]
 pub enum ProofSchemaListQueryExactColumnBinding {
     Name,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct ListProofSchemasFiltersBindingDTO {
     pub page: u32,
     pub page_size: u32,
@@ -1410,7 +1424,7 @@ pub struct ListProofSchemasFiltersBindingDTO {
     pub ids: Option<Vec<String>>,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetProofSchemaListItemDTO)]
 pub struct GetProofSchemaListItemBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -1425,7 +1439,7 @@ pub struct GetProofSchemaListItemBindingDTO {
     pub expire_duration: u32,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetProofSchemaListResponseDTO)]
 pub struct ProofSchemaListBindingDTO {
     #[from(with_fn = convert_inner)]
@@ -1434,7 +1448,7 @@ pub struct ProofSchemaListBindingDTO {
     pub total_items: u64,
 }
 
-#[derive(Debug, TryInto)]
+#[derive(Debug, TryInto, uniffi::Record)]
 #[try_into(T = ImportProofSchemaRequestDTO, Error = ErrorResponseBindingDTO)]
 pub struct ImportProofSchemaRequestBindingsDTO {
     pub schema: ImportProofSchemaBindingDTO,
@@ -1442,7 +1456,7 @@ pub struct ImportProofSchemaRequestBindingsDTO {
     pub organisation_id: String,
 }
 
-#[derive(Debug, TryInto)]
+#[derive(Debug, TryInto, uniffi::Record)]
 #[try_into(T = ImportProofSchemaDTO, Error = ErrorResponseBindingDTO)]
 pub struct ImportProofSchemaBindingDTO {
     #[try_into(with_fn_ref = into_id)]
@@ -1463,7 +1477,7 @@ pub struct ImportProofSchemaBindingDTO {
     pub proof_input_schemas: Vec<ImportProofSchemaInputSchemaBindingDTO>,
 }
 
-#[derive(Debug, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(GetProofSchemaResponseDTO)]
 pub struct GetProofSchemaBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -1482,7 +1496,7 @@ pub struct GetProofSchemaBindingDTO {
     pub imported_source_url: Option<String>,
 }
 
-#[derive(Debug, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ProofInputSchemaResponseDTO)]
 pub struct ProofInputSchemaBindingDTO {
     #[from(with_fn = convert_inner)]
@@ -1491,7 +1505,7 @@ pub struct ProofInputSchemaBindingDTO {
     pub validity_constraint: Option<i64>,
 }
 
-#[derive(Debug, TryInto)]
+#[derive(Debug, TryInto, uniffi::Record)]
 #[try_into(T = ImportProofSchemaInputSchemaDTO, Error = ErrorResponseBindingDTO)]
 pub struct ImportProofSchemaInputSchemaBindingDTO {
     #[try_into(with_fn = try_convert_inner)]
@@ -1501,7 +1515,7 @@ pub struct ImportProofSchemaInputSchemaBindingDTO {
     pub validity_constraint: Option<i64>,
 }
 
-#[derive(Debug, TryInto)]
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = one_core::service::proof_schema::dto::CreateProofSchemaRequestDTO, Error = ServiceError)]
 pub struct CreateProofSchemaRequestDTO {
     #[try_into(infallible)]
@@ -1514,7 +1528,7 @@ pub struct CreateProofSchemaRequestDTO {
     pub proof_input_schemas: Vec<ProofInputSchemaRequestDTO>,
 }
 
-#[derive(Debug, TryInto)]
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = one_core::service::proof_schema::dto::ProofInputSchemaRequestDTO, Error = ServiceError)]
 pub struct ProofInputSchemaRequestDTO {
     #[try_into(with_fn_ref = into_id)]
@@ -1525,7 +1539,7 @@ pub struct ProofInputSchemaRequestDTO {
     pub claim_schemas: Vec<CreateProofSchemaClaimRequestDTO>,
 }
 
-#[derive(Debug, TryInto)]
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = one_core::service::proof_schema::dto::CreateProofSchemaClaimRequestDTO, Error = ServiceError)]
 pub struct CreateProofSchemaClaimRequestDTO {
     #[try_into(with_fn_ref = into_id)]
@@ -1534,7 +1548,7 @@ pub struct CreateProofSchemaClaimRequestDTO {
     pub required: bool,
 }
 
-#[derive(Debug, TryInto)]
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = ImportCredentialSchemaRequestDTO, Error = ServiceError)]
 pub struct ImportCredentialSchemaRequestBindingDTO {
     #[try_into(with_fn_ref = into_id)]
@@ -1542,7 +1556,7 @@ pub struct ImportCredentialSchemaRequestBindingDTO {
     pub schema: ImportCredentialSchemaRequestSchemaBindingDTO,
 }
 
-#[derive(Debug, TryInto)]
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = ImportCredentialSchemaRequestSchemaDTO, Error = ServiceError)]
 pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     #[try_into(with_fn_ref = into_id)]
@@ -1578,7 +1592,7 @@ pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     pub allow_suspension: Option<bool>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct ImportCredentialSchemaClaimSchemaBindingDTO {
     pub id: String,
     pub created_date: String,
@@ -1590,7 +1604,7 @@ pub struct ImportCredentialSchemaClaimSchemaBindingDTO {
     pub claims: Option<Vec<ImportCredentialSchemaClaimSchemaBindingDTO>>,
 }
 
-#[derive(Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(ImportCredentialSchemaLayoutPropertiesDTO)]
 pub struct ImportCredentialSchemaLayoutPropertiesBindingDTO {
     #[into(with_fn = convert_inner)]
@@ -1604,7 +1618,7 @@ pub struct ImportCredentialSchemaLayoutPropertiesBindingDTO {
     pub code: Option<CredentialSchemaCodePropertiesBindingDTO>,
 }
 
-#[derive(TryInto)]
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = CreateProofRequestDTO, Error = ServiceError)]
 pub struct CreateProofRequestBindingDTO {
     #[try_into(with_fn_ref = into_id)]
@@ -1625,7 +1639,7 @@ pub struct CreateProofRequestBindingDTO {
     pub transport: Option<Vec<String>>,
 }
 
-#[derive(Into)]
+#[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(ScanToVerifyRequestDTO)]
 pub struct ScanToVerifyRequestBindingDTO {
     pub credential: String,
@@ -1633,7 +1647,7 @@ pub struct ScanToVerifyRequestBindingDTO {
     pub barcode_type: ScanToVerifyBarcodeTypeBindingEnum,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(ScanToVerifyBarcodeTypeEnum)]
 pub enum ScanToVerifyBarcodeTypeBindingEnum {
     #[allow(clippy::upper_case_acronyms)]
@@ -1641,50 +1655,51 @@ pub enum ScanToVerifyBarcodeTypeBindingEnum {
     PDF417,
 }
 
-#[derive(Into)]
+#[derive(Into, uniffi::Record)]
 #[into(ShareProofRequestDTO)]
 pub struct ShareProofRequestBindingDTO {
     #[into(with_fn = "convert_inner")]
     pub params: Option<ShareProofRequestParamsBindingDTO>,
 }
 
-#[derive(Into)]
+#[derive(Into, uniffi::Record)]
 #[into(ShareProofRequestParamsDTO)]
 pub struct ShareProofRequestParamsBindingDTO {
     #[into(with_fn = "convert_inner")]
     pub client_id_schema: Option<ShareProofRequestClientIdSchemaTypeBindingDTO>,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(ClientIdSchemaType)]
 pub enum ShareProofRequestClientIdSchemaTypeBindingDTO {
     RedirectUri,
     VerifierAttestation,
 }
 
-#[derive(From)]
+#[derive(From, uniffi::Record)]
 #[from(EntityShareResponseDTO)]
 pub struct ShareProofResponseBindingDTO {
     pub url: String,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ProofSchemaShareResponseDTO)]
 pub struct ProofSchemaShareResponseBindingDTO {
     pub url: String,
 }
 
-#[derive(From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(CredentialSchemaShareResponseDTO)]
 pub struct CredentialSchemaShareResponseBindingDTO {
     pub url: String,
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct ResolveJsonLDContextResponseBindingDTO {
     pub context: String,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ProposeProofResponseDTO)]
 pub struct ProposeProofResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -1694,7 +1709,7 @@ pub struct ProposeProofResponseBindingDTO {
     pub url: String,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(KeyCheckCertificateRequestDTO)]
 pub struct KeyCheckCertificateRequestBindingDTO {
     pub certificate: String,

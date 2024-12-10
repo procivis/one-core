@@ -1,7 +1,9 @@
 use crate::error::BindingError;
 use crate::{BackupCreateBindingDTO, OneCoreBinding};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn create_backup(
         &self,
         password: String,

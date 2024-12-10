@@ -2,7 +2,9 @@ use crate::binding::OneCoreBinding;
 use crate::error::BindingError;
 use crate::ResolveJsonLDContextResponseBindingDTO;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn resolve_jsonld_context(
         &self,
         url: String,

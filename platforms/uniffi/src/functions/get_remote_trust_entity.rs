@@ -2,7 +2,9 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::{GetTrustEntityResponseBindingDTO, OneCoreBinding};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn get_remote_trust_entity(
         &self,
         did_id: String,

@@ -1,7 +1,9 @@
 use crate::error::BindingError;
 use crate::{OneCoreBinding, ProofListBindingDTO, ProofListQueryBindingDTO};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn get_proofs(
         &self,
         query: ProofListQueryBindingDTO,

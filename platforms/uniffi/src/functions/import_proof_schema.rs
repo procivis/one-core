@@ -2,7 +2,9 @@ use crate::binding::OneCoreBinding;
 use crate::error::BindingError;
 use crate::ImportProofSchemaRequestBindingsDTO;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn import_proof_schema(
         &self,
         request: ImportProofSchemaRequestBindingsDTO,

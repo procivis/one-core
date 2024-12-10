@@ -5,7 +5,9 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::{OneCoreBinding, ShareProofResponseBindingDTO};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn share_proof(
         &self,
         proof_id: String,

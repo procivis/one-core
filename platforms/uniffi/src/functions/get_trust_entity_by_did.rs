@@ -3,7 +3,9 @@ use crate::dto::GetTrustEntityResponseBindingDTO;
 use crate::error::BindingError;
 use crate::utils::into_id;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn get_trust_entity_by_did(
         &self,
         did_id: String,

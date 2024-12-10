@@ -2,7 +2,9 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::OneCoreBinding;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn holder_reject_proof(&self, interaction_id: String) -> Result<(), BindingError> {
         self.block_on(async {
             let core = self.use_core().await?;

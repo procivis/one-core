@@ -127,7 +127,23 @@ export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 export CARGO_PROFILE_RELEASE_STRIP=symbols
 '''
 
-############################################################### ANDROID-UNIFFI
+############################################################### UNIFFI
+# generates binding interfaces for documentation purposes
+[tasks.generate_uniffi_interfaces]
+env = { "LIB" = "${CARGO_TARGET_DIR}/release/libone_core_uniffi.so" }
+script = '''
+cargo build --package one-core-uniffi --lib --release
+
+for language in "swift" "kotlin"
+do
+  cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate --library $LIB -l $language -o ${CARGO_TARGET_DIR}/uniffi-interface
+done
+'''
+
+[tasks.generate_uniffi_interfaces.mac]
+env = { "LIB" = "${CARGO_TARGET_DIR}/release/libone_core_uniffi.dylib" }
+
+#### Android
 [tasks.add_android_targets]
 # x86_64 is skipped due to: https://github.com/rust-lang/rust/issues/109717
 args    = ["target", "add", "i686-linux-android", "armv7-linux-androideabi", "aarch64-linux-android"]
@@ -137,13 +153,20 @@ command = "rustup"
 args    = ["install", "cross", "--git", "https://github.com/cross-rs/cross", "--tag", "v0.2.5"]
 command = "cargo"
 
-[tasks.generateuniffi_android]
+[tasks.generate_kotlin]
+env = { "LIB" = "${CARGO_TARGET_DIR}/release/libone_core_uniffi.so" }
 script = '''
-cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate -l kotlin -o ${CARGO_TARGET_DIR}/android_tmp platforms/uniffi/src/one_core.udl
+# since the native libraries are built inside cross, we need to build another library in the native environment
+cargo build --package one-core-uniffi --lib --release
+
+cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate --library $LIB -l kotlin -o ${CARGO_TARGET_DIR}/android_tmp
 mkdir -p ${CARGO_TARGET_DIR}/uniffi/android/java/ch/procivis/one/core
-mv ${CARGO_TARGET_DIR}/android_tmp/ch/procivis/one/core/* ${CARGO_TARGET_DIR}/uniffi/android/java/ch/procivis/one/core
+mv ${CARGO_TARGET_DIR}/android_tmp/ch/procivis/one/core/one_core_uniffi.kt ${CARGO_TARGET_DIR}/uniffi/android/java/ch/procivis/one/core/one_core.kt
 rm -rf ${CARGO_TARGET_DIR}/android_tmp
 '''
+
+[tasks.generate_kotlin.mac]
+env = { "LIB" = "${CARGO_TARGET_DIR}/release/libone_core_uniffi.dylib" }
 
 [tasks.build_android_targets]
 extend = "mobile-build"
@@ -165,9 +188,9 @@ cp ${CARGO_TARGET_DIR}/aarch64-linux-android/release/libone_core_uniffi.so ${CAR
 '''
 
 [tasks.build_android_uniffi]
-dependencies = ["install_cross", "generateuniffi_android", "build_android_targets", "collect_android_libs"]
+dependencies = ["install_cross", "build_android_targets", "generate_kotlin", "collect_android_libs"]
 
-############################################################### ANDROID-GRADLE
+## Android-gradle
 [tasks.prepare_gradle_build_directory]
 dependencies = ["build_android_uniffi"]
 script = '''
@@ -190,16 +213,10 @@ mkdir -p ${CARGO_TARGET_DIR}/bindings/android/
 cp -r ${CARGO_TARGET_DIR}/platforms/android/onecore/build/outputs/aar/* ${CARGO_TARGET_DIR}/bindings/android/
 '''
 
-############################################################### iOS
-[tasks.generateuniffi_ios]
-script = '''
-cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate -l swift -o target/uniffi/ios/ platforms/uniffi/src/one_core.udl
-'''
-
+#### iOS
 [tasks.add_ios_targets]
 script = '''
-rustup target add aarch64-apple-ios-sim
-rustup target add aarch64-apple-ios x86_64-apple-ios
+rustup target add aarch64-apple-ios-sim aarch64-apple-ios x86_64-apple-ios
 '''
 
 [tasks.build_ios_code]
@@ -210,14 +227,19 @@ cargo build --package one-core-uniffi --lib --release --target aarch64-apple-ios
 cargo build --package one-core-uniffi --lib --release --target aarch64-apple-ios
 '''
 
+[tasks.generate_swift]
+script = '''
+cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate --library ${CARGO_TARGET_DIR}/aarch64-apple-ios/release/libone_core_uniffi.dylib -l swift -o ${CARGO_TARGET_DIR}/uniffi/ios/
+'''
+
 [tasks.collect_ios_libs]
 script = """
-sed -i '' 's/^module\\ one_coreFFI/framework\\ module\\ one_coreFFI/' target/uniffi/ios/one_coreFFI.modulemap
+sed -i '' 's/^module\\ one_coreFFI/framework\\ module\\ one_coreFFI/' ${CARGO_TARGET_DIR}/uniffi/ios/one_coreFFI.modulemap
 
 find . -type d -name one_coreFFI.framework -exec rm -rf {} \\; 2>/dev/null || true
 for arch in "x86_64-apple-ios" "aarch64-apple-ios-sim" "aarch64-apple-ios"
 do
-  pushd target/$arch/release >/dev/null &&
+  pushd ${CARGO_TARGET_DIR}/$arch/release >/dev/null &&
   mkdir -p one_coreFFI.framework &&
   cd one_coreFFI.framework &&
   mkdir -p Headers Modules Resources &&
@@ -231,14 +253,14 @@ done
 
 [tasks.create_xc_framework]
 script = '''
-lipo -create target/x86_64-apple-ios/release/one_coreFFI.framework/one_coreFFI target/aarch64-apple-ios-sim/release/one_coreFFI.framework/one_coreFFI -output target/aarch64-apple-ios-sim/release/one_coreFFI.framework/one_coreFFI
-rm -rf target/one_coreFFI.xcframework || echo 'skip removing'
-xcodebuild -create-xcframework -framework target/aarch64-apple-ios/release/one_coreFFI.framework -framework target/aarch64-apple-ios-sim/release/one_coreFFI.framework -output target/one_coreFFI.xcframework
+lipo -create ${CARGO_TARGET_DIR}/x86_64-apple-ios/release/one_coreFFI.framework/one_coreFFI ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/release/one_coreFFI.framework/one_coreFFI -output ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/release/one_coreFFI.framework/one_coreFFI
+rm -rf ${CARGO_TARGET_DIR}/one_coreFFI.xcframework || echo 'skip removing'
+xcodebuild -create-xcframework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios/release/one_coreFFI.framework -framework ${CARGO_TARGET_DIR}/aarch64-apple-ios-sim/release/one_coreFFI.framework -output ${CARGO_TARGET_DIR}/one_coreFFI.xcframework
 '''
 
 [tasks.package_ios_bindings]
 script = '''
-pushd target >/dev/null
+pushd ${CARGO_TARGET_DIR} >/dev/null
 rm -rf bindings/ios && mkdir -p bindings/ios/one_core
 cp -r ../platforms/ios/Sources bindings/ios/one_core/
 cp -r one_coreFFI.xcframework bindings/ios/one_core/Sources/
@@ -248,19 +270,19 @@ cp ../platforms/ios/Package.swift bindings/ios/one_core/Package.swift
 
 [tasks.build_ios]
 dependencies = [
-  "generateuniffi_ios",
   "add_ios_targets",
   "build_ios_code",
+  "generate_swift",
   "collect_ios_libs",
   "create_xc_framework",
   "package_ios_bindings",
 ]
-script = 'echo "--- output available in target/bindings/ios ---"'
+script = 'echo "--- output available in ${CARGO_TARGET_DIR}/bindings/ios ---"'
 
+############################################################### API tests
 [tasks.install_api_tests]
-description = "Install dependencies for Playwright tests"
-script_runner = "sh"
 cwd = "${API_TEST_REPO_PATH}"
+description = "Install dependencies for Playwright tests"
 script = '''
 echo Install api test node_modules
 yarn install --cwd api-tests
@@ -268,22 +290,23 @@ echo Install test lib node_modules
 yarn install --cwd one-tests-lib
 echo Installation completed
 '''
+script_runner = "sh"
 
 [tasks.api_tests]
 # dependencies = ["install_api_tests"]
-description = "Run Playwright API tests"
-script_runner = "sh"
 cwd = "${API_TEST_REPO_PATH}"
+description = "Run Playwright API tests"
 script = '''
 cd api-tests
 yarn test  --project core
 '''
+script_runner = "sh"
 
 [tasks.api_tests_report]
-description = "Run Playwright API tests report"
-script_runner = "sh"
 cwd = "${API_TEST_REPO_PATH}"
+description = "Run Playwright API tests report"
 script = '''
 cd api-tests
 yarn playwright show-report
 '''
+script_runner = "sh"

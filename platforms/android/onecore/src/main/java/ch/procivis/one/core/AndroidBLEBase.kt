@@ -58,21 +58,18 @@ abstract class AndroidBLEBase(val context: Context, val TAG: String) {
     protected inline fun <R> exceptionWrapper(function: () -> R): R {
         try {
             return function()
-        } catch (error: BleErrorWrapper) {
-            Log.w(TAG, "BleErrorWrapper: $error")
-            throw error
         } catch (error: BleException) {
             Log.w(TAG, "BleException: $error")
-            throw BleErrorWrapper.Ble(error)
+            throw error
         } catch (error: IllegalArgumentException) {
             Log.w(TAG, "IllegalArgumentException: $error")
-            throw BleErrorWrapper.Ble(BleException.InvalidUuid(error.toString()))
+            throw BleException.InvalidUuid(error.toString())
         } catch (error: SecurityException) {
             Log.w(TAG, "SecurityException: $error")
-            throw BleErrorWrapper.Ble(BleException.NotAuthorized())
+            throw BleException.NotAuthorized()
         } catch (error: Throwable) {
             Log.w(TAG, "Throwable: $error")
-            throw BleErrorWrapper.Ble(BleException.Unknown(error.toString()))
+            throw BleException.Unknown(error.toString())
         }
     }
 

@@ -5,7 +5,9 @@ use one_core::service::error::ServiceError;
 use crate::error::BindingError;
 use crate::{MetadataBindingDTO, OneCoreBinding};
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn unpack_backup(
         &self,
         password: String,

@@ -2,7 +2,9 @@ use crate::binding::OneCoreBinding;
 use crate::dto::ImportCredentialSchemaRequestBindingDTO;
 use crate::error::BindingError;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn import_credential_schema(
         &self,
         request: ImportCredentialSchemaRequestBindingDTO,

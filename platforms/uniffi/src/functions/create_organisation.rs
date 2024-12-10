@@ -2,7 +2,9 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::OneCoreBinding;
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn create_organisation(&self, uuid: Option<String>) -> Result<String, BindingError> {
         let id = match uuid {
             None => None,

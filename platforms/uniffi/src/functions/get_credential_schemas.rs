@@ -11,7 +11,9 @@ use crate::{
     CredentialSchemaListQueryExactColumnBindingEnum, OneCoreBinding,
 };
 
+#[uniffi::export]
 impl OneCoreBinding {
+    #[uniffi::method]
     pub fn get_credential_schemas(
         &self,
         query: CredentialSchemaListQueryBindingDTO,
