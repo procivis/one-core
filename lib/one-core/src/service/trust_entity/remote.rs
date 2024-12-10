@@ -157,14 +157,10 @@ impl TrustEntityService {
             return Err(BusinessLogicError::TrustAnchorMustBeClient.into());
         }
 
-        let trust = self
+        let _ = self
             .trust_provider
             .get(&trust_anchor.r#type)
             .ok_or_else(|| MissingProviderError::TrustManager(trust_anchor.r#type.clone()))?;
-
-        if !trust.is_enabled() {
-            return Err(BusinessLogicError::TrustAnchorIsDisabled.into());
-        }
 
         // the published reference should look like: {scheme://domain}/ssi/trust/v1/{trustAnchorId}
         let remote_anchor_base_url = trust_anchor

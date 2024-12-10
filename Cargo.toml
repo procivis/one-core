@@ -53,7 +53,7 @@ url                = { version = "2.5", features = ["serde"] }
 urlencoding        = { version = "2.1" }
 utoipa             = { version = "5.1", default-features = false, features = ["macros"] }
 uuid               = { version = "1.11", features = ["v4", "serde"] }
-validator          = { version = "0.18", features = ["derive"] }
+validator          = { version = "0.19", features = ["derive"] }
 wiremock           = { version = "0.6" }
 zeroize            = { version = "1.8" }
 
