@@ -115,6 +115,13 @@ impl KeyService {
         key_id: &KeyId,
         request: KeyCheckCertificateRequestDTO,
     ) -> Result<(), ServiceError> {
+        let did_mdl_validator =
+            self.did_mdl_validator
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "did_mdl_validator is None".to_string(),
+                ))?;
+
         let key = self
             .key_repository
             .get_key(
@@ -128,14 +135,12 @@ impl KeyService {
 
         if let Ok(pem) = parse_pem(&request.certificate) {
             let certificate = parse_x509_from_pem(&pem)?;
-            self.did_mdl_validator
-                .validate_subject_public_key(&certificate, &key)?;
-            self.did_mdl_validator.validate_certificate(&certificate)?;
+            did_mdl_validator.validate_subject_public_key(&certificate, &key)?;
+            did_mdl_validator.validate_certificate(&certificate)?;
         } else {
             let certificate = parse_x509_from_der(request.certificate.as_bytes())?;
-            self.did_mdl_validator
-                .validate_subject_public_key(&certificate, &key)?;
-            self.did_mdl_validator.validate_certificate(&certificate)?;
+            did_mdl_validator.validate_subject_public_key(&certificate, &key)?;
+            did_mdl_validator.validate_certificate(&certificate)?;
         };
 
         Ok(())

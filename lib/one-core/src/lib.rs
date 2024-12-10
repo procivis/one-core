@@ -305,11 +305,7 @@ impl OneCore {
             _ => None,
         };
 
-        let did_mdl_validator = providers
-            .did_mdl_validator
-            .as_ref()
-            .expect("Did method validator is required")
-            .clone();
+        let did_mdl_validator = providers.did_mdl_validator.clone();
 
         let did_method_provider = providers
             .did_method_provider

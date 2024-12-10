@@ -17,7 +17,7 @@ pub(crate) mod validator;
 pub struct KeyService {
     key_repository: Arc<dyn KeyRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
-    did_mdl_validator: Arc<dyn DidMdlValidator>,
+    did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
     key_provider: Arc<dyn KeyProvider>,
     config: Arc<core_config::CoreConfig>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -27,7 +27,7 @@ impl KeyService {
     pub fn new(
         key_repository: Arc<dyn KeyRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
-        did_mdl_validator: Arc<dyn DidMdlValidator>,
+        did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<core_config::CoreConfig>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,

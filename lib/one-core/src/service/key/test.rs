@@ -41,7 +41,7 @@ fn setup_service(
     KeyService::new(
         Arc::new(repository),
         Arc::new(organisation_repository),
-        Arc::new(did_mdl_validator),
+        Some(Arc::new(did_mdl_validator)),
         Arc::new(provider),
         Arc::new(config),
         Arc::new(key_algorithm_provider),
