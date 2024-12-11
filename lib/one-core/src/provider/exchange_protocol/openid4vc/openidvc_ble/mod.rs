@@ -244,7 +244,7 @@ impl OpenID4VCBLE {
 
         if !ble_holder.enabled().await? {
             return Err(ExchangeProtocolError::Disabled(
-                "BLE adapter is disabled".into(),
+                "BLE adapter not enabled".into(),
             ));
         }
 
@@ -329,7 +329,7 @@ impl OpenID4VCBLE {
 
         if !ble_holder.enabled().await? {
             return Err(ExchangeProtocolError::Failed(
-                "BLE adapter disabled".to_string(),
+                "BLE adapter not enabled".to_string(),
             ));
         }
 
@@ -491,7 +491,7 @@ impl OpenID4VCBLE {
 
         if !ble_verifier.enabled().await? {
             return Err(ExchangeProtocolError::Disabled(
-                "BLE adapter is disabled".into(),
+                "BLE adapter not enabled".into(),
             ));
         }
 
