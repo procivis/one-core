@@ -15,11 +15,13 @@ async fn test_get_remote_trust_entity_success() {
     let (context, _, did, _) = TestContext::new_with_did().await;
 
     let trust_entity_id = Uuid::new_v4();
+    let org_id = Uuid::new_v4();
     let publisher_reference = format!("{}/ssi/trust/v1/{}", mock_server.uri(), Uuid::new_v4());
     Mock::given(method(Method::GET))
         .and(path(format!("/ssi/trust-entity/v1/{}", did.did)))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "id": trust_entity_id,
+            "organisationId": org_id,
             "createdDate": "2023-06-09T14:19:57.000Z",
             "lastModified": "2023-06-09T14:19:57.000Z",
             "name": "Name",
@@ -72,4 +74,5 @@ async fn test_get_remote_trust_entity_success() {
     assert_eq!(body["state"], "ACTIVE");
     assert_eq!(body["termsUrl"], "Terms URL");
     body["did"]["did"].assert_eq(&did.did);
+    body["organisationId"].assert_eq(&org_id);
 }

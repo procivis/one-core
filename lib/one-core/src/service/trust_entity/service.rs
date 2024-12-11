@@ -16,6 +16,7 @@ use crate::config::core_config::TrustManagementType::SimpleTrustList;
 use crate::model::did::{DidRelations, DidType};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
+use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use crate::model::trust_entity::{TrustEntity, TrustEntityRelations};
 use crate::repository::error::DataLayerError;
@@ -128,7 +129,10 @@ impl TrustEntityService {
                 id,
                 &TrustEntityRelations {
                     trust_anchor: Some(TrustAnchorRelations::default()),
-                    did: Some(DidRelations::default()),
+                    did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations {}),
+                        keys: None,
+                    }),
                 },
             )
             .await?
@@ -146,7 +150,13 @@ impl TrustEntityService {
 
         let did = self
             .did_repository
-            .get_did_by_value(&did_value, &DidRelations::default())
+            .get_did_by_value(
+                &did_value,
+                &DidRelations {
+                    organisation: Some(OrganisationRelations {}),
+                    keys: None,
+                },
+            )
             .await?
             .ok_or(ServiceError::ValidationError("unknown did".to_string()))?;
 
@@ -324,7 +334,13 @@ impl TrustEntityService {
 
             let did = self
                 .did_repository
-                .get_did(&did_id, &DidRelations::default())
+                .get_did(
+                    &did_id,
+                    &DidRelations {
+                        organisation: Some(OrganisationRelations {}),
+                        keys: None,
+                    },
+                )
                 .await?
                 .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Did(
                     did_id,
@@ -336,11 +352,11 @@ impl TrustEntityService {
                 .map_err(ServiceError::TrustManagementError)?;
 
             if let Some(trust_entity) = maybe_entity {
-                return Ok(trust_entity_from_partial_and_did_and_anchor(
+                return trust_entity_from_partial_and_did_and_anchor(
                     trust_entity,
                     did,
                     trust_anchor,
-                ));
+                );
             }
         }
 

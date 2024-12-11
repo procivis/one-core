@@ -64,6 +64,7 @@ pub enum TrustEntityStateRest {
 #[serde(rename_all = "camelCase")]
 pub struct GetTrustEntityResponseRestDTO {
     pub id: TrustEntityId,
+    pub organisation_id: OrganisationId,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,

@@ -1353,6 +1353,8 @@ pub enum TrustEntityStateBindingEnum {
 pub struct GetTrustEntityResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub organisation_id: String,
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub created_date: String,
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]

@@ -64,6 +64,10 @@ impl TryFrom<TrustEntity> for GetTrustEntityResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: TrustEntity) -> Result<Self, Self::Error> {
+        let did = value.did.ok_or(ServiceError::MappingError(format!(
+            "missing did for trust entity {}",
+            value.id
+        )))?;
         Ok(Self {
             id: value.id,
             created_date: value.created_date,
@@ -82,13 +86,15 @@ impl TryFrom<TrustEntity> for GetTrustEntityResponseDTO {
                     value.id
                 )))?,
             state: value.state,
-            did: value
-                .did
-                .map(Into::into)
+            organisation_id: did
+                .organisation
+                .clone()
                 .ok_or(ServiceError::MappingError(format!(
-                    "missing did for trust entity {}",
-                    value.id
-                )))?,
+                    "missing organisation for did {}",
+                    did.id
+                )))?
+                .id,
+            did: did.into(),
         })
     }
 }
@@ -112,6 +118,11 @@ pub(super) fn get_detail_trust_entity_response(
             .map(Into::into)
             .ok_or_else(|| ServiceError::MappingError("Missing trust anchor".to_string()))?,
         state: trust_entity.state,
+        organisation_id: did
+            .organisation
+            .clone()
+            .ok_or_else(|| ServiceError::MappingError("Missing organisation".to_string()))?
+            .id,
         did: did.into(),
     })
 }
@@ -159,9 +170,14 @@ pub(super) fn trust_entity_from_partial_and_did_and_anchor(
     trust_entity: TrustEntityByDid,
     did: Did,
     trust_anchor: TrustAnchor,
-) -> GetTrustEntityResponseDTO {
-    GetTrustEntityResponseDTO {
+) -> Result<GetTrustEntityResponseDTO, ServiceError> {
+    Ok(GetTrustEntityResponseDTO {
         id: trust_entity.id,
+        organisation_id: did
+            .organisation
+            .clone()
+            .ok_or_else(|| ServiceError::MappingError("Missing trust anchor".to_string()))?
+            .id,
         name: trust_entity.name,
         created_date: trust_entity.created_date,
         last_modified: trust_entity.last_modified,
@@ -173,5 +189,5 @@ pub(super) fn trust_entity_from_partial_and_did_and_anchor(
         state: trust_entity.state,
         did: did.into(),
         trust_anchor: trust_anchor.into(),
-    }
+    })
 }
