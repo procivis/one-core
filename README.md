@@ -270,6 +270,16 @@ cargo llvm-cov report --release --cobertura --output-path cobertura.xml
 cargo llvm-cov report --release --lcov --output-path lcov.info
 ```
 
+#### Migration
+
+##### Generate new migration
+
+- Using Sea-ORM CLI
+
+```shell
+makers generate_migration description_of_new_migration
+```
+
 ## Background
 
 Decentralized digital identities and credentials is an approach to identity that relocates
