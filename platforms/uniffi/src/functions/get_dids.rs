@@ -58,7 +58,31 @@ impl OneCoreBinding {
                     DidFilterValue::KeyRoles(values.into_iter().map(|role| role.into()).collect())
                 });
 
-                organisation & name & did_value & r#type & deactivated & key_algorithms & key_roles
+                let key_storages = query.key_storages.map(DidFilterValue::KeyStorages);
+
+                let key_ids = match query.key_ids {
+                    None => None,
+                    Some(key_ids) => {
+                        let ids = key_ids
+                            .iter()
+                            .map(|id| into_id(id))
+                            .collect::<Result<_, _>>()?;
+                        Some(DidFilterValue::KeyIds(ids))
+                    }
+                };
+
+                let did_methods = query.did_methods.map(DidFilterValue::DidMethods);
+
+                organisation
+                    & name
+                    & did_value
+                    & r#type
+                    & deactivated
+                    & key_algorithms
+                    & key_roles
+                    & key_storages
+                    & key_ids
+                    & did_methods
             };
 
             Ok(core

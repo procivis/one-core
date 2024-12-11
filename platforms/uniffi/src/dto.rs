@@ -367,6 +367,9 @@ pub struct DidListQueryBindingDTO {
     pub exact: Option<Vec<ExactDidFilterColumnBindingEnum>>,
     pub key_algorithms: Option<Vec<String>>,
     pub key_roles: Option<Vec<KeyRoleBindingEnum>>,
+    pub key_storages: Option<Vec<String>>,
+    pub key_ids: Option<Vec<String>>,
+    pub did_methods: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
