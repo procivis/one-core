@@ -8,6 +8,7 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
+use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use shared_types::CredentialSchemaId;
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -34,13 +35,13 @@ impl CredentialSchemasDB {
         Self { repository }
     }
 
-    pub async fn create(
+    pub async fn create_with_result(
         &self,
         name: &str,
         organisation: &Organisation,
         revocation_method: &str,
         params: TestingCreateSchemaParams,
-    ) -> CredentialSchema {
+    ) -> Result<CredentialSchema, DataLayerError> {
         let claim_schemas = params.claim_schemas.unwrap_or_else(|| {
             let claim_schema = ClaimSchema {
                 id: Uuid::new_v4().into(),
@@ -116,10 +117,21 @@ impl CredentialSchemasDB {
         let id = self
             .repository
             .create_credential_schema(credential_schema)
-            .await
-            .unwrap();
+            .await?;
 
-        self.get(&id).await
+        Ok(self.get(&id).await)
+    }
+
+    pub async fn create(
+        &self,
+        name: &str,
+        organisation: &Organisation,
+        revocation_method: &str,
+        params: TestingCreateSchemaParams,
+    ) -> CredentialSchema {
+        self.create_with_result(name, organisation, revocation_method, params)
+            .await
+            .unwrap()
     }
 
     pub async fn create_special_chars(

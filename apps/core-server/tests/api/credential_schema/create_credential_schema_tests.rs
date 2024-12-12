@@ -1,7 +1,9 @@
 use one_core::model::credential_schema::CredentialSchemaType;
+use one_core::repository::error::DataLayerError;
 
 use crate::utils::api_clients::credential_schemas::CreateSchemaParams;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -283,4 +285,44 @@ async fn test_create_credential_schema_revocation_no_suspension_fails() {
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!("BR_0162", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_duplicate_schema() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    context
+        .db
+        .credential_schemas
+        .create_with_result(
+            "some credential schema1",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                schema_id: Some("foo".to_string()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let res = context
+        .db
+        .credential_schemas
+        .create_with_result(
+            "some credential schema1",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                schema_id: Some("foo".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    assert!(matches!(res, Err(DataLayerError::AlreadyExists)));
+
+    let schemas = context.db.credential_schemas.list().await;
+    assert_eq!(schemas.len(), 1);
 }
