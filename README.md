@@ -435,7 +435,7 @@ Version 2.0](./LICENSE).
 [pow]: https://github.com/procivis/one-wallet
 [pqc]: https://csrc.nist.gov/pqc-standardization
 [rncore]: https://github.com/procivis/react-native-one-core
-[sdjwt]: https://www.ietf.org/archive/id/draft-terbu-oauth-sd-jwt-vc-00.html
+[sdjwt]: https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-14.html
 [sdkref]: https://docs.procivis.ch/sdk/overview
 [sl]: https://www.w3.org/TR/vc-bitstring-status-list/
 [supptech]: https://docs.procivis.ch/product/supported_tech
