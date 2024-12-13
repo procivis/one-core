@@ -1,25 +1,94 @@
+use std::str::FromStr;
+
+use aes_gcm::aead::generic_array::GenericArray;
+use aes_gcm::{AeadCore, AeadInPlace, Aes256Gcm, KeyInit};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
-use josekit::jwe::JweHeader;
-use josekit::jwk::Jwk;
+use ed25519_compact::x25519;
+use p256::ecdh::diffie_hellman;
+use p256::elliptic_curve::sec1::FromEncodedPoint;
+use p256::elliptic_curve::{JwkEcKey, SecretKey};
+use p256::{AffinePoint, EncodedPoint, NistP256};
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use zeroize::{ZeroizeOnDrop, Zeroizing};
 
 use crate::encryption::EncryptionError;
-use crate::signer::eddsa::EDDSASigner;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Header {
     pub key_id: String,
     // apu param
+    // these are raw(!) bytes, _not_ base64
     pub agreement_partyuinfo: String,
     // apv param
+    // these are raw(!) bytes, _not_ base64
     pub agreement_partyvinfo: String,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct JweHeader<T> {
+    #[serde(rename = "kid")]
+    pub key_id: String,
+    // apu param
+    #[serde(rename = "apu")]
+    pub agreement_partyuinfo: String,
+    // apv param
+    #[serde(rename = "apv")]
+    pub agreement_partyvinfo: String,
+    #[serde(rename = "epk")]
+    pub ephemeral_public_key: T,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RemoteJwk {
     pub kty: String,
     pub crv: String,
     pub x: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub y: Option<String>,
+}
+
+impl TryFrom<JwkEcKey> for RemoteJwk {
+    type Error = EncryptionError;
+
+    fn try_from(value: JwkEcKey) -> Result<Self, Self::Error> {
+        let point = value.to_encoded_point::<NistP256>().map_err(|e| {
+            EncryptionError::Crypto(format!("failed to convert JWK to encoded point: {}", e))
+        })?;
+        let x = Base64UrlSafeNoPadding::encode_to_string(
+            point
+                .x()
+                .ok_or(EncryptionError::Crypto("missing x coordinate".to_string()))?,
+        )
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode x coordinate: {}", e)))?;
+        let y = Base64UrlSafeNoPadding::encode_to_string(
+            point
+                .y()
+                .ok_or(EncryptionError::Crypto("missing y coordinate".to_string()))?,
+        )
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode x coordinate: {}", e)))?;
+        Ok(Self {
+            kty: "EC".to_string(),
+            crv: value.crv().to_string(),
+            x,
+            y: Some(y),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, ZeroizeOnDrop)]
+struct PrivateJwk {
+    #[zeroize(skip)]
+    pub kty: String,
+    #[zeroize(skip)]
+    pub crv: String,
+    #[zeroize(skip)]
+    pub x: String,
+    #[zeroize(skip)]
+    pub y: Option<String>,
+    pub d: String,
 }
 
 /// Construct JWE using AES256GCM encryption
@@ -28,98 +97,77 @@ pub fn build_jwe(
     header: Header,
     recipient_jwk: RemoteJwk,
 ) -> Result<String, EncryptionError> {
-    let jwk = convert_jwk(recipient_jwk)?;
-    let header = convert_header(header);
-
-    let encrypter = EcdhEsJweAlgorithm::EcdhEs
-        .encrypter_from_jwk(&jwk)
-        .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-
-    josekit::jwe::serialize_compact(payload, &header, &encrypter)
-        .map_err(|e| EncryptionError::Crypto(e.to_string()))
-}
-
-fn convert_header(input: Header) -> JweHeader {
-    let mut header = JweHeader::new();
-    header.set_key_id(input.key_id);
-    header.set_content_encryption("A256GCM".to_string());
-    header.set_agreement_partyuinfo(input.agreement_partyuinfo);
-    header.set_agreement_partyvinfo(input.agreement_partyvinfo);
-    header
-}
-
-fn convert_jwk(input: RemoteJwk) -> Result<Jwk, EncryptionError> {
-    match input.kty.as_str() {
-        "EC" => {
-            let mut jwk = Jwk::new("EC");
-            jwk.set_curve(input.crv);
-            jwk.set_parameter("x", Some(input.x.into()))
-                .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-            jwk.set_parameter(
-                "y",
-                Some(
-                    input
-                        .y
-                        .ok_or(EncryptionError::Crypto("Missing Y parameter".to_string()))?
-                        .into(),
-                ),
-            )
-            .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-            Ok(jwk)
+    let (shared_secret, epk) = match (recipient_jwk.kty.as_str(), recipient_jwk.crv.as_str()) {
+        ("EC", "P-256") => generate_key_and_shared_secret_p256(&recipient_jwk)?,
+        ("OKP", "X25519") => {
+            let pub_key = x25519_pub_key_from_jwk(&recipient_jwk)?;
+            generate_key_and_shared_secret_x25519(pub_key)?
         }
-        "OKP" => {
-            let mut jwk = Jwk::new("OKP");
-            jwk.set_curve(input.crv);
-            jwk.set_parameter("x", Some(input.x.into()))
-                .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-
-            if let Some("Ed25519") = jwk.curve() {
-                jwk = ed25519_into_x25519(jwk)?;
-            }
-
-            Ok(jwk)
+        ("OKP", "Ed25519") => {
+            let ed25519_pub_key = ed25519_pub_key_from_jwk(&recipient_jwk)?;
+            let pub_key = x25519::PublicKey::from_ed25519(&ed25519_pub_key).map_err(|e| {
+                EncryptionError::Crypto(format!(
+                    "failed to convert ed25519 public key to x25519: {}",
+                    e
+                ))
+            })?;
+            generate_key_and_shared_secret_x25519(pub_key)?
         }
-        _ => Err(EncryptionError::Crypto(format!(
-            "Invalid key type: {}",
-            input.kty
-        ))),
-    }
-}
-
-fn ed25519_into_x25519(mut jwk: Jwk) -> Result<Jwk, EncryptionError> {
-    if let Some("Ed25519") = jwk.curve() {
-        jwk.set_curve("X25519");
-
-        if let Some(x) = jwk.parameter("x").and_then(|x| x.as_str()) {
-            let key = Base64UrlSafeNoPadding::decode_to_vec(x, None)
-                .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-            let key = EDDSASigner::public_key_into_x25519(&key)
-                .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-            let key = Base64UrlSafeNoPadding::encode_to_string(key.as_slice())
-                .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-            jwk.set_parameter("x", Some(key.into()))
-                .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
+        (kty, crv) => {
+            return Err(EncryptionError::Crypto(format!(
+                "Unsupported JWK kty \"{kty}\" and crv \"{crv}\" combination"
+            )))
         }
+    };
 
-        if let Some(d) = jwk.parameter("d").and_then(|d| d.as_str()) {
-            let key = Base64UrlSafeNoPadding::decode_to_vec(d, None)
-                .map(zeroize::Zeroizing::new)
-                .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-            let key = EDDSASigner::private_key_into_x25519(&key)
-                .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-            let key = Base64UrlSafeNoPadding::encode_to_string(key.as_slice())
-                .map(zeroize::Zeroizing::new)
-                .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
+    let apu_b64 = Base64UrlSafeNoPadding::encode_to_string(&header.agreement_partyuinfo)
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode apu: {}", e)))?;
+    let apv_b64 = Base64UrlSafeNoPadding::encode_to_string(&header.agreement_partyvinfo)
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode apv: {}", e)))?;
+    let protected_header = json!({
+        "kid": header.key_id,
+        "enc": "A256GCM",
+        "alg": "ECDH-ES",
+        "apu": apu_b64,
+        "apv": apv_b64,
+        "epk": epk,
+    });
+    let protected_header_bytes = serde_json::to_vec(&protected_header).map_err(|e| {
+        EncryptionError::Crypto(format!("failed to serialize protected JWE header: {}", e))
+    })?;
+    let protected_header_b64 = Base64UrlSafeNoPadding::encode_to_string(protected_header_bytes)
+        .map_err(|e| {
+            EncryptionError::Crypto(format!("failed to encode protected JWE header: {}", e))
+        })?;
 
-            let key =
-                serde_json::to_value(key).map_err(|e| EncryptionError::Crypto(e.to_string()))?;
+    let encryption_key = derive_encryption_key_aes256gcm(
+        &*shared_secret,
+        header.agreement_partyuinfo.as_bytes(),
+        header.agreement_partyvinfo.as_bytes(),
+    )?;
 
-            jwk.set_parameter("d", Some(key))
-                .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-        };
-    }
+    let nonce = Aes256Gcm::generate_nonce(&mut ChaCha20Rng::from_entropy());
+    let mut encrypted = payload.to_vec();
+    let cipher = Aes256Gcm::new(GenericArray::from_slice(&*encryption_key));
+    let tag = cipher
+        .encrypt_in_place_detached(&nonce, protected_header_b64.as_bytes(), &mut encrypted)
+        .map_err(|e| EncryptionError::Crypto(format!("Failed to encrypt JWE: {}", e)))?;
 
-    Ok(jwk)
+    let nonce_b64 = Base64UrlSafeNoPadding::encode_to_string(nonce)
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE nonce: {}", e)))?;
+    let encrypted_b64 = Base64UrlSafeNoPadding::encode_to_string(encrypted)
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE payload: {}", e)))?;
+    let tag_b64 = Base64UrlSafeNoPadding::encode_to_string(tag)
+        .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE tag: {}", e)))?;
+
+    Ok([
+        protected_header_b64,
+        "".to_string(),
+        nonce_b64,
+        encrypted_b64,
+        tag_b64,
+    ]
+    .join("."))
 }
 
 pub fn extract_jwe_header(jwe: &str) -> Result<Header, EncryptionError> {
@@ -128,60 +176,284 @@ pub fn extract_jwe_header(jwe: &str) -> Result<Header, EncryptionError> {
         .next()
         .ok_or_else(|| EncryptionError::Crypto("Invalid JWE".to_string()))?;
 
-    let header = Base64UrlSafeNoPadding::decode_to_vec(header_b64, None)
-        .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-    let map: serde_json::Map<String, serde_json::Value> =
-        serde_json::from_slice(&header).map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-    let jwe_header =
-        JweHeader::from_map(map).map_err(|e| EncryptionError::Crypto(e.to_string()))?;
+    let header_bytes = decode_b64(header_b64, "JWE header")?;
+    let header: JweHeader<RemoteJwk> = serde_json::from_slice(&header_bytes)
+        .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {}", e)))?;
 
-    let key_id = jwe_header
-        .key_id()
-        .ok_or_else(|| EncryptionError::Crypto("JWE header is missing key_id".to_string()))?
-        .to_owned();
-
-    let agreement_partyuinfo = jwe_header
-        .agreement_partyuinfo()
-        .ok_or_else(|| EncryptionError::Crypto("JWE header is missing apu".to_string()))?;
-    let agreement_partyuinfo = String::from_utf8(agreement_partyuinfo)
-        .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-
-    let agreement_partyvinfo = jwe_header
-        .agreement_partyvinfo()
-        .ok_or_else(|| EncryptionError::Crypto("JWE header is missing apu".to_string()))?;
-    let agreement_partyvinfo = String::from_utf8(agreement_partyvinfo)
-        .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
-
+    let agreement_partyuinfo =
+        String::from_utf8(decode_b64(header.agreement_partyuinfo.as_str(), "apu")?).map_err(
+            |e| EncryptionError::Crypto(format!("Failed to parse apu to string: {}", e)),
+        )?;
+    let agreement_partyvinfo =
+        String::from_utf8(decode_b64(header.agreement_partyvinfo.as_str(), "apv")?).map_err(
+            |e| EncryptionError::Crypto(format!("Failed to parse apv to string: {}", e)),
+        )?;
     Ok(Header {
-        key_id,
         agreement_partyuinfo,
         agreement_partyvinfo,
+        key_id: header.key_id,
     })
 }
 
-pub fn decrypt_jwe_payload(jwe: &str, private_jwk: &str) -> Result<Vec<u8>, EncryptionError> {
-    let mut jwk = josekit::jwk::Jwk::from_bytes(private_jwk.as_bytes())
-        .map_err(|err| EncryptionError::Crypto(format!("Failed constructing JWK {err}")))?;
+fn generate_key_and_shared_secret_p256(
+    remote_jwk: &RemoteJwk,
+) -> Result<(Zeroizing<[u8; 32]>, RemoteJwk), EncryptionError> {
+    let x = decode_b64(remote_jwk.x.as_str(), "x coordinate")?;
+    let y_encoded = remote_jwk
+        .y
+        .clone()
+        .ok_or(EncryptionError::Crypto("Missing y coordinate".to_string()))?;
+    let y = decode_b64(y_encoded.as_str(), "y coordinate")?;
+    let peer_affine_point =
+        AffinePoint::from_encoded_point(&EncodedPoint::from_affine_coordinates(
+            GenericArray::from_slice(&x),
+            GenericArray::from_slice(&y),
+            false,
+        ))
+        .into_option()
+        .ok_or(EncryptionError::Crypto(
+            "Invalid JWK coordinates".to_string(),
+        ))?;
 
-    if let Some("Ed25519") = jwk.curve() {
-        jwk = ed25519_into_x25519(jwk)?;
+    let secret_key: SecretKey<NistP256> = SecretKey::random(&mut ChaCha20Rng::from_entropy());
+    let shared_secret: [u8; 32] = diffie_hellman(secret_key.to_nonzero_scalar(), peer_affine_point)
+        .raw_secret_bytes()
+        .as_slice()
+        .try_into()
+        .map_err(|e| EncryptionError::Crypto(format!("failed to convert to array: {}", e)))?;
+    Ok((
+        Zeroizing::new(shared_secret),
+        secret_key.public_key().to_jwk().try_into()?,
+    ))
+}
+
+fn generate_key_and_shared_secret_x25519(
+    peer_pub_key: x25519::PublicKey,
+) -> Result<(Zeroizing<[u8; 32]>, RemoteJwk), EncryptionError> {
+    let key_pair = x25519::KeyPair::generate();
+    let shared_secret = *peer_pub_key
+        .dh(&key_pair.sk)
+        .map_err(|e| EncryptionError::Crypto(format!("Failed to derive shared secret: {}", e)))?;
+
+    let jwk = RemoteJwk {
+        kty: "OKP".to_string(),
+        crv: "X25519".to_string(),
+        x: Base64UrlSafeNoPadding::encode_to_string(key_pair.pk.to_vec()).map_err(|e| {
+            EncryptionError::Crypto(format!("Failed to serialize public key bytes: {}", e))
+        })?,
+        y: None,
+    };
+    Ok((Zeroizing::new(shared_secret), jwk))
+}
+
+fn x25519_pub_key_from_jwk(remote_jwk: &RemoteJwk) -> Result<x25519::PublicKey, EncryptionError> {
+    let x = decode_b64(remote_jwk.x.as_str(), "x coordinate")?;
+    let pub_key = x25519::PublicKey::from_slice(&x)
+        .map_err(|e| EncryptionError::Crypto(format!("Failed to decode peer public key: {}", e)))?;
+    Ok(pub_key)
+}
+
+fn ed25519_pub_key_from_jwk(
+    remote_jwk: &RemoteJwk,
+) -> Result<ed25519_compact::PublicKey, EncryptionError> {
+    let x = decode_b64(remote_jwk.x.as_str(), "x coordinate")?;
+    let pub_key = ed25519_compact::PublicKey::from_slice(&x)
+        .map_err(|e| EncryptionError::Crypto(format!("Failed to decode peer public key: {}", e)))?;
+    Ok(pub_key)
+}
+
+pub fn decrypt_jwe_payload(
+    jwe: &str,
+    private_jwk: Zeroizing<String>,
+) -> Result<Vec<u8>, EncryptionError> {
+    let encrypted_jwe = EncryptedJWE::from_str(jwe)?;
+    encrypted_jwe.decrypt(private_jwk)
+}
+
+struct EncryptedJWE {
+    protected_header_b64: String,
+    protected_header: Vec<u8>,
+    nonce: Vec<u8>,
+    payload: Vec<u8>,
+    tag: Vec<u8>,
+}
+
+impl EncryptedJWE {
+    fn decrypt(&self, private_key_jwk: Zeroizing<String>) -> Result<Vec<u8>, EncryptionError> {
+        let private_jwk: PrivateJwk = serde_json::from_str(&private_key_jwk)
+            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse private JWK: {}", e)))?;
+
+        let shared_secret = match (private_jwk.kty.as_str(), private_jwk.crv.as_str()) {
+            ("EC", "P-256") => self.derive_shared_secret_p256(private_key_jwk)?,
+            ("OKP", "Ed25519") | ("OKP", "X25519") => {
+                self.derive_shared_secret_x25519(&private_jwk)?
+            }
+            (kty, crv) => {
+                return Err(EncryptionError::Crypto(format!(
+                    "Unsupported JWK kty \"{kty}\" and crv \"{crv}\" combination"
+                )))
+            }
+        };
+
+        let encryption_key = self.derive_encryption_key(&*shared_secret)?;
+
+        let cipher = Aes256Gcm::new(GenericArray::from_slice(&*encryption_key));
+        let mut plaintext = self.payload.clone();
+        cipher
+            .decrypt_in_place_detached(
+                GenericArray::from_slice(&self.nonce),
+                self.protected_header_b64.as_bytes(),
+                &mut plaintext,
+                GenericArray::from_slice(&self.tag),
+            )
+            .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {}", e)))?;
+        Ok(plaintext)
     }
 
-    let decrypter = EcdhEsJweAlgorithm::EcdhEs
-        .decrypter_from_jwk(&jwk)
-        .map_err(|err| {
-            EncryptionError::Crypto(format!("Failed constructing EcdhEs decrypter: {err}"))
+    fn derive_shared_secret_p256(
+        &self,
+        jwk: Zeroizing<String>,
+    ) -> Result<Zeroizing<[u8; 32]>, EncryptionError> {
+        let private_key_jwk: JwkEcKey = serde_json::from_str(&jwk)
+            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWK: {}", e)))?;
+        let secret_key = private_key_jwk.to_secret_key::<NistP256>().map_err(|e| {
+            EncryptionError::Crypto(format!("Failed to decode JWK to secret key: {}", e))
+        })?;
+        let header: JweHeader<JwkEcKey> = serde_json::from_slice(&self.protected_header)
+            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {}", e)))?;
+        let peer_pub_key: p256::PublicKey =
+            header.ephemeral_public_key.to_public_key().map_err(|e| {
+                EncryptionError::Crypto(format!("Failed to decode JWK to public key: {}", e))
+            })?;
+
+        let shared_secret: [u8; 32] =
+            diffie_hellman(&secret_key.to_nonzero_scalar(), peer_pub_key.as_affine())
+                .raw_secret_bytes()
+                .as_slice()
+                .try_into()
+                .map_err(|e| {
+                    EncryptionError::Crypto(format!("failed to convert to array: {}", e))
+                })?;
+        Ok(Zeroizing::new(shared_secret))
+    }
+
+    fn derive_shared_secret_x25519(
+        &self,
+        private_key_jwk: &PrivateJwk,
+    ) -> Result<Zeroizing<[u8; 32]>, EncryptionError> {
+        let header: JweHeader<RemoteJwk> =
+            serde_json::from_slice(&self.protected_header).map_err(|e| {
+                EncryptionError::Crypto(format!("Failed to decode JWK to secret key: {}", e))
+            })?;
+        let x = decode_b64(header.ephemeral_public_key.x.as_str(), "x coordinate")?;
+        let peer_pub_key = x25519::PublicKey::from_slice(&x).map_err(|e| {
+            EncryptionError::Crypto(format!("Failed to decode peer public key: {}", e))
         })?;
 
-    let (payload, _) = josekit::jwe::deserialize_compact(jwe, &decrypter)
-        .map_err(|err| EncryptionError::Crypto(format!("Failed decrypting JWE: {err}")))?;
-    Ok(payload)
+        let secret_key = x25519_secret_key_from_jwk(private_key_jwk)?;
+        let shared_secret = peer_pub_key.dh(&secret_key).map_err(|e| {
+            EncryptionError::Crypto(format!("Failed to derive shared secret: {}", e))
+        })?;
+        Ok(Zeroizing::new(*shared_secret))
+    }
+
+    fn derive_encryption_key(
+        &self,
+        shared_secret: &[u8],
+    ) -> Result<Zeroizing<[u8; 32]>, EncryptionError> {
+        let header: JweHeader<RemoteJwk> = serde_json::from_slice(&self.protected_header)
+            .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {}", e)))?;
+
+        let apu = decode_b64(header.agreement_partyuinfo.as_str(), "apu")?;
+        let apv = decode_b64(header.agreement_partyvinfo.as_str(), "apv")?;
+
+        derive_encryption_key_aes256gcm(shared_secret, &apu, &apv)
+    }
+}
+
+fn derive_encryption_key_aes256gcm(
+    shared_secret: &[u8],
+    apu: &[u8],
+    apv: &[u8],
+) -> Result<Zeroizing<[u8; 32]>, EncryptionError> {
+    const ALG: &[u8] = b"A256GCM";
+    const KEY_LENGTH: u32 = 256;
+
+    let mut other_info = vec![];
+    other_info.extend((ALG.len() as u32).to_be_bytes());
+    other_info.extend(ALG);
+    other_info.extend((apu.len() as u32).to_be_bytes());
+    other_info.extend(apu);
+    other_info.extend((apv.len() as u32).to_be_bytes());
+    other_info.extend(apv);
+    other_info.extend(KEY_LENGTH.to_be_bytes());
+
+    let mut encryption_key = Zeroizing::new([0; 32]);
+    concat_kdf::derive_key_into::<sha2::Sha256>(shared_secret, &other_info, &mut *encryption_key)
+        .map_err(|e| EncryptionError::Crypto(format!("Failed to derive encryption key: {}", e)))?;
+    Ok(encryption_key)
+}
+
+fn x25519_secret_key_from_jwk(jwk: &PrivateJwk) -> Result<x25519::SecretKey, EncryptionError> {
+    let d = decode_b64(jwk.d.as_str(), "private key value d")?;
+
+    match jwk.crv.as_str() {
+        "Ed25519" => {
+            let ed25519_key = ed25519_compact::SecretKey::from_slice(&d).map_err(|e| {
+                EncryptionError::Crypto(format!("Failed to create ed25519 key: {}", e))
+            })?;
+            x25519::SecretKey::from_ed25519(&ed25519_key).map_err(|e| {
+                EncryptionError::Crypto(format!(
+                    "Failed to convert ed25519 key to x25519 key: {}",
+                    e
+                ))
+            })
+        }
+        "X25519" => x25519::SecretKey::from_slice(&d)
+            .map_err(|e| EncryptionError::Crypto(format!("Failed to create x25519 key: {}", e))),
+        crv => Err(EncryptionError::Crypto(format!(
+            "unsupported crv \"{crv}\""
+        ))),
+    }
+}
+
+impl FromStr for EncryptedJWE {
+    type Err = EncryptionError;
+
+    fn from_str(jwe: &str) -> Result<Self, Self::Err> {
+        let parts = jwe.split('.').collect::<Vec<_>>();
+        if parts.len() != 5 {
+            return Err(EncryptionError::Crypto(format!(
+                "Invalid JWE: expected 5 parts but found {}",
+                parts.len()
+            )));
+        }
+        if !parts[1].is_empty() {
+            return Err(EncryptionError::Crypto(
+                "Invalid JWE: expected empty CEK".to_string(),
+            ));
+        }
+        let protected_header = decode_b64(parts[0], "protected header")?;
+        let nonce = decode_b64(parts[2], "nonce")?;
+        let payload = decode_b64(parts[3], "payload")?;
+        let tag = decode_b64(parts[4], "tag")?;
+        Ok(Self {
+            protected_header_b64: parts[0].to_string(),
+            protected_header,
+            nonce,
+            payload,
+            tag,
+        })
+    }
+}
+
+fn decode_b64(base64_input: &str, name: &str) -> Result<Vec<u8>, EncryptionError> {
+    Base64UrlSafeNoPadding::decode_to_vec(base64_input, None)
+        .map_err(|e| EncryptionError::Crypto(format!("Failed to decode {}: {}", name, e)))
 }
 
 #[cfg(test)]
 mod test {
-    use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-
     use super::*;
 
     const PRIVATE_JWK_EC: &str = r#"{"kty":"EC","crv":"P-256","x":"KRJIXU-pyEcHURRRQ54jTh9PTTmBYog57rQD1uCsvwo","y":"d31DZcRSqaxAUGBt70HB7uCZdufA6uKdL6BvAzUhbJU","d":"81vofgUlDnb6OUF-WPhH8p1T_mo_F2H9XZvaTvtEZHk"}"#;
@@ -202,7 +474,8 @@ mod test {
         let extracted_header = extract_jwe_header(jwe).unwrap();
         assert_eq!(expected_header, extracted_header);
 
-        let decrypted_payload_bytes = decrypt_jwe_payload(jwe, PRIVATE_JWK_EC).unwrap();
+        let decrypted_payload_bytes =
+            decrypt_jwe_payload(jwe, PRIVATE_JWK_EC.to_string().into()).unwrap();
         assert_eq!(
             Base64UrlSafeNoPadding::encode_to_string(decrypted_payload_bytes).unwrap(),
             expected_payload
@@ -223,7 +496,8 @@ mod test {
         let extracted_header = extract_jwe_header(jwe).unwrap();
         assert_eq!(expected_header, extracted_header);
 
-        let decrypted_payload_bytes = decrypt_jwe_payload(jwe, PRIVATE_JWK_ED25519).unwrap();
+        let decrypted_payload_bytes =
+            decrypt_jwe_payload(jwe, PRIVATE_JWK_ED25519.to_string().into()).unwrap();
         assert_eq!(
             Base64UrlSafeNoPadding::encode_to_string(decrypted_payload_bytes).unwrap(),
             expected_payload
@@ -251,7 +525,8 @@ mod test {
         let extracted_header = extract_jwe_header(&jwe).unwrap();
         assert_eq!(header, extracted_header);
 
-        let decrypted_payload_bytes = decrypt_jwe_payload(&jwe, PRIVATE_JWK_EC).unwrap();
+        let decrypted_payload_bytes =
+            decrypt_jwe_payload(&jwe, PRIVATE_JWK_EC.to_string().into()).unwrap();
         assert_eq!(payload.as_slice(), decrypted_payload_bytes);
     }
 
@@ -275,7 +550,8 @@ mod test {
         let extracted_header = extract_jwe_header(&jwe).unwrap();
         assert_eq!(header, extracted_header);
 
-        let decrypted_payload_bytes = decrypt_jwe_payload(&jwe, PRIVATE_JWK_ED25519).unwrap();
+        let decrypted_payload_bytes =
+            decrypt_jwe_payload(&jwe, PRIVATE_JWK_ED25519.to_string().into()).unwrap();
         assert_eq!(payload.as_slice(), decrypted_payload_bytes);
     }
 }

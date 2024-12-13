@@ -5,7 +5,7 @@ use std::sync::Arc;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
 use one_crypto::{MockCryptoProvider, MockHasher};
-use serde_json::json;
+use serde_json::{json, Value};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
@@ -45,7 +45,7 @@ async fn test_format_with_layout_disabled() {
     assert!(token["credentialSchema"]["metadata"].is_null());
 }
 
-async fn create_token(include_layout: bool) -> serde_json::Value {
+async fn create_token(include_layout: bool) -> Value {
     let issuer_did = Issuer::Url(
         "did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y"
             .parse()
@@ -194,7 +194,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
         .await
         .unwrap();
 
-    let parsed_json: serde_json::Value = serde_json::from_str(&formatted_credential).unwrap();
+    let parsed_json: Value = serde_json::from_str(&formatted_credential).unwrap();
     parsed_json
 }
 
@@ -388,7 +388,7 @@ async fn test_format_presentation_multi_tokens() {
         .await
         .unwrap();
 
-    let value = serde_json::Value::from_str(&formatted_presentation).unwrap();
+    let value = Value::from_str(&formatted_presentation).unwrap();
 
     assert_eq!(
         value["verifiableCredential"][0]["type"],
@@ -595,5 +595,10 @@ async fn test_parse_presentation_multi_tokens() {
         .filter(|c| !c.is_whitespace())
         .collect::<String>();
 
-    assert_eq!(credentials, vec![JWT_TOKEN, &json_ld_no_whitespace]);
+    assert_eq!(credentials[0], JWT_TOKEN);
+    // parse JSON to compare serialization order independent
+    assert_eq!(
+        Value::from_str(&credentials[1]).expect("failed to parse JSON"),
+        Value::from_str(&json_ld_no_whitespace).expect("failed to parse JSON")
+    );
 }

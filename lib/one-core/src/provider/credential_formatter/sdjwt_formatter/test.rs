@@ -88,16 +88,18 @@ async fn test_format_credential_a() {
     let token = result.unwrap();
 
     let parts: Vec<&str> = token.splitn(4, '~').collect();
-
     assert_eq!(parts.len(), 3);
 
-    let part1 = DisclosureArray::from_b64(parts[1]);
-    assert_eq!(part1.key, "name");
-    assert_eq!(part1.value, "John");
-
-    let part2 = DisclosureArray::from_b64(parts[2]);
-    assert_eq!(part2.key, "age");
-    assert_eq!(part2.value, "42");
+    let disclosures = [
+        DisclosureArray::from_b64(parts[1]),
+        DisclosureArray::from_b64(parts[2]),
+    ];
+    assert!(disclosures
+        .iter()
+        .any(|disc| disc.key == "name" && disc.value == "John"));
+    assert!(disclosures
+        .iter()
+        .any(|disc| disc.key == "age" && disc.value == "42"));
 
     let jwt_parts: Vec<&str> = parts[0].splitn(3, '.').collect();
 

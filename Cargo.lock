@@ -69,6 +69,7 @@ dependencies = [
  "ctr",
  "ghash",
  "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -994,6 +995,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
+name = "concat-kdf"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d72c1252426a83be2092dd5884a5f6e3b8e7180f6891b6263d2c21b92ec8816"
+dependencies = [
+ "digest 0.10.7",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1511,6 +1521,7 @@ dependencies = [
  "ff 0.13.0",
  "generic-array",
  "group 0.13.0",
+ "hkdf",
  "pem-rfc7468",
  "pkcs8",
  "rand_core",
@@ -2698,23 +2709,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "josekit"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a603084e34e151e215d232e401df0d9299bdced264b8054e4888ea614e59bb06"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "flate2",
- "openssl",
- "regex",
- "serde",
- "serde_json",
- "thiserror 1.0.68",
- "time",
-]
-
-[[package]]
 name = "js-sys"
 version = "0.3.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3784,12 +3778,13 @@ dependencies = [
 name = "one-crypto"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm",
  "blstrs 0.7.1",
  "chacha20poly1305",
+ "concat-kdf",
  "ct-codecs",
  "ed25519-compact",
  "hmac 0.12.1",
- "josekit",
  "mockall",
  "p256",
  "pairing_crypto",
@@ -5377,7 +5372,6 @@ version = "1.0.132"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d726bfaff4b320266d395898905d0eba0345aae23b54aee3a737e260fd46db03"
 dependencies = [
- "indexmap 2.6.0",
  "itoa",
  "memchr",
  "ryu",

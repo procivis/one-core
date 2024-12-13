@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use one_core::model::credential_schema::WalletStorageTypeEnum;
@@ -1610,13 +1610,13 @@ async fn test_handle_invitation_mdoc() {
 
     let claim_schemas = credential.schema.unwrap().claim_schemas.unwrap();
 
-    let claim_schema_keys: Vec<&str> = claim_schemas
+    let claim_schema_keys: HashSet<&str> = claim_schemas
         .iter()
         .map(|claim_schema| claim_schema.schema.key.as_str())
         .collect();
 
     assert_eq!(
-        vec![
+        HashSet::from([
             "first.namespace",
             "first.namespace/field",
             "first.namespace/string_array",
@@ -1627,7 +1627,7 @@ async fn test_handle_invitation_mdoc() {
             "company/address",
             "company/address/streetName",
             "company/address/streetNumber",
-        ],
+        ]),
         claim_schema_keys
     );
 

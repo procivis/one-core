@@ -1079,7 +1079,7 @@ impl OIDCService {
 
                 let key = key_storage.secret_key_as_jwk(&key.to_owned())?;
 
-                let payload = decrypt_jwe_payload(&jwe, &key).map_err(|err| {
+                let payload = decrypt_jwe_payload(&jwe, key).map_err(|err| {
                     ServiceError::Other(format!("Failed decrypting JWE payload: {err}"))
                 })?;
 

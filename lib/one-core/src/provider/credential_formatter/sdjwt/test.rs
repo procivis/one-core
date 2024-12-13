@@ -1,9 +1,10 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use mockall::predicate::eq;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::{MockCryptoProvider, MockHasher};
-use serde_json::json;
+use serde_json::{json, Value};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -145,38 +146,44 @@ fn test_gather_disclosures_and_objects_without_nesting() {
         region_disclosure,
         country_disclosure,
     ];
-    let expected_result = vec![
+    let expected_result = HashSet::from([
         hashed_b64_street_address_disclosure,
         hashed_b64_locality_disclosure,
         hashed_b64_region_disclosure,
         hashed_b64_country_disclosure,
-    ];
+    ]);
 
     assert!(expected_disclosures.iter().all(|expected| {
         disclosures
             .iter()
             .any(|disc| disc.key == expected.0 && disc.value.to_string().contains(expected.1))
     }));
-    assert_eq!(expected_result, result);
+    assert_eq!(
+        expected_result,
+        HashSet::from_iter(result.iter().map(String::as_str))
+    );
 }
 
 #[test]
 fn test_gather_disclosures_and_objects_with_nesting() {
     let algorithm = "sha-256";
 
-    let street_address_disclosure = ("street_address", "Schulstr. 12");
+    let street_address_disclosure = ("street_address", json!("Schulstr. 12"));
     let hashed_b64_street_address_disclosure = "9gjVuXtdFROCgRrtNcGUXmF65rdezi_6Er_j76kmYyM";
 
-    let locality_disclosure = ("locality", "Schulpforta");
+    let locality_disclosure = ("locality", json!("Schulpforta"));
     let hashed_b64_locality_disclosure = "6vh9bq-zS4GKM_7GpggVbYzzu6oOGXrmNVGPHP75Ud0";
 
-    let region_disclosure = ("region", "Sachsen-Anhalt");
+    let region_disclosure = ("region", json!("Sachsen-Anhalt"));
     let hashed_b64_region_disclosure = "KURDPh4ZC19-3tiz-Df39V8eidy1oV3a3H1Da2N0g88";
 
-    let country_disclosure = ("country", "DE");
+    let country_disclosure = ("country", json!("DE"));
     let hashed_b64_country_disclosure = "WN9r9dCBJ8HTCsS2jKASxTjEyW5m5x65_Z_2ro2jfXM";
 
-    let address_disclosure = ("address", "{\"_sd\":[\"9gjVuXtdFROCgRrtNcGUXmF65rdezi_6Er_j76kmYyM\",\"6vh9bq-zS4GKM_7GpggVbYzzu6oOGXrmNVGPHP75Ud0\",\"KURDPh4ZC19-3tiz-Df39V8eidy1oV3a3H1Da2N0g88\",\"WN9r9dCBJ8HTCsS2jKASxTjEyW5m5x65_Z_2ro2jfXM\"]}");
+    let address_disclosure = (
+        "address",
+        json!({"_sd":["9gjVuXtdFROCgRrtNcGUXmF65rdezi_6Er_j76kmYyM","6vh9bq-zS4GKM_7GpggVbYzzu6oOGXrmNVGPHP75Ud0","KURDPh4ZC19-3tiz-Df39V8eidy1oV3a3H1Da2N0g88","WN9r9dCBJ8HTCsS2jKASxTjEyW5m5x65_Z_2ro2jfXM"]}),
+    );
     let hashed_b64_address_disclosure = "HvrKX6fPV0v9K_yCVFBiLFHsMaxcD_114Em6VT8x1lg";
 
     let mut hasher = MockHasher::default();
@@ -224,14 +231,43 @@ fn test_gather_disclosures_and_objects_with_nesting() {
         locality_disclosure,
         region_disclosure,
         country_disclosure,
-        address_disclosure,
+        //address_disclosure,
     ];
 
-    assert!(expected_disclosures.iter().all(|expected| {
-        disclosures
-            .iter()
-            .any(|disc| disc.key == expected.0 && disc.value.to_string().contains(expected.1))
-    }));
+    // simple disclosures
+    assert!(expected_disclosures
+        .iter()
+        .all(|(expected_key, expected_value)| {
+            disclosures
+                .iter()
+                .any(|disc| disc.key == *expected_key && disc.value == *expected_value)
+        }));
+
+    // _sd array in address disclosure needs to be compared order independent
+    assert_eq!(
+        HashSet::<Value>::from_iter(
+            disclosures
+                .iter()
+                .find(|disc| disc.key == "address")
+                .unwrap()
+                .value
+                .get("_sd")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .clone()
+        ),
+        HashSet::from_iter(
+            address_disclosure
+                .1
+                .get("_sd")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .iter()
+                .cloned()
+        )
+    );
 
     let expected_result = vec![hashed_b64_address_disclosure];
     assert_eq!(expected_result, result);
