@@ -19,7 +19,7 @@ futures.workspace        = true
 one-core                 = { version = "0.1.0", path = "../../lib/one-core" }
 one-crypto               = { version = "0.1.0", path = "../../lib/one-crypto" }
 one-dto-mapper.workspace = true
-reqwest                  = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
+reqwest                  = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
 serde.workspace          = true
 serde_json.workspace     = true
 shared-types             = { version = "0.1.0", path = "../../lib/shared-types" }

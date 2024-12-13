@@ -45,7 +45,8 @@ rcgen                    = { version = "0.13" }
 rdf-types                = { version = "0.15" }
 regex.workspace          = true
 reqwest.workspace        = true
-rumqttc                  = { version = "0.24", default-features = false, features = ["use-native-tls"] }
+rumqttc                  = { version = "0.24", default-features = false, features = ["use-rustls"] }
+rustls-platform-verifier = { version = "0.2" }
 serde.workspace          = true
 serde_json.workspace     = true
 serde_qs.workspace       = true
