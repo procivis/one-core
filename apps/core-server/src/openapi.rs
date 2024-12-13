@@ -393,7 +393,7 @@ fn get_tags() -> Vec<Tag> {
             .name("other")
             .description(Some(indoc::formatdoc! {"
                 Returns the system configuration, along with other system information.
-                See the [Configuration](../api/configuration.mdx) guide for more
+                See the [Configuration](../setup/configuration.mdx) guide for more
                 information.
             "}))
             .extensions(Some(
@@ -406,7 +406,7 @@ fn get_tags() -> Vec<Tag> {
             .name("organisation_management")
             .description(Some(indoc::formatdoc! {"
                 Create organizations. See the
-                [Organization](../api/organizations.mdx) guide for more
+                [Organization](../setup/organizations.mdx) guide for more
                 information.
             "}))
             .extensions(Some(
