@@ -14,7 +14,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -343,7 +343,9 @@ async fn test_presentation_reject_success() {
         exchange: "OPENID4VC".to_string(),
         transport: "MQTT".to_string(),
         redirect_uri: None,
-        state: None,
+        state: ProofStateEnum::Pending,
+        requested_date: Some(now),
+        completed_date: None,
         schema: None,
         claims: None,
         verifier_did: None,
@@ -419,7 +421,9 @@ async fn test_share_proof_for_mqtt_returns_url() {
         exchange: "OPENID4VC".to_string(),
         transport: "MQTT".to_string(),
         redirect_uri: None,
-        state: None,
+        state: ProofStateEnum::Pending,
+        requested_date: Some(OffsetDateTime::now_utc()),
+        completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),

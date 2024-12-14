@@ -35,8 +35,7 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
-    Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
-    UpdateProofRequest,
+    Proof, ProofClaimRelations, ProofRelations, ProofStateEnum, UpdateProofRequest,
 };
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -92,7 +91,6 @@ impl ProofService {
                             }),
                         }),
                     }),
-                    state: Some(Default::default()),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
                             schema: Some(Default::default()),
@@ -178,7 +176,6 @@ impl ProofService {
             .get_proof(
                 id,
                 &ProofRelations {
-                    state: Some(ProofStateRelations::default()),
                     holder_did: Some(DidRelations {
                         organisation: Some(Default::default()),
                         ..Default::default()
@@ -428,21 +425,12 @@ impl ProofService {
         request: ShareProofRequestDTO,
         callback: Option<BoxFuture<'static, ()>>,
     ) -> Result<EntityShareResponseDTO, ServiceError> {
-        let (proof, proof_state) = self.get_proof_with_state(id).await?;
+        let proof = self.get_proof_with_state(id).await?;
 
-        let now = OffsetDateTime::now_utc();
-
-        match proof_state {
+        match proof.state {
             ProofStateEnum::Created => {
                 self.proof_repository
-                    .set_proof_state(
-                        id,
-                        ProofState {
-                            created_date: now,
-                            last_modified: now,
-                            state: ProofStateEnum::Pending,
-                        },
-                    )
+                    .set_proof_state(id, ProofStateEnum::Pending)
                     .await?;
             }
             ProofStateEnum::Pending => {}
@@ -530,7 +518,6 @@ impl ProofService {
             .get_proof(
                 &proof_id,
                 &ProofRelations {
-                    state: Some(Default::default()),
                     interaction: Some(Default::default()),
                     ..Default::default()
                 },
@@ -538,22 +525,12 @@ impl ProofService {
             .await?
             .ok_or(EntityNotFoundError::Proof(proof_id))?;
 
-        let last_state = proof
-            .state
-            .as_ref()
-            // states come ordered from the DB, newest first
-            .and_then(|states| states.first())
-            .map(|last_state| &last_state.state)
-            .ok_or_else(|| {
-                ServiceError::MappingError(format!("Missing state for proof: {proof_id}"))
-            })?;
-
         if !matches!(
-            last_state,
+            proof.state,
             ProofStateEnum::Pending | ProofStateEnum::Requested
         ) {
             return Err(BusinessLogicError::InvalidProofState {
-                state: last_state.clone(),
+                state: proof.state.clone(),
             }
             .into());
         }
@@ -575,11 +552,8 @@ impl ProofService {
             .update_proof(
                 &proof_id,
                 UpdateProofRequest {
-                    state: Some(ProofState {
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        state: ProofStateEnum::Created,
-                    }),
+                    state: Some(ProofStateEnum::Created),
+                    requested_date: Some(None),
                     interaction: can_remove_interaction.then_some(None),
                     ..Default::default()
                 },
@@ -686,11 +660,9 @@ impl ProofService {
                 issuance_date: now,
                 exchange,
                 redirect_uri: None,
-                state: Some(vec![ProofState {
-                    created_date: now,
-                    last_modified: now,
-                    state: ProofStateEnum::Pending,
-                }]),
+                state: ProofStateEnum::Pending,
+                requested_date: Some(now),
+                completed_date: None,
                 schema: None,
                 transport: transport.to_owned(),
                 claims: None,
@@ -722,16 +694,12 @@ impl ProofService {
     // ============ Private methods
 
     /// Get latest proof state
-    async fn get_proof_with_state(
-        &self,
-        id: &ProofId,
-    ) -> Result<(Proof, ProofStateEnum), ServiceError> {
+    async fn get_proof_with_state(&self, id: &ProofId) -> Result<Proof, ServiceError> {
         let proof = self
             .proof_repository
             .get_proof(
                 id,
                 &ProofRelations {
-                    state: Some(ProofStateRelations::default()),
                     schema: Some(ProofSchemaRelations {
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
@@ -757,15 +725,6 @@ impl ProofService {
             .await?
             .ok_or(EntityNotFoundError::Proof(*id))?;
 
-        let proof_states = proof
-            .state
-            .as_ref()
-            .ok_or(ServiceError::MappingError("state is None".to_string()))?;
-        let latest_state = proof_states
-            .first()
-            .ok_or(ServiceError::MappingError("state is missing".to_string()))?
-            .state
-            .to_owned();
-        Ok((proof, latest_state))
+        Ok(proof)
     }
 }

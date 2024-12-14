@@ -18,7 +18,7 @@ use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
@@ -80,11 +80,9 @@ pub fn proof_from_handle_invitation(
         exchange: protocol.to_owned(),
         redirect_uri,
         transport: transport.to_owned(),
-        state: Some(vec![ProofState {
-            created_date: now,
-            last_modified: now,
-            state,
-        }]),
+        state,
+        requested_date: Some(now),
+        completed_date: None,
         schema: None,
         claims: None,
         verifier_did,

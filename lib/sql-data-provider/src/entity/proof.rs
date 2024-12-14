@@ -1,3 +1,5 @@
+use one_core::model::proof::ProofStateEnum;
+use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use shared_types::{DidId, KeyId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
@@ -14,12 +16,38 @@ pub struct Model {
     pub exchange: String,
     pub transport: String,
     pub redirect_uri: Option<String>,
+    pub state: ProofRequestState,
+    pub requested_date: Option<OffsetDateTime>,
+    pub completed_date: Option<OffsetDateTime>,
 
     pub verifier_did_id: Option<DidId>,
     pub holder_did_id: Option<DidId>,
     pub proof_schema_id: Option<ProofSchemaId>,
     pub verifier_key_id: Option<KeyId>,
     pub interaction_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[from(ProofStateEnum)]
+#[into(ProofStateEnum)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "Enum",
+    enum_name = "proof_request_state_enum"
+)]
+pub enum ProofRequestState {
+    #[sea_orm(string_value = "CREATED")]
+    Created,
+    #[sea_orm(string_value = "PENDING")]
+    Pending,
+    #[sea_orm(string_value = "REQUESTED")]
+    Requested,
+    #[sea_orm(string_value = "ACCEPTED")]
+    Accepted,
+    #[sea_orm(string_value = "REJECTED")]
+    Rejected,
+    #[sea_orm(string_value = "ERROR")]
+    Error,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -60,8 +88,6 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     ProofSchema,
-    #[sea_orm(has_many = "super::proof_state::Entity")]
-    ProofState,
     #[sea_orm(
         belongs_to = "super::key::Entity",
         from = "Column::VerifierKeyId",
@@ -87,12 +113,6 @@ impl Related<super::proof_claim::Entity> for Entity {
 impl Related<super::proof_schema::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProofSchema.def()
-    }
-}
-
-impl Related<super::proof_state::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProofState.def()
     }
 }
 

@@ -19,7 +19,7 @@ use crate::model::did::Did;
 use crate::model::history::History;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
-use crate::model::proof::{self, Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -108,43 +108,25 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: Proof) -> Result<Self, Self::Error> {
-        let states = value
-            .state
-            .ok_or(ServiceError::MappingError("state is None".to_string()))?;
-        let latest_state = states
-            .first()
-            .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
-        let requested_date = states
-            .iter()
-            .find(|state| state.state == ProofStateEnum::Requested)
-            .map(|state| state.created_date);
-
-        let completed_date = states
-            .iter()
-            .find(|state| {
-                state.state == ProofStateEnum::Accepted || state.state == ProofStateEnum::Rejected
-            })
-            .map(|state| state.created_date);
-
-        let retain_until_date = match (completed_date, &value.schema) {
+        let retain_until_date = match (value.completed_date, &value.schema) {
             (Some(completed_date), Some(schema)) if schema.expire_duration != 0 => {
                 Some(completed_date + Duration::from_secs(schema.expire_duration as _))
             }
             _ => None,
         };
 
-        Ok(Self {
+        Ok(ProofListItemResponseDTO {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             issuance_date: value.issuance_date,
-            requested_date,
+            requested_date: value.requested_date,
             retain_until_date,
             transport: value.transport,
-            completed_date,
+            completed_date: value.completed_date,
             verifier_did: convert_inner(value.verifier_did),
             exchange: value.exchange,
-            state: latest_state.state.clone(),
+            state: value.state,
             schema: value.schema.map(|schema| schema.into()),
         })
     }
@@ -648,11 +630,9 @@ pub fn proof_from_create_request(
         issuance_date: now,
         exchange: request.exchange,
         redirect_uri: request.redirect_uri,
-        state: Some(vec![proof::ProofState {
-            created_date: now,
-            last_modified: now,
-            state: ProofStateEnum::Created,
-        }]),
+        state: ProofStateEnum::Created,
+        requested_date: None,
+        completed_date: None,
         schema: Some(schema),
         transport,
         claims: None,
@@ -677,11 +657,9 @@ pub fn proof_for_scan_to_verify(
         issuance_date: now,
         exchange: exchange.to_owned(),
         redirect_uri: None,
-        state: Some(vec![proof::ProofState {
-            created_date: now,
-            last_modified: now,
-            state: ProofStateEnum::Created,
-        }]),
+        state: ProofStateEnum::Created,
+        requested_date: None,
+        completed_date: None,
         schema: Some(schema.clone()),
         transport: transport.to_owned(),
         claims: None,

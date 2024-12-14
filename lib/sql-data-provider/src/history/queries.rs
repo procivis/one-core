@@ -39,6 +39,9 @@ impl IntoFilterCondition for HistoryFilterValue {
                 )
                 .into_condition(),
             Self::EntityId(entity_id) => get_equals_condition(history::Column::EntityId, entity_id),
+            Self::EntityIds(entity_ids) => {
+                history::Column::EntityId.is_in(entity_ids).into_condition()
+            }
             Self::Action(action) => get_equals_condition(
                 history::Column::Action,
                 history::HistoryAction::from(action),

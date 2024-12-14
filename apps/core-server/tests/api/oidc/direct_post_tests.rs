@@ -178,10 +178,7 @@ async fn test_direct_post_one_credential_correct() {
     assert_eq!(resp.status(), 200);
 
     let proof = get_proof(&db_conn, &proof.id).await;
-    assert_eq!(
-        proof.state.unwrap().first().unwrap().state,
-        ProofStateEnum::Accepted
-    );
+    assert_eq!(proof.state, ProofStateEnum::Accepted);
 
     let claims = proof.claims.unwrap();
     assert!(new_claim_schemas
@@ -321,10 +318,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     assert_eq!(resp.status(), 400);
 
     let proof = get_proof(&db_conn, &proof.id).await;
-    assert_eq!(
-        proof.state.unwrap().first().unwrap().state,
-        ProofStateEnum::Error
-    );
+    assert_eq!(proof.state, ProofStateEnum::Error);
     let claims = proof.claims.unwrap();
     assert!(claims.is_empty());
 }
@@ -574,10 +568,7 @@ async fn test_direct_post_multiple_presentations() {
     assert_eq!(resp.status(), 200);
 
     let proof = get_proof(&db_conn, &proof.id).await;
-    assert_eq!(
-        proof.state.unwrap().first().unwrap().state,
-        ProofStateEnum::Accepted
-    );
+    assert_eq!(proof.state, ProofStateEnum::Accepted);
 
     let expected_claims: BTreeSet<String> = proof_input_schemas
         .into_iter()
@@ -732,10 +723,7 @@ async fn test_direct_post_wrong_claim_format() {
     assert_eq!(status_code, 400);
 
     let proof = get_proof(&db_conn, &proof.id).await;
-    assert_eq!(
-        proof.state.unwrap().first().unwrap().state,
-        ProofStateEnum::Error
-    );
+    assert_eq!(proof.state, ProofStateEnum::Error);
     let claims = proof.claims.unwrap();
     assert!(claims.is_empty());
 }

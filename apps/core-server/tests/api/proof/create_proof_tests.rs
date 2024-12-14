@@ -288,6 +288,5 @@ async fn test_create_proof_scan_to_verify_invalid_credential() {
 
     let proof = db.proofs.get(&resp["id"].parse()).await;
     assert_eq!(proof.exchange, "SCAN_TO_VERIFY");
-    let state = proof.state.unwrap().first().unwrap().to_owned();
-    assert_eq!(state.state, ProofStateEnum::Error);
+    assert_eq!(proof.state, ProofStateEnum::Error);
 }

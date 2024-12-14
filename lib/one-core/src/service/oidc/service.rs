@@ -33,7 +33,7 @@ use crate::model::did::DidRelations;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
+use crate::model::proof::{Proof, ProofRelations, ProofStateEnum};
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
@@ -121,7 +121,6 @@ impl OIDCService {
             .get_proof(
                 &id,
                 &ProofRelations {
-                    state: Some(Default::default()),
                     interaction: Some(Default::default()),
                     verifier_did: Some(DidRelations {
                         keys: Some(KeyRelations::default()),
@@ -220,7 +219,6 @@ impl OIDCService {
             .get_proof(
                 &id,
                 &ProofRelations {
-                    state: Some(Default::default()),
                     interaction: Some(Default::default()),
                     verifier_did: Some(DidRelations {
                         keys: Some(KeyRelations::default()),
@@ -352,7 +350,6 @@ impl OIDCService {
             .get_proof(
                 &id,
                 &ProofRelations {
-                    state: Some(Default::default()),
                     verifier_did: Some(DidRelations {
                         keys: Some(KeyRelations::default()),
                         ..Default::default()
@@ -751,7 +748,6 @@ impl OIDCService {
                         }),
                     }),
                     interaction: Some(InteractionRelations::default()),
-                    state: Some(ProofStateRelations::default()),
                     ..Default::default()
                 },
             )
@@ -852,7 +848,6 @@ impl OIDCService {
                         }),
                     }),
                     interaction: Some(InteractionRelations::default()),
-                    state: Some(ProofStateRelations::default()),
                     verifier_key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
@@ -962,16 +957,8 @@ impl OIDCService {
                     .set_proof_claims(&proof.id, convert_inner(accept_proof_result.proved_claims))
                     .await?;
 
-                let now = OffsetDateTime::now_utc();
                 self.proof_repository
-                    .set_proof_state(
-                        &proof.id,
-                        ProofState {
-                            created_date: now,
-                            last_modified: now,
-                            state: ProofStateEnum::Accepted,
-                        },
-                    )
+                    .set_proof_state(&proof.id, ProofStateEnum::Accepted)
                     .await?;
 
                 Ok(response)
@@ -1002,7 +989,6 @@ impl OIDCService {
                         }),
                         ..Default::default()
                     }),
-                    state: Some(ProofStateRelations::default()),
                     ..Default::default()
                 },
             )
@@ -1025,16 +1011,8 @@ impl OIDCService {
     }
 
     async fn mark_proof_as_failed(&self, id: &ProofId) -> Result<(), ServiceError> {
-        let now = OffsetDateTime::now_utc();
         self.proof_repository
-            .set_proof_state(
-                id,
-                ProofState {
-                    created_date: now,
-                    last_modified: now,
-                    state: ProofStateEnum::Error,
-                },
-            )
+            .set_proof_state(id, ProofStateEnum::Error)
             .await
             .map_err(ServiceError::from)
     }

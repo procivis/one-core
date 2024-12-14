@@ -79,6 +79,7 @@ pub enum SortableHistoryColumn {
 pub enum HistoryFilterValue {
     EntityTypes(Vec<HistoryEntityType>),
     EntityId(EntityId),
+    EntityIds(Vec<EntityId>),
     Action(HistoryAction),
     CreatedDate(ValueComparison<OffsetDateTime>),
     DidId(DidId),

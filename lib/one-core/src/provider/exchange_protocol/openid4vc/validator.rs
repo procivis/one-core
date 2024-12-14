@@ -32,21 +32,13 @@ use crate::provider::revocation::model::{
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::util::key_verification::KeyVerification;
 
-pub fn throw_if_latest_proof_state_not_eq(
+pub fn throw_if_proof_state_not_eq(
     proof: &Proof,
     state: ProofStateEnum,
 ) -> Result<(), OpenID4VCError> {
-    let latest_state = proof
-        .state
-        .as_ref()
-        .ok_or(OpenID4VCError::MappingError("state is None".to_string()))?
-        .first()
-        .ok_or(OpenID4VCError::MappingError("state is missing".to_string()))?
-        .to_owned();
-
-    if latest_state.state != state {
+    if proof.state != state {
         return Err(OpenID4VCError::InvalidProofState {
-            state: latest_state.state,
+            state: proof.state.clone(),
         });
     }
     Ok(())

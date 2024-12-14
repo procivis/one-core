@@ -18,7 +18,7 @@ use crate::entity::credential_schema::{CredentialSchemaType, LayoutType, WalletS
 use crate::entity::did::DidType;
 use crate::entity::history::{self, HistoryAction, HistoryEntityType};
 use crate::entity::key_did::KeyRole;
-use crate::entity::proof_state::{self, ProofRequestState};
+use crate::entity::proof::ProofRequestState;
 use crate::entity::{
     claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
     credential_state, did, interaction, key, key_did, organisation, proof, proof_claim,
@@ -193,6 +193,9 @@ pub async fn insert_proof_request_to_database(
         exchange: Set("OPENID4VC".to_string()),
         transport: Set("HTTP".to_string()),
         redirect_uri: Set(None),
+        state: Set(ProofRequestState::Created),
+        requested_date: Set(None),
+        completed_date: Set(None),
         verifier_did_id: Set(Some(verifier_did_id)),
         holder_did_id: Set(holder_did_id),
         proof_schema_id: Set(Some(*proof_schema_id)),
@@ -202,22 +205,6 @@ pub async fn insert_proof_request_to_database(
     .insert(database)
     .await?;
     Ok(proof.id)
-}
-
-pub async fn insert_proof_state_to_database(
-    database: &DatabaseConnection,
-    proof_id: &ProofId,
-    state: ProofRequestState,
-) -> Result<(), DbErr> {
-    proof_state::ActiveModel {
-        proof_id: Set(*proof_id),
-        created_date: Set(get_dummy_date()),
-        last_modified: Set(get_dummy_date()),
-        state: Set(state),
-    }
-    .insert(database)
-    .await?;
-    Ok(())
 }
 
 pub struct ClaimInsertInfo<'a> {

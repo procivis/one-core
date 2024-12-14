@@ -232,12 +232,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
     assert_eq!(resp.status(), 204);
 
     let proof = fixtures::get_proof(&db_conn, &proof.id).await;
-    assert!(proof
-        .state
-        .as_ref()
-        .unwrap()
-        .iter()
-        .any(|p| p.state == ProofStateEnum::Accepted));
+    assert_eq!(proof.state, ProofStateEnum::Accepted);
     assert!(proof
         .claims
         .as_ref()
@@ -475,12 +470,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     assert_eq!(resp.status(), 204);
 
     let proof = fixtures::get_proof(&db_conn, &proof.id).await;
-    assert!(proof
-        .state
-        .as_ref()
-        .unwrap()
-        .iter()
-        .any(|p| p.state == ProofStateEnum::Accepted));
+    assert_eq!(proof.state, ProofStateEnum::Accepted);
     assert!(proof
         .claims
         .as_ref()

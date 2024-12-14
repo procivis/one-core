@@ -1,5 +1,4 @@
 use shared_types::ProofId;
-use time::OffsetDateTime;
 
 use super::dto::ScanToVerifyRequestDTO;
 use super::mapper::proof_for_scan_to_verify;
@@ -9,7 +8,7 @@ use crate::config::validator::transport::get_first_available_transport_type;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchemaClaim;
-use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::exchange_protocol::provider::ExchangeProtocol;
 use crate::provider::revocation::model::{
@@ -49,8 +48,6 @@ impl ProofService {
             .validate_scan_to_verify_proof(&*exchange_protocol, &proof, &submission_data)
             .await;
 
-        let now = OffsetDateTime::now_utc();
-
         match result {
             Ok(claims) => {
                 self.proof_repository
@@ -58,26 +55,12 @@ impl ProofService {
                     .await?;
 
                 self.proof_repository
-                    .set_proof_state(
-                        &proof.id,
-                        ProofState {
-                            created_date: now,
-                            last_modified: now,
-                            state: ProofStateEnum::Accepted,
-                        },
-                    )
+                    .set_proof_state(&proof.id, ProofStateEnum::Accepted)
                     .await?;
             }
             Err(_) => {
                 self.proof_repository
-                    .set_proof_state(
-                        &proof.id,
-                        ProofState {
-                            created_date: now,
-                            last_modified: now,
-                            state: ProofStateEnum::Error,
-                        },
-                    )
+                    .set_proof_state(&proof.id, ProofStateEnum::Error)
                     .await?;
             }
         }

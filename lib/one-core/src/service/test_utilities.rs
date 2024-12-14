@@ -21,7 +21,7 @@ use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
@@ -273,7 +273,9 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
         exchange: protocol.to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
-        state: None,
+        state: ProofStateEnum::Created,
+        requested_date: None,
+        completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),

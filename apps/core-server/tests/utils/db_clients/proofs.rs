@@ -8,8 +8,7 @@ use one_core::model::interaction::Interaction;
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::OrganisationRelations;
 use one_core::model::proof::{
-    Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum,
-    ProofStateRelations,
+    Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofStateEnum,
 };
 use one_core::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -40,6 +39,20 @@ impl ProofsDB {
         interaction: Option<&Interaction>,
         verifier_key: Key,
     ) -> Proof {
+        let requested_date = match state {
+            ProofStateEnum::Pending
+            | ProofStateEnum::Requested
+            | ProofStateEnum::Accepted
+            | ProofStateEnum::Rejected
+            | ProofStateEnum::Error => Some(get_dummy_date()),
+            _ => None,
+        };
+
+        let completed_date = match state {
+            ProofStateEnum::Accepted | ProofStateEnum::Rejected => Some(get_dummy_date()),
+            _ => None,
+        };
+
         let proof = Proof {
             id: id.unwrap_or_else(|| Uuid::new_v4().into()),
             created_date: get_dummy_date(),
@@ -48,11 +61,9 @@ impl ProofsDB {
             exchange: exchange.to_owned(),
             transport: "HTTP".to_string(),
             redirect_uri: None,
-            state: Some(vec![ProofState {
-                state,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            }]),
+            state,
+            requested_date,
+            completed_date,
             claims: Some(vec![ProofClaim {
                 claim: Claim {
                     id: Default::default(),
@@ -86,7 +97,6 @@ impl ProofsDB {
             .get_proof(
                 proof_id,
                 &ProofRelations {
-                    state: Some(ProofStateRelations {}),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
                             schema: Some(ClaimSchemaRelations::default()),

@@ -15,9 +15,7 @@ use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
-use one_core::model::proof::{
-    Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
-};
+use one_core::model::proof::{Proof, ProofClaimRelations, ProofRelations, ProofStateEnum};
 use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -659,6 +657,20 @@ pub async fn create_proof(
 ) -> Proof {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
+    let requested_date = match state {
+        ProofStateEnum::Pending
+        | ProofStateEnum::Requested
+        | ProofStateEnum::Accepted
+        | ProofStateEnum::Rejected
+        | ProofStateEnum::Error => Some(OffsetDateTime::now_utc()),
+        _ => None,
+    };
+
+    let completed_date = match state {
+        ProofStateEnum::Accepted | ProofStateEnum::Rejected => Some(OffsetDateTime::now_utc()),
+        _ => None,
+    };
+
     let proof = Proof {
         id: Uuid::new_v4().into(),
         created_date: get_dummy_date(),
@@ -667,11 +679,9 @@ pub async fn create_proof(
         exchange: exchange.to_owned(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
-        state: Some(vec![ProofState {
-            state,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-        }]),
+        state,
+        requested_date,
+        completed_date,
         claims: None,
         schema: proof_schema.cloned(),
         verifier_did: Some(verifier_did.to_owned()),
@@ -696,7 +706,6 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
         .get_proof(
             proof_id,
             &ProofRelations {
-                state: Some(ProofStateRelations {}),
                 claims: Some(ProofClaimRelations {
                     claim: ClaimRelations {
                         schema: Some(ClaimSchemaRelations {}),

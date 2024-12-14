@@ -84,16 +84,9 @@ impl Task for RetainProofCheck {
                     .clone()
                     .ok_or_else(|| ServiceError::MappingError("schema is None".into()))?;
 
-                let completed_date = proof
-                    .state
-                    .clone()
-                    .ok_or_else(|| ServiceError::MappingError("state is None".into()))?
-                    .iter()
-                    .find(|state| state.state == ProofStateEnum::Accepted)
-                    .map(|state| state.created_date)
-                    .ok_or_else(|| ServiceError::MappingError("completed_date is None".into()))?;
-
-                if completed_date + Duration::from_secs(schema.expire_duration as _) > now {
+                if proof.completed_date.is_some_and(|value| {
+                    value + Duration::from_secs(schema.expire_duration as _) > now
+                }) {
                     continue;
                 }
 

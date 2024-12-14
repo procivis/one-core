@@ -20,7 +20,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, Presentation,
@@ -1254,11 +1254,9 @@ async fn test_oidc_verifier_presentation_definition_success() {
                     exchange: "OPENID4VC".to_string(),
                     transport: "HTTP".to_string(),
                     redirect_uri: None,
-                    state: Some(vec![ProofState {
-                        created_date: get_dummy_date(),
-                        last_modified: get_dummy_date(),
-                        state: ProofStateEnum::Pending,
-                    }]),
+                    state: ProofStateEnum::Pending,
+                    requested_date: Some(get_dummy_date()),
+                    completed_date: None,
                     schema: Some(ProofSchema {
                         id: Uuid::default().into(),
                         created_date: now,
@@ -1421,11 +1419,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                     did: holder_did_clone,
                     ..dummy_did()
                 }),
-                state: Some(vec![ProofState {
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    state: ProofStateEnum::Pending,
-                }]),
+                state: ProofStateEnum::Pending,
                 schema: Some(ProofSchema {
                     input_schemas: Some(vec![ProofInputSchema {
                         validity_constraint: None,
@@ -1679,11 +1673,9 @@ async fn test_get_client_metadata_success() {
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
-        state: Some(vec![ProofState {
-            created_date: now,
-            last_modified: now,
-            state: ProofStateEnum::Pending,
-        }]),
+        state: ProofStateEnum::Pending,
+        requested_date: Some(now),
+        completed_date: None,
         schema: None,
         claims: None,
         verifier_did: Some(Did {

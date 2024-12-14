@@ -15,7 +15,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
-use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
 use crate::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use crate::provider::credential_formatter::model::{CredentialSubject, DetailCredential};
@@ -67,18 +67,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
             Ok(Some(Proof {
                 id: proof_id,
                 exchange: protocol.to_string(),
-                state: Some(vec![
-                    ProofState {
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        state: ProofStateEnum::Requested,
-                    },
-                    ProofState {
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        state: ProofStateEnum::Created,
-                    },
-                ]),
+                state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
                     created_date: OffsetDateTime::now_utc(),
@@ -93,9 +82,9 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
 
     proof_repository
         .expect_set_proof_state()
-        .withf(move |_proof_id, _proof_state| {
-            assert_eq!(_proof_id, &proof_id);
-            assert_eq!(_proof_state.state, ProofStateEnum::Rejected);
+        .withf(move |actual_proof_id, actual_proof_state| {
+            assert_eq!(actual_proof_id, &proof_id);
+            assert_eq!(*actual_proof_state, ProofStateEnum::Rejected);
             true
         })
         .once()
@@ -151,18 +140,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
                 Ok(Some(Proof {
                     id: proof_id,
                     exchange: protocol.to_string(),
-                    state: Some(vec![
-                        ProofState {
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            state,
-                        },
-                        ProofState {
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            state: ProofStateEnum::Pending,
-                        },
-                    ]),
+                    state,
                     interaction: Some(Interaction {
                         id: interaction_id,
                         created_date: OffsetDateTime::now_utc(),
@@ -227,18 +205,7 @@ async fn test_submit_proof_succeeds() {
             Ok(Some(Proof {
                 id: proof_id,
                 exchange: protocol.to_string(),
-                state: Some(vec![
-                    ProofState {
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        state: ProofStateEnum::Requested,
-                    },
-                    ProofState {
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        state: ProofStateEnum::Created,
-                    },
-                ]),
+                state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
                     created_date: OffsetDateTime::now_utc(),
@@ -416,11 +383,7 @@ async fn test_submit_proof_repeating_claims() {
             Ok(Some(Proof {
                 id: proof_id,
                 exchange: protocol.to_string(),
-                state: Some(vec![ProofState {
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    state: ProofStateEnum::Requested,
-                }]),
+                state: ProofStateEnum::Requested,
                 interaction: Some(Interaction {
                     id: interaction_id,
                     created_date: OffsetDateTime::now_utc(),

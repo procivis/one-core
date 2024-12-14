@@ -1,10 +1,13 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::proof::ProofStateEnum;
+use sql_data_provider::test_utilities::get_dummy_date;
 use validator::ValidateLength;
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::field_match::FieldHelpers;
 
@@ -878,6 +881,21 @@ async fn test_get_proof_with_retain_date() {
         )
         .await;
 
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Accepted),
+                created_date: Some(get_dummy_date()),
+                entity_id: Some(proof.id.into()),
+                entity_type: Some(HistoryEntityType::Proof),
+                ..Default::default()
+            },
+        )
+        .await;
+
     // WHEN
     let resp = context.api.proofs.get(proof.id).await;
 
@@ -972,6 +990,21 @@ async fn test_get_proof_with_deleted_claims() {
         .db
         .proofs
         .set_proof_claims(&proof.id, credential.claims.unwrap())
+        .await;
+
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Accepted),
+                created_date: Some(get_dummy_date()),
+                entity_id: Some(proof.id.into()),
+                entity_type: Some(HistoryEntityType::Proof),
+                ..Default::default()
+            },
+        )
         .await;
 
     let resp = context.api.tasks.run("RETAIN_PROOF_CHECK").await;

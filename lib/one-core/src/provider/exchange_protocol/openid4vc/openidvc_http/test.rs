@@ -29,7 +29,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -308,7 +308,9 @@ async fn test_share_proof() {
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
-        state: None,
+        state: ProofStateEnum::Created,
+        requested_date: None,
+        completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
@@ -441,7 +443,9 @@ async fn test_share_proof_with_use_request_uri() {
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
-        state: None,
+        state: ProofStateEnum::Created,
+        requested_date: None,
+        completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),

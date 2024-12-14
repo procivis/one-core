@@ -83,11 +83,6 @@ async fn test_retract_existing_proof_for_http_transport() {
 
     let proof = context.db.proofs.get(&proof.id).await;
 
-    assert_eq!(
-        // newer come first in order
-        vec![ProofStateEnum::Created, ProofStateEnum::Pending],
-        Vec::from_iter(proof.state.unwrap().into_iter().map(|s| s.state))
-    );
-
+    assert_eq!(proof.state, ProofStateEnum::Created);
     assert!(context.db.interactions.get(interaction_id).await.is_none());
 }

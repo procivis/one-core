@@ -3391,8 +3391,10 @@ version = "0.1.0"
 dependencies = [
  "sea-orm",
  "sea-orm-migration",
+ "shared-types",
  "time",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -5169,6 +5171,7 @@ dependencies = [
  "sea-query-derive",
  "serde_json",
  "time",
+ "uuid",
 ]
 
 [[package]]
@@ -5181,6 +5184,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "time",
+ "uuid",
 ]
 
 [[package]]
@@ -5834,6 +5838,7 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "url",
+ "uuid",
  "webpki-roots 0.26.6",
 ]
 
@@ -5916,6 +5921,7 @@ dependencies = [
  "thiserror 1.0.68",
  "time",
  "tracing",
+ "uuid",
  "whoami",
 ]
 
@@ -5955,6 +5961,7 @@ dependencies = [
  "thiserror 1.0.68",
  "time",
  "tracing",
+ "uuid",
  "whoami",
 ]
 
@@ -5980,6 +5987,7 @@ dependencies = [
  "time",
  "tracing",
  "url",
+ "uuid",
 ]
 
 [[package]]

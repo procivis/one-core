@@ -21,7 +21,7 @@ use uuid::Uuid;
 use super::mapper::{
     create_credential, create_open_id_for_vp_presentation_definition,
     create_open_id_for_vp_sharing_url_encoded, get_credential_offer_url,
-    map_offered_claims_to_credential_schema, proof_from_handle_invitation,
+    map_offered_claims_to_credential_schema,
 };
 use super::model::{
     ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO, JwePayload,
@@ -47,7 +47,7 @@ use crate::model::did::{Did, DidType, KeyRole};
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
 };
@@ -57,7 +57,9 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
 use crate::provider::exchange_protocol::error::TxCodeError;
 use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
-use crate::provider::exchange_protocol::mapper::interaction_from_handle_invitation;
+use crate::provider::exchange_protocol::mapper::{
+    interaction_from_handle_invitation, proof_from_handle_invitation,
+};
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCICredentialOfferClaimValue;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -1202,6 +1204,7 @@ async fn handle_proof_invitation(
         now,
         None,
         "HTTP",
+        ProofStateEnum::Requested,
     );
 
     Ok(InvitationResponseDTO::ProofRequest {

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 
 use anyhow::anyhow;
@@ -7,13 +6,11 @@ use one_core::model::claim::{Claim, ClaimId};
 use one_core::model::did::Did;
 use one_core::model::interaction::InteractionId;
 use one_core::model::proof::{
-    GetProofList, GetProofQuery, Proof, ProofClaim, ProofRelations, ProofState, UpdateProofRequest,
+    GetProofList, GetProofQuery, Proof, ProofClaim, ProofRelations, ProofStateEnum,
+    UpdateProofRequest,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::proof_repository::ProofRepository;
-use one_dto_mapper::convert_inner;
-use sea_orm::sea_query::expr::Expr;
-use sea_orm::sea_query::{Alias, IntoCondition, Query};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
@@ -22,12 +19,11 @@ use shared_types::ProofId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::mapper::{
-    create_list_response, get_proof_claim_active_model, get_proof_state_active_model,
-};
+use super::mapper::{create_list_response, get_proof_claim_active_model};
 use super::model::ProofListItemModel;
 use super::ProofProvider;
-use crate::entity::{did, proof, proof_claim, proof_schema, proof_state};
+use crate::entity::proof::ProofRequestState;
+use crate::entity::{did, proof, proof_claim, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
 
 #[autometrics]
@@ -42,12 +38,6 @@ impl ProofRepository for ProofProvider {
                 Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
                 Some(_) | None => DataLayerError::Db(e.into()),
             })?;
-
-        if let Some(states) = request.state {
-            for state in states {
-                self.set_proof_state(&request.id, state).await?;
-            }
-        }
 
         Ok(request.id)
     }
@@ -124,56 +114,24 @@ impl ProofRepository for ProofProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        // collect all states
-        let proof_ids: Vec<String> = proofs.iter().map(|p| p.id.to_string()).collect();
-
-        let proof_states = crate::entity::proof_state::Entity::find()
-            .filter(proof_state::Column::ProofId.is_in(proof_ids))
-            .order_by_desc(proof_state::Column::CreatedDate)
-            .all(&self.db)
-            .await
-            .map_err(|e| {
-                tracing::error!(
-                    "Error while fetching proof states. Error: {}",
-                    e.to_string()
-                );
-                DataLayerError::Db(e.into())
-            })?;
-
-        let mut proof_states_map: HashMap<ProofId, Vec<ProofState>> = HashMap::new();
-        for proof_state in proof_states {
-            let proof_id = proof_state.proof_id;
-            proof_states_map
-                .entry(proof_id)
-                .or_default()
-                .push(proof_state.into());
-        }
-
-        create_list_response(
-            proofs,
-            proof_states_map,
-            limit.unwrap_or(items_count),
-            items_count,
-        )
+        create_list_response(proofs, limit.unwrap_or(items_count), items_count)
     }
 
     async fn set_proof_state(
         &self,
         proof_id: &ProofId,
-        state: ProofState,
+        state: ProofStateEnum,
     ) -> Result<(), DataLayerError> {
-        let update_model = proof::ActiveModel {
+        let now = OffsetDateTime::now_utc();
+
+        let model = proof::ActiveModel {
             id: Unchanged(*proof_id),
-            last_modified: Set(state.last_modified),
+            last_modified: Set(now),
+            state: Set(state.into()),
             ..Default::default()
         };
 
-        proof_state::Entity::insert(get_proof_state_active_model(proof_id, state))
-            .exec(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        update_model.update(&self.db).await.map_err(|e| match e {
+        model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
             _ => DataLayerError::Db(e.into()),
         })?;
@@ -261,6 +219,21 @@ impl ProofRepository for ProofProvider {
             Some(transport) => Set(transport),
         };
 
+        let state = match proof.state {
+            None => Unchanged(ProofRequestState::Created),
+            Some(state) => Set(state.into()),
+        };
+
+        let requested_date = match proof.requested_date {
+            None => Unchanged(Default::default()),
+            Some(datetime) => Set(datetime),
+        };
+
+        let completed_date = match proof.completed_date {
+            None => Unchanged(Default::default()),
+            Some(datetime) => Set(datetime),
+        };
+
         let update_model = proof::ActiveModel {
             id: Unchanged(*proof_id),
             last_modified: Set(OffsetDateTime::now_utc()),
@@ -269,15 +242,11 @@ impl ProofRepository for ProofProvider {
             interaction_id,
             redirect_uri,
             transport,
+            state,
+            requested_date,
+            completed_date,
             ..Default::default()
         };
-
-        if let Some(state) = proof.state {
-            proof_state::Entity::insert(get_proof_state_active_model(proof_id, state))
-                .exec(&self.db)
-                .await
-                .map_err(|e| DataLayerError::Db(e.into()))?;
-        }
 
         update_model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
@@ -298,6 +267,9 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
             proof::Column::LastModified,
             proof::Column::IssuanceDate,
             proof::Column::RedirectUri,
+            proof::Column::State,
+            proof::Column::RequestedDate,
+            proof::Column::CompletedDate,
         ])
         .column_as(proof::Column::Exchange, "exchange")
         .column_as(proof::Column::Transport, "transport")
@@ -333,31 +305,6 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
         .column_as(
             proof_schema::Column::OrganisationId,
             "schema_organisation_id",
-        )
-        // find most recent state (to enable sorting)
-        .join(
-            sea_orm::JoinType::InnerJoin,
-            proof::Relation::ProofState.def(),
-        )
-        .filter(
-            proof_state::Column::CreatedDate
-                .in_subquery(
-                    Query::select()
-                        .expr(
-                            Expr::col((
-                                Alias::new("inner_state"),
-                                proof_state::Column::CreatedDate,
-                            ))
-                            .max(),
-                        )
-                        .from_as(proof_state::Entity, Alias::new("inner_state"))
-                        .cond_where(
-                            Expr::col((Alias::new("inner_state"), proof_state::Column::ProofId))
-                                .equals((proof_state::Entity, proof_state::Column::ProofId)),
-                        )
-                        .to_owned(),
-                )
-                .into_condition(),
         )
         .with_list_query(query_params)
         // fallback ordering
@@ -452,24 +399,6 @@ impl ProofProvider {
                     )))?;
                 proof.holder_did = Some(holder_did_id);
             }
-        }
-
-        if let Some(_state_relations) = &relations.state {
-            let proof_states = crate::entity::proof_state::Entity::find()
-                .filter(proof_state::Column::ProofId.eq(proof_model.id))
-                .order_by_desc(proof_state::Column::CreatedDate)
-                .all(&self.db)
-                .await
-                .map_err(|e| {
-                    tracing::error!(
-                        "Error while fetching proof {} state. Error: {}",
-                        proof_model.id,
-                        e.to_string()
-                    );
-                    DataLayerError::Db(e.into())
-                })?;
-
-            proof.state = Some(convert_inner(proof_states));
         }
 
         if let (Some(interaction_relations), Some(interaction_id)) =

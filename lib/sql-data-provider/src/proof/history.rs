@@ -7,8 +7,7 @@ use one_core::model::history::{History, HistoryAction, HistoryEntityType};
 use one_core::model::interaction::{InteractionId, InteractionRelations};
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{
-    GetProofList, GetProofQuery, Proof, ProofRelations, ProofState, ProofStateEnum,
-    UpdateProofRequest,
+    GetProofList, GetProofQuery, Proof, ProofRelations, ProofStateEnum, UpdateProofRequest,
 };
 use one_core::model::proof_schema::ProofSchemaRelations;
 use one_core::repository::error::DataLayerError;
@@ -105,11 +104,11 @@ impl ProofRepository for ProofHistoryDecorator {
     async fn set_proof_state(
         &self,
         proof_id: &ProofId,
-        state: ProofState,
+        state: ProofStateEnum,
     ) -> Result<(), DataLayerError> {
         self.inner.set_proof_state(proof_id, state.clone()).await?;
 
-        let action = match state.state {
+        let action = match state {
             ProofStateEnum::Created => HistoryAction::Created,
             ProofStateEnum::Pending => HistoryAction::Pending,
             ProofStateEnum::Requested => HistoryAction::Requested,
@@ -124,7 +123,7 @@ impl ProofRepository for ProofHistoryDecorator {
             .history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
-                created_date: state.created_date,
+                created_date: OffsetDateTime::now_utc(),
                 action,
                 entity_id: Some((*proof_id).into()),
                 entity_type: HistoryEntityType::Proof,

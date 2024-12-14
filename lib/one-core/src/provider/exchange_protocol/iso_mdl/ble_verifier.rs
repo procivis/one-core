@@ -14,7 +14,7 @@ use super::common::{
 use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::common_mapper::{encode_cbor_base64, NESTED_CLAIM_MARKER};
-use crate::model::proof::{Proof, ProofState, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
@@ -133,7 +133,14 @@ pub(crate) async fn start_client(
             {
                 tracing::info!("mDL verifier failure: {error:#?}");
                 let _ = proof_repository
-                    .update_proof(&proof.id, update_proof_request(ProofStateEnum::Error))
+                    .update_proof(
+                        &proof.id,
+                        update_proof_request(
+                            ProofStateEnum::Error,
+                            None,
+                            Some(Some(OffsetDateTime::now_utc())),
+                        ),
+                    )
                     .await;
                 // TODO: log error?
             }
@@ -149,7 +156,14 @@ pub(crate) async fn start_client(
             }
 
             let _ = proof_repository_clone
-                .update_proof(&proof_id, update_proof_request(ProofStateEnum::Error))
+                .update_proof(
+                    &proof_id,
+                    update_proof_request(
+                        ProofStateEnum::Error,
+                        None,
+                        Some(Some(OffsetDateTime::now_utc())),
+                    ),
+                )
                 .await;
         },
         OnConflict::ReplaceIfSameFlow,
@@ -234,7 +248,14 @@ async fn process_proof(
     .await?;
 
     proof_repository
-        .update_proof(&proof.id, update_proof_request(ProofStateEnum::Requested))
+        .update_proof(
+            &proof.id,
+            update_proof_request(
+                ProofStateEnum::Requested,
+                Some(Some(OffsetDateTime::now_utc())),
+                None,
+            ),
+        )
         .await?;
 
     let session_data = read_response(
@@ -298,7 +319,10 @@ async fn process_proof(
     }
 
     proof_repository
-        .update_proof(&proof.id, update_proof_request(new_state))
+        .update_proof(
+            &proof.id,
+            update_proof_request(new_state, None, Some(Some(OffsetDateTime::now_utc()))),
+        )
         .await?;
 
     Ok::<_, anyhow::Error>(())
@@ -378,14 +402,15 @@ async fn fill_proof_claims_and_credentials(
     Ok(())
 }
 
-fn update_proof_request(new_state: ProofStateEnum) -> UpdateProofRequest {
-    let now = OffsetDateTime::now_utc();
+fn update_proof_request(
+    new_state: ProofStateEnum,
+    requested_date: Option<Option<OffsetDateTime>>,
+    completed_date: Option<Option<OffsetDateTime>>,
+) -> UpdateProofRequest {
     UpdateProofRequest {
-        state: Some(ProofState {
-            created_date: now,
-            last_modified: now,
-            state: new_state,
-        }),
+        state: Some(new_state),
+        requested_date,
+        completed_date,
         ..Default::default()
     }
 }

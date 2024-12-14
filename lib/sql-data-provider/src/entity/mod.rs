@@ -17,7 +17,6 @@ pub mod proof_claim;
 pub mod proof_input_claim_schema;
 pub mod proof_input_schema;
 pub mod proof_schema;
-pub mod proof_state;
 pub mod remote_entity_cache;
 pub mod revocation_list;
 pub mod trust_anchor;

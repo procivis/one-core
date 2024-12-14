@@ -26,8 +26,7 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{
-    GetProofList, Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofState,
-    ProofStateEnum, ProofStateRelations,
+    GetProofList, Proof, ProofClaim, ProofClaimRelations, ProofRelations, ProofStateEnum,
 };
 use crate::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
@@ -116,6 +115,20 @@ fn setup_service(repositories: Repositories) -> ProofService {
 }
 
 fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proof {
+    let requested_date = match state {
+        ProofStateEnum::Pending
+        | ProofStateEnum::Requested
+        | ProofStateEnum::Accepted
+        | ProofStateEnum::Rejected
+        | ProofStateEnum::Error => Some(OffsetDateTime::now_utc()),
+        _ => None,
+    };
+
+    let completed_date = match state {
+        ProofStateEnum::Accepted | ProofStateEnum::Rejected => Some(OffsetDateTime::now_utc()),
+        _ => None,
+    };
+
     Proof {
         id: proof_id.to_owned(),
         created_date: OffsetDateTime::now_utc(),
@@ -124,11 +137,9 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
-        state: Some(vec![ProofState {
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            state,
-        }]),
+        state,
+        requested_date,
+        completed_date,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
@@ -218,12 +229,10 @@ async fn test_get_presentation_definition_holder_did_not_local() {
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
-        state: Some(vec![ProofState {
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            state: ProofStateEnum::Pending,
-        }]),
+        state: ProofStateEnum::Pending,
         redirect_uri: None,
+        requested_date: Some(OffsetDateTime::now_utc()),
+        completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
@@ -336,12 +345,10 @@ async fn test_get_proof_exists() {
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
-        state: Some(vec![ProofState {
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            state: ProofStateEnum::Created,
-        }]),
+        state: ProofStateEnum::Created,
         redirect_uri: None,
+        requested_date: None,
+        completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             imported_source_url: Some("CORE_URL".to_string()),
@@ -433,7 +440,6 @@ async fn test_get_proof_exists() {
                             }),
                         }),
                     }),
-                    state: Some(ProofStateRelations::default()),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
                             schema: Some(Default::default()),
@@ -579,12 +585,10 @@ async fn test_get_proof_with_array_holder() {
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
-        state: Some(vec![ProofState {
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            state: ProofStateEnum::Created,
-        }]),
+        state: ProofStateEnum::Created,
         redirect_uri: None,
+        requested_date: None,
+        completed_date: None,
         schema: None,
         claims: Some(
             credential
@@ -630,7 +634,6 @@ async fn test_get_proof_with_array_holder() {
                             }),
                         }),
                     }),
-                    state: Some(ProofStateRelations::default()),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
                             schema: Some(Default::default()),
@@ -803,12 +806,10 @@ async fn test_get_proof_with_array_in_object_holder() {
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
-        state: Some(vec![ProofState {
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            state: ProofStateEnum::Created,
-        }]),
+        state: ProofStateEnum::Created,
         redirect_uri: None,
+        requested_date: None,
+        completed_date: None,
         schema: None,
         claims: Some(
             credential
@@ -854,7 +855,6 @@ async fn test_get_proof_with_array_in_object_holder() {
                             }),
                         }),
                     }),
-                    state: Some(ProofStateRelations::default()),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
                             schema: Some(Default::default()),
@@ -1032,12 +1032,10 @@ async fn test_get_proof_with_object_array_holder() {
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
-        state: Some(vec![ProofState {
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            state: ProofStateEnum::Created,
-        }]),
+        state: ProofStateEnum::Created,
         redirect_uri: None,
+        requested_date: None,
+        completed_date: None,
         schema: None,
         claims: Some(
             credential
@@ -1083,7 +1081,6 @@ async fn test_get_proof_with_object_array_holder() {
                             }),
                         }),
                     }),
-                    state: Some(ProofStateRelations::default()),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
                             schema: Some(Default::default()),
@@ -1243,12 +1240,10 @@ async fn test_get_proof_with_array() {
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
-        state: Some(vec![ProofState {
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            state: ProofStateEnum::Created,
-        }]),
+        state: ProofStateEnum::Created,
         redirect_uri: None,
+        requested_date: None,
+        completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             imported_source_url: Some("CORE_URL".to_string()),
@@ -1312,7 +1307,6 @@ async fn test_get_proof_with_array() {
                             }),
                         }),
                     }),
-                    state: Some(ProofStateRelations::default()),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
                             schema: Some(Default::default()),
@@ -1485,12 +1479,10 @@ async fn test_get_proof_with_array_in_object() {
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
-        state: Some(vec![ProofState {
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            state: ProofStateEnum::Created,
-        }]),
+        state: ProofStateEnum::Created,
         redirect_uri: None,
+        requested_date: None,
+        completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             imported_source_url: Some("CORE_URL".to_string()),
@@ -1554,7 +1546,6 @@ async fn test_get_proof_with_array_in_object() {
                             }),
                         }),
                     }),
-                    state: Some(ProofStateRelations::default()),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
                             schema: Some(Default::default()),
@@ -1733,12 +1724,10 @@ async fn test_get_proof_with_object_array() {
         issuance_date: OffsetDateTime::now_utc(),
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
-        state: Some(vec![ProofState {
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            state: ProofStateEnum::Created,
-        }]),
+        state: ProofStateEnum::Created,
         redirect_uri: None,
+        requested_date: None,
+        completed_date: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4().into(),
             imported_source_url: Some("CORE_URL".to_string()),
@@ -1802,7 +1791,6 @@ async fn test_get_proof_with_object_array() {
                             }),
                         }),
                     }),
-                    state: Some(ProofStateRelations::default()),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
                             schema: Some(Default::default()),
@@ -1907,6 +1895,7 @@ async fn test_get_proof_missing() {
 #[tokio::test]
 async fn test_get_proof_list_success() {
     let mut proof_repository = MockProofRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
 
     let proof = Proof {
         id: Uuid::new_v4().into(),
@@ -1916,11 +1905,9 @@ async fn test_get_proof_list_success() {
         exchange: "OPENID4VC".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
-        state: Some(vec![ProofState {
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            state: ProofStateEnum::Created,
-        }]),
+        state: ProofStateEnum::Created,
+        requested_date: None,
+        completed_date: None,
         schema: Some(ProofSchema {
             imported_source_url: Some("CORE_URL".to_string()),
             id: Uuid::new_v4().into(),
@@ -1961,9 +1948,19 @@ async fn test_get_proof_list_success() {
                     total_items: 1,
                 })
             });
+        history_repository
+            .expect_get_history_list()
+            .return_once(move |_| {
+                Ok(GetHistoryList {
+                    values: vec![],
+                    total_pages: 0,
+                    total_items: 0,
+                })
+            });
     }
 
     let service = setup_service(Repositories {
+        history_repository,
         proof_repository,
         config: generic_config().core,
         ..Default::default()
@@ -2736,7 +2733,7 @@ async fn test_share_proof_created_success() {
         .expect_set_proof_state()
         .once()
         .in_sequence(&mut seq)
-        .withf(move |id, state| id == &proof_id && state.state == ProofStateEnum::Pending)
+        .withf(move |id, state| id == &proof_id && *state == ProofStateEnum::Pending)
         .returning(|_, _| Ok(()));
 
     let mut interaction_repository = MockInteractionRepository::new();
@@ -2943,7 +2940,6 @@ async fn test_retract_proof_ok_for_allowed_state(
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        state: Some(ProofStateRelations::default()),
                         interaction: Some(InteractionRelations::default()),
                         ..Default::default()
                     }
@@ -2958,7 +2954,7 @@ async fn test_retract_proof_ok_for_allowed_state(
         .once()
         .withf(|_, update_proof| {
             update_proof.interaction == Some(None)
-                && update_proof.state.as_ref().unwrap().state == ProofStateEnum::Created
+                && *update_proof.state.as_ref().unwrap() == ProofStateEnum::Created
         })
         .returning(move |_, _| Ok(()));
 
@@ -3018,7 +3014,6 @@ async fn test_retract_proof_fails_for_invalid_state(
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        state: Some(ProofStateRelations::default()),
                         interaction: Some(InteractionRelations::default()),
                         ..Default::default()
                     }
@@ -3109,7 +3104,6 @@ async fn test_retract_proof_with_bluetooth_ok() {
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        state: Some(ProofStateRelations::default()),
                         interaction: Some(InteractionRelations::default()),
                         ..Default::default()
                     }
@@ -3124,7 +3118,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         .once()
         .withf(|_, update_proof| {
             update_proof.interaction == Some(None)
-                && update_proof.state.as_ref().unwrap().state == ProofStateEnum::Created
+                && *update_proof.state.as_ref().unwrap() == ProofStateEnum::Created
         })
         .returning(move |_, _| Ok(()));
 

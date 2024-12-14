@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use super::ProofService;
 use crate::config::core_config::TransportType;
-use crate::model::proof::{self, Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::exchange_protocol::iso_mdl::ble_verifier::{
     setup_verifier_session, start_client,
@@ -52,11 +52,9 @@ impl ProofService {
             issuance_date: now,
             exchange: exchange.to_owned(),
             redirect_uri: None,
-            state: Some(vec![proof::ProofState {
-                created_date: now,
-                last_modified: now,
-                state: ProofStateEnum::Pending,
-            }]),
+            state: ProofStateEnum::Pending,
+            requested_date: Some(now),
+            completed_date: None,
             schema: Some(schema),
             transport: transport.to_owned(),
             claims: None,

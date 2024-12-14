@@ -18,7 +18,7 @@ use super::{
 };
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{ProofState, ProofStateEnum};
+use crate::model::proof::ProofStateEnum;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
 use crate::provider::bluetooth_low_energy::BleError;
@@ -202,17 +202,9 @@ impl OpenID4VCBLEHolder {
                 Ok(())
             }
             Err(err) => {
-                let now = OffsetDateTime::now_utc();
                 let _ = self
                     .proof_repository
-                    .set_proof_state(
-                        &proof_id,
-                        ProofState {
-                            created_date: now,
-                            last_modified: now,
-                            state: ProofStateEnum::Error,
-                        },
-                    )
+                    .set_proof_state(&proof_id, ProofStateEnum::Error)
                     .await;
                 Err(err)
             }

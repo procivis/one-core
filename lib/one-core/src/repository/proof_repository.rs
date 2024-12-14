@@ -5,7 +5,7 @@ use crate::model::claim::Claim;
 use crate::model::did::Did;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{
-    GetProofList, GetProofQuery, Proof, ProofRelations, ProofState, UpdateProofRequest,
+    GetProofList, GetProofQuery, Proof, ProofRelations, ProofStateEnum, UpdateProofRequest,
 };
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -33,7 +33,7 @@ pub trait ProofRepository: Send + Sync {
     async fn set_proof_state(
         &self,
         proof_id: &ProofId,
-        state: ProofState,
+        state: ProofStateEnum,
     ) -> Result<(), DataLayerError>;
 
     async fn set_proof_holder_did(

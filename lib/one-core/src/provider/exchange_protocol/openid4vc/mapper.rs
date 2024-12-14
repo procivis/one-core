@@ -37,9 +37,8 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::Did;
 use crate::model::interaction::{Interaction, InteractionId};
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -965,39 +964,6 @@ fn get_or_insert_view<'a>(
         None => Ok(root
             .entry(path.to_owned())
             .or_insert_with(|| ClaimsNestedFieldView::Nodes(Default::default()))),
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn proof_from_handle_invitation(
-    proof_id: &ProofId,
-    protocol: &str,
-    redirect_uri: Option<String>,
-    verifier_did: Option<Did>,
-    interaction: Interaction,
-    now: OffsetDateTime,
-    verifier_key: Option<Key>,
-    transport: &str,
-) -> Proof {
-    Proof {
-        id: proof_id.to_owned(),
-        created_date: now,
-        last_modified: now,
-        issuance_date: now,
-        exchange: protocol.to_owned(),
-        redirect_uri,
-        transport: transport.to_owned(),
-        state: Some(vec![ProofState {
-            created_date: now,
-            last_modified: now,
-            state: ProofStateEnum::Requested,
-        }]),
-        schema: None,
-        claims: None,
-        verifier_did,
-        holder_did: None,
-        interaction: Some(interaction),
-        verifier_key,
     }
 }
 

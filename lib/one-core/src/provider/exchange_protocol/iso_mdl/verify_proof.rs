@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use shared_types::{ClaimSchemaId, CredentialSchemaId, DidValue};
-use time::OffsetDateTime;
 
 use super::common::to_cbor;
 use crate::common_mapper::{
@@ -13,7 +12,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
-use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::SessionTranscript;
 use crate::provider::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
@@ -443,16 +442,8 @@ pub async fn accept_proof(
         .set_proof_claims(&proof.id, proof_claims)
         .await?;
 
-    let now = OffsetDateTime::now_utc();
     proof_repository
-        .set_proof_state(
-            &proof.id,
-            ProofState {
-                created_date: now,
-                last_modified: now,
-                state: ProofStateEnum::Accepted,
-            },
-        )
+        .set_proof_state(&proof.id, ProofStateEnum::Accepted)
         .await
         .map_err(ServiceError::from)
 }

@@ -8,7 +8,6 @@ use futures::future::{BoxFuture, Shared};
 use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt, TryFutureExt, TryStreamExt};
 use one_crypto::utilities;
-use time::OffsetDateTime;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
 
@@ -21,9 +20,7 @@ use crate::config::core_config::TransportType;
 use crate::model::did::Did;
 use crate::model::interaction::InteractionId;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{
-    self, Proof, ProofRelations, ProofState, ProofStateEnum, UpdateProofRequest,
-};
+use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
@@ -193,15 +190,10 @@ impl OpenID4VCBLEVerifier {
 
                                 write_presentation_request(signed, &peer, peripheral.clone()).await?;
 
-                                let now = OffsetDateTime::now_utc();
                                 proof_repository
                                     .set_proof_state(
                                         &proof.id,
-                                        ProofState {
-                                            created_date: now,
-                                            last_modified: now,
-                                            state: ProofStateEnum::Requested,
-                                        },
+                                        ProofStateEnum::Requested,
                                     )
                                     .await
                                     .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
@@ -219,7 +211,6 @@ impl OpenID4VCBLEVerifier {
                         };
 
                         let proof = self.proof_repository.get_proof(&proof.id, &ProofRelations {
-                            state: None,
                             schema:  Some(ProofSchemaRelations {
                                 organisation: Some(OrganisationRelations::default()),
                                 proof_inputs: Some(ProofInputSchemaRelations::default()),
@@ -277,15 +268,10 @@ impl OpenID4VCBLEVerifier {
                     if let Err(err) = result {
                         tracing::info!("BLE task failure: {err}, stopping BLE server");
                         let _ = peripheral.stop_server().await;
-                        let now = OffsetDateTime::now_utc();
                         let _ = proof_repository
                             .set_proof_state(
                                 &proof.id,
-                                ProofState {
-                                    state: proof::ProofStateEnum::Error,
-                                    created_date: now,
-                                    last_modified: now,
-                                },
+                                ProofStateEnum::Error,
                             )
                             .await;
                     };

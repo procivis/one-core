@@ -28,7 +28,7 @@ use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
+use crate::model::proof::{ProofRelations, ProofStateEnum};
 use crate::model::validity_credential::Mdoc;
 use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
 use crate::provider::credential_formatter::model::CredentialPresentation;
@@ -149,7 +149,6 @@ impl SSIHolderService {
             .get_proof_by_interaction_id(
                 interaction_id,
                 &ProofRelations {
-                    state: Some(ProofStateRelations::default()),
                     interaction: Some(InteractionRelations::default()),
                     holder_did: Some(DidRelations {
                         organisation: Some(OrganisationRelations::default()),
@@ -180,16 +179,8 @@ impl SSIHolderService {
         } else {
             ProofStateEnum::Error
         };
-        let now = OffsetDateTime::now_utc();
         self.proof_repository
-            .set_proof_state(
-                &proof.id,
-                ProofState {
-                    created_date: now,
-                    last_modified: now,
-                    state,
-                },
-            )
+            .set_proof_state(&proof.id, state)
             .await?;
 
         Ok(())
@@ -208,7 +199,6 @@ impl SSIHolderService {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    state: Some(ProofStateRelations::default()),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -473,18 +463,13 @@ impl SSIHolderService {
             .set_proof_claims(&proof.id, submitted_claims)
             .await?;
 
-        let now = OffsetDateTime::now_utc();
         self.proof_repository
             .set_proof_state(
                 &proof.id,
-                ProofState {
-                    created_date: now,
-                    last_modified: now,
-                    state: if submit_result.is_ok() {
-                        ProofStateEnum::Accepted
-                    } else {
-                        ProofStateEnum::Error
-                    },
+                if submit_result.is_ok() {
+                    ProofStateEnum::Accepted
+                } else {
+                    ProofStateEnum::Error
                 },
             )
             .await?;

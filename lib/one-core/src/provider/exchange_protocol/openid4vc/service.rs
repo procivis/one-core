@@ -46,7 +46,7 @@ use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchema
 use crate::provider::exchange_protocol::openid4vc::validator::{
     peek_presentation, throw_if_interaction_created_date,
     throw_if_interaction_pre_authorized_code_used, throw_if_latest_credential_state_not_eq,
-    throw_if_latest_proof_state_not_eq, throw_if_token_request_invalid, validate_claims,
+    throw_if_proof_state_not_eq, throw_if_token_request_invalid, validate_claims,
     validate_credential, validate_presentation, validate_refresh_token,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -217,7 +217,7 @@ pub fn oidc_verifier_presentation_definition(
     proof: &Proof,
     mut presentation_definition: OpenID4VPPresentationDefinition,
 ) -> Result<OpenID4VPPresentationDefinition, OpenID4VCError> {
-    throw_if_latest_proof_state_not_eq(proof, ProofStateEnum::Pending)?;
+    throw_if_proof_state_not_eq(proof, ProofStateEnum::Pending)?;
 
     let proof_schema = proof.schema.as_ref().ok_or(OpenID4VCError::MappingError(
         "Proof schema not found".to_string(),
@@ -265,8 +265,8 @@ pub async fn oidc_verifier_direct_post(
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     map_oidc_to_external: FnMapOidcFormatToExternalDetailed,
 ) -> Result<(AcceptProofResult, OpenID4VPDirectPostResponseDTO), OpenID4VCError> {
-    throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending).or(
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested),
+    throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending).or(
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested),
     )?;
 
     let proved_claims = process_proof_submission(

@@ -11,8 +11,7 @@ use one_core::model::key::{Key, KeyRelations};
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
 use one_core::model::proof::{
-    GetProofQuery, Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum,
-    ProofStateRelations,
+    GetProofQuery, Proof, ProofClaimRelations, ProofRelations, ProofStateEnum,
 };
 use one_core::model::proof_schema::{ProofSchema, ProofSchemaRelations};
 use one_core::repository::claim_repository::{ClaimRepository, MockClaimRepository};
@@ -27,14 +26,13 @@ use one_core::repository::proof_schema_repository::{
     MockProofSchemaRepository, ProofSchemaRepository,
 };
 use one_core::service::proof::dto::ProofFilterValue;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId, ProofId, ProofSchemaId};
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofProvider;
 use crate::entity::key_did::KeyRole;
-use crate::entity::proof_state::{self, ProofRequestState};
+use crate::entity::proof::ProofRequestState;
 use crate::entity::{claim, credential, proof_claim};
 use crate::test_utilities::*;
 
@@ -210,10 +208,6 @@ async fn setup_with_proof(
     .await
     .unwrap();
 
-    insert_proof_state_to_database(&db, &proof_id, ProofRequestState::Created)
-        .await
-        .unwrap();
-
     TestSetupWithProof {
         repository,
         organisation_id,
@@ -279,11 +273,9 @@ async fn test_create_proof_success() {
         exchange: "test".to_string(),
         transport: "HTTP".to_string(),
         redirect_uri: None,
-        state: Some(vec![ProofState {
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            state: ProofStateEnum::Created,
-        }]),
+        state: ProofStateEnum::Created,
+        requested_date: None,
+        completed_date: None,
         schema: Some(ProofSchema {
             id: proof_schema_id,
             imported_source_url: Some("CORE_URL".to_string()),
@@ -328,14 +320,6 @@ async fn test_create_proof_success() {
 
     assert_eq!(
         crate::entity::proof::Entity::find()
-            .all(&db)
-            .await
-            .unwrap()
-            .len(),
-        1
-    );
-    assert_eq!(
-        crate::entity::proof_state::Entity::find()
             .all(&db)
             .await
             .unwrap()
@@ -619,7 +603,6 @@ async fn test_get_proof_with_relations() {
         .get_proof(
             &proof_id,
             &ProofRelations {
-                state: Some(ProofStateRelations::default()),
                 claims: Some(ProofClaimRelations {
                     claim: ClaimRelations::default(),
                     credential: Some(CredentialRelations::default()),
@@ -754,7 +737,6 @@ async fn test_get_proof_by_interaction_id_success() {
         .get_proof_by_interaction_id(
             &interaction_id,
             &ProofRelations {
-                state: Some(ProofStateRelations::default()),
                 claims: Some(ProofClaimRelations::default()),
                 schema: Some(ProofSchemaRelations::default()),
                 verifier_did: Some(DidRelations::default()),
@@ -789,24 +771,17 @@ async fn test_set_proof_state() {
     .await;
 
     let result = repository
-        .set_proof_state(
-            &proof_id,
-            ProofState {
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                state: ProofStateEnum::Pending,
-            },
-        )
+        .set_proof_state(&proof_id, ProofStateEnum::Pending)
         .await;
 
     assert!(result.is_ok());
-    let db_states = crate::entity::proof_state::Entity::find()
-        .order_by_desc(proof_state::Column::CreatedDate)
-        .all(&db)
+
+    let db_proofs = crate::entity::proof::Entity::find_by_id(proof_id)
+        .one(&db)
         .await
+        .unwrap()
         .unwrap();
-    assert_eq!(db_states.len(), 2);
-    assert_eq!(db_states[0].state, ProofRequestState::Pending);
+    assert_eq!(ProofRequestState::Pending, db_proofs.state);
 }
 
 #[tokio::test]

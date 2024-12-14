@@ -22,9 +22,11 @@ pub struct Proof {
     pub exchange: String,
     pub transport: String,
     pub redirect_uri: Option<String>,
+    pub state: ProofStateEnum,
+    pub requested_date: Option<OffsetDateTime>,
+    pub completed_date: Option<OffsetDateTime>,
 
     // Relations
-    pub state: Option<Vec<ProofState>>,
     pub schema: Option<ProofSchema>,
     pub claims: Option<Vec<ProofClaim>>,
     pub verifier_did: Option<Did>,
@@ -41,13 +43,6 @@ pub enum ProofStateEnum {
     Accepted,
     Rejected,
     Error,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ProofState {
-    pub created_date: OffsetDateTime,
-    pub last_modified: OffsetDateTime,
-    pub state: ProofStateEnum,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -71,7 +66,6 @@ pub type GetProofQuery = ListQuery<SortableProofColumn, ProofFilterValue>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProofRelations {
-    pub state: Option<ProofStateRelations>,
     pub schema: Option<ProofSchemaRelations>,
     pub claims: Option<ProofClaimRelations>,
     pub verifier_did: Option<DidRelations>,
@@ -79,9 +73,6 @@ pub struct ProofRelations {
     pub verifier_key: Option<KeyRelations>,
     pub interaction: Option<InteractionRelations>,
 }
-
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct ProofStateRelations {}
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProofClaimRelations {
@@ -93,8 +84,10 @@ pub struct ProofClaimRelations {
 pub struct UpdateProofRequest {
     pub holder_did_id: Option<DidId>,
     pub verifier_did_id: Option<DidId>,
-    pub state: Option<ProofState>,
+    pub state: Option<ProofStateEnum>,
     pub interaction: Option<Option<InteractionId>>,
     pub redirect_uri: Option<Option<String>>,
     pub transport: Option<String>,
+    pub requested_date: Option<Option<OffsetDateTime>>,
+    pub completed_date: Option<Option<OffsetDateTime>>,
 }

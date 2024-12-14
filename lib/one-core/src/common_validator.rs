@@ -52,17 +52,9 @@ pub(crate) fn throw_if_latest_proof_state_not_eq(
     proof: &Proof,
     state: ProofStateEnum,
 ) -> Result<(), ServiceError> {
-    let latest_state = proof
-        .state
-        .as_ref()
-        .ok_or(ServiceError::MappingError("state is None".to_string()))?
-        .first()
-        .ok_or(ServiceError::MappingError("state is missing".to_string()))?
-        .to_owned();
-
-    if latest_state.state != state {
+    if proof.state != state {
         return Err(BusinessLogicError::InvalidProofState {
-            state: latest_state.state,
+            state: proof.state.clone(),
         }
         .into());
     }

@@ -1,9 +1,7 @@
-use std::collections::HashMap;
-
 use one_core::model::claim::Claim;
 use one_core::model::did::Did;
 use one_core::model::organisation::Organisation;
-use one_core::model::proof::{GetProofList, Proof, ProofState, SortableProofColumn};
+use one_core::model::proof::{GetProofList, Proof, SortableProofColumn};
 use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::error::DataLayerError;
 use one_core::service::proof::dto::ProofFilterValue;
@@ -14,8 +12,8 @@ use time::OffsetDateTime;
 
 use super::model::ProofListItemModel;
 use crate::common::calculate_pages_count;
-use crate::entity::proof_state::ProofRequestState;
-use crate::entity::{did, proof, proof_claim, proof_schema, proof_state};
+use crate::entity::proof::ProofRequestState;
+use crate::entity::{did, proof, proof_claim, proof_schema};
 use crate::list_query_generic::{
     get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
 };
@@ -26,7 +24,7 @@ impl IntoSortingColumn for SortableProofColumn {
             Self::CreatedDate => proof::Column::CreatedDate.into_simple_expr(),
             Self::SchemaName => proof_schema::Column::Name.into_simple_expr(),
             Self::VerifierDid => did::Column::Id.into_simple_expr(),
-            Self::State => proof_state::Column::State.into_simple_expr(),
+            Self::State => proof::Column::State.into_simple_expr(),
         }
     }
 }
@@ -40,7 +38,7 @@ impl IntoFilterCondition for ProofFilterValue {
             Self::OrganisationId(organisation_id) => {
                 get_equals_condition(proof_schema::Column::OrganisationId, organisation_id)
             }
-            Self::ProofStates(states) => proof_state::Column::State
+            Self::ProofStates(states) => proof::Column::State
                 .is_in(states.into_iter().map(ProofRequestState::from))
                 .into_condition(),
             Self::ProofSchemaIds(ids) => proof_schema::Column::Id.is_in(ids).into_condition(),
@@ -90,7 +88,9 @@ impl TryFrom<ProofListItemModel> for Proof {
             exchange: value.exchange,
             transport: value.transport,
             redirect_uri: value.redirect_uri,
-            state: None,
+            state: value.state.into(),
+            requested_date: value.requested_date,
+            completed_date: value.completed_date,
             schema: Some(ProofSchema {
                 id: value.schema_id,
                 created_date: value.schema_created_date,
@@ -125,7 +125,9 @@ impl From<proof::Model> for Proof {
             exchange: value.exchange,
             transport: value.transport,
             redirect_uri: value.redirect_uri,
-            state: None,
+            state: value.state.into(),
+            requested_date: value.requested_date,
+            completed_date: value.completed_date,
             schema: None,
             claims: None,
             verifier_did: None,
@@ -148,6 +150,9 @@ impl TryFrom<Proof> for proof::ActiveModel {
             issuance_date: Set(value.issuance_date),
             redirect_uri: Set(value.redirect_uri),
             exchange: Set(value.exchange),
+            state: Set(value.state.into()),
+            requested_date: Set(value.requested_date),
+            completed_date: Set(value.completed_date),
             verifier_did_id: Set(value.verifier_did.map(|did| did.id)),
             holder_did_id: Set(value.holder_did.map(|did| did.id)),
             proof_schema_id: Set(value.schema.map(|schema| schema.id)),
@@ -161,22 +166,12 @@ impl TryFrom<Proof> for proof::ActiveModel {
 
 pub(super) fn create_list_response(
     proofs: Vec<ProofListItemModel>,
-    proof_states_map: HashMap<ProofId, Vec<ProofState>>,
     limit: u64,
     items_count: u64,
 ) -> Result<GetProofList, DataLayerError> {
     let values = proofs
         .into_iter()
-        .map(move |proof| {
-            let mut proof = Proof::try_from(proof)?;
-            if let Some(states) = proof_states_map.get(&proof.id) {
-                proof.state = Some(states.to_owned());
-            } else {
-                return Err(DataLayerError::MissingProofState { proof: proof.id });
-            }
-
-            Ok(proof)
-        })
+        .map(Proof::try_from)
         .collect::<Result<Vec<Proof>, DataLayerError>>()?;
 
     Ok(GetProofList {
@@ -184,18 +179,6 @@ pub(super) fn create_list_response(
         total_pages: calculate_pages_count(items_count, limit),
         total_items: items_count,
     })
-}
-
-pub(super) fn get_proof_state_active_model(
-    proof_id: &ProofId,
-    state: ProofState,
-) -> proof_state::ActiveModel {
-    proof_state::ActiveModel {
-        proof_id: Set(*proof_id),
-        created_date: Set(state.created_date),
-        last_modified: Set(state.last_modified),
-        state: Set(state.state.into()),
-    }
 }
 
 pub(super) fn get_proof_claim_active_model(
