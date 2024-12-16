@@ -170,8 +170,13 @@ async fn test_issuer_submit_succeeds() {
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
         .expect_get_revocation_by_issuer_did_id()
-        .with(always(), eq(RevocationListPurpose::Revocation), always())
-        .return_once(move |_, _, _| {
+        .with(
+            always(),
+            eq(RevocationListPurpose::Revocation),
+            eq(StatusListType::BitstringStatusList),
+            always(),
+        )
+        .return_once(move |_, _, _, _| {
             Ok(Some(RevocationList {
                 id: Default::default(),
                 created_date: get_dummy_date(),
@@ -185,8 +190,13 @@ async fn test_issuer_submit_succeeds() {
         });
     revocation_list_repository
         .expect_get_revocation_by_issuer_did_id()
-        .with(always(), eq(RevocationListPurpose::Suspension), always())
-        .return_once(move |_, _, _| {
+        .with(
+            always(),
+            eq(RevocationListPurpose::Suspension),
+            eq(StatusListType::BitstringStatusList),
+            always(),
+        )
+        .return_once(move |_, _, _, _| {
             Ok(Some(RevocationList {
                 id: Default::default(),
                 created_date: get_dummy_date(),
@@ -741,8 +751,13 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
         .expect_get_revocation_by_issuer_did_id()
-        .with(always(), eq(RevocationListPurpose::Revocation), always())
-        .return_once(move |_, _, _| {
+        .with(
+            always(),
+            eq(RevocationListPurpose::Revocation),
+            eq(StatusListType::BitstringStatusList),
+            always(),
+        )
+        .return_once(move |_, _, _, _| {
             Ok(Some(RevocationList {
                 id: Default::default(),
                 created_date: get_dummy_date(),
@@ -756,8 +771,13 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         });
     revocation_list_repository
         .expect_get_revocation_by_issuer_did_id()
-        .with(always(), eq(RevocationListPurpose::Suspension), always())
-        .return_once(move |_, _, _| {
+        .with(
+            always(),
+            eq(RevocationListPurpose::Suspension),
+            eq(StatusListType::BitstringStatusList),
+            always(),
+        )
+        .return_once(move |_, _, _, _| {
             Ok(Some(RevocationList {
                 id: Default::default(),
                 created_date: get_dummy_date(),
@@ -863,8 +883,13 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
         .expect_get_revocation_by_issuer_did_id()
-        .with(always(), eq(RevocationListPurpose::Revocation), always())
-        .return_once(move |_, _, _| {
+        .with(
+            always(),
+            eq(RevocationListPurpose::Revocation),
+            eq(StatusListType::BitstringStatusList),
+            always(),
+        )
+        .return_once(move |_, _, _, _| {
             Ok(Some(RevocationList {
                 id: Default::default(),
                 created_date: get_dummy_date(),
@@ -878,8 +903,13 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         });
     revocation_list_repository
         .expect_get_revocation_by_issuer_did_id()
-        .with(always(), eq(RevocationListPurpose::Suspension), always())
-        .return_once(move |_, _, _| {
+        .with(
+            always(),
+            eq(RevocationListPurpose::Suspension),
+            eq(StatusListType::BitstringStatusList),
+            always(),
+        )
+        .return_once(move |_, _, _, _| {
             Ok(Some(RevocationList {
                 id: Default::default(),
                 created_date: get_dummy_date(),

@@ -158,6 +158,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
         .get_revocation_by_issuer_did_id(
             &issuer_did.id,
             purpose.to_owned(),
+            status_list_type.to_owned(),
             &RevocationListRelations::default(),
         )
         .await?;

@@ -2,7 +2,13 @@ use std::str::FromStr;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::did::{Did, KeyRole, RelatedKey};
+use one_core::model::interaction::InteractionId;
+use one_core::model::key::Key;
+use one_core::model::organisation::Organisation;
+use one_core::model::revocation_list::{
+    RevocationListPurpose, RevocationListRelations, StatusListType,
+};
 use one_core::model::validity_credential::ValidityCredentialType;
 use serde_json::json;
 use shared_types::{CredentialId, DidValue};
@@ -16,17 +22,83 @@ use crate::utils::db_clients::keys::eddsa_testing_params;
 
 #[tokio::test]
 async fn test_post_issuer_credential() {
-    test_post_issuer_credential_with("NONE").await;
+    test_post_issuer_credential_with("NONE", None).await;
 }
 
 #[tokio::test]
 async fn test_post_issuer_credential_with_bitstring_revocation_method() {
-    test_post_issuer_credential_with("BITSTRINGSTATUSLIST").await;
+    test_post_issuer_credential_with("BITSTRINGSTATUSLIST", None).await;
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existing_token_status_list(
+) {
+    let params = issuer_setup().await;
+    params
+        .context
+        .db
+        .revocation_lists
+        .create(
+            &params.issuer_did,
+            RevocationListPurpose::Revocation,
+            None,
+            Some(StatusListType::TokenStatusList),
+        )
+        .await;
+
+    let issuer_did_id = params.issuer_did.id;
+    let (context, _) = test_post_issuer_credential_with("BITSTRINGSTATUSLIST", Some(params)).await;
+
+    assert_eq!(
+        context
+            .db
+            .revocation_lists
+            .get_revocation_by_issuer_did_id(
+                &issuer_did_id,
+                RevocationListPurpose::Revocation,
+                StatusListType::BitstringStatusList,
+                &RevocationListRelations::default()
+            )
+            .await
+            .unwrap()
+            .r#type,
+        StatusListType::BitstringStatusList
+    );
+    assert_eq!(
+        context
+            .db
+            .revocation_lists
+            .get_revocation_by_issuer_did_id(
+                &issuer_did_id,
+                RevocationListPurpose::Suspension,
+                StatusListType::BitstringStatusList,
+                &RevocationListRelations::default()
+            )
+            .await
+            .unwrap()
+            .r#type,
+        StatusListType::BitstringStatusList
+    );
+    assert_eq!(
+        context
+            .db
+            .revocation_lists
+            .get_revocation_by_issuer_did_id(
+                &issuer_did_id,
+                RevocationListPurpose::Revocation,
+                StatusListType::TokenStatusList,
+                &RevocationListRelations::default()
+            )
+            .await
+            .unwrap()
+            .r#type,
+        StatusListType::TokenStatusList
+    );
 }
 
 #[tokio::test]
 async fn test_post_issuer_credential_with_lvvc_revocation_method() {
-    let (context, credential_id) = test_post_issuer_credential_with("LVVC").await;
+    let (context, credential_id) = test_post_issuer_credential_with("LVVC", None).await;
 
     let lvvcs = context
         .db
@@ -38,7 +110,16 @@ async fn test_post_issuer_credential_with_lvvc_revocation_method() {
     assert_eq!(credential_id, lvvcs[0].linked_credential_id);
 }
 
-async fn test_post_issuer_credential_with(revocation_method: &str) -> (TestContext, CredentialId) {
+struct TestPostIssuerCredentialParams {
+    interaction_id: InteractionId,
+    access_token: String,
+    context: TestContext,
+    organisation: Organisation,
+    key: Key,
+    issuer_did: Did,
+}
+
+async fn issuer_setup() -> TestPostIssuerCredentialParams {
     let interaction_id = Uuid::new_v4();
     let access_token = format!("{interaction_id}.test");
 
@@ -70,6 +151,31 @@ async fn test_post_issuer_credential_with(revocation_method: &str) -> (TestConte
             },
         )
         .await;
+    TestPostIssuerCredentialParams {
+        interaction_id,
+        access_token,
+        context,
+        organisation,
+        key,
+        issuer_did,
+    }
+}
+
+async fn test_post_issuer_credential_with(
+    revocation_method: &str,
+    context: Option<TestPostIssuerCredentialParams>,
+) -> (TestContext, CredentialId) {
+    let TestPostIssuerCredentialParams {
+        interaction_id,
+        access_token,
+        organisation,
+        context,
+        key,
+        issuer_did,
+    } = match context {
+        None => issuer_setup().await,
+        Some(context) => context,
+    };
 
     let credential_schema = context
         .db

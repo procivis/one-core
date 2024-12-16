@@ -3,6 +3,7 @@ use shared_types::DidId;
 use super::error::DataLayerError;
 use crate::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
+    StatusListType,
 };
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -21,6 +22,7 @@ pub trait RevocationListRepository: Send + Sync {
         &self,
         issuer_did_id: &DidId,
         purpose: RevocationListPurpose,
+        status_list_type: StatusListType,
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError>;
     async fn update_credentials(

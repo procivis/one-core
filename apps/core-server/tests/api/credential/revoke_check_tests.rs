@@ -66,7 +66,7 @@ async fn test_revoke_check_success_statuslist2021() {
     context
         .db
         .revocation_lists
-        .create(&issuer_did, RevocationListPurpose::Revocation, None)
+        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
         .await;
 
     Mock::given(method(Method::GET))
@@ -153,7 +153,7 @@ async fn test_revoke_check_success_bitstring_status_list() {
     context
         .db
         .revocation_lists
-        .create(&issuer_did, RevocationListPurpose::Revocation, None)
+        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
         .await;
 
     Mock::given(method(Method::GET))
@@ -267,7 +267,7 @@ async fn test_revoke_check_success_lvvc() {
     context
         .db
         .revocation_lists
-        .create(&issuer_did, RevocationListPurpose::Revocation, None)
+        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
         .await;
 
     Mock::given(method(Method::GET))
@@ -1136,7 +1136,7 @@ async fn test_revoke_check_failed_deleted_credential() {
     context
         .db
         .revocation_lists
-        .create(&issuer_did, RevocationListPurpose::Revocation, None)
+        .create(&issuer_did, RevocationListPurpose::Revocation, None, None)
         .await;
 
     // WHEN

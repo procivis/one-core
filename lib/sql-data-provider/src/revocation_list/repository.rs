@@ -114,6 +114,7 @@ impl RevocationListRepository for RevocationListProvider {
         &self,
         issuer_did_id: &DidId,
         purpose: RevocationListPurpose,
+        status_list_type: StatusListType,
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError> {
         let purpose_as_db_type = entity::revocation_list::RevocationListPurpose::from(purpose);
@@ -122,7 +123,8 @@ impl RevocationListRepository for RevocationListProvider {
             .filter(
                 revocation_list::Column::IssuerDidId
                     .eq(issuer_did_id)
-                    .and(revocation_list::Column::Purpose.eq(purpose_as_db_type.into_value())),
+                    .and(revocation_list::Column::Purpose.eq(purpose_as_db_type.into_value()))
+                    .and(revocation_list::Column::Type.eq(status_list_type.to_string())),
             )
             .one(&self.db)
             .await
