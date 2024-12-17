@@ -69,7 +69,6 @@ impl CredentialFormatter for JsonLdClassic {
         &self,
         credential: CredentialData,
         holder_did: &Option<DidValue>,
-        algorithm: &str,
         contexts: Vec<ContextType>,
         types: Vec<String>,
         auth_fn: AuthenticationFn,
@@ -81,6 +80,8 @@ impl CredentialFormatter for JsonLdClassic {
             types,
             self.params.embed_layout_properties.unwrap_or_default(),
         )?;
+
+        let algorithm = auth_fn.get_key_type();
 
         let cryptosuite = match algorithm {
             "EDDSA" => "eddsa-rdfc-2022",

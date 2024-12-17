@@ -21,7 +21,7 @@ use one_core::util::key_verification::KeyVerification;
 use one_core::util::vcdm_jsonld_contexts::{vcdm_type, vcdm_v2_base_context};
 use shared_types::DidValue;
 
-use crate::model::{CredentialFormat, KeyAlgorithmType};
+use crate::model::CredentialFormat;
 use crate::service::error::CredentialServiceError;
 
 pub struct CredentialService {
@@ -50,7 +50,6 @@ impl CredentialService {
         &self,
         credential_data: CredentialData,
         format: CredentialFormat,
-        algorithm: KeyAlgorithmType,
         holder_did: DidValue,
         issuer_key: Key,
     ) -> Result<String, CredentialServiceError> {
@@ -65,7 +64,6 @@ impl CredentialService {
             .format_credentials(
                 credential_data,
                 &Some(holder_did),
-                &algorithm.to_string(),
                 vcdm_v2_base_context(None),
                 vcdm_type(None),
                 auth_fn,

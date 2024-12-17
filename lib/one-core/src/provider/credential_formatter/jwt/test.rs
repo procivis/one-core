@@ -65,7 +65,6 @@ fn prepare_test_json() -> (Jwt<Payload>, String) {
         subject: Some("DID".to_owned()),
         jwt_id: Some("ID".to_owned()),
         custom: custom_payload,
-        nonce: None,
         vc_type: None,
         proof_of_possession_key: None,
     };

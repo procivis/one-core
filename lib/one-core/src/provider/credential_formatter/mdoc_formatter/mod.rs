@@ -183,7 +183,6 @@ impl CredentialFormatter for MdocFormatter {
         &self,
         credential: CredentialData,
         holder_did: &Option<DidValue>,
-        algorithm: &str,
         _additional_context: Vec<ContextType>,
         _additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
@@ -260,7 +259,7 @@ impl CredentialFormatter for MdocFormatter {
             })?
             .into_bytes();
 
-        let algorithm_header = try_build_algorithm_header(algorithm)?;
+        let algorithm_header = try_build_algorithm_header(auth_fn.get_key_type())?;
 
         let x5chain_header =
             build_x5chain_header(credential.issuer_did.to_did_value().to_string().into())?;

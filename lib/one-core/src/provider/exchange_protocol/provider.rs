@@ -429,7 +429,6 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             .format_credentials(
                 credential_data,
                 &Some(holder_did.did),
-                &key.key_type,
                 contexts,
                 vcdm_type(None),
                 auth_fn,

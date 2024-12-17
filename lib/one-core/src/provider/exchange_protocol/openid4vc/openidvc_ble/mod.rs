@@ -4,10 +4,12 @@ use std::sync::{Arc, LazyLock};
 use anyhow::{anyhow, Result};
 use futures::future::{BoxFuture, Shared};
 use futures::{Stream, TryStreamExt};
+use model::BLEOpenID4VPInteractionData;
 use oidc_ble_holder::OpenID4VCBLEHolder;
 use oidc_ble_verifier::OpenID4VCBLEVerifier;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use shared_types::KeyId;
 use time::OffsetDateTime;
 use tokio_util::sync::CancellationToken;
 use url::Url;
@@ -16,10 +18,9 @@ use uuid::Uuid;
 use super::dto::OpenID4VPBleData;
 use super::key_agreement_key::KeyAgreementKey;
 use super::mapper::create_presentation_submission;
-use super::model::BLEOpenID4VPInteractionData;
 use super::openidvc_http::mappers::map_credential_formats_to_presentation_format;
 use crate::config::core_config::{self, TransportType};
-use crate::model::did::Did;
+use crate::model::did::{Did, KeyRole};
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -31,6 +32,7 @@ use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
 };
 use crate::provider::credential_formatter::model::FormatPresentationCtx;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_presentation_definition;
@@ -40,12 +42,16 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
 use crate::provider::exchange_protocol::openid4vc::{FormatMapper, TypeToDescriptorMapper};
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::util::ble_resource::{Abort, BleWaiter};
+use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::create_core_to_oicd_format_map;
 
+pub mod mappers;
+pub mod model;
 pub mod oidc_ble_holder;
 pub mod oidc_ble_verifier;
 
@@ -150,11 +156,11 @@ impl BLEPeer {
         }
     }
 
-    pub fn encrypt<T>(&self, data: T) -> anyhow::Result<Vec<u8>>
+    pub fn encrypt<T>(&self, data: &T) -> anyhow::Result<Vec<u8>>
     where
         T: Serialize,
     {
-        self.peer_encryption.encrypt(&data)
+        self.peer_encryption.encrypt(data)
     }
 
     pub fn decrypt<T>(&self, ciphertext: &[u8]) -> anyhow::Result<T>
@@ -171,17 +177,22 @@ const PRESENTATION_DEFINITION_BLE_KEY: &str = "key";
 pub(crate) struct OpenID4VCBLE {
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
     ble: Option<BleWaiter>,
     config: Arc<core_config::CoreConfig>,
 }
 
 impl OpenID4VCBLE {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
         ble: Option<BleWaiter>,
         config: Arc<core_config::CoreConfig>,
@@ -190,6 +201,8 @@ impl OpenID4VCBLE {
             proof_repository,
             interaction_repository,
             formatter_provider,
+            did_method_provider,
+            key_algorithm_provider,
             key_provider,
             ble,
             config,
@@ -276,8 +289,21 @@ impl OpenID4VCBLE {
             ProofStateEnum::Requested,
         );
 
+        let verification_fn = Box::new(KeyVerification {
+            did_method_provider: self.did_method_provider.clone(),
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+        });
+
         ble_holder
-            .handle_invitation(name, key, proof.id, interaction_id, organisation)
+            .handle_invitation(
+                name,
+                key,
+                proof.id,
+                verification_fn,
+                interaction_id,
+                organisation,
+            )
             .await?;
 
         Ok(InvitationResponseDTO::ProofRequest {
@@ -320,6 +346,12 @@ impl OpenID4VCBLE {
                 .as_ref()
                 .and_then(|interaction| interaction.data.as_ref()),
         )?;
+
+        let BLEOpenID4VPInteractionData {
+            openid_request,
+            identity_request_nonce,
+            ..
+        } = &interaction_data;
 
         let ble_holder = OpenID4VCBLEHolder::new(
             self.proof_repository.clone(),
@@ -378,13 +410,7 @@ impl OpenID4VCBLE {
             .get_signature_provider(key, jwk_key_id)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-        let presentation_definition_id = interaction_data
-            .presentation_definition
-            .as_ref()
-            .ok_or(ExchangeProtocolError::Failed(
-                "Missing presentation definition".into(),
-            ))?
-            .id;
+        let presentation_definition_id = openid_request.presentation_definition.id;
 
         let presentation_submission = create_presentation_submission(
             presentation_definition_id,
@@ -394,34 +420,25 @@ impl OpenID4VCBLE {
         )?;
 
         let mut ctx = FormatPresentationCtx {
-            nonce: interaction_data.nonce.clone(),
+            nonce: Some(openid_request.nonce.clone()),
             token_formats: Some(token_formats),
             vc_format_map: format_map,
             ..Default::default()
         };
 
         if format == "MDOC" {
-            let mdoc_generated_nonce = interaction_data
-                .identity_request_nonce
-                .as_deref()
-                .ok_or_else(|| {
-                    ExchangeProtocolError::Failed(
-                        "Cannot format MDOC - missing identity request nonce".to_string(),
-                    )
-                })?;
-            let client_id = interaction_data.client_id.as_deref().ok_or_else(|| {
-                ExchangeProtocolError::Failed("Cannot format MDOC - missing client_id".to_string())
-            })?;
-            let nonce = interaction_data.nonce.as_deref().ok_or_else(|| {
-                ExchangeProtocolError::Failed("Cannot format MDOC - missing nonce".to_string())
+            let mdoc_generated_nonce = identity_request_nonce.as_deref().ok_or_else(|| {
+                ExchangeProtocolError::Failed(
+                    "Cannot format MDOC - missing identity request nonce".to_string(),
+                )
             })?;
 
             ctx.mdoc_session_transcript = Some(
                 to_cbor(&SessionTranscript {
                     handover: OID4VPHandover::compute(
-                        client_id,
-                        client_id,
-                        nonce,
+                        &openid_request.client_id,
+                        &openid_request.client_id,
+                        &openid_request.nonce,
                         mdoc_generated_nonce,
                     )
                     .into(),
@@ -455,6 +472,7 @@ impl OpenID4VCBLE {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
+        key_id: KeyId,
         type_to_descriptor: TypeToDescriptorMapper,
         interaction_id: InteractionId,
         key_agreement: KeyAgreementKey,
@@ -495,10 +513,38 @@ impl OpenID4VCBLE {
             ));
         }
 
+        let Some(verifier_did) = proof.verifier_did.as_ref() else {
+            return Err(ExchangeProtocolError::InvalidRequest(format!(
+                "Verifier DID missing for proof {}",
+                { proof.id }
+            )));
+        };
+
+        let Ok(verifier_key) = verifier_did.find_key(&key_id, KeyRole::Authentication) else {
+            return Err(ExchangeProtocolError::InvalidRequest(format!(
+                "Verifier key {} not found for proof {}",
+                key_id,
+                { proof.id }
+            )));
+        };
+
+        let verifier_jwk_key_id = self
+            .did_method_provider
+            .get_verification_method_id_from_did_and_key(verifier_did, verifier_key)
+            .await
+            .map_err(|err| ExchangeProtocolError::Failed(format!("Failed resolving did {err}")))?;
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(verifier_key, Some(verifier_jwk_key_id))
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
         ble_verifier
             .share_proof(
                 presentation_definition,
-                proof.id,
+                proof.to_owned(),
+                auth_fn,
+                verifier_did.to_owned(),
                 interaction_id,
                 key_agreement,
                 cancellation_token,

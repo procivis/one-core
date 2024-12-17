@@ -103,7 +103,6 @@ async fn main() -> Result<(), CredentialServiceError> {
         .format_credential(
             credential_data,
             CredentialFormat::SdJwt,
-            KeyAlgorithmType::Es256,
             holder_did,
             issuer_key,
         )

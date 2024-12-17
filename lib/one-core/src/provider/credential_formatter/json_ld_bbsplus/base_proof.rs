@@ -22,13 +22,12 @@ impl JsonLdBbsplus {
         &self,
         credential: CredentialData,
         holder_did: Option<&DidValue>,
-        algorithm: &str,
         contexts: Vec<ContextType>,
         types: Vec<String>,
         auth_fn: AuthenticationFn,
         embed_layout_properties: bool,
     ) -> Result<String, FormatterError> {
-        if algorithm != "BBS_PLUS" {
+        if auth_fn.get_key_type() != "BBS_PLUS" {
             return Err(FormatterError::BBSOnly);
         }
 

@@ -60,9 +60,9 @@ impl VCAPIService {
         create_request: CredentialIssueRequest,
     ) -> Result<CredentialIssueResponse, ServiceError> {
         let CredentialIssueOptions {
-            signature_algorithm,
             credential_format,
             revocation_method,
+            ..
         } = create_request.options;
 
         validate_verifiable_credential(&create_request.credential, &self.jsonld_ctx_cache).await?;
@@ -202,7 +202,6 @@ impl VCAPIService {
             .format_credentials(
                 credential_data,
                 &credential_subject.id,
-                &signature_algorithm,
                 create_request.credential.context.into_iter().collect(),
                 create_request.credential.r#type,
                 auth_fn,

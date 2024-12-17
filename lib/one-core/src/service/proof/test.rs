@@ -42,8 +42,9 @@ use crate::provider::credential_formatter::{CredentialFormatter, MockCredentialF
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, OpenID4VPPresentationDefinition, ShareResponse,
+    OpenID4VPAuthorizationRequest, OpenID4VPPresentationDefinition, ShareResponse,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEPeer;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
@@ -3066,14 +3067,22 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     [1; 32],
                     [2; 12],
                 ),
-                nonce: Some("nonce".to_string()),
-                presentation_definition: Some(OpenID4VPPresentationDefinition {
-                    id: interaction_id,
-                    input_descriptors: vec![],
-                }),
+                openid_request: OpenID4VPAuthorizationRequest {
+                    client_id: "did:example:123".to_string(),
+                    response_uri: None,
+                    response_mode: None,
+                    response_type: None,
+                    client_id_scheme: Some(crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType::Did),
+                    client_metadata: None,
+                    state: None,
+                    nonce: "nonce".to_string(),
+                    presentation_definition: OpenID4VPPresentationDefinition {
+                        id: interaction_id,
+                        input_descriptors: vec![],
+                    },
+                },
                 presentation_submission: None,
                 identity_request_nonce: None,
-                client_id: None,
             };
 
             serde_json::to_vec(&data).unwrap()

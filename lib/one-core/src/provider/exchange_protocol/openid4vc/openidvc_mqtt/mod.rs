@@ -3,12 +3,12 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use futures::future::{BoxFuture, Shared};
+use model::{MQTTOpenID4VPInteractionData, MQTTOpenId4VpResponse, MQTTSessionKeys};
 use oidc_mqtt_verifier::{mqtt_verifier_flow, Topics};
-use one_crypto::utilities;
 use rand::rngs::OsRng;
 use rand::Rng;
 use serde::Deserialize;
-use shared_types::ProofId;
+use shared_types::{KeyId, ProofId};
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
@@ -20,40 +20,42 @@ use super::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
 };
 use super::model::{
-    InvitationResponseDTO, MQTTOpenId4VpResponse, MqttOpenId4VpRequest, PresentedCredential,
-    UpdateResponse,
+    InvitationResponseDTO, OpenID4VPPresentationDefinition, PresentedCredential, UpdateResponse,
 };
 use crate::config::core_config::{CoreConfig, ExchangeType, TransportType};
-use crate::model::did::Did;
+use crate::model::did::{Did, KeyRole};
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
 };
-use crate::provider::credential_formatter::model::FormatPresentationCtx;
+use crate::provider::credential_formatter::model::{AuthenticationFn, FormatPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPMqttQueryParams;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
-use crate::provider::exchange_protocol::openid4vc::model::{
-    MQTTOpenID4VPInteractionData, MQTTSessionKeys,
-};
+use crate::provider::exchange_protocol::openid4vc::model::OpenID4VPAuthorizationRequest;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest;
 use crate::provider::exchange_protocol::openid4vc::openidvc_http::mappers::map_credential_formats_to_presentation_format;
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
 use crate::provider::exchange_protocol::{
     deserialize_interaction_data, FormatMapper, TypeToDescriptorMapper,
 };
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::mqtt_client::{MqttClient, MqttTopic};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
+use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::create_core_to_oicd_format_map;
 
+pub mod model;
 mod oidc_mqtt_verifier;
 
 #[cfg(test)]
@@ -69,6 +71,8 @@ pub struct OpenId4VcMqtt {
     proof_repository: Arc<dyn ProofRepository>,
 
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
 }
 
@@ -83,13 +87,16 @@ struct SubscriptionHandle {
 }
 
 impl OpenId4VcMqtt {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         mqtt_client: Arc<dyn MqttClient>,
         config: Arc<CoreConfig>,
         params: ConfigParams,
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
     ) -> OpenId4VcMqtt {
         OpenId4VcMqtt {
@@ -98,8 +105,10 @@ impl OpenId4VcMqtt {
             params,
             handle: Mutex::new(None),
             interaction_repository,
+            key_algorithm_provider,
             proof_repository,
             formatter_provider,
+            did_method_provider,
             key_provider,
         }
     }
@@ -196,17 +205,32 @@ impl OpenId4VcMqtt {
 
         tracing::debug!("Presentation request received");
 
-        let presentation_request: MqttOpenId4VpRequest = encryption
+        let verification_fn = Box::new(KeyVerification {
+            did_method_provider: self.did_method_provider.clone(),
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+        });
+
+        let presentation_request: String = encryption
             .decrypt(&presentation_request_bytes)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let presentation_request = Jwt::<OpenID4VPAuthorizationRequest>::build_from_token(
+            &presentation_request,
+            Some(verification_fn),
+        )
+        .await
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let interaction_data = MQTTOpenID4VPInteractionData {
             broker_url: host.to_string(),
             broker_port: port,
-            client_id: presentation_request.client_id,
-            nonce: presentation_request.nonce,
+            client_id: presentation_request.payload.custom.client_id,
+            nonce: presentation_request.payload.custom.nonce,
             session_keys: session_keys.to_owned(),
-            presentation_definition: Some(presentation_request.presentation_definition),
+            presentation_definition: Some(
+                presentation_request.payload.custom.presentation_definition,
+            ),
             identity_request_nonce,
             topic_id,
         };
@@ -451,6 +475,7 @@ impl OpenId4VcMqtt {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
+        key_id: KeyId,
         type_to_descriptor: TypeToDescriptorMapper,
         interaction_id: InteractionId,
         key_agreement: KeyAgreementKey,
@@ -476,11 +501,6 @@ impl OpenId4VcMqtt {
             type_to_descriptor,
             format_to_type_mapper,
         )?;
-        let presentation_request = MqttOpenId4VpRequest {
-            client_id: utilities::generate_alphanumeric(32),
-            nonce: utilities::generate_nonce(),
-            presentation_definition,
-        };
 
         if !self
             .config
@@ -492,12 +512,40 @@ impl OpenId4VcMqtt {
             ));
         }
 
+        let Some(verifier_did) = proof.verifier_did.as_ref() else {
+            return Err(ExchangeProtocolError::InvalidRequest(format!(
+                "Verifier DID missing for proof {}",
+                { proof.id }
+            )));
+        };
+
+        let Ok(verifier_key) = verifier_did.find_key(&key_id, KeyRole::Authentication) else {
+            return Err(ExchangeProtocolError::InvalidRequest(format!(
+                "Verifier key {} not found for proof {}",
+                key_id,
+                { proof.id }
+            )));
+        };
+
+        let verifier_jwk_key_id = self
+            .did_method_provider
+            .get_verification_method_id_from_did_and_key(verifier_did, verifier_key)
+            .await
+            .map_err(|err| ExchangeProtocolError::Failed(format!("Failed resolving did {err}")))?;
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(verifier_key, Some(verifier_jwk_key_id))
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
         let topic_prefix = format!("/proof/{}", interaction_id);
+
         self.start_detached_subscriber(
             topic_prefix,
             key_agreement,
             proof.clone(),
-            presentation_request,
+            presentation_definition,
+            verifier_did.clone(),
+            auth_fn,
             interaction_id,
             cancellation_token,
             callback,
@@ -534,7 +582,9 @@ impl OpenId4VcMqtt {
         topic_prefix: String,
         keypair: KeyAgreementKey,
         proof: Proof,
-        presentation_request: MqttOpenId4VpRequest,
+        presentation_definition: OpenID4VPPresentationDefinition,
+        verifier_did: Did,
+        auth_fn: AuthenticationFn,
         interaction_id: InteractionId,
         cancellation_token: CancellationToken,
         callback: Option<Shared<BoxFuture<'static, ()>>>,
@@ -558,7 +608,9 @@ impl OpenId4VcMqtt {
                 topics,
                 keypair,
                 proof,
-                presentation_request,
+                presentation_definition,
+                auth_fn,
+                verifier_did,
                 self.proof_repository.clone(),
                 self.interaction_repository.clone(),
                 interaction_id,

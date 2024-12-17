@@ -14,7 +14,6 @@ use uuid::Uuid;
 
 use super::error::OpenID4VCIError;
 use super::mapper::deserialize_with_serde_json;
-use super::openidvc_ble::BLEPeer;
 use crate::model::claim::Claim;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::{
@@ -37,21 +36,6 @@ use crate::service::key::dto::PublicKeyJwkDTO;
 pub struct BleOpenId4VpResponse {
     pub vp_token: String,
     pub presentation_submission: PresentationSubmissionMappingDTO,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BleOpenId4VpRequest {
-    #[serde(rename = "iss")]
-    pub verifier_client_id: String,
-    pub nonce: String,
-    pub presentation_definition: OpenID4VPPresentationDefinition,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MqttOpenId4VpRequest {
-    pub client_id: String,
-    pub nonce: String,
-    pub presentation_definition: OpenID4VPPresentationDefinition,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -87,54 +71,6 @@ pub struct HolderInteractionData {
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct BLEOpenID4VPInteractionData {
-    pub task_id: Uuid,
-    pub peer: BLEPeer,
-    pub nonce: Option<String>,
-    #[serde(default)]
-    pub identity_request_nonce: Option<String>,
-    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
-    pub presentation_submission: Option<BleOpenId4VpResponse>,
-    #[serde(default)]
-    pub client_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct MQTTSessionKeys {
-    pub public_key: [u8; 32],
-    pub receiver_key: [u8; 32],
-    pub sender_key: [u8; 32],
-    pub nonce: [u8; 12],
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MQTTOpenID4VPInteractionData {
-    pub broker_url: String,
-    pub broker_port: u16,
-    pub client_id: String,
-    pub nonce: String,
-    pub identity_request_nonce: String,
-    pub session_keys: MQTTSessionKeys,
-    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
-    pub topic_id: Uuid,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MQTTOpenId4VpResponse {
-    pub vp_token: String,
-    pub presentation_submission: PresentationSubmissionMappingDTO,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MQTTOpenID4VPInteractionDataVerifier {
-    pub presentation_definition: OpenID4VPPresentationDefinition,
-    pub presentation_submission: MQTTOpenId4VpResponse,
-    pub nonce: String,
-    pub identity_request_nonce: String,
-    pub client_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -374,15 +310,15 @@ pub struct OpenID4VPClientMetadata {
         Option<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct OpenID4VPClientRequestResponse {
-    pub response_type: String,
-    pub response_mode: String,
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OpenID4VPAuthorizationRequest {
+    pub response_type: Option<String>,
+    pub response_mode: Option<String>,
     pub client_id: String,
-    pub client_id_scheme: String,
-    pub client_metadata: OpenID4VPClientMetadata,
+    pub client_id_scheme: Option<ClientIdSchemaType>,
+    pub client_metadata: Option<OpenID4VPClientMetadata>,
     pub presentation_definition: OpenID4VPPresentationDefinition,
-    pub response_uri: String,
+    pub response_uri: Option<String>,
     pub nonce: String,
     pub state: Option<String>,
 }

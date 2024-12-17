@@ -39,7 +39,6 @@ impl CredentialFormatter for PhysicalCardFormatter {
         &self,
         _credential: CredentialData,
         _holder_did: &Option<DidValue>,
-        _algorithm: &str,
         _additional_context: Vec<ContextType>,
         _additional_types: Vec<String>,
         _auth_fn: AuthenticationFn,

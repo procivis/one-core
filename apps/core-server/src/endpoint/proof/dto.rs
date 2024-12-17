@@ -371,4 +371,5 @@ pub struct ShareProofRequestParamsRestDTO {
 pub enum ClientIdSchemaTypeRestDTO {
     RedirectUri,
     VerifierAttestation,
+    Did,
 }

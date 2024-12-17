@@ -147,7 +147,6 @@ async fn test_format_credential() {
         .format_credentials(
             credential_data,
             &Some(DidValue::from("holder_did".to_string())),
-            "algorithm",
             vec![ContextType::Url("http://context.com".parse().unwrap())],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
@@ -162,10 +161,8 @@ async fn test_format_credential() {
 
     assert_eq!(
         jwt_parts[0],
-        &Base64UrlSafeNoPadding::encode_to_string(
-            r##"{"alg":"algorithm","kid":"#key0","typ":"JWT"}"##
-        )
-        .unwrap()
+        &Base64UrlSafeNoPadding::encode_to_string(r##"{"alg":"ES256","kid":"#key0","typ":"JWT"}"##)
+            .unwrap()
     );
     assert_eq!(
         jwt_parts[2],
@@ -245,7 +242,6 @@ async fn test_format_credential_with_layout_properties() {
         .format_credentials(
             credential_data,
             &Some(DidValue::from("holder_did".to_string())),
-            "algorithm",
             vec![ContextType::Url(
                 "https://custom-context.org".parse().unwrap(),
             )],
@@ -262,10 +258,8 @@ async fn test_format_credential_with_layout_properties() {
 
     assert_eq!(
         jwt_parts[0],
-        &Base64UrlSafeNoPadding::encode_to_string(
-            r##"{"alg":"algorithm","kid":"#key0","typ":"JWT"}"##
-        )
-        .unwrap()
+        &Base64UrlSafeNoPadding::encode_to_string(r##"{"alg":"ES256","kid":"#key0","typ":"JWT"}"##)
+            .unwrap()
     );
     assert_eq!(
         jwt_parts[2],
@@ -345,7 +339,6 @@ async fn test_format_credential_nested_array() {
         .format_credentials(
             credential_data,
             &Some(DidValue::from("holder_did".to_string())),
-            "algorithm",
             vec![ContextType::Url("http://context.com".parse().unwrap())],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
@@ -360,10 +353,8 @@ async fn test_format_credential_nested_array() {
 
     assert_eq!(
         jwt_parts[0],
-        &Base64UrlSafeNoPadding::encode_to_string(
-            r##"{"alg":"algorithm","kid":"#key0","typ":"JWT"}"##
-        )
-        .unwrap()
+        &Base64UrlSafeNoPadding::encode_to_string(r##"{"alg":"ES256","kid":"#key0","typ":"JWT"}"##)
+            .unwrap()
     );
     assert_eq!(
         jwt_parts[2],
@@ -616,7 +607,7 @@ async fn test_format_presentation() {
         .format_presentation(
             &[jwt_token.to_owned()],
             &DidValue::from("holder_did".to_string()),
-            "algorithm",
+            "ES256",
             Box::new(auth_fn),
             Default::default(),
         )
@@ -630,10 +621,8 @@ async fn test_format_presentation() {
 
     assert_eq!(
         jwt_parts[0],
-        &Base64UrlSafeNoPadding::encode_to_string(
-            r##"{"alg":"algorithm","kid":"#key0","typ":"JWT"}"##
-        )
-        .unwrap()
+        &Base64UrlSafeNoPadding::encode_to_string(r##"{"alg":"ES256","kid":"#key0","typ":"JWT"}"##)
+            .unwrap()
     );
     assert_eq!(
         jwt_parts[2],

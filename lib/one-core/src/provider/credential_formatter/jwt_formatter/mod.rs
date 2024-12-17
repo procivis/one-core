@@ -59,7 +59,6 @@ impl CredentialFormatter for JWTFormatter {
         &self,
         credential: CredentialData,
         holder_did: &Option<DidValue>,
-        algorithm: &str,
         additional_context: Vec<ContextType>,
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
@@ -86,7 +85,6 @@ impl CredentialFormatter for JWTFormatter {
             subject: holder_did.clone().map(|did| did.to_string()),
             jwt_id: credential_id,
             custom: vc,
-            nonce: None,
             vc_type: None,
             proof_of_possession_key: None,
         };
@@ -94,7 +92,7 @@ impl CredentialFormatter for JWTFormatter {
         let key_id = auth_fn.get_key_id();
         let jwt = Jwt::new(
             "JWT".to_owned(),
-            algorithm.to_owned(),
+            auth_fn.get_key_type().to_owned(),
             key_id,
             None,
             payload,
@@ -160,7 +158,6 @@ impl CredentialFormatter for JWTFormatter {
                     issued_at: Some(OffsetDateTime::now_utc()),
                     expires_at: None,
                     invalid_before: None,
-                    nonce: None,
                     vc_type: None,
                     proof_of_possession_key: None,
                 };
@@ -185,7 +182,6 @@ impl CredentialFormatter for JWTFormatter {
                     issued_at: None,
                     expires_at: None,
                     invalid_before: None,
-                    nonce: None,
                     vc_type: None,
                     proof_of_possession_key: None,
                 };
@@ -232,7 +228,7 @@ impl CredentialFormatter for JWTFormatter {
         auth_fn: AuthenticationFn,
         FormatPresentationCtx { nonce, .. }: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
-        let vp: VP = format_payload(tokens)?;
+        let vp: VP = format_payload(tokens, nonce)?;
 
         let now = OffsetDateTime::now_utc();
         let valid_for = Duration::minutes(5);
@@ -245,7 +241,6 @@ impl CredentialFormatter for JWTFormatter {
             subject: Some(holder_did.to_string()),
             jwt_id: Some(Uuid::new_v4().to_string()),
             custom: vp,
-            nonce,
             vc_type: None,
             proof_of_possession_key: None,
         };
@@ -339,7 +334,7 @@ impl CredentialFormatter for JWTFormatter {
     }
 }
 
-fn format_payload(credentials: &[String]) -> Result<VP, FormatterError> {
+fn format_payload(credentials: &[String], nonce: Option<String>) -> Result<VP, FormatterError> {
     let mut has_enveloped_presentation = false;
 
     let tokens = credentials
@@ -376,5 +371,6 @@ fn format_payload(credentials: &[String]) -> Result<VP, FormatterError> {
             r#type: types,
             verifiable_credential: tokens,
         },
+        nonce,
     })
 }

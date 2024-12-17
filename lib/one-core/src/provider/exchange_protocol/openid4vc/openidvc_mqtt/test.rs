@@ -1,31 +1,43 @@
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use mockall::predicate::eq;
+use one_crypto::MockSigner;
 use serde_json::json;
+use shared_types::{DidValue, KeyId};
 use time::{Duration, OffsetDateTime};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::config::core_config::{Fields, TransportType};
+use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
+use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
+use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
+use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
-use crate::provider::exchange_protocol::openid4vc::mapper::{
-    create_format_map, parse_identity_request,
-};
+use crate::provider::exchange_protocol::openid4vc::mapper::create_format_map;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, MQTTOpenID4VPInteractionData, MQTTSessionKeys, MqttOpenId4VpRequest,
-    OpenID4VPPresentationDefinition,
+    InvitationResponseDTO, OpenID4VPAuthorizationRequest, OpenID4VPPresentationDefinition,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::mappers::parse_identity_request;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
+use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::model::{
+    MQTTOpenID4VPInteractionData, MQTTSessionKeys,
+};
 use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::{
     generate_session_keys, ConfigParams, OpenId4VcMqtt,
 };
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
 use crate::provider::exchange_protocol::{FormatMapper, TypeToDescriptorMapper};
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::mqtt_client::{MockMqttClient, MockMqttTopic};
 use crate::repository::interaction_repository::MockInteractionRepository;
@@ -38,7 +50,9 @@ struct TestInputs<'a> {
     pub mqtt_client: MockMqttClient,
     pub interaction_repository: MockInteractionRepository,
     pub proof_repository: MockProofRepository,
+    pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
+    pub did_method_provider: MockDidMethodProvider,
     pub key_provider: MockKeyProvider,
 }
 
@@ -69,7 +83,9 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
         },
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.proof_repository),
+        Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.formatter_provider),
+        Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_provider),
     )
 }
@@ -118,16 +134,97 @@ fn test_encryption_verifier_to_holder() {
 
 #[tokio::test]
 async fn test_handle_invitation_success() {
+    let client_id =
+        DidValue::from_str("did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y").unwrap();
+
     let mut interaction_repository = MockInteractionRepository::default();
     interaction_repository
         .expect_create_interaction()
         .once()
         .returning(|_| Ok(Uuid::new_v4()));
 
+    let mut auth_fn = MockSignatureProvider::new();
+    auth_fn
+        .expect_get_key_id()
+        .return_const(Some("did-vm-id".to_string()));
+
+    auth_fn
+        .expect_get_key_type()
+        .return_const("ES256".to_string());
+
+    auth_fn.expect_sign().returning(move |_| Ok(vec![1, 2, 3]));
+
+    let mut did_method_provider: MockDidMethodProvider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_resolve()
+        .withf({
+            let verifier_did = client_id.clone();
+            move |did| did == &verifier_did
+        })
+        .returning(|did| {
+            Ok(DidDocument {
+                context: Default::default(),
+                id: did.clone(),
+                verification_method: vec![DidVerificationMethod {
+                    id: "did-vm-id".to_string(),
+                    r#type: "did-vm-type".to_string(),
+                    controller: did.to_string(),
+                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                        r#use: None,
+                        crv: "P-256".to_string(),
+                        x: "x".to_string(),
+                        y: None,
+                    }),
+                }],
+                authentication: None,
+                assertion_method: Some(vec!["did-vm-id".to_string()]),
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+                rest: Default::default(),
+            })
+        });
+
+    let mut mock_key_algorithm = MockKeyAlgorithm::default();
+    mock_key_algorithm
+        .expect_jwk_to_bytes()
+        .returning(|_| Ok(vec![]));
+    let mock_key_algorithm = Arc::new(mock_key_algorithm);
+
+    let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    mock_key_algorithm_provider
+        .expect_get_key_algorithm()
+        .returning(move |_| Some(mock_key_algorithm.clone()));
+
+    let mut mock_signer = MockSigner::default();
+    mock_signer.expect_verify().returning(|_, _, _| Ok(()));
+    let mock_signer = Arc::new(mock_signer);
+
+    mock_key_algorithm_provider
+        .expect_get_signer()
+        .returning(move |_| Ok(mock_signer.clone()));
+
     let (verifier_key, verifier_public_key) = generate_verifier_key();
     let holder_identity_request = Arc::new(Mutex::new(None));
-
     let handle = holder_identity_request.clone();
+    let request = OpenID4VPAuthorizationRequest {
+        client_id: client_id.to_string(),
+        nonce: "nonce".to_string(),
+        presentation_definition: OpenID4VPPresentationDefinition {
+            id: Default::default(),
+            input_descriptors: vec![],
+        },
+        response_type: None,
+        response_mode: None,
+        client_id_scheme: Some(ClientIdSchemaType::Did),
+        client_metadata: None,
+        response_uri: None,
+        state: None,
+    };
+    let signed = request
+        .as_signed_jwt(&client_id, Box::new(auth_fn))
+        .await
+        .unwrap();
     let mut identify_topic = MockMqttTopic::default();
     identify_topic
         .expect_send()
@@ -151,18 +248,7 @@ async fn test_handle_invitation_success() {
 
             let encryption = generate_verifier_encryption(verifier_key, holder_identity_request);
 
-            let presentation_definition = OpenID4VPPresentationDefinition {
-                id: Default::default(),
-                input_descriptors: vec![],
-            };
-
-            Ok(encryption
-                .encrypt(&MqttOpenId4VpRequest {
-                    client_id: "client-id".to_string(),
-                    nonce: "nonce".to_string(),
-                    presentation_definition,
-                })
-                .unwrap())
+            Ok(encryption.encrypt(&signed).unwrap())
         });
 
     let mut mqtt_client = MockMqttClient::default();
@@ -184,6 +270,8 @@ async fn test_handle_invitation_success() {
     let protocol = setup_protocol(TestInputs {
         mqtt_client,
         interaction_repository,
+        did_method_provider,
+        key_algorithm_provider: mock_key_algorithm_provider,
         ..Default::default()
     });
     let result = protocol
@@ -282,6 +370,26 @@ async fn test_presentation_reject_success() {
 async fn test_share_proof_for_mqtt_returns_url() {
     let broker_url = "tcp://share-proof-test:1234";
     let mut mqtt_client = MockMqttClient::default();
+    let mut did_provider = MockDidMethodProvider::default();
+    let mut key_provider = MockKeyProvider::default();
+
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _| Ok(Box::new(MockSignatureProvider::default())));
+
+    let key_id: KeyId = Uuid::new_v4().into();
+    let did_value: DidValue = "did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y"
+        .parse()
+        .unwrap();
+
+    did_provider
+        .expect_get_verification_method_id_from_did_and_key()
+        .withf({
+            let expected_did_value = did_value.clone();
+            let expected_key_id = key_id;
+            move |did, key| did.did == expected_did_value && key.id == expected_key_id
+        })
+        .returning(move |_, _| Ok(key_id.clone().to_string()));
 
     mqtt_client
         .expect_subscribe()
@@ -297,6 +405,8 @@ async fn test_share_proof_for_mqtt_returns_url() {
     let protocol = setup_protocol(TestInputs {
         mqtt_client,
         broker_url: Some(broker_url),
+        did_method_provider: did_provider,
+        key_provider,
         ..Default::default()
     });
 
@@ -326,7 +436,31 @@ async fn test_share_proof_for_mqtt_returns_url() {
             }]),
         }),
         claims: None,
-        verifier_did: None,
+        verifier_did: Some(Did {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "did".to_string(),
+            did: did_value,
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+            organisation: None,
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key: Key {
+                    id: key_id,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    public_key: vec![],
+                    name: "key".to_string(),
+                    key_reference: vec![],
+                    storage_type: "INTERNAL".to_string(),
+                    key_type: "EDDSA".to_string(),
+                    organisation: None,
+                },
+            }]),
+            deactivated: false,
+        }),
         holder_did: None,
         verifier_key: None,
         interaction: None,
@@ -343,6 +477,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
         .verifier_share_proof(
             &proof,
             format_type_mapper,
+            key_id,
             type_to_descriptor_mapper,
             interaction_id,
             key_agreement,

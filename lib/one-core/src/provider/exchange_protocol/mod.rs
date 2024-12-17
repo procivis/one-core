@@ -102,7 +102,9 @@ pub(crate) fn exchange_protocol_providers_from_config(
                 let ble = OpenID4VCBLE::new(
                     data_provider.get_proof_repository(),
                     data_provider.get_interaction_repository(),
+                    did_method_provider.clone(),
                     formatter_provider.clone(),
+                    key_algorithm_provider.clone(),
                     key_provider.clone(),
                     ble.clone(),
                     config.clone(),
@@ -127,7 +129,9 @@ pub(crate) fn exchange_protocol_providers_from_config(
                         params,
                         data_provider.get_interaction_repository(),
                         data_provider.get_proof_repository(),
+                        key_algorithm_provider.clone(),
                         formatter_provider.clone(),
+                        did_method_provider.clone(),
                         key_provider.clone(),
                     ));
                 }

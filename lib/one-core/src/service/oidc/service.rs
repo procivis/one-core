@@ -46,15 +46,16 @@ use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_formats;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, JwePayload,
-    MQTTOpenID4VPInteractionDataVerifier, OpenID4VCICredentialOfferDTO,
+    ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, JwePayload, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
     OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
-    OpenID4VCITokenResponseDTO, OpenID4VPClientMetadata, OpenID4VPClientRequestResponse,
+    OpenID4VCITokenResponseDTO, OpenID4VPAuthorizationRequest, OpenID4VPClientMetadata,
     OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO, OpenID4VPInteractionContent,
     OpenID4VPPresentationDefinition, OpenID4VPRequestDataResponse, RequestData,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
+use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
 use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::exchange_protocol::openid4vc::service::{
     create_credential_offer, create_issuer_metadata_response,
@@ -173,14 +174,14 @@ impl OIDCService {
 
         let presentation_definition = crate::provider::exchange_protocol::openid4vc::service::oidc_verifier_presentation_definition(&proof, presentation_definition)?;
 
-        let client_response = OpenID4VPClientRequestResponse {
-            response_type: "vp_token".to_string(),
-            response_mode: "direct_post".to_string(),
+        let client_response = OpenID4VPAuthorizationRequest {
+            response_type: Some("vp_token".to_string()),
+            response_mode: Some("direct_post".to_string()),
             client_id,
-            client_id_scheme: "redirect_uri".to_string(),
-            client_metadata,
+            client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
+            client_metadata: Some(client_metadata),
             presentation_definition,
-            response_uri,
+            response_uri: Some(response_uri),
             nonce,
             state: Some(interaction.id.to_string()),
         };
@@ -199,7 +200,6 @@ impl OIDCService {
                 issuer: None,
                 subject: None,
                 jwt_id: None,
-                nonce: None,
                 vc_type: None,
                 custom: client_response,
                 proof_of_possession_key: None,
@@ -308,6 +308,7 @@ impl OIDCService {
             key_id: None,
             jwk: jwk.into(),
         });
+
         let auth_fn = self
             .key_provider
             .get_signature_provider(verifier_key, None)
@@ -327,7 +328,6 @@ impl OIDCService {
                 issuer,
                 subject,
                 jwt_id: None,
-                nonce: None,
                 custom: client_response,
                 proof_of_possession_key,
                 vc_type: None,
@@ -772,6 +772,7 @@ impl OIDCService {
                 let response = interaction_data
                     .presentation_submission
                     .context("BLE interaction missing presentation_submission")?;
+
                 let state = Uuid::from_str(&response.presentation_submission.definition_id)?;
 
                 let request_data = RequestData {

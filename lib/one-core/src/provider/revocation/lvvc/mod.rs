@@ -471,7 +471,6 @@ pub async fn create_lvvc_with_status(
         .format_credentials(
             credential_data,
             &None,
-            &key.key_type,
             vcdm_v2_base_context(additional_context),
             vcdm_type(Some(vec![json_ld_context.revokable_credential_type])),
             auth_fn,

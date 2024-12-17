@@ -65,7 +65,6 @@ impl CredentialFormatter for JsonLdBbsplus {
         &self,
         credential: CredentialData,
         holder_did: &Option<DidValue>,
-        algorithm: &str,
         contexts: Vec<ContextType>,
         types: Vec<String>,
         auth_fn: AuthenticationFn,
@@ -73,7 +72,6 @@ impl CredentialFormatter for JsonLdBbsplus {
         self.format(
             credential,
             holder_did.as_ref(),
-            algorithm,
             contexts,
             types,
             auth_fn,

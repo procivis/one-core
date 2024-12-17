@@ -254,7 +254,6 @@ async fn test_credential_formatting_ok_for_es256() {
         leeway: 60_u64,
         embed_layout_properties: None,
     };
-    let algorithm = "ES256";
 
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -279,12 +278,14 @@ async fn test_credential_formatting_ok_for_es256() {
 
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
+    auth_fn
+        .expect_get_key_type()
+        .return_const("ES256".to_string());
 
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
             &Some(holder_did),
-            algorithm,
             vec![],
             vec![],
             Box::new(auth_fn),
@@ -445,7 +446,6 @@ async fn test_unverified_credential_extraction() {
         leeway: 60_u64,
         embed_layout_properties: None,
     };
-    let algorithm = "ES256";
 
     let mut key_algorithm = MockKeyAlgorithm::new();
     key_algorithm
@@ -480,12 +480,14 @@ async fn test_unverified_credential_extraction() {
 
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
+    auth_fn
+        .expect_get_key_type()
+        .return_const("ES256".to_string());
 
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
             &Some(holder_did),
-            algorithm,
             vec![],
             vec![],
             Box::new(auth_fn),
@@ -644,8 +646,6 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
         leeway: 60_u64,
         embed_layout_properties: Some(embed_layout),
     };
-    let algorithm = "ES256";
-
     let mut key_algorithm = MockKeyAlgorithm::new();
     key_algorithm
         .expect_jwk_to_bytes()
@@ -679,12 +679,14 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
 
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
+    auth_fn
+        .expect_get_key_type()
+        .return_const("ES256".to_string());
 
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
             &Some(holder_did.to_owned()),
-            algorithm,
             vec![],
             vec![],
             Box::new(auth_fn),

@@ -39,6 +39,7 @@ pub trait TokenVerifier: Send + Sync {
 pub trait SignatureProvider: Send + Sync {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError>;
     fn get_key_id(&self) -> Option<String>;
+    fn get_key_type(&self) -> &str;
     fn get_public_key(&self) -> Vec<u8>;
 }
 

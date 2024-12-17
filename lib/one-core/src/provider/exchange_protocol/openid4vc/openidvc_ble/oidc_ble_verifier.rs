@@ -8,7 +8,6 @@ use futures::future::{BoxFuture, Shared};
 use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt, TryFutureExt, TryStreamExt};
 use one_crypto::utilities;
-use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
@@ -19,9 +18,12 @@ use super::{
     SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
 use crate::config::core_config::TransportType;
+use crate::model::did::Did;
 use crate::model::interaction::InteractionId;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{self, ProofRelations, ProofState, ProofStateEnum, UpdateProofRequest};
+use crate::model::proof::{
+    self, Proof, ProofRelations, ProofState, ProofStateEnum, UpdateProofRequest,
+};
 use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
@@ -29,14 +31,16 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
     CreateCharacteristicOptions, DeviceInfo, ServiceDescription,
 };
 use crate::provider::bluetooth_low_energy::BleError;
+use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
-use crate::provider::exchange_protocol::openid4vc::mapper::parse_identity_request;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, BleOpenId4VpRequest, BleOpenId4VpResponse,
-    OpenID4VPPresentationDefinition,
+    BleOpenId4VpResponse, OpenID4VPAuthorizationRequest, OpenID4VPPresentationDefinition,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::mappers::parse_identity_request;
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEParse;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -74,10 +78,13 @@ impl OpenID4VCBLEVerifier {
     }
 
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
+    #[allow(clippy::too_many_arguments)]
     pub async fn share_proof(
         self,
         presentation_definition: OpenID4VPPresentationDefinition,
-        proof_id: ProofId,
+        proof: Proof,
+        auth_fn: AuthenticationFn,
+        did: Did,
         interaction_id: InteractionId,
         keypair: KeyAgreementKey,
         cancellation_token: CancellationToken,
@@ -138,7 +145,7 @@ impl OpenID4VCBLEVerifier {
 
                         proof_repository
                         .update_proof(
-                            &proof_id,
+                            &proof.id,
                             UpdateProofRequest {
                                 transport: Some(TransportType::Ble.to_string()),
                                 ..Default::default()
@@ -159,10 +166,16 @@ impl OpenID4VCBLEVerifier {
                         );
 
                         let nonce = utilities::generate_nonce();
-                        let request = BleOpenId4VpRequest {
-                            verifier_client_id: verifier_name.clone(),
-                            nonce: nonce.clone(),
-                            presentation_definition: presentation_definition.clone(),
+                        let request = OpenID4VPAuthorizationRequest {
+                            nonce:nonce.clone(),
+                            presentation_definition:presentation_definition.clone(),
+                            response_type: None,
+                            response_mode: None,
+                            client_id: did.did.to_string(),
+                            client_id_scheme: Some(ClientIdSchemaType::Did),
+                            client_metadata: None,
+                            response_uri: None,
+                            state: None,
                         };
                         tracing::info!("presentation request: {request:#?}");
 
@@ -173,12 +186,17 @@ impl OpenID4VCBLEVerifier {
                                 Err(ExchangeProtocolError::Failed("wallet disconnected".into()))
                             },
                             result = async {
-                                write_presentation_request(request, &peer, peripheral.clone()).await?;
+                                let signed = request.as_signed_jwt(
+                                    &did.did,
+                                    auth_fn
+                                ).await.map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+                                write_presentation_request(signed, &peer, peripheral.clone()).await?;
 
                                 let now = OffsetDateTime::now_utc();
                                 proof_repository
                                     .set_proof_state(
-                                        &proof_id,
+                                        &proof.id,
                                         ProofState {
                                             created_date: now,
                                             last_modified: now,
@@ -195,14 +213,12 @@ impl OpenID4VCBLEVerifier {
                         let new_data = BLEOpenID4VPInteractionData {
                             task_id,
                             peer,
-                            client_id: Some(verifier_name),
-                            nonce: Some(nonce),
+                            openid_request: request,
                             identity_request_nonce: Some(hex::encode(identity_request.nonce)),
-                            presentation_definition: Some(presentation_definition),
-                            presentation_submission: Some(presentation_submission),
+                            presentation_submission: Some(presentation_submission)
                         };
 
-                        let proof = self.proof_repository.get_proof(&proof_id, &ProofRelations {
+                        let proof = self.proof_repository.get_proof(&proof.id, &ProofRelations {
                             state: None,
                             schema:  Some(ProofSchemaRelations {
                                 organisation: Some(OrganisationRelations::default()),
@@ -236,7 +252,7 @@ impl OpenID4VCBLEVerifier {
                         .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
                         update_proof_interaction(
-                            proof_id,
+                            proof.id,
                             new_interaction,
                             &*self.proof_repository,
                         )
@@ -264,7 +280,7 @@ impl OpenID4VCBLEVerifier {
                         let now = OffsetDateTime::now_utc();
                         let _ = proof_repository
                             .set_proof_state(
-                                &proof_id,
+                                &proof.id,
                                 ProofState {
                                     state: proof::ProofStateEnum::Error,
                                     created_date: now,
@@ -535,12 +551,12 @@ pub fn read(
 
 #[tracing::instrument(level = "debug", skip(ble_peripheral), err(Debug))]
 async fn write_presentation_request(
-    request: BleOpenId4VpRequest,
+    request: String,
     peer: &BLEPeer,
     ble_peripheral: Arc<dyn BlePeripheral>,
 ) -> Result<(), ExchangeProtocolError> {
     let encrypted = peer
-        .encrypt(request)
+        .encrypt(&request)
         .context("Failed to encrypt presentation request")
         .map_err(ExchangeProtocolError::Transport)?;
 

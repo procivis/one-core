@@ -1,12 +1,12 @@
 use std::collections::HashMap;
+use std::ops::Add;
 
-use anyhow::{anyhow, Context};
 use indexmap::map::Entry;
 use indexmap::IndexMap;
 use one_dto_mapper::convert_inner;
 use serde::{Deserialize, Deserializer, Serialize};
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::error::OpenID4VCIError;
@@ -16,8 +16,9 @@ use super::model::{
     CredentialSchemaLogoPropertiesRequestDTO, DidListItemResponseDTO,
     OpenID4VCICredentialConfigurationData, OpenID4VCICredentialSubjectItem,
     OpenID4VCIInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCITokenResponseDTO, OpenID4VPInteractionContent, OpenID4VPPresentationDefinition,
-    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VCITokenResponseDTO, OpenID4VPAuthorizationRequest, OpenID4VPInteractionContent,
+    OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
+    OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor, ProvedCredential, Timestamp,
 };
@@ -40,8 +41,10 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::ProofInputClaimSchema;
+use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
+use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
-use crate::provider::credential_formatter::model::ExtractPresentationCtx;
+use crate::provider::credential_formatter::model::{AuthenticationFn, ExtractPresentationCtx};
 use crate::provider::exchange_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -58,7 +61,6 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     OpenID4VPPresentationDefinitionInputDescriptorFormat, PresentationSubmissionDescriptorDTO,
     PresentationSubmissionMappingDTO, PresentedCredential,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest;
 use crate::provider::exchange_protocol::openid4vc::{
     ExchangeProtocolError, FormatMapper, TypeToDescriptorMapper,
 };
@@ -1258,6 +1260,9 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
             type_to_descriptor,
             format_to_type_mapper,
         ),
+        ClientIdSchemaType::Did => Err(ExchangeProtocolError::InvalidRequest(
+            "client_id_scheme type 'did' not supported in this context".to_string(),
+        )),
     }?;
 
     let encoded_params = serde_urlencoded::to_string(params)
@@ -1786,23 +1791,6 @@ impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
     }
 }
 
-pub fn parse_identity_request(data: Vec<u8>) -> anyhow::Result<IdentityRequest> {
-    let arr: [u8; 44] = data
-        .try_into()
-        .map_err(|_| anyhow!("Failed to convert vec to [u8; 44]"))?;
-
-    let (key, nonce) = arr.split_at(32);
-
-    Ok(IdentityRequest {
-        key: key
-            .try_into()
-            .context("Failed to parse key from identity request")?,
-        nonce: nonce
-            .try_into()
-            .context("Failed to parse nonce from identity request")?,
-    })
-}
-
 pub(super) fn credentials_supported_mdoc(
     schema: CredentialSchema,
     config: &CoreConfig,
@@ -1853,4 +1841,33 @@ pub(super) fn credentials_supported_mdoc(
     };
 
     Ok(credential_configuration)
+}
+
+impl OpenID4VPAuthorizationRequest {
+    pub async fn as_signed_jwt(
+        &self,
+        did: &DidValue,
+        auth_fn: AuthenticationFn,
+    ) -> Result<String, ServiceError> {
+        let unsigned_jwt = Jwt {
+            header: JWTHeader {
+                algorithm: auth_fn.get_key_type().to_owned(),
+                key_id: auth_fn.get_key_id(),
+                signature_type: Some("oauth-authz-req+jwt".to_string()),
+                jwk: None,
+            },
+            payload: JWTPayload {
+                issued_at: None,
+                expires_at: Some(OffsetDateTime::now_utc().add(Duration::hours(1))),
+                invalid_before: None,
+                issuer: Some(did.to_string()),
+                subject: None,
+                jwt_id: None,
+                custom: self,
+                proof_of_possession_key: None,
+                vc_type: None,
+            },
+        };
+        Ok(unsigned_jwt.tokenize(Some(auth_fn)).await?)
+    }
 }

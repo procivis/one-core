@@ -2,18 +2,25 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use futures::future::{BoxFuture, Shared};
+use one_crypto::utilities;
 use time::{Duration, OffsetDateTime};
 use tokio_util::sync::CancellationToken;
 
 use super::set_proof_state;
 use crate::config::core_config::TransportType;
+use crate::model::did::Did;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
-use crate::provider::exchange_protocol::openid4vc::mapper::parse_identity_request;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    MQTTOpenID4VPInteractionDataVerifier, MQTTOpenId4VpResponse, MqttOpenId4VpRequest,
+    OpenID4VPAuthorizationRequest, OpenID4VPPresentationDefinition,
+};
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::mappers::parse_identity_request;
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
+use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::model::{
+    MQTTOpenID4VPInteractionDataVerifier, MQTTOpenId4VpResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
 use crate::provider::mqtt_client::MqttTopic;
@@ -33,7 +40,9 @@ pub(super) async fn mqtt_verifier_flow(
     mut topics: Topics,
     keypair: KeyAgreementKey,
     proof: Proof,
-    presentation_request: MqttOpenId4VpRequest,
+    presentation_definition: OpenID4VPPresentationDefinition,
+    auth_fn: AuthenticationFn,
+    did: Did,
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     interaction_id: InteractionId,
@@ -75,7 +84,24 @@ pub(super) async fn mqtt_verifier_flow(
         let shared_key =
             PeerEncryption::new(encryption_key, decryption_key, identity_request.nonce);
 
-        let bytes = shared_key.encrypt(&presentation_request)?;
+        let request = OpenID4VPAuthorizationRequest {
+            nonce: utilities::generate_nonce(),
+            presentation_definition: presentation_definition.clone(),
+            response_type: None,
+            response_mode: None,
+            client_id: did.did.to_string(),
+            client_id_scheme: Some(ClientIdSchemaType::Did),
+            client_metadata: None,
+            response_uri: None,
+            state: None,
+        };
+
+        let signed = request
+            .as_signed_jwt(&did.did, auth_fn)
+            .await
+            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
+
+        let bytes = shared_key.encrypt(&signed)?;
         topics.presentation_definition.send(bytes).await?;
         set_proof_state(&proof, ProofStateEnum::Requested, &*proof_repository).await?;
 
@@ -128,10 +154,10 @@ pub(super) async fn mqtt_verifier_flow(
                         host: None,
                         data: Some(
                             serde_json::to_vec(&MQTTOpenID4VPInteractionDataVerifier {
-                                presentation_definition: presentation_request.presentation_definition,
+                                presentation_definition: presentation_definition.clone(),
                                 presentation_submission,
-                                nonce: presentation_request.nonce,
-                                client_id: presentation_request.client_id,
+                                nonce: request.nonce,
+                                client_id: request.client_id,
                                 identity_request_nonce: hex::encode(identity_request.nonce),
                             })
                             .context("failed to serialize presentation_submission")?,

@@ -564,6 +564,11 @@ async fn test_format_extract_round_trip() {
     auth_fn
         .expect_get_key_id()
         .returning(move || Some(format!("{}#0", issuer_did)));
+
+    auth_fn
+        .expect_get_key_type()
+        .return_const("BBS_PLUS".to_string());
+
     let public_key_clone = key_raw.public.clone();
     auth_fn
         .expect_get_public_key()
@@ -581,7 +586,6 @@ async fn test_format_extract_round_trip() {
         .format(
             credential_data,
             Some(holder_did),
-            "BBS_PLUS",
             vec![],
             vec![],
             Box::new(auth_fn),
@@ -774,7 +778,6 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
         embed_layout_properties: Some(include_layout),
         allowed_contexts: None,
     };
-    let algorithm = "BBS_PLUS";
 
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -826,13 +829,15 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
     auth_fn
         .expect_get_key_id()
         .returning(|| Some("keyid".to_string()));
+    auth_fn
+        .expect_get_key_type()
+        .return_const("BBS_PLUS".to_string());
     auth_fn.expect_get_public_key().returning(|| vec![1, 2, 3]);
 
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
             &Some(holder_did.clone()),
-            algorithm,
             vec![],
             vec![],
             Box::new(auth_fn),

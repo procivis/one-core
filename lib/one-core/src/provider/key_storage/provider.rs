@@ -63,6 +63,10 @@ impl SignatureProvider for SignatureProviderImpl {
         self.jwk_key_id.to_owned()
     }
 
+    fn get_key_type(&self) -> &str {
+        &self.key.key_type
+    }
+
     fn get_public_key(&self) -> Vec<u8> {
         self.key.public_key.to_owned()
     }

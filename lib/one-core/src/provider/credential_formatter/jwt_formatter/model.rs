@@ -52,6 +52,7 @@ pub struct VC {
 #[serde(rename_all = "camelCase")]
 pub struct VP {
     pub vp: VPContent,
+    pub nonce: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

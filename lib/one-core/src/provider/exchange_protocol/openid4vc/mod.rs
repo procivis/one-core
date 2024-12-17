@@ -9,8 +9,10 @@ use key_agreement_key::KeyAgreementKey;
 use mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
 use model::OpenID4VPInteractionData;
 use one_dto_mapper::convert_inner;
+use openidvc_ble::model::BLEOpenID4VPInteractionData;
 use openidvc_ble::OpenID4VCBLE;
 use openidvc_http::OpenID4VCHTTP;
+use openidvc_mqtt::model::MQTTOpenID4VPInteractionData;
 use openidvc_mqtt::OpenId4VcMqtt;
 use serde_json::json;
 use shared_types::KeyId;
@@ -35,8 +37,8 @@ use crate::provider::exchange_protocol::mapper::{
     gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, InvitationResponseDTO, MQTTOpenID4VPInteractionData,
-    OpenID4VPFormat, PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
@@ -291,6 +293,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     .verifier_share_proof(
                         proof,
                         format_to_type_mapper,
+                        key_id,
                         type_to_descriptor,
                         interaction_id,
                         key_agreement,
@@ -331,6 +334,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 mqtt.verifier_share_proof(
                     proof,
                     format_to_type_mapper,
+                    key_id,
                     type_to_descriptor,
                     interaction_id,
                     key_agreement,
@@ -361,6 +365,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     .verifier_share_proof(
                         proof,
                         format_to_type_mapper.clone(),
+                        key_id,
                         type_to_descriptor.clone(),
                         interaction_id,
                         key_agreement.clone(),
@@ -374,6 +379,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     .verifier_share_proof(
                         proof,
                         format_to_type_mapper,
+                        key_id,
                         type_to_descriptor,
                         interaction_id,
                         key_agreement,
@@ -420,11 +426,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     serde_json::from_value(interaction_data)
                         .map_err(ExchangeProtocolError::JsonError)?;
 
-                interaction_data
-                    .presentation_definition
-                    .ok_or(ExchangeProtocolError::Failed(
-                        "presentation_definition is None".to_string(),
-                    ))?
+                interaction_data.openid_request.presentation_definition
             }
             TransportType::Http => {
                 let interaction_data: OpenID4VPInteractionData =

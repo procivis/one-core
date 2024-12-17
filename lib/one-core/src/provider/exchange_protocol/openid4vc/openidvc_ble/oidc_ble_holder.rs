@@ -22,12 +22,14 @@ use crate::model::proof::{ProofState, ProofStateEnum};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
 use crate::provider::bluetooth_low_energy::BleError;
+use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BLEOpenID4VPInteractionData, BleOpenId4VpRequest, BleOpenId4VpResponse,
-    PresentationSubmissionMappingDTO,
+    BleOpenId4VpResponse, OpenID4VPAuthorizationRequest, PresentationSubmissionMappingDTO,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
     PRESENTATION_REQUEST_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
@@ -64,12 +66,13 @@ impl OpenID4VCBLEHolder {
             .map_err(|err| ExchangeProtocolError::Transport(err.into()))
     }
 
-    #[tracing::instrument(level = "debug", skip(self), err(Debug))]
+    #[tracing::instrument(level = "debug", skip(self, verification_fn), err(Debug))]
     pub async fn handle_invitation(
         &mut self,
         name: String,
         x25519_public_key_hex: String,
         proof_id: ProofId,
+        verification_fn: VerificationFn,
         interaction_id: Uuid,
         organisation: Organisation,
     ) -> Result<(), ExchangeProtocolError> {
@@ -123,7 +126,7 @@ impl OpenID4VCBLEHolder {
 
                             tracing::debug!("read_presentation_definition");
                             let request =
-                                read_presentation_request(&ble_peer, central.clone()).await?;
+                                read_presentation_request(&ble_peer,  verification_fn, central.clone()).await?;
 
                             let now = OffsetDateTime::now_utc();
 
@@ -137,11 +140,9 @@ impl OpenID4VCBLEHolder {
                                     serde_json::to_vec(&BLEOpenID4VPInteractionData {
                                         task_id,
                                         peer: ble_peer,
-                                        nonce: Some(request.nonce),
+                                        openid_request: request,
                                         identity_request_nonce: Some(hex::encode(identity_request.nonce)),
-                                        presentation_definition: Some(request.presentation_definition),
-                                        presentation_submission: None,
-                                        client_id: Some(request.verifier_client_id),
+                                        presentation_submission: None
                                     })
                                     .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
                                 ),
@@ -252,7 +253,7 @@ impl OpenID4VCBLEHolder {
                                 };
 
                                 let enc_payload = interaction.peer
-                                    .encrypt(response)
+                                    .encrypt(&response)
                                     .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
                                 let chunks =
@@ -524,11 +525,12 @@ async fn send(
         .map_err(ExchangeProtocolError::Transport)
 }
 
-#[tracing::instrument(level = "debug", skip(ble_central), err(Debug))]
+#[tracing::instrument(level = "debug", skip(ble_central, verification_fn), err(Debug))]
 async fn read_presentation_request(
     connected_verifier: &BLEPeer,
+    verification_fn: VerificationFn,
     ble_central: Arc<dyn BleCentral>,
-) -> Result<BleOpenId4VpRequest, ExchangeProtocolError> {
+) -> Result<OpenID4VPAuthorizationRequest, ExchangeProtocolError> {
     let request_size: MessageSize =
         read(REQUEST_SIZE_UUID, connected_verifier, ble_central.clone())
             .parse()
@@ -604,11 +606,24 @@ async fn read_presentation_request(
         .flat_map(|c| c.payload)
         .collect();
 
-    connected_verifier
-        .decrypt(&presentation_request)
-        .map_err(|e| {
-            ExchangeProtocolError::Failed(format!("Failed to decrypt presentation request: {e}"))
-        })
+    let decrypted_request_jwt: String =
+        connected_verifier
+            .decrypt(&presentation_request)
+            .map_err(|e| {
+                ExchangeProtocolError::Failed(format!(
+                    "Failed to decrypt presentation request: {e}"
+                ))
+            })?;
+
+    let authz_request = Jwt::<OpenID4VPAuthorizationRequest>::build_from_token(
+        &decrypted_request_jwt,
+        Some(verification_fn),
+    )
+    .await
+    .map_err(|e| {
+        ExchangeProtocolError::Failed(format!("Failed to parse presentation request: {e}"))
+    })?;
+    Ok(authz_request.payload.custom)
 }
 
 pub fn read(

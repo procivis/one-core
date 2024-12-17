@@ -50,7 +50,6 @@ impl BitstringStatusListJwtFormatter {
             issued_at: None,
             expires_at: None,
             invalid_before: None,
-            nonce: None,
             vc_type: None,
             proof_of_possession_key: None,
         };

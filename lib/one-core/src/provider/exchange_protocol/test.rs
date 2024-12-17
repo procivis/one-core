@@ -147,7 +147,7 @@ async fn test_issuer_submit_succeeds() {
     formatter
         .expect_format_credentials()
         .once()
-        .returning(|_, _, _, _, _, _| Ok("token".to_string()));
+        .returning(|_, _, _, _, _| Ok("token".to_string()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
@@ -727,7 +727,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     formatter
         .expect_format_credentials()
         .once()
-        .returning(|_, _, _, _, _, _| Ok("token".to_string()));
+        .returning(|_, _, _, _, _| Ok("token".to_string()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
@@ -859,7 +859,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     formatter
         .expect_format_credentials()
         .once()
-        .returning(|_, _, _, _, _, _| Ok("token".to_string()));
+        .returning(|_, _, _, _, _| Ok("token".to_string()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider

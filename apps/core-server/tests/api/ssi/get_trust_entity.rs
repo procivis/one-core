@@ -79,6 +79,10 @@ impl SignatureProvider for FakeEs256Signer {
         Some(self.key_id.clone())
     }
 
+    fn get_key_type(&self) -> &str {
+        "ES256"
+    }
+
     fn get_public_key(&self) -> Vec<u8> {
         self.public_key.clone()
     }

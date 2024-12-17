@@ -62,7 +62,6 @@ impl CredentialFormatter for SDJWTVCFormatter {
         &self,
         credential: CredentialData,
         holder_did: &Option<DidValue>,
-        algorithm: &str,
         _additional_context: Vec<ContextType>,
         _additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
@@ -75,7 +74,6 @@ impl CredentialFormatter for SDJWTVCFormatter {
         format_credentials(
             credential,
             holder_did,
-            algorithm,
             auth_fn,
             &*self.crypto,
             self.params.leeway,
@@ -279,7 +277,6 @@ pub(super) async fn extract_credentials_internal(
 pub async fn format_credentials(
     credential: CredentialData,
     holder_did: &Option<DidValue>,
-    algorithm: &str,
     auth_fn: AuthenticationFn,
     crypto: &dyn CryptoProvider,
     leeway: u64,
@@ -301,13 +298,18 @@ pub async fn format_credentials(
         issuer: Some(issuer),
         jwt_id: id,
         custom: vc,
-        nonce: None,
         vc_type: Some(vc_type),
         proof_of_possession_key: None,
     };
 
     let key_id = auth_fn.get_key_id();
-    let jwt = Jwt::new(token_type, algorithm.to_owned(), key_id, None, payload);
+    let jwt = Jwt::new(
+        token_type,
+        auth_fn.get_key_type().to_owned(),
+        key_id,
+        None,
+        payload,
+    );
 
     let mut token = jwt.tokenize(Some(auth_fn)).await?;
 

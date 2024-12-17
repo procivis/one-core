@@ -81,7 +81,6 @@ async fn test_format_credential() {
         .format_credentials(
             credential_data,
             &Some(DidValue::from("holder_did".to_string())),
-            "algorithm",
             vec![ContextType::Url("http://context.com".parse().unwrap())],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
@@ -111,7 +110,7 @@ async fn test_format_credential() {
     assert_eq!(
         jwt_parts[0],
         &Base64UrlSafeNoPadding::encode_to_string(
-            r##"{"alg":"algorithm","kid":"#key0","typ":"vc+sd-jwt"}"##
+            r##"{"alg":"ES256","kid":"#key0","typ":"vc+sd-jwt"}"##
         )
         .unwrap()
     );
@@ -458,6 +457,9 @@ async fn test_format_extract_round_trip() {
         .expect_sign()
         .returning(move |msg| EDDSASigner {}.sign(msg, &public_key.clone(), &private_key.clone()));
     auth_fn
+        .expect_get_key_type()
+        .return_const("EDDSA".to_string());
+    auth_fn
         .expect_get_key_id()
         .returning(move || Some(format!("{}#0", issuer_did)));
     let public_key_clone = key_pair.public.clone();
@@ -477,7 +479,6 @@ async fn test_format_extract_round_trip() {
         .format_credentials(
             credential_data,
             &Some(holder_did),
-            "EDDSA",
             vec![],
             vec![],
             Box::new(auth_fn),

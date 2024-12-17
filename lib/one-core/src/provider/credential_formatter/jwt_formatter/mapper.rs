@@ -106,7 +106,7 @@ impl TryFrom<Jwt<VP>> for Presentation {
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
             issuer_did: jwt.payload.issuer.map(DidValue::from),
-            nonce: jwt.payload.nonce,
+            nonce: jwt.payload.custom.nonce,
             credentials,
         })
     }

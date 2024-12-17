@@ -55,7 +55,6 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         credential: CredentialData,
         holder_did: &Option<DidValue>,
-        algorithm: &str,
         additional_context: Vec<ContextType>,
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
@@ -63,7 +62,6 @@ impl CredentialFormatter for SDJWTFormatter {
         format_credentials(
             credential,
             holder_did,
-            algorithm,
             additional_context,
             additional_types,
             auth_fn,
@@ -277,7 +275,6 @@ pub(super) fn format_hashed_credential(
 pub async fn format_credentials(
     credential: CredentialData,
     holder_did: &Option<DidValue>,
-    algorithm: &str,
     additional_context: Vec<ContextType>,
     additional_types: Vec<String>,
     auth_fn: AuthenticationFn,
@@ -309,13 +306,18 @@ pub async fn format_credentials(
         issuer: Some(issuer),
         jwt_id: id,
         custom: vc,
-        nonce: None,
         vc_type,
         proof_of_possession_key: None,
     };
 
     let key_id = auth_fn.get_key_id();
-    let jwt = Jwt::new(token_type, algorithm.to_owned(), key_id, None, payload);
+    let jwt = Jwt::new(
+        token_type,
+        auth_fn.get_key_type().to_owned(),
+        key_id,
+        None,
+        payload,
+    );
 
     let mut token = jwt.tokenize(Some(auth_fn)).await?;
 

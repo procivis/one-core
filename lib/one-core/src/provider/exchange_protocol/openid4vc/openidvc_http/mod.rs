@@ -143,6 +143,7 @@ pub struct OpenID4VCPresentationVerifierParams {
 pub enum ClientIdSchemaType {
     RedirectUri,
     VerifierAttestation,
+    Did,
 }
 
 #[allow(clippy::too_many_arguments)]

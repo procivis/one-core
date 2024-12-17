@@ -71,12 +71,10 @@ async fn test_format_credential_a() {
     );
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
-
     let result = sd_formatter
         .format_credentials(
             credential_data,
             &Some(DidValue::from("holder_did".to_string())),
-            "algorithm",
             vec![ContextType::Url("http://context.com".parse().unwrap())],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
@@ -106,7 +104,7 @@ async fn test_format_credential_a() {
     assert_eq!(
         jwt_parts[0],
         &Base64UrlSafeNoPadding::encode_to_string(
-            r##"{"alg":"algorithm","kid":"#key0","typ":"SD_JWT"}"##
+            r##"{"alg":"ES256","kid":"#key0","typ":"SD_JWT"}"##
         )
         .unwrap()
     );
@@ -227,7 +225,6 @@ async fn test_format_credential_with_array() {
         .format_credentials(
             credential_data,
             &Some(DidValue::from("holder_did".to_string())),
-            "algorithm",
             vec![ContextType::Url("http://context.com".parse().unwrap())],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
@@ -262,7 +259,7 @@ async fn test_format_credential_with_array() {
     assert_eq!(
         jwt_parts[0],
         &Base64UrlSafeNoPadding::encode_to_string(
-            r##"{"alg":"algorithm","kid":"#key0","typ":"SD_JWT"}"##
+            r##"{"alg":"ES256","kid":"#key0","typ":"SD_JWT"}"##
         )
         .unwrap()
     );

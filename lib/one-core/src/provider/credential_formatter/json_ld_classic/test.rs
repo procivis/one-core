@@ -131,8 +131,6 @@ async fn create_token(include_layout: bool) -> Value {
         embed_layout_properties: Some(include_layout),
         allowed_contexts: None,
     };
-    let algorithm = "ES256";
-
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -181,12 +179,14 @@ async fn create_token(include_layout: bool) -> Value {
     auth_fn
         .expect_get_key_id()
         .returning(|| Some("keyid".to_string()));
+    auth_fn
+        .expect_get_key_type()
+        .return_const("ES256".to_string());
 
     let formatted_credential = formatter
         .format_credentials(
             credential_data,
             &Some(holder_did).to_owned(),
-            algorithm,
             vec![],
             vec![],
             Box::new(auth_fn),

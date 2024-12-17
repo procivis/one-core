@@ -38,7 +38,6 @@ impl OpenID4VCIProofJWTFormatter {
             issued_at: Some(OffsetDateTime::now_utc()),
             expires_at: None,
             invalid_before: None,
-            nonce: None,
             vc_type: None,
             proof_of_possession_key: None,
         };
