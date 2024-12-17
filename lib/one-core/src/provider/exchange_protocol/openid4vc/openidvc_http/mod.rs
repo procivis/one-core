@@ -319,8 +319,19 @@ impl OpenID4VCHTTP {
             format_map.clone(),
         )?;
 
-        let response_uri = interaction_data.response_uri.clone();
         let mut params: HashMap<&str, String> = HashMap::new();
+
+        let response_uri =
+            interaction_data
+                .response_uri
+                .as_ref()
+                .ok_or(ExchangeProtocolError::Failed(
+                    "response_uri is None".to_string(),
+                ))?;
+        let nonce = interaction_data
+            .nonce
+            .as_ref()
+            .ok_or(ExchangeProtocolError::Failed("nonce is None".to_string()))?;
 
         if format == "MDOC" {
             let mdoc_generated_nonce = utilities::generate_nonce();
@@ -330,8 +341,8 @@ impl OpenID4VCHTTP {
                     to_cbor(&SessionTranscript {
                         handover: OID4VPHandover::compute(
                             interaction_data.client_id.as_str().trim_end_matches('/'),
-                            interaction_data.response_uri.as_str().trim_end_matches('/'),
-                            &interaction_data.nonce,
+                            response_uri.as_str().trim_end_matches('/'),
+                            nonce,
                             &mdoc_generated_nonce,
                         )
                         .into(),
@@ -367,20 +378,17 @@ impl OpenID4VCHTTP {
                 state,
             };
 
-            let response = mdoc::build_jwe(
-                payload,
-                client_metadata,
-                &mdoc_generated_nonce,
-                &interaction_data.nonce,
-            )
-            .map_err(|err| {
-                ExchangeProtocolError::Failed(format!("Failed to build mdoc response jwe: {err}"))
-            })?;
+            let response = mdoc::build_jwe(payload, client_metadata, &mdoc_generated_nonce, nonce)
+                .map_err(|err| {
+                    ExchangeProtocolError::Failed(format!(
+                        "Failed to build mdoc response jwe: {err}"
+                    ))
+                })?;
 
             params.insert("response", response);
         } else {
             let ctx = FormatPresentationCtx {
-                nonce: Some(interaction_data.nonce),
+                nonce: Some(nonce.clone()),
                 token_formats: Some(token_formats),
                 vc_format_map: format_map,
                 ..Default::default()
@@ -1172,7 +1180,11 @@ async fn handle_proof_invitation(
     let now = OffsetDateTime::now_utc();
     let interaction = create_and_store_interaction(
         storage_access,
-        interaction_data.response_uri,
+        interaction_data
+            .response_uri
+            .ok_or(ExchangeProtocolError::Failed(
+                "response_uri is None".to_string(),
+            ))?,
         data,
         organisation,
     )

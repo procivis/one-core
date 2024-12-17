@@ -275,7 +275,8 @@ impl OIDCService {
         let OpenID4VPInteractionContent {
             presentation_definition,
             client_id: Some(client_id),
-            ..
+            nonce,
+            response_uri,
         } = parse_interaction_content(interaction.data.as_ref())?
         else {
             tracing::error!(proof_id=%id, "Interaction data missing client_it/response uri. Make sure /share-proof is called before /client-request");
@@ -288,6 +289,9 @@ impl OIDCService {
         let client_response = OpenID4VPRequestDataResponse {
             client_metadata,
             presentation_definition,
+            redirect_uri: response_uri,
+            response_type: "vp_token".to_string(),
+            nonce: Some(nonce),
         };
 
         let issuer = Some(verifier_did.did.to_string());

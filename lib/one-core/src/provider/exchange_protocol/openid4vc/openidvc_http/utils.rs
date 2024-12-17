@@ -4,6 +4,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -64,6 +65,32 @@ pub async fn interaction_data_from_query(
 ) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
     let mut interaction_data: OpenID4VPInteractionData = serde_qs::from_str(query)
         .map_err(|e| ExchangeProtocolError::InvalidRequest(e.to_string()))?;
+
+    let is_verifier_attestation =
+        interaction_data.client_id_scheme == ClientIdSchemaType::VerifierAttestation;
+
+    if !is_verifier_attestation {
+        if interaction_data.nonce.is_none() {
+            return Err(ExchangeProtocolError::InvalidRequest(
+                "nonce must be set".to_string(),
+            ));
+        }
+        if interaction_data.response_mode.is_none() {
+            return Err(ExchangeProtocolError::InvalidRequest(
+                "response_mode must be set".to_string(),
+            ));
+        }
+        if interaction_data.response_type.is_none() {
+            return Err(ExchangeProtocolError::InvalidRequest(
+                "response_type must be set".to_string(),
+            ));
+        }
+        if interaction_data.response_uri.is_none() {
+            return Err(ExchangeProtocolError::InvalidRequest(
+                "response_uri must be set".to_string(),
+            ));
+        }
+    }
 
     if interaction_data.client_metadata.is_some() && interaction_data.client_metadata_uri.is_some()
     {
@@ -127,7 +154,7 @@ pub async fn interaction_data_from_query(
         interaction_data.presentation_definition = Some(presentation_definition);
     }
 
-    if interaction_data.client_id_scheme == ClientIdSchemaType::VerifierAttestation {
+    if is_verifier_attestation {
         let request_uri =
             interaction_data
                 .request_uri
@@ -186,7 +213,26 @@ pub async fn interaction_data_from_query(
             )
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
+        interaction_data.nonce = decomposed_token.payload.custom.nonce;
+        interaction_data.response_uri = decomposed_token
+            .payload
+            .custom
+            .redirect_uri
+            .map(|value| {
+                Url::parse(&value).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
+            })
+            .transpose()?;
+        interaction_data.response_mode = Some("direct_post".to_string());
+        interaction_data.response_type = Some("vp_token".to_string());
         interaction_data.client_metadata = Some(decomposed_token.payload.custom.client_metadata);
+        interaction_data.state = Some(
+            decomposed_token
+                .payload
+                .custom
+                .presentation_definition
+                .id
+                .to_string(),
+        );
         interaction_data.presentation_definition =
             Some(decomposed_token.payload.custom.presentation_definition);
     }
@@ -202,12 +248,23 @@ pub fn validate_interaction_data(
             "redirect_uri must be None".to_string(),
         ));
     }
-    assert_query_param(&interaction_data.response_type, "vp_token", "response_type")?;
-    assert_query_param(
-        &interaction_data.response_mode,
-        "direct_post",
-        "response_mode",
-    )?;
+    let response_type =
+        interaction_data
+            .response_type
+            .as_ref()
+            .ok_or(ExchangeProtocolError::InvalidRequest(
+                "response_type is None".to_string(),
+            ))?;
+    assert_query_param(response_type, "vp_token", "response_type")?;
+
+    let response_mode =
+        interaction_data
+            .response_mode
+            .as_ref()
+            .ok_or(ExchangeProtocolError::InvalidRequest(
+                "response_mode is None".to_string(),
+            ))?;
+    assert_query_param(response_mode, "direct_post", "response_mode")?;
 
     let client_metadata =
         interaction_data

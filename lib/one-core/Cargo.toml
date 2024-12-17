@@ -88,7 +88,6 @@ rusty-fork        = { version = "0.3" }
 tokio             = { workspace = true, features = ["rt-multi-thread", "macros"] }
 wiremock          = { version = "0.6" }
 
-
 [build-dependencies]
 shadow-rs.workspace = true
 

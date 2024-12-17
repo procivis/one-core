@@ -327,6 +327,10 @@ pub struct OpenID4VPAuthorizationRequest {
 pub struct OpenID4VPRequestDataResponse {
     pub client_metadata: OpenID4VPClientMetadata,
     pub presentation_definition: OpenID4VPPresentationDefinition,
+    pub redirect_uri: Option<String>,
+    pub response_type: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nonce: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -832,9 +836,9 @@ pub struct CredentialSchemaDetailResponseDTO {
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPInteractionData {
-    pub response_type: String,
+    pub response_type: Option<String>,
     pub state: Option<String>,
-    pub nonce: String,
+    pub nonce: Option<String>,
     pub client_id_scheme: ClientIdSchemaType,
     pub client_id: Url,
     #[serde(default)]
@@ -843,8 +847,8 @@ pub struct OpenID4VPInteractionData {
     pub client_metadata_uri: Option<Url>,
     #[serde(default)]
     pub request_uri: Option<Url>,
-    pub response_mode: String,
-    pub response_uri: Url,
+    pub response_mode: Option<String>,
+    pub response_uri: Option<Url>,
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
