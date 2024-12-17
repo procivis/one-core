@@ -64,18 +64,18 @@ pub struct Disclosure {
     pub salt: String,
     pub key: String,
     pub value: serde_json::Value,
-    pub original_disclosure: String,
-    pub base64_encoded_disclosure: String,
+    pub disclosure_array: String,
+    pub disclosure: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SDCredentialSubject {
     #[serde(rename = "_sd")]
-    pub claims: Vec<String>,
+    pub digests: Vec<String>,
 }
 
 pub struct DecomposedToken<'a> {
     pub jwt: &'a str,
-    pub deserialized_disclosures: Vec<Disclosure>,
+    pub disclosures: Vec<Disclosure>,
 }

@@ -4,7 +4,6 @@ use one_crypto::Hasher;
 use serde_json::Value;
 
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::jwt::mapper::string_to_b64url_string;
 use crate::provider::credential_formatter::sdjwt::disclosures::SELECTIVE_DISCLOSURE_MARKER;
 use crate::provider::credential_formatter::sdjwt::model::Disclosure;
 
@@ -16,7 +15,7 @@ pub(super) fn extract_claims_from_disclosures(
 ) -> Result<Value, FormatterError> {
     let disclosures = disclosures
         .iter()
-        .map(|disclosure| Ok((disclosure, disclosure.hash_b64_disclosure(hasher)?)))
+        .map(|disclosure| Ok((disclosure, disclosure.hash_disclosure(hasher)?)))
         .collect::<Result<Vec<(&Disclosure, String)>, FormatterError>>()?;
 
     selective_disclosure_hashes.iter().for_each(|hash| {
@@ -85,63 +84,4 @@ fn gather_insertables_from_value(
     }
 
     Default::default()
-}
-
-/*
- * This function is almost direct copy of SD-JWT's gather_disclosures,
- * but it uses base64 encoded disclosures for hashing, SD-JWT uses
- * non-encoded disclosures. Reason for this is that our SD-JWT implementation
- * is based on Draft 5, while SD-JWT VC is based on newer draft of SD-JWT
- */
-pub(crate) fn gather_disclosures(
-    value: &serde_json::Value,
-    hasher: &dyn Hasher,
-) -> Result<(Vec<String>, Vec<String>), FormatterError> {
-    let object = value.as_object().ok_or(FormatterError::JsonMapping(
-        "value is not an Object".to_string(),
-    ))?;
-    let mut disclosures = vec![];
-    let mut hashed_disclosures = vec![];
-
-    for (key, value) in object {
-        match value {
-            serde_json::Value::Object(_) => {
-                let (nested_disclosures, nested_sd_hashes) = gather_disclosures(value, hasher)?;
-                disclosures.extend(nested_disclosures);
-
-                let nested_sd = serde_json::json!({
-                    SELECTIVE_DISCLOSURE_MARKER: nested_sd_hashes
-                });
-                let disclosure = compute_disclosure(key, &nested_sd)?;
-
-                let hashed_disclosure = hasher
-                    .hash_base64(disclosure.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-                disclosures.push(disclosure);
-                hashed_disclosures.push(hashed_disclosure);
-            }
-
-            _ => {
-                let disclosure = compute_disclosure(key, value)?;
-
-                let hashed_disclosure = hasher
-                    .hash_base64(disclosure.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-                disclosures.push(disclosure);
-                hashed_disclosures.push(hashed_disclosure);
-            }
-        }
-    }
-
-    Ok((disclosures, hashed_disclosures))
-}
-
-fn compute_disclosure(key: &str, value: &Value) -> Result<String, FormatterError> {
-    let salt = one_crypto::utilities::generate_salt_base64_16();
-
-    let array = serde_json::json!([salt, key, value]).to_string();
-
-    string_to_b64url_string(&array)
 }

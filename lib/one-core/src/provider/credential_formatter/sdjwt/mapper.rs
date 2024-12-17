@@ -1,3 +1,4 @@
+use rand::seq::SliceRandom;
 use shared_types::DidValue;
 
 use crate::provider::credential_formatter::error::FormatterError;
@@ -12,14 +13,18 @@ use crate::provider::credential_formatter::sdjwt::model::{
 
 pub(crate) fn vc_from_credential(
     credential: CredentialData,
-    sd_section: &[String],
+    digests: Vec<String>,
     additional_context: Vec<ContextType>,
     additional_types: Vec<String>,
     algorithm: &str,
     embed_layout_properties: bool,
 ) -> Result<Sdvc, FormatterError> {
-    let mut hashed_claims: Vec<String> = sd_section.to_vec();
-    hashed_claims.sort_unstable();
+    let digests: Vec<String> = {
+        let mut digests = digests;
+        let mut rng = rand::thread_rng();
+        digests.shuffle(&mut rng);
+        digests
+    };
 
     let types = vec!["VerifiableCredential".to_owned()]
         .into_iter()
@@ -39,9 +44,7 @@ pub(crate) fn vc_from_credential(
             context: additional_context,
             r#type: types,
             id: credential.id,
-            credential_subject: SDCredentialSubject {
-                claims: hashed_claims,
-            },
+            credential_subject: SDCredentialSubject { digests },
             credential_status: credential.status,
             credential_schema,
             issuer: Some(credential.issuer_did),
@@ -52,18 +55,10 @@ pub(crate) fn vc_from_credential(
     })
 }
 
-pub(crate) fn tokenize_claims(disclosures: Vec<String>) -> Result<String, FormatterError> {
-    let mut token = String::new();
-
-    for disclosure in disclosures {
-        token.push('~');
-        token.push_str(&disclosure);
-    }
-
-    Ok(token)
-}
-
-pub(crate) fn nest_claims_to_json(
+// Build JSON object from claim paths which are similar to JSON pointers without the "/" prefix
+// ex. claim with key=a/b/c, value=10 => { "a": {"b": {"c": 10}}}
+//     claim with key=a/0/c, value=10 => { "a": [{"c": 10}]}
+pub(crate) fn claims_to_json_object(
     claims: &[PublishedClaim],
 ) -> Result<serde_json::Value, FormatterError> {
     let mut data = serde_json::Value::Object(Default::default());

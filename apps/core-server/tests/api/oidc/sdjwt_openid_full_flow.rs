@@ -15,26 +15,26 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 #[tokio::test]
-async fn test_openid4vc_jwt_flow_eddsa_no_revocation() {
-    test_openid4vc_jwt_flow(ecdsa_key_1(), eddsa_key_2(), "NONE").await
+async fn test_openid4vc_sdjwt_flow_eddsa_no_revocation() {
+    test_openid4vc_sdjwt_flow(ecdsa_key_1(), eddsa_key_2(), "NONE").await
 }
 
 #[tokio::test]
-async fn test_openid4vc_jwt_flow_eddsa_bitstring_revocation() {
-    test_openid4vc_jwt_flow(ecdsa_key_1(), eddsa_key_2(), "BITSTRINGSTATUSLIST").await
+async fn test_openid4vc_sdjwt_flow_eddsa_bitstring_revocation() {
+    test_openid4vc_sdjwt_flow(ecdsa_key_1(), eddsa_key_2(), "BITSTRINGSTATUSLIST").await
 }
 
 #[tokio::test]
-async fn test_openid4vc_jwt_flow_eddsa_lvvc_revocation() {
-    test_openid4vc_jwt_flow(ecdsa_key_1(), eddsa_key_2(), "LVVC").await
+async fn test_openid4vc_sdjwt_flow_eddsa_lvvc_revocation() {
+    test_openid4vc_sdjwt_flow(ecdsa_key_1(), eddsa_key_2(), "LVVC").await
 }
 
 #[tokio::test]
-async fn test_openid4vc_jwt_flow_eddsa_array() {
-    test_openid4vc_jwt_flow_array(ecdsa_key_1(), eddsa_key_2()).await
+async fn test_openid4vc_sdjwt_flow_eddsa_array() {
+    test_openid4vc_sdjwt_flow_array(ecdsa_key_1(), eddsa_key_2()).await
 }
 
-async fn test_openid4vc_jwt_flow(
+async fn test_openid4vc_sdjwt_flow(
     server_key: TestKey,
     holder_key: TestKey,
     revocation_method: &str,
@@ -384,7 +384,7 @@ async fn test_openid4vc_jwt_flow(
     assert_eq!(claims.first().unwrap().claim.value, "test");
 }
 
-async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey) {
+async fn test_openid4vc_sdjwt_flow_array(server_key: TestKey, holder_key: TestKey) {
     // GIVEN
     let interaction_id = Uuid::new_v4();
     let server_context = TestContext::new_with_token(&format!("{}.test", interaction_id)).await;

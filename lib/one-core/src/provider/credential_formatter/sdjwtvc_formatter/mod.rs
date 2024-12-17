@@ -18,6 +18,7 @@ use time::Duration;
 use url::Url;
 
 use super::json_ld::model::ContextType;
+use super::sdjwt;
 use crate::model::did::Did;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
@@ -27,15 +28,11 @@ use crate::provider::credential_formatter::model::{
     ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
     SelectiveDisclosure, VerificationFn,
 };
-use crate::provider::credential_formatter::sdjwt::disclosures::{extract_disclosures, to_hashmap};
-use crate::provider::credential_formatter::sdjwt::mapper::{
-    nest_claims_to_json, tokenize_claims, unpack_arrays,
-};
+use crate::provider::credential_formatter::sdjwt::disclosures::{parse_token, to_hashmap};
+use crate::provider::credential_formatter::sdjwt::mapper::{claims_to_json_object, unpack_arrays};
 use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Sdvp};
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
-use crate::provider::credential_formatter::sdjwtvc_formatter::disclosures::{
-    extract_claims_from_disclosures, gather_disclosures,
-};
+use crate::provider::credential_formatter::sdjwtvc_formatter::disclosures::extract_claims_from_disclosures;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::{
     SDJWTVCStatus, SDJWTVCStatusList, SDJWTVCVc,
 };
@@ -110,7 +107,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        prepare_sd_presentation(credential, &*self.crypto)
+        prepare_sd_presentation(credential)
     }
 
     async fn extract_credentials_unverified(
@@ -237,10 +234,7 @@ pub(super) async fn extract_credentials_internal(
     verification: Option<VerificationFn>,
     crypto: &dyn CryptoProvider,
 ) -> Result<DetailCredential, FormatterError> {
-    let DecomposedToken {
-        deserialized_disclosures,
-        jwt,
-    } = extract_disclosures(token)?;
+    let DecomposedToken { disclosures, jwt } = parse_token(token)?;
 
     let jwt: Jwt<SDJWTVCVc> = Jwt::build_from_token(jwt, verification).await?;
 
@@ -251,7 +245,7 @@ pub(super) async fn extract_credentials_internal(
     let public_claims = &jwt.payload.custom.public_claims;
 
     let claims = extract_claims_from_disclosures(
-        &deserialized_disclosures,
+        &disclosures,
         public_claims.clone(),
         selective_disclosure_hashes,
         &*hasher,
@@ -311,14 +305,10 @@ pub async fn format_credentials(
         payload,
     );
 
-    let mut token = jwt.tokenize(Some(auth_fn)).await?;
+    let token = jwt.tokenize(Some(auth_fn)).await?;
+    let sdjwt = sdjwt::serialize(token, disclosures);
 
-    let disclosures_token = tokenize_claims(disclosures)?;
-
-    token.push_str(&disclosures_token);
-    token.push('~'); // SD-JWT VC requires additional '~' at the end for Key Binding JWT
-
-    Ok(token)
+    Ok(sdjwt)
 }
 
 pub(super) fn format_hashed_credential(
@@ -326,10 +316,11 @@ pub(super) fn format_hashed_credential(
     algorithm: &str,
     crypto: &dyn CryptoProvider,
 ) -> Result<(SDJWTVCVc, Vec<String>), FormatterError> {
-    let nested = nest_claims_to_json(&credential.claims)?;
+    let nested = claims_to_json_object(&credential.claims)?;
     let hasher = crypto.get_hasher("sha-256")?;
 
-    let (disclosures, sd_section) = gather_disclosures(&nested, &*hasher)?;
+    let (disclosures, sd_section) =
+        sdjwt::disclosures::compute_object_disclosures(&nested, &*hasher)?;
     let status = credential.status.first().and_then(|status| {
         let obj: serde_json::Value = status
             .additional_fields

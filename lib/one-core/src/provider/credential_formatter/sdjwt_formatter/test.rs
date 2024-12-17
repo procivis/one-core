@@ -86,7 +86,8 @@ async fn test_format_credential_a() {
     let token = result.unwrap();
 
     let parts: Vec<&str> = token.splitn(4, '~').collect();
-    assert_eq!(parts.len(), 3);
+    assert_eq!(parts.len(), 4);
+    assert_eq!(parts[3], "");
 
     let disclosures = [
         DisclosureArray::from_b64(parts[1]),
@@ -135,7 +136,7 @@ async fn test_format_credential_a() {
 
     assert!(vc
         .credential_subject
-        .claims
+        .digests
         .iter()
         .all(|hashed_claim| hashed_claim == "YWJjMTIz"));
 
@@ -175,7 +176,8 @@ async fn test_format_credential_with_array() {
 
     let mut hasher = MockHasher::default();
     hasher.expect_hash_base64().returning(move |input| {
-        let input = DisclosureArray::from(std::str::from_utf8(input).unwrap());
+        let input = Base64UrlSafeNoPadding::decode_to_vec(input, None).unwrap();
+        let input = DisclosureArray::from(std::str::from_utf8(&input).unwrap());
         if input.key.eq(claim1.0) {
             Ok(hash1.to_string())
         } else if input.key.eq(claim2.0) {
@@ -195,7 +197,7 @@ async fn test_format_credential_with_array() {
 
     crypto
         .expect_get_hasher()
-        .times(2)
+        .once()
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
 
@@ -236,11 +238,13 @@ async fn test_format_credential_with_array() {
     let token = result.unwrap();
 
     let parts: Vec<&str> = token.split('~').collect();
-    assert_eq!(parts.len(), 5);
+    assert_eq!(parts.len(), 6);
+
+    assert_eq!("", parts[5]);
 
     let part = DisclosureArray::from_b64(parts[1]);
     assert_eq!(part.key, claim1.0);
-    assert_eq!(part.value, claim1.1);
+    assert_eq!(part.value.to_string(), claim1.1);
 
     let part = DisclosureArray::from_b64(parts[2]);
     assert_eq!(part.key, claim2.0);
@@ -279,7 +283,7 @@ async fn test_format_credential_with_array() {
 
     let vc = payload.custom.vc;
 
-    assert_eq!(vec![hash4, hash3], vc.credential_subject.claims);
+    assert_eq!(vec![hash4, hash3], vc.credential_subject.digests);
 }
 
 #[tokio::test]
@@ -295,11 +299,15 @@ async fn test_extract_credentials() {
     let mut hasher = MockHasher::default();
     hasher
         .expect_hash_base64()
-        .with(eq(claim1.as_bytes()))
+        .withf(move |disclosure| {
+            disclosure == base64_urlsafe(claim1).as_bytes() || disclosure == claim1.as_bytes()
+        })
         .returning(|_| Ok("rZjyxF4zE7fdRmkcUT8Hkr8_IHSBes1z1pZWP2vLBRE".to_string()));
     hasher
         .expect_hash_base64()
-        .with(eq(claim2.as_bytes()))
+        .withf(move |disclosure| {
+            disclosure == base64_urlsafe(claim2).as_bytes() || disclosure == claim2.as_bytes()
+        })
         .returning(|_| Ok("KGPldlPB395xKJRjK8k2K5UvsEns9QhL7O7JUu59ERk".to_string()));
     let hasher = Arc::new(hasher);
 
@@ -393,19 +401,27 @@ async fn test_extract_credentials_with_array() {
     let mut hasher = MockHasher::default();
     hasher
         .expect_hash_base64()
-        .with(eq(claim1.as_bytes()))
+        .withf(move |disclosure| {
+            disclosure == base64_urlsafe(claim1).as_bytes() || disclosure == claim1.as_bytes()
+        })
         .returning(|_| Ok("WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc".to_string()));
     hasher
         .expect_hash_base64()
-        .with(eq(claim2.as_bytes()))
+        .withf(move |disclosure| {
+            disclosure == base64_urlsafe(claim2).as_bytes() || disclosure == claim2.as_bytes()
+        })
         .returning(|_| Ok("r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw".to_string()));
     hasher
         .expect_hash_base64()
-        .with(eq(claim3.as_bytes()))
+        .withf(move |disclosure| {
+            disclosure == base64_urlsafe(claim3).as_bytes() || disclosure == claim3.as_bytes()
+        })
         .returning(|_| Ok("pDOe9CChM-YRgHBILyT1kPTBmCqbrAekt2xOJLb8HEs".to_string()));
     hasher
         .expect_hash_base64()
-        .with(eq(claim4.as_bytes()))
+        .withf(move |disclosure| {
+            disclosure == base64_urlsafe(claim4).as_bytes() || disclosure == claim4.as_bytes()
+        })
         .returning(|_| Ok("GBcm8QZO2Pr4n_jmJlP4By1iwcoU0eQDVhin2AidMq4".to_string()));
     let hasher = Arc::new(hasher);
 
@@ -476,20 +492,28 @@ async fn test_extract_credentials_with_array_stripped() {
     let mut hasher = MockHasher::default();
     hasher
         .expect_hash_base64()
-        .with(eq(claim1.as_bytes()))
+        .withf(move |disclosure| {
+            disclosure == base64_urlsafe(claim1).as_bytes() || disclosure == claim1.as_bytes()
+        })
         .returning(|_| Ok("WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc".to_string()));
     hasher
         .expect_hash_base64()
         .never()
-        .with(eq(claim2.as_bytes()))
+        .withf(move |disclosure| {
+            disclosure == base64_urlsafe(claim2).as_bytes() || disclosure == claim2.as_bytes()
+        })
         .returning(|_| Ok("r69eqe07S9rE27Ing-l997ofg85RS_nRuVXucVQ9Ehw".to_string()));
     hasher
         .expect_hash_base64()
-        .with(eq(claim3.as_bytes()))
+        .withf(move |disclosure| {
+            disclosure == base64_urlsafe(claim3).as_bytes() || disclosure == claim3.as_bytes()
+        })
         .returning(|_| Ok("pDOe9CChM-YRgHBILyT1kPTBmCqbrAekt2xOJLb8HEs".to_string()));
     hasher
         .expect_hash_base64()
-        .with(eq(claim4.as_bytes()))
+        .withf(move |disclosure| {
+            disclosure == base64_urlsafe(claim4).as_bytes() || disclosure == claim4.as_bytes()
+        })
         .returning(|_| Ok("GBcm8QZO2Pr4n_jmJlP4By1iwcoU0eQDVhin2AidMq4".to_string()));
     let hasher = Arc::new(hasher);
 
@@ -678,4 +702,8 @@ fn get_credential_data_with_array(
         evidence: vec![],
         related_resource: None,
     }
+}
+
+fn base64_urlsafe(s: &str) -> String {
+    Base64UrlSafeNoPadding::encode_to_string(s).unwrap()
 }

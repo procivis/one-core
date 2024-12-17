@@ -1,179 +1,75 @@
-use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use one_crypto::{CryptoProvider, Hasher};
+use one_crypto::Hasher;
 use serde::{Deserialize, Serialize};
 
-use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::mapper::string_to_b64url_string;
-use crate::provider::credential_formatter::model::PublishedClaim;
 use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Disclosure};
 
 pub(crate) const SELECTIVE_DISCLOSURE_MARKER: &str = "_sd";
 
-pub(crate) fn gather_hashes_from_original_disclosures(
-    disclosures: &[Disclosure],
+// Reconstructs digests from disclosures
+pub(crate) fn compute_digests(
+    disclosures: Vec<Disclosure>,
     hasher: &dyn Hasher,
+) -> Result<HashMap<String, Disclosure>, FormatterError> {
+    let capacity = 2 * disclosures.len();
+
+    disclosures.into_iter().try_fold(
+        HashMap::with_capacity(capacity),
+        |mut digests, disclosure| {
+            // keep them for backwards compatibility with already issued vc
+            let old = disclosure.hash_disclosure_array(hasher)?;
+            let current = disclosure.hash_disclosure(hasher)?;
+
+            digests.insert(old, disclosure.clone());
+            digests.insert(current, disclosure);
+
+            Ok(digests)
+        },
+    )
+}
+
+pub(crate) fn select_disclosures(
+    disclosed_keys: Vec<String>,
+    disclosures: Vec<Disclosure>,
 ) -> Result<Vec<String>, FormatterError> {
-    disclosures
-        .iter()
-        .map(|disclosure| disclosure.hash_original_disclosure(hasher))
-        .collect::<Result<Vec<String>, FormatterError>>()
-}
+    let mut selected_disclosures = HashSet::new();
+    let key_disclosure: HashMap<String, String> = disclosures
+        .into_iter()
+        .map(|disclosure| (disclosure.key, disclosure.disclosure))
+        .collect();
 
-#[derive(Debug, Deserialize)]
-struct SelectiveDisclosureArray {
-    #[serde(rename = "_sd")]
-    pub sd: Vec<String>,
-}
-
-fn gather_hash(
-    disclosure: &Disclosure,
-    hasher: &dyn Hasher,
-) -> Result<Vec<String>, FormatterError> {
-    match serde_json::from_value::<SelectiveDisclosureArray>(disclosure.value.to_owned()) {
-        Ok(mut value) => {
-            value.sd.push(disclosure.hash_original_disclosure(hasher)?);
-            Ok(value.sd)
-        }
-        Err(_) => Ok(vec![disclosure.hash_original_disclosure(hasher)?]),
-    }
-}
-
-pub(crate) fn gather_hashes_from_hashed_claims(
-    hashed_claims: &[String],
-    disclosures: &[Disclosure],
-    hasher: &dyn Hasher,
-) -> Result<Vec<String>, FormatterError> {
-    let mut used_hashes = vec![];
-
-    hashed_claims.iter().try_for_each(|hashed_claim| {
-        let matching_disclosure = disclosures.iter().find(|disclosure| {
-            match disclosure.hash_original_disclosure(hasher) {
-                Ok(hash) => hash == *hashed_claim,
-                _ => false,
-            }
-        });
-        if let Some(disclosure) = matching_disclosure {
-            used_hashes.extend(gather_hash(disclosure, hasher)?);
-        }
-        Ok::<(), FormatterError>(())
-    })?;
-
-    Ok(used_hashes)
-}
-
-pub(crate) fn get_disclosures_by_claim_name(
-    claim_name: &str,
-    disclosures: &[Disclosure],
-    hasher: &dyn Hasher,
-) -> Result<Vec<Disclosure>, FormatterError> {
-    let mut result = vec![];
-    let hashes = gather_hashes_from_original_disclosures(disclosures, hasher)?;
-
-    if let Some(index) = claim_name.find(NESTED_CLAIM_MARKER) {
-        let prefix = &claim_name[0..index];
-        let rest = remove_first_nesting_layer(claim_name);
-
-        let disclosure = disclosures
-            .iter()
-            .find(|d| d.key == prefix)
-            .ok_or(FormatterError::MissingClaim)?;
-        if !disclosure.has_subdisclosures() {
-            return Err(FormatterError::Failed(
-                "asked for subdisclosure of non-nested claim".to_string(),
-            ));
-        }
-
-        for sd_hash in disclosure.get_subdisclosure_hashes()? {
-            let subdisclosures = resolve_disclosure_by_hash(&sd_hash, disclosures, &hashes)?;
-
-            if let Ok(disclosures) = get_disclosures_by_claim_name(&rest, &subdisclosures, hasher) {
-                result.extend(disclosures);
-                result.push(disclosure.to_owned());
-                return Ok(result);
-            }
-        }
-
-        return Err(FormatterError::MissingClaim);
-    } else if let Some(disclosure) = disclosures
-        .iter()
-        .find(|disclosure| disclosure.key == claim_name)
-    {
-        if disclosure.has_subdisclosures() {
-            for subdisclosure in disclosure.get_subdisclosure_hashes()? {
-                result.extend(resolve_disclosure_by_hash(
-                    &subdisclosure,
-                    disclosures,
-                    &hashes,
-                )?);
-            }
-        }
-
-        result.push(disclosure.to_owned());
-        return Ok(result);
-    }
-
-    Err(FormatterError::MissingClaim)
-}
-
-fn resolve_disclosure_by_hash(
-    hash: &str,
-    disclosures: &[Disclosure],
-    hashes: &[String],
-) -> Result<Vec<Disclosure>, FormatterError> {
-    let mut result = vec![];
-
-    let (disclosure, _hash) = disclosures
-        .iter()
-        .zip(hashes)
-        .find(|(_disclosure, disclosure_hash)| hash == **disclosure_hash)
-        .ok_or(FormatterError::MissingClaim)?;
-
-    if disclosure.has_subdisclosures() {
-        for subdisclosure in disclosure.get_subdisclosure_hashes()? {
-            result.extend(resolve_disclosure_by_hash(
-                &subdisclosure,
-                disclosures,
-                hashes,
-            )?);
+    for key in disclosed_keys {
+        for key_part in key.split(NESTED_CLAIM_MARKER) {
+            match key_disclosure.get(key_part) {
+                None => {
+                    return Err(FormatterError::Failed(format!(
+                        "Cannot find `{key_part}` from key `{key}` in disclosures"
+                    )))
+                }
+                Some(disclosure) => selected_disclosures.insert(disclosure.to_owned()),
+            };
         }
     }
 
-    result.push(disclosure.to_owned());
-    Ok(result)
+    Ok(Vec::from_iter(selected_disclosures))
 }
 
 impl Disclosure {
-    pub fn get_subdisclosure_hashes(&self) -> Result<Vec<String>, FormatterError> {
-        if !self.has_subdisclosures() {
-            Err(FormatterError::Failed(
-                "current disclosure has no subdisclosures".to_string(),
-            ))
-        } else {
-            let obj = serde_json::from_value::<SelectiveDisclosureArray>(self.value.to_owned())
-                .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-            Ok(obj.sd)
-        }
-    }
-
-    pub fn has_subdisclosures(&self) -> bool {
-        self.value
-            .as_object()
-            .is_some_and(|obj| obj.contains_key(SELECTIVE_DISCLOSURE_MARKER))
-    }
-
-    pub fn hash_original_disclosure(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
+    // We keep this is for backwards compatibility where by mistake we were using the disclosure array string `[salt,key,value]` as disclosure
+    pub fn hash_disclosure_array(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
         hasher
-            .hash_base64(self.original_disclosure.as_bytes())
+            .hash_base64(self.disclosure_array.as_bytes())
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))
     }
 
-    pub fn hash_b64_disclosure(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
+    pub fn hash_disclosure(&self, hasher: &dyn Hasher) -> Result<String, FormatterError> {
         hasher
-            .hash_base64(self.base64_encoded_disclosure.as_bytes())
+            .hash_base64(self.disclosure.as_bytes())
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))
     }
 }
@@ -191,212 +87,146 @@ pub(crate) fn to_hashmap(
         .collect())
 }
 
-pub(crate) fn gather_disclosures(
+// The algorithm follows: https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-14#section-4.2.1
+pub(crate) fn compute_object_disclosures(
     value: &serde_json::Value,
-    algorithm: &str,
-    crypto: &dyn CryptoProvider,
+    hasher: &dyn Hasher,
 ) -> Result<(Vec<String>, Vec<String>), FormatterError> {
-    let hasher = crypto.get_hasher(algorithm)?;
-
-    let value_as_object = value.as_object().ok_or(FormatterError::JsonMapping(
+    let object = value.as_object().ok_or(FormatterError::JsonMapping(
         "value is not an Object".to_string(),
     ))?;
     let mut disclosures = vec![];
-    let mut hashed_disclosures = vec![];
+    let mut digests = vec![];
 
-    value_as_object.iter().try_for_each(|(k, v)| {
-        match v {
-            serde_json::Value::Array(array) => {
-                let salt = one_crypto::utilities::generate_salt_base64_16();
+    for (key, value) in object {
+        match value {
+            serde_json::Value::Object(_) => {
+                let (nested_disclosures, nested_sd_hashes) =
+                    compute_object_disclosures(value, hasher)?;
+                disclosures.extend(nested_disclosures);
 
-                let value = serde_json::to_string(array)
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let result = serde_json::to_string(&[&salt, k, &value])
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let b64_encoded = string_to_b64url_string(&result)?;
-
-                let hashed_disclosure = hasher
-                    .hash_base64(result.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-                disclosures.push(b64_encoded);
-                hashed_disclosures.push(hashed_disclosure);
-            }
-            serde_json::Value::Object(_object) => {
-                let (subdisclosures, sd_hashes) = gather_disclosures(v, algorithm, crypto)?;
-                disclosures.extend(subdisclosures);
-
-                let salt = one_crypto::utilities::generate_salt_base64_16();
-
-                let sd_hashes_json = serde_json::json!({
-                    SELECTIVE_DISCLOSURE_MARKER: sd_hashes
+                let nested_sd = serde_json::json!({
+                    SELECTIVE_DISCLOSURE_MARKER: nested_sd_hashes
                 });
-                let sd_disclosure = format!(
-                    r#"["{salt}","{k}",{}]"#,
-                    serde_json::to_string(&sd_hashes_json)
-                        .map_err(|e| FormatterError::JsonMapping(e.to_string()))?
-                );
 
-                let sd_disclosure_as_b64 = string_to_b64url_string(&sd_disclosure)?;
-
-                let hashed_subdisclosure = hasher
-                    .hash_base64(sd_disclosure.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-                disclosures.push(sd_disclosure_as_b64);
-                hashed_disclosures.push(hashed_subdisclosure);
-            }
-            serde_json::Value::String(value) => {
-                let salt = one_crypto::utilities::generate_salt_base64_16();
-
-                let result = serde_json::to_string(&[&salt, k, value])
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let b64_encoded = string_to_b64url_string(&result)?;
-
-                let hashed_disclosure: String = hasher
-                    .hash_base64(result.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-                disclosures.push(b64_encoded);
-                hashed_disclosures.push(hashed_disclosure);
-            }
-            serde_json::Value::Number(number) => {
-                let salt = one_crypto::utilities::generate_salt_base64_16();
-
-                let value = serde_json::to_string(number)
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let result = serde_json::to_string(&[&salt, k, &value])
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let b64_encoded = string_to_b64url_string(&result)?;
+                let disclosure = compute_disclosure_for(key, &nested_sd)?;
 
                 let hashed_disclosure = hasher
-                    .hash_base64(result.as_bytes())
+                    .hash_base64(disclosure.as_bytes())
                     .map_err(|e| FormatterError::Failed(e.to_string()))?;
 
-                disclosures.push(b64_encoded);
-                hashed_disclosures.push(hashed_disclosure);
+                disclosures.push(disclosure);
+                digests.push(hashed_disclosure);
             }
-            serde_json::Value::Bool(bool) => {
-                let salt = one_crypto::utilities::generate_salt_base64_16();
 
-                let value = serde_json::to_string(bool)
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let result = serde_json::to_string(&[&salt, k, &value])
-                    .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
-
-                let b64_encoded = string_to_b64url_string(&result)?;
-
-                let hashed_disclosure = hasher
-                    .hash_base64(result.as_bytes())
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-                disclosures.push(b64_encoded);
-                hashed_disclosures.push(hashed_disclosure);
-            }
             _ => {
-                return Err(FormatterError::Failed(
-                    "unsupported JSON variant".to_string(),
-                ))
+                let disclosure = compute_disclosure_for(key, value)?;
+
+                let hashed_disclosure = hasher
+                    .hash_base64(disclosure.as_bytes())
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+
+                disclosures.push(disclosure);
+                digests.push(hashed_disclosure);
             }
         }
+    }
 
-        Ok::<(), FormatterError>(())
-    })?;
-
-    Ok((disclosures, hashed_disclosures))
+    Ok((disclosures, digests))
 }
 
-#[derive(Debug)]
-struct DisclosureWithHash {
-    pub disclosure: Disclosure,
-    pub hash: String,
+fn compute_disclosure_for(key: &str, value: &serde_json::Value) -> Result<String, FormatterError> {
+    let salt = one_crypto::utilities::generate_salt_base64_16();
+
+    let array = serde_json::json!([salt, key, value]).to_string();
+
+    string_to_b64url_string(&array)
 }
 
+// Note that currently we only pass digests coming from `credentialSubject`(digests parameter)
 pub(crate) fn extract_claims_from_disclosures(
-    disclosures: &[Disclosure],
+    digests: Vec<String>,
+    disclosures: Vec<Disclosure>,
     hasher: &dyn Hasher,
 ) -> Result<serde_json::Value, FormatterError> {
-    let hashes_used_by_disclosures = gather_hashes_from_original_disclosures(disclosures, hasher)?;
+    let digest_by_disclosure = compute_digests(disclosures, hasher)?;
 
-    let all_disclosures: Vec<_> = hashes_used_by_disclosures
-        .into_iter()
-        .zip(disclosures)
-        .map(|(hash, disclosure)| DisclosureWithHash {
-            hash,
-            disclosure: disclosure.to_owned(),
-        })
-        .collect();
-
-    let root_disclosures: Vec<_> = all_disclosures
-        .iter()
-        .filter(|DisclosureWithHash { hash, .. }| {
-            // root disclosures are those whose hash is not mentioned by any other disclosure
-            !all_disclosures
-                .iter()
-                .any(|DisclosureWithHash { disclosure, .. }| {
-                    disclosure.has_subdisclosures()
-                        && disclosure
-                            .get_subdisclosure_hashes()
-                            .is_ok_and(|subdisclosures| subdisclosures.contains(hash))
-                })
-        })
-        .collect();
-
-    let mut object: serde_json::Map<String, serde_json::Value> = Default::default();
-    for DisclosureWithHash { disclosure, .. } in root_disclosures {
-        let value = extract_claim_value_from_disclosure(disclosure, &all_disclosures)?;
-        object.insert(disclosure.key.to_owned(), value);
-    }
-    Ok(serde_json::Value::Object(object))
+    extract_claims(digests, digest_by_disclosure)
 }
 
-fn extract_claim_value_from_disclosure(
-    disclosure: &Disclosure,
-    all_disclosures: &[DisclosureWithHash],
+fn extract_claims(
+    digests: Vec<String>,
+    mut digest_by_disclosure: HashMap<String, Disclosure>,
 ) -> Result<serde_json::Value, FormatterError> {
-    if disclosure.has_subdisclosures() {
-        let subdisclosures = disclosure.get_subdisclosure_hashes()?;
-        let mut object: serde_json::Map<String, serde_json::Value> = Default::default();
-        for DisclosureWithHash { disclosure, .. } in all_disclosures
-            .iter()
-            .filter(|DisclosureWithHash { hash, .. }| subdisclosures.contains(hash))
-        {
-            let value = extract_claim_value_from_disclosure(disclosure, all_disclosures)?;
-            object.insert(disclosure.key.to_owned(), value);
-        }
-        Ok(serde_json::Value::Object(object))
-    } else {
-        Ok(disclosure.value.to_owned())
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum DisclosureValueKind {
+        NestedDigests {
+            #[serde(rename = "_sd")]
+            digests: Vec<String>,
+        },
+        JsonValue(serde_json::Value),
     }
+
+    fn extract_inner(
+        digests: Vec<String>,
+        digest_by_disclosure: &mut HashMap<String, Disclosure>,
+    ) -> Result<serde_json::Value, FormatterError> {
+        let mut object: serde_json::Map<String, serde_json::Value> = serde_json::Map::default();
+
+        for digest in digests {
+            let Some(disclosure) = digest_by_disclosure.remove(&digest) else {
+                continue;
+            };
+
+            let key = disclosure.key;
+            if key == "_sd" || key == "..." {
+                return Err(FormatterError::Failed(format!("Invalid claim name: {key}")));
+            }
+
+            let disclosure_value_kind: DisclosureValueKind =
+                serde_json::from_value(disclosure.value)
+                    .map_err(|err| FormatterError::Failed(err.to_string()))?;
+            let value = match disclosure_value_kind {
+                DisclosureValueKind::NestedDigests { digests } => {
+                    extract_inner(digests, digest_by_disclosure)?
+                }
+                DisclosureValueKind::JsonValue(value) => value,
+            };
+
+            match object.entry(key) {
+                serde_json::map::Entry::Occupied(entry) => {
+                    return Err(FormatterError::Failed(format!(
+                        "Duplicate claim name: `{}`",
+                        entry.key()
+                    )))
+                }
+                serde_json::map::Entry::Vacant(entry) => {
+                    entry.insert(value);
+                }
+            }
+        }
+
+        Ok(serde_json::Value::Object(object))
+    }
+
+    extract_inner(digests, &mut digest_by_disclosure)
 }
 
-pub(crate) fn extract_disclosures(token: &str) -> Result<DecomposedToken, FormatterError> {
-    let mut token_parts = token.split('~');
+pub(crate) fn parse_token(token: &str) -> Result<DecomposedToken, FormatterError> {
+    let mut token_parts = token.trim_end_matches('~').split("~");
     let jwt = token_parts.next().ok_or(FormatterError::MissingPart)?;
 
-    let disclosures_decoded_encoded: Vec<(String, String)> = token_parts
-        .filter_map(|encoded| {
-            let bytes = Base64UrlSafeNoPadding::decode_to_vec(encoded, None).ok()?;
-            let decoded = String::from_utf8(bytes).ok()?;
-            Some((decoded, encoded.to_owned()))
+    let disclosures: Vec<Disclosure> = token_parts
+        .filter_map(|disclosure| {
+            let bytes = Base64UrlSafeNoPadding::decode_to_vec(disclosure, None).ok()?;
+            let disclosure_array = String::from_utf8(bytes).ok()?;
+
+            parse_disclosure(disclosure_array, disclosure.to_string()).ok()
         })
         .collect();
 
-    let deserialized_claims: Vec<Disclosure> = disclosures_decoded_encoded
-        .into_iter()
-        .filter_map(|(decoded, encoded)| parse_disclosure(&decoded, &encoded).ok())
-        .collect();
-
-    Ok(DecomposedToken {
-        jwt,
-        deserialized_disclosures: deserialized_claims,
-    })
+    Ok(DecomposedToken { jwt, disclosures })
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -408,54 +238,17 @@ pub(crate) struct DisclosureArray {
 }
 
 pub(crate) fn parse_disclosure(
-    disclosure: &str,
-    base64_encoded_disclosure: &str,
+    disclosure_array: String,
+    disclosure: String,
 ) -> Result<Disclosure, FormatterError> {
-    let parsed: DisclosureArray =
-        serde_json::from_str(disclosure).map_err(|e| FormatterError::Failed(e.to_string()))?;
+    let parsed: DisclosureArray = serde_json::from_str(&disclosure_array)
+        .map_err(|e| FormatterError::Failed(e.to_string()))?;
 
     Ok(Disclosure {
         salt: parsed.salt,
         key: parsed.key,
         value: parsed.value,
-        original_disclosure: disclosure.to_string(),
-        base64_encoded_disclosure: base64_encoded_disclosure.to_string(),
+        disclosure_array,
+        disclosure,
     })
-}
-
-pub(crate) fn sort_published_claims_by_indices(claims: &[PublishedClaim]) -> Vec<PublishedClaim> {
-    let mut claims = claims.to_owned();
-
-    claims.sort_by(|a, b| {
-        let splits_a = a.key.split(NESTED_CLAIM_MARKER);
-        let splits_b = b.key.split(NESTED_CLAIM_MARKER);
-
-        splits_a
-            .zip(splits_b)
-            .find_map(|(a, b)| {
-                // Non equal segments means we don't care about anything that's after that
-                if a == b {
-                    return None;
-                }
-
-                let a_u64 = a.parse::<u64>();
-                let b_u64 = b.parse::<u64>();
-                if a_u64.is_err() || b_u64.is_err() {
-                    return Some(Ordering::Equal);
-                }
-
-                let a_u64 = a_u64.unwrap();
-                let b_u64 = b_u64.unwrap();
-
-                // Equal indexes mean that we need to continue further
-                if a_u64 == b_u64 {
-                    return None;
-                }
-
-                Some(a_u64.cmp(&b_u64))
-            })
-            .unwrap_or(Ordering::Equal)
-    });
-
-    claims
 }

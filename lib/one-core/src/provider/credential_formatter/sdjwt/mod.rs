@@ -1,19 +1,13 @@
-use itertools::Itertools;
-use one_crypto::CryptoProvider;
-
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::CredentialPresentation;
-use crate::provider::credential_formatter::sdjwt::disclosures::{
-    extract_disclosures, get_disclosures_by_claim_name,
-};
-use crate::provider::credential_formatter::sdjwt::model::{Disclosure, Sdvc};
+use crate::provider::credential_formatter::sdjwt::disclosures::{parse_token, select_disclosures};
+use crate::provider::credential_formatter::sdjwt::model::Sdvc;
 
 pub mod disclosures;
 pub mod mapper;
 pub mod model;
-pub mod verifier;
 
 #[cfg(test)]
 pub mod test;
@@ -39,39 +33,26 @@ pub(crate) fn detect_sdjwt_type_from_token(token: &str) -> Result<SdJwtType, For
 
 pub(crate) fn prepare_sd_presentation(
     presentation: CredentialPresentation,
-    crypto: &dyn CryptoProvider,
 ) -> Result<String, FormatterError> {
-    let model::DecomposedToken {
-        jwt,
-        deserialized_disclosures,
-    } = extract_disclosures(&presentation.token)?;
+    let model::DecomposedToken { jwt, disclosures } = parse_token(&presentation.token)?;
 
-    let decomposed_jwt: DecomposedToken<Sdvc> = Jwt::decompose_token(jwt)?;
-    let algorithm = decomposed_jwt
-        .payload
-        .custom
-        .hash_alg
-        .unwrap_or("sha-256".to_string());
-    let hasher = crypto
-        .get_hasher(&algorithm)
-        .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
+    let disclosed_keys = presentation.disclosed_keys;
+    let disclosures = select_disclosures(disclosed_keys, disclosures)?;
 
-    let disclosures = presentation
-        .disclosed_keys
-        .iter()
-        .map(|key| get_disclosures_by_claim_name(key, &deserialized_disclosures, &*hasher))
-        .collect::<Result<Vec<Vec<Disclosure>>, FormatterError>>()?
-        .into_iter()
-        .flatten()
-        .map(|disclosure| disclosure.base64_encoded_disclosure)
-        .unique()
-        .collect::<Vec<String>>();
+    let sdjwt = serialize(jwt.to_owned(), disclosures);
 
-    let mut token = jwt.to_owned();
-    for disclosure in disclosures {
+    Ok(sdjwt)
+}
+
+pub(crate) fn serialize(jwt: String, disclosures: Vec<String>) -> String {
+    let mut token = jwt;
+    token.push('~');
+
+    let disclosures = disclosures.join("~");
+    if !disclosures.is_empty() {
+        token.push_str(&disclosures);
         token.push('~');
-        token.push_str(&disclosure);
     }
 
-    Ok(token)
+    token
 }
