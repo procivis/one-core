@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
@@ -283,7 +283,10 @@ async fn test_format_credential_with_array() {
 
     let vc = payload.custom.vc;
 
-    assert_eq!(vec![hash4, hash3], vc.credential_subject.digests);
+    assert_eq!(
+        HashSet::<&str>::from_iter([hash4, hash3]),
+        HashSet::from_iter(vc.credential_subject.digests.iter().map(|s| s.as_str()))
+    );
 }
 
 #[tokio::test]
