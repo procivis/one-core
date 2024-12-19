@@ -389,6 +389,8 @@ tests:api:
 
 .deploy_trigger:
   stage: deploy
+  needs:
+    - job: publish
   trigger:
     project: procivis/one/one-operations
     branch: main
