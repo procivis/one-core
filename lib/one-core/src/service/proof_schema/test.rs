@@ -30,6 +30,7 @@ use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
 };
+use crate::provider::revocation::model::RevocationMethodCapabilities;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -1438,7 +1439,10 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         .with(eq("JWT"))
         .returning(move |_| Some(formatter.clone()));
 
-    let revocation_method = MockRevocationMethod::new();
+    let mut revocation_method = MockRevocationMethod::new();
+    revocation_method
+        .expect_get_capabilities()
+        .returning(|| RevocationMethodCapabilities { operations: vec![] });
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider
         .expect_get_revocation_method()
@@ -1647,7 +1651,10 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         .with(eq("JWT"))
         .returning(move |_| Some(formatter.clone()));
 
-    let revocation_method = MockRevocationMethod::new();
+    let mut revocation_method = MockRevocationMethod::new();
+    revocation_method
+        .expect_get_capabilities()
+        .returning(|| RevocationMethodCapabilities { operations: vec![] });
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider
         .expect_get_revocation_method()

@@ -27,7 +27,7 @@ impl CredentialSchemasApi {
     }
 
     pub async fn create(&self, params: CreateSchemaParams) -> Response {
-        let body = json!({
+        let mut body = json!({
           "claims": [
             {
               "datatype": "OBJECT",
@@ -55,8 +55,10 @@ impl CredentialSchemasApi {
             "primaryAttribute": format!("firstObject/{claim_name}", claim_name = params.claim_name),
           },
           "schemaId": params.schema_id,
-          "allowSuspension": params.suspension_allowed.unwrap_or(false),
         });
+        if let Some(suspension_allowed) = params.suspension_allowed {
+            body["allowSuspension"] = json!(suspension_allowed);
+        }
 
         self.client.post("/api/credential-schema/v1", body).await
     }

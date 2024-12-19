@@ -265,6 +265,9 @@ pub enum BusinessLogicError {
     #[error("Suspension not supported for revocation method")]
     SuspensionNotAvailableForSelectedRevocationMethod,
 
+    #[error("Suspension not enabled for suspend-only revocation method")]
+    SuspensionNotEnabledForSuspendOnlyRevocationMethod,
+
     #[error("Incompatible issuance did method")]
     IncompatibleIssuanceDidMethod,
 
@@ -954,6 +957,11 @@ pub enum ErrorCode {
 
     #[strum(to_string = "JSON deserialization error")]
     BR_0189,
+
+    #[strum(
+        to_string = "Suspension not enabled for revocation method that only supports suspension"
+    )]
+    BR_0191,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1098,6 +1106,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::TrustEntityHasDuplicates => ErrorCode::BR_0180,
             Self::TrustAnchorIsDisabled => ErrorCode::BR_0187,
             Self::MissingTrustEntity(_) => ErrorCode::BR_0186,
+            Self::SuspensionNotEnabledForSuspendOnlyRevocationMethod => ErrorCode::BR_0191,
         }
     }
 }

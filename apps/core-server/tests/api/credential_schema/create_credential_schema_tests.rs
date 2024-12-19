@@ -326,3 +326,55 @@ async fn test_duplicate_schema() {
     let schemas = context.db.credential_schemas.list().await;
     assert_eq!(schemas.len(), 1);
 }
+
+#[tokio::test]
+async fn test_fail_create_credential_schema_with_suspension_disabled_for_suspension_only_revocation_method(
+) {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create(CreateSchemaParams {
+            name: "some credential schema".into(),
+            organisation_id: organisation.id.into(),
+            format: "MDOC".into(),
+            revocation_method: Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
+            claim_name: "firstName".into(),
+            schema_id: Some("schema id".into()),
+            suspension_allowed: Some(false),
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0191", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_fail_create_credential_schema_with_suspension_none_for_suspension_only_revocation_method(
+) {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create(CreateSchemaParams {
+            name: "some credential schema".into(),
+            organisation_id: organisation.id.into(),
+            format: "MDOC".into(),
+            revocation_method: Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
+            claim_name: "firstName".into(),
+            schema_id: Some("schema id".into()),
+            suspension_allowed: None,
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0191", resp.error_code().await);
+}

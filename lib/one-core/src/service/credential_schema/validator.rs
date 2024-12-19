@@ -332,6 +332,12 @@ fn validate_revocation_method_is_compatible_with_suspension(
         return Err(BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod.into());
     }
 
+    if revocation_method.get_capabilities().operations == vec![Operation::Suspend]
+        && request.allow_suspension != Some(true)
+    {
+        return Err(BusinessLogicError::SuspensionNotEnabledForSuspendOnlyRevocationMethod.into());
+    }
+
     Ok(())
 }
 
