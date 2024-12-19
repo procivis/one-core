@@ -122,18 +122,19 @@ pub(crate) fn exchange_protocol_providers_from_config(
 
                 let mut mqtt = None;
                 if let Some(mqtt_client) = mqtt_client.clone() {
-                    let params = config.transport.get(TransportType::Mqtt.as_ref())?;
-                    mqtt = Some(OpenId4VcMqtt::new(
-                        mqtt_client.clone(),
-                        config.clone(),
-                        params,
-                        data_provider.get_interaction_repository(),
-                        data_provider.get_proof_repository(),
-                        key_algorithm_provider.clone(),
-                        formatter_provider.clone(),
-                        did_method_provider.clone(),
-                        key_provider.clone(),
-                    ));
+                    if let Ok(params) = config.transport.get(TransportType::Mqtt.as_ref()) {
+                        mqtt = Some(OpenId4VcMqtt::new(
+                            mqtt_client.clone(),
+                            config.clone(),
+                            params,
+                            data_provider.get_interaction_repository(),
+                            data_provider.get_proof_repository(),
+                            key_algorithm_provider.clone(),
+                            formatter_provider.clone(),
+                            did_method_provider.clone(),
+                            key_provider.clone(),
+                        ));
+                    };
                 }
                 let protocol = Arc::new(OpenID4VC::new(config.clone(), http, ble, mqtt));
                 providers.insert(name.to_string(), protocol);
