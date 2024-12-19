@@ -4233,7 +4233,7 @@ dependencies = [
 [[package]]
 name = "pqc_dilithium"
 version = "0.2.0"
-source = "git+https://github.com/ihor-rud/dilithium?rev=e02a683#e02a683173f6b89cb0d903816ed8266344bb39b7"
+source = "git+https://github.com/Iskander508/dilithium?rev=7fdfe6b#7fdfe6b21cba02b2b218b85454d0582dd8d5e233"
 dependencies = [
  "rand",
  "rand_core",
