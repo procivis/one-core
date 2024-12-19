@@ -327,6 +327,7 @@ pub enum OpenID4VCIErrorRestEnum {
     UnsupportedCredentialType,
     VPFormatsNotSupported,
     VCFormatsNotSupported,
+    CredentialRequestDenied,
     RuntimeError(String),
 }
 

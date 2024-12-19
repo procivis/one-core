@@ -24,6 +24,8 @@ pub enum OpenID4VCIError {
     VPFormatsNotSupported,
     #[error("vc_formats_not_supported")]
     VCFormatsNotSupported,
+    #[error("credential_request_denied")]
+    CredentialRequestDenied,
     #[error("oidc runtime error: `{0}`")]
     RuntimeError(String),
 }

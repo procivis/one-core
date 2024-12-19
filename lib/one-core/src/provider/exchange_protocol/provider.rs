@@ -168,10 +168,8 @@ impl ExchangeProtocolProviderCoreImpl {
             }
             (CredentialStateEnum::Offered, _) => {}
             _ => {
-                return Err(ServiceError::BusinessLogic(
-                    BusinessLogicError::InvalidCredentialState {
-                        state: latest_state.to_owned(),
-                    },
+                return Err(ServiceError::OpenID4VCIError(
+                    OpenID4VCIError::CredentialRequestDenied,
                 ))
             }
         }
