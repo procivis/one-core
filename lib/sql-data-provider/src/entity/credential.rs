@@ -57,7 +57,7 @@ pub enum Relation {
     CredentialSchema,
     #[sea_orm(
         belongs_to = "super::did::Entity",
-        from = "Column::HolderDidId",
+        from = "Column::IssuerDidId",
         to = "super::did::Column::Id",
         on_update = "Restrict",
         on_delete = "Restrict"
