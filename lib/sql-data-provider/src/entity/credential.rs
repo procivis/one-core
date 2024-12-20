@@ -1,6 +1,9 @@
-use one_core::model::credential::CredentialRole as ModelCredentialRole;
+use one_core::model::credential::{
+    CredentialRole as ModelCredentialRole, CredentialStateEnum as ModelCredentialStateEnum,
+};
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
+use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, CredentialSchemaId, DidId, KeyId};
 use time::OffsetDateTime;
 
@@ -32,6 +35,10 @@ pub struct Model {
     pub interaction_id: Option<String>,
     pub revocation_list_id: Option<String>,
     pub key_id: Option<KeyId>,
+
+    pub suspend_end_date: Option<OffsetDateTime>,
+
+    pub state: CredentialState,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -48,11 +55,9 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     CredentialSchema,
-    #[sea_orm(has_many = "super::credential_state::Entity")]
-    CredentialState,
     #[sea_orm(
         belongs_to = "super::did::Entity",
-        from = "Column::IssuerDidId",
+        from = "Column::HolderDidId",
         to = "super::did::Column::Id",
         on_update = "Restrict",
         on_delete = "Restrict"
@@ -104,12 +109,6 @@ impl Related<super::credential_schema::Entity> for Entity {
     }
 }
 
-impl Related<super::credential_state::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::CredentialState.def()
-    }
-}
-
 impl Related<super::interaction::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Interaction.def()
@@ -139,4 +138,27 @@ pub enum CredentialRole {
     Issuer,
     #[sea_orm(string_value = "VERIFIER")]
     Verifier,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[from(ModelCredentialStateEnum)]
+#[into(ModelCredentialStateEnum)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+pub enum CredentialState {
+    #[sea_orm(string_value = "CREATED")]
+    Created,
+    #[sea_orm(string_value = "PENDING")]
+    Pending,
+    #[sea_orm(string_value = "OFFERED")]
+    Offered,
+    #[sea_orm(string_value = "ACCEPTED")]
+    Accepted,
+    #[sea_orm(string_value = "REJECTED")]
+    Rejected,
+    #[sea_orm(string_value = "REVOKED")]
+    Revoked,
+    #[sea_orm(string_value = "SUSPENDED")]
+    Suspended,
+    #[sea_orm(string_value = "ERROR")]
+    Error,
 }

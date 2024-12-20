@@ -154,6 +154,7 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
         "OPENID4VC",
         did_id,
         None,
+        None,
     )
     .await
     .unwrap()

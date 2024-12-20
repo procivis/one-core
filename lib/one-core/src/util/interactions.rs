@@ -49,13 +49,7 @@ pub async fn update_credentials_interaction(
     let update = UpdateCredentialRequest {
         id: credential_id.to_owned(),
         interaction: Some(interaction_id.to_owned()),
-        credential: None,
-        holder_did_id: None,
-        issuer_did_id: None,
-        state: None,
-        key: None,
-        redirect_uri: None,
-        claims: None,
+        ..Default::default()
     };
 
     credential_repository.update_credential(update).await?;

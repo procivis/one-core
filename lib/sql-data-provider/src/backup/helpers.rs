@@ -39,23 +39,6 @@ impl sea_orm::Iden for JsonAgg {
     }
 }
 
-/// Generates SQL expresion that will aggregate rows into array of json objects.
-/// Only sqlite is supported.
-///
-/// # Example of generated sql:
-///
-/// ```sql
-/// json_group_array(
-///   json_object(
-///     'field_name1', table.column1,
-///     'field_name2', table.column2,
-///   )
-/// )
-/// ```
-pub fn json_agg_columns<T: Iden + ColumnTrait>(columns: impl IntoIterator<Item = T>) -> SimpleExpr {
-    Func::cust(JsonAgg).arg(json_object_columns(columns)).into()
-}
-
 pub fn json_object_columns<T: Iden + ColumnTrait>(
     columns: impl IntoIterator<Item = T>,
 ) -> SimpleExpr {

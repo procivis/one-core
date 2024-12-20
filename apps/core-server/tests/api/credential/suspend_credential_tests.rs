@@ -55,15 +55,9 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
 
     let credential = context.db.credentials.get(&credential.id).await;
 
-    assert_eq!(
-        CredentialStateEnum::Suspended,
-        credential.state.clone().unwrap()[0].state
-    );
+    assert_eq!(CredentialStateEnum::Suspended, credential.state.clone());
 
-    assert_eq!(
-        suspend_end_date,
-        credential.state.unwrap()[0].suspend_end_date.unwrap()
-    );
+    assert_eq!(suspend_end_date, credential.suspend_end_date.unwrap());
 }
 
 #[tokio::test]
@@ -106,15 +100,9 @@ async fn test_suspend_credential_with_mdoc_mso_suspend_update_success() {
 
     let credential = context.db.credentials.get(&credential.id).await;
 
-    assert_eq!(
-        CredentialStateEnum::Suspended,
-        credential.state.clone().unwrap()[0].state
-    );
+    assert_eq!(CredentialStateEnum::Suspended, credential.state.clone());
 
-    assert_eq!(
-        suspend_end_date,
-        credential.state.unwrap()[0].suspend_end_date.unwrap()
-    );
+    assert_eq!(suspend_end_date, credential.suspend_end_date.unwrap());
 }
 
 #[tokio::test]
@@ -183,15 +171,9 @@ async fn test_suspend_credential_with_lvvc_success() {
 
     let credential = context.db.credentials.get(&credential.id).await;
 
-    assert_eq!(
-        CredentialStateEnum::Suspended,
-        credential.state.clone().unwrap()[0].state
-    );
+    assert_eq!(CredentialStateEnum::Suspended, credential.state);
 
-    assert_eq!(
-        suspend_end_date,
-        credential.state.unwrap()[0].suspend_end_date.unwrap()
-    );
+    assert_eq!(suspend_end_date, credential.suspend_end_date.unwrap());
 }
 
 #[tokio::test]

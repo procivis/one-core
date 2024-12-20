@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::params::convert_params;
-use crate::model::credential::{Credential, CredentialRelations, CredentialStateRelations};
+use crate::model::credential::{Credential, CredentialRelations};
 use crate::model::did::Did;
 use crate::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
@@ -62,13 +62,7 @@ pub(crate) async fn generate_credential_additional_data(
 
     let credentials_by_issuer_did = convert_inner(
         credential_repository
-            .get_credentials_by_issuer_did_id(
-                &issuer_did.id,
-                &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get_credentials_by_issuer_did_id(&issuer_did.id, &CredentialRelations::default())
             .await?,
     );
 

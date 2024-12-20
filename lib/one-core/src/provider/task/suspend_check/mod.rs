@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 use self::dto::SuspendCheckResultDTO;
 use super::Task;
 use crate::model::credential::{
-    CredentialRelations, CredentialState, CredentialStateEnum, GetCredentialQuery,
+    Clearable, CredentialRelations, CredentialStateEnum, GetCredentialQuery,
     UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
@@ -160,11 +160,8 @@ impl Task for SuspendCheckProvider {
             self.credential_repository
                 .update_credential(UpdateCredentialRequest {
                     id: credential_id,
-                    state: Some(CredentialState {
-                        created_date: now,
-                        state: CredentialStateEnum::Accepted,
-                        suspend_end_date: None,
-                    }),
+                    state: Some(CredentialStateEnum::Accepted),
+                    suspend_end_date: Clearable::ForceSet(None),
                     credential: None,
                     holder_did_id: None,
                     issuer_did_id: None,

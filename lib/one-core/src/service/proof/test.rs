@@ -12,7 +12,7 @@ use crate::config::core_config::{CoreConfig, Fields, TransportType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
+    Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
@@ -445,7 +445,6 @@ async fn test_get_proof_exists() {
                             schema: Some(Default::default()),
                         },
                         credential: Some(CredentialRelations {
-                            state: Some(Default::default()),
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
@@ -545,11 +544,8 @@ async fn test_get_proof_with_array_holder() {
         exchange: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
         claims: Some(vec![
             Claim {
                 id: Uuid::new_v4(),
@@ -639,7 +635,6 @@ async fn test_get_proof_with_array_holder() {
                             schema: Some(Default::default()),
                         },
                         credential: Some(CredentialRelations {
-                            state: Some(Default::default()),
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
@@ -766,11 +761,8 @@ async fn test_get_proof_with_array_in_object_holder() {
         exchange: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
         claims: Some(vec![
             Claim {
                 id: Uuid::new_v4(),
@@ -860,7 +852,6 @@ async fn test_get_proof_with_array_in_object_holder() {
                             schema: Some(Default::default()),
                         },
                         credential: Some(CredentialRelations {
-                            state: Some(Default::default()),
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
@@ -992,11 +983,8 @@ async fn test_get_proof_with_object_array_holder() {
         exchange: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
         claims: Some(vec![
             Claim {
                 id: Uuid::new_v4(),
@@ -1086,7 +1074,6 @@ async fn test_get_proof_with_object_array_holder() {
                             schema: Some(Default::default()),
                         },
                         credential: Some(CredentialRelations {
-                            state: Some(Default::default()),
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
@@ -1200,11 +1187,8 @@ async fn test_get_proof_with_array() {
         exchange: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
         claims: Some(vec![
             Claim {
                 id: Uuid::new_v4(),
@@ -1312,7 +1296,6 @@ async fn test_get_proof_with_array() {
                             schema: Some(Default::default()),
                         },
                         credential: Some(CredentialRelations {
-                            state: Some(Default::default()),
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
@@ -1439,11 +1422,8 @@ async fn test_get_proof_with_array_in_object() {
         exchange: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
         claims: Some(vec![
             Claim {
                 id: Uuid::new_v4(),
@@ -1551,7 +1531,6 @@ async fn test_get_proof_with_array_in_object() {
                             schema: Some(Default::default()),
                         },
                         credential: Some(CredentialRelations {
-                            state: Some(Default::default()),
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
@@ -1684,11 +1663,8 @@ async fn test_get_proof_with_object_array() {
         exchange: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
         claims: Some(vec![
             Claim {
                 id: Uuid::new_v4(),
@@ -1796,7 +1772,6 @@ async fn test_get_proof_with_object_array() {
                             schema: Some(Default::default()),
                         },
                         credential: Some(CredentialRelations {
-                            state: Some(Default::default()),
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),

@@ -28,7 +28,7 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     Arrayed, BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema,
     CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
@@ -987,11 +987,8 @@ pub fn create_credential(
         exchange: "OPENID4VC".to_string(),
         redirect_uri,
         role: CredentialRole::Holder,
-        state: Some(vec![CredentialState {
-            created_date: now,
-            state: CredentialStateEnum::Pending,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Pending,
+        suspend_end_date: None,
         claims: Some(claims),
         issuer_did,
         holder_did: None,
@@ -1456,11 +1453,8 @@ pub fn extracted_credential_to_model(
             deleted_at: None,
             credential: vec![],
             exchange: "OPENID4VC".to_string(),
-            state: Some(vec![CredentialState {
-                created_date: now,
-                state: CredentialStateEnum::Accepted,
-                suspend_end_date: None,
-            }]),
+            state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
             claims: Some(model_claims.to_owned()),
             issuer_did: None,
             holder_did: None,

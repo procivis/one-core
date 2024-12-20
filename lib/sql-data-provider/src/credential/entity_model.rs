@@ -2,9 +2,9 @@ use sea_orm::FromQueryResult;
 use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue};
 use time::OffsetDateTime;
 
+use crate::entity::credential;
 use crate::entity::credential_schema::{CredentialSchemaType, LayoutProperties, WalletStorageType};
 use crate::entity::did::DidType;
-use crate::entity::{credential, credential_state};
 
 #[derive(FromQueryResult)]
 pub(super) struct CredentialListEntityModel {
@@ -17,6 +17,8 @@ pub(super) struct CredentialListEntityModel {
     pub credential: Option<Vec<u8>>,
     pub redirect_uri: Option<String>,
     pub role: credential::CredentialRole,
+    pub state: credential::CredentialState,
+    pub suspend_end_date: Option<OffsetDateTime>,
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
     pub credential_schema_created_date: OffsetDateTime,
     pub credential_schema_format: String,
@@ -30,9 +32,6 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_schema_layout_properties: Option<LayoutProperties>,
     pub credential_schema_schema_type: CredentialSchemaType,
     pub credential_schema_allow_suspension: bool,
-    pub credential_state_created_date: OffsetDateTime,
-    pub credential_state_state: credential_state::CredentialState,
-    pub credential_state_suspend_end_date: Option<OffsetDateTime>,
     pub issuer_did_created_date: Option<OffsetDateTime>,
     pub issuer_did_deactivated: Option<bool>,
     pub issuer_did_did: Option<DidValue>,

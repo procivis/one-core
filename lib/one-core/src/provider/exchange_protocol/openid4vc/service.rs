@@ -21,6 +21,7 @@ use super::model::{
     OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, PresentationSubmissionMappingDTO,
     ValidatedProofClaimDTO,
 };
+use super::validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -45,9 +46,9 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::validator::{
     peek_presentation, throw_if_interaction_created_date,
-    throw_if_interaction_pre_authorized_code_used, throw_if_latest_credential_state_not_eq,
-    throw_if_proof_state_not_eq, throw_if_token_request_invalid, validate_claims,
-    validate_credential, validate_presentation, validate_refresh_token,
+    throw_if_interaction_pre_authorized_code_used, throw_if_proof_state_not_eq,
+    throw_if_token_request_invalid, validate_claims, validate_credential, validate_presentation,
+    validate_refresh_token,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::lvvc::util::is_lvvc_credential;
@@ -707,7 +708,7 @@ pub fn oidc_issuer_create_token(
             throw_if_interaction_pre_authorized_code_used(&interaction_data)?;
 
             credentials.iter().try_for_each(|credential| {
-                throw_if_latest_credential_state_not_eq(credential, CredentialStateEnum::Pending)
+                throw_if_credential_state_not_eq(credential, CredentialStateEnum::Pending)
             })?;
 
             interaction_data.pre_authorized_code_used = true;

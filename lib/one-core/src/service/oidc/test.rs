@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
-use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
     LayoutType, WalletStorageTypeEnum,
@@ -173,11 +173,8 @@ fn dummy_credential(
         exchange: protocol.to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state,
-            suspend_end_date: None,
-        }]),
+        state,
+        suspend_end_date: None,
         claims: None,
         issuer_did: None,
         holder_did: None,

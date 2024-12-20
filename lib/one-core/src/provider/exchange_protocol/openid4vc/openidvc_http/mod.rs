@@ -41,7 +41,7 @@ use super::{
     TypeToDescriptorMapper,
 };
 use crate::common_mapper::{DidRole, NESTED_CLAIM_MARKER};
-use crate::model::credential::{Credential, UpdateCredentialRequest};
+use crate::model::credential::{Clearable, Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::UpdateCredentialSchemaRequest;
 use crate::model::did::{Did, DidType, KeyRole};
 use crate::model::interaction::Interaction;
@@ -784,6 +784,7 @@ impl OpenID4VCHTTP {
                 interaction: None,
                 key: None,
                 claims: None,
+                suspend_end_date: Clearable::DontTouch,
             }),
         })
     }

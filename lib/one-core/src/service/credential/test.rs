@@ -13,8 +13,7 @@ use crate::config::core_config::CoreConfig;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialRole, CredentialState, CredentialStateEnum, GetCredentialList,
-    UpdateCredentialRequest,
+    Credential, CredentialRole, CredentialStateEnum, GetCredentialList, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
@@ -127,11 +126,8 @@ fn generic_credential() -> Credential {
         exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
-        state: Some(vec![CredentialState {
-            created_date: now,
-            state: CredentialStateEnum::Created,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Created,
+        suspend_end_date: None,
         claims: Some(vec![Claim {
             id: Uuid::new_v4(),
             credential_id,
@@ -207,11 +203,8 @@ fn generic_credential_list_entity() -> Credential {
         exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
-        state: Some(vec![CredentialState {
-            created_date: now,
-            state: CredentialStateEnum::Created,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Created,
+        suspend_end_date: None,
         claims: None,
         issuer_did: Some(Did {
             id: Uuid::new_v4().into(),
@@ -317,11 +310,7 @@ async fn test_delete_credential_incorrect_state() {
 
     let mut credential = generic_credential();
     credential.schema.as_mut().unwrap().revocation_method = "BITSTRINGSTATUSLIST".to_string();
-    credential.state = Some(vec![CredentialState {
-        created_date: OffsetDateTime::now_utc(),
-        state: CredentialStateEnum::Accepted,
-        suspend_end_date: None,
-    }]);
+    credential.state = CredentialStateEnum::Accepted;
 
     let copy = credential.clone();
     credential_repository
@@ -352,13 +341,8 @@ async fn test_get_credential_list_success() {
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
-    let now = OffsetDateTime::now_utc();
     let mut c = generic_credential_list_entity();
-    c.state = Some(vec![CredentialState {
-        created_date: now,
-        state: CredentialStateEnum::Revoked,
-        suspend_end_date: None,
-    }]);
+    c.state = CredentialStateEnum::Revoked;
 
     let credentials = GetCredentialList {
         values: vec![generic_credential_list_entity(), c],
@@ -450,11 +434,9 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
     let mut credential = generic_credential();
     let now = OffsetDateTime::now_utc();
     let suspend_end_date = now.add(Duration::hours(1));
-    credential.state = Some(vec![CredentialState {
-        created_date: now,
-        state: CredentialStateEnum::Suspended,
-        suspend_end_date: Some(suspend_end_date),
-    }]);
+    credential.state = CredentialStateEnum::Suspended;
+    credential.suspend_end_date = Some(suspend_end_date);
+
     {
         let clone = credential.clone();
         credential_repository
@@ -529,14 +511,10 @@ async fn test_get_revoked_credential_success() {
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
-    let now = OffsetDateTime::now_utc();
 
     let mut credential = generic_credential();
-    credential.state = Some(vec![CredentialState {
-        created_date: now,
-        state: CredentialStateEnum::Revoked,
-        suspend_end_date: None,
-    }]);
+    credential.state = CredentialStateEnum::Revoked;
+    credential.suspend_end_date = None;
 
     {
         let clone = credential.clone();
@@ -685,7 +663,7 @@ async fn test_share_credential_failed_invalid_state() {
     let revocation_method_provider = MockRevocationMethodProvider::default();
 
     let mut credential = generic_credential();
-    credential.state.as_mut().unwrap()[0].state = CredentialStateEnum::Accepted;
+    credential.state = CredentialStateEnum::Accepted;
     {
         let clone = credential.clone();
         credential_repository
@@ -1297,11 +1275,7 @@ async fn test_check_revocation_non_revocable() {
         .returning(|_| Some(Arc::new(MockRevocationMethod::default())));
 
     let credential = Credential {
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Accepted,
         ..generic_credential()
     };
 
@@ -1351,11 +1325,8 @@ async fn test_check_revocation_already_revoked() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     let credential = Credential {
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Revoked,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Revoked,
+        suspend_end_date: None,
         ..generic_credential()
     };
 
@@ -1491,11 +1462,8 @@ async fn test_check_revocation_being_revoked() {
         .returning(move |_| Some(revocation_method.clone()));
 
     let credential = Credential {
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
         ..generic_credential()
     };
 
@@ -1512,10 +1480,7 @@ async fn test_check_revocation_being_revoked() {
             matches!(
                 request,
                 UpdateCredentialRequest {
-                    state: Some(CredentialState {
-                        state: CredentialStateEnum::Revoked,
-                        ..
-                    }),
+                    state: Some(CredentialStateEnum::Revoked),
                     ..
                 }
             )
@@ -2131,15 +2096,10 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
 
 #[tokio::test]
 async fn test_revoke_credential_success_with_accepted_credential() {
-    let now = OffsetDateTime::now_utc();
-
     let mut credential = generic_credential();
-    credential.state = Some(vec![CredentialState {
-        created_date: now,
-        state: CredentialStateEnum::Accepted,
-        suspend_end_date: None,
-    }]);
+    credential.state = CredentialStateEnum::Accepted;
 
+    let mut history_repository = MockHistoryRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut did_method_provider = MockDidMethodProvider::default();
     did_method_provider
@@ -2180,9 +2140,13 @@ async fn test_revoke_credential_success_with_accepted_credential() {
         .expect_update_credential()
         .once()
         .returning(move |request| {
-            assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap().state);
+            assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
             Ok(())
         });
+
+    history_repository
+        .expect_create_history()
+        .return_once(move |_| Ok(Uuid::new_v4().into()));
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
@@ -2193,7 +2157,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
 
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository: MockHistoryRepository::default(),
+        history_repository,
         revocation_method_provider,
         did_method_provider,
         config: generic_config().core,
@@ -2205,17 +2169,13 @@ async fn test_revoke_credential_success_with_accepted_credential() {
 
 #[tokio::test]
 async fn test_revoke_credential_success_with_suspended_credential() {
-    let now = OffsetDateTime::now_utc();
-
     let mut credential = generic_credential();
-    credential.state = Some(vec![CredentialState {
-        created_date: now,
-        state: CredentialStateEnum::Suspended,
-        suspend_end_date: None,
-    }]);
+
+    credential.state = CredentialStateEnum::Suspended;
 
     let mut credential_repository = MockCredentialRepository::default();
     let mut did_method_provider = MockDidMethodProvider::default();
+    let mut history_repository = MockHistoryRepository::default();
     did_method_provider
         .expect_resolve()
         .once()
@@ -2255,9 +2215,13 @@ async fn test_revoke_credential_success_with_suspended_credential() {
         .expect_update_credential()
         .once()
         .returning(move |request| {
-            assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap().state);
+            assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
             Ok(())
         });
+
+    history_repository
+        .expect_create_history()
+        .return_once(move |_| Ok(Uuid::new_v4().into()));
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
@@ -2268,7 +2232,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
 
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository: MockHistoryRepository::default(),
+        history_repository,
         revocation_method_provider,
         did_method_provider,
         config: generic_config().core,
@@ -2283,16 +2247,14 @@ async fn test_suspend_credential_success() {
     let now = OffsetDateTime::now_utc();
 
     let mut credential = generic_credential();
-    credential.state = Some(vec![CredentialState {
-        created_date: now,
-        state: CredentialStateEnum::Accepted,
-        suspend_end_date: None,
-    }]);
+
+    credential.state = CredentialStateEnum::Accepted;
 
     let suspend_end_date = now.add(Duration::days(1));
 
     let mut credential_repository = MockCredentialRepository::default();
     let mut did_method_provider = MockDidMethodProvider::default();
+    let mut history_repository = MockHistoryRepository::default();
 
     did_method_provider
         .expect_resolve()
@@ -2339,9 +2301,13 @@ async fn test_suspend_credential_success() {
         .expect_update_credential()
         .once()
         .returning(move |request| {
-            assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap().state);
+            assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap());
             Ok(())
         });
+
+    history_repository
+        .expect_create_history()
+        .return_once(move |_| Ok(Uuid::new_v4().into()));
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
@@ -2352,7 +2318,7 @@ async fn test_suspend_credential_success() {
 
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository: MockHistoryRepository::default(),
+        history_repository,
         revocation_method_provider,
         did_method_provider,
         config: generic_config().core,
@@ -2372,14 +2338,9 @@ async fn test_suspend_credential_success() {
 
 #[tokio::test]
 async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
-    let now = OffsetDateTime::now_utc();
-
     let mut credential = generic_credential();
-    credential.state = Some(vec![CredentialState {
-        created_date: now,
-        state: CredentialStateEnum::Revoked,
-        suspend_end_date: None,
-    }]);
+
+    credential.state = CredentialStateEnum::Revoked;
 
     let mut credential_repository = MockCredentialRepository::default();
     {
@@ -2422,17 +2383,14 @@ async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
 
 #[tokio::test]
 async fn test_reactivate_credential_success() {
-    let now = OffsetDateTime::now_utc();
-
     let mut credential = generic_credential();
-    credential.state = Some(vec![CredentialState {
-        created_date: now,
-        state: CredentialStateEnum::Suspended,
-        suspend_end_date: None,
-    }]);
+
+    credential.state = CredentialStateEnum::Suspended;
 
     let mut credential_repository = MockCredentialRepository::default();
     let mut did_method_provider = MockDidMethodProvider::default();
+    let mut history_repository = MockHistoryRepository::default();
+
     did_method_provider
         .expect_resolve()
         .returning(|did| Ok(dummy_did_document(did)));
@@ -2470,9 +2428,13 @@ async fn test_reactivate_credential_success() {
         .expect_update_credential()
         .once()
         .returning(move |request| {
-            assert_eq!(CredentialStateEnum::Accepted, request.state.unwrap().state);
+            assert_eq!(CredentialStateEnum::Accepted, request.state.unwrap());
             Ok(())
         });
+
+    history_repository
+        .expect_create_history()
+        .return_once(move |_| Ok(Uuid::new_v4().into()));
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
@@ -2483,7 +2445,7 @@ async fn test_reactivate_credential_success() {
 
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository: MockHistoryRepository::default(),
+        history_repository,
         did_method_provider,
         revocation_method_provider,
         config: generic_config().core,
@@ -2495,14 +2457,9 @@ async fn test_reactivate_credential_success() {
 
 #[tokio::test]
 async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential() {
-    let now = OffsetDateTime::now_utc();
-
     let mut credential = generic_credential();
-    credential.state = Some(vec![CredentialState {
-        created_date: now,
-        state: CredentialStateEnum::Revoked,
-        suspend_end_date: None,
-    }]);
+
+    credential.state = CredentialStateEnum::Revoked;
 
     let mut credential_repository = MockCredentialRepository::default();
     let mut did_method_provider = MockDidMethodProvider::default();
@@ -3076,11 +3033,8 @@ async fn test_get_credential_success_array_complex_nested_all() {
         exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
-        state: Some(vec![CredentialState {
-            created_date: now,
-            state: CredentialStateEnum::Created,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Created,
+        suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_did: Some(Did {
             id: Uuid::new_v4().into(),
@@ -3639,11 +3593,8 @@ async fn test_get_credential_success_array_index_sorting() {
         exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
-        state: Some(vec![CredentialState {
-            created_date: now,
-            state: CredentialStateEnum::Created,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Created,
+        suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_did: Some(Did {
             id: Uuid::new_v4().into(),
@@ -3951,11 +3902,8 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
-        state: Some(vec![CredentialState {
-            created_date: now,
-            state: CredentialStateEnum::Created,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Created,
+        suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_did: Some(Did {
             id: Uuid::new_v4().into(),
@@ -4166,11 +4114,8 @@ async fn test_get_credential_success_array_single_element() {
         exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
-        state: Some(vec![CredentialState {
-            created_date: now,
-            state: CredentialStateEnum::Created,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Created,
+        suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_did: Some(Did {
             id: Uuid::new_v4().into(),

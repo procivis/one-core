@@ -151,9 +151,7 @@ async fn test_issuance_accept_openid4vc() {
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(holder_did.id, credential.holder_did.unwrap().id);
 
-    let states = credential.state.unwrap();
-    assert_eq!(2, states.len());
-    assert_eq!(CredentialStateEnum::Accepted, states[0].state);
+    assert_eq!(CredentialStateEnum::Accepted, credential.state);
 }
 
 #[tokio::test]
@@ -547,9 +545,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
     assert_eq!(holder_did.id, credential.holder_did.unwrap().id);
     assert_eq!(key.id, credential.key.unwrap().id);
 
-    let states = credential.state.unwrap();
-    assert_eq!(2, states.len());
-    assert_eq!(CredentialStateEnum::Accepted, states[0].state);
+    assert_eq!(CredentialStateEnum::Accepted, credential.state);
 }
 
 #[tokio::test]
@@ -1128,9 +1124,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(holder_did.id, credential.holder_did.unwrap().id);
 
-    let states = credential.state.unwrap();
-    assert_eq!(2, states.len());
-    assert_eq!(CredentialStateEnum::Accepted, states[0].state);
+    assert_eq!(CredentialStateEnum::Accepted, credential.state);
 }
 
 #[tokio::test]

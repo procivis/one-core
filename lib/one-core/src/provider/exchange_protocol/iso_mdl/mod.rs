@@ -343,16 +343,10 @@ impl ExchangeProtocolImpl for IsoMdl {
             let mut applicable_credentials = vec![];
 
             for credential in credentials {
-                let credential_state = credential
-                    .state
-                    .as_ref()
-                    .and_then(|states| states.first())
-                    .ok_or_else(|| {
-                        ExchangeProtocolError::Failed("State missing for credential".to_string())
-                    })?;
+                let credential_state = credential.state;
 
                 if !matches!(
-                    credential_state.state,
+                    credential_state,
                     CredentialStateEnum::Accepted
                         | CredentialStateEnum::Revoked
                         | CredentialStateEnum::Suspended

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use one_core::model::claim::ClaimId;
 use one_core::model::credential::{
-    Credential, CredentialRelations, CredentialState, GetCredentialList, GetCredentialQuery,
+    Credential, CredentialRelations, CredentialStateEnum, GetCredentialList, GetCredentialQuery,
     UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::CredentialSchemaRelations;
@@ -14,6 +14,7 @@ use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use shared_types::{CredentialId, DidId};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub struct CredentialHistoryDecorator {
@@ -48,7 +49,7 @@ impl CredentialHistoryDecorator {
         }
     }
 
-    async fn create_history_entry(&self, credential_id: CredentialId, state: CredentialState) {
+    async fn create_history_entry(&self, credential_id: CredentialId, state: CredentialStateEnum) {
         let organisation = match self.get_organisation_for_credential(&credential_id).await {
             Ok(org) => org,
             Err(err) => {
@@ -59,7 +60,7 @@ impl CredentialHistoryDecorator {
 
         let entry = History {
             id: Uuid::new_v4().into(),
-            created_date: state.created_date,
+            created_date: OffsetDateTime::now_utc(),
             action: HistoryAction::from(state),
             entity_id: Some(credential_id.into()),
             entity_type: HistoryEntityType::Credential,
@@ -77,14 +78,10 @@ impl CredentialHistoryDecorator {
 #[async_trait::async_trait]
 impl CredentialRepository for CredentialHistoryDecorator {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
-        let state = request.state.clone();
+        let state = request.state;
         let credential_id = self.inner.create_credential(request).await?;
 
-        if let Some(states) = state {
-            for state in states {
-                self.create_history_entry(credential_id, state).await;
-            }
-        };
+        self.create_history_entry(credential_id, state).await;
 
         Ok(credential_id)
     }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
+    Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::did::Did;
@@ -27,7 +27,6 @@ impl CredentialsDB {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    state: Some(Default::default()),
                     claims: Some(ClaimRelations {
                         schema: Some(Default::default()),
                     }),
@@ -112,11 +111,8 @@ impl CredentialsDB {
             exchange: exchange.to_owned(),
             redirect_uri: None,
             role: params.role.unwrap_or(CredentialRole::Issuer),
-            state: Some(vec![CredentialState {
-                created_date: get_dummy_date(),
-                state,
-                suspend_end_date: params.suspend_end_date,
-            }]),
+            state,
+            suspend_end_date: params.suspend_end_date,
             claims: Some(claims),
             issuer_did: Some(issuer_did.to_owned()),
             holder_did: params.holder_did,

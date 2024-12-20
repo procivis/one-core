@@ -7,14 +7,11 @@ use url::Url;
 use uuid::Uuid;
 
 use super::ExchangeProtocolImpl;
-use crate::common_validator::get_latest_state;
 use crate::config::core_config::CoreConfig;
 use crate::config::ConfigValidationError;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential::{
-    CredentialRelations, CredentialStateEnum, CredentialStateRelations,
-};
+use crate::model::credential::{CredentialRelations, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::{Did, DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
@@ -201,7 +198,6 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
@@ -229,13 +225,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
 
         let credentials_by_issuer_did = convert_inner(
             self.credential_repository
-                .get_credentials_by_issuer_did_id(
-                    &issuer_did.id,
-                    &CredentialRelations {
-                        state: Some(CredentialStateRelations::default()),
-                        ..Default::default()
-                    },
-                )
+                .get_credentials_by_issuer_did_id(&issuer_did.id, &CredentialRelations::default())
                 .await?,
         );
 
@@ -246,9 +236,9 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             .as_ref()
             .ok_or(BusinessLogicError::MissingCredentialSchema)?
             .clone();
-        let latest_credential_state = &get_latest_state(&credential)?.state;
+        let credential_state = credential.state;
 
-        self.validate(credential_id, latest_credential_state, &credential_schema)
+        self.validate(credential_id, &credential_state, &credential_schema)
             .await?;
 
         let format = credential_schema.format.to_owned();
@@ -433,7 +423,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             )
             .await?;
 
-        match (credential_schema.format.as_str(), latest_credential_state) {
+        match (credential_schema.format.as_str(), credential_state) {
             ("MDOC", CredentialStateEnum::Accepted) => {
                 self.validity_credential_repository
                     .insert(

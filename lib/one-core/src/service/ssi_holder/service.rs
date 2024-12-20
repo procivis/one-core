@@ -8,7 +8,7 @@ use super::dto::PresentationSubmitRequestDTO;
 use super::SSIHolderService;
 use crate::common_mapper::{encode_cbor_base64, value_to_model_claims, NESTED_CLAIM_MARKER};
 use crate::common_validator::{
-    throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
+    throw_if_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
 use crate::config::core_config::{Fields, RevocationType};
 use crate::config::validator::transport::{
@@ -17,8 +17,7 @@ use crate::config::validator::transport::{
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
-    UpdateCredentialRequest,
+    Clearable, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
@@ -489,7 +488,6 @@ impl SSIHolderService {
             .get_credentials_by_interaction_id(
                 interaction_id,
                 &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
                     interaction: Some(InteractionRelations {
                         organisation: Some(OrganisationRelations::default()),
                     }),
@@ -542,7 +540,7 @@ impl SSIHolderService {
             .security;
 
         for credential in credentials {
-            throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
+            throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
 
             let wallet_storage_matches = match credential
                 .schema
@@ -628,11 +626,8 @@ impl SSIHolderService {
             self.credential_repository
                 .update_credential(UpdateCredentialRequest {
                     id: credential.id,
-                    state: Some(CredentialState {
-                        created_date: now,
-                        state: CredentialStateEnum::Accepted,
-                        suspend_end_date: None,
-                    }),
+                    state: Some(CredentialStateEnum::Accepted),
+                    suspend_end_date: Clearable::DontTouch,
                     credential: Some(issuer_response.credential.bytes().collect()),
                     holder_did_id: Some(did_id),
                     issuer_did_id: None,
@@ -707,7 +702,6 @@ impl SSIHolderService {
             .get_credentials_by_interaction_id(
                 interaction_id,
                 &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
                     interaction: Some(InteractionRelations::default()),
                     holder_did: Some(DidRelations {
                         organisation: Some(OrganisationRelations::default()),
@@ -730,7 +724,7 @@ impl SSIHolderService {
         }
 
         for credential in credentials {
-            throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
+            throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
 
             self.protocol_provider
                 .get_protocol(&credential.exchange)
@@ -743,18 +737,8 @@ impl SSIHolderService {
             self.credential_repository
                 .update_credential(UpdateCredentialRequest {
                     id: credential.id,
-                    state: Some(CredentialState {
-                        created_date: OffsetDateTime::now_utc(),
-                        state: CredentialStateEnum::Rejected,
-                        suspend_end_date: None,
-                    }),
-                    credential: None,
-                    holder_did_id: None,
-                    issuer_did_id: None,
-                    interaction: None,
-                    key: None,
-                    redirect_uri: None,
-                    claims: None, //TODO!
+                    state: Some(CredentialStateEnum::Rejected),
+                    ..Default::default()
                 })
                 .await?;
         }

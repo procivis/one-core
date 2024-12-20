@@ -10,7 +10,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{header_regex, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::model::credential::{Credential, CredentialRole};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::key::Key;
@@ -67,7 +67,8 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
         exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role,
-        state: None,
+        state: CredentialStateEnum::Created,
+        suspend_end_date: None,
         claims: None,
         issuer_did: Some(did.to_owned()),
         holder_did: Some(did.to_owned()),

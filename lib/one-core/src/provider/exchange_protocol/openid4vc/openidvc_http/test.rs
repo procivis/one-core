@@ -21,7 +21,7 @@ use super::{
 };
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
     WalletStorageTypeEnum,
@@ -142,11 +142,8 @@ fn generic_credential() -> Credential {
         exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
-        state: Some(vec![CredentialState {
-            created_date: now,
-            state: CredentialStateEnum::Created,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Created,
+        suspend_end_date: None,
         claims: Some(vec![Claim {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
             credential_id,

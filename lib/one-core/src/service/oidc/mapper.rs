@@ -71,7 +71,7 @@ pub(super) async fn credential_from_proved(
         exchange: proved_credential.credential.exchange,
         redirect_uri: proved_credential.credential.redirect_uri,
         role: proved_credential.credential.role,
-        state: convert_inner_of_inner(proved_credential.credential.state),
+        state: proved_credential.credential.state,
         claims: convert_inner_of_inner(proved_credential.credential.claims),
         issuer_did: Some(issuer_did),
         holder_did: Some(holder_did),
@@ -82,6 +82,7 @@ pub(super) async fn credential_from_proved(
         interaction: None,
         revocation_list: None,
         key: proved_credential.credential.key,
+        suspend_end_date: convert_inner(proved_credential.credential.suspend_end_date),
     })
 }
 

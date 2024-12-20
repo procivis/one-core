@@ -540,19 +540,9 @@ pub async fn generate_bitstring_from_credentials(
                     return Ok(changed_credential.value);
                 }
             }
-            let states = credential
-                .state
-                .as_ref()
-                .ok_or(RevocationError::MappingError("state is None".to_string()))?;
-            let latest_state = states
-                .first()
-                .ok_or(RevocationError::MappingError(
-                    "latest state not found".to_string(),
-                ))?
-                .state
-                .to_owned();
+            let state = credential.state;
 
-            Ok(latest_state == matching_state)
+            Ok(state == matching_state)
         })
         .collect::<Result<Vec<_>, RevocationError>>()?;
 

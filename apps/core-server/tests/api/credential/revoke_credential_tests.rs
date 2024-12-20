@@ -72,10 +72,7 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
     assert_eq!(resp.status(), 204);
 
     let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(
-        CredentialStateEnum::Revoked,
-        credential.state.unwrap()[0].state
-    );
+    assert_eq!(CredentialStateEnum::Revoked, credential.state);
 }
 
 #[tokio::test]
@@ -238,8 +235,5 @@ async fn test_revoke_credential_with_lvvc_success() {
     assert_eq!(resp.status(), 204);
 
     let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(
-        CredentialStateEnum::Revoked,
-        credential.state.unwrap()[0].state
-    );
+    assert_eq!(CredentialStateEnum::Revoked, credential.state);
 }

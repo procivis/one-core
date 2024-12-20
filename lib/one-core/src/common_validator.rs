@@ -3,32 +3,32 @@ use std::time::Duration;
 
 use time::OffsetDateTime;
 
-use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::service::error::{BusinessLogicError, ServiceError};
 
-pub(crate) fn throw_if_latest_credential_state_eq(
+pub(crate) fn throw_if_credential_state_eq(
     credential: &Credential,
     state: CredentialStateEnum,
 ) -> Result<(), ServiceError> {
-    let latest_state = &get_latest_state(credential)?.state;
-    if latest_state == &state {
+    let current_state = credential.state;
+    if current_state == state {
         return Err(BusinessLogicError::InvalidCredentialState {
-            state: latest_state.to_owned(),
+            state: current_state.to_owned(),
         }
         .into());
     }
     Ok(())
 }
 
-pub(crate) fn throw_if_latest_credential_state_not_eq(
+pub(crate) fn throw_if_credential_state_not_eq(
     credential: &Credential,
     state: CredentialStateEnum,
 ) -> Result<(), ServiceError> {
-    let latest_state = &get_latest_state(credential)?.state;
-    if latest_state != &state {
+    let current_state = credential.state;
+    if current_state != state {
         return Err(BusinessLogicError::InvalidCredentialState {
-            state: latest_state.to_owned(),
+            state: current_state.to_owned(),
         }
         .into());
     }
@@ -99,15 +99,6 @@ pub(crate) fn validate_expiration_time(
     }
 
     Ok(())
-}
-
-pub(crate) fn get_latest_state(credential: &Credential) -> Result<&CredentialState, ServiceError> {
-    credential
-        .state
-        .as_ref()
-        .ok_or(ServiceError::MappingError("state is None".to_string()))?
-        .first()
-        .ok_or(ServiceError::MappingError("state is missing".to_string()))
 }
 
 #[cfg(test)]

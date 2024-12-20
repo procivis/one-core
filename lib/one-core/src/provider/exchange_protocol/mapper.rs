@@ -11,7 +11,7 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeConfig, DatatypeType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialState, CredentialStateEnum, UpdateCredentialRequest,
+    Clearable, Credential, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
@@ -30,11 +30,8 @@ pub(super) fn get_issued_credential_update(
     UpdateCredentialRequest {
         id: credential_id.to_owned(),
         credential: Some(token.bytes().collect()),
-        state: Some(CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: crate::model::credential::CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-        }),
+        state: Some(crate::model::credential::CredentialStateEnum::Accepted),
+        suspend_end_date: Clearable::DontTouch,
         key: None,
         holder_did_id: Some(holder_did_id),
         issuer_did_id: None,
@@ -142,12 +139,7 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
                 continue;
             }
 
-            let credential_state = credential
-                .state
-                .as_ref()
-                .ok_or(ExchangeProtocolError::Failed("state missing".to_string()))?
-                .first()
-                .ok_or(ExchangeProtocolError::Failed("state missing".to_string()))?;
+            let credential_state = credential.state;
 
             // only consider credentials that have finished the issuance flow
             if ![
@@ -155,7 +147,7 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
                 CredentialStateEnum::Revoked,
                 CredentialStateEnum::Suspended,
             ]
-            .contains(&credential_state.state)
+            .contains(&credential_state)
             {
                 continue;
             }

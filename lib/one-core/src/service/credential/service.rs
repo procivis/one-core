@@ -1,20 +1,17 @@
 use shared_types::CredentialId;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::mapper::credential_detail_response_from_model;
 use super::validator::verify_suspension_support;
 use crate::common_mapper::list_response_try_into;
-use crate::common_validator::{
-    get_latest_state, throw_if_latest_credential_state_eq, throw_if_state_not_in,
-};
+use crate::common_validator::{throw_if_credential_state_eq, throw_if_state_not_in};
 use crate::config::core_config::RevocationType;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::{
-    self, Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
-    CredentialStateRelations, UpdateCredentialRequest,
+    self, Clearable, Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
+    UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, DidType, KeyRole, RelatedKey};
@@ -181,7 +178,6 @@ impl CredentialService {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
                     schema: Some(CredentialSchemaRelations::default()),
                     issuer_did: Some(DidRelations::default()),
                     ..Default::default()
@@ -217,7 +213,7 @@ impl CredentialService {
             .as_ref()
             .is_some_and(|did| did.did_type == DidType::Local);
         if is_issuer && **revocation_type != RevocationType::None {
-            throw_if_latest_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
+            throw_if_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
         }
 
         self.credential_repository
@@ -246,7 +242,6 @@ impl CredentialService {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
@@ -386,24 +381,19 @@ impl CredentialService {
         &self,
         credential_id: &CredentialId,
     ) -> Result<EntityShareResponseDTO, ServiceError> {
-        let (credential, credential_state) = self.get_credential_with_state(credential_id).await?;
+        let credential = self.get_credential_with_state(credential_id).await?;
 
         if credential.deleted_at.is_some() {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         }
 
-        let now = OffsetDateTime::now_utc();
-
-        match credential_state {
+        match credential.state {
             CredentialStateEnum::Created => {
                 self.credential_repository
                     .update_credential(UpdateCredentialRequest {
                         id: credential_id.to_owned(),
-                        state: Some(CredentialState {
-                            created_date: now,
-                            state: credential::CredentialStateEnum::Pending,
-                            suspend_end_date: None,
-                        }),
+                        state: Some(credential::CredentialStateEnum::Pending),
+                        suspend_end_date: Clearable::DontTouch,
                         credential: None,
                         holder_did_id: None,
                         issuer_did_id: None,
@@ -499,13 +489,12 @@ impl CredentialService {
     async fn get_credential_with_state(
         &self,
         id: &CredentialId,
-    ) -> Result<(Credential, CredentialStateEnum), ServiceError> {
+    ) -> Result<Credential, ServiceError> {
         let credential = self
             .credential_repository
             .get_credential(
                 id,
                 &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
@@ -522,16 +511,7 @@ impl CredentialService {
             .await?
             .ok_or(EntityNotFoundError::Credential(*id))?;
 
-        let credential_states = credential
-            .state
-            .as_ref()
-            .ok_or(ServiceError::MappingError("state is None".to_string()))?;
-        let latest_state = credential_states
-            .first()
-            .ok_or(ServiceError::MappingError("state is missing".to_string()))?
-            .state
-            .clone();
-        Ok((credential, latest_state))
+        Ok(credential)
     }
 
     async fn change_issued_credential_revocation_state(
@@ -544,7 +524,6 @@ impl CredentialService {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
                     issuer_did: Some(DidRelations {
                         keys: Some(KeyRelations::default()),
                         ..Default::default()
@@ -592,7 +571,7 @@ impl CredentialService {
             ));
         };
 
-        let latest_state = &get_latest_state(&credential)?.state;
+        let current_state = &credential.state;
 
         let valid_states: &[CredentialStateEnum] = match revocation_state {
             CredentialRevocationState::Revoked => &[
@@ -602,7 +581,7 @@ impl CredentialService {
             CredentialRevocationState::Valid => &[CredentialStateEnum::Suspended],
             CredentialRevocationState::Suspended { .. } => &[CredentialStateEnum::Accepted],
         };
-        throw_if_state_not_in(latest_state, valid_states)?;
+        throw_if_state_not_in(current_state, valid_states)?;
 
         let revocation_method_key = &credential_schema.revocation_method;
 
@@ -652,7 +631,6 @@ impl CredentialService {
         )
         .await?;
 
-        let now: OffsetDateTime = OffsetDateTime::now_utc();
         let suspend_end_date =
             if let CredentialRevocationState::Suspended { suspend_end_date } = &revocation_state {
                 suspend_end_date.to_owned()
@@ -662,11 +640,10 @@ impl CredentialService {
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
                 id: credential_id.to_owned(),
-                state: Some(CredentialState {
-                    created_date: now,
-                    state: credential_revocation_state_to_model_state(revocation_state.to_owned()),
-                    suspend_end_date,
-                }),
+                state: Some(credential_revocation_state_to_model_state(
+                    revocation_state.to_owned(),
+                )),
+                suspend_end_date: Clearable::ForceSet(suspend_end_date),
                 credential: None,
                 holder_did_id: None,
                 issuer_did_id: None,
@@ -676,6 +653,13 @@ impl CredentialService {
                 claims: None,
             })
             .await?;
+
+        let _ = log_history_event_credential(
+            &*self.history_repository,
+            &credential,
+            credential_revocation_state_to_model_state(revocation_state.to_owned()).into(),
+        )
+        .await;
 
         Ok(())
     }
@@ -689,7 +673,6 @@ impl CredentialService {
             .get_credential(
                 &credential_id,
                 &CredentialRelations {
-                    state: Some(CredentialStateRelations::default()),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
@@ -730,16 +713,7 @@ impl CredentialService {
         // Workaround credential format detection
         let format = detect_format_with_crypto_suite(&credential_schema.format, &credential_str)?;
 
-        let current_state = credential
-            .state
-            .as_ref()
-            .ok_or(ServiceError::MappingError("state is None".to_string()))?
-            .first()
-            .ok_or(ServiceError::MappingError(
-                "latest state not found".to_string(),
-            ))?
-            .to_owned()
-            .state;
+        let current_state = credential.state;
 
         let formatter = self.formatter_provider.get_formatter(&format).ok_or(
             MissingProviderError::Formatter(credential_schema.format.clone()),
@@ -760,11 +734,8 @@ impl CredentialService {
                     credential: None,
                     holder_did_id: None,
                     issuer_did_id: None,
-                    state: Some(CredentialState {
-                        created_date: OffsetDateTime::now_utc(),
-                        state: new_state.clone(),
-                        suspend_end_date: None,
-                    }),
+                    state: Some(new_state),
+                    suspend_end_date: Clearable::DontTouch,
                     interaction: None,
                     key: None,
                     redirect_uri: None,
@@ -882,11 +853,8 @@ impl CredentialService {
             self.credential_repository
                 .update_credential(UpdateCredentialRequest {
                     id: credential_id,
-                    state: Some(CredentialState {
-                        created_date: OffsetDateTime::now_utc(),
-                        state: detected_state.to_owned(),
-                        suspend_end_date,
-                    }),
+                    state: Some(detected_state.to_owned()),
+                    suspend_end_date: Clearable::ForceSet(suspend_end_date),
                     credential: None,
                     holder_did_id: None,
                     issuer_did_id: None,

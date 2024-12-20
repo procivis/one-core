@@ -73,6 +73,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         "OPENID4VC",
         did_id.to_owned(),
         None,
+        None,
     )
     .await
     .unwrap();

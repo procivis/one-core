@@ -5,8 +5,8 @@ use mockall::predicate::{always, eq};
 use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
-    CredentialStateRelations, UpdateCredentialRequest,
+    Clearable, Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
+    UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
@@ -182,6 +182,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         "OPENID4VC",
         did.id,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -303,11 +304,8 @@ async fn test_create_credential_success() {
             exchange: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
-            state: Some(vec![CredentialState {
-                created_date: OffsetDateTime::now_utc(),
-                state: CredentialStateEnum::Created,
-                suspend_end_date: None,
-            }]),
+            state: CredentialStateEnum::Created,
+            suspend_end_date: None,
             claims: Some(claims),
             issuer_did: Some(did),
             holder_did: None,
@@ -350,7 +348,21 @@ async fn test_create_credential_empty_claims() {
         ..
     } = setup_empty().await;
 
-    let provider = credential_repository(db.clone(), None);
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+
+    let credential_schema_clone = credential_schema.clone();
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .times(1)
+        .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
+
+    let provider = credential_repository(
+        db.clone(),
+        Some(Repositories {
+            credential_schema_repository: Arc::new(credential_schema_repository),
+            ..Repositories::default()
+        }),
+    );
 
     let credential_id = Uuid::new_v4().into();
     let result = provider
@@ -364,7 +376,8 @@ async fn test_create_credential_empty_claims() {
             exchange: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
-            state: None,
+            state: CredentialStateEnum::Created,
+            suspend_end_date: None,
             claims: Some(vec![]),
             issuer_did: Some(did),
             holder_did: None,
@@ -423,7 +436,8 @@ async fn test_create_credential_already_exists() {
             exchange: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
-            state: None,
+            state: CredentialStateEnum::Created,
+            suspend_end_date: None,
             claims: Some(claims),
             issuer_did: Some(did),
             holder_did: None,
@@ -457,6 +471,7 @@ async fn test_delete_credential_success() {
         CredentialStateEnum::Created,
         "OPENID4VC",
         did.id,
+        None,
         None,
     )
     .await
@@ -502,6 +517,7 @@ async fn test_get_credential_list_success() {
         "OPENID4VC",
         did.id,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -511,6 +527,7 @@ async fn test_get_credential_list_success() {
         CredentialStateEnum::Created,
         "OPENID4VC",
         did.id,
+        None,
         None,
     )
     .await
@@ -523,6 +540,7 @@ async fn test_get_credential_list_success() {
         "OPENID4VC",
         did.id,
         Some(OffsetDateTime::now_utc()),
+        None,
     )
     .await
     .unwrap();
@@ -545,6 +563,7 @@ async fn test_get_credential_list_success() {
         .await;
     assert!(credentials.is_ok());
     let credentials = credentials.unwrap();
+
     assert_eq!(1, credentials.total_pages);
     assert_eq!(2, credentials.total_items);
     assert_eq!(2, credentials.values.len());
@@ -558,55 +577,6 @@ async fn test_get_credential_list_success() {
 }
 
 #[tokio::test]
-async fn test_get_credential_list_success_verify_state_sorting() {
-    let TestSetupWithCredential {
-        credential_schema,
-        db,
-        credential_id,
-        ..
-    } = setup_with_credential().await;
-
-    let later = OffsetDateTime::now_utc().add(Duration::seconds(1));
-    insert_credential_state_to_database(
-        &db,
-        credential_id,
-        CredentialState {
-            created_date: later,
-            state: CredentialStateEnum::Offered,
-            suspend_end_date: None,
-        },
-    )
-    .await
-    .unwrap();
-
-    let provider = credential_repository(db, None);
-
-    let credentials = provider
-        .get_credential_list(GetCredentialQueryDTO {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 5,
-            }),
-            sorting: None,
-            filtering: Some(
-                CredentialFilterValue::OrganisationId(credential_schema.organisation.unwrap().id)
-                    .condition(),
-            ),
-            include: None,
-        })
-        .await;
-    let credentials = credentials.unwrap();
-    assert_eq!(1, credentials.total_pages);
-    assert_eq!(1, credentials.total_items);
-    assert_eq!(1, credentials.values.len());
-
-    let first = credentials.values.first().unwrap();
-    let states = first.state.as_ref().unwrap();
-    assert_eq!(1, states.len());
-    assert_eq!(CredentialStateEnum::Offered, states.first().unwrap().state);
-}
-
-#[tokio::test]
 async fn test_get_credential_list_success_filter_state() {
     let TestSetup {
         credential_schema,
@@ -615,50 +585,26 @@ async fn test_get_credential_list_success_filter_state() {
         ..
     } = setup_empty().await;
 
-    let credential_id_first = insert_credential(
+    insert_credential(
         &db,
         &credential_schema.id,
-        CredentialStateEnum::Created,
+        CredentialStateEnum::Offered,
         "OPENID4VC",
         did.id,
+        None,
         None,
     )
     .await
     .unwrap();
 
-    let credential_id_second = insert_credential(
+    insert_credential(
         &db,
         &credential_schema.id,
-        CredentialStateEnum::Created,
+        CredentialStateEnum::Revoked,
         "OPENID4VC",
         did.id,
         None,
-    )
-    .await
-    .unwrap();
-
-    let later = OffsetDateTime::now_utc().add(Duration::seconds(1));
-
-    insert_credential_state_to_database(
-        &db,
-        credential_id_first,
-        CredentialState {
-            created_date: later,
-            state: CredentialStateEnum::Offered,
-            suspend_end_date: None,
-        },
-    )
-    .await
-    .unwrap();
-
-    insert_credential_state_to_database(
-        &db,
-        credential_id_second,
-        CredentialState {
-            created_date: later,
-            state: CredentialStateEnum::Revoked,
-            suspend_end_date: None,
-        },
+        None,
     )
     .await
     .unwrap();
@@ -714,14 +660,12 @@ async fn test_get_credential_list_success_filter_suspend_end_date() {
 
     let later = OffsetDateTime::now_utc().add(Duration::seconds(1));
     let much_later = OffsetDateTime::now_utc().add(Duration::days(1));
-    insert_credential_state_to_database(
+    update_credential_state(
         &db,
         credential_id,
-        CredentialState {
-            created_date: later,
-            state: CredentialStateEnum::Suspended,
-            suspend_end_date: Some(much_later),
-        },
+        CredentialStateEnum::Suspended,
+        Some(much_later),
+        later,
     )
     .await
     .unwrap();
@@ -796,6 +740,7 @@ async fn test_get_credential_success() {
         CredentialStateEnum::Created,
         "OPENID4VC",
         did.id,
+        None,
         None,
     )
     .await
@@ -893,7 +838,6 @@ async fn test_get_credential_success() {
         .get_credential(
             &credential_id,
             &CredentialRelations {
-                state: Some(CredentialStateRelations::default()),
                 claims: Some(ClaimRelations {
                     schema: Some(ClaimSchemaRelations::default()),
                 }),
@@ -930,7 +874,7 @@ async fn test_get_credential_success() {
 
 #[tokio::test]
 async fn test_get_credential_fail_not_found() {
-    let claim_repository = MockClaimRepository::default();
+    let claim_repository: MockClaimRepository = MockClaimRepository::default();
     let did_repository = MockDidRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();
 
@@ -977,6 +921,7 @@ async fn test_update_credential_success() {
         CredentialStateEnum::Created,
         "OPENID4VC",
         did.id,
+        None,
         None,
     )
     .await
@@ -1035,11 +980,8 @@ async fn test_update_credential_success() {
             credential: Some(token.to_owned()),
             holder_did_id: None,
             issuer_did_id: None,
-            state: Some(CredentialState {
-                created_date: OffsetDateTime::now_utc(),
-                state: CredentialStateEnum::Pending,
-                suspend_end_date: None,
-            }),
+            state: Some(CredentialStateEnum::Pending),
+            suspend_end_date: Clearable::DontTouch,
             interaction: Some(interaction_id),
             key: None,
             redirect_uri: None,
@@ -1063,6 +1005,7 @@ async fn test_update_credential_success() {
         interaction_id,
         credential_after_update.interaction.unwrap().id
     );
+    assert_eq!(credential_after_update.state, CredentialStateEnum::Pending);
 
     let history = crate::entity::history::Entity::find()
         .all(&db)
@@ -1092,6 +1035,7 @@ async fn test_get_credential_by_claim_id_success() {
         "OPENID4VC",
         did.id,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -1102,6 +1046,7 @@ async fn test_get_credential_by_claim_id_success() {
         CredentialStateEnum::Created,
         "OPENID4VC",
         did.id,
+        None,
         None,
     )
     .await

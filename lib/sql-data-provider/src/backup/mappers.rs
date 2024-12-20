@@ -8,7 +8,6 @@ use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 
 use super::models::{ClaimWithSchema, SchemaWithClaimSchema, UnexportableCredentialModel};
-use crate::entity::credential_state;
 
 impl From<ClaimWithSchema> for Claim {
     fn from(value: ClaimWithSchema) -> Self {
@@ -31,9 +30,6 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
     type Error = DataLayerError;
 
     fn try_from(value: UnexportableCredentialModel) -> Result<Self, Self::Error> {
-        let states: Vec<credential_state::Model> = serde_json::from_str(&value.credential_states)
-            .map_err(|_| Self::Error::MappingError)?;
-
         let claims_with_schema: Vec<ClaimWithSchema> =
             serde_json::from_str(&value.claims).map_err(|_| Self::Error::MappingError)?;
 
@@ -51,7 +47,8 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             exchange: value.exchange,
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
-            state: Some(convert_inner(states)),
+            state: value.state.into(),
+            suspend_end_date: value.suspend_end_date,
             claims: Some(convert_inner(claims_with_schema)),
             issuer_did: None,
             holder_did: None,

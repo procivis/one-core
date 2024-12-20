@@ -19,14 +19,13 @@ use crate::common_mapper::{
     get_exchange_param_token_expires_in, get_or_create_did, DidRole,
 };
 use crate::common_validator::{
-    throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
+    throw_if_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
 use crate::config::core_config::{ExchangeType, TransportType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
-    UpdateCredentialRequest,
+    Clearable, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
 use crate::model::did::DidRelations;
@@ -424,7 +423,6 @@ impl OIDCService {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
                     issuer_did: Some(DidRelations::default()),
-                    state: Some(CredentialStateRelations::default()),
                     schema: Some(CredentialSchemaRelations {
                         claim_schemas: Some(ClaimSchemaRelations::default()),
                         ..Default::default()
@@ -439,7 +437,7 @@ impl OIDCService {
             return Err(EntityNotFoundError::Credential(credential_id).into());
         };
 
-        throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)
+        throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)
             .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
 
         if credential.exchange != "OPENID4VC" {
@@ -539,7 +537,6 @@ impl OIDCService {
                 &CredentialRelations {
                     interaction: Some(InteractionRelations::default()),
                     schema: Some(CredentialSchemaRelations::default()),
-                    state: Some(CredentialStateRelations::default()),
                     ..Default::default()
                 },
             )
@@ -588,13 +585,7 @@ impl OIDCService {
             .update_credential(UpdateCredentialRequest {
                 id: credential.id,
                 holder_did_id: Some(holder_did.id),
-                credential: None,
-                issuer_did_id: None,
-                state: None,
-                interaction: None,
-                key: None,
-                redirect_uri: None,
-                claims: None,
+                ..Default::default()
             })
             .await?;
 
@@ -646,7 +637,6 @@ impl OIDCService {
                     interaction: Some(InteractionRelations {
                         organisation: Some(OrganisationRelations::default()),
                     }),
-                    state: Some(CredentialStateRelations::default()),
                     ..Default::default()
                 },
             )
@@ -698,11 +688,8 @@ impl OIDCService {
                 self.credential_repository
                     .update_credential(UpdateCredentialRequest {
                         id: credential.id,
-                        state: Some(CredentialState {
-                            created_date: now,
-                            state: CredentialStateEnum::Offered,
-                            suspend_end_date: None,
-                        }),
+                        state: Some(CredentialStateEnum::Offered),
+                        suspend_end_date: Clearable::DontTouch,
                         ..Default::default()
                     })
                     .await?;

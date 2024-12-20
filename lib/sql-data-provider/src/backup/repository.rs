@@ -11,20 +11,19 @@ use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{Alias, Func, Query};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait,
-    FromQueryResult, Iterable, JoinType, Order, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait, RelationTrait, Statement, Values,
+    FromQueryResult, Iterable, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait,
+    RelationTrait, Statement, Values,
 };
 use time::OffsetDateTime;
 
 use super::BackupProvider;
 use crate::backup::helpers::{
-    coalesce_to_empty_array, json_agg_columns, json_object_columns, open_sqlite_on_path, JsonAgg,
-    JsonObject,
+    coalesce_to_empty_array, json_object_columns, open_sqlite_on_path, JsonAgg, JsonObject,
 };
 use crate::backup::models::UnexportableCredentialModel;
 use crate::entity::{
-    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
-    credential_state, did, history, key, key_did, organisation,
+    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
+    history, key, key_did, organisation,
 };
 use crate::mapper::to_data_layer_error;
 
@@ -100,6 +99,8 @@ impl BackupRepository for BackupProvider {
                 credential::Column::Credential,
                 credential::Column::RedirectUri,
                 credential::Column::Role,
+                credential::Column::State,
+                credential::Column::SuspendEndDate,
             ])
             .column_as(credential::Column::Exchange, "exchange")
             .column_as(credential_schema::Column::Id, "credential_schema_id")
@@ -170,23 +171,6 @@ impl BackupRepository for BackupProvider {
                         .into_query(),
                 ),
                 "credential_schema_claim_schemas",
-            )
-            .expr_as_(
-                coalesce_to_empty_array(
-                    credential_state::Entity::find()
-                        .select_only()
-                        .expr(json_agg_columns(credential_state::Column::iter()))
-                        .filter(
-                            Expr::col((
-                                credential_state::Entity,
-                                credential_state::Column::CredentialId,
-                            ))
-                            .equals((credential::Entity, credential::Column::Id)),
-                        )
-                        .order_by(credential_state::Column::CreatedDate, Order::Desc)
-                        .into_query(),
-                ),
-                "credential_states",
             )
             .expr_as_(
                 coalesce_to_empty_array(

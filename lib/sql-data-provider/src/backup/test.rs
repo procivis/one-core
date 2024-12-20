@@ -8,8 +8,7 @@ use uuid::Uuid;
 
 use super::BackupProvider;
 use crate::db_conn;
-use crate::entity::credential::{self, CredentialRole};
-use crate::entity::credential_state::{self, CredentialState};
+use crate::entity::credential::{self, CredentialRole, CredentialState};
 use crate::entity::did::{self, DidType};
 use crate::entity::key;
 use crate::entity::key_did::KeyRole;
@@ -59,6 +58,8 @@ async fn insert_credential_to_database(
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(get_dummy_date()),
+        state: Set(CredentialState::Created),
+        suspend_end_date: Set(None),
         deleted_at: if deleted {
             Set(Some(get_dummy_date()))
         } else {
@@ -107,16 +108,6 @@ async fn insert_credential_to_database(
             "name".to_owned(),
         )],
     )
-    .await
-    .unwrap();
-
-    credential_state::ActiveModel {
-        credential_id: Set(credential_id),
-        created_date: Set(get_dummy_date()),
-        state: Set(CredentialState::Created),
-        suspend_end_date: Set(None),
-    }
-    .insert(database)
     .await
     .unwrap();
 

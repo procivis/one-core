@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::config::core_config::{CoreConfig, DatatypeType, Fields, Params};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
     WalletStorageTypeEnum,
@@ -71,11 +71,8 @@ async fn test_issuer_submit_succeeds() {
     };
 
     let credential = Credential {
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Offered,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Offered,
+        suspend_end_date: None,
         holder_did: Some(dummy_did()),
         issuer_did: Some(Did {
             keys: Some(vec![RelatedKey {
@@ -234,13 +231,7 @@ fn object_datatypes() -> HashSet<&'static str> {
 async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
     let mut storage = MockStorageProxy::new();
     let mut credential = dummy_credential();
-    credential
-        .state
-        .as_mut()
-        .unwrap()
-        .first_mut()
-        .unwrap()
-        .state = CredentialStateEnum::Accepted;
+    credential.state = CredentialStateEnum::Accepted;
 
     let credential_copy = credential.to_owned();
     storage
@@ -299,13 +290,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
             required: false,
         });
 
-    credential
-        .state
-        .as_mut()
-        .unwrap()
-        .first_mut()
-        .unwrap()
-        .state = CredentialStateEnum::Accepted;
+    credential.state = CredentialStateEnum::Accepted;
 
     let credential_copy = credential.to_owned();
     storage
@@ -385,13 +370,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
 async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_allowed() {
     let mut storage = MockStorageProxy::new();
     let mut credential = dummy_credential();
-    credential
-        .state
-        .as_mut()
-        .unwrap()
-        .first_mut()
-        .unwrap()
-        .state = CredentialStateEnum::Accepted;
+    credential.state = CredentialStateEnum::Accepted;
 
     let credential_copy = credential.to_owned();
     storage
@@ -446,13 +425,7 @@ fn mdoc_credential() -> Credential {
         },
     ];
 
-    credential
-        .state
-        .as_mut()
-        .unwrap()
-        .first_mut()
-        .unwrap()
-        .state = CredentialStateEnum::Accepted;
+    credential.state = CredentialStateEnum::Accepted;
     let schema = credential.schema.as_mut().unwrap();
     schema.format = "MDOC".to_string();
     *schema.claim_schemas.as_mut().unwrap() = vec![
@@ -482,11 +455,8 @@ fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credenti
     let key = dummy_key();
 
     Credential {
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state,
-            suspend_end_date: None,
-        }]),
+        state,
+        suspend_end_date: None,
         holder_did: Some(dummy_did()),
         issuer_did: Some(Did {
             keys: Some(vec![RelatedKey {
@@ -1099,11 +1069,8 @@ fn dummy_credential() -> Credential {
         exchange: "protocol".to_string(),
         redirect_uri: None,
         role: CredentialRole::Holder,
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Pending,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Pending,
+        suspend_end_date: None,
         claims: Some(vec![Claim {
             id: Uuid::new_v4(),
             credential_id,

@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::config::core_config::AppConfig;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
     WalletStorageTypeEnum,
@@ -177,11 +177,8 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         exchange: exchange.to_owned(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Pending,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Pending,
+        suspend_end_date: None,
         claims: Some(vec![Claim {
             id: Uuid::new_v4(),
             credential_id,

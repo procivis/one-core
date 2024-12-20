@@ -4,7 +4,7 @@ use std::sync::Arc;
 use autometrics::autometrics;
 use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
 use one_core::model::credential::{
-    Credential, CredentialRelations, CredentialState, GetCredentialList, GetCredentialQuery,
+    Clearable, Credential, CredentialRelations, GetCredentialList, GetCredentialQuery,
     UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
@@ -17,11 +17,12 @@ use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use one_dto_mapper::convert_inner;
-use sea_orm::sea_query::{Alias, Expr, IntoCondition, Query};
+use sea_orm::sea_query::{Expr, IntoCondition};
+use sea_orm::ActiveValue::NotSet;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait,
-    FromQueryResult, JoinType, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
-    Select, Set, SqlErr, Unchanged,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, FromQueryResult,
+    JoinType, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set,
+    SqlErr, Unchanged,
 };
 use shared_types::{CredentialId, CredentialSchemaId, DidId};
 use time::OffsetDateTime;
@@ -29,13 +30,10 @@ use uuid::Uuid;
 
 use crate::common::calculate_pages_count;
 use crate::credential::entity_model::CredentialListEntityModel;
-use crate::credential::mapper::{
-    credentials_to_repository, get_credential_state_active_model, request_to_active_model,
-};
+use crate::credential::mapper::{credentials_to_repository, request_to_active_model};
 use crate::credential::CredentialProvider;
 use crate::entity::{
-    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
-    credential_state, did,
+    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
 };
 use crate::list_query_generic::SelectWithListQuery;
 
@@ -109,27 +107,6 @@ impl CredentialProvider {
             relations.holder_did.as_ref(),
         )
         .await?;
-
-        let state: Option<Vec<CredentialState>> = match &relations.state {
-            None => None,
-            Some(_) => {
-                let credential_states = credential_state::Entity::find()
-                    .filter(credential_state::Column::CredentialId.eq(credential.id))
-                    .order_by_desc(credential_state::Column::CreatedDate)
-                    .all(&self.db)
-                    .await
-                    .map_err(|e| {
-                        tracing::error!(
-                            "Error while fetching credential {} state. Error: {}",
-                            credential.id,
-                            e.to_string()
-                        );
-                        DataLayerError::Db(e.into())
-                    })?;
-
-                Some(convert_inner(credential_states))
-            }
-        };
 
         let schema = get_credential_schema(
             &credential.credential_schema_id,
@@ -213,7 +190,6 @@ impl CredentialProvider {
         };
 
         Ok(Credential {
-            state,
             issuer_did,
             holder_did,
             claims,
@@ -253,6 +229,8 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Column::DeletedAt,
             credential::Column::RedirectUri,
             credential::Column::Role,
+            credential::Column::State,
+            credential::Column::SuspendEndDate,
         ])
         .column_as(credential::Column::Exchange, "exchange")
         .column_as(
@@ -293,15 +271,6 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential_schema::Column::AllowSuspension,
             "credential_schema_allow_suspension",
         )
-        .column_as(
-            credential_state::Column::CreatedDate,
-            "credential_state_created_date",
-        )
-        .column_as(credential_state::Column::State, "credential_state_state")
-        .column_as(
-            credential_state::Column::SuspendEndDate,
-            "credential_state_suspend_end_date",
-        )
         .column_as(did::Column::CreatedDate, "issuer_did_created_date")
         .column_as(did::Column::Deactivated, "issuer_did_deactivated")
         .column_as(did::Column::Did, "issuer_did_did")
@@ -321,41 +290,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             sea_orm::JoinType::LeftJoin,
             credential::Relation::Claim.def(),
         )
-        // find most recent state (to enable sorting)
-        .join(
-            sea_orm::JoinType::InnerJoin,
-            credential::Relation::CredentialState.def(),
-        )
-        .filter(
-            Condition::all()
-                .add(
-                    credential_state::Column::CreatedDate
-                        .in_subquery(
-                            Query::select()
-                                .expr(
-                                    Expr::col((
-                                        Alias::new("inner_state"),
-                                        credential_state::Column::CreatedDate,
-                                    ))
-                                    .max(),
-                                )
-                                .from_as(credential_state::Entity, Alias::new("inner_state"))
-                                .cond_where(
-                                    Expr::col((
-                                        Alias::new("inner_state"),
-                                        credential_state::Column::CredentialId,
-                                    ))
-                                    .equals((
-                                        credential_state::Entity,
-                                        credential_state::Column::CredentialId,
-                                    )),
-                                )
-                                .to_owned(),
-                        )
-                        .into_condition(),
-                )
-                .add(credential::Column::DeletedAt.is_null()),
-        )
+        .filter(credential::Column::DeletedAt.is_null())
         // list query
         .with_list_query(&query_params)
         // fallback ordering
@@ -428,23 +363,6 @@ impl CredentialRepository for CredentialProvider {
 
         if !claims.is_empty() {
             self.claim_repository.create_claim_list(claims).await?;
-        }
-
-        if let Some(states) = request.state {
-            for state in states {
-                self.update_credential(UpdateCredentialRequest {
-                    id: request.id.to_owned(),
-                    state: Some(state),
-                    credential: None,
-                    holder_did_id: None,
-                    issuer_did_id: None,
-                    interaction: None,
-                    key: None,
-                    redirect_uri: None,
-                    claims: None,
-                })
-                .await?;
-            }
         }
 
         Ok(request.id)
@@ -585,6 +503,19 @@ impl CredentialRepository for CredentialProvider {
             Some(redirect_uri) => Set(redirect_uri),
         };
 
+        let suspend_end_date = match request.suspend_end_date {
+            Clearable::ForceSet(date) => match date {
+                None => Set(None),
+                Some(suspend) => Set(Some(suspend)),
+            },
+            Clearable::DontTouch => Unchanged(Default::default()),
+        };
+
+        let state = match request.state {
+            None => NotSet,
+            Some(state) => Set(state.into()),
+        };
+
         let update_model = credential::ActiveModel {
             id: Unchanged(*id),
             last_modified: Set(OffsetDateTime::now_utc()),
@@ -594,15 +525,10 @@ impl CredentialRepository for CredentialProvider {
             interaction_id,
             key_id,
             redirect_uri,
+            suspend_end_date,
+            state,
             ..Default::default()
         };
-
-        if let Some(state) = request.state {
-            credential_state::Entity::insert(get_credential_state_active_model(*id, state))
-                .exec(&self.db)
-                .await
-                .map_err(|e| DataLayerError::Db(e.into()))?;
-        }
 
         if let Some(claims) = request.claims {
             if claims.iter().any(|claim| claim.credential_id != request.id) {

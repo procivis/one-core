@@ -393,22 +393,14 @@ pub(crate) fn throw_if_interaction_pre_authorized_code_used(
     Ok(())
 }
 
-pub(crate) fn throw_if_latest_credential_state_not_eq(
+pub(crate) fn throw_if_credential_state_not_eq(
     credential: &Credential,
     state: CredentialStateEnum,
 ) -> Result<(), OpenID4VCError> {
-    let latest_state = &credential
-        .state
-        .as_ref()
-        .ok_or(OpenID4VCError::MappingError("state is None".to_string()))?
-        .first()
-        .as_ref()
-        .ok_or(OpenID4VCError::MappingError("state is missing".to_string()))?
-        .to_owned()
-        .state;
-    if *latest_state != state {
+    let current_state = &credential.state;
+    if *current_state != state {
         return Err(OpenID4VCError::InvalidCredentialState {
-            state: latest_state.to_owned(),
+            state: current_state.to_owned(),
         });
     }
     Ok(())

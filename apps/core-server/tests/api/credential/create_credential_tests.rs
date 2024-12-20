@@ -52,10 +52,7 @@ async fn test_create_credential_success() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(
-        CredentialStateEnum::Created,
-        credential.state.unwrap()[0].state
-    );
+    assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(2, credential.claims.unwrap().len());
     assert_eq!("OPENID4VC", credential.exchange);
 }
@@ -224,10 +221,7 @@ async fn test_create_credential_success_with_nested_claims() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(
-        CredentialStateEnum::Created,
-        credential.state.unwrap()[0].state
-    );
+    assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(3, credential.claims.unwrap().len());
     assert_eq!("OPENID4VC", credential.exchange);
 }
@@ -446,10 +440,7 @@ async fn test_create_credential_with_big_picture_success() {
     let resp = resp.json_value().await;
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-    assert_eq!(
-        CredentialStateEnum::Created,
-        credential.state.unwrap()[0].state
-    );
+    assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(1, credential.claims.unwrap().len());
     assert_eq!("OPENID4VC", credential.exchange);
 }

@@ -41,10 +41,7 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
 
     let credential = context.db.credentials.get(&credential.id).await;
 
-    assert_eq!(
-        CredentialStateEnum::Accepted,
-        credential.state.unwrap()[0].state
-    );
+    assert_eq!(CredentialStateEnum::Accepted, credential.state);
 }
 
 #[tokio::test]
@@ -110,8 +107,5 @@ async fn test_reactivate_credential_with_lvvc_success() {
 
     let credential = context.db.credentials.get(&credential.id).await;
 
-    assert_eq!(
-        CredentialStateEnum::Accepted,
-        credential.state.unwrap()[0].state
-    );
+    assert_eq!(CredentialStateEnum::Accepted, credential.state);
 }

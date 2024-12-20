@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use one_core::model::credential::{CredentialState, CredentialStateEnum};
+use one_core::model::credential::CredentialStateEnum;
 use one_core::model::interaction::InteractionId;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
@@ -20,9 +20,9 @@ use crate::entity::history::{self, HistoryAction, HistoryEntityType};
 use crate::entity::key_did::KeyRole;
 use crate::entity::proof::ProofRequestState;
 use crate::entity::{
-    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
-    credential_state, did, interaction, key, key_did, organisation, proof, proof_claim,
-    proof_input_claim_schema, proof_input_schema, proof_schema,
+    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
+    interaction, key, key_did, organisation, proof, proof_claim, proof_input_claim_schema,
+    proof_input_schema, proof_schema,
 };
 use crate::{db_conn, DataLayer};
 
@@ -37,6 +37,7 @@ pub async fn insert_credential(
     protocol: &str,
     did_id: DidId,
     deleted_at: Option<OffsetDateTime>,
+    suspend_end_date: Option<OffsetDateTime>,
 ) -> Result<CredentialId, DbErr> {
     let now = OffsetDateTime::now_utc();
 
@@ -56,15 +57,8 @@ pub async fn insert_credential(
         interaction_id: Set(None),
         revocation_list_id: Set(None),
         key_id: Set(None),
-    }
-    .insert(db)
-    .await?;
-
-    credential_state::ActiveModel {
-        credential_id: Set(credential.id),
-        created_date: Set(now),
         state: Set(state.into()),
-        suspend_end_date: Set(None),
+        suspend_end_date: Set(suspend_end_date),
     }
     .insert(db)
     .await?;
@@ -72,19 +66,23 @@ pub async fn insert_credential(
     Ok(credential.id)
 }
 
-pub async fn insert_credential_state_to_database(
+pub async fn update_credential_state(
     database: &DatabaseConnection,
     credential_id: CredentialId,
-    state: CredentialState,
+    state: CredentialStateEnum,
+    suspend_end_date: Option<OffsetDateTime>,
+    last_modified: OffsetDateTime,
 ) -> Result<(), DbErr> {
-    credential_state::ActiveModel {
-        credential_id: Set(credential_id),
-        created_date: Set(state.created_date),
-        state: Set(state.state.into()),
-        suspend_end_date: Set(state.suspend_end_date),
+    credential::ActiveModel {
+        id: Set(credential_id),
+        state: Set(state.into()),
+        last_modified: Set(last_modified),
+        suspend_end_date: Set(suspend_end_date),
+        ..Default::default()
     }
-    .insert(database)
+    .update(database)
     .await?;
+
     Ok(())
 }
 

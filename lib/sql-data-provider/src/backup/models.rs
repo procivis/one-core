@@ -6,7 +6,7 @@ use serde::Deserialize;
 use shared_types::{CredentialId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
-use crate::entity::credential::CredentialRole;
+use crate::entity::credential::{CredentialRole, CredentialState};
 use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::{claim, claim_schema, credential_schema_claim_schema};
 
@@ -21,6 +21,8 @@ pub struct UnexportableCredentialModel {
     pub exchange: String,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
+    pub state: CredentialState,
+    pub suspend_end_date: Option<OffsetDateTime>,
 
     pub credential_schema_id: CredentialSchemaId,
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
@@ -38,7 +40,6 @@ pub struct UnexportableCredentialModel {
     pub organisation_last_modified: OffsetDateTime,
 
     pub claims: String,
-    pub credential_states: String,
     pub credential_schema_claim_schemas: String,
 }
 

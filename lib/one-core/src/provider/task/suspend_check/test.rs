@@ -3,7 +3,7 @@ use std::sync::Arc;
 use mockall::predicate::{always, eq};
 
 use super::SuspendCheckProvider;
-use crate::model::credential::{Credential, CredentialStateEnum, GetCredentialList};
+use crate::model::credential::{Clearable, Credential, CredentialStateEnum, GetCredentialList};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -116,9 +116,9 @@ async fn test_run_one_update() {
             let id = credential.id;
             move |request| {
                 assert_eq!(request.id, id);
+                assert_eq!(request.suspend_end_date, Clearable::ForceSet(None));
                 let state = request.state.as_ref().unwrap();
-                assert_eq!(state.state, CredentialStateEnum::Accepted);
-                assert_eq!(state.suspend_end_date, None);
+                assert_eq!(*state, CredentialStateEnum::Accepted);
                 true
             }
         })

@@ -497,7 +497,8 @@ async fn test_get_proof_with_relations() {
                 exchange: "protocol".to_string(),
                 redirect_uri: None,
                 role: CredentialRole::Verifier,
-                state: None,
+                state: CredentialStateEnum::Accepted,
+                suspend_end_date: None,
                 claims: None,
                 issuer_did: None,
                 holder_did: None,
@@ -574,6 +575,8 @@ async fn test_get_proof_with_relations() {
         interaction_id: Set(None),
         revocation_list_id: Set(None),
         key_id: Set(None),
+        state: Set(credential::CredentialState::Accepted),
+        ..Default::default()
     }
     .insert(&db)
     .await
@@ -875,6 +878,7 @@ async fn test_set_proof_claims_success() {
         CredentialStateEnum::Created,
         "OPENID4VC",
         did_id,
+        None,
         None,
     )
     .await

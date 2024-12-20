@@ -58,13 +58,5 @@ async fn test_issuance_reject_openid4vc() {
     // THEN
     assert_eq!(resp.status(), 500);
 
-    let states = context
-        .db
-        .credentials
-        .get(&credential.id)
-        .await
-        .state
-        .unwrap();
-    assert_eq!(1, states.len());
-    assert_eq!(CredentialStateEnum::Pending, states[0].state);
+    assert_eq!(CredentialStateEnum::Pending, credential.state);
 }

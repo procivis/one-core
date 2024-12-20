@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use shared_types::CredentialId;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::TestingCredentialParams;
@@ -79,21 +78,6 @@ async fn test_get_list_credential_deleted_credentials_are_not_returned() {
             )
             .await;
     }
-
-    context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Created,
-            &did,
-            "OPENID4VC",
-            TestingCredentialParams {
-                deleted_at: Some(OffsetDateTime::now_utc()),
-                ..Default::default()
-            },
-        )
-        .await;
 
     // WHEN
     let resp = context

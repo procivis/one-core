@@ -24,9 +24,10 @@ pub struct Credential {
     pub exchange: String,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
+    pub state: CredentialStateEnum,
+    pub suspend_end_date: Option<OffsetDateTime>,
 
     // Relations:
-    pub state: Option<Vec<CredentialState>>,
     pub claims: Option<Vec<Claim>>,
     pub issuer_did: Option<Did>,
     pub holder_did: Option<Did>,
@@ -38,7 +39,6 @@ pub struct Credential {
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct CredentialRelations {
-    pub state: Option<CredentialStateRelations>,
     pub claims: Option<ClaimRelations>,
     pub issuer_did: Option<DidRelations>,
     pub holder_did: Option<DidRelations>,
@@ -48,14 +48,7 @@ pub struct CredentialRelations {
     pub key: Option<KeyRelations>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CredentialState {
-    pub created_date: OffsetDateTime,
-    pub state: CredentialStateEnum,
-    pub suspend_end_date: Option<OffsetDateTime>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Display)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Display)]
 pub enum CredentialStateEnum {
     Created,
     Pending,
@@ -66,9 +59,6 @@ pub enum CredentialStateEnum {
     Suspended,
     Error,
 }
-
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct CredentialStateRelations {}
 
 pub enum SortableCredentialColumn {
     CreatedDate,
@@ -88,10 +78,11 @@ pub struct UpdateCredentialRequest {
     pub credential: Option<Vec<u8>>,
     pub holder_did_id: Option<DidId>,
     pub issuer_did_id: Option<DidId>,
-    pub state: Option<CredentialState>,
     pub interaction: Option<InteractionId>,
     pub key: Option<KeyId>,
     pub redirect_uri: Option<Option<String>>,
+    pub state: Option<CredentialStateEnum>,
+    pub suspend_end_date: Clearable<Option<OffsetDateTime>>,
 
     pub claims: Option<Vec<Claim>>,
 }
@@ -101,4 +92,11 @@ pub enum CredentialRole {
     Holder,
     Issuer,
     Verifier,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub enum Clearable<T> {
+    ForceSet(T),
+    #[default]
+    DontTouch,
 }

@@ -11,7 +11,7 @@ use super::dto::{
 use super::mapper::value_to_published_claim;
 use super::validation::{validate_verifiable_credential, validate_verifiable_presentation};
 use super::VCAPIService;
-use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::model::revocation_list::{RevocationListPurpose, StatusListType};
@@ -137,11 +137,8 @@ impl VCAPIService {
                     exchange: "OPENID4VC".to_owned(),
                     redirect_uri: None,
                     role: CredentialRole::Issuer,
-                    state: Some(vec![CredentialState {
-                        created_date: OffsetDateTime::now_utc(),
-                        state: CredentialStateEnum::Offered,
-                        suspend_end_date: None,
-                    }]),
+                    state: CredentialStateEnum::Offered,
+                    suspend_end_date: None,
                     claims: None,
                     issuer_did: Some(issuer.clone()),
                     holder_did: None,

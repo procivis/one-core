@@ -96,7 +96,6 @@ impl ProofService {
                             schema: Some(Default::default()),
                         },
                         credential: Some(CredentialRelations {
-                            state: Some(Default::default()),
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),

@@ -438,19 +438,9 @@ pub async fn generate_token_from_credentials(
                     return Ok(changed_credential.value.clone());
                 }
             }
-            let states = credential
-                .state
-                .as_ref()
-                .ok_or(RevocationError::MappingError("state is None".to_string()))?;
-            let latest_state = states
-                .first()
-                .ok_or(RevocationError::MappingError(
-                    "latest state not found".to_string(),
-                ))?
-                .state
-                .to_owned();
+            let state = credential.state;
 
-            Ok(credential_state_into_revocation_state(latest_state))
+            Ok(credential_state_into_revocation_state(state))
         })
         .collect::<Result<Vec<_>, RevocationError>>()?;
 

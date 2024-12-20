@@ -40,10 +40,7 @@ async fn test_share_credential_success() {
     assert!(url.starts_with("openid-credential-offer"));
 
     let credential = context.db.credentials.get(&credential.id).await;
-    assert_eq!(
-        CredentialStateEnum::Pending,
-        credential.state.unwrap()[0].state
-    );
+    assert_eq!(CredentialStateEnum::Pending, credential.state);
 }
 
 #[tokio::test]

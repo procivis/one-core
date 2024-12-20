@@ -1,7 +1,9 @@
 use anyhow::Context;
 use time::OffsetDateTime;
 
-use crate::model::credential::{Credential, CredentialStateEnum, UpdateCredentialRequest};
+use crate::model::credential::{
+    Clearable, Credential, CredentialStateEnum, UpdateCredentialRequest,
+};
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::deserialize_interaction_data;
@@ -165,6 +167,7 @@ async fn obtain_and_update_new_mso(
         key: None,
         redirect_uri: None,
         claims: None,
+        suspend_end_date: Clearable::DontTouch,
     };
 
     credentials.update_credential(update_request).await?;

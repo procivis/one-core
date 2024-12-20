@@ -8,7 +8,7 @@ use super::BackupService;
 use crate::model::backup::{Metadata, UnexportableEntities};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
     WalletStorageTypeEnum,
@@ -50,11 +50,8 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             exchange: "foo".into(),
             redirect_uri: None,
             role: CredentialRole::Holder,
-            state: Some(vec![CredentialState {
-                created_date: OffsetDateTime::now_utc(),
-                state: CredentialStateEnum::Created,
-                suspend_end_date: None,
-            }]),
+            state: CredentialStateEnum::Created,
+            suspend_end_date: None,
             claims: Some(vec![Claim {
                 id: Uuid::new_v4(),
                 credential_id: Uuid::new_v4().into(),

@@ -4,9 +4,7 @@ use core_server::ServerConfig;
 use one_core::config::core_config::{self, AppConfig};
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
-use one_core::model::credential::{
-    Credential, CredentialRole, CredentialState, CredentialStateEnum,
-};
+use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
     LayoutProperties, LayoutType, WalletStorageTypeEnum,
@@ -622,11 +620,8 @@ pub async fn create_credential(
         exchange: exchange.to_owned(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
-        state: Some(vec![CredentialState {
-            created_date: get_dummy_date(),
-            state,
-            suspend_end_date: params.suspend_end_date,
-        }]),
+        state,
+        suspend_end_date: params.suspend_end_date,
         claims: Some(claims),
         issuer_did: Some(issuer_did.to_owned()),
         holder_did: params.holder_did,

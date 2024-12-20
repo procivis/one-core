@@ -76,9 +76,8 @@ async fn test_run_task_suspend_check_with_update() {
     );
 
     let credential = context.db.credentials.get(&credential.id).await;
-    let credential_state = &credential.state.unwrap()[0];
-    assert_eq!(credential_state.state, CredentialStateEnum::Accepted);
-    assert_eq!(credential_state.suspend_end_date, None);
+    assert_eq!(credential.state, CredentialStateEnum::Accepted);
+    assert_eq!(credential.suspend_end_date, None);
 }
 
 #[tokio::test]

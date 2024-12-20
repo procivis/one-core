@@ -14,7 +14,7 @@ use crate::config::core_config::CoreConfig;
 use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
-use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     Arrayed, CredentialSchema, CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
@@ -251,11 +251,8 @@ pub fn extracted_credential_to_model(
         deleted_at: None,
         credential: vec![],
         exchange,
-        state: Some(vec![CredentialState {
-            created_date: now,
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
         claims: Some(model_claims),
         issuer_did: Some(issuer_did),
         holder_did,
@@ -444,9 +441,9 @@ impl CredentialSchemaClaimsNestedTypeView {
     }
 }
 
-impl From<CredentialState> for HistoryAction {
-    fn from(state: CredentialState) -> Self {
-        match state.state {
+impl From<CredentialStateEnum> for HistoryAction {
+    fn from(state: CredentialStateEnum) -> Self {
+        match state {
             CredentialStateEnum::Created => HistoryAction::Created,
             CredentialStateEnum::Pending => HistoryAction::Pending,
             CredentialStateEnum::Offered => HistoryAction::Offered,

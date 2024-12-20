@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::exchange_protocol::dto::{
     CredentialGroupItem, PresentationDefinitionFieldDTO,
@@ -171,22 +171,13 @@ pub fn credential_detail_response_from_model(
     let claims = value
         .claims
         .ok_or(ExchangeProtocolError::Failed("claims is None".to_string()))?;
-    let states = value
-        .state
-        .ok_or(ExchangeProtocolError::Failed("state is None".to_string()))?;
-    let latest_state = states
-        .first()
-        .ok_or(ExchangeProtocolError::Failed(
-            "latest state not found".to_string(),
-        ))?
-        .to_owned();
 
     Ok(CredentialDetailResponseDTO {
         id: value.id,
         created_date: value.created_date,
         issuance_date: value.issuance_date,
-        revocation_date: get_revocation_date(&latest_state),
-        state: latest_state.state.into(),
+        revocation_date: get_revocation_date(&value.state, &value.last_modified),
+        state: value.state.into(),
         last_modified: value.last_modified,
         claims: from_vec_claim(claims, &schema, types)?,
         schema: schema.try_into()?,
@@ -194,15 +185,18 @@ pub fn credential_detail_response_from_model(
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
         lvvc_issuance_date: None,
-        suspend_end_date: latest_state.suspend_end_date,
+        suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity: None,
         holder_did: value.holder_did.map(Into::into),
     })
 }
 
-fn get_revocation_date(latest_state: &CredentialState) -> Option<OffsetDateTime> {
-    if latest_state.state == CredentialStateEnum::Revoked {
-        Some(latest_state.created_date)
+fn get_revocation_date(
+    state: &CredentialStateEnum,
+    last_modified: &OffsetDateTime,
+) -> Option<OffsetDateTime> {
+    if *state == CredentialStateEnum::Revoked {
+        Some(last_modified.to_owned())
     } else {
         None
     }

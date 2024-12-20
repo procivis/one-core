@@ -679,10 +679,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         updated_credentials.credential,
         CREDENTIAL_CONTENT_OUTDATED.as_bytes()
     );
-    assert_eq!(
-        updated_credentials.state.unwrap()[0].state,
-        CredentialStateEnum::Revoked,
-    );
+    assert_eq!(updated_credentials.state, CredentialStateEnum::Revoked,);
 }
 
 #[tokio::test]
@@ -799,10 +796,7 @@ async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
     assert!(resp[0]["reason"].is_null());
 
     let updated_credentials = context.db.credentials.get(&credential.id).await;
-    assert_eq!(
-        updated_credentials.state.unwrap()[0].state,
-        CredentialStateEnum::Accepted,
-    );
+    assert_eq!(updated_credentials.state, CredentialStateEnum::Accepted,);
 }
 
 #[tokio::test]
@@ -945,10 +939,7 @@ async fn test_suspended_to_valid() {
         updated_credentials.credential,
         CREDENTIAL_CONTENT_VALID.as_bytes()
     );
-    assert_eq!(
-        updated_credentials.state.unwrap()[0].state,
-        CredentialStateEnum::Accepted,
-    );
+    assert_eq!(updated_credentials.state, CredentialStateEnum::Accepted,);
 }
 
 #[tokio::test]
@@ -1077,10 +1068,7 @@ async fn test_suspended_to_suspended_update_failed() {
         updated_credentials.credential,
         CREDENTIAL_CONTENT_OUTDATED.as_bytes()
     );
-    assert_eq!(
-        updated_credentials.state.unwrap()[0].state,
-        CredentialStateEnum::Suspended,
-    );
+    assert_eq!(updated_credentials.state, CredentialStateEnum::Suspended,);
 }
 
 #[tokio::test]

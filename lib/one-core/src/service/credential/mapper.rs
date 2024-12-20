@@ -7,7 +7,7 @@ use super::dto::CredentialSchemaType;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::claim::Claim;
-use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::did::Did;
 use crate::model::key::Key;
@@ -33,15 +33,7 @@ pub fn credential_detail_response_from_model(
     let claims = value
         .claims
         .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
-    let states = value
-        .state
-        .ok_or(ServiceError::MappingError("state is None".to_string()))?;
-    let latest_state = states
-        .first()
-        .ok_or(ServiceError::MappingError(
-            "latest state not found".to_string(),
-        ))?
-        .to_owned();
+    let state = value.state;
 
     let mdoc_mso_validity = if let Some(validity_credential) = validity_credential {
         let params = config.format.get::<mdoc_formatter::Params>("MDOC")?;
@@ -58,8 +50,8 @@ pub fn credential_detail_response_from_model(
         id: value.id,
         created_date: value.created_date,
         issuance_date: value.issuance_date,
-        revocation_date: get_revocation_date(&latest_state),
-        state: latest_state.state.into(),
+        revocation_date: get_revocation_date(&state, &value.last_modified),
+        state: state.into(),
         last_modified: value.last_modified,
         claims: from_vec_claim(claims, &schema, config)?,
         schema: schema.try_into()?,
@@ -67,7 +59,7 @@ pub fn credential_detail_response_from_model(
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
         lvvc_issuance_date: None,
-        suspend_end_date: latest_state.suspend_end_date,
+        suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity,
         holder_did: convert_inner(value.holder_did),
     })
@@ -281,35 +273,30 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             "credential_schema is None".to_string(),
         ))?;
 
-        let states = value
-            .state
-            .ok_or(ServiceError::MappingError("state is None".to_string()))?;
-        let latest_state = states
-            .first()
-            .ok_or(ServiceError::MappingError(
-                "latest state not found".to_string(),
-            ))?
-            .to_owned();
+        let state = value.state;
 
         Ok(Self {
             id: value.id,
             created_date: value.created_date,
             issuance_date: value.issuance_date,
-            revocation_date: get_revocation_date(&latest_state),
-            state: latest_state.state.into(),
+            revocation_date: get_revocation_date(&state, &value.last_modified),
+            state: state.into(),
             last_modified: value.last_modified,
             schema: schema.into(),
             issuer_did: convert_inner(value.issuer_did),
             credential: value.credential,
             role: value.role.into(),
-            suspend_end_date: latest_state.suspend_end_date,
+            suspend_end_date: value.suspend_end_date,
         })
     }
 }
 
-fn get_revocation_date(latest_state: &CredentialState) -> Option<OffsetDateTime> {
-    if latest_state.state == CredentialStateEnum::Revoked {
-        Some(latest_state.created_date)
+fn get_revocation_date(
+    state: &CredentialStateEnum,
+    last_modified: &OffsetDateTime,
+) -> Option<OffsetDateTime> {
+    if *state == CredentialStateEnum::Revoked {
+        Some(last_modified.to_owned())
     } else {
         None
     }
@@ -329,11 +316,8 @@ pub(super) fn from_create_request(
         id: credential_id,
         created_date: now,
         issuance_date: now,
-        state: Some(vec![CredentialState {
-            created_date: now,
-            state: CredentialStateEnum::Created,
-            suspend_end_date: None,
-        }]),
+        state: CredentialStateEnum::Created,
+        suspend_end_date: None,
         last_modified: now,
         deleted_at: None,
         credential: vec![],

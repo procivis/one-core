@@ -1,4 +1,4 @@
-use one_core::model::credential::{Credential, CredentialState, SortableCredentialColumn};
+use one_core::model::credential::{Credential, SortableCredentialColumn};
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::did::Did;
 use one_core::model::interaction::InteractionId;
@@ -9,10 +9,10 @@ use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
-use shared_types::{CredentialId, DidId, KeyId};
+use shared_types::{DidId, KeyId};
 
 use crate::credential::entity_model::CredentialListEntityModel;
-use crate::entity::{self, claim, credential, credential_schema, credential_state, did};
+use crate::entity::{self, claim, credential, credential_schema, did};
 use crate::list_query_generic::{
     get_blob_match_condition, get_comparison_condition, get_equals_condition,
     get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
@@ -24,7 +24,7 @@ impl IntoSortingColumn for SortableCredentialColumn {
             Self::CreatedDate => credential::Column::CreatedDate.into_simple_expr(),
             Self::SchemaName => credential_schema::Column::Name.into_simple_expr(),
             Self::IssuerDid => did::Column::Did.into_simple_expr(),
-            Self::State => credential_state::Column::State.into_simple_expr(),
+            Self::State => credential::Column::State.into_simple_expr(),
         }
     }
 }
@@ -47,30 +47,18 @@ impl IntoFilterCondition for CredentialFilterValue {
             ),
             Self::Role(role) => get_equals_condition(credential::Column::Role, role.as_ref()),
             Self::CredentialIds(ids) => credential::Column::Id.is_in(ids.iter()).into_condition(),
-            Self::State(states) => credential_state::Column::State
+            Self::State(states) => credential::Column::State
                 .is_in(
                     states
                         .into_iter()
-                        .map(credential_state::CredentialState::from)
+                        .map(credential::CredentialState::from)
                         .collect::<Vec<_>>(),
                 )
                 .into_condition(),
             Self::SuspendEndDate(comparison) => {
-                get_comparison_condition(credential_state::Column::SuspendEndDate, comparison)
+                get_comparison_condition(credential::Column::SuspendEndDate, comparison)
             }
         }
-    }
-}
-
-pub(super) fn get_credential_state_active_model(
-    id: CredentialId,
-    state: CredentialState,
-) -> credential_state::ActiveModel {
-    credential_state::ActiveModel {
-        credential_id: Set(id),
-        created_date: Set(state.created_date),
-        state: Set(state.state.into()),
-        suspend_end_date: Set(state.suspend_end_date),
     }
 }
 
@@ -86,7 +74,8 @@ impl From<entity::credential::Model> for Credential {
             exchange: credential.exchange,
             redirect_uri: credential.redirect_uri,
             role: credential.role.into(),
-            state: None,
+            state: credential.state.into(),
+            suspend_end_date: credential.suspend_end_date,
             claims: None,
             issuer_did: None,
             holder_did: None,
@@ -123,6 +112,8 @@ pub(super) fn request_to_active_model(
         revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),
         key_id: Set(key_id),
         role: Set(request.role.to_owned().into()),
+        state: Set(request.state.into()),
+        suspend_end_date: Set(request.suspend_end_date),
     }
 }
 
@@ -184,12 +175,6 @@ pub(super) fn credential_list_model_to_repository_model(
         }),
     };
 
-    let state = vec![CredentialState {
-        created_date: credential.credential_state_created_date,
-        state: credential.credential_state_state.into(),
-        suspend_end_date: credential.credential_state_suspend_end_date,
-    }];
-
     Ok(Credential {
         id: credential.id,
         created_date: credential.created_date,
@@ -200,7 +185,8 @@ pub(super) fn credential_list_model_to_repository_model(
         exchange: credential.exchange,
         redirect_uri: credential.redirect_uri,
         role: credential.role.into(),
-        state: Some(state),
+        state: credential.state.into(),
+        suspend_end_date: credential.suspend_end_date,
         claims: None,
         issuer_did,
         holder_did: None,

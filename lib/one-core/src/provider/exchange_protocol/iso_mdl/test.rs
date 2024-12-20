@@ -9,7 +9,7 @@ use uuid::Uuid;
 use super::IsoMdl;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
 };
@@ -334,11 +334,7 @@ async fn test_get_presentation_definition_ok() {
         deleted_at: None,
         allow_suspension: true,
     };
-    let credential_state = CredentialState {
-        created_date: OffsetDateTime::now_utc(),
-        state: CredentialStateEnum::Accepted,
-        suspend_end_date: None,
-    };
+
     let claims = vec![
         Claim {
             id: Uuid::new_v4(),
@@ -415,7 +411,8 @@ async fn test_get_presentation_definition_ok() {
                 credential: vec![],
                 deleted_at: None,
                 redirect_uri: None,
-                state: Some(vec![credential_state]),
+                state: CredentialStateEnum::Accepted,
+                suspend_end_date: None,
                 claims: Some(claims),
                 issuer_did: None,
                 holder_did: None,
