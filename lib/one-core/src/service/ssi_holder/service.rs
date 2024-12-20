@@ -1,12 +1,16 @@
+use std::str::FromStr;
+
 use futures::TryFutureExt;
-use shared_types::{CredentialId, DidId, KeyId, OrganisationId, ProofId};
+use shared_types::{CredentialId, DidId, DidValue, KeyId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
 use super::dto::PresentationSubmitRequestDTO;
 use super::SSIHolderService;
-use crate::common_mapper::{encode_cbor_base64, value_to_model_claims, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{
+    encode_cbor_base64, get_or_create_did, value_to_model_claims, DidRole, NESTED_CLAIM_MARKER,
+};
 use crate::common_validator::{
     throw_if_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
@@ -27,15 +31,16 @@ use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{ProofRelations, ProofStateEnum};
+use crate::model::proof::{Proof, ProofRelations, ProofStateEnum};
 use crate::model::validity_credential::Mdoc;
 use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
 use crate::provider::credential_formatter::model::CredentialPresentation;
+use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
 use crate::provider::exchange_protocol::openid4vc::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, PresentedCredential, UpdateResponse,
+    InvitationResponseDTO, OpenID4VPInteractionData, PresentedCredential, UpdateResponse,
 };
 use crate::provider::key_storage::model::KeySecurity;
 use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
@@ -119,6 +124,9 @@ impl SSIHolderService {
                         HistoryAction::Requested,
                     ))
                     .await;
+
+                let mut proof = proof.clone();
+                self.fill_verifier_did_in_proof(proof.as_mut()).await?;
 
                 self.proof_repository
                     .create_proof(*proof.to_owned())
@@ -772,5 +780,29 @@ impl SSIHolderService {
                 .await?;
         }
         Ok(update_response.result)
+    }
+
+    async fn fill_verifier_did_in_proof(&self, proof: &mut Proof) -> Result<(), ServiceError> {
+        if let Some(interaction) = proof.interaction.as_ref() {
+            let deserialized: Result<OpenID4VPInteractionData, _> =
+                deserialize_interaction_data(interaction.data.as_ref());
+            if let Ok(data) = deserialized {
+                if let Some(did_value) = data.verifier_did {
+                    let did_value = DidValue::from_str(&did_value).map_err(|_| {
+                        ServiceError::MappingError("failed to parse did value".to_string())
+                    })?;
+                    let did = get_or_create_did(
+                        &*self.did_repository,
+                        &None,
+                        &did_value,
+                        DidRole::Verifier,
+                    )
+                    .await?;
+
+                    proof.verifier_did = Some(did);
+                }
+            }
+        }
+        Ok(())
     }
 }

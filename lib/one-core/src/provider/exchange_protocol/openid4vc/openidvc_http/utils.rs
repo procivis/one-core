@@ -235,6 +235,7 @@ pub async fn interaction_data_from_query(
         );
         interaction_data.presentation_definition =
             Some(decomposed_token.payload.custom.presentation_definition);
+        interaction_data.verifier_did = decomposed_token.payload.issuer;
     }
 
     Ok(interaction_data)
