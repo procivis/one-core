@@ -174,7 +174,7 @@ extension IOSBLECentral: BleCentral {
             throw BleError.InvalidUuid(uuid: peripheral)
         }
         
-        let service = CBUUID(string: peripheral)
+        let service = CBUUID(string: service)
         let characteristic = CBUUID(string: characteristic)
         let characteristicKey = characteristicKey(peripheral: peripheralUuid, service: service, characteristic: characteristic)
         return try await withCheckedThrowingContinuation { continuation in
