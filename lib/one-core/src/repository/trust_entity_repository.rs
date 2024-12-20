@@ -11,7 +11,7 @@ pub trait TrustEntityRepository: Send + Sync {
 
     async fn get_by_did_id(&self, did_id: DidId) -> Result<Option<TrustEntity>, DataLayerError>;
 
-    async fn get_by_trust_anchor_id(
+    async fn get_active_by_trust_anchor_id(
         &self,
         trust_anchor_id: TrustAnchorId,
     ) -> Result<Vec<TrustEntity>, DataLayerError>;

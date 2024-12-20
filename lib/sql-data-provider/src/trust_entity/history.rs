@@ -49,11 +49,13 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
         self.inner.get_by_did_id(did_id).await
     }
 
-    async fn get_by_trust_anchor_id(
+    async fn get_active_by_trust_anchor_id(
         &self,
         trust_anchor_id: TrustAnchorId,
     ) -> Result<Vec<TrustEntity>, DataLayerError> {
-        self.inner.get_by_trust_anchor_id(trust_anchor_id).await
+        self.inner
+            .get_active_by_trust_anchor_id(trust_anchor_id)
+            .await
     }
 
     async fn delete(&self, id: TrustEntityId) -> Result<(), DataLayerError> {

@@ -109,3 +109,57 @@ async fn test_get_trust_list_failed_list_is_not_simple_trust_list() {
     // THEN
     assert_eq!(resp.status(), 400);
 }
+
+#[tokio::test]
+async fn test_get_trust_list_filters_not_active() {
+    // GIVEN
+    let (context, trust_anchor, entity_one, entity_two) = new_with_trust_list().await;
+    context
+        .db
+        .trust_entities
+        .create(
+            "entity3",
+            TrustEntityRole::Verifier,
+            TrustEntityState::Withdrawn,
+            trust_anchor.clone(),
+            entity_one.did.clone().unwrap(),
+        )
+        .await;
+    context
+        .db
+        .trust_entities
+        .create(
+            "entity4",
+            TrustEntityRole::Verifier,
+            TrustEntityState::Removed,
+            trust_anchor.clone(),
+            entity_one.did.clone().unwrap(),
+        )
+        .await;
+    context
+        .db
+        .trust_entities
+        .create(
+            "entity5",
+            TrustEntityRole::Verifier,
+            TrustEntityState::RemovedAndWithdrawn,
+            trust_anchor.clone(),
+            entity_one.did.clone().unwrap(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.ssi.get_trust_list(trust_anchor.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["entities"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        [&resp["entities"][0]["name"], &resp["entities"][1]["name"]]
+            .into_iter()
+            .map(|v| v.as_str().unwrap().to_owned())
+            .collect::<HashSet<_>>(),
+        HashSet::from_iter([entity_one.name, entity_two.name])
+    );
+}

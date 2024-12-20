@@ -66,12 +66,16 @@ impl TrustEntityRepository for TrustEntityProvider {
         Ok(Some(entity))
     }
 
-    async fn get_by_trust_anchor_id(
+    async fn get_active_by_trust_anchor_id(
         &self,
         trust_anchor_id: TrustAnchorId,
     ) -> Result<Vec<TrustEntity>, DataLayerError> {
         let entities: Vec<(trust_entity::Model, Option<did::Model>)> = trust_entity::Entity::find()
-            .filter(trust_entity::Column::TrustAnchorId.eq(trust_anchor_id))
+            .filter(
+                trust_entity::Column::TrustAnchorId
+                    .eq(trust_anchor_id)
+                    .and(trust_entity::Column::State.eq(TrustEntityState::Active)),
+            )
             .find_also_related(did::Entity)
             .all(&self.db)
             .await

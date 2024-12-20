@@ -78,7 +78,7 @@ impl TrustAnchorService {
 
         let entities = self
             .trust_entity_repository
-            .get_by_trust_anchor_id(trust_anchor_id)
+            .get_active_by_trust_anchor_id(trust_anchor_id)
             .await?;
 
         let entities = entities
