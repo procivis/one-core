@@ -8,6 +8,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BLEOpenID4VPInteractionData {
+    pub nonce: String,
     pub task_id: Uuid,
     pub peer: BLEPeer,
     pub identity_request_nonce: Option<String>,

@@ -138,6 +138,7 @@ impl OpenID4VCBLEHolder {
                                 organisation: Some(organisation),
                                 data: Some(
                                     serde_json::to_vec(&BLEOpenID4VPInteractionData {
+                                        nonce: request.nonce.clone(),
                                         task_id,
                                         peer: ble_peer,
                                         openid_request: request,

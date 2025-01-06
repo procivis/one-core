@@ -203,6 +203,7 @@ impl OpenID4VCBLEVerifier {
                         }?;
 
                         let new_data = BLEOpenID4VPInteractionData {
+                            nonce,
                             task_id,
                             peer,
                             openid_request: request,

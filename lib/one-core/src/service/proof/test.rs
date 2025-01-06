@@ -3030,6 +3030,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         organisation: None,
         data: Some({
             let data = BLEOpenID4VPInteractionData {
+                nonce: "nonce".to_string(),
                 task_id: Uuid::new_v4(),
                 peer: BLEPeer::new(
                     DeviceInfo::new(device_address.to_owned(), 123),
