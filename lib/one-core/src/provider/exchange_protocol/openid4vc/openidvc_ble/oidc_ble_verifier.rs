@@ -208,6 +208,7 @@ impl OpenID4VCBLEVerifier {
                             peer,
                             openid_request: request,
                             identity_request_nonce: Some(hex::encode(identity_request.nonce)),
+                            presentation_definition: Some(presentation_definition.clone()),
                             presentation_submission: Some(presentation_submission)
                         };
 

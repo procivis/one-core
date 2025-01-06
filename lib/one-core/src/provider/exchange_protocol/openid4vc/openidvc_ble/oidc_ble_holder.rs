@@ -141,6 +141,7 @@ impl OpenID4VCBLEHolder {
                                         nonce: request.nonce.clone(),
                                         task_id,
                                         peer: ble_peer,
+                                        presentation_definition: Some(request.presentation_definition.clone()),
                                         openid_request: request,
                                         identity_request_nonce: Some(hex::encode(identity_request.nonce)),
                                         presentation_submission: None
