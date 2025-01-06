@@ -20,7 +20,9 @@ use self::tasks::TasksApi;
 use self::trust_anchors::TrustAnchorsApi;
 use self::trust_entity::TrustEntitiesApi;
 use super::field_match::FieldHelpers;
+use crate::utils::api_clients::cache::CacheApi;
 
+mod cache;
 pub mod config;
 pub mod credential_schemas;
 pub mod credentials;
@@ -160,6 +162,7 @@ pub struct Client {
     pub ssi: SSIApi,
     pub tasks: TasksApi,
     pub config: ConfigApi,
+    pub cache: CacheApi,
     pub trust_anchors: TrustAnchorsApi,
     pub trust_entities: TrustEntitiesApi,
     pub jsonld: JsonLdApi,
@@ -183,6 +186,7 @@ impl Client {
             ssi: SSIApi::new(client.clone()),
             tasks: TasksApi::new(client.clone()),
             config: ConfigApi::new(client.clone()),
+            cache: CacheApi::new(client.clone()),
             trust_anchors: TrustAnchorsApi::new(client.clone()),
             trust_entities: TrustEntitiesApi::new(client.clone()),
             jsonld: JsonLdApi::new(client),

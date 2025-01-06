@@ -3,7 +3,7 @@ use std::vec;
 use one_core::model::remote_entity_cache::{
     CacheType, RemoteEntityCacheEntry, RemoteEntityCacheRelations,
 };
-use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
+use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::RemoteEntityCacheEntryId;
 use time::OffsetDateTime;

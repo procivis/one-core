@@ -18,11 +18,11 @@ use one_core::repository::credential_schema_repository::CredentialSchemaReposito
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::history_repository::HistoryRepository;
 use one_core::repository::interaction_repository::InteractionRepository;
-use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::repository::proof_repository::ProofRepository;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
+use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;

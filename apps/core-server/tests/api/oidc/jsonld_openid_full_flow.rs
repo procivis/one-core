@@ -90,7 +90,7 @@ async fn test_openid4vc_jsonld_flow(
 
     server_context
         .db
-        .json_ld_contexts
+        .remote_entities
         .prepare_cache(&[get_simple_context(&credential_schema.id, "Test", &base_url)])
         .await;
 
@@ -217,7 +217,7 @@ async fn test_openid4vc_jsonld_flow(
     let holder_organisation = holder_context.db.organisations.create().await;
     holder_context
         .db
-        .json_ld_contexts
+        .remote_entities
         .prepare_cache(&[get_simple_context(&credential_schema.id, "Test", &base_url)])
         .await;
 
@@ -460,7 +460,7 @@ async fn test_openid4vc_jsonld_flow_array(
 
     server_context
         .db
-        .json_ld_contexts
+        .remote_entities
         .prepare_cache(&[get_array_context(&credential_schema.id, "Test", &base_url)])
         .await;
 
@@ -599,7 +599,7 @@ async fn test_openid4vc_jsonld_flow_array(
     let holder_organisation = holder_context.db.organisations.create().await;
     holder_context
         .db
-        .json_ld_contexts
+        .remote_entities
         .prepare_cache(&[get_array_context(&credential_schema.id, "Test", &base_url)])
         .await;
 

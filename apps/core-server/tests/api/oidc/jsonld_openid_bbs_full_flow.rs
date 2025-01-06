@@ -116,7 +116,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
 
     server_context
         .db
-        .json_ld_contexts
+        .remote_entities
         .prepare_cache(&[get_simple_context_bbsplus(
             &credential_schema.id,
             "Test",
@@ -254,7 +254,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     let holder_organisation = holder_context.db.organisations.create().await;
     holder_context
         .db
-        .json_ld_contexts
+        .remote_entities
         .prepare_cache(&[get_simple_context_bbsplus(
             &credential_schema.id,
             "Test",
@@ -563,7 +563,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
 
     server_context
         .db
-        .json_ld_contexts
+        .remote_entities
         .prepare_cache(&[get_array_context(&credential_schema.id, "Test", &base_url)])
         .await;
 
@@ -711,7 +711,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
     let holder_organisation = holder_context.db.organisations.create().await;
     holder_context
         .db
-        .json_ld_contexts
+        .remote_entities
         .prepare_cache(&[get_array_context(&credential_schema.id, "Test", &base_url)])
         .await;
 
@@ -947,7 +947,7 @@ async fn test_opeind4vc_jsonld_only_bbs_supported() {
 
     let server_context = TestContext::new().await;
     let server_organisation = server_context.db.organisations.create().await;
-    server_context.db.json_ld_contexts.prepare_cache(&[]).await;
+    server_context.db.remote_entities.prepare_cache(&[]).await;
 
     let (server_issuer_did, holder_did, server_issuer_key) = prepare_dids(
         &server_context,

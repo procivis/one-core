@@ -90,7 +90,7 @@ use one_core::provider::revocation::mdoc_mso_update_suspension::MdocMsoUpdateSus
 use one_core::provider::revocation::none::NoneRevocation;
 use one_core::provider::revocation::status_list_2021::StatusList2021;
 use one_core::provider::revocation::token_status_list::TokenStatusList;
-use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
+use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 
 uniffi::setup_scaffolding!();
 

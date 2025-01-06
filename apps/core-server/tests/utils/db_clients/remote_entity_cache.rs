@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
-use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
-use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
+use one_core::model::remote_entity_cache::{
+    CacheType, RemoteEntityCacheEntry, RemoteEntityCacheRelations,
+};
+use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
+use shared_types::RemoteEntityCacheEntryId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -12,6 +15,17 @@ pub struct RemoteEntityCacheDB {
 impl RemoteEntityCacheDB {
     pub fn new(repository: Arc<dyn RemoteEntityCacheRepository>) -> Self {
         Self { repository }
+    }
+
+    pub async fn add_entry(&self, entry: RemoteEntityCacheEntry) {
+        self.repository.create(entry).await.expect("insert entry");
+    }
+
+    pub async fn get(&self, id: &RemoteEntityCacheEntryId) -> Option<RemoteEntityCacheEntry> {
+        self.repository
+            .get_by_id(id, &RemoteEntityCacheRelations::default())
+            .await
+            .expect("get entry")
     }
 
     pub async fn prepare_cache(&self, additional: &[(String, String)]) {

@@ -37,7 +37,7 @@ pub struct DbClient {
     pub credential_schemas: CredentialSchemasDB,
     pub credentials: CredentialsDB,
     pub histories: HistoriesDB,
-    pub json_ld_contexts: RemoteEntityCacheDB,
+    pub remote_entities: RemoteEntityCacheDB,
     pub keys: KeysDB,
     pub validity_credentials: ValidityCredentialsDB,
     pub revocation_lists: RevocationListsDB,
@@ -57,7 +57,7 @@ impl DbClient {
             credential_schemas: CredentialSchemasDB::new(layer.get_credential_schema_repository()),
             credentials: CredentialsDB::new(layer.get_credential_repository()),
             histories: HistoriesDB::new(layer.get_history_repository()),
-            json_ld_contexts: RemoteEntityCacheDB::new(layer.get_remote_entity_cache_repository()),
+            remote_entities: RemoteEntityCacheDB::new(layer.get_remote_entity_cache_repository()),
             keys: KeysDB::new(layer.get_key_repository()),
             validity_credentials: ValidityCredentialsDB::new(
                 layer.get_validity_credential_repository(),

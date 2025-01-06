@@ -15,6 +15,8 @@ pub trait RemoteEntityCacheRepository: Send + Sync {
 
     async fn delete_oldest(&self, r#type: CacheType) -> Result<(), DataLayerError>;
 
+    async fn delete_all(&self, r#type: Option<Vec<CacheType>>) -> Result<(), DataLayerError>;
+
     async fn get_by_id(
         &self,
         id: &RemoteEntityCacheEntryId,

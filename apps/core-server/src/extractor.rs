@@ -18,15 +18,37 @@ where
             .uri
             .query()
             .ok_or((StatusCode::BAD_REQUEST, "Query missing".to_string()))?;
-        Ok(Self(
-            Config::new(0, false)
-                .deserialize_bytes(query.as_bytes())
-                .map_err(|e| {
-                    (
-                        StatusCode::BAD_REQUEST,
-                        format!("Query extraction error: {e}"),
-                    )
-                })?,
-        ))
+        Ok(Self(deserialize(query)?))
     }
+}
+
+pub struct QsOpt<T>(pub T);
+
+#[async_trait]
+impl<S, T> FromRequestParts<S> for QsOpt<T>
+where
+    T: serde::de::DeserializeOwned + Default,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let Some(query) = parts.uri.query() else {
+            return Ok(Self(Default::default()));
+        };
+        Ok(Self(deserialize(query)?))
+    }
+}
+
+fn deserialize<T>(query: &str) -> Result<T, (StatusCode, String)>
+where
+    T: serde::de::DeserializeOwned,
+{
+    Config::new(2, false)
+        .deserialize_bytes(query.as_bytes())
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                format!("Query extraction error: {e}"),
+            )
+        })
 }

@@ -1,4 +1,5 @@
 pub mod backup;
+pub mod cache;
 mod common_mapper;
 pub mod config;
 pub mod credential;

@@ -59,6 +59,7 @@ pub mod util;
 
 use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::exchange_protocol::exchange_protocol_providers_from_config;
+use crate::service::cache::CacheService;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::history::HistoryService;
 use crate::service::key::KeyService;
@@ -118,6 +119,7 @@ pub struct OneCore {
     pub jsonld_service: JsonLdService,
     pub config: Arc<CoreConfig>,
     pub vc_api_service: VCAPIService,
+    pub cache_service: CacheService,
 }
 
 #[derive(Default)]
@@ -562,6 +564,7 @@ impl OneCore {
             config_service: ConfigService::new(config.clone()),
             jsonld_service: JsonLdService::new(jsonld_caching_loader, client),
             config,
+            cache_service: CacheService::new(data_provider.get_remote_entity_cache_repository()),
         })
     }
 

@@ -3,10 +3,10 @@ use one_core::model::remote_entity_cache::{
     CacheType, RemoteEntityCacheEntry, RemoteEntityCacheRelations,
 };
 use one_core::repository::error::DataLayerError;
-use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
+use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
-    QueryOrder,
+    QueryOrder, QueryTrait,
 };
 use shared_types::RemoteEntityCacheEntryId;
 
@@ -45,6 +45,21 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
                 .map_err(|e| DataLayerError::Db(e.into()))?;
         }
 
+        Ok(())
+    }
+
+    async fn delete_all(&self, r#type: Option<Vec<CacheType>>) -> Result<(), DataLayerError> {
+        remote_entity_cache::Entity::delete_many()
+            .filter(remote_entity_cache::Column::Persistent.eq(false))
+            .apply_if(r#type, |query, value| {
+                query.filter(
+                    remote_entity_cache::Column::Type
+                        .is_in(value.into_iter().map(remote_entity_cache::CacheType::from)),
+                )
+            })
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
         Ok(())
     }
 

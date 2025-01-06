@@ -1,0 +1,40 @@
+use axum::extract::State;
+use axum::response::IntoResponse;
+use axum_extra::extract::WithRejection;
+
+use crate::dto::error::ErrorResponseRestDTO;
+use crate::dto::response::EmptyOrErrorResponse;
+use crate::endpoint::cache::dto::DeleteCacheQuery;
+use crate::extractor::QsOpt;
+use crate::router::AppState;
+
+#[utoipa::path(
+    delete,
+    path = "/api/cache/v1",
+    params(DeleteCacheQuery),
+    responses(
+        (status = 204, description = "No content")
+    ),
+    security(
+        ("bearer" = [])
+    ),
+    tag = "cache",
+    summary = "Prune cache",
+    description = "Removes cached entities. If types are not specified, all cached entities are pruned.",
+)]
+#[axum::debug_handler]
+pub(crate) async fn prune_cache(
+    state: State<AppState>,
+    WithRejection(QsOpt(query), _): WithRejection<QsOpt<DeleteCacheQuery>, ErrorResponseRestDTO>,
+) -> impl IntoResponse {
+    let result = state
+        .core
+        .cache_service
+        .prune_cache(
+            query
+                .types
+                .map(|vec| vec.into_iter().map(Into::into).collect()),
+        )
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "pruning cache")
+}

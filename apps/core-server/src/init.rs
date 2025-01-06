@@ -56,7 +56,7 @@ use one_core::provider::revocation::provider::RevocationMethodProviderImpl;
 use one_core::provider::revocation::status_list_2021::StatusList2021;
 use one_core::provider::revocation::token_status_list::TokenStatusList;
 use one_core::provider::revocation::RevocationMethod;
-use one_core::repository::json_ld_context_repository::RemoteEntityCacheRepository;
+use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use one_core::repository::DataRepository;
 use one_core::{
     DataProviderCreator, DidMethodCreator, FormatterProviderCreator, KeyAlgorithmCreator,

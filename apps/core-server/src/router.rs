@@ -19,8 +19,8 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
-    config, credential, credential_schema, did, did_resolver, history, interaction, jsonld, key,
-    misc, organisation, proof, proof_schema, ssi, task, trust_anchor, trust_entity, vc_api,
+    cache, config, credential, credential_schema, did, did_resolver, history, interaction, jsonld,
+    key, misc, organisation, proof, proof_schema, ssi, task, trust_anchor, trust_entity, vc_api,
 };
 use crate::middleware::get_http_request_context;
 use crate::openapi::gen_openapi_documentation;
@@ -60,6 +60,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
     let openapi_documentation = gen_openapi_documentation();
 
     let protected = Router::new()
+        .route("/api/cache/v1", delete(cache::controller::prune_cache))
         .route("/api/config/v1", get(config::controller::get_config))
         .route(
             "/api/credential/v1",

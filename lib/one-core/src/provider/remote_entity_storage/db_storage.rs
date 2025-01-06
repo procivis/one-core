@@ -9,7 +9,7 @@ use crate::provider::remote_entity_storage::{
     RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
 };
 use crate::repository::error::DataLayerError;
-use crate::repository::json_ld_context_repository::RemoteEntityCacheRepository;
+use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 
 pub struct DbStorage {
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,

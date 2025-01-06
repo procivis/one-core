@@ -5,14 +5,16 @@ use utoipa::{Modify, OpenApi};
 
 use crate::dto;
 use crate::endpoint::{
-    config, credential, credential_schema, did, did_resolver, history, interaction, jsonld, key,
-    misc, organisation, proof, proof_schema, ssi, task, trust_anchor, trust_entity,
+    cache, config, credential, credential_schema, did, did_resolver, history, interaction, jsonld,
+    key, misc, organisation, proof, proof_schema, ssi, task, trust_anchor, trust_entity,
 };
 
 pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
     #[derive(OpenApi)]
     #[openapi(
         paths(
+            cache::controller::prune_cache,
+
             config::controller::get_config,
 
             organisation::controller::get_organisations,
@@ -119,6 +121,8 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
         ),
         components(
             schemas(
+                cache::dto::CacheTypeRestEnum,
+
                 config::dto::ConfigRestDTO,
 
                 organisation::dto::CreateOrganisationRequestRestDTO,
@@ -562,6 +566,17 @@ fn get_tags() -> Vec<Tag> {
             .extensions(Some(
                 Extensions::builder()
                     .add("x-displayName", "Task")
+                    .build(),
+            ))
+            .build(),
+        Tag::builder()
+            .name("cache")
+            .description(Some(indoc::formatdoc! {"
+                Manage cached entities.
+            "}))
+            .extensions(Some(
+                Extensions::builder()
+                    .add("x-displayName", "Cache")
                     .build(),
             ))
             .build(),
