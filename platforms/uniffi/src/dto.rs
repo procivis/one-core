@@ -1719,3 +1719,15 @@ pub struct ProposeProofResponseBindingDTO {
 pub struct KeyCheckCertificateRequestBindingDTO {
     pub certificate: String,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Into, From, uniffi::Enum)]
+#[from("one_core::model::remote_entity_cache::CacheType")]
+#[into("one_core::model::remote_entity_cache::CacheType")]
+pub enum CacheTypeBindingDTO {
+    DidDocument,
+    JsonLdContext,
+    StatusListCredential,
+    VctMetadata,
+    JsonSchema,
+    TrustList,
+}

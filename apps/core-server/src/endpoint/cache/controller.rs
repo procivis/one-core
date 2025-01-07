@@ -12,9 +12,7 @@ use crate::router::AppState;
     delete,
     path = "/api/cache/v1",
     params(DeleteCacheQuery),
-    responses(
-        (status = 204, description = "No content")
-    ),
+    responses(EmptyOrErrorResponse),
     security(
         ("bearer" = [])
     ),

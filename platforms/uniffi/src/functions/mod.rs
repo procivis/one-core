@@ -9,6 +9,7 @@ mod create_proof_schema;
 mod create_remote_trust_entity;
 mod create_trust_anchor;
 mod create_trust_entity;
+mod delete_cache;
 mod delete_credential;
 mod delete_credential_schema;
 mod delete_proof_claims;
