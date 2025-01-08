@@ -281,7 +281,7 @@ fn generate_ld_credential(subject_claims: serde_json::Value) -> LdCredential {
         issuer: Issuer::Url("did:key:1234".parse().unwrap()),
         valid_from: Some(OffsetDateTime::now_utc()),
         credential_subject: vec![LdCredentialSubject {
-            id: Some("did:key:1234".to_string().into()),
+            id: Some("did:key:1234".parse().unwrap()),
             subject: subject_claims
                 .as_object()
                 .unwrap()
@@ -543,7 +543,6 @@ async fn test_format_extract_round_trip() {
             "JWK".to_owned(),
             Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
         )]),
-        None,
     ));
     let formatter = JsonLdBbsplus::new(
         params,
@@ -641,7 +640,6 @@ async fn test_extract_invalid_signature() {
             "JWK".to_owned(),
             Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
         )]),
-        None,
     ));
     let formatter = JsonLdBbsplus::new(
         params,
@@ -738,7 +736,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
         related_resource: None,
     };
 
-    let holder_did = DidValue::from("holder-did".to_string());
+    let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
     let mut did_method_provider = MockDidMethodProvider::new();
 

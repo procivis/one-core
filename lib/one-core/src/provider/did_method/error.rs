@@ -16,6 +16,8 @@ pub enum DidMethodError {
     CouldNotCreate(String),
     #[error("Not supported")]
     NotSupported,
+    #[error("Did value validation error")]
+    ValidationError,
 }
 
 #[derive(Debug, Error)]
@@ -43,4 +45,6 @@ pub enum DidMethodProviderError {
     JsonParse(#[from] serde_json::Error),
     #[error("Remote entity storage error: `{0}`")]
     RemoteEntityStorage(#[from] RemoteEntityStorageError),
+    #[error("Did value validation error")]
+    DidValueValidationError,
 }

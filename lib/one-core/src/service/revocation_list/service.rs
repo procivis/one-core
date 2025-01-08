@@ -1,3 +1,4 @@
+use anyhow::Context;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
@@ -62,7 +63,12 @@ impl RevocationListService {
             .as_ref()
             .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
 
-        if holder_did.did != token_issuer.into() {
+        if holder_did.did
+            != token_issuer
+                .parse()
+                .context("did parsing error")
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?
+        {
             return Err(ServiceError::MappingError(
                 "holder_did mismatch".to_string(),
             ));

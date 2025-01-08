@@ -37,11 +37,9 @@ impl DidMethodProviderImpl {
     pub fn new(
         caching_loader: DidCachingLoader,
         did_methods: HashMap<String, Arc<dyn DidMethod>>,
-        url_did_resolver: Option<Arc<dyn DidMethod>>,
     ) -> Self {
         let resolver = DidResolver {
             did_methods: did_methods.clone(),
-            url_did_resolver,
         };
 
         Self {
@@ -231,7 +229,6 @@ mod tests {
         DidMethodProviderImpl::new(
             caching_loader,
             hashmap! {"TEST".to_string() => did_method_arc},
-            None,
         )
     }
 

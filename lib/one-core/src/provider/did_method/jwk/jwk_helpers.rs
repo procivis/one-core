@@ -1,3 +1,4 @@
+use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use shared_types::DidValue;
 
@@ -67,5 +68,8 @@ pub fn encode_to_did(jwk: &PublicKeyJwkDTO) -> Result<DidValue, DidMethodError> 
         DidMethodError::CouldNotCreate(format!("Failed to base64 encode jwk: {err}"))
     })?;
 
-    Ok(DidValue::from(format!("did:jwk:{encoded}")))
+    format!("did:jwk:{encoded}")
+        .parse()
+        .context("did parsing error")
+        .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))
 }

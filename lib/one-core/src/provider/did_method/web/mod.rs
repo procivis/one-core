@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use anyhow::Context;
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 use url::Url;
@@ -80,7 +81,10 @@ impl DidMethod for WebDidMethod {
         ))?;
 
         let did_value = format!("{did_base_string}:{id}");
-        Ok(DidValue::from(did_value))
+        Ok(did_value
+            .parse()
+            .context("did parsing error")
+            .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?)
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocument, DidMethodError> {

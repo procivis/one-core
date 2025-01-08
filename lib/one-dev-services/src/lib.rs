@@ -263,11 +263,8 @@ impl OneDevCore {
             config.caching_config.did.cache_refresh_timeout,
             config.caching_config.did.refresh_after,
         );
-        let did_method_provider = Arc::new(DidMethodProviderImpl::new(
-            did_caching_loader,
-            did_methods,
-            None,
-        ));
+        let did_method_provider =
+            Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods));
 
         // initialize credential formatter provider
         let json_ld_caching_loader = JsonLdCachingLoader::new(

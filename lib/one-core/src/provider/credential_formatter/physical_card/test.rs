@@ -162,7 +162,7 @@ async fn test_mrz_proof_process() {
     let expected_issuer = credential.issuer.clone();
     token_verifier.expect_verify().once().returning(
         move |issuer, verification_method, alg, digest, signature| {
-            let expected_issuer = expected_issuer.to_did_value();
+            let expected_issuer = expected_issuer.to_did_value().unwrap();
             assert_eq!(issuer, Some(expected_issuer));
             assert_eq!(verification_method, verification_method);
             assert_eq!(alg, "ES256");

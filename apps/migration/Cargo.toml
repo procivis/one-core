@@ -16,12 +16,13 @@ path              = "src/main.rs"
 required-features = ["cli", "mysql"]
 
 [dependencies]
-sea-orm           = { workspace = true, features = ["with-time", "with-uuid"] }
-sea-orm-migration = { version = "1.1", default-features = false, features = ["runtime-tokio-rustls", "sqlx-sqlite"] }
+sea-orm                = { workspace = true, features = ["with-time", "with-uuid"] }
+sea-orm-migration      = { version = "1.1", default-features = false, features = ["runtime-tokio-rustls", "sqlx-sqlite"] }
 shared-types.workspace = true
-time.workspace    = true
-tokio             = { workspace = true, features = ["macros", "rt-multi-thread"], optional = true }
-uuid = { version = "1.11.0", features = ["v4"] }
+time.workspace         = true
+tokio                  = { workspace = true, features = ["macros", "rt-multi-thread"], optional = true }
+urlencoding.workspace  = true
+uuid                   = { version = "1.11.0", features = ["v4"] }
 
 [features]
 cli     = ["sea-orm-migration/cli", "tokio"]

@@ -2,6 +2,7 @@
 
 use std::fmt::Debug;
 
+use anyhow::Context;
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use mapper::{bin_to_b64url_string, string_to_b64url_string};
@@ -77,7 +78,12 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         if let Some(verification) = verification {
             verification
                 .verify(
-                    payload.issuer.as_ref().map(DidValue::from),
+                    payload
+                        .issuer
+                        .as_ref()
+                        .map(|did| did.parse().context("did parsing error"))
+                        .transpose()
+                        .map_err(|e| FormatterError::Failed(e.to_string()))?,
                     header.key_id.as_deref(),
                     &header.algorithm,
                     unverified_jwt.as_bytes(),

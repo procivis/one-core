@@ -186,14 +186,7 @@ impl DidService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
-        let did = did_from_did_request(
-            new_did_id,
-            request,
-            organisation,
-            did_value.to_string().into(),
-            keys,
-            now,
-        )?;
+        let did = did_from_did_request(new_did_id, request, organisation, did_value, keys, now)?;
         let did_value = did.did.clone();
 
         let did_id = self

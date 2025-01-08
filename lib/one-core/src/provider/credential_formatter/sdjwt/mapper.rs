@@ -1,5 +1,5 @@
+use anyhow::Context;
 use rand::seq::SliceRandom;
-use shared_types::DidValue;
 
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld::model::ContextType;
@@ -147,15 +147,22 @@ pub(crate) fn unpack_arrays(
     Ok(result)
 }
 
-impl From<Jwt<Sdvp>> for Presentation {
-    fn from(jwt: Jwt<Sdvp>) -> Self {
-        Presentation {
+impl TryFrom<Jwt<Sdvp>> for Presentation {
+    type Error = anyhow::Error;
+
+    fn try_from(jwt: Jwt<Sdvp>) -> Result<Self, Self::Error> {
+        Ok(Presentation {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
-            issuer_did: jwt.payload.issuer.map(DidValue::from),
+            issuer_did: jwt
+                .payload
+                .issuer
+                .map(|did| did.parse().context("did parsing error"))
+                .transpose()
+                .map_err(|e| FormatterError::Failed(e.to_string()))?,
             nonce: jwt.payload.custom.nonce,
             credentials: jwt.payload.custom.vp.verifiable_credential,
-        }
+        })
     }
 }

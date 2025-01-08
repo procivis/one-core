@@ -261,8 +261,7 @@ impl CredentialFormatter for MdocFormatter {
 
         let algorithm_header = try_build_algorithm_header(auth_fn.get_key_type())?;
 
-        let x5chain_header =
-            build_x5chain_header(credential.issuer_did.to_did_value().to_string().into())?;
+        let x5chain_header = build_x5chain_header(credential.issuer_did.to_did_value()?)?;
 
         let cose_sign1 = CoseSign1Builder::new()
             .protected(algorithm_header)
@@ -429,7 +428,7 @@ impl CredentialFormatter for MdocFormatter {
             id: Some(Uuid::new_v4().to_string()),
             issued_at: context.issuance_date,
             expires_at: context.expiration_date,
-            issuer_did: current_issuer_did.map(|value| value.to_string().into()),
+            issuer_did: current_issuer_did,
             nonce,
             credentials: tokens,
         })
@@ -610,9 +609,10 @@ fn try_extract_holder_did_mdl_public_key(
         .get_multibase(&public_key)
         .map_err(|err| FormatterError::Failed(format!("Cannot convert to multibase: {err}")))?;
 
-    Ok(DidValue::from(format!(
-        "did:mdl:public_key:{encoded_public_key}"
-    )))
+    format!("did:mdl:public_key:{encoded_public_key}")
+        .parse()
+        .context("did parsing error")
+        .map_err(|e| FormatterError::Failed(e.to_string()))
 }
 
 fn try_extract_holder_public_key(
@@ -717,7 +717,7 @@ async fn try_verify_issuer_auth(
 
     verifier
         .verify(
-            Some(issuer_did.to_string().into()),
+            Some(issuer_did.to_owned()),
             None,
             &algorithm,
             &token,
@@ -794,8 +794,8 @@ fn extract_credentials_internal(
             .expected_update
             .map(|update| update.into()),
         invalid_before: None,
-        issuer_did: Some(issuer_did.to_string().into()),
-        subject: Some(holder_did.to_string().into()),
+        issuer_did: Some(issuer_did),
+        subject: Some(holder_did),
         claims: CredentialSubject { values: claims },
         status: vec![],
         credential_schema: Some(CredentialSchema {
@@ -914,7 +914,7 @@ pub async fn try_verify_detached_signature_with_provider(
 
     verifier
         .verify(
-            Some(issuer_did_value.to_string().into()),
+            Some(issuer_did_value.to_owned()),
             None, /* take the first one */
             &algorithm,
             &sig_data,
@@ -1183,7 +1183,10 @@ fn extract_did_from_x5chain_header(
                 .map(|cert| format!("did:mdl:certificate:{cert}"))
                 .map_err(|err| anyhow::anyhow!("Base64 encoding failed: {err}"))?;
 
-            Ok(DidValue::from(did))
+            Ok(did
+                .parse()
+                .context("did parsing failed")
+                .map_err(|e| FormatterError::Failed(e.to_string()))?)
         })
         .map_err(|err| FormatterError::Failed(format!("Failed extracting x5chain header {err}")))
 }

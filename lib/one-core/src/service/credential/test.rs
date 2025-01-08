@@ -143,7 +143,7 @@ fn generic_credential() -> Credential {
             last_modified: now,
             name: "did1".to_string(),
             organisation: Some(organisation.clone()),
-            did: "did1".parse().unwrap(),
+            did: "did:example:1".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
@@ -212,7 +212,7 @@ fn generic_credential_list_entity() -> Credential {
             last_modified: now,
             name: "did1".to_string(),
             organisation: None,
-            did: "did1".parse().unwrap(),
+            did: "did:example:1".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: None,
@@ -853,7 +853,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
                 last_modified: OffsetDateTime::now_utc(),
                 name: "did1".to_string(),
                 organisation: None,
-                did: "did1".parse().unwrap(),
+                did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 keys: None,
@@ -3042,7 +3042,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             last_modified: now,
             name: "did1".to_string(),
             organisation: Some(organisation.clone()),
-            did: "did1".parse().unwrap(),
+            did: "did:example:1".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
@@ -3602,7 +3602,7 @@ async fn test_get_credential_success_array_index_sorting() {
             last_modified: now,
             name: "did1".to_string(),
             organisation: Some(organisation.clone()),
-            did: "did1".parse().unwrap(),
+            did: "did:example:1".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
@@ -3911,7 +3911,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             last_modified: now,
             name: "did1".to_string(),
             organisation: Some(organisation.clone()),
-            did: "did1".parse().unwrap(),
+            did: "did:example:1".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
@@ -4123,7 +4123,7 @@ async fn test_get_credential_success_array_single_element() {
             last_modified: now,
             name: "did1".to_string(),
             organisation: Some(organisation.clone()),
-            did: "did1".parse().unwrap(),
+            did: "did:example:1".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {

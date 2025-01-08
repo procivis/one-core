@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use mockall::predicate::eq;
 use serde_json::json;
-use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -36,7 +35,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Credential) {
         created_date: now,
         last_modified: now,
         name: "did".to_string(),
-        did: DidValue::from("did:key:123".to_string()),
+        did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         deactivated: false,

@@ -97,7 +97,7 @@ async fn setup_with_did(repositories: Repositories) -> TestSetupWithDid {
     } = setup_empty(repositories).await;
 
     let did_name = "test did name";
-    let did_value: DidValue = "test:did".parse().unwrap();
+    let did_value: DidValue = "did:test:123".parse().unwrap();
     let did_id = &insert_did_key(
         &db,
         did_name,
@@ -255,7 +255,10 @@ async fn test_get_did_by_value_missing() {
     let TestSetupWithDid { provider, .. } = setup_with_did(Repositories::default()).await;
 
     let result = provider
-        .get_did_by_value(&"missing".parse().unwrap(), &DidRelations::default())
+        .get_did_by_value(
+            &"did:missing:123".parse().unwrap(),
+            &DidRelations::default(),
+        )
         .await;
 
     assert!(matches!(result, Ok(None)));
@@ -584,7 +587,7 @@ async fn test_get_did_list_sorting() {
 
     let older_a_did = did::ActiveModel {
         id: Set(Uuid::new_v4().into()),
-        did: Set("did1:did1".parse().unwrap()),
+        did: Set("did:did1:1".parse().unwrap()),
         created_date: Set(datetime!(2023-02-01 21:00 +0)),
         last_modified: Set(get_dummy_date()),
         name: Set("a".to_owned()),
@@ -600,7 +603,7 @@ async fn test_get_did_list_sorting() {
 
     let newer_b_did = did::ActiveModel {
         id: Set(Uuid::new_v4().into()),
-        did: Set("did2:did2".parse().unwrap()),
+        did: Set("did:did2:2".parse().unwrap()),
         created_date: Set(datetime!(2023-02-02 21:00 +0)),
         last_modified: Set(get_dummy_date()),
         name: Set("b".to_owned()),
@@ -770,7 +773,7 @@ async fn test_get_did_list_complex_filter_condition() {
 
     let older_a_did = did::ActiveModel {
         id: Set(Uuid::new_v4().into()),
-        did: Set("did1:did1".parse().unwrap()),
+        did: Set("did:did1:1".parse().unwrap()),
         created_date: Set(datetime!(2023-02-01 21:00 +0)),
         last_modified: Set(get_dummy_date()),
         name: Set("a".to_owned()),
@@ -786,7 +789,7 @@ async fn test_get_did_list_complex_filter_condition() {
 
     let newer_b_did = did::ActiveModel {
         id: Set(Uuid::new_v4().into()),
-        did: Set("did2:did2".parse().unwrap()),
+        did: Set("did:did2:2".parse().unwrap()),
         created_date: Set(datetime!(2023-02-02 21:00 +0)),
         last_modified: Set(get_dummy_date()),
         name: Set("b".to_owned()),

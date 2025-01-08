@@ -160,7 +160,7 @@ fn generic_credential() -> Credential {
             created_date: now,
             last_modified: now,
             name: "did1".to_string(),
-            did: "did1".to_owned().into(),
+            did: "did:example:123".parse().unwrap(),
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),
             keys: None,
@@ -229,7 +229,7 @@ async fn test_generate_offer() {
         json!(&offer),
         json!({
             "credential_issuer": "BASE_URL/ssi/oidc-issuer/v1/c322aa7f-9803-410d-b891-939b279fb965",
-            "issuer_did": "did1",
+            "issuer_did": "did:example:123",
             "credential_configuration_ids" : [
                 credential.schema.as_ref().unwrap().schema_id,
             ],
@@ -289,7 +289,9 @@ async fn test_generate_share_credentials_offer_by_value() {
     assert!(
         result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
     );
-    assert!(result.url.contains("%22issuer_did%22%3A%22did1%22"))
+    assert!(result
+        .url
+        .contains("%22issuer_did%22%3A%22did%3Aexample%3A123%22"))
 }
 
 #[tokio::test]
@@ -522,7 +524,7 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
     inner_test_handle_invitation_credential_by_ref_success(
         storage_proxy,
         credential,
-        Some("did1".to_string()),
+        Some("did:example:123".to_string()),
     )
     .await;
 }

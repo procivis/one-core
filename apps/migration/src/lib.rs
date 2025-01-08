@@ -73,6 +73,7 @@ mod m20241210_154315_remove_proof_state_table;
 mod m20241212_08000_migrate_credential_state;
 mod m20241218_134714_history_entity_id_index;
 mod m20241224_08000_fix_index_for_credential_schema;
+mod m20250107_134349_did_sd_jwt_vc_issuer_metadata;
 
 pub struct Migrator;
 
@@ -147,6 +148,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20241218_134714_history_entity_id_index::Migration),
             Box::new(m20241210_154315_remove_proof_state_table::Migration),
             Box::new(m20241212_08000_migrate_credential_state::Migration),
+            Box::new(m20250107_134349_did_sd_jwt_vc_issuer_metadata::Migration),
         ]
     }
 }

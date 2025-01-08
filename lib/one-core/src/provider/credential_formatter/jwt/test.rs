@@ -61,8 +61,8 @@ fn prepare_test_json() -> (Jwt<Payload>, String) {
         issued_at: Some(now),
         expires_at: Some(now),
         invalid_before: Some(now),
-        issuer: Some("DID".to_owned()),
-        subject: Some("DID".to_owned()),
+        issuer: Some("did:issuer:123".to_owned()),
+        subject: Some("did:subject:123".to_owned()),
         jwt_id: Some("ID".to_owned()),
         custom: custom_payload,
         vc_type: None,
@@ -76,7 +76,7 @@ fn prepare_test_json() -> (Jwt<Payload>, String) {
         payload,
     );
 
-    (jwt, "eyJhbGciOiJBbGdvcml0aG0xIiwidHlwIjoiU2lnbmF0dXJlMSJ9.eyJpYXQiOjExMTI0NzQyMjAsImV4cCI6MTExMjQ3NDIyMCwibmJmIjoxMTEyNDc0MjIwLCJpc3MiOiJESUQiLCJzdWIiOiJESUQiLCJqdGkiOiJJRCIsInRlc3RfZmllbGQiOiJ0ZXN0In0.AQID".to_string())
+    (jwt, "eyJhbGciOiJBbGdvcml0aG0xIiwidHlwIjoiU2lnbmF0dXJlMSJ9.eyJpYXQiOjExMTI0NzQyMjAsImV4cCI6MTExMjQ3NDIyMCwibmJmIjoxMTEyNDc0MjIwLCJpc3MiOiJkaWQ6aXNzdWVyOjEyMyIsInN1YiI6ImRpZDpzdWJqZWN0OjEyMyIsImp0aSI6IklEIiwidGVzdF9maWVsZCI6InRlc3QifQ.AQID".to_string())
 }
 
 #[tokio::test]
@@ -114,7 +114,7 @@ async fn test_build_from_token() {
     let jwt: Jwt<Payload> = Jwt::build_from_token(
         &reference_token,
         Some(Box::new(TestVerify {
-            issuer_did_value: Some(String::from("DID")),
+            issuer_did_value: Some(String::from("did:issuer:123")),
             algorithm: String::from("Algorithm1"),
             token: jwt_part,
             signature: vec![1, 2, 3],

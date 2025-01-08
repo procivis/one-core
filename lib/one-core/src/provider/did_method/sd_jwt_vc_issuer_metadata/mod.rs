@@ -19,13 +19,22 @@ use crate::provider::http_client::HttpClient;
 
 mod dto;
 
+#[derive(Debug, Clone, Default)]
+pub struct Params {
+    pub resolve_to_insecure_http: Option<bool>,
+}
+
 pub struct SdJwtVcIssuerMetadataDidMethod {
     http_client: Arc<dyn HttpClient>,
+    pub params: Params,
 }
 
 impl SdJwtVcIssuerMetadataDidMethod {
-    pub fn new(http_client: Arc<dyn HttpClient>) -> Self {
-        Self { http_client }
+    pub fn new(http_client: Arc<dyn HttpClient>, params: Params) -> Self {
+        Self {
+            http_client,
+            params,
+        }
     }
 }
 
@@ -41,8 +50,26 @@ impl DidMethod for SdJwtVcIssuerMetadataDidMethod {
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocument, DidMethodError> {
-        let mut url = Url::parse(did_value.as_str())
-            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
+        let url_decoded = if let Some(url_encoded) = did_value
+            .as_str()
+            .strip_prefix("did:sd_jwt_vc_issuer_metadata:")
+        {
+            urlencoding::decode(url_encoded)
+                .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?
+        } else {
+            return Err(DidMethodError::ResolutionError(format!(
+                "invalid did method: {did_value}"
+            )));
+        };
+
+        let mut url =
+            Url::parse(&url_decoded).map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
+
+        if !self.params.resolve_to_insecure_http.unwrap_or_default() && url.scheme() != "https" {
+            return Err(DidMethodError::ResolutionError(
+                "URL must use HTTPS scheme".to_string(),
+            ));
+        }
 
         const PATH_PREFIX: &str = "/.well-known/jwt-vc-issuer";
 
@@ -62,7 +89,7 @@ impl DidMethod for SdJwtVcIssuerMetadataDidMethod {
             .json()
             .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
 
-        if response.issuer != did_value.as_str() {
+        if response.issuer != url_decoded {
             return Err(DidMethodError::ResolutionError(
                 "Issuer and did issuer mismatch".to_string(),
             ));

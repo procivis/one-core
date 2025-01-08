@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use anyhow::Context;
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
@@ -136,7 +137,9 @@ impl CredentialFormatter for SDJWTFormatter {
         // Build fails if verification fails
         let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, Some(verification)).await?;
 
-        Ok(jwt.into())
+        jwt.try_into()
+            .context("SDVP mapping failed")
+            .map_err(|_| FormatterError::Failed("Jwt mapping error".to_string()))
     }
 
     async fn extract_presentation_unverified(
@@ -146,7 +149,9 @@ impl CredentialFormatter for SDJWTFormatter {
     ) -> Result<Presentation, FormatterError> {
         let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, None).await?;
 
-        Ok(jwt.into())
+        jwt.try_into()
+            .context("SDVP mapping failed")
+            .map_err(|_| FormatterError::Failed("Jwt mapping error".to_string()))
     }
 
     fn get_leeway(&self) -> u64 {
@@ -234,8 +239,18 @@ pub(super) async fn extract_credentials_internal(
         valid_until: jwt.payload.expires_at,
         update_at: None,
         invalid_before: jwt.payload.invalid_before,
-        issuer_did: jwt.payload.issuer.map(DidValue::from),
-        subject: jwt.payload.subject.map(DidValue::from),
+        issuer_did: jwt
+            .payload
+            .issuer
+            .map(|did| did.parse().context("did parsing error"))
+            .transpose()
+            .map_err(|e| FormatterError::Failed(e.to_string()))?,
+        subject: jwt
+            .payload
+            .subject
+            .map(|did| did.parse().context("did parsing error"))
+            .transpose()
+            .map_err(|e| FormatterError::Failed(e.to_string()))?,
         claims: CredentialSubject {
             values: to_hashmap(unpack_arrays(&claims)?)?,
         },
@@ -281,7 +296,7 @@ pub async fn format_credentials(
     token_type: String,
     vc_type: Option<String>,
 ) -> Result<String, FormatterError> {
-    let issuer = credential.issuer_did.to_did_value().to_string();
+    let issuer = credential.issuer_did.to_did_value()?.to_string();
     let id = credential.id.clone();
     let issued_at = credential.issuance_date;
     let expires_at = issued_at.checked_add(credential.valid_for);

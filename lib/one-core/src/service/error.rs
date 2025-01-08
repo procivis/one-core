@@ -1218,6 +1218,7 @@ impl ErrorCodeMixin for DidMethodProviderError {
             | Self::MissingDidMethodNameInDidValue
             | Self::RemoteEntityStorage(_)
             | Self::VerificationMethodIdNotFound { .. }
+            | Self::DidValueValidationError
             | Self::Other(_) => ErrorCode::BR_0064,
             Self::MissingProvider(_) => ErrorCode::BR_0031,
         }

@@ -25,6 +25,7 @@ use crate::model::key::PublicKeyJwk;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::did_method::resolver::did_method_id_from_value;
 use crate::provider::exchange_protocol::openid4vc::openidvc_http::OpenID4VCParams;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -109,7 +110,7 @@ pub(crate) async fn get_or_create_did(
             Some(did) => did,
             None => {
                 let id = Uuid::new_v4();
-                let did_method = did_method_id_from_value(did_value)?;
+                let did_method = did_method_id_from_value(did_value.as_str())?;
                 let did = Did {
                     id: DidId::from(id),
                     created_date: OffsetDateTime::now_utc(),
@@ -127,15 +128,6 @@ pub(crate) async fn get_or_create_did(
             }
         },
     )
-}
-
-pub(super) fn did_method_id_from_value(did_value: &DidValue) -> Result<String, ServiceError> {
-    let mut parts = did_value.as_str().splitn(3, ':');
-
-    let did_method = parts.nth(1).ok_or(ServiceError::ValidationError(
-        "Did method not found".to_string(),
-    ))?;
-    Ok(did_method.to_uppercase())
 }
 
 pub fn value_to_model_claims(
@@ -522,7 +514,7 @@ mod tests {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "IssuerDid".to_string(),
-                did: "did:issuer".to_string().into(),
+                did: "did:issuer:123".parse().unwrap(),
                 did_type: DidType::Remote,
                 did_method: "didMethod".to_string(),
                 deactivated: false,

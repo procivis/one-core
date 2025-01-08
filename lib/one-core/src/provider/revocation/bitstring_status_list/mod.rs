@@ -389,10 +389,7 @@ impl BitstringStatusList {
             ))?
             .clone();
 
-        let did_document = self
-            .did_method_provider
-            .resolve(&issuer_did.did.to_string().into())
-            .await?;
+        let did_document = self.did_method_provider.resolve(&issuer_did.did).await?;
 
         let assertion_methods =
             did_document

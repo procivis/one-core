@@ -137,7 +137,7 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
         db_conn,
         "did-test",
         Uuid::new_v4().into(),
-        "did-value".parse().unwrap(),
+        "did:example:123".parse().unwrap(),
         organisation_id,
         "web",
         DidType::Remote,

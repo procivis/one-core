@@ -312,10 +312,15 @@ pub enum Issuer {
 }
 
 impl Issuer {
-    pub fn to_did_value(&self) -> DidValue {
+    pub fn to_did_value(&self) -> Result<DidValue, FormatterError> {
         match self {
-            Self::Object { id, .. } => id.to_string().into(),
-            Self::Url(url) => url.to_string().into(),
+            Self::Object { id, .. } => Ok(id.to_string().parse().map_err(|_| {
+                FormatterError::Failed("Parsing did from object failed".to_string())
+            })?),
+            Self::Url(url) => Ok(url
+                .to_string()
+                .parse()
+                .map_err(|_| FormatterError::Failed("Parsing did from url failed".to_string()))?),
         }
     }
 }

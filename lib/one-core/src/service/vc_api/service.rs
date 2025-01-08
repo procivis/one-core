@@ -67,7 +67,11 @@ impl VCAPIService {
 
         validate_verifiable_credential(&create_request.credential, &self.jsonld_ctx_cache).await?;
 
-        let issuer_did = create_request.credential.issuer.to_did_value();
+        let issuer_did = create_request
+            .credential
+            .issuer
+            .to_did_value()
+            .map_err(ServiceError::FormatterError)?;
         let issuer = self
             .did_repository
             .get_did_by_value(
@@ -91,7 +95,7 @@ impl VCAPIService {
 
         let assertion_methods = self
             .did_method_provider
-            .resolve(&create_request.credential.issuer.to_did_value())
+            .resolve(&create_request.credential.issuer.to_did_value()?)
             .await?
             .assertion_method
             .ok_or(ServiceError::MappingError(

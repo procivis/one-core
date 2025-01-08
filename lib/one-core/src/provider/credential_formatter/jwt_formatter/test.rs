@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -146,7 +146,7 @@ async fn test_format_credential() {
     let result = formatter
         .format_credentials(
             credential_data,
-            &Some(DidValue::from("holder_did".to_string())),
+            &Some("did:example:123".parse().unwrap()),
             vec![ContextType::Url("http://context.com".parse().unwrap())],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
@@ -185,7 +185,7 @@ async fn test_format_credential() {
     );
 
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
-    assert_eq!(payload.subject, Some(String::from("holder_did")));
+    assert_eq!(payload.subject, Some(String::from("did:example:123")));
 
     let vc = payload.custom.vc;
 
@@ -241,7 +241,7 @@ async fn test_format_credential_with_layout_properties() {
     let result = formatter
         .format_credentials(
             credential_data,
-            &Some(DidValue::from("holder_did".to_string())),
+            &Some("did:example:123".parse().unwrap()),
             vec![ContextType::Url(
                 "https://custom-context.org".parse().unwrap(),
             )],
@@ -282,7 +282,7 @@ async fn test_format_credential_with_layout_properties() {
     );
 
     assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
-    assert_eq!(payload.subject, Some(String::from("holder_did")));
+    assert_eq!(payload.subject, Some(String::from("did:example:123")));
 
     let vc = payload.custom.vc;
 
@@ -338,7 +338,7 @@ async fn test_format_credential_nested_array() {
     let result = sd_formatter
         .format_credentials(
             credential_data,
-            &Some(DidValue::from("holder_did".to_string())),
+            &Some("did:example:123".parse().unwrap()),
             vec![ContextType::Url("http://context.com".parse().unwrap())],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
@@ -430,11 +430,11 @@ async fn test_extract_credentials() {
 
     assert_eq!(
         credentials.issuer_did,
-        Some(DidValue::from("did:issuer:test".to_owned())),
+        Some("did:issuer:test".parse().unwrap()),
     );
     assert_eq!(
         credentials.subject,
-        Some(DidValue::from("did:holder:test".to_owned()))
+        Some("did:holder:test".parse().unwrap())
     );
 
     assert_eq!(1, credentials.status.len());
@@ -460,7 +460,7 @@ async fn test_extract_credentials() {
 
 #[tokio::test]
 async fn test_extract_credentials_nested_array() {
-    let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAia2lkIjogIiNrZXkwIiwKICAidHlwIjogIkpXVCIKfQ.ewogICJpYXQiOiAxNzE4MjU5ODU2LAogICJleHAiOiAxNzgxMzMxODU2LAogICJuYmYiOiAxNzE4MjU5ODExLAogICJpc3MiOiAiZGlkOmlzc3Vlcjp0ZXN0IiwKICAic3ViIjogImhvbGRlcl9kaWQiLAogICJqdGkiOiAiaHR0cDovL2Jhc2VfdXJsL3NzaS9jcmVkZW50aWFsL3YxLzlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsCiAgInZjIjogewogICAgIkBjb250ZXh0IjogWwogICAgICAiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiLAogICAgICAiaHR0cHM6Ly90eXBlMWNvbnRleHQub3JnIgogICAgXSwKICAgICJ0eXBlIjogWwogICAgICAiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLAogICAgICAiVHlwZTEiCiAgICBdLAogICAgImlkIjogImh0dHA6Ly9iYXNlX3VybC9zc2kvY3JlZGVudGlhbC92MS85YTQxNGE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLAogICAgImNyZWRlbnRpYWxTdWJqZWN0IjogewogICAgICAicm9vdCI6IHsKICAgICAgICAiYXJyYXkiOiBbCiAgICAgICAgICAiYXJyYXlfaXRlbSIKICAgICAgICBdLAogICAgICAgICJuZXN0ZWQiOiAibmVzdGVkX2l0ZW0iCiAgICAgIH0sCiAgICAgICJyb290X2l0ZW0iOiAicm9vdF9pdGVtIgogICAgfSwKICAgICJjcmVkZW50aWFsU3RhdHVzIjogewogICAgICAiaWQiOiAiaHR0cHM6Ly9wcm9jaXZpcy5jaC9zdGF0dXMvaWQiLAogICAgICAidHlwZSI6ICJUWVBFIiwKICAgICAgInN0YXR1c1B1cnBvc2UiOiAiUFVSUE9TRSIsCiAgICAgICJGaWVsZDEiOiAiVmFsMSIKICAgIH0sCiAgICAiY3JlZGVudGlhbFNjaGVtYSI6IHsKICAgICAgImlkIjogImh0dHBzOi8vcHJvY2l2aXMuY2gvY3JlZGVudGlhbC1zY2hlbWEvaWQiLAogICAgICAidHlwZSI6ICJQcm9jaXZpc09uZVNjaGVtYTIwMjQiCiAgICB9CiAgfQp9";
+    let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAia2lkIjogIiNrZXkwIiwKICAidHlwIjogIkpXVCIKfQ.ewogICJpYXQiOiAxNzE4MjU5ODU2LAogICJleHAiOiAxNzgxMzMxODU2LAogICJuYmYiOiAxNzE4MjU5ODExLAogICJpc3MiOiAiZGlkOmlzc3Vlcjp0ZXN0IiwKICAic3ViIjogImRpZDpob2xkZXI6dGVzdCIsCiAgImp0aSI6ICJodHRwOi8vYmFzZV91cmwvc3NpL2NyZWRlbnRpYWwvdjEvOWE0MTRhNjAtOWU2Yi00NzU3LTgwMTEtOWFhODcwZWY0Nzg4IiwKICAidmMiOiB7CiAgICAiQGNvbnRleHQiOiBbCiAgICAgICJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsCiAgICAgICJodHRwczovL3R5cGUxY29udGV4dC5vcmciCiAgICBdLAogICAgInR5cGUiOiBbCiAgICAgICJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsCiAgICAgICJUeXBlMSIKICAgIF0sCiAgICAiaWQiOiAiaHR0cDovL2Jhc2VfdXJsL3NzaS9jcmVkZW50aWFsL3YxLzlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsCiAgICAiY3JlZGVudGlhbFN1YmplY3QiOiB7CiAgICAgICJyb290IjogewogICAgICAgICJhcnJheSI6IFsKICAgICAgICAgICJhcnJheV9pdGVtIgogICAgICAgIF0sCiAgICAgICAgIm5lc3RlZCI6ICJuZXN0ZWRfaXRlbSIKICAgICAgfSwKICAgICAgInJvb3RfaXRlbSI6ICJyb290X2l0ZW0iCiAgICB9LAogICAgImNyZWRlbnRpYWxTdGF0dXMiOiB7CiAgICAgICJpZCI6ICJodHRwczovL3Byb2NpdmlzLmNoL3N0YXR1cy9pZCIsCiAgICAgICJ0eXBlIjogIlRZUEUiLAogICAgICAic3RhdHVzUHVycG9zZSI6ICJQVVJQT1NFIiwKICAgICAgIkZpZWxkMSI6ICJWYWwxIgogICAgfSwKICAgICJjcmVkZW50aWFsU2NoZW1hIjogewogICAgICAiaWQiOiAiaHR0cHM6Ly9wcm9jaXZpcy5jaC9jcmVkZW50aWFsLXNjaGVtYS9pZCIsCiAgICAgICJ0eXBlIjogIlByb2NpdmlzT25lU2NoZW1hMjAyNCIKICAgIH0KICB9Cn0";
 
     let token = format!("{jwt_token}.QUJD");
 
@@ -499,11 +499,11 @@ async fn test_extract_credentials_nested_array() {
 
     assert_eq!(
         credentials.issuer_did,
-        Some(DidValue::from("did:issuer:test".to_owned())),
+        Some("did:issuer:test".parse().unwrap()),
     );
     assert_eq!(
         credentials.subject,
-        Some(DidValue::from("holder_did".to_owned()))
+        Some("did:holder:test".parse().unwrap()),
     );
 
     assert_eq!(1, credentials.status.len());
@@ -606,7 +606,7 @@ async fn test_format_presentation() {
     let result = jwt_formatter
         .format_presentation(
             &[jwt_token.to_owned()],
-            &DidValue::from("holder_did".to_string()),
+            &"did:example:123".parse().unwrap(),
             "ES256",
             Box::new(auth_fn),
             Default::default(),
@@ -644,8 +644,8 @@ async fn test_format_presentation() {
         Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
     );
 
-    assert_eq!(payload.issuer, Some(String::from("holder_did")));
-    assert_eq!(payload.subject, Some(String::from("holder_did")));
+    assert_eq!(payload.issuer, Some(String::from("did:example:123")));
+    assert_eq!(payload.subject, Some(String::from("did:example:123")));
 
     let vp = payload.custom.vp;
 
@@ -658,20 +658,7 @@ async fn test_format_presentation() {
 
 #[tokio::test]
 async fn test_extract_presentation() {
-    let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJKV1QifQ.eyJpYXQiOjE2OTkzNTc1ODIsI\
-        mV4cCI6MTY5OTM1Nzg4MiwibmJmIjoxNjk5MzU3NTM3LCJpc3MiOiJob2xkZXJfZGlkIiwic3ViIjoiaG9sZGVy\
-        X2RpZCIsImp0aSI6IjY2YWFiNmE2LWQxNWMtNDNkYi1iMDk1LTM5MWE3NWFmYzc4ZSIsInZwIjp7IkBjb250ZXh\
-        0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZV\
-        ByZXNlbnRhdGlvbiJdLCJ2ZXJpZmlhYmxlQ3JlZGVudGlhbCI6WyJleUpoYkdjaU9pSmhiR2R2Y21sMGFHMGlMQ\
-        0owZVhBaU9pSlRSRXBYVkNKOS5leUpwWVhRaU9qRTJPVGt5TnpBeU5qWXNJbVY0Y0NJNk1UYzJNak0wTWpJMk5p\
-        d2libUptSWpveE5qazVNamN3TWpJeExDSnBjM01pT2lKSmMzTjFaWElnUkVsRUlpd2ljM1ZpSWpvaWFHOXNaR1Z\
-        5WDJScFpDSXNJbXAwYVNJNklqbGhOREUwWVRZd0xUbGxObUl0TkRjMU55MDRNREV4TFRsaFlUZzNNR1ZtTkRjNE\
-        9DSXNJblpqSWpwN0lrQmpiMjUwWlhoMElqcGJJbWgwZEhCek9pOHZkM2QzTG5jekxtOXlaeTh5TURFNEwyTnlaV\
-        1JsYm5ScFlXeHpMM1l4SWl3aVEyOXVkR1Y0ZERFaVhTd2lkSGx3WlNJNld5SldaWEpwWm1saFlteGxRM0psWkdW\
-        dWRHbGhiQ0lzSWxSNWNHVXhJbDBzSW1OeVpXUmxiblJwWVd4VGRXSnFaV04wSWpwN0lsOXpaQ0k2V3lKWlYwcHF\
-        UVlJKZWlJc0lsbFhTbXBOVkVsNklsMTlMQ0pqY21Wa1pXNTBhV0ZzVTNSaGRIVnpJanA3SW1sa0lqb2lVMVJCVk\
-        ZWVFgwbEVJaXdpZEhsd1pTSTZJbFJaVUVVaUxDSnpkR0YwZFhOUWRYSndiM05sSWpvaVVGVlNVRTlUUlNJc0lrW\
-        nBaV3hrTVNJNklsWmhiREVpZlgwc0lsOXpaRjloYkdjaU9pSnphR0V0TWpVMkluMC5RVUpEIl19fQ";
+    let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJKV1QifQ.ewogICJpYXQiOiAxNjk5MzU3NTgyLAogICJleHAiOiAxNjk5MzU3ODgyLAogICJuYmYiOiAxNjk5MzU3NTM3LAogICJpc3MiOiAiZGlkOmlzc3VlcjoxMjMiLAogICJzdWIiOiAiZGlkOmhvbGRlcjoxMjMiLAogICJqdGkiOiAiNjZhYWI2YTYtZDE1Yy00M2RiLWIwOTUtMzkxYTc1YWZjNzhlIiwKICAidnAiOiB7CiAgICAiQGNvbnRleHQiOiBbCiAgICAgICJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIKICAgIF0sCiAgICAidHlwZSI6IFsKICAgICAgIlZlcmlmaWFibGVQcmVzZW50YXRpb24iCiAgICBdLAogICAgInZlcmlmaWFibGVDcmVkZW50aWFsIjogWwogICAgICAiZXlKaGJHY2lPaUpoYkdkdmNtbDBhRzBpTENKMGVYQWlPaUpUUkVwWFZDSjkuZXlKcFlYUWlPakUyT1RreU56QXlOallzSW1WNGNDSTZNVGMyTWpNME1qSTJOaXdpYm1KbUlqb3hOams1TWpjd01qSXhMQ0pwYzNNaU9pSkpjM04xWlhJZ1JFbEVJaXdpYzNWaUlqb2lhRzlzWkdWeVgyUnBaQ0lzSW1wMGFTSTZJamxoTkRFMFlUWXdMVGxsTm1JdE5EYzFOeTA0TURFeExUbGhZVGczTUdWbU5EYzRPQ0lzSW5aaklqcDdJa0JqYjI1MFpYaDBJanBiSW1oMGRIQnpPaTh2ZDNkM0xuY3pMbTl5Wnk4eU1ERTRMMk55WldSbGJuUnBZV3h6TDNZeElpd2lRMjl1ZEdWNGRERWlYU3dpZEhsd1pTSTZXeUpXWlhKcFptbGhZbXhsUTNKbFpHVnVkR2xoYkNJc0lsUjVjR1V4SWwwc0ltTnlaV1JsYm5ScFlXeFRkV0pxWldOMElqcDdJbDl6WkNJNld5SlpWMHBxVFZSSmVpSXNJbGxYU21wTlZFbDZJbDE5TENKamNtVmtaVzUwYVdGc1UzUmhkSFZ6SWpwN0ltbGtJam9pVTFSQlZGVlRYMGxFSWl3aWRIbHdaU0k2SWxSWlVFVWlMQ0p6ZEdGMGRYTlFkWEp3YjNObElqb2lVRlZTVUU5VFJTSXNJa1pwWld4a01TSTZJbFpoYkRFaWZYMHNJbDl6WkY5aGJHY2lPaUp6YUdFdE1qVTJJbjAuUVVKRCIKICAgIF0KICB9Cn0";
     let presentation_token = format!("{jwt_token}.QUJD");
 
     let leeway = 45u64;
@@ -689,7 +676,10 @@ async fn test_extract_presentation() {
         .expect_verify()
         .withf(
             move |issuer_did_value, _key_id, algorithm, token, signature| {
-                assert_eq!("holder_did", issuer_did_value.as_ref().unwrap().as_str());
+                assert_eq!(
+                    "did:issuer:123",
+                    issuer_did_value.as_ref().unwrap().as_str()
+                );
                 assert_eq!("algorithm", algorithm);
                 assert_eq!(jwt_token.as_bytes(), token);
                 assert_eq!(vec![65u8, 66, 67], signature);
@@ -718,7 +708,7 @@ async fn test_extract_presentation() {
     assert_eq!(presentation.credentials.len(), 1);
     assert_eq!(
         presentation.issuer_did,
-        Some(DidValue::from("holder_did".to_owned()))
+        Some("did:issuer:123".parse().unwrap())
     );
 }
 

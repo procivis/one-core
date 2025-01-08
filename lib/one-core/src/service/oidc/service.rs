@@ -6,7 +6,7 @@ use indexmap::IndexMap;
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialId, CredentialSchemaId, KeyId, ProofId};
+use shared_types::{CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -557,16 +557,12 @@ impl OIDCService {
 
         let holder_did = if request.proof.proof_type == "jwt" {
             let jwt = OpenID4VCIProofJWTFormatter::verify_proof(&request.proof.jwt).await?;
-            let holder_did_value = jwt
-                .header
-                .key_id
-                .ok_or(ServiceError::OpenID4VCIError(
-                    OpenID4VCIError::InvalidOrMissingProof,
-                ))
-                .map(|v| match v.parse() {
-                    Ok(v) => v,
-                    Err(err) => match err {},
-                })?;
+            let key_id = jwt.header.key_id.ok_or(ServiceError::OpenID4VCIError(
+                OpenID4VCIError::InvalidOrMissingProof,
+            ))?;
+            let holder_did_value = DidValue::from_did_url(key_id).map_err(|_| {
+                ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
+            })?;
 
             get_or_create_did(
                 &*self.did_repository,

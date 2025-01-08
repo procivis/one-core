@@ -1,3 +1,4 @@
+use anyhow::Context;
 use shared_types::DidValue;
 
 use super::model::{VCContent, VerifiableCredential, VC, VP};
@@ -61,20 +62,25 @@ pub(super) fn format_vc(
     })
 }
 
-impl From<Jwt<VC>> for DetailCredential {
-    fn from(jwt: Jwt<VC>) -> Self {
-        DetailCredential {
+impl TryFrom<Jwt<VC>> for DetailCredential {
+    type Error = anyhow::Error;
+
+    fn try_from(jwt: Jwt<VC>) -> Result<Self, Self::Error> {
+        Ok(Self {
             id: jwt.payload.jwt_id,
             valid_from: jwt.payload.issued_at,
             valid_until: jwt.payload.expires_at,
             update_at: None,
             invalid_before: jwt.payload.invalid_before,
-            issuer_did: jwt.payload.issuer.map(DidValue::from),
-            subject: jwt.payload.subject.map(DidValue::from),
+            issuer_did: jwt.payload.issuer.map(|did| did.parse()).transpose()?,
+            subject: jwt
+                .payload
+                .subject
+                .and_then(|did| DidValue::from_did_url(did).ok()),
             claims: jwt.payload.custom.vc.credential_subject,
             status: jwt.payload.custom.vc.credential_status,
             credential_schema: jwt.payload.custom.vc.credential_schema,
-        }
+        })
     }
 }
 
@@ -105,7 +111,12 @@ impl TryFrom<Jwt<VP>> for Presentation {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
-            issuer_did: jwt.payload.issuer.map(DidValue::from),
+            issuer_did: jwt
+                .payload
+                .issuer
+                .map(|did| did.parse().context("did parsing error"))
+                .transpose()
+                .map_err(|e| Self::Error::Failed(e.to_string()))?,
             nonce: jwt.payload.custom.nonce,
             credentials,
         })

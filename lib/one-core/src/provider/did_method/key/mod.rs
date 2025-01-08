@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use anyhow::Context;
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 
@@ -48,7 +49,10 @@ impl DidMethod for KeyDidMethod {
         let multibase = key_algorithm
             .get_multibase(&key.public_key)
             .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
-        Ok(format!("did:key:{}", multibase).into())
+        format!("did:key:{}", multibase)
+            .parse()
+            .context("did parsing error")
+            .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocument, DidMethodError> {

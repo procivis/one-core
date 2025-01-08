@@ -1140,7 +1140,7 @@ fn dummy_did() -> Did {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "John".to_string(),
-        did: "did:test".parse().unwrap(),
+        did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "John".to_string(),
         keys: None,

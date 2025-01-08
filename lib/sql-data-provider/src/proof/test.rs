@@ -809,7 +809,7 @@ async fn test_set_proof_holder_did() {
         &db,
         "holder",
         Uuid::new_v4(),
-        "did:holder".to_owned().parse().unwrap(),
+        "did:holder:123".to_owned().parse().unwrap(),
         "KEY",
         organisation_id,
     )
@@ -824,7 +824,7 @@ async fn test_set_proof_holder_did() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "holder".to_string(),
-                did: "did:holder".parse().unwrap(),
+                did: "did:holder:123".parse().unwrap(),
                 did_type: DidType::Remote,
                 did_method: "KEY".to_string(),
                 organisation: None,

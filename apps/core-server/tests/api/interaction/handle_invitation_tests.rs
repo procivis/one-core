@@ -298,7 +298,11 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         credential.schema.unwrap().wallet_storage_type,
         Some(WalletStorageTypeEnum::Software)
     );
-    let did = context.db.dids.get_did_by_value(&issuer_did.into()).await;
+    let did = context
+        .db
+        .dids
+        .get_did_by_value(&issuer_did.parse().unwrap())
+        .await;
     assert_eq!(did.did_type, DidType::Remote);
 }
 

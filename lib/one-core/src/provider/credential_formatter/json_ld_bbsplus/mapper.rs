@@ -39,7 +39,7 @@ impl TryFrom<LdCredential> for DetailCredential {
             valid_until: None,
             update_at: None,
             invalid_before: None,
-            issuer_did: Some(value.issuer.to_did_value()),
+            issuer_did: Some(value.issuer.to_did_value()?),
             subject: credential_subject.id,
             claims: CredentialSubject {
                 values: credential_subject.subject,

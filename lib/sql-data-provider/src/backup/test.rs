@@ -2,7 +2,7 @@ use futures::StreamExt;
 use one_core::repository::backup_repository::BackupRepository;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
-use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId};
 use tempfile::NamedTempFile;
 use uuid::Uuid;
 
@@ -122,7 +122,7 @@ async fn insert_did_to_database(
 ) -> DidId {
     let did_id = did::ActiveModel {
         id: Set(Uuid::new_v4().into()),
-        did: Set(DidValue::from(Uuid::new_v4().to_string())),
+        did: Set(format!("did:example:{}", Uuid::new_v4()).parse().unwrap()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(Uuid::new_v4().to_string()),

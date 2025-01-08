@@ -402,9 +402,7 @@ pub async fn create_lvvc_with_status(
         .ok_or_else(|| RevocationError::MappingError("LVVC issuance is missing key".to_string()))?
         .to_owned();
 
-    let did_document = did_method_provider
-        .resolve(&issuer_did.did.to_string().into())
-        .await?;
+    let did_document = did_method_provider.resolve(&issuer_did.did).await?;
     let assertion_methods = did_document
         .assertion_method
         .ok_or(RevocationError::MappingError(

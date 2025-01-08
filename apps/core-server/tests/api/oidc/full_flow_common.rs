@@ -164,14 +164,14 @@ pub(super) fn eddsa_key_1() -> TestKey {
 
 pub(super) fn eddsa_key_for_did_mdl() -> TestKey {
     TestKey {
-        multibase: "".to_string(),
+        multibase: "adasasd".to_string(),
         params: eddsa_testing_params(),
     }
 }
 
 pub(super) fn es256_key_for_did_mdl() -> TestKey {
     TestKey {
-        multibase: "".to_string(),
+        multibase: "asdasdasd".to_string(),
         params: es256_testing_params(),
     }
 }

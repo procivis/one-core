@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use mockall::predicate::eq;
-use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -21,7 +20,7 @@ async fn test_resolve_jwk_did_without_use_field() {
 
     let result = provider
         .resolve(
-            &DidValue::from("did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9".to_string()),
+            &"did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9".parse().unwrap(),
         )
         .await
         .unwrap();
@@ -31,7 +30,7 @@ async fn test_resolve_jwk_did_without_use_field() {
               "https://www.w3.org/ns/did/v1",
               "https://w3id.org/security/suites/jws-2020/v1"
             ]),
-        id: DidValue::from("did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9".to_string()),
+        id: "did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9".parse().unwrap(),
         verification_method: vec![DidVerificationMethod {
             id: "did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9#0".to_string(),
             r#type: "JsonWebKey2020".to_string(),
@@ -60,7 +59,7 @@ async fn test_resolve_jwk_did_with_use_enc_field() {
 
     let result = provider
         .resolve(
-            &DidValue::from("did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".to_string()))
+            &"did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".parse().unwrap())
         .await
         .unwrap();
 
@@ -69,7 +68,7 @@ async fn test_resolve_jwk_did_with_use_enc_field() {
               "https://www.w3.org/ns/did/v1",
               "https://w3id.org/security/suites/jws-2020/v1"
             ]),
-        id: DidValue::from("did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".to_string()),
+        id: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".parse().unwrap(),
         verification_method: vec![DidVerificationMethod {
             id: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9#0".to_string(),
             r#type: "JsonWebKey2020".to_string(),
@@ -98,7 +97,7 @@ async fn test_resolve_jwk_did_with_use_sig_field() {
 
     let result = provider
         .resolve(
-            &DidValue::from("did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwidXNlIjoic2lnIiwieCI6IjNwN2JmWHQ5d2JUVFcySEM3T1ExTnotRFE4aGJlR2ROcmZ4LUZHLUlLMDgifQ".to_string()))
+            &"did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwidXNlIjoic2lnIiwieCI6IjNwN2JmWHQ5d2JUVFcySEM3T1ExTnotRFE4aGJlR2ROcmZ4LUZHLUlLMDgifQ".parse().unwrap())
         .await
         .unwrap();
 
@@ -107,7 +106,7 @@ async fn test_resolve_jwk_did_with_use_sig_field() {
               "https://www.w3.org/ns/did/v1",
               "https://w3id.org/security/suites/jws-2020/v1"
             ]),
-        id: DidValue::from("did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwidXNlIjoic2lnIiwieCI6IjNwN2JmWHQ5d2JUVFcySEM3T1ExTnotRFE4aGJlR2ROcmZ4LUZHLUlLMDgifQ".to_string()),
+        id: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwidXNlIjoic2lnIiwieCI6IjNwN2JmWHQ5d2JUVFcySEM3T1ExTnotRFE4aGJlR2ROcmZ4LUZHLUlLMDgifQ".parse().unwrap(),
         verification_method: vec![DidVerificationMethod {
             id: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwidXNlIjoic2lnIiwieCI6IjNwN2JmWHQ5d2JUVFcySEM3T1ExTnotRFE4aGJlR2ROcmZ4LUZHLUlLMDgifQ#0".to_string(),
             r#type: "JsonWebKey2020".to_string(),
@@ -136,7 +135,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_did_prefix() {
 
     let result = provider
         .resolve(
-            &DidValue::from("did:jkk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJzaWciLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".to_string()))
+            &"did:jkk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJzaWciLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".parse().unwrap())
         .await;
 
     assert!(matches!(result, Err(DidMethodError::ResolutionError(_))));
@@ -146,10 +145,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_did_prefix() {
 async fn test_fail_to_resolve_jwk_did_invalid_encoding() {
     let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
-    let result = provider
-        .resolve(
-            &DidValue::from("did:jwk:eyJrdHk`iOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJzaWciLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".to_string()))
-        .await;
+    let result = provider.resolve(&"did:jwk:eyJrdHk".parse().unwrap()).await;
 
     assert!(matches!(result, Err(DidMethodError::ResolutionError(_))));
 }
@@ -160,7 +156,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_jwk_format() {
 
     let result = provider
         .resolve(
-            &DidValue::from("did:jwk:eyJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJzaWciLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".to_string()))
+            &"did:jwk:eyJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJzaWciLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".parse().unwrap())
         .await;
 
     assert!(matches!(result, Err(DidMethodError::ResolutionError(_))));

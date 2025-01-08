@@ -74,7 +74,9 @@ use sql_data_provider::{DataLayer, DbConn};
 use time::Duration;
 use tracing_subscriber::prelude::*;
 
-use crate::did_config::{DidMdlParams, DidUniversalParams, DidWebParams};
+use crate::did_config::{
+    DidMdlParams, DidSdJwtVCIssuerMetadataParams, DidUniversalParams, DidWebParams,
+};
 use crate::{build_info, did_config, ServerConfig};
 
 pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbConn) -> OneCore {
@@ -159,8 +161,6 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
         let client = client.clone();
         Box::new(move |config, providers| {
             let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
-            let mut url_did_resolver: Option<Arc<dyn DidMethod>> = None;
-
             let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
 
             for (name, field) in config.iter() {
@@ -227,12 +227,13 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                         did_mdl as _
                     }
                     "SD_JWT_VC_ISSUER_METADATA" => {
-                        let did_method =
-                            Arc::new(SdJwtVcIssuerMetadataDidMethod::new(client.clone()));
-
-                        url_did_resolver = Some(did_method.clone() as Arc<dyn DidMethod>);
-
-                        did_method as _
+                        let params: DidSdJwtVCIssuerMetadataParams = config
+                            .get(name)
+                            .expect("failed to deserialize did SdJwtVCIssuerMetadata params");
+                        Arc::new(SdJwtVcIssuerMetadataDidMethod::new(
+                            client.clone(),
+                            params.into(),
+                        )) as _
                     }
                     other => panic!("Unexpected did method: {other}"),
                 };
@@ -265,11 +266,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                 initialize_did_caching_loader(&cache_entities_config, data_provider);
 
             (
-                Arc::new(DidMethodProviderImpl::new(
-                    did_caching_loader,
-                    did_methods,
-                    url_did_resolver,
-                )),
+                Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods)),
                 did_mdl_validator,
             )
         })

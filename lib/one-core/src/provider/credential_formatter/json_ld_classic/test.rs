@@ -91,7 +91,7 @@ async fn create_token(include_layout: bool) -> Value {
         related_resource: None,
     };
 
-    let holder_did = DidValue::from("holder-did".to_string());
+    let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -244,10 +244,11 @@ static JSONLD_TOKEN: &str = r#"{
 
 #[tokio::test]
 async fn test_format_presentation_multi_tokens() {
-    let issuer_did =
-        DidValue::from("did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y".to_string());
+    let issuer_did: DidValue = "did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y"
+        .parse()
+        .unwrap();
 
-    let holder_did = DidValue::from("holder-did".to_string());
+    let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -457,7 +458,7 @@ static PRESENTATION_TOKEN: &str = r#"{
 
 #[tokio::test]
 async fn test_parse_presentation_multi_tokens() {
-    let holder_did = DidValue::from("holder-did".to_string());
+    let holder_did: DidValue = "did:example:123".parse().unwrap();
 
     let mut did_method_provider = MockDidMethodProvider::new();
 

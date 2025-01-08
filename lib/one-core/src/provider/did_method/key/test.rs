@@ -4,7 +4,7 @@ use std::sync::Arc;
 use mockall::predicate;
 use one_crypto::MockCryptoProvider;
 use serde_json::json;
-use shared_types::{DidId, DidValue};
+use shared_types::DidId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -50,9 +50,11 @@ async fn test_did_key_resolve_details_eddsa() {
     let did_method = setup_key_did_method(key_algorithm, "EDDSA");
 
     let result = did_method
-        .resolve(&DidValue::from(
-            "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_string(),
-        ))
+        .resolve(
+            &"did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp"
+                .parse()
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -62,7 +64,7 @@ async fn test_did_key_resolve_details_eddsa() {
             "https://www.w3.org/ns/did/v1",
             "https://w3id.org/security/suites/jws-2020/v1",
         ]),
-        id: DidValue::from("did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_string()),
+        id: "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".parse().unwrap(),
         verification_method: vec![
             DidVerificationMethod {
                 id: "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
@@ -133,9 +135,11 @@ async fn test_did_key_resolve_details_es256() {
     let did_method = setup_key_did_method(key_algorithm, "ES256");
 
     let result = did_method
-        .resolve(&DidValue::from(
-            "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_string(),
-        ))
+        .resolve(
+            &"did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv"
+                .parse()
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -145,7 +149,7 @@ async fn test_did_key_resolve_details_es256() {
             "https://www.w3.org/ns/did/v1",
             "https://w3id.org/security/suites/jws-2020/v1",
         ]),
-        id: DidValue::from("did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_string()),
+        id: "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".parse().unwrap(),
         verification_method: vec![
             DidVerificationMethod {
                 id: "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv#zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
@@ -217,7 +221,7 @@ async fn test_did_key_resolve_details_bbs() {
 
     let result = did_method
         .resolve(
-            &DidValue::from("did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_string()))
+            &"did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".parse().unwrap())
         .await
         .unwrap();
 
@@ -227,7 +231,7 @@ async fn test_did_key_resolve_details_bbs() {
             "https://www.w3.org/ns/did/v1",
             "https://w3id.org/security/suites/jws-2020/v1",
         ]),
-        id: DidValue::from("did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_string()),
+        id: "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".parse().unwrap(),
         verification_method: vec![
             DidVerificationMethod {
                 id: "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo#zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),

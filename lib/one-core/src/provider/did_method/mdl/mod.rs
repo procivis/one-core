@@ -100,7 +100,10 @@ impl DidMethod for DidMdl {
                 DidMethodError::CouldNotCreate(format!("Base64 encoding failed: {err}"))
             })?;
 
-        Ok(DidValue::from(did_mdl))
+        did_mdl
+            .parse()
+            .context("did parsing error")
+            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodError> {
@@ -170,7 +173,10 @@ impl DidMethod for DidMdl {
                 rest: Default::default(),
             })
         } else if let Some(mdl_public_key) = did.as_str().strip_prefix("did:mdl:public_key:") {
-            let did_key = DidValue::from(format!("did:key:{mdl_public_key}"));
+            let did_key = format!("did:key:{mdl_public_key}")
+                .parse()
+                .context("did parsing error")
+                .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
 
             let decoded_did_key = decode_did(&did_key)?;
             let algorithm = if decoded_did_key.type_ == DidKeyType::Ecdsa {

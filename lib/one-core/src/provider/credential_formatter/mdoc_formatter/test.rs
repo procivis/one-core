@@ -213,7 +213,7 @@ async fn test_credential_formatting_ok_for_es256() {
         related_resource: None,
     };
 
-    let holder_did = DidValue::from("holder-did".to_string());
+    let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -334,6 +334,7 @@ async fn test_credential_formatting_ok_for_es256() {
 
     let expected_issuer_did = issuer_did
         .to_did_value()
+        .unwrap()
         .as_str()
         .strip_prefix("did:mdl:certificate:")
         .and_then(|did| Base64UrlSafeNoPadding::decode_to_vec(did, None).ok())
@@ -405,7 +406,7 @@ async fn test_unverified_credential_extraction() {
         related_resource: None,
     };
 
-    let holder_did = DidValue::from("holder-did".to_string());
+    let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
     let mut did_method_provider = MockDidMethodProvider::new();
 
@@ -502,7 +503,10 @@ async fn test_unverified_credential_extraction() {
         .unwrap();
 
     // assert
-    assert_eq!(issuer_did.to_did_value(), credential.issuer_did.unwrap());
+    assert_eq!(
+        issuer_did.to_did_value().unwrap(),
+        credential.issuer_did.unwrap()
+    );
 
     assert_eq!(
         CredentialSchema {
@@ -605,7 +609,7 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
         related_resource: None,
     };
 
-    let holder_did = DidValue::from("holder-did".to_string());
+    let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
     let mut did_method_provider = MockDidMethodProvider::new();
 

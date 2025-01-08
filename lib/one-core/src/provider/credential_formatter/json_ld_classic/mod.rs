@@ -477,7 +477,7 @@ impl JsonLdClassic {
             valid_until: credential.valid_until,
             update_at: None,
             invalid_before: None,
-            issuer_did: Some(credential.issuer.to_did_value()),
+            issuer_did: Some(credential.issuer.to_did_value()?),
             subject: credential.credential_subject[0].id.clone(),
             claims,
             status: credential.credential_status,
@@ -535,7 +535,7 @@ impl JsonLdClassic {
             id: None,
             issued_at: Some(presentation.issuance_date),
             expires_at: None,
-            issuer_did: Some(presentation.holder.to_did_value()),
+            issuer_did: Some(presentation.holder.to_did_value()?),
             nonce: presentation.nonce,
             credentials,
         })
@@ -580,7 +580,7 @@ pub(super) async fn verify_credential_signature(
     verify_proof_signature(
         &proof_hash,
         &proof_value,
-        &issuer_did.to_did_value(),
+        &issuer_did.to_did_value()?,
         key_id,
         &proof.cryptosuite,
         verification_fn,
@@ -619,7 +619,7 @@ pub(super) async fn verify_presentation_signature(
     verify_proof_signature(
         &proof_hash,
         &proof_value,
-        &issuer_did.to_did_value(),
+        &issuer_did.to_did_value()?,
         key_id,
         &proof.cryptosuite,
         verification_fn,

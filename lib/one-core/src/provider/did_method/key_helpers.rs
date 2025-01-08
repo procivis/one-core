@@ -30,21 +30,20 @@ pub fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError> {
         ));
     };
 
-    let type_ = if tail.starts_with("z6Mk") {
-        DidKeyType::Eddsa
-    } else if tail.starts_with("zDn") {
-        DidKeyType::Ecdsa
-    } else if tail.starts_with("zUC7") {
-        DidKeyType::Bbs
-    } else {
-        return Err(DidMethodError::ResolutionError(
-            "Unsupported key algorithm".to_string(),
-        ));
-    };
-
     let decoded = bs58::decode(&tail[1..]).into_vec().map_err(|err| {
         DidMethodError::ResolutionError(format!("Invalid did key multibase suffix: {err}"))
     })?;
+
+    let type_ = match decoded[0..2] {
+        [0xed, 0x1] => DidKeyType::Eddsa,
+        [0x80, 0x24] => DidKeyType::Ecdsa,
+        [0xeb, 0x01] => DidKeyType::Bbs,
+        _ => {
+            return Err(DidMethodError::ResolutionError(
+                "Unsupported key algorithm".to_string(),
+            ));
+        }
+    };
 
     // currently all supported key algorithms have a multicodec prefix 2 bytes long
     let decoded_without_multibase_prefix = decoded[2..].into();

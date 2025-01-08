@@ -81,7 +81,7 @@ impl CredentialFormatter for JWTFormatter {
             issued_at: Some(issued_at),
             expires_at,
             invalid_before: issued_at.checked_sub(Duration::seconds(self.get_leeway() as i64)),
-            issuer: Some(issuer.to_did_value().to_string()),
+            issuer: Some(issuer.to_did_value()?.to_string()),
             subject: holder_did.clone().map(|did| did.to_string()),
             jwt_id: credential_id,
             custom: vc,
@@ -201,7 +201,8 @@ impl CredentialFormatter for JWTFormatter {
         // Build fails if verification fails
         let jwt: Jwt<VC> = Jwt::build_from_token(token, Some(verification)).await?;
 
-        Ok(jwt.into())
+        TryInto::<DetailCredential>::try_into(jwt)
+            .map_err(|e| FormatterError::Failed(e.to_string()))
     }
 
     async fn extract_credentials_unverified(
@@ -210,7 +211,8 @@ impl CredentialFormatter for JWTFormatter {
     ) -> Result<DetailCredential, FormatterError> {
         let jwt: Jwt<VC> = Jwt::build_from_token(token, None).await?;
 
-        Ok(jwt.into())
+        TryInto::<DetailCredential>::try_into(jwt)
+            .map_err(|e| FormatterError::Failed(e.to_string()))
     }
 
     async fn format_credential_presentation(

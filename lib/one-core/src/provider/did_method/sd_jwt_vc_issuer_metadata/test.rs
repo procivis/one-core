@@ -2,11 +2,13 @@ use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
 use serde_json::json;
-use shared_types::DidValue;
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
-use crate::provider::did_method::sd_jwt_vc_issuer_metadata::SdJwtVcIssuerMetadataDidMethod;
+use crate::provider::did_method::sd_jwt_vc_issuer_metadata::{
+    Params, SdJwtVcIssuerMetadataDidMethod,
+};
 use crate::provider::did_method::DidMethod;
 use crate::provider::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
@@ -31,9 +33,8 @@ fn expected_did_document() -> DidDocument {
             "https://www.w3.org/ns/did/v1",
             "https://w3id.org/security/suites/jws-2020/v1"
         ]),
-        id: DidValue::from(
-            "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IlpVUU5Ca252LWF5YUNCZTN6dVBPeGtSb0JCUWFtNEUtdFdiUXRRS1A5XzAifQ".to_string()
-        ),
+        id:
+            "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IlpVUU5Ca252LWF5YUNCZTN6dVBPeGtSb0JCUWFtNEUtdFdiUXRRS1A5XzAifQ".parse().unwrap(),
         verification_method: vec![
             DidVerificationMethod {
                 id: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IlpVUU5Ca252LWF5YUNCZTN6dVBPeGtSb0JCUWFtNEUtdFdiUXRRS1A5XzAifQ#0".to_string(),
@@ -117,14 +118,21 @@ async fn test_resolve_through_jwks_with_path() {
         },
     );
 
-    let provider = SdJwtVcIssuerMetadataDidMethod::new(Arc::new(http_client));
+    let provider = SdJwtVcIssuerMetadataDidMethod::new(
+        Arc::new(http_client),
+        Params {
+            resolve_to_insecure_http: Some(true),
+        },
+    );
+
+    let did = format!(
+        "did:sd_jwt_vc_issuer_metadata:{}",
+        urlencoding::encode(DID_URL)
+    );
 
     assert_eq!(
         expected_did_document(),
-        provider
-            .resolve(&DidValue::from(DID_URL.to_string()))
-            .await
-            .unwrap()
+        provider.resolve(&did.parse().unwrap()).await.unwrap()
     );
 }
 
@@ -187,13 +195,37 @@ async fn test_resolve_through_jwk_url_without_path() {
         },
     );
 
-    let provider = SdJwtVcIssuerMetadataDidMethod::new(Arc::new(http_client));
+    let provider = SdJwtVcIssuerMetadataDidMethod::new(
+        Arc::new(http_client),
+        Params {
+            resolve_to_insecure_http: Some(true),
+        },
+    );
+
+    let did = format!(
+        "did:sd_jwt_vc_issuer_metadata:{}",
+        urlencoding::encode(DID_URL)
+    );
 
     assert_eq!(
         expected_did_document(),
-        provider
-            .resolve(&DidValue::from(DID_URL.to_string()))
-            .await
-            .unwrap()
+        provider.resolve(&did.parse().unwrap()).await.unwrap()
     );
+}
+
+#[tokio::test]
+async fn test_resolve_failure_disallowed_scheme() {
+    const DID_URL: &str = "http://example-did-provider.did";
+
+    let http_client = MockHttpClient::new();
+    let provider = SdJwtVcIssuerMetadataDidMethod::new(Arc::new(http_client), Default::default());
+
+    let did = format!(
+        "did:sd_jwt_vc_issuer_metadata:{}",
+        urlencoding::encode(DID_URL)
+    );
+
+    let result = provider.resolve(&did.parse().unwrap()).await;
+
+    assert!(matches!(result, Err(DidMethodError::ResolutionError(_))));
 }

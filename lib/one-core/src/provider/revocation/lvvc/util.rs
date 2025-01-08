@@ -27,7 +27,6 @@ mod tests {
     use std::collections::HashMap;
 
     use shared_types::DidValue;
-    use url::Url;
     use uuid::Uuid;
 
     use super::*;
@@ -53,10 +52,7 @@ mod tests {
 
     #[test]
     fn test_is_lvvc_id_in_subject() {
-        let test_subject_id = {
-            let id = Uuid::new_v4().urn();
-            id.to_string().parse::<Url>().unwrap().into()
-        };
+        let test_subject_id = "did:example:123".parse().unwrap();
 
         let claims = CredentialSubject {
             values: HashMap::from([("status".to_string(), serde_json::Value::Null)]),

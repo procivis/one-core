@@ -8,8 +8,10 @@ pub(crate) mod model;
 #[cfg(test)]
 mod test;
 
+use std::str::FromStr;
 use std::sync::Arc;
 
+use anyhow::Context;
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
@@ -144,7 +146,9 @@ impl CredentialFormatter for SDJWTVCFormatter {
         // Build fails if verification fails
         let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, Some(verification)).await?;
 
-        Ok(jwt.into())
+        jwt.try_into()
+            .context("SDVP mapping failed")
+            .map_err(|_| FormatterError::Failed("Jwt mapping error".to_string()))
     }
 
     async fn extract_presentation_unverified(
@@ -154,7 +158,9 @@ impl CredentialFormatter for SDJWTVCFormatter {
     ) -> Result<Presentation, FormatterError> {
         let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, None).await?;
 
-        Ok(jwt.into())
+        jwt.try_into()
+            .context("SDVP mapping failed")
+            .map_err(|_| FormatterError::Failed("Jwt mapping error".to_string()))
     }
 
     fn get_leeway(&self) -> u64 {
@@ -257,14 +263,33 @@ pub(super) async fn extract_credentials_internal(
         &*hasher,
     )?;
 
+    let issuer = jwt.payload.issuer.map(|issuer| {
+        if issuer.starts_with("did:") {
+            issuer
+        } else {
+            format!(
+                "did:sd_jwt_vc_issuer_metadata:{}",
+                urlencoding::encode(&issuer)
+            )
+        }
+    });
+
     Ok(DetailCredential {
         id: jwt.payload.jwt_id,
         valid_from: jwt.payload.issued_at,
         valid_until: jwt.payload.expires_at,
         update_at: None,
         invalid_before: jwt.payload.invalid_before,
-        issuer_did: jwt.payload.issuer.map(DidValue::from),
-        subject: jwt.payload.subject.map(DidValue::from),
+        issuer_did: issuer
+            .map(|did| DidValue::from_str(&did))
+            .transpose()
+            .map_err(|e| FormatterError::Failed(e.to_string()))?,
+        subject: jwt
+            .payload
+            .subject
+            .map(|did| DidValue::from_str(&did))
+            .transpose()
+            .map_err(|e| FormatterError::Failed(e.to_string()))?,
         claims: CredentialSubject {
             values: to_hashmap(unpack_arrays(&claims)?)?,
         },
@@ -285,7 +310,7 @@ pub async fn format_credentials(
 ) -> Result<String, FormatterError> {
     let (vc, disclosures) = format_hashed_credential(&credential, "sha-256", crypto)?;
 
-    let issuer = credential.issuer_did.to_did_value().to_string();
+    let issuer: String = credential.issuer_did.to_did_value()?.to_string();
     let id = credential.id;
     let issued_at = credential.issuance_date;
     let expires_at = issued_at.checked_add(credential.valid_for);

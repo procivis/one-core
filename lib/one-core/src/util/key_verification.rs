@@ -98,7 +98,7 @@ mod test {
     fn get_dummy_did_document() -> DidDocument {
         DidDocument {
             context: json!(["https://www.w3.org/ns/did/v1"]),
-            id: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_string().into(),
+            id: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".parse().unwrap(),
             verification_method: vec![
                 DidVerificationMethod {
                     id: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
@@ -179,7 +179,7 @@ mod test {
 
         let result = verification
             .verify(
-                Some(DidValue::from("issuer_did_value".to_owned())),
+                Some("did:example:123".parse().unwrap()),
                 None,
                 "ES256",
                 "token".as_bytes(),
@@ -207,7 +207,7 @@ mod test {
 
         let result = verification
             .verify(
-                Some(DidValue::from("issuer_did_value".to_string())),
+                Some("did:example:123".parse().unwrap()),
                 None,
                 "EDDSA",
                 "token".as_bytes(),
@@ -267,7 +267,7 @@ mod test {
 
         let result = verification
             .verify(
-                Some(DidValue::from("issuer_did_value".to_string())),
+                Some("did:example:123".parse().unwrap()),
                 None,
                 "ES256",
                 "token".as_bytes(),

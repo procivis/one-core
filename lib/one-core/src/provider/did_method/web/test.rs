@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use shared_types::{DidId, DidValue};
+use shared_types::DidId;
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
@@ -168,7 +168,7 @@ async fn test_did_web_value_extract() {
         println!("Checking: {} -> {}", case.0, case.1);
         assert_eq!(
             case.1,
-            did_value_to_url(&DidValue::from(case.0.to_string()), Some(false))
+            did_value_to_url(&case.0.parse().unwrap(), Some(false))
                 .unwrap()
                 .to_string()
         )
@@ -204,7 +204,7 @@ async fn test_did_web_value_extract_debug_http() {
         println!("Checking: {} -> {}", case.0, case.1);
         assert_eq!(
             case.1,
-            did_value_to_url(&DidValue::from(case.0.to_string()), Some(true))
+            did_value_to_url(&case.0.parse().unwrap(), Some(true))
                 .unwrap()
                 .to_string()
         )
@@ -239,10 +239,9 @@ async fn test_did_web_fetch() {
 
     assert_eq!(
         data.id,
-        DidValue::from(
-            "did:web:test-domain.com%3A54812:ssi:did-web:v1:2389ba3f-81d5-4931-9222-c23ec721deb7"
-                .to_string()
-        )
+        "did:web:test-domain.com%3A54812:ssi:did-web:v1:2389ba3f-81d5-4931-9222-c23ec721deb7"
+            .parse()
+            .unwrap()
     );
 
     assert!(data.assertion_method.is_some());

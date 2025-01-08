@@ -1333,9 +1333,9 @@ async fn test_oidc_verifier_presentation_definition_success() {
 #[tokio::test]
 async fn test_submit_proof_failed_credential_suspended() {
     let proof_id: ProofId = Uuid::new_v4().into();
-    let verifier_did = "verifier did".parse().unwrap();
-    let holder_did: DidValue = "did:holder".parse().unwrap();
-    let issuer_did: DidValue = "did:issuer".parse().unwrap();
+    let verifier_did = "did:verifier:123".parse().unwrap();
+    let holder_did: DidValue = "did:holder:123".parse().unwrap();
+    let issuer_did: DidValue = "did:issuer:123".parse().unwrap();
 
     let mut proof_repository = MockProofRepository::new();
 
@@ -1689,7 +1689,7 @@ async fn test_get_client_metadata_success() {
                 created_date: now,
                 last_modified: now,
             }),
-            did: "did1".parse().unwrap(),
+            did: "did:example:1".parse().unwrap(),
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
