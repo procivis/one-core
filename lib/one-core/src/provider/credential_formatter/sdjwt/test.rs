@@ -25,13 +25,18 @@ fn test_prepare_sd_presentation() {
     let key_age = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
     let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}");
 
+    let mut hasher = MockHasher::default();
+    hasher
+        .expect_hash_base64()
+        .returning(|_| Ok("".to_string()));
+
     // Take name and age
     let presentation = CredentialPresentation {
         token: token.clone(),
         disclosed_keys: vec!["name".to_string(), "age".to_string()],
     };
 
-    let result = prepare_sd_presentation(presentation);
+    let result = prepare_sd_presentation(presentation, &hasher);
     assert!(result.is_ok_and(|token| token.contains(key_name) && token.contains(key_age)));
 
     // Take name
@@ -40,7 +45,7 @@ fn test_prepare_sd_presentation() {
         disclosed_keys: vec!["name".to_string()],
     };
 
-    let result = prepare_sd_presentation(presentation);
+    let result = prepare_sd_presentation(presentation, &hasher);
     assert!(result.is_ok_and(|token| token.contains(key_name) && !token.contains(key_age)));
 
     // Take age
@@ -49,7 +54,7 @@ fn test_prepare_sd_presentation() {
         disclosed_keys: vec!["age".to_string()],
     };
 
-    let result = prepare_sd_presentation(presentation);
+    let result = prepare_sd_presentation(presentation, &hasher);
     assert!(result.is_ok_and(|token| !token.contains(key_name) && token.contains(key_age)));
 
     // Take none
@@ -58,7 +63,7 @@ fn test_prepare_sd_presentation() {
         disclosed_keys: vec![],
     };
 
-    let result = prepare_sd_presentation(presentation);
+    let result = prepare_sd_presentation(presentation, &hasher);
     assert!(result.is_ok_and(|token| !token.contains(key_name) && !token.contains(key_age)));
 }
 
@@ -370,13 +375,138 @@ fn test_extract_claims_from_disclosures() {
 }
 
 #[test]
-fn test_select_disclosures_ok() {
+fn test_select_disclosures_nested() {
     let disclosures = generic_disclosures();
     let expected = HashSet::<String>::from_iter([
         disclosures[0].disclosure.to_string(),
         disclosures[2].disclosure.to_string(),
     ]);
-    let result = select_disclosures(vec!["obj/str".into()], disclosures).unwrap();
+
+    let mut hasher = MockHasher::default();
+    hasher.expect_hash_base64().returning({
+        let disclosures = disclosures.clone();
+        move |input| {
+            let input = if let Ok(input) = Base64UrlSafeNoPadding::decode_to_vec(input, None) {
+                input
+            } else {
+                return Ok("".to_string());
+            };
+
+            let input = DisclosureArray::from(std::str::from_utf8(&input).unwrap());
+            if input.key.eq(&disclosures[0].key) {
+                Ok("54nR6daXsl_LDczSaZc48coL-UHR72WyIpzz6AkDUyA".to_string())
+            } else if input.key.eq(&disclosures[1].key) {
+                Ok("9RzaXaJF3BCDitmMRNhHqzbRIRc6pbfS-7YbM_PObk8".to_string())
+            } else {
+                Ok("".to_string())
+            }
+        }
+    });
+
+    let result = select_disclosures(vec!["obj/str".into()], disclosures, &hasher).unwrap();
+
+    assert_eq!(expected, HashSet::from_iter(result));
+}
+
+#[test]
+fn test_select_disclosures_root() {
+    let disclosures = generic_disclosures();
+    let expected =
+        HashSet::<String>::from_iter(disclosures.iter().map(|d| d.disclosure.to_string()));
+
+    let mut hasher = MockHasher::default();
+    hasher.expect_hash_base64().returning({
+        let disclosures = disclosures.clone();
+        move |input| {
+            let input = if let Ok(input) = Base64UrlSafeNoPadding::decode_to_vec(input, None) {
+                input
+            } else {
+                return Ok("".to_string());
+            };
+
+            let input = DisclosureArray::from(std::str::from_utf8(&input).unwrap());
+            if input.key.eq(&disclosures[0].key) {
+                Ok("54nR6daXsl_LDczSaZc48coL-UHR72WyIpzz6AkDUyA".to_string())
+            } else if input.key.eq(&disclosures[1].key) {
+                Ok("9RzaXaJF3BCDitmMRNhHqzbRIRc6pbfS-7YbM_PObk8".to_string())
+            } else {
+                Ok("".to_string())
+            }
+        }
+    });
+
+    let result = select_disclosures(vec!["obj".into()], disclosures, &hasher).unwrap();
+
+    assert_eq!(expected, HashSet::from_iter(result));
+}
+
+#[test]
+fn test_select_disclosures_nested_structure_with_similar_nodes() {
+    let disclosures = vec![
+        Disclosure {
+            salt: "cTgNF-AtESuivLBdhN0t8A".to_string(),
+            key: "value".to_string(),
+            value: serde_json::Value::String("x".to_string()),
+            disclosure_array: "[\"cTgNF-AtESuivLBdhN0t8A\",\"value\",\"x\"]".to_string(),
+            disclosure: "WyJjVGdORi1BdEVTdWl2TEJkaE4wdDhBIiwidmFsdWUiLCJ4Il0".to_string()
+        },
+        Disclosure {
+            salt: "xtyBeqglpTfvXrqQzsXMFw".to_string(),
+            key: "obj1".to_string(),
+            value: json!({
+              "_sd": [
+                "54nR6daXsl_LDczSaZc48coL-UHR72WyIpzz6AkDUyA",
+              ]
+            }),
+            disclosure_array: "[\"xtyBeqglpTfvXrqQzsXMFw\",\"obj1\",{\"_sd\":[\"54nR6daXsl_LDczSaZc48coL-UHR72WyIpzz6AkDUyA\"]}]".to_string(),
+            disclosure:"WyJ4dHlCZXFnbHBUZnZYcnFRenNYTUZ3Iiwib2JqMSIseyJfc2QiOlsiNTRuUjZkYVhzbF9MRGN6U2FaYzQ4Y29MLVVIUjcyV3lJcHp6NkFrRFV5QSJdfV0".to_string(),
+        },
+        Disclosure {
+            salt: "nEP135SkAyOTnMA67CNTAA".to_string(),
+            key: "value".to_string(),
+            value: serde_json::Value::String("y".to_string()),
+            disclosure_array: "[\"nEP135SkAyOTnMA67CNTAA\",\"value\",\"y\"]".to_string(),
+            disclosure: "WyJuRVAxMzVTa0F5T1RuTUE2N0NOVEFBIiwidmFsdWUiLCJ5Il0".to_string()
+        },
+        Disclosure {
+            salt: "pggVbYzzu6oOGXrmNVGPHP".to_string(),
+            key: "obj2".to_string(),
+            value: json!({
+              "_sd": [
+                "9RzaXaJF3BCDitmMRNhHqzbRIRc6pbfS-7YbM_PObk8"
+              ]
+            }),
+            disclosure_array: "[\"pggVbYzzu6oOGXrmNVGPHP\",\"obj2\",{\"_sd\":[\"9RzaXaJF3BCDitmMRNhHqzbRIRc6pbfS-7YbM_PObk8\"]}]".to_string(),
+            disclosure:"WyJwZ2dWYll6enU2b09HWHJtTlZHUEhQIiwib2JqMiIseyJfc2QiOlsiOVJ6YVhhSkYzQkNEaXRtTVJOaEhxemJSSVJjNnBiZlMtN1liTV9QT2JrOCJdfV0".to_string(),
+        }
+    ];
+    let expected = HashSet::<String>::from_iter([
+        disclosures[0].disclosure.to_string(),
+        disclosures[1].disclosure.to_string(),
+    ]);
+
+    let mut hasher = MockHasher::default();
+    hasher.expect_hash_base64().returning({
+        let disclosures = disclosures.clone();
+        move |input| {
+            let input = if let Ok(input) = Base64UrlSafeNoPadding::decode_to_vec(input, None) {
+                input
+            } else {
+                return Ok("".to_string());
+            };
+
+            let input = DisclosureArray::from(std::str::from_utf8(&input).unwrap());
+            if input.salt.eq(&disclosures[0].salt) {
+                Ok("54nR6daXsl_LDczSaZc48coL-UHR72WyIpzz6AkDUyA".to_string())
+            } else if input.salt.eq(&disclosures[2].salt) {
+                Ok("9RzaXaJF3BCDitmMRNhHqzbRIRc6pbfS-7YbM_PObk8".to_string())
+            } else {
+                Ok("".to_string())
+            }
+        }
+    });
+
+    let result = select_disclosures(vec!["obj1/value".into()], disclosures, &hasher).unwrap();
 
     assert_eq!(expected, HashSet::from_iter(result));
 }
@@ -385,7 +515,12 @@ fn test_select_disclosures_ok() {
 fn test_select_disclosures_returns_error_when_disclosed_key_not_found_in_disclosures() {
     let disclosures = generic_disclosures();
 
-    assert!(select_disclosures(vec!["abcd".into()], disclosures).is_err())
+    let mut hasher = MockHasher::default();
+    hasher
+        .expect_hash_base64()
+        .returning(|_| Ok("".to_string()));
+
+    assert!(select_disclosures(vec!["abcd".into()], disclosures, &hasher).is_err())
 }
 
 pub fn get_credential_data(status: Vec<CredentialStatus>, core_base_url: &str) -> CredentialData {

@@ -1,3 +1,5 @@
+use one_crypto::Hasher;
+
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
@@ -33,15 +35,11 @@ pub(crate) fn detect_sdjwt_type_from_token(token: &str) -> Result<SdJwtType, For
 
 pub(crate) fn prepare_sd_presentation(
     presentation: CredentialPresentation,
+    hasher: &dyn Hasher,
 ) -> Result<String, FormatterError> {
     let model::DecomposedToken { jwt, disclosures } = parse_token(&presentation.token)?;
-
-    let disclosed_keys = presentation.disclosed_keys;
-    let disclosures = select_disclosures(disclosed_keys, disclosures)?;
-
-    let sdjwt = serialize(jwt.to_owned(), disclosures);
-
-    Ok(sdjwt)
+    let disclosures = select_disclosures(presentation.disclosed_keys, disclosures, hasher)?;
+    Ok(serialize(jwt.to_owned(), disclosures))
 }
 
 pub(crate) fn serialize(jwt: String, disclosures: Vec<String>) -> String {

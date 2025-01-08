@@ -99,7 +99,13 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        prepare_sd_presentation(credential)
+        let model::DecomposedToken { jwt, .. } = parse_token(&credential.token)?;
+        let jwt: Jwt<Sdvc> = Jwt::build_from_token(jwt, None).await?;
+        let hasher = self
+            .crypto
+            .get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
+
+        prepare_sd_presentation(credential, &*hasher)
     }
 
     async fn extract_credentials_unverified(

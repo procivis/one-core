@@ -33,30 +33,48 @@ pub(crate) fn compute_digests(
     )
 }
 
+/// Pick disclosures that need to be shared with verifier
+///
+/// In case of a nested claim structure, if a node is about to be disclosed,
+/// all parent claim disclosures need to be shared as well (so that the link to root digest inside the JWT is kept)
+/// as well as all child claims of a selected node if a whole object is being shared
 pub(crate) fn select_disclosures(
     disclosed_keys: Vec<String>,
-    disclosures: Vec<Disclosure>,
+    all_disclosures: Vec<Disclosure>,
+    hasher: &dyn Hasher,
 ) -> Result<Vec<String>, FormatterError> {
-    let mut selected_disclosures = HashSet::new();
-    let key_disclosure: HashMap<String, String> = disclosures
-        .into_iter()
-        .map(|disclosure| (disclosure.key, disclosure.disclosure))
-        .collect();
+    // tree of all disclosures, so that we can traverse the nodes and disclose proper entries, following the claim key path
+    let whole_tree = construct_tree(&all_disclosures, hasher)?;
 
-    for key in disclosed_keys {
-        for key_part in key.split(NESTED_CLAIM_MARKER) {
-            match key_disclosure.get(key_part) {
+    let mut result = HashSet::new();
+    for disclosed_key in disclosed_keys {
+        let mut current_node = &whole_tree;
+        for key_part in disclosed_key.split(NESTED_CLAIM_MARKER) {
+            match current_node
+                .iter()
+                .find(|node| node.disclosure.key == key_part)
+            {
                 None => {
                     return Err(FormatterError::Failed(format!(
-                        "Cannot find `{key_part}` from key `{key}` in disclosures"
+                        "Cannot find `{key_part}` from key `{disclosed_key}` in disclosures"
                     )))
                 }
-                Some(disclosure) => selected_disclosures.insert(disclosure.to_owned()),
+                Some(node) => {
+                    current_node = &node.subdisclosures;
+
+                    // disclose node on the path from root
+                    result.insert(node.disclosure.disclosure.to_owned());
+
+                    // if desired node reached, add all transitive subdisclosures (sharing entire object claim)
+                    if disclosed_key == node.key_path {
+                        result.extend(collect_all_subdisclosures(node));
+                    }
+                }
             };
         }
     }
 
-    Ok(Vec::from_iter(selected_disclosures))
+    Ok(Vec::from_iter(result))
 }
 
 impl Disclosure {
@@ -251,4 +269,98 @@ pub(crate) fn parse_disclosure(
         disclosure_array,
         disclosure,
     })
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct DisclosureTree {
+    pub key_path: String,
+    pub disclosure: Disclosure,
+    pub subdisclosures: Vec<DisclosureTree>,
+}
+
+fn construct_tree(
+    all_disclosures: &[Disclosure],
+    hasher: &dyn Hasher,
+) -> Result<Vec<DisclosureTree>, FormatterError> {
+    let all_digests = compute_digests(all_disclosures.to_vec(), hasher)?;
+
+    // mapping disclosure -> parent disclosure (in object claim tree)
+    let mut parent_map = HashMap::new();
+    for disclosure in all_disclosures {
+        if let serde_json::Value::Object(obj) = &disclosure.value {
+            if let Some(serde_json::Value::Array(linked_digests)) =
+                obj.get(SELECTIVE_DISCLOSURE_MARKER)
+            {
+                for linked_digest in linked_digests {
+                    if let serde_json::Value::String(digest) = linked_digest {
+                        match all_digests.get(digest) {
+                            None => {
+                                // this might be a decoy disclosure digest, skipping
+                                tracing::debug!("Decoy digest: {digest}");
+                            }
+                            Some(linked_disclosure) => {
+                                parent_map.insert(
+                                    linked_disclosure.disclosure.to_owned(),
+                                    disclosure.disclosure.to_owned(),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn construct_node(
+        disclosure: Disclosure,
+        all_disclosures: &[Disclosure],
+        parent_map: &HashMap<String, String>,
+        parent_key_path: Option<&str>,
+    ) -> DisclosureTree {
+        let key_path = match parent_key_path {
+            Some(parent_key_path) => {
+                format!("{parent_key_path}{NESTED_CLAIM_MARKER}{}", disclosure.key)
+            }
+            None => disclosure.key.to_owned(),
+        };
+
+        let subdisclosures = all_disclosures
+            .iter()
+            .filter(|d| parent_map.get(&d.disclosure) == Some(&disclosure.disclosure))
+            .map(|subdisclosure| {
+                construct_node(
+                    subdisclosure.to_owned(),
+                    all_disclosures,
+                    parent_map,
+                    Some(&key_path),
+                )
+            })
+            .collect();
+
+        DisclosureTree {
+            key_path,
+            disclosure,
+            subdisclosures,
+        }
+    }
+
+    Ok(all_disclosures
+        .iter()
+        // level 0 disclosures
+        .filter(|disclosure| !parent_map.contains_key(&disclosure.disclosure))
+        .map(|disclosure| construct_node(disclosure.to_owned(), all_disclosures, &parent_map, None))
+        .collect())
+}
+
+/// transitively collects all disclosure strings from the whole subtree
+fn collect_all_subdisclosures(disclosure: &DisclosureTree) -> Vec<String> {
+    disclosure
+        .subdisclosures
+        .iter()
+        .flat_map(|node| {
+            let mut res = collect_all_subdisclosures(node);
+            res.push(node.disclosure.disclosure.to_owned());
+            res
+        })
+        .collect()
 }
