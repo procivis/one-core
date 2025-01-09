@@ -125,7 +125,7 @@ impl ProofRepository for ProofProvider {
         let now = OffsetDateTime::now_utc();
 
         let model = match state {
-            ProofStateEnum::Requested => proof::ActiveModel {
+            ProofStateEnum::Pending => proof::ActiveModel {
                 id: Unchanged(*proof_id),
                 last_modified: Set(now),
                 state: Set(state.into()),
