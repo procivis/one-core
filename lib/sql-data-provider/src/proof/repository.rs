@@ -124,11 +124,27 @@ impl ProofRepository for ProofProvider {
     ) -> Result<(), DataLayerError> {
         let now = OffsetDateTime::now_utc();
 
-        let model = proof::ActiveModel {
-            id: Unchanged(*proof_id),
-            last_modified: Set(now),
-            state: Set(state.into()),
-            ..Default::default()
+        let model = match state {
+            ProofStateEnum::Requested => proof::ActiveModel {
+                id: Unchanged(*proof_id),
+                last_modified: Set(now),
+                state: Set(state.into()),
+                requested_date: Set(Some(now)),
+                ..Default::default()
+            },
+            ProofStateEnum::Accepted => proof::ActiveModel {
+                id: Unchanged(*proof_id),
+                last_modified: Set(now),
+                state: Set(state.into()),
+                completed_date: Set(Some(now)),
+                ..Default::default()
+            },
+            _ => proof::ActiveModel {
+                id: Unchanged(*proof_id),
+                last_modified: Set(now),
+                state: Set(state.into()),
+                ..Default::default()
+            },
         };
 
         model.update(&self.db).await.map_err(|e| match e {
