@@ -71,7 +71,9 @@ use one_dto_mapper::{convert_inner, try_convert_inner, From, Into, TryInto};
 
 use crate::error::{BleError, ErrorResponseBindingDTO, NativeKeyStorageError};
 use crate::mapper::{optional_did_string, optional_time, serialize_config_entity, OptionalString};
-use crate::utils::{format_timestamp_opt, into_id, into_id_opt, into_timestamp, TimestampFormat};
+use crate::utils::{
+    format_timestamp_opt, from_id_opt, into_id, into_id_opt, into_timestamp, TimestampFormat,
+};
 
 #[derive(Clone, Debug, From, uniffi::Record)]
 #[from(ConfigDTO)]
@@ -1356,8 +1358,8 @@ pub enum TrustEntityStateBindingEnum {
 pub struct GetTrustEntityResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub organisation_id: String,
+    #[from(with_fn = from_id_opt)]
+    pub organisation_id: Option<String>,
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub created_date: String,
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]

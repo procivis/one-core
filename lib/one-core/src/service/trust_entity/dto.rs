@@ -62,7 +62,7 @@ pub struct CreateRemoteTrustEntityRequestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct GetTrustEntityResponseDTO {
     pub id: TrustEntityId,
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
     pub name: String,
 
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]

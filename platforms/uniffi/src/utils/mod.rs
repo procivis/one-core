@@ -24,6 +24,10 @@ pub fn format_timestamp_opt(datetime: Option<OffsetDateTime>) -> Option<String> 
     datetime.as_ref().map(OffsetDateTime::format_timestamp)
 }
 
+pub fn from_id_opt<T: Into<Uuid>>(input: Option<T>) -> Option<String> {
+    input.map(|f| f.into().to_string())
+}
+
 pub fn into_id<T: From<Uuid>>(input: &str) -> Result<T, ServiceError> {
     Uuid::parse_str(input).map_err(Into::into).map(Into::into)
 }

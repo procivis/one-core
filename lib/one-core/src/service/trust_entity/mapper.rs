@@ -88,12 +88,8 @@ impl TryFrom<TrustEntity> for GetTrustEntityResponseDTO {
             state: value.state,
             organisation_id: did
                 .organisation
-                .clone()
-                .ok_or(ServiceError::MappingError(format!(
-                    "missing organisation for did {}",
-                    did.id
-                )))?
-                .id,
+                .as_ref()
+                .map(|organisation| organisation.id),
             did: did.into(),
         })
     }
@@ -120,9 +116,8 @@ pub(super) fn get_detail_trust_entity_response(
         state: trust_entity.state,
         organisation_id: did
             .organisation
-            .clone()
-            .ok_or_else(|| ServiceError::MappingError("Missing organisation".to_string()))?
-            .id,
+            .as_ref()
+            .map(|organisation| organisation.id),
         did: did.into(),
     })
 }
@@ -175,9 +170,8 @@ pub(super) fn trust_entity_from_partial_and_did_and_anchor(
         id: trust_entity.id,
         organisation_id: did
             .organisation
-            .clone()
-            .ok_or_else(|| ServiceError::MappingError("Missing trust anchor".to_string()))?
-            .id,
+            .as_ref()
+            .map(|organisation| organisation.id),
         name: trust_entity.name,
         created_date: trust_entity.created_date,
         last_modified: trust_entity.last_modified,
