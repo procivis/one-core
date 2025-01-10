@@ -14,6 +14,9 @@ pub mod mapper;
 pub mod remote;
 pub mod service;
 
+#[cfg(test)]
+mod test;
+
 #[derive(Clone)]
 pub struct TrustEntityService {
     trust_anchor_repository: Arc<dyn TrustAnchorRepository>,

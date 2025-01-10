@@ -56,6 +56,15 @@ impl TrustEntityService {
             .into());
         }
 
+        if self
+            .trust_entity_repository
+            .get_by_did_id_and_trust_anchor_id(did.id, trust_anchor.id)
+            .await?
+            .is_some()
+        {
+            return Err(BusinessLogicError::TrustEntityAlreadyPresent.into());
+        }
+
         let entity = trust_entity_from_request(request, trust_anchor.clone(), did);
         self.trust_entity_repository
             .create(entity)

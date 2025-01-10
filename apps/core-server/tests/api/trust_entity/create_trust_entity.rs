@@ -144,3 +144,32 @@ async fn test_delete_trust_entity_fails_if_entity_not_found() {
     assert_eq!(resp.status(), 404);
     assert_eq!("BR_0121", resp.error_code().await);
 }
+
+#[tokio::test]
+async fn test_create_trust_entity_fails_did_already_used() {
+    // GIVEN
+    let (context, _, did, _) = TestContext::new_with_did(None).await;
+
+    let anchor = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams::default())
+        .await;
+
+    let resp = context
+        .api
+        .trust_entities
+        .create("name", TrustEntityRoleRest::Both, &anchor, &did)
+        .await;
+    assert_eq!(resp.status(), 201);
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .create("name2", TrustEntityRoleRest::Both, &anchor, &did)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+}

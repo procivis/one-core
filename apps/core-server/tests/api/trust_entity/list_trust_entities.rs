@@ -3,6 +3,7 @@ use one_core::model::trust_anchor::TrustAnchor;
 use one_core::model::trust_entity::{TrustEntity, TrustEntityRole, TrustEntityState};
 use serde_json::Value;
 
+use crate::fixtures::TestingDidParams;
 use crate::utils::api_clients::trust_entity::ListFilters;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
@@ -11,7 +12,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_list_trust_entities() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
     let ta = context
         .db
         .trust_anchors
@@ -42,6 +43,11 @@ async fn test_list_trust_entities() {
         )
         .await;
 
+    let did2 = context
+        .db
+        .dids
+        .create(&organisation, TestingDidParams::default())
+        .await;
     let entity2 = context
         .db
         .trust_entities
@@ -50,7 +56,7 @@ async fn test_list_trust_entities() {
             TrustEntityRole::Issuer,
             TrustEntityState::Active,
             ta2.clone(),
-            did.clone(),
+            did2.clone(),
         )
         .await;
 
@@ -94,7 +100,7 @@ async fn test_list_trust_entities() {
 #[tokio::test]
 async fn test_list_trust_entities_filter_trust_anchor() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
 
     let ta = context
         .db
@@ -126,6 +132,11 @@ async fn test_list_trust_entities_filter_trust_anchor() {
         )
         .await;
 
+    let did2 = context
+        .db
+        .dids
+        .create(&organisation, TestingDidParams::default())
+        .await;
     let entity2 = context
         .db
         .trust_entities
@@ -134,10 +145,15 @@ async fn test_list_trust_entities_filter_trust_anchor() {
             TrustEntityRole::Issuer,
             TrustEntityState::Active,
             ta.clone(),
-            did.clone(),
+            did2.clone(),
         )
         .await;
 
+    let did3 = context
+        .db
+        .dids
+        .create(&organisation, TestingDidParams::default())
+        .await;
     let _ = context
         .db
         .trust_entities
@@ -146,7 +162,7 @@ async fn test_list_trust_entities_filter_trust_anchor() {
             TrustEntityRole::Issuer,
             TrustEntityState::Active,
             ta2.clone(),
-            did.clone(),
+            did3.clone(),
         )
         .await;
 
@@ -182,7 +198,7 @@ async fn test_list_trust_entities_filter_trust_anchor() {
 #[tokio::test]
 async fn test_list_trust_entities_find_by_name() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did(None).await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
     let ta = context
         .db
         .trust_anchors
@@ -201,6 +217,11 @@ async fn test_list_trust_entities_find_by_name() {
         )
         .await;
 
+    let did2 = context
+        .db
+        .dids
+        .create(&organisation, TestingDidParams::default())
+        .await;
     let entity2 = context
         .db
         .trust_entities
@@ -209,10 +230,15 @@ async fn test_list_trust_entities_find_by_name() {
             TrustEntityRole::Issuer,
             TrustEntityState::Active,
             ta.clone(),
-            did.clone(),
+            did2.clone(),
         )
         .await;
 
+    let did3 = context
+        .db
+        .dids
+        .create(&organisation, TestingDidParams::default())
+        .await;
     let _ = context
         .db
         .trust_entities
@@ -221,7 +247,7 @@ async fn test_list_trust_entities_find_by_name() {
             TrustEntityRole::Issuer,
             TrustEntityState::Active,
             ta.clone(),
-            did.clone(),
+            did3.clone(),
         )
         .await;
 

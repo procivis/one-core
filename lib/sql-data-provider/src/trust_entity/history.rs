@@ -49,6 +49,16 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
         self.inner.get_by_did_id(did_id).await
     }
 
+    async fn get_by_did_id_and_trust_anchor_id(
+        &self,
+        did_id: DidId,
+        trust_anchor_id: TrustAnchorId,
+    ) -> Result<Option<TrustEntity>, DataLayerError> {
+        self.inner
+            .get_by_did_id_and_trust_anchor_id(did_id, trust_anchor_id)
+            .await
+    }
+
     async fn get_active_by_trust_anchor_id(
         &self,
         trust_anchor_id: TrustAnchorId,
