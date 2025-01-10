@@ -143,6 +143,9 @@ pub(super) fn update_request_from_dto(
         (Some(UpdateTrustEntityActionFromDidRequestDTO::Remove), TrustEntityState::Active) => {
             Ok(TrustEntityState::Removed)
         }
+        (Some(UpdateTrustEntityActionFromDidRequestDTO::Activate), TrustEntityState::Removed) => {
+            Ok(TrustEntityState::Active)
+        }
         (Some(UpdateTrustEntityActionFromDidRequestDTO::Remove), TrustEntityState::Withdrawn) => {
             Ok(TrustEntityState::RemovedAndWithdrawn)
         }
