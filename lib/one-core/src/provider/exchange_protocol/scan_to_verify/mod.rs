@@ -7,7 +7,7 @@ use futures::future::BoxFuture;
 use shared_types::KeyId;
 use url::Url;
 
-use super::dto::{ExchangeProtocolCapabilities, PresentationDefinitionResponseDTO};
+use super::dto::{ExchangeProtocolCapabilities, Operation, PresentationDefinitionResponseDTO};
 use super::{
     ExchangeProtocolError, ExchangeProtocolImpl, FnMapExternalFormatToExternalDetailed,
     FormatMapper, HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
@@ -21,10 +21,9 @@ use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
+    ClientIdSchemaType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
     SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::ScanToVerifyRequestDTO;
@@ -207,6 +206,7 @@ impl ExchangeProtocolImpl for ScanToVerify {
     fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
         ExchangeProtocolCapabilities {
             supported_transports: vec!["HTTP".to_owned()],
+            operations: vec![Operation::VERIFICATION],
         }
     }
 }

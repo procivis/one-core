@@ -26,7 +26,7 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::resolver::did_method_id_from_value;
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::OpenID4VCParams;
+use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCParams;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::repository::did_repository::DidRepository;

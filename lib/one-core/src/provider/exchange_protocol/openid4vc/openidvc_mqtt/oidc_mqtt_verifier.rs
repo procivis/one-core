@@ -15,10 +15,9 @@ use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    OpenID4VPAuthorizationRequest, OpenID4VPPresentationDefinition,
+    ClientIdSchemaType, OpenID4VPAuthorizationRequest, OpenID4VPPresentationDefinition,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::mappers::parse_identity_request;
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::model::{
     MQTTOpenID4VPInteractionDataVerifier, MQTTOpenId4VpResponse,
 };

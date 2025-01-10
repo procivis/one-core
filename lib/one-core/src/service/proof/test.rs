@@ -39,9 +39,10 @@ use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::{CredentialFormatter, MockCredentialFormatter};
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
+use crate::provider::exchange_protocol::dto::{ExchangeProtocolCapabilities, Operation};
 use crate::provider::exchange_protocol::openid4vc::model::{
-    OpenID4VPAuthorizationRequest, OpenID4VPPresentationDefinition, ShareResponse,
+    ClientIdSchemaType, OpenID4VPAuthorizationRequest, OpenID4VPPresentationDefinition,
+    ShareResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEPeer;
@@ -2068,6 +2069,7 @@ async fn test_create_proof_without_related_key() {
             .times(1)
             .returning(|| ExchangeProtocolCapabilities {
                 supported_transports: vec!["HTTP".to_owned()],
+                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
             });
 
         Some(Arc::new(protocol))
@@ -2191,6 +2193,7 @@ async fn test_create_proof_with_related_key() {
             .times(1)
             .returning(|| ExchangeProtocolCapabilities {
                 supported_transports: vec!["HTTP".to_owned()],
+                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
             });
 
         Some(Arc::new(protocol))
@@ -3044,7 +3047,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     response_uri: None,
                     response_mode: None,
                     response_type: None,
-                    client_id_scheme: Some(crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType::Did),
+                    client_id_scheme: Some(ClientIdSchemaType::Did),
                     client_metadata: None,
                     state: None,
                     nonce: "nonce".to_string(),

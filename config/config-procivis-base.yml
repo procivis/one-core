@@ -73,6 +73,26 @@ exchange:
             defaultClientIdSchema: verifier_attestation
           holder:
             supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
+  MDOC_OPENID4VP:
+    display: "exchange.mdocOpenid"
+    order: 2
+    type: "OPENID4VC"
+    params:
+      public:
+        preAuthorizedCodeExpiresIn: 300
+        tokenExpiresIn: 86400
+        refreshExpiresIn: 7776000
+        useRequestUri: false
+        issuance:
+          disabled: true
+        presentation:
+          urlScheme: mdoc-openid4vp
+          # TODO: switch to x509_san_dns
+          verifier:
+            supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
+            defaultClientIdSchema: verifier_attestation
+          holder:
+            supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
 transport:
   HTTP:
     type: "HTTP"

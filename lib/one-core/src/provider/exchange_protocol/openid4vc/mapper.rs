@@ -11,18 +11,17 @@ use uuid::Uuid;
 
 use super::error::OpenID4VCIError;
 use super::model::{
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
-    CredentialSchemaCodeTypeEnum, CredentialSchemaLayoutPropertiesRequestDTO,
-    CredentialSchemaLogoPropertiesRequestDTO, DidListItemResponseDTO,
-    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialSubjectItem,
+    ClientIdSchemaType, CredentialSchemaBackgroundPropertiesRequestDTO,
+    CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
+    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
+    DidListItemResponseDTO, OpenID4VCICredentialConfigurationData, OpenID4VCICredentialSubjectItem,
     OpenID4VCIInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCITokenResponseDTO, OpenID4VPAuthorizationRequest, OpenID4VPInteractionContent,
-    OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
-    OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VCITokenResponseDTO, OpenID4VCParams, OpenID4VPAuthorizationRequest,
+    OpenID4VPInteractionContent, OpenID4VPPresentationDefinition,
+    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor, ProvedCredential, Timestamp,
 };
-use super::openidvc_http::{ClientIdSchemaType, OpenID4VCParams};
 use super::service::create_open_id_for_vp_client_metadata;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};

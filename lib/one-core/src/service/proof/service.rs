@@ -53,8 +53,7 @@ use crate::provider::exchange_protocol::iso_mdl::device_engagement::{
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_format_map, create_open_id_for_vp_formats,
 };
-use crate::provider::exchange_protocol::openid4vc::model::ShareResponse;
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::OpenID4VCParams;
+use crate::provider::exchange_protocol::openid4vc::model::{OpenID4VCParams, ShareResponse};
 use crate::provider::exchange_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,

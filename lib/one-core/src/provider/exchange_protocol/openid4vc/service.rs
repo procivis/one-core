@@ -40,10 +40,9 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
     parse_interaction_content, vec_last_position_from_token_path,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    AcceptProofResult, OpenID4VCICredentialConfigurationData, OpenID4VPPresentationDefinition,
-    RequestData,
+    AcceptProofResult, ClientIdSchemaType, OpenID4VCICredentialConfigurationData,
+    OpenID4VPPresentationDefinition, RequestData,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::validator::{
     peek_presentation, throw_if_interaction_created_date,
     throw_if_interaction_pre_authorized_code_used, throw_if_proof_state_not_eq,

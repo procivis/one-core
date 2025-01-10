@@ -1022,7 +1022,8 @@ impl ErrorCodeMixin for ConfigValidationError {
             | Self::EntryNotFound(_)
             | Self::FieldsDeserialization { .. }
             | Self::InvalidType(_, _)
-            | Self::DatatypeValidation(_) => ErrorCode::BR_0051,
+            | Self::DatatypeValidation(_)
+            | Self::DuplicateUrlScheme { .. } => ErrorCode::BR_0051,
         }
     }
 }

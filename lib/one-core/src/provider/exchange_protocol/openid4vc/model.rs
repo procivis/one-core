@@ -28,7 +28,6 @@ use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::exchange_protocol::dto::PresentationDefinitionRequestedCredentialResponseDTO;
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::key::dto::PublicKeyJwkDTO;
 
@@ -945,4 +944,85 @@ mod unix_timestamp {
 
         OffsetDateTime::from_unix_timestamp(timestamp).map_err(serde::de::Error::custom)
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VCParams {
+    pub pre_authorized_code_expires_in: u64,
+    pub token_expires_in: u64,
+    pub refresh_expires_in: u64,
+    #[serde(default)]
+    pub credential_offer_by_value: bool,
+    #[serde(default)]
+    pub client_metadata_by_value: bool,
+    #[serde(default)]
+    pub presentation_definition_by_value: bool,
+    #[serde(default)]
+    pub allow_insecure_http_transport: bool,
+    #[serde(default)]
+    pub use_request_uri: bool,
+    #[serde(default)]
+    pub issuance: OpenID4VCIssuanceParams,
+    pub presentation: OpenID4VCPresentationParams,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VCIssuanceParams {
+    #[serde(default)]
+    pub disabled: bool,
+    #[serde(default = "default_issuance_url_scheme")]
+    pub url_scheme: String,
+}
+
+impl Default for OpenID4VCIssuanceParams {
+    fn default() -> Self {
+        Self {
+            disabled: false,
+            url_scheme: default_issuance_url_scheme(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VCPresentationParams {
+    #[serde(default)]
+    pub disabled: bool,
+    #[serde(default = "default_presentation_url_scheme")]
+    pub url_scheme: String,
+    pub holder: OpenID4VCPresentationHolderParams,
+    pub verifier: OpenID4VCPresentationVerifierParams,
+}
+
+// Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368
+fn default_issuance_url_scheme() -> String {
+    "openid-credential-offer".to_string()
+}
+
+fn default_presentation_url_scheme() -> String {
+    "openid4vp".to_string()
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VCPresentationHolderParams {
+    pub supported_client_id_schemes: Vec<ClientIdSchemaType>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VCPresentationVerifierParams {
+    pub default_client_id_schema: ClientIdSchemaType,
+    pub supported_client_id_schemes: Vec<ClientIdSchemaType>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize, Display)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum ClientIdSchemaType {
+    RedirectUri,
+    VerifierAttestation,
+    Did,
 }

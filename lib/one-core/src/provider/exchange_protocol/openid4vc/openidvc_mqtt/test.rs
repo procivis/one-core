@@ -23,11 +23,13 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::mapper::create_format_map;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, OpenID4VPAuthorizationRequest, OpenID4VPPresentationDefinition,
+    ClientIdSchemaType, InvitationResponseDTO, OpenID4VCIssuanceParams, OpenID4VCParams,
+    OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
+    OpenID4VCPresentationVerifierParams, OpenID4VPAuthorizationRequest,
+    OpenID4VPPresentationDefinition,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::mappers::parse_identity_request;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest;
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::model::{
     MQTTOpenID4VPInteractionData, MQTTSessionKeys,
 };
@@ -81,6 +83,21 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
                 .parse()
                 .unwrap(),
         },
+        OpenID4VCParams {
+            pre_authorized_code_expires_in: 10,
+            token_expires_in: 10,
+            credential_offer_by_value: false,
+            client_metadata_by_value: false,
+            presentation_definition_by_value: false,
+            allow_insecure_http_transport: true,
+            refresh_expires_in: 1000,
+            use_request_uri: false,
+            issuance: OpenID4VCIssuanceParams {
+                disabled: false,
+                url_scheme: "openid-credential-offer".to_string(),
+            },
+            presentation: generic_presentation_params(),
+        },
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.proof_repository),
         Arc::new(inputs.key_algorithm_provider),
@@ -88,6 +105,25 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_provider),
     )
+}
+fn generic_presentation_params() -> OpenID4VCPresentationParams {
+    OpenID4VCPresentationParams {
+        disabled: false,
+        url_scheme: "openid4vp".to_string(),
+        holder: OpenID4VCPresentationHolderParams {
+            supported_client_id_schemes: vec![
+                ClientIdSchemaType::RedirectUri,
+                ClientIdSchemaType::VerifierAttestation,
+            ],
+        },
+        verifier: OpenID4VCPresentationVerifierParams {
+            default_client_id_schema: ClientIdSchemaType::RedirectUri,
+            supported_client_id_schemes: vec![
+                ClientIdSchemaType::RedirectUri,
+                ClientIdSchemaType::VerifierAttestation,
+            ],
+        },
+    }
 }
 
 #[test]

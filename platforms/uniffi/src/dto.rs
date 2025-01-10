@@ -21,9 +21,8 @@ use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
 use one_core::provider::exchange_protocol::openid4vc::model::{
-    OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
+    ClientIdSchemaType, OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
 };
-use one_core::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use one_core::provider::key_storage::model::StorageGeneratedKey;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,

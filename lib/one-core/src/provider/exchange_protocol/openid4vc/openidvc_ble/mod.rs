@@ -37,7 +37,7 @@ use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_presentation_definition;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, PresentedCredential, UpdateResponse,
+    InvitationResponseDTO, OpenID4VCParams, PresentedCredential, UpdateResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
 use crate::provider::exchange_protocol::openid4vc::{FormatMapper, TypeToDescriptorMapper};
@@ -183,6 +183,7 @@ pub(crate) struct OpenID4VCBLE {
     key_provider: Arc<dyn KeyProvider>,
     ble: Option<BleWaiter>,
     config: Arc<core_config::CoreConfig>,
+    params: OpenID4VCParams,
 }
 
 impl OpenID4VCBLE {
@@ -196,6 +197,7 @@ impl OpenID4VCBLE {
         key_provider: Arc<dyn KeyProvider>,
         ble: Option<BleWaiter>,
         config: Arc<core_config::CoreConfig>,
+        params: OpenID4VCParams,
     ) -> Self {
         Self {
             proof_repository,
@@ -206,13 +208,14 @@ impl OpenID4VCBLE {
             key_provider,
             ble,
             config,
+            params,
         }
     }
 
     pub fn holder_can_handle(&self, url: &Url) -> bool {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
-        url.scheme() == "openid4vp"
+        self.params.presentation.url_scheme == url.scheme()
             && query_has_key(PRESENTATION_DEFINITION_BLE_NAME)
             && query_has_key(PRESENTATION_DEFINITION_BLE_KEY)
     }

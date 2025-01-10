@@ -7,9 +7,8 @@ pub use mappers::create_presentation_submission;
 use mappers::map_credential_formats_to_presentation_format;
 use one_crypto::utilities;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use shared_types::{CredentialId, KeyId};
-use strum::Display;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{
@@ -24,15 +23,16 @@ use super::mapper::{
     map_offered_claims_to_credential_schema,
 };
 use super::model::{
-    ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO, JwePayload,
-    OpenID4VCICredential, OpenID4VCICredentialConfigurationData,
+    ClientIdSchemaType, ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO,
+    JwePayload, OpenID4VCICredential, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferClaim,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProof, OpenID4VCITokenRequestDTO,
-    OpenID4VCITokenResponseDTO, OpenID4VCInteractionContent, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPFormat, OpenID4VPInteractionContent, OpenID4VPInteractionData, PresentedCredential,
-    ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    OpenID4VCITokenResponseDTO, OpenID4VCInteractionContent, OpenID4VCParams,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, OpenID4VPInteractionContent,
+    OpenID4VPInteractionData, PresentedCredential, ShareResponse, SubmitIssuerResponse,
+    UpdateResponse,
 };
 use super::proof_formatter::OpenID4VCIProofJWTFormatter;
 use super::service::{create_credential_offer, FnMapExternalFormatToExternalDetailed};
@@ -100,54 +100,6 @@ enum InvitationType {
     ProofRequest,
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OpenID4VCParams {
-    pub pre_authorized_code_expires_in: u64,
-    pub token_expires_in: u64,
-    pub refresh_expires_in: u64,
-    #[serde(default)]
-    pub credential_offer_by_value: bool,
-    #[serde(default)]
-    pub client_metadata_by_value: bool,
-    #[serde(default)]
-    pub presentation_definition_by_value: bool,
-    #[serde(default)]
-    pub allow_insecure_http_transport: bool,
-    #[serde(default)]
-    pub use_request_uri: bool,
-    pub presentation: OpenID4VCPresentationParams,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OpenID4VCPresentationParams {
-    pub holder: OpenID4VCPresentationHolderParams,
-    pub verifier: OpenID4VCPresentationVerifierParams,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OpenID4VCPresentationHolderParams {
-    pub supported_client_id_schemes: Vec<ClientIdSchemaType>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OpenID4VCPresentationVerifierParams {
-    pub default_client_id_schema: ClientIdSchemaType,
-    pub supported_client_id_schemes: Vec<ClientIdSchemaType>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize, Display)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-pub enum ClientIdSchemaType {
-    RedirectUri,
-    VerifierAttestation,
-    Did,
-}
-
 #[allow(clippy::too_many_arguments)]
 impl OpenID4VCHTTP {
     pub fn new(
@@ -175,15 +127,19 @@ impl OpenID4VCHTTP {
     fn detect_invitation_type(&self, url: &Url) -> Option<InvitationType> {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
-        if query_has_key(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY)
-            || query_has_key(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY)
+        if !self.params.issuance.disabled
+            && self.params.issuance.url_scheme == url.scheme()
+            && (query_has_key(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY)
+                || query_has_key(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY))
         {
             return Some(InvitationType::CredentialIssuance);
         }
 
-        if query_has_key(PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY)
-            || query_has_key(PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY)
-            || query_has_key(REQUEST_URI_QUERY_PARAM_KEY)
+        if !self.params.presentation.disabled
+            && self.params.presentation.url_scheme == url.scheme()
+            && (query_has_key(PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY)
+                || query_has_key(PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY)
+                || query_has_key(REQUEST_URI_QUERY_PARAM_KEY))
         {
             return Some(InvitationType::ProofRequest);
         }

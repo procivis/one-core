@@ -463,6 +463,7 @@ pub struct Fields<T> {
     pub r#type: T,
     pub display: Value,
     pub order: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub disabled: Option<bool>,
     #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub capabilities: Option<Value>,
@@ -484,7 +485,7 @@ where
 
     /// Deserialize current fields into a type.
     /// Private and public fields will be merged.
-    fn deserialize<U: DeserializeOwned>(&self) -> Result<U, serde_json::Error> {
+    pub fn deserialize<U: DeserializeOwned>(&self) -> Result<U, serde_json::Error> {
         let options = self.merge_fields();
         serde_json::from_value(options)
     }
@@ -615,7 +616,6 @@ mod tests {
                 "type": "JWT",
                 "display": "jwt",
                 "order": 0,
-                "disabled": null,
                 //params
                 "leeway": 60,
                 "other": "thing"

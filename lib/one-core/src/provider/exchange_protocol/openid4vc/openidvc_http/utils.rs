@@ -9,9 +9,8 @@ use url::Url;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    OpenID4VPInteractionData, OpenID4VPRequestDataResponse,
+    ClientIdSchemaType, OpenID4VPInteractionData, OpenID4VPRequestDataResponse,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;

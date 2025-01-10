@@ -40,4 +40,6 @@ pub enum ConfigValidationError {
     InvalidType(String, String),
     #[error("Datatype validation error: `{0}`")]
     DatatypeValidation(#[from] DatatypeValidationError),
+    #[error("configuration entry `{key}` specifies URL scheme `{scheme}` that is already in use")]
+    DuplicateUrlScheme { key: String, scheme: String },
 }

@@ -7,7 +7,7 @@ use futures::future::BoxFuture;
 use futures::FutureExt;
 use key_agreement_key::KeyAgreementKey;
 use mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
-use model::OpenID4VPInteractionData;
+use model::{ClientIdSchemaType, OpenID4VPInteractionData};
 use one_dto_mapper::convert_inner;
 use openidvc_ble::model::BLEOpenID4VPInteractionData;
 use openidvc_ble::OpenID4VCBLE;
@@ -20,7 +20,7 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 use uuid::Uuid;
 
-use super::dto::{ExchangeProtocolCapabilities, PresentationDefinitionResponseDTO};
+use super::dto::{ExchangeProtocolCapabilities, Operation, PresentationDefinitionResponseDTO};
 use super::{
     ExchangeProtocol, ExchangeProtocolError, ExchangeProtocolImpl, FormatMapper,
     HandleInvitationOperationsAccess, StorageAccess, TypeToDescriptorMapper,
@@ -37,10 +37,9 @@ use crate::provider::exchange_protocol::mapper::{
     gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
+    InvitationResponseDTO, OpenID4VCParams, OpenID4VPFormat, PresentedCredential, ShareResponse,
     SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::service::FnMapExternalFormatToExternalDetailed;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::proof::dto::CreateProofInteractionData;
@@ -61,6 +60,7 @@ pub mod validator;
 
 pub(crate) struct OpenID4VC {
     config: Arc<CoreConfig>,
+    params: OpenID4VCParams,
     openid_http: OpenID4VCHTTP,
     openid_ble: OpenID4VCBLE,
     openid_mqtt: Option<OpenId4VcMqtt>,
@@ -69,12 +69,14 @@ pub(crate) struct OpenID4VC {
 impl OpenID4VC {
     pub fn new(
         config: Arc<CoreConfig>,
+        params: OpenID4VCParams,
         openid_http: OpenID4VCHTTP,
         openid_ble: OpenID4VCBLE,
         mqtt: Option<OpenId4VcMqtt>,
     ) -> Self {
         Self {
             config,
+            params,
             openid_http,
             openid_ble,
             openid_mqtt: mqtt,
@@ -575,8 +577,16 @@ impl ExchangeProtocolImpl for OpenID4VC {
     }
 
     fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
+        let mut operations = vec![];
+        if !self.params.issuance.disabled {
+            operations.push(Operation::ISSUANCE)
+        }
+        if !self.params.presentation.disabled {
+            operations.push(Operation::VERIFICATION)
+        }
         ExchangeProtocolCapabilities {
             supported_transports: vec!["HTTP".to_owned(), "BLE".to_owned(), "MQTT".to_owned()],
+            operations,
         }
     }
 }

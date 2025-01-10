@@ -94,7 +94,7 @@ mod test {
     use super::validate_and_select_transport_type;
     use crate::config::core_config::{CoreConfig, Fields, TransportType};
     use crate::config::validator::transport::SelectedTransportType;
-    use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
+    use crate::provider::exchange_protocol::dto::{ExchangeProtocolCapabilities, Operation};
     use crate::provider::exchange_protocol::{MockExchangeProtocol, MockExchangeProtocolImpl};
     use crate::service::error::ValidationError;
 
@@ -107,6 +107,7 @@ mod test {
             .expect_get_capabilities()
             .returning(|| ExchangeProtocolCapabilities {
                 supported_transports: vec!["BLE".into(), "MQTT".into()],
+                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
             });
 
         let exchange_protocol = MockExchangeProtocol::new(exchange_protocol);
@@ -129,6 +130,7 @@ mod test {
             .expect_get_capabilities()
             .returning(|| ExchangeProtocolCapabilities {
                 supported_transports: vec!["MQTT".into()],
+                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
             });
 
         let exchange_protocol = MockExchangeProtocol::new(exchange_protocol);
@@ -154,6 +156,7 @@ mod test {
             .expect_get_capabilities()
             .returning(|| ExchangeProtocolCapabilities {
                 supported_transports: vec!["BLE".into(), "MQTT".into()],
+                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
             });
 
         let exchange_protocol = MockExchangeProtocol::new(exchange_protocol);
@@ -180,6 +183,7 @@ mod test {
             .expect_get_capabilities()
             .returning(|| ExchangeProtocolCapabilities {
                 supported_transports: vec![],
+                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
             });
 
         let exchange_protocol = MockExchangeProtocol::new(exchange_protocol);
@@ -205,6 +209,7 @@ mod test {
             .expect_get_capabilities()
             .returning(|| ExchangeProtocolCapabilities {
                 supported_transports: vec!["BLE".into(), "MQTT".into(), "HTTP".into()],
+                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
             });
 
         let exchange_protocol = MockExchangeProtocol::new(exchange_protocol);

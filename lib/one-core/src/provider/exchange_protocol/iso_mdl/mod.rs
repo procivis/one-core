@@ -11,7 +11,7 @@ use shared_types::KeyId;
 use url::Url;
 
 use super::dto::{
-    ExchangeProtocolCapabilities, PresentationDefinitionFieldDTO,
+    ExchangeProtocolCapabilities, Operation, PresentationDefinitionFieldDTO,
     PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
@@ -34,10 +34,9 @@ use crate::provider::credential_formatter::model::{DetailCredential, FormatPrese
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
+    ClientIdSchemaType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
     SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -435,6 +434,7 @@ impl ExchangeProtocolImpl for IsoMdl {
     fn get_capabilities(&self) -> ExchangeProtocolCapabilities {
         ExchangeProtocolCapabilities {
             supported_transports: vec!["BLE".to_owned()],
+            operations: vec![Operation::VERIFICATION],
         }
     }
 }

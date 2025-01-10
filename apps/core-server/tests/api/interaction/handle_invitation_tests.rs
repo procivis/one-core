@@ -4,9 +4,8 @@ use std::str::FromStr;
 use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::model::did::DidType;
 use one_core::provider::exchange_protocol::openid4vc::model::{
-    OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
+    ClientIdSchemaType, OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
 };
-use one_core::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use serde_json::json;
 use url::Url;
 use uuid::Uuid;

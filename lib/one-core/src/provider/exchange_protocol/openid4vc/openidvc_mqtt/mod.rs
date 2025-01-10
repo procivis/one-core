@@ -20,7 +20,8 @@ use super::mapper::{
     create_open_id_for_vp_presentation_definition, create_presentation_submission,
 };
 use super::model::{
-    InvitationResponseDTO, OpenID4VPPresentationDefinition, PresentedCredential, UpdateResponse,
+    InvitationResponseDTO, OpenID4VCParams, OpenID4VPPresentationDefinition, PresentedCredential,
+    UpdateResponse,
 };
 use crate::config::core_config::{CoreConfig, ExchangeType, TransportType};
 use crate::model::did::{Did, KeyRole};
@@ -65,6 +66,7 @@ pub struct OpenId4VcMqtt {
     mqtt_client: Arc<dyn MqttClient>,
     config: Arc<CoreConfig>,
     params: ConfigParams,
+    openid_params: OpenID4VCParams,
     handle: Mutex<Option<SubscriptionHandle>>,
 
     interaction_repository: Arc<dyn InteractionRepository>,
@@ -92,6 +94,7 @@ impl OpenId4VcMqtt {
         mqtt_client: Arc<dyn MqttClient>,
         config: Arc<CoreConfig>,
         params: ConfigParams,
+        openid_params: OpenID4VCParams,
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -103,6 +106,7 @@ impl OpenId4VcMqtt {
             mqtt_client,
             config,
             params,
+            openid_params,
             handle: Mutex::new(None),
             interaction_repository,
             key_algorithm_provider,
@@ -116,7 +120,7 @@ impl OpenId4VcMqtt {
     pub fn holder_can_handle(&self, url: &Url) -> bool {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
-        url.scheme() == "openid4vp"
+        self.openid_params.presentation.url_scheme == url.scheme()
             && query_has_key("brokerUrl")
             && query_has_key("key")
             && query_has_key("topicId")

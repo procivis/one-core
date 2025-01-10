@@ -14,11 +14,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use super::{
-    build_claims_keys_for_mdoc, ClientIdSchemaType, OpenID4VCHTTP, OpenID4VCParams,
-    OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
-    OpenID4VCPresentationVerifierParams,
-};
+use super::{build_claims_keys_for_mdoc, OpenID4VCHTTP};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -37,8 +33,10 @@ use crate::provider::exchange_protocol::openid4vc::mapper::{
     get_parent_claim_paths, map_offered_claims_to_credential_schema,
 };
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
-    OpenID4VCICredentialValueDetails, OpenID4VPClientMetadata, OpenID4VPFormat,
+    ClientIdSchemaType, InvitationResponseDTO, OpenID4VCICredentialOfferClaim,
+    OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialValueDetails, OpenID4VCIssuanceParams,
+    OpenID4VCParams, OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
+    OpenID4VCPresentationVerifierParams, OpenID4VPClientMetadata, OpenID4VPFormat,
     OpenID4VPInteractionData, OpenID4VPPresentationDefinition, ShareResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::service::create_credential_offer;
@@ -83,6 +81,10 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
             allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
             use_request_uri: false,
+            issuance: OpenID4VCIssuanceParams {
+                disabled: false,
+                url_scheme: "openid-credential-offer".to_string(),
+            },
             presentation: generic_presentation_params(),
         }),
     )
@@ -90,6 +92,8 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
 
 fn generic_presentation_params() -> OpenID4VCPresentationParams {
     OpenID4VCPresentationParams {
+        disabled: false,
+        url_scheme: "openid4vp".to_string(),
         holder: OpenID4VCPresentationHolderParams {
             supported_client_id_schemes: vec![
                 ClientIdSchemaType::RedirectUri,
@@ -275,6 +279,10 @@ async fn test_generate_share_credentials_offer_by_value() {
             allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
             use_request_uri: false,
+            issuance: OpenID4VCIssuanceParams {
+                disabled: false,
+                url_scheme: "openid-credential-offer".to_string(),
+            },
             presentation: generic_presentation_params(),
         }),
         ..Default::default()
@@ -428,6 +436,10 @@ async fn test_share_proof_with_use_request_uri() {
             allow_insecure_http_transport: true,
             refresh_expires_in: 1000,
             use_request_uri: true,
+            issuance: OpenID4VCIssuanceParams {
+                disabled: false,
+                url_scheme: "openid-credential-offer".to_string(),
+            },
             presentation: generic_presentation_params(),
         }),
         ..Default::default()
@@ -785,6 +797,10 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
             presentation_definition_by_value: false,
             allow_insecure_http_transport: true,
             use_request_uri: true,
+            issuance: OpenID4VCIssuanceParams {
+                disabled: false,
+                url_scheme: "openid-credential-offer".to_string(),
+            },
             presentation: generic_presentation_params(),
         }),
         ..Default::default()
@@ -1046,6 +1062,10 @@ async fn test_handle_invitation_proof_failed() {
             allow_insecure_http_transport: false,
             refresh_expires_in: 1000,
             use_request_uri: false,
+            issuance: OpenID4VCIssuanceParams {
+                disabled: false,
+                url_scheme: "openid-credential-offer".to_string(),
+            },
             presentation: generic_presentation_params(),
         }),
         ..Default::default()

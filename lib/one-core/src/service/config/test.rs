@@ -37,7 +37,6 @@ fn convert_internal_structure_to_dto() {
           "did": {},
           "datatype": {
             "STRING": {
-              "disabled": null,
               "display": "display",
               "order": null,
               "params": {
@@ -89,7 +88,6 @@ fn do_not_serialize_private_parameters() {
           "did": {},
           "datatype": {
             "STRING": {
-              "disabled": null,
               "display": "display",
               "order": null,
               "params": {},

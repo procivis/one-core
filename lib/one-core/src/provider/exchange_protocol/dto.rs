@@ -124,7 +124,14 @@ pub struct CredentialGroupItem {
     pub required: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ExchangeProtocolCapabilities {
     pub supported_transports: Vec<String>,
+    pub operations: Vec<Operation>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
+pub enum Operation {
+    ISSUANCE,
+    VERIFICATION,
 }

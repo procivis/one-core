@@ -365,10 +365,9 @@ impl OneCore {
         )?;
         let trust_management_provider = Arc::new(TrustManagementProviderImpl::new(trust_managers));
 
-        let config = Arc::new(core_config);
-
         let exchange_protocols = exchange_protocol_providers_from_config(
-            config.clone(),
+            Arc::new(core_config.clone()),
+            &mut core_config.exchange,
             providers.core_base_url.clone(),
             data_provider.clone(),
             formatter_provider.clone(),
@@ -381,6 +380,7 @@ impl OneCore {
             mqtt_client,
         )?;
 
+        let config = Arc::new(core_config);
         let protocol_provider = Arc::new(ExchangeProtocolProviderCoreImpl::new(
             Arc::new(ExchangeProtocolProviderImpl::new(
                 exchange_protocols.to_owned(),

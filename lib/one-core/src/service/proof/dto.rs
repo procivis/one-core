@@ -7,7 +7,7 @@ use crate::model::interaction::InteractionId;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ProofStateEnum, SortableProofColumn};
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
+use crate::provider::exchange_protocol::openid4vc::model::ClientIdSchemaType;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::did::dto::DidListItemResponseDTO;

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use dto::{ExchangeProtocolCapabilities, PresentationDefinitionResponseDTO};
@@ -7,7 +7,7 @@ use futures::future::BoxFuture;
 use indexmap::IndexMap;
 use openid4vc::error::OpenID4VCError;
 use openid4vc::model::{
-    OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialValueDetails,
+    ClientIdSchemaType, OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialValueDetails,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VPFormat,
     OpenID4VPPresentationDefinitionInputDescriptorFormat,
 };
@@ -16,12 +16,13 @@ use openid4vc::openidvc_http::OpenID4VCHTTP;
 use openid4vc::openidvc_mqtt::OpenId4VcMqtt;
 use serde::de::{Deserialize, DeserializeOwned};
 use serde::Serialize;
+use serde_json::json;
 use shared_types::{CredentialId, CredentialSchemaId, DidId, DidValue, KeyId, OrganisationId};
 use url::Url;
 
 use super::mqtt_client::MqttClient;
 use crate::common_mapper::DidRole;
-use crate::config::core_config::{CoreConfig, ExchangeType, TransportType};
+use crate::config::core_config::{CoreConfig, ExchangeConfig, ExchangeType, TransportType};
 use crate::config::ConfigValidationError;
 use crate::model::claim::Claim;
 use crate::model::credential::Credential;
@@ -36,9 +37,9 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::iso_mdl::IsoMdl;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, PresentedCredential, ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    InvitationResponseDTO, OpenID4VCParams, PresentedCredential, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::exchange_protocol::openid4vc::openidvc_http::ClientIdSchemaType;
 use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
 use crate::provider::exchange_protocol::provider::{ExchangeProtocol, ExchangeProtocolProvider};
 use crate::provider::exchange_protocol::scan_to_verify::ScanToVerify;
@@ -73,6 +74,7 @@ pub fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn exchange_protocol_providers_from_config(
     config: Arc<CoreConfig>,
+    exchange_config: &mut ExchangeConfig,
     core_base_url: Option<String>,
     data_provider: Arc<dyn DataRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -86,7 +88,9 @@ pub(crate) fn exchange_protocol_providers_from_config(
 ) -> Result<HashMap<String, Arc<dyn ExchangeProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn ExchangeProtocol>> = HashMap::new();
 
-    for (name, fields) in config.exchange.iter() {
+    let mut openid_url_schemes = HashSet::new();
+
+    for (name, fields) in exchange_config.iter_mut() {
         match fields.r#type {
             ExchangeType::ScanToVerify => {
                 let protocol = Arc::new(ExchangeProtocolWrapper::new(ScanToVerify::new(
@@ -94,11 +98,33 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     key_algorithm_provider.clone(),
                     did_method_provider.clone(),
                 )));
-
+                fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
             }
             ExchangeType::OpenId4Vc => {
-                let params = config.exchange.get(name)?;
+                let params = fields.deserialize::<OpenID4VCParams>().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    }
+                })?;
+
+                // URL schemes are used to select provider, hence must not be duplicated
+                if !params.issuance.disabled {
+                    validate_url_scheme_unique(
+                        &mut openid_url_schemes,
+                        name,
+                        params.issuance.url_scheme.to_string(),
+                    )?
+                }
+                if !params.presentation.disabled {
+                    validate_url_scheme_unique(
+                        &mut openid_url_schemes,
+                        name,
+                        params.presentation.url_scheme.to_string(),
+                    )?
+                }
+
                 let ble = OpenID4VCBLE::new(
                     data_provider.get_proof_repository(),
                     data_provider.get_interaction_repository(),
@@ -108,6 +134,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     key_provider.clone(),
                     ble.clone(),
                     config.clone(),
+                    params.clone(),
                 );
                 let http = OpenID4VCHTTP::new(
                     core_base_url.clone(),
@@ -117,16 +144,18 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
                     client.clone(),
-                    params,
+                    params.clone(),
                 );
 
                 let mut mqtt = None;
                 if let Some(mqtt_client) = mqtt_client.clone() {
-                    if let Ok(params) = config.transport.get(TransportType::Mqtt.as_ref()) {
+                    if let Ok(transport_params) = config.transport.get(TransportType::Mqtt.as_ref())
+                    {
                         mqtt = Some(OpenId4VcMqtt::new(
                             mqtt_client.clone(),
                             config.clone(),
-                            params,
+                            transport_params,
+                            params.clone(),
                             data_provider.get_interaction_repository(),
                             data_provider.get_proof_repository(),
                             key_algorithm_provider.clone(),
@@ -136,7 +165,8 @@ pub(crate) fn exchange_protocol_providers_from_config(
                         ));
                     };
                 }
-                let protocol = Arc::new(OpenID4VC::new(config.clone(), http, ble, mqtt));
+                let protocol = Arc::new(OpenID4VC::new(config.clone(), params, http, ble, mqtt));
+                fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
             }
             ExchangeType::IsoMdl => {
@@ -146,12 +176,28 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     key_provider.clone(),
                     ble.clone(),
                 )));
+                fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
             }
         }
     }
 
     Ok(providers)
+}
+
+fn validate_url_scheme_unique(
+    openid_url_schemes: &mut HashSet<String>,
+    name: &str,
+    scheme: String,
+) -> Result<(), ConfigValidationError> {
+    if openid_url_schemes.contains(&scheme) {
+        return Err(ConfigValidationError::DuplicateUrlScheme {
+            key: name.to_string(),
+            scheme,
+        });
+    }
+    openid_url_schemes.insert(scheme);
+    Ok(())
 }
 
 pub type FormatMapper = Arc<dyn Fn(&str) -> Result<String, ExchangeProtocolError> + Send + Sync>;
