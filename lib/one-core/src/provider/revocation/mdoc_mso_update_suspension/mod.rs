@@ -1,6 +1,7 @@
 use shared_types::DidValue;
 
 use super::model::{CredentialRevocationInfo, Operation};
+use crate::model::cache::CachePreferences;
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::revocation::error::RevocationError;
@@ -43,6 +44,7 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
         _credential_status: &CredentialStatus,
         _issuer_did: &DidValue,
         _additional_credential_data: Option<CredentialDataByRole>,
+        _cache_preferences: Option<CachePreferences>,
     ) -> Result<CredentialRevocationState, RevocationError> {
         Err(RevocationError::ValidationError(
             "Credential cannot be revoked - status invalid".to_string(),

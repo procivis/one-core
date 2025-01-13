@@ -222,9 +222,9 @@ async fn test_credential_formatting_ok_for_es256() {
         .withf({
             let holder_did = holder_did.clone();
 
-            move |did| did == &holder_did
+            move |did, _| did == &holder_did
         })
-        .returning(|holder_did| {
+        .returning(|holder_did, _| {
             Ok(DidDocument {
                 context: json!({}),
                 id: holder_did.to_owned(),
@@ -415,9 +415,9 @@ async fn test_unverified_credential_extraction() {
         .withf({
             let holder_did = holder_did.clone();
 
-            move |did| did == &holder_did
+            move |did, _| did == &holder_did
         })
-        .returning(|holder_did| {
+        .returning(|holder_did, _| {
             Ok(DidDocument {
                 context: json!({}),
                 id: holder_did.to_owned(),
@@ -618,9 +618,9 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
         .withf({
             let holder_did = holder_did.clone();
 
-            move |did| did == &holder_did
+            move |did, _| did == &holder_did
         })
-        .returning(|holder_did| {
+        .returning(|holder_did, _| {
             Ok(DidDocument {
                 context: json!({}),
                 id: holder_did.to_owned(),

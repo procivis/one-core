@@ -463,6 +463,7 @@ async fn test_format_extract_round_trip() {
         key_algorithm_provider,
         did_method_provider,
         key_role: KeyRole::AssertionMethod,
+        cache_preferences: None,
     });
 
     let token = formatter

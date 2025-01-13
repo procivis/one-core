@@ -1,6 +1,7 @@
 use axum::extract::State;
 use axum::response::IntoResponse;
 use axum_extra::extract::WithRejection;
+use one_dto_mapper::convert_inner;
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::EmptyOrErrorResponse;
@@ -28,11 +29,7 @@ pub(crate) async fn prune_cache(
     let result = state
         .core
         .cache_service
-        .prune_cache(
-            query
-                .types
-                .map(|vec| vec.into_iter().map(Into::into).collect()),
-        )
+        .prune_cache(query.types.map(convert_inner))
         .await;
     EmptyOrErrorResponse::from_result(result, state, "pruning cache")
 }

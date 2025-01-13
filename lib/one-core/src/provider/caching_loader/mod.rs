@@ -19,6 +19,8 @@ use tokio::sync::Mutex;
 use super::remote_entity_storage::{
     RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
 };
+use crate::model::cache::CachePreferences;
+use crate::model::remote_entity_cache::CacheType;
 
 pub mod json_schema;
 pub mod trust_list;
@@ -80,32 +82,36 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
         &self,
         url: &str,
         resolver: Arc<dyn Resolver<Error = E>>,
+        preferences: Option<CachePreferences>,
     ) -> Result<(Vec<u8>, Option<String>), E> {
-        let context = match self.storage.get_by_key(url).await? {
-            None => {
-                let document = resolver.do_resolve(url, None).await?;
-                if let ResolveResult::NewValue {
-                    content,
-                    media_type,
-                } = document
-                {
-                    self.storage
-                        .insert(RemoteEntity {
-                            last_modified: OffsetDateTime::now_utc(),
-                            entity_type: self.remote_entity_type,
-                            key: url.to_string(),
-                            value: content.to_owned(),
-                            hit_counter: 0,
-                            media_type: media_type.clone(),
-                            persistent: false,
-                        })
-                        .await?;
+        let bypass_cache = match preferences {
+            Some(p) => p.bypass.contains(&CacheType::from(self.remote_entity_type)),
+            None => false,
+        };
 
-                    Ok((content, media_type))
-                } else {
-                    Err(CachingLoaderError::UnexpectedResolveResult)
-                }
-            }
+        let entry_opt = self.storage.get_by_key(url).await?;
+        let entry_persistent = entry_opt
+            .as_ref()
+            .map(|val| val.persistent)
+            .unwrap_or(false);
+        let context = if bypass_cache && !entry_persistent {
+            self.new_cache_entry(url, &resolver).await?
+        } else {
+            self.resolve_with_caching(url, entry_opt, &resolver).await?
+        };
+
+        self.clean_old_entries_if_needed().await?;
+        Ok(context)
+    }
+
+    async fn resolve_with_caching(
+        &self,
+        url: &str,
+        entry_opt: Option<RemoteEntity>,
+        resolver: &Arc<dyn Resolver<Error = E>>,
+    ) -> Result<(Vec<u8>, Option<String>), E> {
+        match entry_opt {
+            None => self.new_cache_entry(url, resolver).await,
             Some(context) if context.persistent => Ok((context.value, context.media_type)),
             Some(mut context) => {
                 let requires_update = context_requires_update(
@@ -154,11 +160,37 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
 
                 Ok((context.value, context.media_type))
             }
-        }?;
+        }
+    }
 
-        self.clean_old_entries_if_needed().await?;
+    async fn new_cache_entry(
+        &self,
+        url: &str,
+        resolver: &Arc<dyn Resolver<Error = E>>,
+    ) -> Result<(Vec<u8>, Option<String>), E> {
+        match resolver.do_resolve(url, None).await? {
+            ResolveResult::NewValue {
+                content,
+                media_type,
+            } => {
+                self.storage
+                    .insert(RemoteEntity {
+                        last_modified: OffsetDateTime::now_utc(),
+                        entity_type: self.remote_entity_type,
+                        key: url.to_string(),
+                        value: content.to_owned(),
+                        hit_counter: 0,
+                        media_type: media_type.clone(),
+                        persistent: false,
+                    })
+                    .await?;
 
-        Ok(context)
+                Ok((content, media_type))
+            }
+            ResolveResult::LastModificationDateUpdate(_) => {
+                Err(CachingLoaderError::UnexpectedResolveResult.into())
+            }
+        }
     }
 
     pub async fn get_if_cached(&self, key: &str) -> Result<Option<Vec<u8>>, E> {

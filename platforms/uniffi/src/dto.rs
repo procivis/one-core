@@ -1733,3 +1733,10 @@ pub enum CacheTypeBindingDTO {
     JsonSchema,
     TrustList,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Into, uniffi::Enum)]
+#[into("one_core::model::remote_entity_cache::CacheType")]
+pub enum BypassCacheBindingDTO {
+    DidDocument,
+    StatusListCredential,
+}

@@ -95,7 +95,7 @@ impl VCAPIService {
 
         let assertion_methods = self
             .did_method_provider
-            .resolve(&create_request.credential.issuer.to_did_value()?)
+            .resolve(&create_request.credential.issuer.to_did_value()?, None)
             .await?
             .assertion_method
             .ok_or(ServiceError::MappingError(
@@ -265,6 +265,7 @@ impl VCAPIService {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            cache_preferences: None,
         });
 
         let _ = formatter
@@ -303,6 +304,7 @@ impl VCAPIService {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            cache_preferences: None,
         });
 
         let _ = formatter

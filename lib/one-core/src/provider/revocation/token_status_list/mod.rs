@@ -7,6 +7,7 @@ use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, DidValue};
 
+use crate::model::cache::CachePreferences;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
@@ -163,6 +164,7 @@ impl RevocationMethod for TokenStatusList {
         credential_status: &CredentialStatus,
         _issuer_did: &DidValue,
         _additional_credential_data: Option<CredentialDataByRole>,
+        cache_preferences: Option<CachePreferences>,
     ) -> Result<CredentialRevocationState, RevocationError> {
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(RevocationError::ValidationError(format!(
@@ -192,7 +194,7 @@ impl RevocationMethod for TokenStatusList {
 
         let (content, _media_type) = &self
             .caching_loader
-            .get(list_url, self.resolver.clone())
+            .get(list_url, self.resolver.clone(), cache_preferences.clone())
             .await?;
 
         let response: StatusListCacheEntry = serde_json::from_slice(content)?;
@@ -202,6 +204,7 @@ impl RevocationMethod for TokenStatusList {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
+            cache_preferences,
         });
         let jwt: Jwt<TokenStatusListContent> =
             Jwt::build_from_token(&response_content, Some(key_verification)).await?;
@@ -283,7 +286,10 @@ impl TokenStatusList {
             ))?
             .clone();
 
-        let did_document = self.did_method_provider.resolve(&issuer_did.did).await?;
+        let did_document = self
+            .did_method_provider
+            .resolve(&issuer_did.did, None)
+            .await?;
 
         let assertion_methods =
             did_document

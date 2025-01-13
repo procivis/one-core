@@ -1,10 +1,12 @@
+use one_core::model::cache::CachePreferences;
 use one_core::model::list_filter::{
     ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
 };
 use one_core::service::credential::dto::CredentialFilterValue;
 use one_core::service::error::{BusinessLogicError, ServiceError};
+use one_dto_mapper::convert_inner;
 
-use super::dto::{CredentialsFilterQueryParamsRest, SearchType};
+use super::dto::{BypassCacheQueryRestDTO, CredentialsFilterQueryParamsRest, SearchType};
 use crate::dto::common::ExactColumn;
 
 impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<CredentialFilterValue> {
@@ -80,5 +82,13 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
         });
 
         Ok(search_filters & name & role & credential_ids & states)
+    }
+}
+
+impl From<BypassCacheQueryRestDTO> for Option<CachePreferences> {
+    fn from(value: BypassCacheQueryRestDTO) -> Self {
+        Some(CachePreferences {
+            bypass: convert_inner(value.bypass_cache?),
+        })
     }
 }

@@ -28,6 +28,13 @@ impl RemoteEntityCacheDB {
             .expect("get entry")
     }
 
+    pub async fn get_by_key(&self, key: &str) -> Option<RemoteEntityCacheEntry> {
+        self.repository
+            .get_by_key(key)
+            .await
+            .expect("get entry by key")
+    }
+
     pub async fn prepare_cache(&self, additional: &[(String, String)]) {
         let now = OffsetDateTime::now_utc();
 

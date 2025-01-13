@@ -1563,7 +1563,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     revocation_method
         .expect_check_credential_revocation_status()
         .once()
-        .return_once(|_, _, _| {
+        .return_once(|_, _, _, _| {
             Ok(CredentialRevocationState::Suspended {
                 suspend_end_date: None,
             })

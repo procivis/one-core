@@ -1,9 +1,18 @@
-use one_core::model::credential::{CredentialRole, CredentialStateEnum};
-use one_core::model::did::{DidType, KeyRole, RelatedKey};
+use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::revocation_list::RevocationListPurpose;
+use one_core::provider::credential_formatter::jwt::mapper::{
+    bin_to_b64url_string, string_to_b64url_string,
+};
+use one_core::provider::key_algorithm::eddsa::Algorithm::Ed25519;
+use one_core::provider::key_algorithm::eddsa::{Eddsa, EddsaParams};
+use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
+use one_crypto::Signer;
 use serde_json::json;
 use time::macros::format_description;
 use time::OffsetDateTime;
+use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -82,7 +91,7 @@ async fn test_revoke_check_success_statuslist2021() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id)
+        .revocation_check(credential.id, vec![])
         .await;
 
     // THEN
@@ -98,14 +107,193 @@ async fn test_revoke_check_success_statuslist2021() {
 #[tokio::test]
 async fn test_revoke_check_success_bitstring_status_list() {
     // GIVEN
-    // contains statusListCredential=http://0.0.0.0:4444/ssi/revocation/v1/list/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf
-    let credential_jwt = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDc0MDk2ODksImV4cCI6MTc3MDQ4MTY4OSwibmJmIjoxNzA3NDA5NjI5LCJpc3MiOiJkaWQ6a2V5Ono2TWtrdHJ3bUpwdU1ISGtrcVkzZzV4VVA2S0tCMWVYeExvNktaRFo1THBmQmhyYyIsInN1YiI6ImRpZDprZXk6ejZNa2hodHVjWjY3Uzh5QXZIUG9KdE1WeDI4ejNCZmNQTjFncGpmbmk1RFQ3cVNlIiwianRpIjoiODhmYjlhZDItZWZlMC00YWRlLTgyNTEtMmIzOTc4NjQ5MGFmIiwidmMiOnsiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJhZ2UiOiI1NSJ9LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoiaHR0cDovLzAuMC4wLjA6NDQ0NC9zc2kvcmV2b2NhdGlvbi92MS9saXN0LzI4ODBkOGRkLWNlM2YtNGQ3NC1iNDYzLWEyYzBkYTA3YTVjZiMyIiwidHlwZSI6IkJpdHN0cmluZ1N0YXR1c0xpc3RFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwOi8vMC4wLjAuMDo0NDQ0L3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvMjg4MGQ4ZGQtY2UzZi00ZDc0LWI0NjMtYTJjMGRhMDdhNWNmIiwic3RhdHVzTGlzdEluZGV4IjoiMiJ9fX0.-r0uxZCI2DAaxO8VHZOsZdcP9oMQhCeGjxOtQyDqITu_SPhuVGg2RZXvQT1C9r1p3CyG3bQRV0W0JOnN0QXtBA";
-    let bitstring_status_list_credential_jwt = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaWQ6a2V5Ono2TWtrdHJ3bUpwdU1ISGtrcVkzZzV4VVA2S0tCMWVYeExvNktaRFo1THBmQmhyYyIsInN1YiI6Imh0dHA6Ly8wLjAuMC4wOjMwMDAvc3NpL3Jldm9jYXRpb24vdjEvbGlzdC8yODgwZDhkZC1jZTNmLTRkNzQtYjQ2My1hMmMwZGEwN2E1Y2YjbGlzdCIsImp0aSI6Imh0dHA6Ly8wLjAuMC4wOjMwMDAvc3NpL3Jldm9jYXRpb24vdjEvbGlzdC8yODgwZDhkZC1jZTNmLTRkNzQtYjQ2My1hMmMwZGEwN2E1Y2YiLCJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsImh0dHBzOi8vdzNjLmdpdGh1Yi5pby92Yy1iaXRzdHJpbmctc3RhdHVzLWxpc3QvY29udGV4dHMvdjEuanNvbmxkIl0sImlkIjoiaHR0cDovLzAuMC4wLjA6MzAwMC9zc2kvcmV2b2NhdGlvbi92MS9saXN0LzI4ODBkOGRkLWNlM2YtNGQ3NC1iNDYzLWEyYzBkYTA3YTVjZiIsInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLCJCaXRzdHJpbmdTdGF0dXNMaXN0Q3JlZGVudGlhbCJdLCJpc3N1ZXIiOiJkaWQ6a2V5Ono2TWtrdHJ3bUpwdU1ISGtrcVkzZzV4VVA2S0tCMWVYeExvNktaRFo1THBmQmhyYyIsImlzc3VlZCI6IjIwMjQtMDItMDhUMTY6MTM6MjNaIiwiY3JlZGVudGlhbFN1YmplY3QiOnsiaWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvMjg4MGQ4ZGQtY2UzZi00ZDc0LWI0NjMtYTJjMGRhMDdhNWNmI2xpc3QiLCJ0eXBlIjoiQml0c3RyaW5nU3RhdHVzTGlzdCIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwiZW5jb2RlZExpc3QiOiJINHNJQUFBQUFBQUFfLTNBTVFFQUFBRENvUFZQYlF3ZktBQUFBQUFBQUFBQUFBQUFBQUFBQU9CdGh0SlVxd0JBQUFBIn19fQ.Z5PVZfjoLwkKUlJ-2EQN7QWip8S10NbbaatRpfuEgK2EYT2V0c__9Z_4zBJ5mtFvHyucxTb5r8wVcTNo-A0-DA";
+    let mock_server = MockServer::start().await;
 
-    let mock_server = MockServer::builder()
-        .listener(std::net::TcpListener::bind("127.0.0.1:4444").unwrap())
-        .start()
+    let expected_status_lookups = 1;
+    let (context, credential, _, _) =
+        setup_bitstring_status_list_success(&mock_server, expected_status_lookups).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id, vec![])
         .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("ACCEPTED", resp[0]["status"]);
+    assert_eq!(true, resp[0]["success"]);
+    assert!(resp[0]["reason"].is_null());
+}
+
+#[tokio::test]
+async fn test_revoke_check_success_bitstring_status_list_with_cache_bypass() {
+    // GIVEN
+    let mock_server = MockServer::start().await;
+
+    // two lookups expected:
+    // - initial lookup
+    // - second check is cached --> no lookup
+    // - third call sends lookup due to cache bypass
+    let expected_status_lookups = 2;
+    let (context, credential, issuer_did, revocation_list_url) =
+        setup_bitstring_status_list_success(&mock_server, expected_status_lookups).await;
+
+    // WHEN
+    // inital lookup
+    context
+        .api
+        .credentials
+        .revocation_check(credential.id, vec![])
+        .await;
+
+    // THEN
+    let result = context
+        .db
+        .remote_entities
+        .get_by_key(&revocation_list_url)
+        .await;
+    assert!(result.is_some());
+    let result = context
+        .db
+        .remote_entities
+        .get_by_key(issuer_did.did.as_str())
+        .await;
+    assert!(result.is_some());
+
+    // using cached information
+    context
+        .api
+        .credentials
+        .revocation_check(credential.id, vec![])
+        .await;
+
+    let statuslist_credential_entry = context
+        .db
+        .remote_entities
+        .get_by_key(&revocation_list_url)
+        .await
+        .unwrap();
+
+    assert_eq!(statuslist_credential_entry.hit_counter, 1);
+
+    let did_document_entry = context
+        .db
+        .remote_entities
+        .get_by_key(issuer_did.did.as_str())
+        .await
+        .unwrap();
+
+    assert_eq!(did_document_entry.hit_counter, 1);
+
+    // bypassing the cache
+    context
+        .api
+        .credentials
+        .revocation_check(
+            credential.id,
+            vec!["DID_DOCUMENT", "STATUS_LIST_CREDENTIAL"],
+        )
+        .await;
+
+    let statuslist_credential_entry2 = context
+        .db
+        .remote_entities
+        .get_by_key(&revocation_list_url)
+        .await
+        .unwrap();
+
+    assert_eq!(statuslist_credential_entry2.hit_counter, 0);
+    assert!(statuslist_credential_entry.created_date < statuslist_credential_entry2.created_date);
+
+    let did_document_entry2 = context
+        .db
+        .remote_entities
+        .get_by_key(issuer_did.did.as_str())
+        .await
+        .unwrap();
+
+    assert_eq!(did_document_entry2.hit_counter, 0);
+    assert!(did_document_entry.created_date < did_document_entry2.created_date);
+}
+
+async fn setup_bitstring_status_list_success(
+    mock_server: &MockServer,
+    expected_status_lookups: u64,
+) -> (TestContext, Credential, Did, String) {
+    let key_alg = Eddsa::new(EddsaParams { algorithm: Ed25519 });
+    let key_pair = EDDSASigner::generate_key_pair();
+    let issuer_did = format!(
+        "did:key:{}",
+        key_alg.get_multibase(&key_pair.public).unwrap()
+    );
+
+    let revocation_list_url = format!(
+        "{}/ssi/revocation/v1/list/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf#2",
+        mock_server.uri()
+    );
+    let header_json = json!({
+      "alg": "EDDSA",
+      "typ": "JWT"
+    });
+    let credential_payload = json!({
+      "iss": issuer_did,
+      "sub": "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe",
+      "vc": {
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1"
+        ],
+        "type": [
+          "VerifiableCredential"
+        ],
+        "credentialSubject": {},
+        "credentialStatus": {
+          "id": format!("{}#2", revocation_list_url),
+          "type": "BitstringStatusListEntry",
+          "statusPurpose": "revocation",
+          "statusListCredential": revocation_list_url,
+          "statusListIndex": "2"
+        }
+      }
+    });
+    let status_credential_payload = json!({
+      "iss": issuer_did,
+      "sub": format!("{}#list", revocation_list_url),
+      "jti": revocation_list_url,
+      "vc": {
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1",
+          "https://w3c.github.io/vc-bitstring-status-list/contexts/v1.jsonld"
+        ],
+        "id": revocation_list_url,
+        "type": [
+          "VerifiableCredential",
+          "BitstringStatusListCredential"
+        ],
+        "issuer": issuer_did,
+        "issued": "2024-02-08T16:13:23Z",
+        "credentialSubject": {
+          "id": format!("{}#list", revocation_list_url),
+          "type": "BitstringStatusList",
+          "statusPurpose": "revocation",
+          "encodedList": "H4sIAAAAAAAA_-3AMQEAAADCoPVPbQwfKAAAAAAAAAAAAAAAAAAAAOBthtJUqwBAAAA"
+        }
+      }
+    });
+    let credential_jwt = sign_jwt_helper(
+        &header_json.to_string(),
+        &credential_payload.to_string(),
+        &key_pair,
+    );
+    let bitstring_status_list_credential_jwt = sign_jwt_helper(
+        &header_json.to_string(),
+        &status_credential_payload.to_string(),
+        &key_pair,
+    );
 
     let (context, organisation) = TestContext::new_with_organisation().await;
     let issuer_did = context
@@ -115,11 +303,7 @@ async fn test_revoke_check_success_bitstring_status_list() {
             &organisation,
             TestingDidParams {
                 did_method: Some("KEY".to_string()),
-                did: Some(
-                    "did:key:z6MkktrwmJpuMHHkkqY3g5xUP6KKB1eXxLo6KZDZ5LpfBhrc"
-                        .parse()
-                        .unwrap(),
-                ),
+                did: Some(issuer_did.parse().unwrap()),
                 did_type: Some(DidType::Local),
                 ..Default::default()
             },
@@ -144,7 +328,7 @@ async fn test_revoke_check_success_bitstring_status_list() {
             &issuer_did,
             "OPENID4VC",
             TestingCredentialParams {
-                credential: Some(credential_jwt),
+                credential: Some(&credential_jwt),
                 ..Default::default()
             },
         )
@@ -165,25 +349,40 @@ async fn test_revoke_check_success_bitstring_status_list() {
                 .insert_header("Content-Type", "application/jwt")
                 .set_body_bytes(bitstring_status_list_credential_jwt.as_bytes().to_vec()),
         )
-        .expect(1)
-        .mount(&mock_server)
+        .expect(expected_status_lookups)
+        .mount(mock_server)
         .await;
+    (context, credential, issuer_did, revocation_list_url)
+}
 
-    // WHEN
-    let resp = context
+fn sign_jwt_helper(jwt_header_json: &str, payload_json: &str, key_pair: &KeyPair) -> String {
+    let mut token = format!(
+        "{}.{}",
+        string_to_b64url_string(jwt_header_json).unwrap(),
+        string_to_b64url_string(payload_json).unwrap(),
+    );
+
+    let signature = EDDSASigner {}
+        .sign(token.as_bytes(), &key_pair.public, &key_pair.private)
+        .unwrap();
+    let signature_encoded = bin_to_b64url_string(&signature).unwrap();
+
+    token.push('.');
+    token.push_str(&signature_encoded);
+    token
+}
+
+#[tokio::test]
+async fn test_revoke_check_fail_invalid_cache_bypass_values() {
+    let context = TestContext::new().await;
+
+    let response = context
         .api
         .credentials
-        .revocation_check(credential.id)
+        .revocation_check(Uuid::new_v4(), vec!["INVALID"])
         .await;
 
-    // THEN
-    assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
-
-    resp[0]["credentialId"].assert_eq(&credential.id);
-    assert_eq!("ACCEPTED", resp[0]["status"]);
-    assert_eq!(true, resp[0]["success"]);
-    assert!(resp[0]["reason"].is_null());
+    assert_eq!(response.status(), 400);
 }
 
 #[tokio::test]
@@ -286,7 +485,7 @@ async fn test_revoke_check_success_lvvc() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id)
+        .revocation_check(credential.id, vec![])
         .await;
 
     // THEN
@@ -416,7 +615,7 @@ async fn test_revoke_check_mdoc_update() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id)
+        .revocation_check(credential.id, vec![])
         .await;
 
     // THEN
@@ -543,7 +742,7 @@ async fn test_revoke_check_token_update() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id)
+        .revocation_check(credential.id, vec![])
         .await;
 
     // THEN
@@ -662,7 +861,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id)
+        .revocation_check(credential.id, vec![])
         .await;
 
     // THEN
@@ -783,7 +982,7 @@ async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id)
+        .revocation_check(credential.id, vec![])
         .await;
 
     // THEN
@@ -922,7 +1121,7 @@ async fn test_suspended_to_valid() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id)
+        .revocation_check(credential.id, vec![])
         .await;
 
     // THEN
@@ -1051,7 +1250,7 @@ async fn test_suspended_to_suspended_update_failed() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id)
+        .revocation_check(credential.id, vec![])
         .await;
 
     // THEN
@@ -1131,7 +1330,7 @@ async fn test_revoke_check_failed_deleted_credential() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id)
+        .revocation_check(credential.id, vec![])
         .await;
 
     // THEN

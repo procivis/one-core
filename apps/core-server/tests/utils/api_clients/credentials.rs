@@ -120,14 +120,26 @@ impl CredentialsApi {
         self.client.post(&url, body).await
     }
 
-    pub async fn revocation_check(&self, credential_id: impl Into<Uuid>) -> Response {
+    pub async fn revocation_check(
+        &self,
+        credential_id: impl Into<Uuid>,
+        cache_bypass: Vec<&str>,
+    ) -> Response {
         let body = json!({
           "credentialIds": vec![credential_id.into()]
         });
 
-        self.client
-            .post("/api/credential/v1/revocation-check", body)
-            .await
+        let mut url = "/api/credential/v1/revocation-check".to_string();
+        if let Some(query) = cache_bypass
+            .iter()
+            .map(|val| format!("bypassCache[]={val}"))
+            .reduce(|a, b| a + "&" + &b)
+        {
+            url.push('?');
+            url += &query;
+        }
+
+        self.client.post(&url, body).await
     }
 
     pub async fn share(&self, id: &impl Display) -> Response {

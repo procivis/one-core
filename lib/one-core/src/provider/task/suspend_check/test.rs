@@ -78,7 +78,7 @@ async fn test_run_one_update() {
     did_method_provider
         .expect_resolve()
         .once()
-        .return_once(|did| Ok(dummy_did_document(did)));
+        .return_once(|did, _| Ok(dummy_did_document(did)));
 
     credential_repository
         .expect_get_credential_list()

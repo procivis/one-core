@@ -1254,7 +1254,7 @@ async fn try_build_cose_key(
     holder_did: &DidValue,
 ) -> Result<CoseKey, FormatterError> {
     let mut did_document = did_resolver
-        .resolve(holder_did)
+        .resolve(holder_did, None)
         .await
         .map_err(|err| FormatterError::Failed(format!("Failed resolving did {err}")))?;
 

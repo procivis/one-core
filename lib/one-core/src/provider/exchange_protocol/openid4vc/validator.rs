@@ -190,6 +190,7 @@ pub(super) async fn validate_credential(
                         proof_input: proof_schema_input.to_owned(),
                     },
                 ))),
+                None,
             )
             .await?
         {
@@ -211,12 +212,12 @@ pub(super) async fn validate_credential(
     };
 
     let claim_subject_did = did_method_provider
-        .resolve(claim_subject)
+        .resolve(claim_subject, None)
         .await
         .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
 
     let holder_did = did_method_provider
-        .resolve(holder_did)
+        .resolve(holder_did, None)
         .await
         .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
 

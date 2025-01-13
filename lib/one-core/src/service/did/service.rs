@@ -248,6 +248,9 @@ impl DidService {
         &self,
         did: &DidValue,
     ) -> Result<DidDocumentDTO, DidMethodProviderError> {
-        self.did_method_provider.resolve(did).await.map(Into::into)
+        self.did_method_provider
+            .resolve(did, None)
+            .await
+            .map(Into::into)
     }
 }

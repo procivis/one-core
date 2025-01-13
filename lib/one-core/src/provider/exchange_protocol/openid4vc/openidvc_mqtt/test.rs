@@ -159,9 +159,9 @@ async fn test_handle_invitation_success() {
         .expect_resolve()
         .withf({
             let verifier_did = client_id.clone();
-            move |did| did == &verifier_did
+            move |did, _| did == &verifier_did
         })
-        .returning(|did| {
+        .returning(|did, _| {
             Ok(DidDocument {
                 context: Default::default(),
                 id: did.clone(),

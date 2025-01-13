@@ -1,5 +1,6 @@
 use shared_types::DidValue;
 
+use crate::model::cache::CachePreferences;
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::revocation::error::RevocationError;
@@ -52,6 +53,7 @@ pub trait RevocationMethod: Send + Sync {
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
         additional_credential_data: Option<CredentialDataByRole>,
+        cache_preferences: Option<CachePreferences>,
     ) -> Result<CredentialRevocationState, RevocationError>;
 
     /// Revocation method capabilities include the operations possible for each revocation

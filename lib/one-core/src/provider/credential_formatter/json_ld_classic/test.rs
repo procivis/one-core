@@ -100,9 +100,9 @@ async fn create_token(include_layout: bool) -> Value {
         .withf({
             let holder_did = holder_did.clone();
 
-            move |did| did == &holder_did
+            move |did, _| did == &holder_did
         })
-        .returning(|holder_did| {
+        .returning(|holder_did, _| {
             Ok(DidDocument {
                 context: json!({}),
                 id: holder_did.to_owned(),
@@ -257,9 +257,9 @@ async fn test_format_presentation_multi_tokens() {
         .withf({
             let holder_did = holder_did.clone();
 
-            move |did| did == &holder_did
+            move |did, _| did == &holder_did
         })
-        .returning(|holder_did| {
+        .returning(|holder_did, _| {
             Ok(DidDocument {
                 context: json!({}),
                 id: holder_did.to_owned(),
@@ -467,9 +467,9 @@ async fn test_parse_presentation_multi_tokens() {
         .withf({
             let holder_did = holder_did.clone();
 
-            move |did| did == &holder_did
+            move |did, _| did == &holder_did
         })
-        .returning(|holder_did| {
+        .returning(|holder_did, _| {
             Ok(DidDocument {
                 context: json!({}),
                 id: holder_did.to_owned(),

@@ -92,7 +92,7 @@ impl VctTypeMetadataCache {
         vct: &str,
     ) -> Result<Option<SdJwtVcTypeMetadataResponseDTO>, VctCacheError> {
         if url::Url::parse(vct).is_ok() {
-            let (metadata, _) = self.inner.get(vct, self.resolver.clone()).await?;
+            let (metadata, _) = self.inner.get(vct, self.resolver.clone(), None).await?;
 
             Ok(Some(serde_json::from_slice(&metadata)?))
         } else {

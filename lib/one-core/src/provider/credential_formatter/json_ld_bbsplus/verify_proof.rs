@@ -207,7 +207,7 @@ impl JsonLdBbsplus {
     ) -> Result<Vec<u8>, FormatterError> {
         let did_document = self
             .did_method_provider
-            .resolve(&ld_credential.issuer.to_did_value()?)
+            .resolve(&ld_credential.issuer.to_did_value()?, None)
             .await
             .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
         let algo_provider = self

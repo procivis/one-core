@@ -129,6 +129,7 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 organisation::dto::CreateOrganisationResponseRestDTO,
                 organisation::dto::GetOrganisationDetailsResponseRestDTO,
 
+                credential::dto::BypassCacheQueryRestDTO,
                 credential::dto::CreateCredentialRequestRestDTO,
                 credential::dto::CredentialDetailClaimResponseRestDTO,
                 credential::dto::CredentialListItemResponseRestDTO,

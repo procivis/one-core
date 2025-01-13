@@ -5,6 +5,8 @@ use time::{Duration, OffsetDateTime};
 use wiremock::matchers::{headers, path};
 use wiremock::{Match, Mock, MockServer, Request, ResponseTemplate};
 
+use crate::model::cache::CachePreferences;
+use crate::model::remote_entity_cache::CacheType;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::{
     JsonLdCachingLoader, JsonLdResolver,
 };
@@ -68,7 +70,7 @@ async fn test_load_context_success_cache_hit() {
 
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(MockHttpClient::new())));
 
-    let (content, media_type) = loader.get(url, resolver).await.unwrap();
+    let (content, media_type) = loader.get(url, resolver, None).await.unwrap();
 
     assert_eq!(response_content, String::from_utf8(content).unwrap());
     assert_eq!(Some(expected_media_type), media_type.as_deref());
@@ -159,7 +161,7 @@ async fn test_load_context_success_cache_miss_external_fetch_occured() {
 
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    let (content, _media_type) = loader.get(&url, resolver).await.unwrap();
+    let (content, _media_type) = loader.get(&url, resolver, None).await.unwrap();
 
     assert_eq!(response_content, String::from_utf8(content).unwrap());
 }
@@ -189,7 +191,7 @@ async fn test_load_context_success_cache_miss_overfilled_delete_oldest_entry_cal
 
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    let (content, _media_type) = loader.get(&url, resolver).await.unwrap();
+    let (content, _media_type) = loader.get(&url, resolver, None).await.unwrap();
 
     assert_eq!(response_content, String::from_utf8(content).unwrap());
 }
@@ -235,7 +237,7 @@ async fn test_load_context_success_cache_hit_but_too_old_200() {
 
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    let (content, _media_type) = loader.get(&url, resolver).await.unwrap();
+    let (content, _media_type) = loader.get(&url, resolver, None).await.unwrap();
 
     assert_eq!(response_content, String::from_utf8(content).unwrap());
 }
@@ -278,7 +280,7 @@ async fn test_load_context_success_cache_hit_but_too_old_304_with_last_modified_
     let loader = create_loader(storage, 1, Duration::seconds(99999), Duration::seconds(300));
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    let (content, _media_type) = loader.get(&url, resolver).await.unwrap();
+    let (content, _media_type) = loader.get(&url, resolver, None).await.unwrap();
 
     assert_eq!(response_content, String::from_utf8(content).unwrap());
 }
@@ -325,7 +327,7 @@ async fn test_load_context_success_cache_hit_but_too_old_304_without_last_modifi
     let loader = create_loader(storage, 1, Duration::seconds(99999), Duration::seconds(300));
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    let (content, _media_type) = loader.get(&url, resolver).await.unwrap();
+    let (content, _media_type) = loader.get(&url, resolver, None).await.unwrap();
 
     assert_eq!(response_content, String::from_utf8(content).unwrap());
 }
@@ -366,7 +368,7 @@ async fn test_load_context_success_cache_hit_older_than_refreshafter_younger_tha
     let loader = create_loader(storage, 1, refresh_timeout, Duration::seconds(300));
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    let (content, _media_type) = loader.get(url, resolver).await.unwrap();
+    let (content, _media_type) = loader.get(url, resolver, None).await.unwrap();
 
     assert_eq!(old_response_content, String::from_utf8(content).unwrap());
 }
@@ -398,5 +400,150 @@ async fn test_load_context_failed_cache_hit_older_than_refreshafter_and_failed_t
     );
     let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
 
-    assert!(loader.get(url, resolver).await.is_err());
+    assert!(loader.get(url, resolver, None).await.is_err());
+}
+
+#[tokio::test]
+async fn test_load_context_success_with_bypass() {
+    let old_response_content = "old_content";
+    let response_content = "validstring";
+
+    let mock_server = MockServer::start().await;
+    context_fetch_mock_200(&mock_server, response_content, false).await;
+
+    let url = format!("{}/context", mock_server.uri());
+
+    let mut storage = MockRemoteEntityStorage::default();
+
+    let cache_preferences = CachePreferences {
+        bypass: vec![CacheType::JsonLdContext],
+    };
+    // The cache_preferences indicate that the remote source should be used even if the cached content is fresh.
+    // The cache still needs to be consulted to make sure the bypassed entry is _not_ persistent.
+    let key = url.to_string();
+    storage.expect_get_by_key().return_once(move |_| {
+        Ok(Some(RemoteEntity {
+            last_modified: OffsetDateTime::now_utc(), // fresh copy
+            value: old_response_content.to_string().into_bytes(),
+            key,
+            hit_counter: 42,
+            entity_type: RemoteEntityType::JsonLdContext,
+            media_type: None,
+            persistent: false,
+        }))
+    });
+
+    storage.expect_insert().times(1).return_once(|_| Ok(()));
+    storage
+        .expect_get_storage_size()
+        .times(1)
+        .return_once(|_| Ok(1usize));
+
+    let loader = create_loader(
+        storage,
+        99999,
+        Duration::seconds(99999),
+        Duration::seconds(300),
+    );
+
+    let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
+
+    let (content, _media_type) = loader
+        .get(&url, resolver, Some(cache_preferences))
+        .await
+        .unwrap();
+
+    assert_eq!(response_content, String::from_utf8(content).unwrap());
+}
+
+#[tokio::test]
+async fn test_load_persistent_context_success_with_bypass() {
+    let old_response_content = "old_content";
+
+    let mock_server = MockServer::start().await;
+    let url = format!("{}/context", mock_server.uri());
+
+    let mut storage = MockRemoteEntityStorage::default();
+
+    let cache_preferences = CachePreferences {
+        bypass: vec![CacheType::JsonLdContext],
+    };
+    // The cache_preferences indicate that the remote source should be used even if the cached content is fresh.
+    // The cache still needs to be consulted to make sure the bypassed entry is _not_ persistent.
+    let key = url.to_string();
+    let value = old_response_content.to_string().into_bytes();
+    storage.expect_get_by_key().return_once(move |_| {
+        Ok(Some(RemoteEntity {
+            last_modified: OffsetDateTime::now_utc(), // fresh copy
+            value,
+            key,
+            hit_counter: 42,
+            entity_type: RemoteEntityType::JsonLdContext,
+            media_type: None,
+            persistent: true,
+        }))
+    });
+
+    // persistent entries must not be changed after the initial load and cannot be bypassed
+    storage.expect_insert().never();
+    storage
+        .expect_get_storage_size()
+        .times(1)
+        .return_once(|_| Ok(1usize));
+
+    let loader = create_loader(
+        storage,
+        99999,
+        Duration::seconds(99999),
+        Duration::seconds(300),
+    );
+
+    let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
+
+    let (content, _media_type) = loader
+        .get(&url, resolver, Some(cache_preferences))
+        .await
+        .unwrap();
+
+    assert_eq!(old_response_content, String::from_utf8(content).unwrap());
+}
+
+#[tokio::test]
+async fn test_load_context_success_with_unrelated_cache_preferences() {
+    let response_content = "validstring";
+
+    let mock_server = MockServer::start().await;
+    context_fetch_mock_200(&mock_server, response_content, false).await;
+
+    let url = format!("{}/context", mock_server.uri());
+
+    let mut storage = MockRemoteEntityStorage::default();
+
+    let cache_preferences = CachePreferences {
+        bypass: vec![CacheType::StatusListCredential],
+    };
+    // The cache_preferences are not actually relevant to the data at hand, so the cache is used as normal
+    storage.expect_get_by_key().once().return_once(|_| Ok(None));
+
+    storage.expect_insert().times(1).return_once(|_| Ok(()));
+    storage
+        .expect_get_storage_size()
+        .times(1)
+        .return_once(|_| Ok(1usize));
+
+    let loader = create_loader(
+        storage,
+        99999,
+        Duration::seconds(99999),
+        Duration::seconds(300),
+    );
+
+    let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::default())));
+
+    let (content, _media_type) = loader
+        .get(&url, resolver, Some(cache_preferences))
+        .await
+        .unwrap();
+
+    assert_eq!(response_content, String::from_utf8(content).unwrap());
 }

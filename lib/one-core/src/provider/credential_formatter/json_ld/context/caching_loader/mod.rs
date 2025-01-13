@@ -150,8 +150,10 @@ impl Loader<ArcIri, Location<ArcIri>> for ContextCache {
         ArcIri: 'a,
     {
         async move {
-            let (context, media_type) =
-                self.loader.get(url.as_str(), self.resolver.clone()).await?;
+            let (context, media_type) = self
+                .loader
+                .get(url.as_str(), self.resolver.clone(), None)
+                .await?;
             let context_str = String::from_utf8(context)?;
 
             let doc = json_syntax::Value::parse_str(&context_str, |span| {
@@ -186,7 +188,7 @@ impl json_ld_0_21::Loader for ContextCache {
 
         let (context, media_type) = self
             .loader
-            .get(url, self.resolver.clone())
+            .get(url, self.resolver.clone(), None)
             .await
             .map_err(|err| json_ld_0_21::LoadError::new(url.to_owned(), err))?;
 

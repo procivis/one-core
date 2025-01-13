@@ -15,6 +15,7 @@ use uuid::Uuid;
 
 use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
+use crate::model::cache::CachePreferences;
 use crate::model::credential::Credential;
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::credential_formatter::json_ld::model::ContextType;
@@ -337,6 +338,7 @@ impl RevocationMethod for LvvcProvider {
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
         additional_credential_data: Option<CredentialDataByRole>,
+        _cache_preferences: Option<CachePreferences>,
     ) -> Result<CredentialRevocationState, RevocationError> {
         let additional_credential_data = additional_credential_data.ok_or(
             RevocationError::ValidationError("additional_credential_data is None".to_string()),
@@ -402,7 +404,7 @@ pub async fn create_lvvc_with_status(
         .ok_or_else(|| RevocationError::MappingError("LVVC issuance is missing key".to_string()))?
         .to_owned();
 
-    let did_document = did_method_provider.resolve(&issuer_did.did).await?;
+    let did_document = did_method_provider.resolve(&issuer_did.did, None).await?;
     let assertion_methods = did_document
         .assertion_method
         .ok_or(RevocationError::MappingError(

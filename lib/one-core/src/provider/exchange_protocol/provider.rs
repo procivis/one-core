@@ -250,7 +250,10 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                 credential_schema.revocation_method.clone(),
             ))?;
 
-        let did_document = self.did_method_provider.resolve(&issuer_did.did).await?;
+        let did_document = self
+            .did_method_provider
+            .resolve(&issuer_did.did, None)
+            .await?;
         let key_id = did_document
             .find_verification_method(None, Some(KeyRole::AssertionMethod))
             .ok_or(ServiceError::Revocation(
@@ -359,7 +362,10 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             .ok_or(ServiceError::Other("Missing issuer did".to_string()))?
             .did;
 
-        let did_document = self.did_method_provider.resolve(issuer_did_value).await?;
+        let did_document = self
+            .did_method_provider
+            .resolve(issuer_did_value, None)
+            .await?;
         let assertion_methods = did_document
             .assertion_method
             .ok_or(ServiceError::MappingError(
