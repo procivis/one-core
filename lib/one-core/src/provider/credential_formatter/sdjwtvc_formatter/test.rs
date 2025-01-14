@@ -25,7 +25,7 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
-use crate::provider::credential_formatter::sdjwtvc_formatter::model::SDJWTVCVc;
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::credential_formatter::sdjwtvc_formatter::{Params, SDJWTVCFormatter};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::jwk::JWKDidMethod;
@@ -119,7 +119,7 @@ async fn test_format_credential() {
         &Base64UrlSafeNoPadding::encode_to_string(r#"ABC"#).unwrap()
     );
 
-    let payload: JWTPayload<SDJWTVCVc> = serde_json::from_str(
+    let payload: JWTPayload<SdJwtVc> = serde_json::from_str(
         &String::from_utf8(Base64UrlSafeNoPadding::decode_to_vec(jwt_parts[1], None).unwrap())
             .unwrap(),
     )

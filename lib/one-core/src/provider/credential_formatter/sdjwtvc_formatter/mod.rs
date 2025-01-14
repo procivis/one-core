@@ -36,7 +36,7 @@ use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Sdvp}
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
 use crate::provider::credential_formatter::sdjwtvc_formatter::disclosures::extract_claims_from_disclosures;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::{
-    SDJWTVCStatus, SDJWTVCStatusList, SDJWTVCVc,
+    SdJwtVc, SdJwtVcStatus, SdJwtVcStatusList,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -110,7 +110,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
         let DecomposedToken { jwt, .. } = parse_token(&credential.token)?;
-        let jwt: Jwt<SDJWTVCVc> = Jwt::build_from_token(jwt, None).await?;
+        let jwt: Jwt<SdJwtVc> = Jwt::build_from_token(jwt, None).await?;
         let hasher = self
             .crypto
             .get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
@@ -248,7 +248,7 @@ pub(super) async fn extract_credentials_internal(
 ) -> Result<DetailCredential, FormatterError> {
     let DecomposedToken { disclosures, jwt } = parse_token(token)?;
 
-    let jwt: Jwt<SDJWTVCVc> = Jwt::build_from_token(jwt, verification).await?;
+    let jwt: Jwt<SdJwtVc> = Jwt::build_from_token(jwt, verification).await?;
 
     let hasher =
         crypto.get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
@@ -346,7 +346,7 @@ pub(super) fn format_hashed_credential(
     credential: &CredentialData,
     algorithm: &str,
     crypto: &dyn CryptoProvider,
-) -> Result<(SDJWTVCVc, Vec<String>), FormatterError> {
+) -> Result<(SdJwtVc, Vec<String>), FormatterError> {
     let nested = claims_to_json_object(&credential.claims)?;
     let hasher = crypto.get_hasher("sha-256")?;
 
@@ -370,14 +370,14 @@ pub(super) fn format_hashed_credential(
 pub(crate) fn vc_from_credential(
     mut hashed_claims: Vec<String>,
     algorithm: &str,
-    status: Option<SDJWTVCStatusList>,
-) -> Result<SDJWTVCVc, FormatterError> {
+    status: Option<SdJwtVcStatusList>,
+) -> Result<SdJwtVc, FormatterError> {
     hashed_claims.sort_unstable();
 
-    Ok(SDJWTVCVc {
+    Ok(SdJwtVc {
         disclosures: hashed_claims,
         hash_alg: Some(algorithm.to_owned()),
-        status: status.map(|status| SDJWTVCStatus {
+        status: status.map(|status| SdJwtVcStatus {
             status_list: status,
         }),
         public_claims: Default::default(),

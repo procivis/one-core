@@ -15,7 +15,7 @@ use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListContent;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::sdjwtvc_formatter::model::SDJWTVCStatus;
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -357,7 +357,7 @@ pub fn create_credential_status(
 }
 
 pub fn credential_status_from_sdjwt_status(
-    sd_jwt_status: &Option<SDJWTVCStatus>,
+    sd_jwt_status: &Option<SdJwtVcStatus>,
 ) -> Vec<CredentialStatus> {
     match sd_jwt_status {
         None => vec![],
