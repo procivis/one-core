@@ -41,7 +41,7 @@ use crate::provider::credential_formatter::{CredentialFormatter, MockCredentialF
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::dto::{ExchangeProtocolCapabilities, Operation};
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, OpenID4VPAuthorizationRequest, OpenID4VPPresentationDefinition,
+    ClientIdSchemaType, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
     ShareResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
@@ -3042,7 +3042,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     [1; 32],
                     [2; 12],
                 ),
-                openid_request: OpenID4VPAuthorizationRequest {
+                openid_request: OpenID4VPAuthorizationRequestParams {
                     client_id: "did:example:123".to_string(),
                     response_uri: None,
                     response_mode: None,
@@ -3050,11 +3050,15 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     client_id_scheme: Some(ClientIdSchemaType::Did),
                     client_metadata: None,
                     state: None,
-                    nonce: "nonce".to_string(),
-                    presentation_definition: OpenID4VPPresentationDefinition {
+                    nonce: Some("nonce".to_string()),
+                    presentation_definition: Some(OpenID4VPPresentationDefinition {
                         id: interaction_id,
                         input_descriptors: vec![],
-                    },
+                    }),
+                    client_metadata_uri: None,
+                    presentation_definition_uri: None,
+                    request_uri: None,
+                    redirect_uri: None,
                 },
                 presentation_submission: None,
                 identity_request_nonce: None,

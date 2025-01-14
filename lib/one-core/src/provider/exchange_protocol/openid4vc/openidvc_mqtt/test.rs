@@ -25,7 +25,7 @@ use crate::provider::exchange_protocol::openid4vc::mapper::create_format_map;
 use crate::provider::exchange_protocol::openid4vc::model::{
     ClientIdSchemaType, InvitationResponseDTO, OpenID4VCIssuanceParams, OpenID4VCParams,
     OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
-    OpenID4VCPresentationVerifierParams, OpenID4VPAuthorizationRequest,
+    OpenID4VCPresentationVerifierParams, OpenID4VPAuthorizationRequestParams,
     OpenID4VPPresentationDefinition,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::mappers::parse_identity_request;
@@ -243,19 +243,23 @@ async fn test_handle_invitation_success() {
     let (verifier_key, verifier_public_key) = generate_verifier_key();
     let holder_identity_request = Arc::new(Mutex::new(None));
     let handle = holder_identity_request.clone();
-    let request = OpenID4VPAuthorizationRequest {
+    let request = OpenID4VPAuthorizationRequestParams {
         client_id: client_id.to_string(),
-        nonce: "nonce".to_string(),
-        presentation_definition: OpenID4VPPresentationDefinition {
+        nonce: Some("nonce".to_string()),
+        presentation_definition: Some(OpenID4VPPresentationDefinition {
             id: Default::default(),
             input_descriptors: vec![],
-        },
+        }),
         response_type: None,
         response_mode: None,
         client_id_scheme: Some(ClientIdSchemaType::Did),
         client_metadata: None,
         response_uri: None,
         state: None,
+        client_metadata_uri: None,
+        presentation_definition_uri: None,
+        request_uri: None,
+        redirect_uri: None,
     };
     let signed = request
         .as_signed_jwt(&client_id, Box::new(auth_fn))

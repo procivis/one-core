@@ -32,7 +32,7 @@ use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BleOpenId4VpResponse, ClientIdSchemaType, OpenID4VPAuthorizationRequest,
+    BleOpenId4VpResponse, ClientIdSchemaType, OpenID4VPAuthorizationRequestParams,
     OpenID4VPPresentationDefinition,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::mappers::parse_identity_request;
@@ -163,9 +163,9 @@ impl OpenID4VCBLEVerifier {
                         );
 
                         let nonce = utilities::generate_nonce();
-                        let request = OpenID4VPAuthorizationRequest {
-                            nonce:nonce.clone(),
-                            presentation_definition:presentation_definition.clone(),
+                        let request = OpenID4VPAuthorizationRequestParams {
+                            nonce: Some(nonce.clone()),
+                            presentation_definition: Some(presentation_definition.clone()),
                             response_type: None,
                             response_mode: None,
                             client_id: did.did.to_string(),
@@ -173,6 +173,10 @@ impl OpenID4VCBLEVerifier {
                             client_metadata: None,
                             response_uri: None,
                             state: None,
+                            client_metadata_uri: None,
+                            presentation_definition_uri: None,
+                            request_uri: None,
+                            redirect_uri: None,
                         };
                         tracing::info!("presentation request: {request:#?}");
 

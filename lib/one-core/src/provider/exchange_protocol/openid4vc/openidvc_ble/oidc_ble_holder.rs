@@ -27,7 +27,7 @@ use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::exchange_protocol::openid4vc::dto::{Chunk, ChunkExt, Chunks};
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    BleOpenId4VpResponse, OpenID4VPAuthorizationRequest, PresentationSubmissionMappingDTO,
+    BleOpenId4VpResponse, OpenID4VPAuthorizationRequestParams, PresentationSubmissionMappingDTO,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
@@ -138,10 +138,10 @@ impl OpenID4VCBLEHolder {
                                 organisation: Some(organisation),
                                 data: Some(
                                     serde_json::to_vec(&BLEOpenID4VPInteractionData {
-                                        nonce: request.nonce.clone(),
+                                        nonce: request.nonce.clone().ok_or(ExchangeProtocolError::InvalidRequest("nonce missing".to_string()))?,
                                         task_id,
                                         peer: ble_peer,
-                                        presentation_definition: Some(request.presentation_definition.clone()),
+                                        presentation_definition: Some(request.presentation_definition.clone().ok_or(ExchangeProtocolError::InvalidRequest("presentation_definition missing".to_string()))?),
                                         openid_request: request,
                                         identity_request_nonce: Some(hex::encode(identity_request.nonce)),
                                         presentation_submission: None
@@ -524,7 +524,7 @@ async fn read_presentation_request(
     connected_verifier: &BLEPeer,
     verification_fn: VerificationFn,
     ble_central: Arc<dyn BleCentral>,
-) -> Result<OpenID4VPAuthorizationRequest, ExchangeProtocolError> {
+) -> Result<OpenID4VPAuthorizationRequestParams, ExchangeProtocolError> {
     let request_size: MessageSize =
         read(REQUEST_SIZE_UUID, connected_verifier, ble_central.clone())
             .parse()
@@ -609,7 +609,7 @@ async fn read_presentation_request(
                 ))
             })?;
 
-    let authz_request = Jwt::<OpenID4VPAuthorizationRequest>::build_from_token(
+    let authz_request = Jwt::<OpenID4VPAuthorizationRequestParams>::build_from_token(
         &decrypted_request_jwt,
         Some(verification_fn),
     )

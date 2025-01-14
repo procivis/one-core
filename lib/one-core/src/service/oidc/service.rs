@@ -8,6 +8,7 @@ use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use shared_types::{CredentialId, CredentialSchemaId, DidValue, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
+use url::Url;
 use uuid::Uuid;
 
 use super::dto::OpenID4VCICredentialResponseDTO;
@@ -48,9 +49,9 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     ClientIdSchemaType, ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, JwePayload,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
     OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
-    OpenID4VCITokenResponseDTO, OpenID4VPAuthorizationRequest, OpenID4VPClientMetadata,
+    OpenID4VCITokenResponseDTO, OpenID4VPAuthorizationRequestParams, OpenID4VPClientMetadata,
     OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO, OpenID4VPInteractionContent,
-    OpenID4VPPresentationDefinition, OpenID4VPRequestDataResponse, RequestData,
+    OpenID4VPPresentationDefinition, RequestData,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
@@ -171,16 +172,23 @@ impl OIDCService {
 
         let presentation_definition = crate::provider::exchange_protocol::openid4vc::service::oidc_verifier_presentation_definition(&proof, presentation_definition)?;
 
-        let client_response = OpenID4VPAuthorizationRequest {
+        let client_response = OpenID4VPAuthorizationRequestParams {
             response_type: Some("vp_token".to_string()),
             response_mode: Some("direct_post".to_string()),
             client_id,
             client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
             client_metadata: Some(client_metadata),
-            presentation_definition,
-            response_uri: Some(response_uri),
-            nonce,
+            presentation_definition: Some(presentation_definition),
+            response_uri: Some(
+                Url::parse(&response_uri)
+                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
+            ),
+            nonce: Some(nonce),
             state: Some(interaction.id.to_string()),
+            client_metadata_uri: None,
+            presentation_definition_uri: None,
+            request_uri: None,
+            redirect_uri: None,
         };
 
         let unsigned_jwt = Jwt {
@@ -189,6 +197,7 @@ impl OIDCService {
                 key_id: None,
                 signature_type: None,
                 jwk: None,
+                jwt: None,
             },
             payload: JWTPayload {
                 issued_at: None,
@@ -272,7 +281,7 @@ impl OIDCService {
             presentation_definition,
             client_id: Some(client_id),
             nonce,
-            response_uri,
+            response_uri: Some(response_uri),
         } = parse_interaction_content(interaction.data.as_ref())?
         else {
             tracing::error!(proof_id=%id, "Interaction data missing client_it/response uri. Make sure /share-proof is called before /client-request");
@@ -282,17 +291,25 @@ impl OIDCService {
 
         let presentation_definition = crate::provider::exchange_protocol::openid4vc::service::oidc_verifier_presentation_definition(&proof, presentation_definition)?;
 
-        let client_response = OpenID4VPRequestDataResponse {
-            client_metadata,
-            presentation_definition,
-            redirect_uri: response_uri,
-            response_type: "vp_token".to_string(),
+        let client_response = OpenID4VPAuthorizationRequestParams {
+            client_metadata: Some(client_metadata),
+            presentation_definition: Some(presentation_definition),
+            response_uri: Some(
+                Url::parse(&response_uri)
+                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
+            ),
+            response_type: Some("vp_token".to_string()),
+            response_mode: Some("direct_post".to_string()),
             nonce: Some(nonce),
+            state: Some(interaction.id.to_string()),
+            client_id: client_id.to_owned(),
+            client_id_scheme: None,
+            client_metadata_uri: None,
+            presentation_definition_uri: None,
+            request_uri: None,
+            redirect_uri: None,
         };
 
-        let issuer = Some(verifier_did.did.to_string());
-        let subject = Some(client_id);
-        let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
         let key_algorithm = self
             .key_algorithm_provider
             .get_key_algorithm(&verifier_key.key_type)
@@ -314,27 +331,63 @@ impl OIDCService {
             .get_signature_provider(verifier_key, None)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-        let unsigned_jwt = Jwt {
+        let key_id = self
+            .did_method_provider
+            .get_verification_method_id_from_did_and_key(verifier_did, verifier_key)
+            .await?;
+
+        let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
+
+        let attestation_jwt = Jwt {
             header: JWTHeader {
                 algorithm: verifier_key.key_type.clone(),
-                key_id: None,
+                key_id: Some(key_id),
                 signature_type: Some("verifier-attestation+jwt".to_string()),
                 jwk: None,
+                jwt: None,
             },
             payload: JWTPayload {
                 issued_at: None,
                 expires_at,
                 invalid_before: None,
-                issuer,
-                subject,
+                issuer: Some(verifier_did.did.to_string()),
+                subject: Some(client_id.to_owned()),
+                jwt_id: None,
+                custom: (),
+                proof_of_possession_key,
+                vc_type: None,
+            },
+        }
+        .tokenize(Some(auth_fn))
+        .await?;
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(verifier_key, None)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+        let request_jwt = Jwt {
+            header: JWTHeader {
+                algorithm: verifier_key.key_type.clone(),
+                key_id: None,
+                signature_type: Some("oauth-authz-req+jwt".to_string()),
+                jwk: None,
+                jwt: Some(attestation_jwt),
+            },
+            payload: JWTPayload {
+                issued_at: None,
+                expires_at,
+                invalid_before: None,
+                issuer: Some(verifier_did.did.to_string()),
+                subject: Some(client_id),
                 jwt_id: None,
                 custom: client_response,
-                proof_of_possession_key,
+                proof_of_possession_key: None,
                 vc_type: None,
             },
         };
 
-        Ok(unsigned_jwt.tokenize(Some(auth_fn)).await?)
+        Ok(request_jwt.tokenize(Some(auth_fn)).await?)
     }
 
     pub async fn oidc_verifier_get_client_metadata(

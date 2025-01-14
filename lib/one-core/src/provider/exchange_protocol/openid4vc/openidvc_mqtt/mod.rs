@@ -41,7 +41,7 @@ use crate::provider::exchange_protocol::iso_mdl::common::to_cbor;
 use crate::provider::exchange_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::exchange_protocol::openid4vc::dto::OpenID4VPMqttQueryParams;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
-use crate::provider::exchange_protocol::openid4vc::model::OpenID4VPAuthorizationRequest;
+use crate::provider::exchange_protocol::openid4vc::model::OpenID4VPAuthorizationRequestParams;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest;
 use crate::provider::exchange_protocol::openid4vc::openidvc_http::mappers::map_credential_formats_to_presentation_format;
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
@@ -220,7 +220,7 @@ impl OpenId4VcMqtt {
             .decrypt(&presentation_request_bytes)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-        let presentation_request = Jwt::<OpenID4VPAuthorizationRequest>::build_from_token(
+        let presentation_request = Jwt::<OpenID4VPAuthorizationRequestParams>::build_from_token(
             &presentation_request,
             Some(verification_fn),
         )
@@ -231,11 +231,13 @@ impl OpenId4VcMqtt {
             broker_url: host.to_string(),
             broker_port: port,
             client_id: presentation_request.payload.custom.client_id,
-            nonce: presentation_request.payload.custom.nonce,
+            nonce: presentation_request
+                .payload
+                .custom
+                .nonce
+                .ok_or(ExchangeProtocolError::Failed("missing nonce".to_string()))?,
             session_keys: session_keys.to_owned(),
-            presentation_definition: Some(
-                presentation_request.payload.custom.presentation_definition,
-            ),
+            presentation_definition: presentation_request.payload.custom.presentation_definition,
             identity_request_nonce,
             topic_id,
         };

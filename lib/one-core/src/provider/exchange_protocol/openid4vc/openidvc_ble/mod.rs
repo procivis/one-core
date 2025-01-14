@@ -414,7 +414,13 @@ impl OpenID4VCBLE {
             .get_signature_provider(key, jwk_key_id)
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-        let presentation_definition_id = openid_request.presentation_definition.id;
+        let presentation_definition_id = openid_request
+            .presentation_definition
+            .as_ref()
+            .ok_or_else(|| {
+                ExchangeProtocolError::Failed("presentation_definition not found".to_string())
+            })?
+            .id;
 
         let presentation_submission = create_presentation_submission(
             presentation_definition_id,
@@ -423,8 +429,13 @@ impl OpenID4VCBLE {
             create_core_to_oicd_format_map(),
         )?;
 
+        let nonce = openid_request
+            .nonce
+            .as_ref()
+            .ok_or_else(|| ExchangeProtocolError::Failed("nonce missing".to_string()))?;
+
         let mut ctx = FormatPresentationCtx {
-            nonce: Some(openid_request.nonce.clone()),
+            nonce: Some(nonce.to_owned()),
             token_formats: Some(token_formats),
             vc_format_map: format_map,
             ..Default::default()
@@ -442,7 +453,7 @@ impl OpenID4VCBLE {
                     handover: OID4VPHandover::compute(
                         &openid_request.client_id,
                         &openid_request.client_id,
-                        &openid_request.nonce,
+                        nonce,
                         mdoc_generated_nonce,
                     )
                     .into(),

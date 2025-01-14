@@ -12,8 +12,8 @@ use shared_types::{CredentialId, KeyId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{
-    deserialize_interaction_data, interaction_data_from_client_request,
-    interaction_data_from_query, serialize_interaction_data, validate_interaction_data,
+    deserialize_interaction_data, interaction_data_from_query, serialize_interaction_data,
+    validate_interaction_data,
 };
 use uuid::Uuid;
 
@@ -81,7 +81,6 @@ const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
 const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
 const PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY: &str = "presentation_definition";
 const PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY: &str = "presentation_definition_uri";
-const CLIENT_ID_SCHEME_PARAM_KEY: &str = "client_id_scheme";
 const REQUEST_URI_QUERY_PARAM_KEY: &str = "request_uri";
 
 pub struct OpenID4VCHTTP {
@@ -182,7 +181,8 @@ impl OpenID4VCHTTP {
                     &self.client,
                     storage_access,
                     Some(organisation),
-                    &*self.key_algorithm_provider,
+                    &self.key_algorithm_provider,
+                    &self.did_method_provider,
                 )
                 .await
             }
@@ -1096,44 +1096,21 @@ async fn handle_proof_invitation(
     client: &Arc<dyn HttpClient>,
     storage_access: &StorageAccess,
     organisation: Option<Organisation>,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: &Arc<dyn DidMethodProvider>,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
-    let verifier_attestation_str = ClientIdSchemaType::VerifierAttestation.to_string();
-    let is_verifier_attestation = url
-        .query_pairs()
-        .any(|(key, value)| key == CLIENT_ID_SCHEME_PARAM_KEY && value == verifier_attestation_str);
+    let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
+        "Query cannot be empty".to_string(),
+    ))?;
 
-    let interaction_data = if is_verifier_attestation {
-        let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
-            "Query cannot be empty".to_string(),
-        ))?;
-
-        interaction_data_from_query(
-            query,
-            client,
-            allow_insecure_http_transport,
-            key_algorithm_provider,
-        )
-        .await
-    } else if let Some(request_uri) = url
-        .query_pairs()
-        .find_map(|(k, v)| (k == REQUEST_URI_QUERY_PARAM_KEY).then_some(v))
-    {
-        interaction_data_from_client_request(client, &request_uri, allow_insecure_http_transport)
-            .await
-    } else {
-        let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
-            "Query cannot be empty".to_string(),
-        ))?;
-
-        interaction_data_from_query(
-            query,
-            client,
-            allow_insecure_http_transport,
-            key_algorithm_provider,
-        )
-        .await
-    }?;
+    let interaction_data = interaction_data_from_query(
+        query,
+        client,
+        allow_insecure_http_transport,
+        key_algorithm_provider,
+        did_method_provider,
+    )
+    .await?;
     validate_interaction_data(&interaction_data)?;
     let data = serialize_interaction_data(&interaction_data)?;
 

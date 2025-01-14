@@ -16,6 +16,9 @@ pub struct JWTHeader {
 
     #[serde(rename = "jwk", default, skip_serializing_if = "Option::is_none")]
     pub jwk: Option<PublicKeyJwkDTO>,
+
+    #[serde(rename = "jwt", default, skip_serializing_if = "Option::is_none")]
+    pub jwt: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

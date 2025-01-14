@@ -57,6 +57,7 @@ impl<Payload> Jwt<Payload> {
             algorithm,
             key_id,
             jwk,
+            jwt: None,
         };
 
         Jwt { header, payload }

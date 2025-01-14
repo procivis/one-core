@@ -15,7 +15,7 @@ use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::key_agreement_key::KeyAgreementKey;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, OpenID4VPAuthorizationRequest, OpenID4VPPresentationDefinition,
+    ClientIdSchemaType, OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::mappers::parse_identity_request;
 use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::model::{
@@ -83,9 +83,10 @@ pub(super) async fn mqtt_verifier_flow(
         let shared_key =
             PeerEncryption::new(encryption_key, decryption_key, identity_request.nonce);
 
-        let request = OpenID4VPAuthorizationRequest {
-            nonce: utilities::generate_nonce(),
-            presentation_definition: presentation_definition.clone(),
+        let nonce = utilities::generate_nonce();
+        let request = OpenID4VPAuthorizationRequestParams {
+            nonce: Some(nonce.to_owned()),
+            presentation_definition: Some(presentation_definition.clone()),
             response_type: None,
             response_mode: None,
             client_id: did.did.to_string(),
@@ -93,6 +94,10 @@ pub(super) async fn mqtt_verifier_flow(
             client_metadata: None,
             response_uri: None,
             state: None,
+            client_metadata_uri: None,
+            presentation_definition_uri: None,
+            request_uri: None,
+            redirect_uri: None,
         };
 
         let signed = request
@@ -155,7 +160,7 @@ pub(super) async fn mqtt_verifier_flow(
                             serde_json::to_vec(&MQTTOpenID4VPInteractionDataVerifier {
                                 presentation_definition: presentation_definition.clone(),
                                 presentation_submission,
-                                nonce: request.nonce,
+                                nonce,
                                 client_id: request.client_id,
                                 identity_request_nonce: hex::encode(identity_request.nonce),
                             })

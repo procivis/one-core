@@ -2,18 +2,20 @@ use core::str;
 use std::sync::Arc;
 
 use anyhow::Context;
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::{Deserialize, Serialize};
-use url::Url;
 
+use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, OpenID4VPInteractionData, OpenID4VPRequestDataResponse,
+    ClientIdSchemaType, OpenID4VPAuthorizationRequestParams,
+    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPInteractionData,
 };
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::util::key_verification::KeyVerification;
 
 pub fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<Vec<u8>>,
@@ -30,65 +32,154 @@ pub fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
     serde_json::to_vec(&dto).map_err(ExchangeProtocolError::JsonError)
 }
 
-pub async fn interaction_data_from_client_request(
-    client: &Arc<dyn HttpClient>,
-    request_uri: &str,
-    _allow_insecure_http_transport: bool,
+fn parse_referenced_data_from_unsigned_token(
+    token: String,
 ) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
-    let token = client
-        .get(request_uri)
-        .send()
+    let DecomposedToken::<OpenID4VPAuthorizationRequestParams> { payload, .. } =
+        Jwt::decompose_token(&token).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+    let result: OpenID4VPInteractionData = payload.custom.into();
+    assert!(result.verifier_did.is_none());
+    Ok(result)
+}
+
+async fn parse_referenced_data_from_verifier_attestation_token(
+    token: String,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: &Arc<dyn DidMethodProvider>,
+) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
+    let request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams> =
+        Jwt::decompose_token(&token).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let attestation_jwt = request_token
+        .header
+        .jwt
+        .ok_or(ExchangeProtocolError::Failed(
+            "attestation JWT missing".to_string(),
+        ))?;
+
+    let key_verification = Box::new(KeyVerification {
+        key_algorithm_provider: key_algorithm_provider.to_owned(),
+        did_method_provider: did_method_provider.to_owned(),
+        key_role: KeyRole::AssertionMethod,
+        cache_preferences: None,
+    });
+
+    let attestation_jwt = Jwt::<()>::build_from_token(&attestation_jwt, Some(key_verification))
         .await
-        .context("Error calling request_uri")
-        .and_then(|r| r.error_for_status().context("Response status error"))
-        .and_then(|r| String::from_utf8(r.body).context("Invalid response"))
-        .map_err(ExchangeProtocolError::Transport)?;
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-    let Some(index) = token.find('.') else {
-        return Err(ExchangeProtocolError::Failed("Invalid JWT".to_string()));
-    };
+    let alg = key_algorithm_provider
+        .get_key_algorithm(&request_token.header.algorithm)
+        .ok_or(ExchangeProtocolError::Failed(format!(
+            "Missing algorithm: {}",
+            request_token.header.algorithm
+        )))?;
 
-    Base64UrlSafeNoPadding::decode_to_vec(&token[index + 1..], None)
-        .context("Failed base64 decoding payload")
-        .and_then(|p| {
-            serde_json::from_str(&String::from_utf8_lossy(&p)).context("Invalid JWT payload")
-        })
-        .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))
+    let public_key_cnf = attestation_jwt
+        .payload
+        .proof_of_possession_key
+        .ok_or(ExchangeProtocolError::Failed(
+            "missing `cnf` in attestation JWT token".to_string(),
+        ))?
+        .jwk
+        .into();
+
+    let public_key = alg
+        .jwk_to_bytes(&public_key_cnf)
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let signer = key_algorithm_provider
+        .get_signer(&request_token.header.algorithm)
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    signer
+        .verify(
+            request_token.unverified_jwt.as_bytes(),
+            &request_token.signature,
+            &public_key,
+        )
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let response_content: OpenID4VPInteractionData = request_token.payload.custom.into();
+
+    let client_id = attestation_jwt
+        .payload
+        .subject
+        .ok_or(ExchangeProtocolError::Failed(
+            "missing `sub` in attestation JWT token".to_string(),
+        ))?;
+
+    let verifier_did = attestation_jwt.payload.issuer;
+
+    Ok(OpenID4VPInteractionData {
+        client_id,
+        client_id_scheme: ClientIdSchemaType::VerifierAttestation,
+        verifier_did,
+        ..response_content
+    })
 }
 
 pub async fn interaction_data_from_query(
     query: &str,
     client: &Arc<dyn HttpClient>,
     allow_insecure_http_transport: bool,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: &Arc<dyn DidMethodProvider>,
 ) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
-    let mut interaction_data: OpenID4VPInteractionData = serde_qs::from_str(query)
+    let query_params: OpenID4VPAuthorizationRequestQueryParams = serde_qs::from_str(query)
         .map_err(|e| ExchangeProtocolError::InvalidRequest(e.to_string()))?;
 
-    let is_verifier_attestation =
-        interaction_data.client_id_scheme == ClientIdSchemaType::VerifierAttestation;
+    let query_params: OpenID4VPAuthorizationRequestParams = query_params.try_into()?;
 
-    if !is_verifier_attestation {
-        if interaction_data.nonce.is_none() {
+    let mut interaction_data: OpenID4VPInteractionData = query_params.into();
+
+    if let Some(request_uri) = &interaction_data.request_uri {
+        if !allow_insecure_http_transport && request_uri.scheme() != "https" {
             return Err(ExchangeProtocolError::InvalidRequest(
-                "nonce must be set".to_string(),
+                "request_uri must use HTTPS scheme".to_string(),
             ));
         }
-        if interaction_data.response_mode.is_none() {
+
+        let token = client
+            .get(request_uri.as_str())
+            .header("Accept", "application/oauth-authz-req+jwt")
+            .send()
+            .await
+            .context("Error calling request_uri")
+            .and_then(|r| r.error_for_status().context("Response status error"))
+            .and_then(|r| String::from_utf8(r.body).context("Invalid response"))
+            .map_err(ExchangeProtocolError::Transport)?;
+
+        let referenced_params = match &interaction_data.client_id_scheme {
+            ClientIdSchemaType::VerifierAttestation => {
+                parse_referenced_data_from_verifier_attestation_token(
+                    token,
+                    key_algorithm_provider,
+                    did_method_provider,
+                )
+                .await
+            }
+            ClientIdSchemaType::RedirectUri => parse_referenced_data_from_unsigned_token(token),
+            ClientIdSchemaType::Did => {
+                return Err(ExchangeProtocolError::InvalidRequest(
+                    "did client_id_scheme not supported".to_string(),
+                ));
+            }
+        }?;
+
+        // client_id from the query params must match client_id inisde the token
+        if referenced_params.client_id != interaction_data.client_id {
             return Err(ExchangeProtocolError::InvalidRequest(
-                "response_mode must be set".to_string(),
+                "cliet_id mismatch with the referenced token".to_string(),
             ));
         }
-        if interaction_data.response_type.is_none() {
-            return Err(ExchangeProtocolError::InvalidRequest(
-                "response_type must be set".to_string(),
-            ));
-        }
-        if interaction_data.response_uri.is_none() {
-            return Err(ExchangeProtocolError::InvalidRequest(
-                "response_uri must be set".to_string(),
-            ));
-        }
+
+        // use referenced params
+        interaction_data = referenced_params;
+    } else if interaction_data.client_id_scheme == ClientIdSchemaType::VerifierAttestation {
+        return Err(ExchangeProtocolError::InvalidRequest(
+            "verifier_attestation without request_uri".to_string(),
+        ));
     }
 
     if interaction_data.client_metadata.is_some() && interaction_data.client_metadata_uri.is_some()
@@ -153,90 +244,6 @@ pub async fn interaction_data_from_query(
         interaction_data.presentation_definition = Some(presentation_definition);
     }
 
-    if is_verifier_attestation {
-        let request_uri =
-            interaction_data
-                .request_uri
-                .as_ref()
-                .ok_or(ExchangeProtocolError::Failed(
-                    "Missing request_uri for verifier_attestation scheme type".to_string(),
-                ))?;
-
-        let token = String::from_utf8(
-            client
-                .get(request_uri.as_str())
-                .send()
-                .await
-                .context("send error")
-                .map_err(ExchangeProtocolError::Transport)?
-                .error_for_status()
-                .context("status error")
-                .map_err(ExchangeProtocolError::Transport)?
-                .body,
-        )
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        let decomposed_token: DecomposedToken<OpenID4VPRequestDataResponse> =
-            Jwt::decompose_token(&token)
-                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        let alg = key_algorithm_provider
-            .get_key_algorithm(&decomposed_token.header.algorithm)
-            .ok_or(ExchangeProtocolError::Failed(format!(
-                "Missing algorithm: {}",
-                decomposed_token.header.algorithm
-            )))?;
-
-        let public_key = alg
-            .jwk_to_bytes(
-                &decomposed_token
-                    .payload
-                    .proof_of_possession_key
-                    .ok_or(ExchangeProtocolError::Failed(
-                        "missing `cnf` in JWT token".to_string(),
-                    ))?
-                    .jwk
-                    .into(),
-            )
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        let signer = key_algorithm_provider
-            .get_signer(&decomposed_token.header.algorithm)
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        signer
-            .verify(
-                decomposed_token.unverified_jwt.as_bytes(),
-                &decomposed_token.signature,
-                &public_key,
-            )
-            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-        interaction_data.nonce = decomposed_token.payload.custom.nonce;
-        interaction_data.response_uri = decomposed_token
-            .payload
-            .custom
-            .redirect_uri
-            .map(|value| {
-                Url::parse(&value).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
-            })
-            .transpose()?;
-        interaction_data.response_mode = Some("direct_post".to_string());
-        interaction_data.response_type = Some("vp_token".to_string());
-        interaction_data.client_metadata = Some(decomposed_token.payload.custom.client_metadata);
-        interaction_data.state = Some(
-            decomposed_token
-                .payload
-                .custom
-                .presentation_definition
-                .id
-                .to_string(),
-        );
-        interaction_data.presentation_definition =
-            Some(decomposed_token.payload.custom.presentation_definition);
-        interaction_data.verifier_did = decomposed_token.payload.issuer;
-    }
-
     Ok(interaction_data)
 }
 
@@ -295,6 +302,32 @@ pub fn validate_interaction_data(
             }
         }
     }?;
+
+    if interaction_data.response_uri.is_none() {
+        return Err(ExchangeProtocolError::InvalidRequest(
+            "response_uri must be set".to_string(),
+        ));
+    }
+
+    // If the Client Identifier scheme redirect_uri is used in conjunction with the Response Mode direct_post, and the response_uri parameter is present, the client_id value MUST be equal to the response_uri value.
+    // <https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html#section-6.2-9>
+    if interaction_data.client_id_scheme == ClientIdSchemaType::RedirectUri
+        && Some(interaction_data.client_id.as_str())
+            != interaction_data
+                .response_uri
+                .as_ref()
+                .map(|uri| uri.as_str())
+    {
+        return Err(ExchangeProtocolError::InvalidRequest(
+            "client_id must match response_uri".to_string(),
+        ));
+    }
+
+    if interaction_data.nonce.is_none() {
+        return Err(ExchangeProtocolError::InvalidRequest(
+            "nonce must be set".to_string(),
+        ));
+    }
 
     Ok(())
 }

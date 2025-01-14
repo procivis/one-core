@@ -435,24 +435,19 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     serde_json::from_value(interaction_data)
                         .map_err(ExchangeProtocolError::JsonError)?;
 
-                interaction_data
-                    .presentation_definition
-                    .ok_or(ExchangeProtocolError::Failed(
-                        "presentation_definition is None".to_string(),
-                    ))?
+                interaction_data.presentation_definition
             }
             TransportType::Mqtt => {
                 let interaction_data: MQTTOpenID4VPInteractionData =
                     serde_json::from_value(interaction_data)
                         .map_err(ExchangeProtocolError::JsonError)?;
 
-                interaction_data
-                    .presentation_definition
-                    .ok_or(ExchangeProtocolError::Failed(
-                        "presentation_definition is None".to_string(),
-                    ))?
+                interaction_data.presentation_definition
             }
-        };
+        }
+        .ok_or(ExchangeProtocolError::Failed(
+            "presentation_definition is None".to_string(),
+        ))?;
 
         let mut credential_groups: Vec<CredentialGroup> = vec![];
         let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();

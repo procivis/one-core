@@ -50,6 +50,7 @@ pub(crate) async fn prepare_bearer_token(
             key_id: Some(key_id),
             signature_type: None,
             jwk: None,
+            jwt: None,
         },
         payload,
     }
