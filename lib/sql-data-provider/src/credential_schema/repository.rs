@@ -12,7 +12,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
+    ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
     QueryOrder, SqlErr, Unchanged,
 };
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
@@ -28,7 +28,7 @@ use crate::entity::{
     claim_schema, credential_schema, credential_schema_claim_schema, organisation,
 };
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::to_data_layer_error;
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -89,10 +89,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .filter(credential_schema::Column::DeletedAt.is_null())
             .exec(&self.db)
             .await
-            .map_err(|error| match error {
-                DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-                error => DataLayerError::Db(error.into()),
-            })?;
+            .map_err(to_update_data_layer_error)?;
 
         Ok(())
     }
@@ -333,10 +330,10 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             ..Default::default()
         };
 
-        update_model.update(&self.db).await.map_err(|e| match e {
-            DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::Db(e.into()),
-        })?;
+        update_model
+            .update(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
 
         if let Some(claim_schemas) = request.claim_schemas {
             let credential_schema_claim_schema_relations =

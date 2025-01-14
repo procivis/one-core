@@ -17,7 +17,7 @@ use super::mapper::create_list_response;
 use super::DidProvider;
 use crate::entity::{did, key_did};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
-use crate::mapper::to_data_layer_error;
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 impl DidProvider {
     async fn resolve_relations(
@@ -180,10 +180,9 @@ impl DidRepository for DidProvider {
             ..Default::default()
         };
 
-        did.update(&self.db).await.map_err(|err| match err {
-            sea_orm::DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            err => DataLayerError::Db(err.into()),
-        })?;
+        did.update(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
 
         Ok(())
     }

@@ -4,13 +4,13 @@ use autometrics::autometrics;
 use one_core::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
-use sea_orm::{ActiveModelTrait, DbErr, EntityTrait};
+use sea_orm::{ActiveModelTrait, EntityTrait};
 use uuid::Uuid;
 
 use super::InteractionProvider;
 use crate::entity::interaction;
 use crate::interaction::mapper::interaction_from_models;
-use crate::mapper::to_data_layer_error;
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -28,10 +28,10 @@ impl InteractionRepository for InteractionProvider {
 
     async fn update_interaction(&self, request: Interaction) -> Result<(), DataLayerError> {
         let model: interaction::ActiveModel = request.try_into()?;
-        model.update(&self.db).await.map_err(|e| match e {
-            DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::Db(e.into()),
-        })?;
+        model
+            .update(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
         Ok(())
     }
 

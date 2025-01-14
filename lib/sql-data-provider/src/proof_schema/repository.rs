@@ -22,7 +22,7 @@ use super::mapper::create_list_response;
 use super::ProofSchemaProvider;
 use crate::entity::{proof_input_claim_schema, proof_input_schema, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::to_data_layer_error;
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -239,10 +239,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             .filter(proof_schema::Column::DeletedAt.is_null())
             .exec(&self.db)
             .await
-            .map_err(|error| match error {
-                sea_orm::DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-                err => DataLayerError::Db(err.into()),
-            })?;
+            .map_err(to_update_data_layer_error)?;
 
         Ok(())
     }

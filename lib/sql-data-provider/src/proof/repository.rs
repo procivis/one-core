@@ -12,7 +12,7 @@ use one_core::model::proof::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::proof_repository::ProofRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
 use shared_types::ProofId;
@@ -25,6 +25,7 @@ use super::ProofProvider;
 use crate::entity::proof::ProofRequestState;
 use crate::entity::{did, proof, proof_claim, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
+use crate::mapper::to_update_data_layer_error;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -147,10 +148,10 @@ impl ProofRepository for ProofProvider {
             },
         };
 
-        model.update(&self.db).await.map_err(|e| match e {
-            DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::Db(e.into()),
-        })?;
+        model
+            .update(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
 
         Ok(())
     }
@@ -169,10 +170,10 @@ impl ProofRepository for ProofProvider {
             ..Default::default()
         };
 
-        model.update(&self.db).await.map_err(|e| match e {
-            DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::Db(e.into()),
-        })?;
+        model
+            .update(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
 
         Ok(())
     }
@@ -264,10 +265,10 @@ impl ProofRepository for ProofProvider {
             ..Default::default()
         };
 
-        update_model.update(&self.db).await.map_err(|e| match e {
-            DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::Db(e.into()),
-        })?;
+        update_model
+            .update(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
 
         Ok(())
     }

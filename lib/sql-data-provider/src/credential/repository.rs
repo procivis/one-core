@@ -20,9 +20,9 @@ use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, FromQueryResult,
-    JoinType, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set,
-    SqlErr, Unchanged,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, JoinType,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
+    Unchanged,
 };
 use shared_types::{CredentialId, CredentialSchemaId, DidId};
 use time::OffsetDateTime;
@@ -36,6 +36,7 @@ use crate::entity::{
     claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
 };
 use crate::list_query_generic::SelectWithListQuery;
+use crate::mapper::to_update_data_layer_error;
 
 async fn get_credential_schema(
     schema_id: &CredentialSchemaId,
@@ -382,10 +383,7 @@ impl CredentialRepository for CredentialProvider {
             .exec(&self.db)
             .await
             .map(|_| ())
-            .map_err(|error| match error {
-                sea_orm::DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-                error => DataLayerError::Db(error.into()),
-            })
+            .map_err(to_update_data_layer_error)
     }
 
     async fn get_credential(
@@ -542,10 +540,10 @@ impl CredentialRepository for CredentialProvider {
             self.claim_repository.create_claim_list(claims).await?;
         }
 
-        update_model.update(&self.db).await.map_err(|e| match e {
-            DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::Db(e.into()),
-        })?;
+        update_model
+            .update(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
 
         Ok(())
     }

@@ -16,3 +16,10 @@ pub(crate) fn to_data_layer_error(e: DbErr) -> DataLayerError {
         Some(_) | None => DataLayerError::Db(e.into()),
     }
 }
+
+pub(crate) fn to_update_data_layer_error(err: DbErr) -> DataLayerError {
+    match err {
+        DbErr::RecordNotUpdated | DbErr::RecordNotFound(_) => DataLayerError::RecordNotUpdated,
+        e => to_data_layer_error(e),
+    }
+}

@@ -9,7 +9,7 @@ use one_core::model::revocation_list::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::{
-    ActiveEnum, ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Set, Unchanged,
+    ActiveEnum, ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged,
 };
 use shared_types::DidId;
 use time::OffsetDateTime;
@@ -17,6 +17,7 @@ use uuid::Uuid;
 
 use crate::entity;
 use crate::entity::revocation_list;
+use crate::mapper::to_update_data_layer_error;
 use crate::revocation_list::RevocationListProvider;
 
 impl RevocationListProvider {
@@ -154,10 +155,10 @@ impl RevocationListRepository for RevocationListProvider {
             ..Default::default()
         };
 
-        update_model.update(&self.db).await.map_err(|e| match e {
-            DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::Db(e.into()),
-        })?;
+        update_model
+            .update(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
 
         Ok(())
     }

@@ -5,13 +5,13 @@ use one_core::model::remote_entity_cache::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
+    ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
     QueryOrder, QueryTrait,
 };
 use shared_types::RemoteEntityCacheEntryId;
 
 use crate::entity::remote_entity_cache;
-use crate::mapper::to_data_layer_error;
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 use crate::remote_entity_cache::RemoteEntityCacheProvider;
 
 #[async_trait]
@@ -103,10 +103,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
         remote_entity_cache::ActiveModel::from(request)
             .update(&self.db)
             .await
-            .map_err(|e| match e {
-                DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-                _ => DataLayerError::Db(e.into()),
-            })?;
+            .map_err(to_update_data_layer_error)?;
         Ok(())
     }
 }

@@ -18,7 +18,7 @@ use crate::common::calculate_pages_count;
 use crate::entity::trust_entity::{TrustEntityRole, TrustEntityState};
 use crate::entity::{did, trust_anchor, trust_entity};
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::to_data_layer_error;
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 use crate::trust_entity::model::TrustEntityListItemEntityModel;
 
 #[autometrics]
@@ -248,7 +248,7 @@ impl TrustEntityRepository for TrustEntityProvider {
         }
         .update(&self.db)
         .await
-        .map_err(to_data_layer_error)?;
+        .map_err(to_update_data_layer_error)?;
 
         Ok(())
     }
