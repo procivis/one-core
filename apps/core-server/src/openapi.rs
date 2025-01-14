@@ -410,9 +410,12 @@ fn get_tags() -> Vec<Tag> {
         Tag::builder()
             .name("organisation_management")
             .description(Some(indoc::formatdoc! {"
-                Create organizations. See the
-                [Organization](../setup/organizations.mdx) guide for more
-                information.
+                The **Organization** is the fundamental unit of _Procivis One_. All actions
+                related to issuing, holding and verifying are taken _by_ an organization. This
+                means that keys, DIDs, credentials and proofs belong to the organization used
+                to create them and to no other.
+
+                Related guide: [Organizations](../setup/organizations.mdx)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -423,9 +426,16 @@ fn get_tags() -> Vec<Tag> {
         Tag::builder()
             .name("key")
             .description(Some(indoc::formatdoc! {"
-                Create keys and retrieve information on keys created within the current organization.
-                Keys are required to create DIDs and issue credentials.
-                See the [Keys](../api/keys.mdx) guide for more information.
+                Create cryptographic keys using different key algorithms and storage types.
+                The public key can be seen in the system (`publicKey`) and is used to verify
+                credentials. The private key is stored in the system and used to sign credentials,
+                but cannot be exported and is not visible through the API.
+
+                At least one key pair is needed to create a DID, and a DID is required to issue,
+                hold, or verify credentials.
+
+                This resource also generates Certificate Signing Requests, a necessary component
+                of ISO mdoc issuance and verification.
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -436,9 +446,17 @@ fn get_tags() -> Vec<Tag> {
         Tag::builder()
             .name("did_management")
             .description(Some(indoc::formatdoc! {"
-                Create DIDs, deactivate DIDs, and retrieve information on DIDs within the current organization.
-                A DID is required to issue credentials, request a proof, and verify credentials.
-                See the [DIDs](../api/dids.mdx) guide for more information.
+                Create and manage DIDs (Decentralized Identifiers), a type of globally unique
+                identifier for an entity. The DID is a URI that can be resolved to
+                a DID document which offers metadata about the identified entity.
+
+                Because a DID is created in association with a public/private key pair, the
+                controller of the private key is able to prove control of the DID and thus
+                authenticate themselves.
+
+                A DID is needed to issue credentials, request a proof, and verify credentials.
+
+                Related guide: [DIDs](../api/dids.mdx).
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -449,9 +467,15 @@ fn get_tags() -> Vec<Tag> {
         Tag::builder()
             .name("credential_schema_management")
             .description(Some(indoc::formatdoc! {"
-                Create, retrieve, and delete credential schemas.
-                See the [Credential schemas](../api/credentialSchemas.mdx) guide
-                for more information.
+                A credential schema defines the structure and format of a credential, including
+                the attributes about which issuers make claims. Schemas carry information about
+                issued credentials such as how an issued credential should be presented in a
+                digital wallet, whether it was issued with a revocation method and issuer
+                preferences for wallet storage type.
+
+                The system supports the creation of as many credential schemas as is needed.
+
+                Related guide: [Credential schemas](../api/credentialSchemas.mdx)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -462,9 +486,14 @@ fn get_tags() -> Vec<Tag> {
         Tag::builder()
             .name("credential_management")
             .description(Some(indoc::formatdoc! {"
-                Issue, revoke, and retrieve credentials. See the
-                [Credentials](../api/credentials.mdx) guide for more
-                information.
+                Issue credentials and manage the lifecycle of issued credentials, including
+                suspension, reactivation, revocation and status check for holders and verifiers.
+
+                Create a credential by specifying a schema and making claims about a subject.
+                Then create a share endpoint URL for the wallet holder to access the offered
+                credential. Suspension and revocation options are determined by the schema.
+
+                Related guide: [Credentials](../api/credentials.mdx)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -475,9 +504,19 @@ fn get_tags() -> Vec<Tag> {
         Tag::builder()
             .name("proof_schema_management")
             .description(Some(indoc::formatdoc! {"
-                Create, delete, and retrieve proof schemas.
-                See the [Proof schemas](../api/proofSchemas.mdx) guide for more
-                information.
+                A proof schema defines the attributes a verifier requests from a credentials holder.
+                It is the collection of items of information to be requested.
+
+                Proof schemas are built from attributes defined in credential schemas. Each item of
+                information to be requested must first be part of a credential schema in the system.
+                Proof schemas are not restricted to pulling attributes from a single credential schema
+                or from credential schemas using a particular credential format; a single proof schema
+                can be composed of any number of attributes from any number of credential schemas within
+                the organization.
+
+                Proof schemas cannot combine hardware- and software-based credentials.
+
+                Related guide: [Proof schemas](../api/proofSchemas.mdx)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -488,9 +527,16 @@ fn get_tags() -> Vec<Tag> {
         Tag::builder()
             .name("proof_management")
             .description(Some(indoc::formatdoc! {"
-                Request proofs and retrieve proof requests.
-                See the [Proof requests](../api/proofRequests.mdx) guide for
-                more information.
+                A proof request is a request of one or more claims from a wallet holder.
+
+                Create a proof request then create a share endpoint URL for the holder
+                to access the request. Any proof shared is verified.
+
+                This resource also includes claim data deletion and presentation definition,
+                a filtering function for wallet holders to see what credentials stored in
+                their wallet match a proof request.
+
+                Related guide: [Proof requests](../api/proofRequests.mdx)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -502,8 +548,14 @@ fn get_tags() -> Vec<Tag> {
             .name("interaction")
             .description(Some(indoc::formatdoc! {"
                 For wallet agents, handle interactions with issuers and verifiers.
-                See the [Wallet interaction](../api/walletInteraction.mdx) guide for more
-                information.
+
+                When the holder scans the QR code offered by an issuer or a verifier, the
+                handle invitation endpoint takes the encoded url and returns the interaction
+                ID along with either the credential being offered or the proof being requested.
+
+                The holder then makes the choice to accept or reject the exchange.
+
+                Related guide: [Wallet interaction](../api/walletInteraction.mdx)
             "}))
             .extensions(Some(
                 Extensions::builder()
