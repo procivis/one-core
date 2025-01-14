@@ -376,8 +376,11 @@ pub(super) struct ValidatedProofClaimDTO {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredential {
     pub format: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vct: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub doctype: Option<String>,
     pub proof: OpenID4VCIProof,
 }
