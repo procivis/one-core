@@ -76,7 +76,6 @@ mod utils;
 #[cfg(test)]
 mod test;
 
-const CREDENTIAL_OFFER_URL_SCHEME: &str = "openid-credential-offer";
 const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
 const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
 const PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY: &str = "presentation_definition";
@@ -771,7 +770,7 @@ impl OpenID4VCHTTP {
             refresh_token_expires_at: None,
         };
 
-        let mut url = Url::parse(&format!("{CREDENTIAL_OFFER_URL_SCHEME}://"))
+        let mut url = Url::parse(&format!("{}://", self.params.issuance.url_scheme))
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
         let mut query = url.query_pairs_mut();
 
@@ -884,7 +883,7 @@ impl OpenID4VCHTTP {
         };
 
         Ok(ShareResponse {
-            url: format!("openid4vp://?{encoded_offer}"),
+            url: format!("{}://?{encoded_offer}", self.params.presentation.url_scheme),
             interaction_id,
             context: interaction_content,
         })

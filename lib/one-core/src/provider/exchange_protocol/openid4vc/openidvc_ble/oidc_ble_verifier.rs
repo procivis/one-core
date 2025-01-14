@@ -86,6 +86,7 @@ impl OpenID4VCBLEVerifier {
         keypair: KeyAgreementKey,
         cancellation_token: CancellationToken,
         callback: Option<Shared<BoxFuture<'static, ()>>>,
+        url_scheme: &str,
     ) -> Result<String, ExchangeProtocolError> {
         let proof_repository = self.proof_repository.clone();
 
@@ -116,7 +117,7 @@ impl OpenID4VCBLEVerifier {
         advertising_result.ok_or(ExchangeProtocolError::Failed("flow was aborted".into()))??;
 
         let qr_url = format!(
-            "OPENID4VP://connect?name={}&key={}",
+            "{url_scheme}://connect?name={}&key={}",
             verifier_name,
             hex::encode(public_key),
         );

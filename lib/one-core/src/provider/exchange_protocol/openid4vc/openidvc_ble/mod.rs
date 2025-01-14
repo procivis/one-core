@@ -564,6 +564,7 @@ impl OpenID4VCBLE {
                 key_agreement,
                 cancellation_token,
                 callback,
+                &self.params.presentation.url_scheme,
             )
             .await
     }

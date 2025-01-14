@@ -307,38 +307,7 @@ async fn test_share_proof() {
     let protocol = setup_protocol(TestInputs::default());
 
     let proof_id = Uuid::new_v4();
-    let proof = Proof {
-        id: proof_id.into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
-        exchange: "OPENID4VC".to_string(),
-        transport: "HTTP".to_string(),
-        redirect_uri: None,
-        state: ProofStateEnum::Created,
-        requested_date: None,
-        completed_date: None,
-        schema: Some(ProofSchema {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            deleted_at: None,
-            name: "test-share-proof".into(),
-            expire_duration: 123,
-            imported_source_url: None,
-            organisation: None,
-            input_schemas: Some(vec![ProofInputSchema {
-                validity_constraint: None,
-                claim_schemas: None,
-                credential_schema: None,
-            }]),
-        }),
-        claims: None,
-        verifier_did: None,
-        holder_did: None,
-        verifier_key: None,
-        interaction: None,
-    };
+    let proof = test_proof(proof_id);
 
     let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
 
@@ -422,6 +391,41 @@ async fn test_share_proof() {
         ),
         query_pairs.get("client_metadata_uri").unwrap()
     );
+}
+
+fn test_proof(proof_id: Uuid) -> Proof {
+    Proof {
+        id: proof_id.into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        issuance_date: OffsetDateTime::now_utc(),
+        exchange: "OPENID4VC".to_string(),
+        transport: "HTTP".to_string(),
+        redirect_uri: None,
+        state: ProofStateEnum::Created,
+        requested_date: None,
+        completed_date: None,
+        schema: Some(ProofSchema {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
+            name: "test-share-proof".into(),
+            expire_duration: 123,
+            imported_source_url: None,
+            organisation: None,
+            input_schemas: Some(vec![ProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: None,
+                credential_schema: None,
+            }]),
+        }),
+        claims: None,
+        verifier_did: None,
+        holder_did: None,
+        verifier_key: None,
+        interaction: None,
+    }
 }
 
 #[tokio::test]
@@ -1913,4 +1917,147 @@ fn test_map_offered_claims_to_credential_schema_opt_object_opt_obj_present_man_r
         map_offered_claims_to_credential_schema(&schema, Uuid::new_v4().into(), &claim_keys)
             .is_err()
     )
+}
+
+#[tokio::test]
+async fn test_can_handle_issuance_success_with_custom_url_scheme() {
+    let url_scheme = "my-custom-scheme";
+
+    let protocol = setup_protocol(TestInputs {
+        params: Some(test_params(url_scheme, "presentation-url-scheme")),
+        ..Default::default()
+    });
+
+    let test_url = format!("{url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
+    assert!(protocol.can_handle(&test_url.parse().unwrap()))
+}
+
+#[test]
+fn test_can_handle_issuance_fail_with_custom_url_scheme() {
+    let url_scheme = "my-custom-scheme";
+    let other_url_scheme = "my-different-scheme";
+
+    let protocol = setup_protocol(TestInputs {
+        params: Some(test_params(url_scheme, "presentation-url-scheme")),
+        ..Default::default()
+    });
+
+    let test_url = format!("{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
+    assert!(!protocol.can_handle(&test_url.parse().unwrap()))
+}
+
+#[tokio::test]
+async fn test_can_handle_presentation_success_with_custom_url_scheme() {
+    let url_scheme = "my-custom-scheme";
+
+    let protocol = setup_protocol(TestInputs {
+        params: Some(test_params("issuance-url-scheme", url_scheme)),
+        ..Default::default()
+    });
+
+    let test_url = format!("{url_scheme}://?response_type=vp_token&nonce=123&client_id_scheme=redirect_uri&client_id=abc&client_metadata=foo&response_mode=direct_post&response_uri=uri&presentation_definition=def");
+    assert!(protocol.can_handle(&test_url.parse().unwrap()))
+}
+
+#[test]
+fn test_can_handle_presentation_fail_with_custom_url_scheme() {
+    let url_scheme = "my-custom-scheme";
+    let other_url_scheme = "my-different-scheme";
+
+    let protocol = setup_protocol(TestInputs {
+        params: Some(test_params("issuance-url-scheme", url_scheme)),
+        ..Default::default()
+    });
+
+    let test_url = format!("{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
+    assert!(!protocol.can_handle(&test_url.parse().unwrap()))
+}
+
+#[tokio::test]
+async fn test_generate_share_credentials_custom_scheme() {
+    let credential = generic_credential();
+    let url_scheme = "my-custom-scheme";
+    let protocol = setup_protocol(TestInputs {
+        params: Some(test_params(url_scheme, "presentation-url-scheme")),
+        ..Default::default()
+    });
+
+    let result = protocol
+        .issuer_share_credential(&credential, "")
+        .await
+        .unwrap();
+    assert!(result.url.starts_with(url_scheme));
+}
+
+#[tokio::test]
+async fn test_share_proof_custom_scheme() {
+    let url_scheme = "my-custom-scheme";
+    let protocol = setup_protocol(TestInputs {
+        params: Some(test_params("issuance-url-scheme", url_scheme)),
+        ..Default::default()
+    });
+
+    let proof_id = Uuid::new_v4();
+    let proof = test_proof(proof_id);
+
+    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+
+    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
+
+    let key_id = Uuid::new_v4().into();
+    let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+        r#use: None,
+        crv: "P-256".to_string(),
+        x: "x".to_string(),
+        y: None,
+    });
+    let vp_formats = HashMap::new();
+
+    let ShareResponse { url, .. } = protocol
+        .verifier_share_proof(
+            &proof,
+            format_type_mapper,
+            key_id,
+            encryption_key_jwk,
+            vp_formats,
+            type_to_descriptor_mapper,
+            ClientIdSchemaType::RedirectUri,
+        )
+        .await
+        .unwrap();
+    assert!(url.starts_with(url_scheme));
+}
+
+fn test_params(issuance_url_scheme: &str, presentation_url_scheme: &str) -> OpenID4VCParams {
+    OpenID4VCParams {
+        pre_authorized_code_expires_in: 10,
+        token_expires_in: 10,
+        credential_offer_by_value: true,
+        client_metadata_by_value: false,
+        presentation_definition_by_value: false,
+        allow_insecure_http_transport: true,
+        refresh_expires_in: 1000,
+        use_request_uri: false,
+        issuance: OpenID4VCIssuanceParams {
+            disabled: false,
+            url_scheme: issuance_url_scheme.to_string(),
+        },
+        presentation: OpenID4VCPresentationParams {
+            disabled: false,
+            url_scheme: presentation_url_scheme.to_string(),
+            holder: OpenID4VCPresentationHolderParams {
+                supported_client_id_schemes: vec![
+                    ClientIdSchemaType::RedirectUri,
+                    ClientIdSchemaType::VerifierAttestation,
+                ],
+            },
+            verifier: OpenID4VCPresentationVerifierParams {
+                default_client_id_schema: ClientIdSchemaType::RedirectUri,
+                supported_client_id_schemes: vec![
+                    ClientIdSchemaType::RedirectUri,
+                    ClientIdSchemaType::VerifierAttestation,
+                ],
+            },
+        },
+    }
 }

@@ -56,6 +56,8 @@ struct TestInputs<'a> {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub key_provider: MockKeyProvider,
+    pub issuance_url_scheme: Option<&'a str>,
+    pub presentation_url_scheme: Option<&'a str>,
 }
 
 fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
@@ -94,9 +96,12 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
             use_request_uri: false,
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
-                url_scheme: "openid-credential-offer".to_string(),
+                url_scheme: inputs
+                    .issuance_url_scheme
+                    .unwrap_or("openid-credential-offer")
+                    .to_string(),
             },
-            presentation: generic_presentation_params(),
+            presentation: generic_presentation_params(inputs.presentation_url_scheme),
         },
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.proof_repository),
@@ -106,10 +111,10 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
         Arc::new(inputs.key_provider),
     )
 }
-fn generic_presentation_params() -> OpenID4VCPresentationParams {
+fn generic_presentation_params(url_scheme: Option<&str>) -> OpenID4VCPresentationParams {
     OpenID4VCPresentationParams {
         disabled: false,
-        url_scheme: "openid4vp".to_string(),
+        url_scheme: url_scheme.unwrap_or("openid4vp").to_string(),
         holder: OpenID4VCPresentationHolderParams {
             supported_client_id_schemes: vec![
                 ClientIdSchemaType::RedirectUri,
@@ -140,6 +145,20 @@ fn test_can_handle() {
         .parse()
         .unwrap();
     assert!(protocol.holder_can_handle(&valid));
+}
+
+#[test]
+fn test_can_handle_custom_scheme() {
+    let url_scheme = "test-scheme";
+    let protocol = setup_protocol(TestInputs {
+        presentation_url_scheme: Some(url_scheme),
+        ..Default::default()
+    });
+
+    let url = format!("{url_scheme}://proof?brokerUrl=mqtt%3A%2F%2Fsomewhere.com%3A1234&key=abcdef&topicId=F25591B1-DB46-4606-8068-ADF986C3A2BD")
+        .parse()
+        .unwrap();
+    assert!(protocol.holder_can_handle(&url));
 }
 
 #[test]
@@ -444,11 +463,13 @@ async fn test_share_proof_for_mqtt_returns_url() {
             Ok(Box::new(topic))
         });
 
+    let custom_url_scheme = "my-url-scheme";
     let protocol = setup_protocol(TestInputs {
         mqtt_client,
         broker_url: Some(broker_url),
         did_method_provider: did_provider,
         key_provider,
+        presentation_url_scheme: Some(custom_url_scheme),
         ..Default::default()
     });
 
@@ -543,7 +564,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
         .find_map(|(key, value)| (key == "key").then_some(value))
         .unwrap();
 
-    assert_eq!("openid4vp", url.scheme());
+    assert_eq!(custom_url_scheme, url.scheme());
     assert_eq!(interaction_id.to_string(), proof_id_query_value);
     assert_eq!(broker_url, broker_url_query_value);
 }

@@ -490,7 +490,9 @@ impl OpenId4VcMqtt {
         callback: Option<Shared<BoxFuture<'static, ()>>>,
     ) -> Result<Url, ExchangeProtocolError> {
         let url = {
-            let mut url: Url = "openid4vp://connect".parse().unwrap();
+            let mut url: Url = format!("{}://connect", self.openid_params.presentation.url_scheme)
+                .parse()
+                .unwrap();
             url.query_pairs_mut()
                 .append_pair("key", &hex::encode(key_agreement.public_key_bytes()))
                 .append_pair(
