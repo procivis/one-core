@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use mockall::predicate::eq;
 use shared_types::{CredentialSchemaId, OrganisationId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -17,6 +19,8 @@ use crate::provider::credential_formatter::model::{
     CredentialStatus, ExtractPresentationCtx, Issuer, MockTokenVerifier, PublishedClaim,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 fn get_credential_data(status: Vec<CredentialStatus>, core_base_url: &str) -> CredentialData {
@@ -129,6 +133,7 @@ async fn test_format_credential() {
             leeway,
             embed_layout_properties: false,
         },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     };
 
     let credential_data = get_credential_data(
@@ -224,6 +229,7 @@ async fn test_format_credential_with_layout_properties() {
             leeway,
             embed_layout_properties: true,
         },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     };
 
     let credential_data = get_credential_data(
@@ -321,6 +327,7 @@ async fn test_format_credential_nested_array() {
             leeway,
             embed_layout_properties: false,
         },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     };
 
     let credential_data = get_credential_data_with_array(
@@ -402,10 +409,10 @@ async fn test_extract_credentials() {
             leeway,
             embed_layout_properties: false,
         },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     };
 
     let mut verify_mock = MockTokenVerifier::new();
-
     verify_mock
         .expect_verify()
         .withf(
@@ -421,6 +428,15 @@ async fn test_extract_credentials() {
             },
         )
         .return_once(|_, _, _, _, _| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
 
     let result = jwt_formatter
         .extract_credentials(&token, Box::new(verify_mock))
@@ -471,10 +487,10 @@ async fn test_extract_credentials_nested_array() {
             leeway,
             embed_layout_properties: false,
         },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     };
 
     let mut verify_mock = MockTokenVerifier::new();
-
     verify_mock
         .expect_verify()
         .withf(
@@ -490,6 +506,15 @@ async fn test_extract_credentials_nested_array() {
             },
         )
         .return_once(|_, _, _, _, _| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
 
     let result = jwt_formatter
         .extract_credentials(&token, Box::new(verify_mock))
@@ -552,6 +577,7 @@ async fn test_format_credential_presentation() {
             leeway: 45,
             embed_layout_properties: false,
         },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     };
 
     // Both
@@ -594,11 +620,23 @@ async fn test_format_presentation() {
 
     let leeway = 45u64;
 
+    let mut key_algorithm = MockKeyAlgorithm::new();
+    key_algorithm
+        .expect_jose_alg()
+        .returning(|| vec!["ES256".to_string()]);
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .with(eq("ES256"))
+        .return_once(|_| Some(Arc::new(key_algorithm)));
+
     let jwt_formatter = JWTFormatter {
         params: Params {
             leeway,
             embed_layout_properties: false,
         },
+        key_algorithm_provider: Arc::new(key_algorithm_provider),
     };
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
@@ -668,10 +706,10 @@ async fn test_extract_presentation() {
             leeway,
             embed_layout_properties: false,
         },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     };
 
     let mut verify_mock = MockTokenVerifier::new();
-
     verify_mock
         .expect_verify()
         .withf(
@@ -687,6 +725,15 @@ async fn test_extract_presentation() {
             },
         )
         .return_once(|_, _, _, _, _| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
 
     let result = jwt_formatter
         .extract_presentation(
@@ -719,6 +766,7 @@ fn test_get_capabilities() {
             leeway: 123u64,
             embed_layout_properties: false,
         },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     };
 
     assert_eq!(1, jwt_formatter.get_capabilities().features.len());
@@ -731,6 +779,7 @@ fn test_schema_id() {
             leeway: 123u64,
             embed_layout_properties: false,
         },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     };
     let request_dto = CreateCredentialSchemaRequestDTO {
         name: "".to_string(),

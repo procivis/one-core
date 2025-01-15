@@ -21,6 +21,8 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::lvvc::{LvvcProvider, Params};
 use crate::provider::revocation::model::{CredentialDataByRole, CredentialRevocationState};
@@ -117,6 +119,7 @@ fn extracted_credential(status: &str) -> DetailCredential {
 fn create_provider(
     formatter_provider: MockCredentialFormatterProvider,
     key_provider: MockKeyProvider,
+    key_algorithm_provider: MockKeyAlgorithmProvider,
     validity_credential_repository: MockValidityCredentialRepository,
     did_method_provider: MockDidMethodProvider,
 ) -> LvvcProvider {
@@ -126,6 +129,7 @@ fn create_provider(
         Arc::new(did_method_provider),
         Arc::new(validity_credential_repository),
         Arc::new(key_provider),
+        Arc::new(key_algorithm_provider),
         Arc::new(ReqwestClient::default()),
         Params {
             credential_expiry: Default::default(),
@@ -174,6 +178,7 @@ async fn test_check_revocation_status_as_issuer() {
     let provider = create_provider(
         formatter_provider,
         MockKeyProvider::new(),
+        MockKeyAlgorithmProvider::new(),
         validity_credential_repository,
         MockDidMethodProvider::new(),
     );
@@ -207,7 +212,7 @@ async fn test_check_revocation_status_as_holder_not_cached() {
     let mut key_provider = MockKeyProvider::new();
     key_provider
         .expect_get_signature_provider()
-        .returning(|_, _| {
+        .returning(|_, _, _| {
             let mut auth_fn = MockSignatureProvider::new();
             auth_fn
                 .expect_sign()
@@ -252,6 +257,17 @@ async fn test_check_revocation_status_as_holder_not_cached() {
         .once()
         .returning(|_, _| Ok("verification_method_id".to_string()));
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_jose_alg()
+                .returning(|| vec!["ES256".to_string()]);
+            Some(Arc::new(key_algorithm))
+        });
+
     let lvvc_url = format!("{}/lvvcurl", mock_server.uri()).parse().unwrap();
     let status = CredentialStatus {
         id: Some(lvvc_url),
@@ -263,6 +279,7 @@ async fn test_check_revocation_status_as_holder_not_cached() {
     let provider = create_provider(
         formatter_provider,
         key_provider,
+        key_algorithm_provider,
         validity_credential_repository,
         did_method_provider,
     );
@@ -318,6 +335,7 @@ async fn test_check_revocation_status_as_holder_cached() {
     let provider = create_provider(
         formatter_provider,
         MockKeyProvider::new(),
+        MockKeyAlgorithmProvider::new(),
         validity_credential_repository,
         MockDidMethodProvider::new(),
     );

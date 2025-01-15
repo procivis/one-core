@@ -26,6 +26,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
 use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCIError;
 use crate::provider::exchange_protocol::openid4vc::model::SubmitIssuerResponse;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::bitstring_status_list::Params;
 use crate::provider::revocation::error::RevocationError;
@@ -93,6 +94,7 @@ pub(crate) struct ExchangeProtocolProviderCoreImpl {
     credential_repository: Arc<dyn CredentialRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
@@ -108,6 +110,7 @@ impl ExchangeProtocolProviderCoreImpl {
         credential_repository: Arc<dyn CredentialRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
@@ -120,6 +123,7 @@ impl ExchangeProtocolProviderCoreImpl {
             credential_repository,
             revocation_method_provider,
             key_provider,
+            key_algorithm_provider,
             did_method_provider,
             revocation_list_repository,
             validity_credential_repository,
@@ -281,6 +285,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                     RevocationListPurpose::Revocation,
                     &*self.revocation_list_repository,
                     &self.key_provider,
+                    &self.key_algorithm_provider,
                     &self.core_base_url,
                     &*formatter,
                     key_id.clone(),
@@ -295,6 +300,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                         RevocationListPurpose::Suspension,
                         &*self.revocation_list_repository,
                         &self.key_provider,
+                        &self.key_algorithm_provider,
                         &self.core_base_url,
                         &*formatter,
                         key_id,
@@ -322,6 +328,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                     RevocationListPurpose::Revocation,
                     &*self.revocation_list_repository,
                     &self.key_provider,
+                    &self.key_algorithm_provider,
                     &self.core_base_url,
                     &*formatter,
                     key_id.clone(),
@@ -386,9 +393,11 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
                 .to_owned(),
         };
 
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(&key.to_owned(), Some(issuer_jwk_key_id))?;
+        let auth_fn = self.key_provider.get_signature_provider(
+            &key.to_owned(),
+            Some(issuer_jwk_key_id),
+            self.key_algorithm_provider.clone(),
+        )?;
 
         let redirect_uri = credential.redirect_uri.to_owned();
 

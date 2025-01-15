@@ -14,6 +14,7 @@ use shared_types::DidValue;
 use self::model::{DecomposedToken, JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, TokenVerifier};
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[cfg(test)]
@@ -36,6 +37,10 @@ impl TokenVerifier for Box<dyn TokenVerifier> {
             .verify(issuer_did_value, issuer_key_id, algorithm, token, signature)
             .await
     }
+
+    fn key_algorithm_provider(&self) -> &dyn KeyAlgorithmProvider {
+        self.as_ref().key_algorithm_provider()
+    }
 }
 
 #[derive(Debug)]
@@ -46,14 +51,14 @@ pub struct Jwt<Payload> {
 
 impl<Payload> Jwt<Payload> {
     pub fn new(
-        signature_type: String,
+        r#type: String,
         algorithm: String,
         key_id: Option<String>,
         jwk: Option<PublicKeyJwkDTO>,
         payload: JWTPayload<Payload>,
     ) -> Jwt<Payload> {
         let header = JWTHeader {
-            signature_type: Some(signature_type),
+            r#type: Some(r#type),
             algorithm,
             key_id,
             jwk,
@@ -77,6 +82,14 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         } = Jwt::decompose_token(token)?;
 
         if let Some(verification) = verification {
+            let (_, algorithm) = verification
+                .key_algorithm_provider()
+                .get_key_algorithm_from_jose_alg(&header.algorithm)
+                .ok_or(FormatterError::CouldNotVerify(format!(
+                    "Missing key algorithm for {}",
+                    header.algorithm
+                )))?;
+
             verification
                 .verify(
                     payload
@@ -86,7 +99,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                         .transpose()
                         .map_err(|e| FormatterError::Failed(e.to_string()))?,
                     header.key_id.as_deref(),
-                    &header.algorithm,
+                    &algorithm,
                     unverified_jwt.as_bytes(),
                     &signature,
                 )

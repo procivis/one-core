@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Context;
 use time::OffsetDateTime;
 
@@ -13,6 +15,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 };
 use crate::provider::exchange_protocol::openid4vc::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::interaction_repository::InteractionRepository;
@@ -60,6 +63,7 @@ impl CredentialService {
                     credential,
                     &*self.credential_repository,
                     &*self.key_provider,
+                    &self.key_algorithm_provider,
                     &*self.did_method_provider,
                     &interaction_data,
                     &*self.client,
@@ -81,6 +85,7 @@ async fn obtain_and_update_new_mso(
     credential: &Credential,
     credentials: &dyn CredentialRepository,
     key_provider: &dyn KeyProvider,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &dyn DidMethodProvider,
     interaction_data: &HolderInteractionData,
     client: &dyn HttpClient,
@@ -101,14 +106,13 @@ async fn obtain_and_update_new_mso(
         .await?;
 
     let auth_fn = key_provider
-        .get_signature_provider(&key.to_owned(), None)
+        .get_signature_provider(&key, None, key_algorithm_provider.clone())
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
         interaction_data.issuer_url.clone(),
         Some(key_id),
         None,
-        key.key_type.to_owned(),
         auth_fn,
     )
     .await

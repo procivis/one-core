@@ -31,6 +31,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{SubmitIssuerResponse,
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::key_storage::MockKeyStorage;
@@ -765,6 +766,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         did_repository: Arc::new(MockDidRepository::new()),
         history_repository: Arc::new(MockHistoryRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         protocol_provider: Arc::new(MockExchangeProtocolProviderExtra::new()),
         did_method_provider: Arc::new(did_method_provider),

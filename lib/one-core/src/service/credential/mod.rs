@@ -5,6 +5,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProviderExtra;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
@@ -35,6 +36,7 @@ pub struct CredentialService {
     protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     config: Arc<core_config::CoreConfig>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     base_url: Option<String>,
@@ -55,6 +57,7 @@ impl CredentialService {
         protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         config: Arc<core_config::CoreConfig>,
         lvvc_repository: Arc<dyn ValidityCredentialRepository>,
         base_url: Option<String>,
@@ -72,6 +75,7 @@ impl CredentialService {
             protocol_provider,
             did_method_provider,
             key_provider,
+            key_algorithm_provider,
             config,
             validity_credential_repository: lvvc_repository,
             base_url,

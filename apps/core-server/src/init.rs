@@ -350,7 +350,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                         let params = format_config
                             .get(name)
                             .expect("JWT formatter params are mandatory");
-                        Arc::new(JWTFormatter::new(params)) as _
+                        Arc::new(JWTFormatter::new(params, key_algorithm_provider.clone())) as _
                     }
                     "PHYSICAL_CARD" => Arc::new(PhysicalCardFormatter::new(
                         crypto.clone(),
@@ -534,6 +534,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                                 did_method_provider.clone(),
                                 data_repository.get_validity_credential_repository(),
                                 key_provider.clone(),
+                                key_algorithm_provider.clone(),
                                 client.clone(),
                                 params,
                             ))

@@ -7,6 +7,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::provider::ExchangeProtocolProviderExtra;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -36,6 +37,7 @@ pub struct SSIHolderService {
     did_repository: Arc<dyn DidRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     key_provider: Arc<dyn KeyProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -57,6 +59,7 @@ impl SSIHolderService {
         did_repository: Arc<dyn DidRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         key_provider: Arc<dyn KeyProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         protocol_provider: Arc<dyn ExchangeProtocolProviderExtra>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -75,6 +78,7 @@ impl SSIHolderService {
             did_repository,
             history_repository,
             key_provider,
+            key_algorithm_provider,
             formatter_provider,
             protocol_provider,
             did_method_provider,

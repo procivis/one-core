@@ -1,5 +1,7 @@
 //! Implementations for JWT credential format.
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use mapper::format_vc;
@@ -26,6 +28,7 @@ use crate::provider::credential_formatter::model::{
     VerificationFn,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::util::PREFERRED_ENTRY_SIZE;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
@@ -38,6 +41,7 @@ pub(crate) mod model;
 
 pub struct JWTFormatter {
     params: Params,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 #[derive(Deserialize)]
@@ -48,8 +52,11 @@ pub struct Params {
 }
 
 impl JWTFormatter {
-    pub fn new(params: Params) -> Self {
-        Self { params }
+    pub fn new(params: Params, key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>) -> Self {
+        Self {
+            params,
+            key_algorithm_provider,
+        }
     }
 }
 
@@ -92,7 +99,9 @@ impl CredentialFormatter for JWTFormatter {
         let key_id = auth_fn.get_key_id();
         let jwt = Jwt::new(
             "JWT".to_owned(),
-            auth_fn.get_key_type().to_owned(),
+            auth_fn.jose_alg().ok_or(FormatterError::CouldNotFormat(
+                "Invalid key algorithm".to_string(),
+            ))?,
             key_id,
             None,
             payload,
@@ -118,6 +127,17 @@ impl CredentialFormatter for JWTFormatter {
                 .parse()
                 .map_err(|_| FormatterError::Failed("Invalid issuer DID".to_string()))?,
         );
+
+        let key_algorithm = self
+            .key_algorithm_provider
+            .get_key_algorithm(&algorithm)
+            .ok_or(FormatterError::Failed("Missing key algorithm".to_string()))?;
+
+        let jose_alg = key_algorithm
+            .jose_alg()
+            .first()
+            .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?
+            .to_owned();
 
         match status_list_type {
             StatusListType::BitstringStatusList => {
@@ -162,7 +182,7 @@ impl CredentialFormatter for JWTFormatter {
                     proof_of_possession_key: None,
                 };
 
-                let jwt = Jwt::new("JWT".to_owned(), algorithm, None, None, payload);
+                let jwt = Jwt::new("JWT".to_owned(), jose_alg, None, None, payload);
 
                 jwt.tokenize(Some(auth_fn)).await
             }
@@ -186,7 +206,7 @@ impl CredentialFormatter for JWTFormatter {
                     proof_of_possession_key: None,
                 };
 
-                let jwt = Jwt::new("statuslist+jwt".to_owned(), algorithm, None, None, payload);
+                let jwt = Jwt::new("statuslist+jwt".to_owned(), jose_alg, None, None, payload);
 
                 jwt.tokenize(Some(auth_fn)).await
             }
@@ -248,13 +268,19 @@ impl CredentialFormatter for JWTFormatter {
         };
 
         let key_id = auth_fn.get_key_id();
-        let jwt = Jwt::new(
-            "JWT".to_owned(),
-            algorithm.to_owned(),
-            key_id,
-            None,
-            payload,
-        );
+
+        let key_algorithm = self
+            .key_algorithm_provider
+            .get_key_algorithm(algorithm)
+            .ok_or(FormatterError::Failed("Missing key algorithm".to_string()))?;
+
+        let jose_alg = key_algorithm
+            .jose_alg()
+            .first()
+            .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?
+            .to_owned();
+
+        let jwt = Jwt::new("JWT".to_owned(), jose_alg, key_id, None, payload);
 
         jwt.tokenize(Some(auth_fn)).await
     }

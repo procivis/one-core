@@ -6,6 +6,7 @@ use super::SuspendCheckProvider;
 use crate::model::credential::{Clearable, Credential, CredentialStateEnum, GetCredentialList};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::model::{CredentialRevocationState, RevocationUpdate};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -26,6 +27,7 @@ struct TestDependencies {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub key_provider: MockKeyProvider,
+    pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub core_base_url: Option<String>,
 }
 
@@ -38,6 +40,7 @@ fn setup(dependencies: TestDependencies) -> impl Task {
         Arc::new(dependencies.formatter_provider),
         Arc::new(dependencies.did_method_provider),
         Arc::new(dependencies.key_provider),
+        Arc::new(dependencies.key_algorithm_provider),
         dependencies.core_base_url,
     )
 }

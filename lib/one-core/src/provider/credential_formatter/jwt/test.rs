@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use one_crypto::SignerError;
 use serde::{Deserialize, Serialize};
@@ -8,6 +10,8 @@ use time::OffsetDateTime;
 use super::model::JWTPayload;
 use super::{Jwt, TokenVerifier};
 use crate::provider::credential_formatter::common::MockAuth;
+use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, MockKeyAlgorithmProvider};
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 struct Payload {
@@ -23,6 +27,7 @@ pub struct TestVerify {
     algorithm: String,
     token: String,
     signature: Vec<u8>,
+    key_algorithm_provider: MockKeyAlgorithmProvider,
 }
 
 #[async_trait]
@@ -48,6 +53,10 @@ impl TokenVerifier for TestVerify {
             Err(SignerError::InvalidSignature)
         }
     }
+
+    fn key_algorithm_provider(&self) -> &dyn KeyAlgorithmProvider {
+        &self.key_algorithm_provider
+    }
 }
 
 fn prepare_test_json() -> (Jwt<Payload>, String) {
@@ -69,14 +78,14 @@ fn prepare_test_json() -> (Jwt<Payload>, String) {
         proof_of_possession_key: None,
     };
     let jwt: Jwt<Payload> = Jwt::new(
-        "Signature1".to_owned(),
+        "Type1".to_owned(),
         "Algorithm1".to_owned(),
         None,
         None,
         payload,
     );
 
-    (jwt, "eyJhbGciOiJBbGdvcml0aG0xIiwidHlwIjoiU2lnbmF0dXJlMSJ9.eyJpYXQiOjExMTI0NzQyMjAsImV4cCI6MTExMjQ3NDIyMCwibmJmIjoxMTEyNDc0MjIwLCJpc3MiOiJkaWQ6aXNzdWVyOjEyMyIsInN1YiI6ImRpZDpzdWJqZWN0OjEyMyIsImp0aSI6IklEIiwidGVzdF9maWVsZCI6InRlc3QifQ.AQID".to_string())
+    (jwt, "eyJhbGciOiJBbGdvcml0aG0xIiwidHlwIjoiVHlwZTEifQ.eyJpYXQiOjExMTI0NzQyMjAsImV4cCI6MTExMjQ3NDIyMCwibmJmIjoxMTEyNDc0MjIwLCJpc3MiOiJkaWQ6aXNzdWVyOjEyMyIsInN1YiI6ImRpZDpzdWJqZWN0OjEyMyIsImp0aSI6IklEIiwidGVzdF9maWVsZCI6InRlc3QifQ.AQID".to_string())
 }
 
 #[tokio::test]
@@ -110,6 +119,12 @@ fn extract_jwt_part(token: String) -> String {
 async fn test_build_from_token() {
     let (json, reference_token) = prepare_test_json();
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "Algorithm1".to_string())));
+
     let jwt_part = extract_jwt_part(reference_token.clone());
     let jwt: Jwt<Payload> = Jwt::build_from_token(
         &reference_token,
@@ -118,13 +133,14 @@ async fn test_build_from_token() {
             algorithm: String::from("Algorithm1"),
             token: jwt_part,
             signature: vec![1, 2, 3],
+            key_algorithm_provider,
         })),
     )
     .await
     .unwrap();
 
     assert_eq!(jwt.header.algorithm, json.header.algorithm);
-    assert_eq!(jwt.header.signature_type, json.header.signature_type);
+    assert_eq!(jwt.header.r#type, json.header.r#type);
 
     assert_eq!(jwt.payload.custom, json.payload.custom);
     assert_eq!(jwt.payload.issuer, json.payload.issuer);

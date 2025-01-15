@@ -202,11 +202,7 @@ async fn test_handle_invitation_success() {
     auth_fn
         .expect_get_key_id()
         .return_const(Some("did-vm-id".to_string()));
-
-    auth_fn
-        .expect_get_key_type()
-        .return_const("ES256".to_string());
-
+    auth_fn.expect_jose_alg().return_const("ES256".to_string());
     auth_fn.expect_sign().returning(move |_| Ok(vec![1, 2, 3]));
 
     let mut did_method_provider: MockDidMethodProvider = MockDidMethodProvider::new();
@@ -247,6 +243,10 @@ async fn test_handle_invitation_success() {
     let mock_key_algorithm = Arc::new(mock_key_algorithm);
 
     let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    let mock_key_algorithm_clone = mock_key_algorithm.clone();
+    mock_key_algorithm_provider
+        .expect_get_key_algorithm_from_jose_alg()
+        .returning(move |_| Some((mock_key_algorithm_clone.clone(), "ES256".to_string())));
     mock_key_algorithm_provider
         .expect_get_key_algorithm()
         .returning(move |_| Some(mock_key_algorithm.clone()));
@@ -436,7 +436,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
 
     key_provider
         .expect_get_signature_provider()
-        .returning(move |_, _| Ok(Box::new(MockSignatureProvider::default())));
+        .returning(move |_, _, _| Ok(Box::new(MockSignatureProvider::default())));
 
     let key_id: KeyId = Uuid::new_v4().into();
     let did_value: DidValue = "did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y"

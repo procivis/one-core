@@ -66,6 +66,7 @@ use crate::provider::exchange_protocol::openid4vc::{
 };
 use crate::provider::http_client;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::ServiceError;
@@ -1804,9 +1805,11 @@ impl OpenID4VPAuthorizationRequestParams {
     ) -> Result<String, ServiceError> {
         let unsigned_jwt = Jwt {
             header: JWTHeader {
-                algorithm: auth_fn.get_key_type().to_owned(),
+                algorithm: auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
+                    "No JOSE alg specified".to_string(),
+                ))?,
                 key_id: auth_fn.get_key_id(),
-                signature_type: Some("oauth-authz-req+jwt".to_string()),
+                r#type: Some("oauth-authz-req+jwt".to_string()),
                 jwk: None,
                 jwt: None,
             },

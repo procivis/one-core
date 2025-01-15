@@ -411,7 +411,7 @@ impl OpenID4VCBLE {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, jwk_key_id)
+            .get_signature_provider(key, jwk_key_id, self.key_algorithm_provider.clone())
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let presentation_definition_id = openid_request
@@ -551,7 +551,11 @@ impl OpenID4VCBLE {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(verifier_key, Some(verifier_jwk_key_id))
+            .get_signature_provider(
+                verifier_key,
+                Some(verifier_jwk_key_id),
+                self.key_algorithm_provider.clone(),
+            )
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         ble_verifier

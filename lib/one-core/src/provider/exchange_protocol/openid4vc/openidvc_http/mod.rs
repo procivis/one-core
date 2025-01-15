@@ -253,7 +253,11 @@ impl OpenID4VCHTTP {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(&key.to_owned(), jwk_key_id)
+            .get_signature_provider(
+                &key.to_owned(),
+                jwk_key_id,
+                self.key_algorithm_provider.clone(),
+            )
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let presentation_definition_id = interaction_data
@@ -522,7 +526,11 @@ impl OpenID4VCHTTP {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(&key.to_owned(), jwk_key_id.clone())
+            .get_signature_provider(
+                &key.to_owned(),
+                jwk_key_id.clone(),
+                self.key_algorithm_provider.clone(),
+            )
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         // Very basic support for JWK as crypto binding method for EUDI
@@ -562,7 +570,6 @@ impl OpenID4VCHTTP {
             interaction_data.issuer_url,
             jwk_key_id,
             jwk,
-            key.key_type.to_owned(),
             auth_fn,
         )
         .await

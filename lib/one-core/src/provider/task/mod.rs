@@ -7,6 +7,7 @@ use serde_json::Value;
 use self::suspend_check::SuspendCheckProvider;
 use super::credential_formatter::provider::CredentialFormatterProvider;
 use super::did_method::provider::DidMethodProvider;
+use super::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::config::core_config::{TaskConfig, TaskType};
 use crate::config::ConfigError;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -39,6 +40,7 @@ pub(crate) fn tasks_from_config(
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     proof_repository: Arc<dyn ProofRepository>,
     core_base_url: Option<String>,
 ) -> Result<HashMap<String, Arc<dyn Task>>, ConfigError> {
@@ -58,6 +60,7 @@ pub(crate) fn tasks_from_config(
                 formatter_provider.to_owned(),
                 did_method_provider.to_owned(),
                 key_provider.to_owned(),
+                key_algorithm_provider.to_owned(),
                 core_base_url.to_owned(),
             )) as _,
             TaskType::RetainProofCheck => Arc::new(RetainProofCheck::new(

@@ -629,6 +629,7 @@ impl CredentialService {
                     &*revocation_method,
                     &*self.formatter_provider,
                     &self.key_provider,
+                    &self.key_algorithm_provider,
                     &self.base_url,
                     verification_method.id.to_owned(),
                 )

@@ -98,6 +98,10 @@ impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
         "ES256"
     }
 
+    fn jose_alg(&self) -> Option<String> {
+        Some("ES256".to_owned())
+    }
+
     fn get_public_key(&self) -> Vec<u8> {
         vec![]
     }

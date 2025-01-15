@@ -53,9 +53,11 @@ impl CredentialService {
         holder_did: DidValue,
         issuer_key: Key,
     ) -> Result<String, CredentialServiceError> {
-        let auth_fn = self
-            .key_storage_provider
-            .get_signature_provider(&issuer_key, None)?;
+        let auth_fn = self.key_storage_provider.get_signature_provider(
+            &issuer_key,
+            None,
+            self.key_algorithm_provider.clone(),
+        )?;
 
         let token = self
             .credential_formatter_provider

@@ -36,6 +36,11 @@ impl KeyAlgorithm for MlDsa {
         "CRYDI3".to_string()
     }
 
+    fn jose_alg(&self) -> Vec<String> {
+        // invalid value for backward compatibility
+        vec!["CRYDI3".to_string()]
+    }
+
     fn get_multibase(&self, _public_key: &[u8]) -> Result<String, KeyAlgorithmError> {
         // TODO ONE-1452
         unimplemented!()

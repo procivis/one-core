@@ -8,8 +8,9 @@ use crate::model::did::{Did, KeyRole};
 use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::service::error::ServiceError;
+use crate::service::error::{MissingProviderError, ServiceError};
 use crate::util::key_verification::KeyVerification;
 use crate::KeyProvider;
 
@@ -17,6 +18,7 @@ use crate::KeyProvider;
 pub(crate) async fn prepare_bearer_token(
     did: &Did,
     key_provider: &dyn KeyProvider,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &dyn DidMethodProvider,
 ) -> Result<String, ServiceError> {
     let keys = did
@@ -31,6 +33,22 @@ pub(crate) async fn prepare_bearer_token(
             "No authentication keys found for DID".to_string(),
         ))?;
 
+    let key_algorithm = key_algorithm_provider
+        .get_key_algorithm(&authentication_key.key.key_type)
+        .ok_or(ServiceError::MissingProvider(
+            MissingProviderError::KeyAlgorithmProvider(
+                KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                    authentication_key.key.key_type.to_owned(),
+                ),
+            ),
+        ))?;
+
+    let algorithm = key_algorithm
+        .jose_alg()
+        .first()
+        .ok_or(ServiceError::MappingError("Missing JOSE alg".to_string()))?
+        .to_owned();
+
     let payload = JWTPayload {
         issuer: Some(did.did.to_string()),
         custom: BearerTokenPayload {
@@ -43,12 +61,16 @@ pub(crate) async fn prepare_bearer_token(
         .get_verification_method_id_from_did_and_key(did, &authentication_key.key)
         .await?;
 
-    let signer = key_provider.get_signature_provider(&authentication_key.key, None)?;
+    let signer = key_provider.get_signature_provider(
+        &authentication_key.key,
+        None,
+        key_algorithm_provider.clone(),
+    )?;
     let bearer_token = Jwt::<BearerTokenPayload> {
         header: JWTHeader {
-            algorithm: authentication_key.key.key_type.to_owned(),
+            algorithm,
             key_id: Some(key_id),
-            signature_type: None,
+            r#type: None,
             jwk: None,
             jwt: None,
         },

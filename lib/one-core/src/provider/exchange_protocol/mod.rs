@@ -174,6 +174,7 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     config.clone(),
                     formatter_provider.clone(),
                     key_provider.clone(),
+                    key_algorithm_provider.clone(),
                     ble.clone(),
                 )));
                 fields.capabilities = Some(json!(protocol.get_capabilities()));

@@ -325,7 +325,9 @@ pub async fn format_credentials(
     let key_id = auth_fn.get_key_id();
     let jwt = Jwt::new(
         token_type,
-        auth_fn.get_key_type().to_owned(),
+        auth_fn.jose_alg().ok_or(FormatterError::CouldNotFormat(
+            "Invalid key algorithm".to_string(),
+        ))?,
         key_id,
         None,
         payload,

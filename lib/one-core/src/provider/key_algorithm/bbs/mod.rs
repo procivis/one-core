@@ -16,6 +16,11 @@ impl KeyAlgorithm for BBS {
         "BBS".to_string()
     }
 
+    fn jose_alg(&self) -> Vec<String> {
+        // invalid value for backward compatibility
+        vec!["BBS_PLUS".to_string()]
+    }
+
     fn get_multibase(&self, public_key: &[u8]) -> Result<String, KeyAlgorithmError> {
         let codec = &[0xeb, 0x01];
         let data = [codec, public_key].concat();

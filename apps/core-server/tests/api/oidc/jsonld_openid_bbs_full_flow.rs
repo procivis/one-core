@@ -226,8 +226,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     let jwt = [
         &json!(
             {
-            "alg": "BBS_PLUS",
-            "typ": "JSON-LD",
+            "alg": "EdDSA",
             "kid": server_remote_holder_did.did
         })
         .to_string(),

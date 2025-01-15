@@ -37,6 +37,10 @@ impl KeyAlgorithm for Eddsa {
         "Ed25519".to_string()
     }
 
+    fn jose_alg(&self) -> Vec<String> {
+        vec!["EdDSA".to_string(), "EDDSA".to_string()]
+    }
+
     fn get_multibase(&self, public_key: &[u8]) -> Result<String, KeyAlgorithmError> {
         let codec = &[0xed, 0x1];
         let key = EDDSASigner::check_public_key(public_key)?;

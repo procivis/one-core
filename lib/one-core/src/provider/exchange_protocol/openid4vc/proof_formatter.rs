@@ -23,7 +23,6 @@ impl OpenID4VCIProofJWTFormatter {
         issuer_url: String,
         holder_key_id: Option<String>,
         jwk: Option<PublicKeyJwkDTO>,
-        algorithm: String,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
         let content = ProofContent {
@@ -49,7 +48,9 @@ impl OpenID4VCIProofJWTFormatter {
 
         let jwt: Jwt<ProofContent> = Jwt::new(
             "openid4vci-proof+jwt".to_owned(),
-            algorithm,
+            auth_fn.jose_alg().ok_or(FormatterError::CouldNotFormat(
+                "Invalid key algorithm".to_string(),
+            ))?,
             key_id,
             jwk,
             payload,

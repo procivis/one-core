@@ -68,8 +68,8 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         .await
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-    let alg = key_algorithm_provider
-        .get_key_algorithm(&request_token.header.algorithm)
+    let (alg, alg_id) = key_algorithm_provider
+        .get_key_algorithm_from_jose_alg(&request_token.header.algorithm)
         .ok_or(ExchangeProtocolError::Failed(format!(
             "Missing algorithm: {}",
             request_token.header.algorithm
@@ -89,7 +89,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let signer = key_algorithm_provider
-        .get_signer(&request_token.header.algorithm)
+        .get_signer(&alg_id)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     signer

@@ -106,9 +106,11 @@ impl VCAPIService {
             "Could not find key in assertion method".to_string(),
         ))?;
 
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(&key.key, Some(key_id.to_owned()))?;
+        let auth_fn = self.key_provider.get_signature_provider(
+            &key.key,
+            Some(key_id.to_owned()),
+            self.key_algorithm_provider.clone(),
+        )?;
 
         let credential_subject = create_request.credential.credential_subject[0].clone();
 
@@ -155,6 +157,7 @@ impl VCAPIService {
                 RevocationListPurpose::Revocation,
                 &*self.revocation_list_repository,
                 &self.key_provider,
+                &self.key_algorithm_provider,
                 &self.base_url,
                 &*formatter,
                 key_id.to_owned(),

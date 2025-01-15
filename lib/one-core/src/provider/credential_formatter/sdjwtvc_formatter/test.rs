@@ -33,8 +33,10 @@ use crate::provider::did_method::provider::DidMethodProviderImpl;
 use crate::provider::did_method::resolver::DidCachingLoader;
 use crate::provider::did_method::DidMethod;
 use crate::provider::key_algorithm::eddsa::{Eddsa, EddsaParams};
-use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
-use crate::provider::key_algorithm::KeyAlgorithm;
+use crate::provider::key_algorithm::provider::{
+    KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
+};
+use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
@@ -254,7 +256,6 @@ async fn test_extract_presentation() {
     );
 
     let mut verify_mock = MockTokenVerifier::new();
-
     verify_mock
         .expect_verify()
         .withf(
@@ -270,6 +271,15 @@ async fn test_extract_presentation() {
             },
         )
         .return_once(|_, _, _, _, _| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
 
     let result = sd_formatter
         .extract_presentation(
@@ -447,15 +457,15 @@ async fn test_format_extract_round_trip() {
         .expect_sign()
         .returning(move |msg| EDDSASigner {}.sign(msg, &public_key.clone(), &private_key.clone()));
     auth_fn
-        .expect_get_key_type()
-        .return_const("EDDSA".to_string());
-    auth_fn
         .expect_get_key_id()
         .returning(move || Some(format!("{}#0", issuer_did)));
     let public_key_clone = key_pair.public.clone();
     auth_fn
         .expect_get_public_key()
         .returning(move || public_key_clone.clone());
+    auth_fn
+        .expect_jose_alg()
+        .returning(|| Some("EdDSA".to_string()));
 
     let holder_did =
         DidValue::from_str("did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX").unwrap();

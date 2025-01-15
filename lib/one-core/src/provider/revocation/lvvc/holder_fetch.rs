@@ -1,5 +1,7 @@
 //! Fetching and caching LVVC on holder side.
 
+use std::sync::Arc;
+
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -10,17 +12,20 @@ use crate::model::validity_credential::{Lvvc, ValidityCredential, ValidityCreden
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::error::RevocationError;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::util::bearer_token::prepare_bearer_token;
 use crate::KeyProvider;
 
 /// HOLDER: fetch remote or get locally cached LVVC credential
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn holder_get_lvvc(
     linked_credential: &Credential,
     credential_status: &CredentialStatus,
     validity_credential_repository: &dyn ValidityCredentialRepository,
     key_provider: &dyn KeyProvider,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &dyn DidMethodProvider,
     http_client: &dyn HttpClient,
     params: &Params,
@@ -40,6 +45,7 @@ pub(crate) async fn holder_get_lvvc(
         linked_credential,
         credential_status,
         key_provider,
+        key_algorithm_provider,
         did_method_provider,
         http_client,
     )
@@ -74,6 +80,7 @@ async fn fetch_remote_lvvc(
     linked_credential: &Credential,
     credential_status: &CredentialStatus,
     key_provider: &dyn KeyProvider,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &dyn DidMethodProvider,
     http_client: &dyn HttpClient,
 ) -> Result<Lvvc, RevocationError> {
@@ -97,9 +104,14 @@ async fn fetch_remote_lvvc(
             "holder_did is None".to_string(),
         ))?;
 
-    let bearer_token = prepare_bearer_token(holder_did, key_provider, did_method_provider)
-        .await
-        .map_err(|e| RevocationError::MappingError(e.to_string()))?;
+    let bearer_token = prepare_bearer_token(
+        holder_did,
+        key_provider,
+        key_algorithm_provider,
+        did_method_provider,
+    )
+    .await
+    .map_err(|e| RevocationError::MappingError(e.to_string()))?;
 
     let response: IssuerResponseDTO = http_client
         .get(lvvc_url.as_str())

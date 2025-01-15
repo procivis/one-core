@@ -16,6 +16,7 @@ use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::CredentialRevocationState;
@@ -37,6 +38,7 @@ pub(crate) struct SuspendCheckProvider {
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     core_base_url: Option<String>,
 }
 
@@ -50,6 +52,7 @@ impl SuspendCheckProvider {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         core_base_url: Option<String>,
     ) -> Self {
         SuspendCheckProvider {
@@ -57,9 +60,10 @@ impl SuspendCheckProvider {
             revocation_method_provider,
             revocation_list_repository,
             validity_credential_repository,
+            formatter_provider,
             did_method_provider,
             key_provider,
-            formatter_provider,
+            key_algorithm_provider,
             core_base_url,
         }
     }
@@ -144,6 +148,7 @@ impl Task for SuspendCheckProvider {
                         &*revocation_method,
                         &*self.formatter_provider,
                         &self.key_provider,
+                        &self.key_algorithm_provider,
                         &self.core_base_url,
                         verification_method.id.to_owned(),
                     )

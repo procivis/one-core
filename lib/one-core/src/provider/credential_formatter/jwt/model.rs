@@ -12,7 +12,7 @@ pub struct JWTHeader {
     pub key_id: Option<String>,
 
     #[serde(rename = "typ", default, skip_serializing_if = "Option::is_none")]
-    pub signature_type: Option<String>,
+    pub r#type: Option<String>,
 
     #[serde(rename = "jwk", default, skip_serializing_if = "Option::is_none")]
     pub jwk: Option<PublicKeyJwkDTO>,

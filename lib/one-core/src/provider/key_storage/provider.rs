@@ -9,6 +9,7 @@ use super::error::KeyStorageProviderError;
 use super::KeyStorage;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait KeyProvider: Send + Sync {
@@ -18,6 +19,7 @@ pub trait KeyProvider: Send + Sync {
         &self,
         key: &Key,
         jwk_key_id: Option<String>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ) -> Result<AuthenticationFn, KeyStorageProviderError> {
         let storage = self.get_key_storage(&key.storage_type).ok_or(
             KeyStorageProviderError::InvalidKeyStorage(key.storage_type.clone()),
@@ -27,6 +29,7 @@ pub trait KeyProvider: Send + Sync {
             key: key.to_owned(),
             storage,
             jwk_key_id,
+            key_algorithm_provider,
         }))
     }
 }
@@ -51,6 +54,7 @@ pub(crate) struct SignatureProviderImpl {
     pub storage: Arc<dyn KeyStorage>,
     pub key: Key,
     pub jwk_key_id: Option<String>,
+    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 #[async_trait::async_trait]
@@ -65,6 +69,12 @@ impl SignatureProvider for SignatureProviderImpl {
 
     fn get_key_type(&self) -> &str {
         &self.key.key_type
+    }
+
+    fn jose_alg(&self) -> Option<String> {
+        self.key_algorithm_provider
+            .get_key_algorithm(&self.key.key_type)
+            .and_then(|key_algorithm| key_algorithm.jose_alg().first().cloned())
     }
 
     fn get_public_key(&self) -> Vec<u8> {

@@ -83,6 +83,10 @@ impl SignatureProvider for FakeEs256Signer {
         "ES256"
     }
 
+    fn jose_alg(&self) -> Option<String> {
+        Some("ES256".to_string())
+    }
+
     fn get_public_key(&self) -> Vec<u8> {
         self.public_key.clone()
     }
@@ -154,7 +158,7 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
         header: JWTHeader {
             algorithm: "ES256".to_string(),
             key_id: Some(key_id),
-            signature_type: None,
+            r#type: None,
             jwk: None,
             jwt: None,
         },

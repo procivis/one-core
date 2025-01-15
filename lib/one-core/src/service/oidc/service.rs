@@ -195,7 +195,7 @@ impl OIDCService {
             header: JWTHeader {
                 algorithm: "none".to_string(),
                 key_id: None,
-                signature_type: None,
+                r#type: None,
                 jwk: None,
                 jwt: None,
             },
@@ -328,7 +328,7 @@ impl OIDCService {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(verifier_key, None)
+            .get_signature_provider(verifier_key, None, self.key_algorithm_provider.clone())
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let key_id = self
@@ -337,12 +337,19 @@ impl OIDCService {
             .await?;
 
         let expires_at = Some(OffsetDateTime::now_utc().add(Duration::hours(1)));
+        let jose_algorithm = key_algorithm
+            .jose_alg()
+            .first()
+            .ok_or(ServiceError::OpenID4VCIError(
+                OpenID4VCIError::RuntimeError("JOSE algorithm not found".to_string()),
+            ))?
+            .to_owned();
 
         let attestation_jwt = Jwt {
             header: JWTHeader {
-                algorithm: verifier_key.key_type.clone(),
+                algorithm: jose_algorithm.to_owned(),
                 key_id: Some(key_id),
-                signature_type: Some("verifier-attestation+jwt".to_string()),
+                r#type: Some("verifier-attestation+jwt".to_string()),
                 jwk: None,
                 jwt: None,
             },
@@ -363,14 +370,14 @@ impl OIDCService {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(verifier_key, None)
+            .get_signature_provider(verifier_key, None, self.key_algorithm_provider.clone())
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let request_jwt = Jwt {
             header: JWTHeader {
-                algorithm: verifier_key.key_type.clone(),
+                algorithm: jose_algorithm,
                 key_id: None,
-                signature_type: Some("oauth-authz-req+jwt".to_string()),
+                r#type: Some("oauth-authz-req+jwt".to_string()),
                 jwk: None,
                 jwt: Some(attestation_jwt),
             },

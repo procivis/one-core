@@ -29,6 +29,7 @@ use crate::provider::exchange_protocol::iso_mdl::common::{
     to_cbor, DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader,
 };
 use crate::provider::exchange_protocol::{ExchangeProtocolImpl, MockStorageProxy};
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::service::test_utilities::generic_config;
 use crate::util::ble_resource::{BleWaiter, OnConflict};
@@ -65,6 +66,7 @@ async fn test_presentation_reject_ok() {
         Arc::new(core_config),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Some(ble_waiter),
     );
 
@@ -171,6 +173,7 @@ async fn test_get_presentation_definition_ok() {
         Arc::new(core_config),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         None,
     );
 

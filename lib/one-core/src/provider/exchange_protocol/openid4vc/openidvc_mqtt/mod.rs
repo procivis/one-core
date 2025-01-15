@@ -387,7 +387,7 @@ impl OpenId4VcMqtt {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, jwk_key_id)
+            .get_signature_provider(key, jwk_key_id, self.key_algorithm_provider.clone())
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let presentation_definition_id = interaction_data
@@ -544,7 +544,11 @@ impl OpenId4VcMqtt {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(verifier_key, Some(verifier_jwk_key_id))
+            .get_signature_provider(
+                verifier_key,
+                Some(verifier_jwk_key_id),
+                self.key_algorithm_provider.clone(),
+            )
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
         let topic_prefix = format!("/proof/{}", interaction_id);
 

@@ -37,6 +37,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     ClientIdSchemaType, InvitationResponseDTO, OpenID4VPFormat, PresentedCredential, ShareResponse,
     SubmitIssuerResponse, UpdateResponse,
 };
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -57,6 +58,7 @@ pub(crate) struct IsoMdl {
     config: Arc<CoreConfig>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ble: Option<BleWaiter>,
 }
 
@@ -65,12 +67,14 @@ impl IsoMdl {
         config: Arc<CoreConfig>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         ble: Option<BleWaiter>,
     ) -> Self {
         Self {
             config,
             formatter_provider,
             key_provider,
+            key_algorithm_provider,
             ble,
         }
     }
@@ -165,7 +169,7 @@ impl ExchangeProtocolImpl for IsoMdl {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, None)
+            .get_signature_provider(key, None, self.key_algorithm_provider.clone())
             .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let credential_presentation =

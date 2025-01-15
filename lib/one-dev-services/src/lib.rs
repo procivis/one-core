@@ -278,10 +278,15 @@ impl OneDevCore {
             HashMap::from_iter(vec![
                 (
                     CredentialFormat::Jwt.to_string(),
-                    Arc::new(JWTFormatter::new(JWTParams {
-                        leeway: config.formatter_config.leeway,
-                        embed_layout_properties: config.formatter_config.embed_layout_properties,
-                    })) as _,
+                    Arc::new(JWTFormatter::new(
+                        JWTParams {
+                            leeway: config.formatter_config.leeway,
+                            embed_layout_properties: config
+                                .formatter_config
+                                .embed_layout_properties,
+                        },
+                        key_algorithm_provider.clone(),
+                    )) as _,
                 ),
                 (
                     CredentialFormat::SdJwt.to_string(),

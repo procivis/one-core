@@ -37,6 +37,10 @@ impl KeyAlgorithm for Es256 {
         "ES256".to_string()
     }
 
+    fn jose_alg(&self) -> Vec<String> {
+        vec!["ES256".to_string()]
+    }
+
     fn get_multibase(&self, public_key: &[u8]) -> Result<String, KeyAlgorithmError> {
         let codec = &[0x80, 0x24];
         let key = ES256Signer::parse_public_key(public_key, true)?;

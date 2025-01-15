@@ -82,6 +82,10 @@ impl TokenVerifier for KeyVerification {
 
         signer.verify(token, signature, &public_key)
     }
+
+    fn key_algorithm_provider(&self) -> &dyn KeyAlgorithmProvider {
+        &*self.key_algorithm_provider
+    }
 }
 
 #[cfg(test)]

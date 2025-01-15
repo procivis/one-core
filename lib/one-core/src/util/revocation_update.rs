@@ -14,6 +14,7 @@ use crate::model::revocation_list::{
 use crate::model::validity_credential::Lvvc;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::bitstring_status_list::model::RevocationUpdateData;
 use crate::provider::revocation::bitstring_status_list::{
@@ -36,6 +37,7 @@ pub(crate) async fn generate_credential_additional_data(
     revocation_method: &dyn RevocationMethod,
     formatter_provider: &dyn CredentialFormatterProvider,
     key_provider: &Arc<dyn KeyProvider>,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     core_base_url: &Option<String>,
     issuer_key_id: String,
 ) -> Result<Option<CredentialAdditionalData>, ServiceError> {
@@ -80,6 +82,7 @@ pub(crate) async fn generate_credential_additional_data(
         RevocationListPurpose::Revocation,
         revocation_list_repository,
         key_provider,
+        key_algorithm_provider,
         core_base_url,
         &*formatter,
         issuer_key_id.clone(),
@@ -96,6 +99,7 @@ pub(crate) async fn generate_credential_additional_data(
                 RevocationListPurpose::Suspension,
                 revocation_list_repository,
                 key_provider,
+                key_algorithm_provider,
                 core_base_url,
                 &*formatter,
                 issuer_key_id,
@@ -142,6 +146,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
     purpose: RevocationListPurpose,
     revocation_list_repository: &dyn RevocationListRepository,
     key_provider: &Arc<dyn KeyProvider>,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
     key_id: String,
@@ -183,6 +188,7 @@ pub(crate) async fn get_or_create_revocation_list_id(
                 encoded_list,
                 purpose.to_owned(),
                 key_provider,
+                key_algorithm_provider,
                 core_base_url,
                 formatter,
                 key_id,

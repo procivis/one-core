@@ -319,6 +319,7 @@ impl TokenStatusList {
             &issuer_did,
             encoded_list,
             &self.key_provider,
+            &self.key_algorithm_provider,
             &self.core_base_url,
             &*self.get_formatter_for_issuance()?,
             issuer_jwk_key_id,
@@ -392,6 +393,7 @@ pub async fn format_status_list_credential(
     issuer_did: &Did,
     encoded_list: String,
     key_provider: &Arc<dyn KeyProvider>,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     core_base_url: &Option<String>,
     formatter: &dyn CredentialFormatter,
     key_id: String,
@@ -412,7 +414,11 @@ pub async fn format_status_list_credential(
             KeyRole::AssertionMethod,
         ))?;
 
-    let auth_fn = key_provider.get_signature_provider(&key.key.to_owned(), Some(key_id))?;
+    let auth_fn = key_provider.get_signature_provider(
+        &key.key.to_owned(),
+        Some(key_id),
+        key_algorithm_provider.clone(),
+    )?;
 
     let status_list = formatter
         .format_status_list(

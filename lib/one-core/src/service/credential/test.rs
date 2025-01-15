@@ -37,6 +37,7 @@ use crate::provider::exchange_protocol::openid4vc::model::ShareResponse;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::model::{
     CredentialRevocationState, Operation, RevocationMethodCapabilities, RevocationUpdate,
@@ -76,6 +77,7 @@ struct Repositories {
     pub protocol_provider: MockExchangeProtocolProviderExtra,
     pub did_method_provider: MockDidMethodProvider,
     pub key_provider: MockKeyProvider,
+    pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub config: CoreConfig,
     pub lvvc_repository: MockValidityCredentialRepository,
 }
@@ -93,6 +95,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.protocol_provider),
         Arc::new(repositories.did_method_provider),
         Arc::new(repositories.key_provider),
+        Arc::new(repositories.key_algorithm_provider),
         Arc::new(repositories.config),
         Arc::new(repositories.lvvc_repository),
         None,

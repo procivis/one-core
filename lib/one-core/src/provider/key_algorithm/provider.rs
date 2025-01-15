@@ -12,6 +12,11 @@ use crate::model::key::PublicKeyJwk;
 pub trait KeyAlgorithmProvider: Send + Sync {
     fn get_key_algorithm(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>>;
 
+    fn get_key_algorithm_from_jose_alg(
+        &self,
+        jose_alg: &str,
+    ) -> Option<(Arc<dyn KeyAlgorithm>, String)>;
+
     fn get_signer(&self, algorithm: &str) -> Result<Arc<dyn Signer>, KeyAlgorithmProviderError>;
 
     fn parse_jwk(
@@ -37,6 +42,16 @@ impl KeyAlgorithmProviderImpl {
 impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
     fn get_key_algorithm(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>> {
         self.algorithms.get(algorithm).cloned()
+    }
+
+    fn get_key_algorithm_from_jose_alg(
+        &self,
+        jose_alg: &str,
+    ) -> Option<(Arc<dyn KeyAlgorithm>, String)> {
+        self.algorithms
+            .iter()
+            .find(|(_, alg)| alg.jose_alg().contains(&jose_alg.to_string()))
+            .map(|(id, alg)| (alg.clone(), id.to_owned()))
     }
 
     fn get_signer(&self, algorithm: &str) -> Result<Arc<dyn Signer>, KeyAlgorithmProviderError> {

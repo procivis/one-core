@@ -35,6 +35,7 @@ use crate::provider::exchange_protocol::provider::{
     MockExchangeProtocolProviderExtra,
 };
 use crate::provider::exchange_protocol::MockStorageProxy;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::model::{CredentialRevocationInfo, JsonLdContext};
 use crate::provider::revocation::none::NoneRevocation;
@@ -156,7 +157,7 @@ async fn test_issuer_submit_succeeds() {
     key_provider
         .expect_get_signature_provider()
         .once()
-        .returning(|_, _| Ok(Box::<MockSignatureProvider>::default()));
+        .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
 
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
@@ -212,6 +213,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(credential_repository),
         Arc::new(revocation_method_provider),
         Arc::new(key_provider),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(did_method_provider),
         Arc::new(revocation_list_repository),
         Arc::new(MockValidityCredentialRepository::new()),
@@ -710,7 +712,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     key_provider
         .expect_get_signature_provider()
         .once()
-        .returning(|_, _| Ok(Box::<MockSignatureProvider>::default()));
+        .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
 
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
@@ -778,6 +780,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(credential_repository),
         Arc::new(revocation_method_provider),
         Arc::new(key_provider),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(did_method_provider),
         Arc::new(revocation_list_repository),
         Arc::new(validity_credential_repository),
@@ -842,7 +845,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     key_provider
         .expect_get_signature_provider()
         .once()
-        .returning(|_, _| Ok(Box::<MockSignatureProvider>::default()));
+        .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
 
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
@@ -945,6 +948,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(credential_repository),
         Arc::new(revocation_method_provider),
         Arc::new(key_provider),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(did_method_provider),
         Arc::new(revocation_list_repository),
         Arc::new(validity_credential_repository),
@@ -1021,6 +1025,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(credential_repository),
         Arc::new(MockRevocationMethodProvider::new()),
         Arc::new(MockKeyProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockRevocationListRepository::new()),
         Arc::new(validity_credential_repository),

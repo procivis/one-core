@@ -26,6 +26,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::lvvc::dto::Lvvc;
@@ -69,6 +70,7 @@ pub struct LvvcProvider {
     did_method_provider: Arc<dyn DidMethodProvider>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     key_provider: Arc<dyn KeyProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
     params: Params,
 }
@@ -81,6 +83,7 @@ impl LvvcProvider {
         did_method_provider: Arc<dyn DidMethodProvider>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         key_provider: Arc<dyn KeyProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         client: Arc<dyn HttpClient>,
         params: Params,
     ) -> Self {
@@ -90,6 +93,7 @@ impl LvvcProvider {
             did_method_provider,
             validity_credential_repository,
             key_provider,
+            key_algorithm_provider,
             client,
             params,
         }
@@ -136,6 +140,7 @@ impl LvvcProvider {
                     self.params.credential_expiry,
                     self.formatter(credential)?,
                     self.key_provider.clone(),
+                    self.key_algorithm_provider.clone(),
                     self.did_method_provider.clone(),
                     self.get_json_ld_context()?,
                 )
@@ -184,6 +189,7 @@ impl LvvcProvider {
             credential_status,
             &*self.validity_credential_repository,
             &*self.key_provider,
+            &self.key_algorithm_provider,
             &*self.did_method_provider,
             &*self.client,
             &self.params,
@@ -385,6 +391,7 @@ pub async fn create_lvvc_with_status(
     credential_expiry: time::Duration,
     formatter: Arc<dyn CredentialFormatter>,
     key_provider: Arc<dyn KeyProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     json_ld_context: JsonLdContext,
 ) -> Result<Lvvc, RevocationError> {
@@ -428,7 +435,11 @@ pub async fn create_lvvc_with_status(
     let mut claims = vec![create_id_claim(credential.id)];
     claims.extend(create_status_claims(&status)?);
 
-    let auth_fn = key_provider.get_signature_provider(&key.to_owned(), Some(issuer_jwk_key_id))?;
+    let auth_fn = key_provider.get_signature_provider(
+        &key.to_owned(),
+        Some(issuer_jwk_key_id),
+        key_algorithm_provider,
+    )?;
 
     let lvvc_credential_id = Uuid::new_v4();
 

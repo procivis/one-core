@@ -20,6 +20,8 @@ use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
 use crate::provider::credential_formatter::sdjwt_formatter::{Params, Sdvc};
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 
 impl From<&str> for DisclosureArray {
     fn from(value: &str) -> Self {
@@ -332,7 +334,6 @@ async fn test_extract_credentials() {
     };
 
     let mut verify_mock = MockTokenVerifier::new();
-
     verify_mock
         .expect_verify()
         .withf(
@@ -348,6 +349,15 @@ async fn test_extract_credentials() {
             },
         )
         .return_once(|_, _, _, _, _| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
 
     let result = sd_formatter
         .extract_credentials(&token, Box::new(verify_mock))
@@ -446,7 +456,6 @@ async fn test_extract_credentials_with_array() {
     };
 
     let mut verify_mock = MockTokenVerifier::new();
-
     verify_mock
         .expect_verify()
         .withf(
@@ -462,6 +471,15 @@ async fn test_extract_credentials_with_array() {
             },
         )
         .return_once(|_, _, _, _, _| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
 
     let credentials = sd_formatter
         .extract_credentials(&token, Box::new(verify_mock))
@@ -541,7 +559,6 @@ async fn test_extract_credentials_with_array_stripped() {
     };
 
     let mut verify_mock = MockTokenVerifier::new();
-
     verify_mock
         .expect_verify()
         .withf(
@@ -557,6 +574,15 @@ async fn test_extract_credentials_with_array_stripped() {
             },
         )
         .return_once(|_, _, _, _, _| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
 
     let credentials = sd_formatter
         .extract_credentials(&token, Box::new(verify_mock))
@@ -591,7 +617,6 @@ async fn test_extract_presentation() {
     };
 
     let mut verify_mock = MockTokenVerifier::new();
-
     verify_mock
         .expect_verify()
         .withf(
@@ -607,6 +632,15 @@ async fn test_extract_presentation() {
             },
         )
         .return_once(|_, _, _, _, _| Ok(()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
 
     let result = sd_formatter
         .extract_presentation(

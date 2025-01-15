@@ -421,6 +421,7 @@ impl SSIHolderService {
                     &credential_status,
                     &*self.validity_credential_repository,
                     &*self.key_provider,
+                    &self.key_algorithm_provider,
                     &*self.did_method_provider,
                     &*self.client,
                     &revocation_params,

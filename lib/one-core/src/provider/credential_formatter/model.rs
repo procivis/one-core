@@ -15,6 +15,7 @@ use url::Url;
 use super::error::FormatterError;
 use super::json_ld::model::{Evidence, RelatedResource, TermsOfUse};
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
 pub type VerificationFn = Box<dyn TokenVerifier>;
@@ -31,6 +32,8 @@ pub trait TokenVerifier: Send + Sync {
         token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), SignerError>;
+
+    fn key_algorithm_provider(&self) -> &dyn KeyAlgorithmProvider;
 }
 
 /// Method for signing credential with private key without exposing it.
@@ -40,6 +43,7 @@ pub trait SignatureProvider: Send + Sync {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError>;
     fn get_key_id(&self) -> Option<String>;
     fn get_key_type(&self) -> &str;
+    fn jose_alg(&self) -> Option<String>;
     fn get_public_key(&self) -> Vec<u8>;
 }
 

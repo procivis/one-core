@@ -52,4 +52,13 @@ pub trait KeyAlgorithm: Send + Sync {
     /// Converts a public key from DER to bytes.
     fn public_key_from_der(&self, public_key_der: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError>;
     fn get_capabilities(&self) -> model::KeyAlgorithmCapabilities;
+
+    /// get JOSE algorithm identifier
+    /// https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms
+    ///
+    /// First entry (if any) is the correct identifier according to IANA
+    ///
+    /// Optional additional entries are for backward compatibility,
+    /// intended to be used when parsing an incoming JOSE header
+    fn jose_alg(&self) -> Vec<String>;
 }
