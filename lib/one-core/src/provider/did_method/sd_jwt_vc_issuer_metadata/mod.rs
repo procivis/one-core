@@ -88,8 +88,8 @@ impl DidMethod for SdJwtVcIssuerMetadataDidMethod {
             jwks_endpoint.set_path(&format!("{JWKS_URI_SUFFIX}{issuer_url_path}"));
 
             // See ONE-4412
+            // See https://github.com/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py/issues/78 (point 2)
             // Workaround for interoperability with the https://eudiw-issuer.eudi.dev deployment which does not support the jwks_uri
-            // and falls back to the openid-configuration endpoint to advertise the jwks endpoint.
             let mut fallback_jwks_endpoint = issuer_url.clone();
             fallback_jwks_endpoint.set_path(&format!("{FALLBACK_URI_SUFFIX}{issuer_url_path}"));
 

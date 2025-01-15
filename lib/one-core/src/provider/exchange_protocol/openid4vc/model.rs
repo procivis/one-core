@@ -725,7 +725,7 @@ impl<'de> Deserialize<'de> for OpenID4VCICredentialSubjectItem {
                             display = Some(map.next_value()?);
                         }
                         "value_type" => {
-                            value_type = Some(map.next_value()?);
+                            value_type = Some(map.next_value::<String>()?.to_uppercase());
                         }
                         "mandatory" => {
                             mandatory = Some(map.next_value()?);

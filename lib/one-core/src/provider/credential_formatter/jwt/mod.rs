@@ -76,10 +76,21 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
     ) -> Result<Jwt<Payload>, FormatterError> {
         let DecomposedToken {
             header,
-            payload,
+            mut payload,
             signature,
             unverified_jwt,
         } = Jwt::decompose_token(token)?;
+
+        payload.issuer = payload.issuer.map(|issuer| {
+            if issuer.starts_with("did:") {
+                issuer
+            } else {
+                format!(
+                    "did:sd_jwt_vc_issuer_metadata:{}",
+                    urlencoding::encode(&issuer)
+                )
+            }
+        });
 
         if let Some(verification) = verification {
             let (_, algorithm) = verification

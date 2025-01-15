@@ -27,9 +27,34 @@ pub(super) fn extract_claims_from_disclosures(
         }
     });
 
-    let mut result = public_claims.into_iter().collect();
-    recursively_expand_disclosures(&disclosures, &mut result);
+    // EUDIW issuer uses a disclosure called "verified_claims" to store the disclosed claims
+    // this does not seem to be a standard, see point 3 in https://github.com/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py/issues/78
+    let mut result = match &public_claims
+        .get("verified_claims")
+        .and_then(|verified_claims| verified_claims.get("claims"))
+    {
+        None => public_claims.into_iter().collect(),
+        Some(Value::Object(claims)) => {
+            let inner_claims = if claims.len() > 1 {
+                claims.clone()
+            } else {
+                claims
+                    .values()
+                    .next()
+                    .and_then(|v| v.as_object().cloned())
+                    .unwrap_or(serde_json::Map::new())
+            };
 
+            inner_claims.into_iter().collect()
+        }
+        Some(_) => {
+            return Err(FormatterError::CouldNotExtractCredentials(
+                "Expected verified_claims to contain a claims object".to_string(),
+            ));
+        }
+    };
+
+    recursively_expand_disclosures(&disclosures, &mut result);
     Ok(result)
 }
 

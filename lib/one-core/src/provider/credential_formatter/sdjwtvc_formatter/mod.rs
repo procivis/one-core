@@ -263,24 +263,15 @@ pub(super) async fn extract_credentials_internal(
         &*hasher,
     )?;
 
-    let issuer = jwt.payload.issuer.map(|issuer| {
-        if issuer.starts_with("did:") {
-            issuer
-        } else {
-            format!(
-                "did:sd_jwt_vc_issuer_metadata:{}",
-                urlencoding::encode(&issuer)
-            )
-        }
-    });
-
     Ok(DetailCredential {
         id: jwt.payload.jwt_id,
         valid_from: jwt.payload.issued_at,
         valid_until: jwt.payload.expires_at,
         update_at: None,
         invalid_before: jwt.payload.invalid_before,
-        issuer_did: issuer
+        issuer_did: jwt
+            .payload
+            .issuer
             .map(|did| DidValue::from_str(&did))
             .transpose()
             .map_err(|e| FormatterError::Failed(e.to_string()))?,

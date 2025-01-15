@@ -134,7 +134,9 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 offer_id: offer_id.to_owned(),
             },
             // external sd-jwt vc
-            ("vc+sd-jwt" | "dc+sd-jwt", Some(vct))
+            // support for example+sd-jwt is required for interop with the EUDIW issuer,
+            // see https://github.com/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py/issues/78
+            ("vc+sd-jwt" | "dc+sd-jwt" | "example+sd-jwt", Some(vct))
                 if credential_config.wallet_storage_type.is_none() =>
             {
                 BasicSchemaData {

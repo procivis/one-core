@@ -8,7 +8,7 @@ use url::Url;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SdJwtVc {
-    #[serde(rename = "_sd")]
+    #[serde(rename = "_sd", default)]
     pub disclosures: Vec<String>,
 
     /// Hash algorithm
@@ -43,6 +43,7 @@ where
     match status {
         Some(Status::SdJwt(status)) => Ok(Some(status)),
         // workaround for EUDI SD-JWT VC
+        // see https://github.com/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py/issues/78 (point 4)
         Some(Status::String(s)) if s == "validation status URL" => Ok(None),
         Some(Status::String(s)) => Err(serde::de::Error::custom(format!(
             "Expected SdJwtVcStatus got a string: {s}"
