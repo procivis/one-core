@@ -6,7 +6,7 @@ use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 #[tokio::test]
 async fn test_delete_trust_anchor() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did(None).await;
 
     let anchor = context
         .db

@@ -5,7 +5,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_get_credential_issuer_metadata() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -101,7 +101,7 @@ async fn test_get_credential_issuer_metadata() {
 #[tokio::test]
 async fn test_get_credential_issuer_metadata_for_mdoc() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
         (Uuid::new_v4(), "root", false, "OBJECT", false),
         (Uuid::new_v4(), "root/str", true, "STRING", false),

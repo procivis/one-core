@@ -6,7 +6,7 @@ use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 #[tokio::test]
 async fn test_vct_metadata_not_found() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
@@ -22,7 +22,7 @@ async fn test_vct_metadata_not_found() {
 #[tokio::test]
 async fn test_vct_metadata_simple() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let vct_type = "test_id";
     let schema_name = "test_name";
@@ -100,7 +100,7 @@ async fn test_vct_metadata_simple() {
 #[tokio::test]
 async fn test_vct_metadata_nested_claims() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let vct_type = "test_id";
     let schema_name = "test_name";

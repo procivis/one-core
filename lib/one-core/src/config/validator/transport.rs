@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::config::core_config::{Fields, TransportConfig, TransportType};
-use crate::provider::exchange_protocol::provider::ExchangeProtocol;
+use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
 use crate::service::error::ValidationError;
 
 pub enum SelectedTransportType {
@@ -21,11 +21,14 @@ pub fn get_first_available_transport_type(
 pub fn validate_and_select_transport_type(
     transport: &Option<Vec<String>>,
     config: &TransportConfig,
-    exchange_protocol: &dyn ExchangeProtocol,
+    exchange_protocol_capabilities: &ExchangeProtocolCapabilities,
 ) -> Result<SelectedTransportType, ValidationError> {
-    let capabilities = exchange_protocol.get_capabilities().supported_transports;
     let check_transport_capabilities = |transport| {
-        if !capabilities.iter().any(|t| t == transport) {
+        if !exchange_protocol_capabilities
+            .supported_transports
+            .iter()
+            .any(|t| t == transport)
+        {
             return Err(ValidationError::TransportNotAllowedForExchange);
         }
 
@@ -95,26 +98,18 @@ mod test {
     use crate::config::core_config::{CoreConfig, Fields, TransportType};
     use crate::config::validator::transport::SelectedTransportType;
     use crate::provider::exchange_protocol::dto::{ExchangeProtocolCapabilities, Operation};
-    use crate::provider::exchange_protocol::{MockExchangeProtocol, MockExchangeProtocolImpl};
     use crate::service::error::ValidationError;
 
     #[test]
     fn test_selects_first_in_order_transport_from_config_if_transport_is_none() {
         let config = config(&["BLE", "MQTT"]);
-
-        let mut exchange_protocol = MockExchangeProtocolImpl::default();
-        exchange_protocol
-            .expect_get_capabilities()
-            .returning(|| ExchangeProtocolCapabilities {
-                supported_transports: vec!["BLE".into(), "MQTT".into()],
-                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-            });
-
-        let exchange_protocol = MockExchangeProtocol::new(exchange_protocol);
+        let capabilities = ExchangeProtocolCapabilities {
+            supported_transports: vec!["BLE".into(), "MQTT".into()],
+            operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+        };
 
         let selected =
-            validate_and_select_transport_type(&None, &config.transport, &exchange_protocol)
-                .unwrap();
+            validate_and_select_transport_type(&None, &config.transport, &capabilities).unwrap();
 
         assert!(matches!(selected,
             SelectedTransportType::Single(transport) if transport == "BLE"
@@ -124,21 +119,15 @@ mod test {
     #[test]
     fn test_selects_one_transport() {
         let config = config(&["MQTT"]);
-
-        let mut exchange_protocol = MockExchangeProtocolImpl::default();
-        exchange_protocol
-            .expect_get_capabilities()
-            .returning(|| ExchangeProtocolCapabilities {
-                supported_transports: vec!["MQTT".into()],
-                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-            });
-
-        let exchange_protocol = MockExchangeProtocol::new(exchange_protocol);
+        let capabilities = ExchangeProtocolCapabilities {
+            supported_transports: vec!["MQTT".into()],
+            operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+        };
 
         let selected = validate_and_select_transport_type(
             &Some(vec!["MQTT".into()]),
             &config.transport,
-            &exchange_protocol,
+            &capabilities,
         )
         .unwrap();
 
@@ -150,21 +139,15 @@ mod test {
     #[test]
     fn test_selects_multiple_transports() {
         let config = config(&["BLE", "MQTT"]);
-
-        let mut exchange_protocol = MockExchangeProtocolImpl::default();
-        exchange_protocol
-            .expect_get_capabilities()
-            .returning(|| ExchangeProtocolCapabilities {
-                supported_transports: vec!["BLE".into(), "MQTT".into()],
-                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-            });
-
-        let exchange_protocol = MockExchangeProtocol::new(exchange_protocol);
+        let capabilities = ExchangeProtocolCapabilities {
+            supported_transports: vec!["BLE".into(), "MQTT".into()],
+            operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+        };
 
         let selected = validate_and_select_transport_type(
             &Some(vec!["MQTT".into(), "BLE".into()]),
             &config.transport,
-            &exchange_protocol,
+            &capabilities,
         )
         .unwrap();
 
@@ -177,21 +160,15 @@ mod test {
     #[test]
     fn test_fails_if_capability_is_missing() {
         let config = config(&["MQTT"]);
-
-        let mut exchange_protocol = MockExchangeProtocolImpl::default();
-        exchange_protocol
-            .expect_get_capabilities()
-            .returning(|| ExchangeProtocolCapabilities {
-                supported_transports: vec![],
-                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-            });
-
-        let exchange_protocol = MockExchangeProtocol::new(exchange_protocol);
+        let capabilities = ExchangeProtocolCapabilities {
+            supported_transports: vec![],
+            operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+        };
 
         let selected = validate_and_select_transport_type(
             &Some(vec!["MQTT".into()]),
             &config.transport,
-            &exchange_protocol,
+            &capabilities,
         );
 
         assert!(matches!(
@@ -203,21 +180,15 @@ mod test {
     #[test]
     fn test_fails_when_transport_combination_is_not_allowed() {
         let config = config(&["BLE", "MQTT", "HTTP"]);
-
-        let mut exchange_protocol = MockExchangeProtocolImpl::default();
-        exchange_protocol
-            .expect_get_capabilities()
-            .returning(|| ExchangeProtocolCapabilities {
-                supported_transports: vec!["BLE".into(), "MQTT".into(), "HTTP".into()],
-                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
-            });
-
-        let exchange_protocol = MockExchangeProtocol::new(exchange_protocol);
+        let capabilities = ExchangeProtocolCapabilities {
+            supported_transports: vec!["BLE".into(), "MQTT".into(), "HTTP".into()],
+            operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+        };
 
         let selected = validate_and_select_transport_type(
             &Some(vec!["MQTT".into(), "BLE".into(), "HTTP".into()]),
             &config.transport,
-            &exchange_protocol,
+            &capabilities,
         );
 
         assert!(matches!(

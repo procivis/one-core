@@ -9,7 +9,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_credential_offer_success_jwt() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -71,7 +71,7 @@ async fn test_get_credential_offer_success_jwt() {
 #[tokio::test]
 async fn test_get_credential_offer_success_mdoc() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -142,7 +142,7 @@ async fn test_get_credential_offer_success_mdoc() {
 #[tokio::test]
 async fn test_get_credential_offer_with_array_success_mdoc() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -255,7 +255,7 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
 #[tokio::test]
 async fn test_get_credential_offer_not_found() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context

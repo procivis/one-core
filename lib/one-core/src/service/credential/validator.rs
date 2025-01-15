@@ -6,10 +6,11 @@ use regex::Regex;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::config::validator::datatype::{validate_datatype_value, DatatypeValidationError};
-use crate::config::validator::exchange::validate_exchange_type;
+use crate::config::validator::exchange::{validate_exchange_operation, validate_exchange_type};
 use crate::config::ConfigValidationError;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::exchange_protocol::dto::{ExchangeProtocolCapabilities, Operation};
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
@@ -17,12 +18,14 @@ use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 pub(crate) fn validate_create_request(
     did_method: &str,
     exchange: &str,
+    exchange_capabilities: &ExchangeProtocolCapabilities,
     claims: &[CredentialRequestClaimDTO],
     schema: &CredentialSchema,
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
     validate_exchange_type(exchange, &config.exchange)?;
+    validate_exchange_operation(exchange_capabilities, &Operation::ISSUANCE)?;
     validate_format_and_exchange_protocol_compatibility(exchange, formatter_capabilities, config)?;
     validate_format_and_did_method_compatibility(did_method, formatter_capabilities, config)?;
 

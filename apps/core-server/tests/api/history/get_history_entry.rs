@@ -9,7 +9,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_history_entry_without_metadata() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let history = context
         .db
         .histories
@@ -30,7 +30,7 @@ async fn test_get_history_entry_without_metadata() {
 #[tokio::test]
 async fn test_get_history_entry_with_unexportable_metadata() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let history = context
         .db
         .histories
@@ -66,7 +66,7 @@ async fn test_get_history_entry_with_unexportable_metadata() {
 #[tokio::test]
 async fn test_fail_to_get_history_entry_unknown_id() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.histories.get(Uuid::new_v4().into()).await;

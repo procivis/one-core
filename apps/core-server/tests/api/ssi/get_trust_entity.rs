@@ -27,7 +27,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_trust_entity_by_did_success() {
     // GIVEN
-    let (context, org) = TestContext::new_with_organisation().await;
+    let (context, org) = TestContext::new_with_organisation(None).await;
 
     let (did, token) = prepare_bearer_token(&context, &org).await;
     let jwt_token_client = Client::new(context.config.app.core_base_url.clone(), token);

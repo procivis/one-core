@@ -12,7 +12,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_create_credential_success() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -60,7 +60,7 @@ async fn test_create_credential_success() {
 #[tokio::test]
 async fn test_create_credential_with_array_success() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -174,7 +174,7 @@ async fn test_create_credential_with_array_success() {
 #[tokio::test]
 async fn test_create_credential_success_with_nested_claims() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -229,7 +229,7 @@ async fn test_create_credential_success_with_nested_claims() {
 #[tokio::test]
 async fn test_create_credential_with_issuer_key() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key1 = context
         .db
@@ -312,7 +312,7 @@ async fn test_create_credential_with_issuer_key() {
 #[tokio::test]
 async fn test_fail_to_create_credential_invalid_key_role() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key = context
         .db
@@ -370,7 +370,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
 #[tokio::test]
 async fn test_fail_to_create_credential_unknown_key_id() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -405,7 +405,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
 #[tokio::test]
 async fn test_create_credential_with_big_picture_success() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -448,7 +448,7 @@ async fn test_create_credential_with_big_picture_success() {
 #[tokio::test]
 async fn test_create_credential_failed_specified_object_claim() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -486,7 +486,7 @@ async fn test_create_credential_failed_specified_object_claim() {
 #[tokio::test]
 async fn test_create_credential_boolean_value_wrong() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -524,4 +524,46 @@ async fn test_create_credential_boolean_value_wrong() {
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!("BR_0061", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_fail_to_create_credential_issuance_disabled() {
+    // GIVEN
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+    let claim_id = credential_schema.claim_schemas.clone().unwrap()[0]
+        .schema
+        .id;
+    let claim_id1 = credential_schema.claim_schemas.unwrap()[1].schema.id;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "MDOC_OPENID4VP",
+            did.id,
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "firstName"
+                },
+                {
+                    "claimId": claim_id1.to_string(),
+                    "value": "true",
+                    "path": "isOver18"
+                }
+            ]),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
 }

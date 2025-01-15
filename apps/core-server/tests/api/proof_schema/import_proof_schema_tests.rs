@@ -16,7 +16,7 @@ use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 async fn test_import_proof_schema_ok() {
     let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
 
-    let (context, source_organisation) = TestContext::new_with_organisation().await;
+    let (context, source_organisation) = TestContext::new_with_organisation(None).await;
     let original_credential_schema_id = Uuid::new_v4().into();
     let original_credential_schema = context
         .db
@@ -144,7 +144,7 @@ async fn test_import_proof_schema_ok() {
 
 #[tokio::test]
 async fn test_import_proof_schema_for_existing_credential_schema() {
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
@@ -245,7 +245,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
 
 #[tokio::test]
 async fn test_import_proof_schema_nested_array() {
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let old_proof_schema_id: ProofSchemaId = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();

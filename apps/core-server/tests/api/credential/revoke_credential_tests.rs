@@ -14,7 +14,7 @@ use crate::utils::db_clients::keys::eddsa_testing_params;
 #[tokio::test]
 async fn test_revoke_credential_with_bitstring_status_list_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key = context
         .db
         .keys
@@ -78,7 +78,7 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
 #[tokio::test]
 async fn test_revoke_credential_not_found() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.credentials.revoke(&Uuid::new_v4()).await;
@@ -90,7 +90,7 @@ async fn test_revoke_credential_not_found() {
 #[tokio::test]
 async fn test_revoke_credential_deleted() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key = context
         .db
         .keys
@@ -161,7 +161,7 @@ async fn test_revoke_credential_deleted() {
 #[tokio::test]
 async fn test_revoke_credential_with_lvvc_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key = context
         .db
         .keys

@@ -7,7 +7,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_trust_anchor() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     let anchor = context
         .db
@@ -32,7 +32,7 @@ async fn test_get_trust_anchor() {
 #[tokio::test]
 async fn test_fail_to_get_trust_anchor_unknown_id() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.trust_anchors.get(Uuid::new_v4()).await;

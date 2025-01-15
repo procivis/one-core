@@ -9,7 +9,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_keys_ok() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key1 = context
         .db
@@ -78,7 +78,7 @@ async fn test_get_keys_ok() {
 #[tokio::test]
 async fn test_get_keys_filter_by_key_type() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key = context
         .db
@@ -133,7 +133,7 @@ async fn test_get_keys_filter_by_key_type() {
 #[tokio::test]
 async fn test_get_keys_filter_by_key_storage() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key = context
         .db

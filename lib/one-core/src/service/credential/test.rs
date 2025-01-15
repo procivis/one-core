@@ -31,6 +31,8 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::exchange_protocol;
+use crate::provider::exchange_protocol::dto::ExchangeProtocolCapabilities;
 use crate::provider::exchange_protocol::openid4vc::model::ShareResponse;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
@@ -730,12 +732,25 @@ async fn test_create_credential_success() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository: MockHistoryRepository::default(),
         formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -800,12 +815,25 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_repository: Default::default(),
         credential_schema_repository,
         did_repository,
         history_repository: Default::default(),
         formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -946,12 +974,25 @@ async fn test_create_credential_one_required_claim_missing_success() {
         .with(eq(credential_schema.format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository: MockHistoryRepository::default(),
         formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1043,10 +1084,23 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         .with(eq(credential_schema.format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
         formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1121,11 +1175,24 @@ async fn test_create_credential_schema_deleted() {
         .with(eq(credential_schema.format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
         formatter_provider,
         revocation_method_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1561,12 +1628,25 @@ async fn test_create_credential_key_with_issuer_key() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository,
         formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1673,12 +1753,25 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository,
         formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1755,10 +1848,23 @@ async fn test_fail_to_create_credential_no_assertion_key() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
         formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1821,10 +1927,23 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
         formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1904,10 +2023,23 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
         formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1987,10 +2119,23 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
         formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2058,10 +2203,23 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
         .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
         formatter_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2577,6 +2735,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
     validate_create_request(
         "KEY",
         "OPENID4VC",
+        &generic_capabilities(),
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -2599,6 +2758,16 @@ fn test_validate_create_request_all_nested_claims_are_required() {
         &generic_config().core,
     )
     .unwrap();
+}
+
+fn generic_capabilities() -> ExchangeProtocolCapabilities {
+    ExchangeProtocolCapabilities {
+        supported_transports: vec![],
+        operations: vec![
+            exchange_protocol::dto::Operation::ISSUANCE,
+            exchange_protocol::dto::Operation::VERIFICATION,
+        ],
+    }
 }
 
 #[test]
@@ -2659,6 +2828,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
     validate_create_request(
         "KEY",
         "OPENID4VC",
+        &generic_capabilities(),
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -2685,6 +2855,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
     validate_create_request(
         "KEY",
         "OPENID4VC",
+        &generic_capabilities(),
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
             value: "Somewhere".to_string(),
@@ -2699,6 +2870,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
     let result = validate_create_request(
         "KEY",
         "OPENID4VC",
+        &generic_capabilities(),
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -2781,6 +2953,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
     validate_create_request(
         "KEY",
         "OPENID4VC",
+        &generic_capabilities(),
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -2807,6 +2980,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
     let result = validate_create_request(
         "KEY",
         "OPENID4VC",
+        &generic_capabilities(),
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
             value: "Somewhere".to_string(),
@@ -2826,6 +3000,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
     validate_create_request(
         "KEY",
         "OPENID4VC",
+        &generic_capabilities(),
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -2843,6 +3018,29 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         &generic_config().core,
     )
     .unwrap();
+}
+
+#[test]
+fn test_validate_create_exchange_protocol_disabled_operation() {
+    let capabilities = ExchangeProtocolCapabilities {
+        supported_transports: vec![],
+        operations: vec![exchange_protocol::dto::Operation::VERIFICATION],
+    };
+    let result = validate_create_request(
+        "KEY",
+        "OPENID4VC",
+        &capabilities,
+        &[],
+        &generate_credential_schema_with_claim_schemas(vec![]),
+        &generic_formatter_capabilities(),
+        &generic_config().core,
+    );
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::InvalidExchangeOperation { .. }
+        ))
+    ));
 }
 
 #[tokio::test]
@@ -4333,6 +4531,18 @@ async fn test_create_credential_array(
             .return_once(move |_| Ok(Uuid::new_v4().into()));
     }
 
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
@@ -4340,6 +4550,7 @@ async fn test_create_credential_array(
         formatter_provider,
         history_repository,
         revocation_method_provider,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });

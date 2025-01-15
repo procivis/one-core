@@ -2,7 +2,7 @@ use crate::utils::context::TestContext;
 
 #[tokio::test]
 async fn test_resolve_json_ld_context() {
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     let resp = context
         .api

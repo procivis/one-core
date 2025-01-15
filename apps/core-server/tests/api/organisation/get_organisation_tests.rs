@@ -4,7 +4,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_organisation_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context.api.organisations.get(&organisation.id).await;

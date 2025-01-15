@@ -6,7 +6,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_create_proof_schema_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -51,7 +51,7 @@ async fn test_create_proof_schema_success() {
 #[tokio::test]
 async fn test_create_nested_proof_schema_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -98,7 +98,7 @@ async fn test_create_nested_proof_schema_success() {
 #[tokio::test]
 async fn test_succeed_to_create_nested_proof_schema_without_object_claim() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -141,7 +141,7 @@ async fn test_succeed_to_create_nested_proof_schema_without_object_claim() {
 
 #[tokio::test]
 async fn test_create_proof_schema_with_the_same_name_in_different_organisations() {
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let organisation1 = context.db.organisations.create().await;
 
     let credential_schema = context
@@ -202,7 +202,7 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
 #[tokio::test]
 async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -257,7 +257,7 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
 #[tokio::test]
 async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted_proof_schema() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -316,7 +316,7 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
 #[tokio::test]
 async fn test_fail_to_create_proof_schema_from_deleted_credential_schema() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -357,7 +357,7 @@ async fn test_fail_to_create_proof_schema_from_deleted_credential_schema() {
 #[tokio::test]
 async fn test_fail_to_create_proof_schema_with_claims_not_related_to_credential_schema() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema1 = context
         .db
@@ -399,7 +399,7 @@ async fn test_fail_to_create_proof_schema_with_claims_not_related_to_credential_
 #[tokio::test]
 async fn test_fail_missing_validity_constraint_for_lvvc() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema2 = context
         .db

@@ -8,7 +8,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_did_list_filters_deactivated_dids() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let expected_did = context
         .db
         .dids
@@ -60,7 +60,7 @@ async fn test_get_did_list_filters_deactivated_dids() {
 #[tokio::test]
 async fn test_get_did_list_filters_with_key_filtering() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key1 = context
         .db
@@ -185,7 +185,7 @@ async fn test_get_did_list_filters_with_key_filtering() {
 #[tokio::test]
 async fn test_get_did_list_filters_with_did_method_filtering() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let expected_did = context
         .db
@@ -239,7 +239,7 @@ async fn test_get_did_list_filters_with_did_method_filtering() {
 #[tokio::test]
 async fn test_get_did_list_filters_with_key_id_filtering() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key1 = context
         .db

@@ -4,7 +4,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_credential_schema_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let credential_schema = context
         .db
         .credential_schemas

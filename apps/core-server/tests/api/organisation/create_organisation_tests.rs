@@ -6,7 +6,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_create_organisation_success_id_set() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let organisation_id = Uuid::new_v4();
@@ -24,7 +24,7 @@ async fn test_create_organisation_success_id_set() {
 #[tokio::test]
 async fn test_create_organisation_success_id_not_set() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.organisations.create(None).await;

@@ -3,7 +3,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_list_organisation_success() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     for _ in 1..15 {
         context.db.organisations.create().await;

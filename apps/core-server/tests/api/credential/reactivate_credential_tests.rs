@@ -11,7 +11,7 @@ use crate::utils::db_clients::keys::eddsa_testing_params;
 #[tokio::test]
 async fn test_reactivate_credential_with_bitstring_status_list_success() {
     // GIVEN
-    let (context, organisation, issuer_did, _) = TestContext::new_with_did().await;
+    let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -47,7 +47,7 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
 #[tokio::test]
 async fn test_reactivate_credential_with_lvvc_success() {
     // GIVEN
-    let (context, organisation, issuer_did, _) = TestContext::new_with_did().await;
+    let (context, organisation, issuer_did, _) = TestContext::new_with_did(None).await;
     let issuer_key = issuer_did
         .keys
         .as_ref()

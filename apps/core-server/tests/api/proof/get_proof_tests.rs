@@ -14,7 +14,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_proof_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -106,7 +106,7 @@ async fn test_get_proof_success() {
 #[tokio::test]
 async fn test_get_proof_detached_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -204,7 +204,7 @@ async fn test_get_proof_detached_success() {
 #[tokio::test]
 async fn test_get_proof_with_nested_claims() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -300,7 +300,7 @@ async fn test_get_proof_with_nested_claims() {
 #[tokio::test]
 async fn test_get_proof_with_empty_array() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -392,7 +392,7 @@ async fn test_get_proof_with_empty_array() {
 #[tokio::test]
 async fn test_get_proof_with_array() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -558,7 +558,7 @@ async fn test_get_proof_with_array() {
 #[tokio::test]
 async fn test_get_proof_with_nested_claims_and_root_field() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -657,7 +657,7 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
 #[tokio::test]
 async fn test_get_proof_with_credentials() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db
@@ -757,7 +757,7 @@ async fn test_get_proof_with_credentials() {
 #[tokio::test]
 async fn test_get_proof_as_holder_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let verifier_key = context
         .db
@@ -815,7 +815,7 @@ async fn test_get_proof_as_holder_success() {
 #[tokio::test]
 async fn test_get_proof_with_retain_date() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let verifier_key = context
         .db
@@ -908,7 +908,7 @@ async fn test_get_proof_with_retain_date() {
 #[tokio::test]
 async fn test_get_proof_with_deleted_claims() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db

@@ -7,7 +7,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_update_did_cannot_deactivate_did_key() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let did = context
         .db
         .dids
@@ -30,7 +30,7 @@ async fn test_update_did_cannot_deactivate_did_key() {
 #[tokio::test]
 async fn test_update_did_deactivates_local_did_web() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let did = context
         .db
         .dids
@@ -53,7 +53,7 @@ async fn test_update_did_deactivates_local_did_web() {
 #[tokio::test]
 async fn test_update_did_cannot_deactivate_remote_did_web() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let did = context
         .db
         .dids
@@ -77,7 +77,7 @@ async fn test_update_did_cannot_deactivate_remote_did_web() {
 #[tokio::test]
 async fn test_update_did_same_deactivated_status_as_requested() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let did = context
         .db
         .dids
@@ -101,7 +101,7 @@ async fn test_update_did_same_deactivated_status_as_requested() {
 #[tokio::test]
 async fn test_update_did_not_found() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.dids.deactivate(&Uuid::new_v4()).await;

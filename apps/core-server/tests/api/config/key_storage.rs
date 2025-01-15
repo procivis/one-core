@@ -5,7 +5,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_capabilities_features_are_present_in_config() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.config.get().await;

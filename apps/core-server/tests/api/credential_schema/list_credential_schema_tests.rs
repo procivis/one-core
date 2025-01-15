@@ -5,7 +5,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_get_list_credential_schema_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     for i in 1..15 {
         context
@@ -39,7 +39,7 @@ async fn test_get_list_credential_schema_success() {
 #[tokio::test]
 async fn test_get_list_credential_schema_include_layout_properties_success() {
     // GIVEN
-    let (context, organisation, ..) = TestContext::new_with_did().await;
+    let (context, organisation, ..) = TestContext::new_with_did(None).await;
     let _ = context
         .db
         .credential_schemas

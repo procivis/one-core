@@ -87,8 +87,11 @@ impl SSIHolderService {
             self.client.clone(),
         );
 
-        let transport =
-            validate_and_select_transport_type(&transport, &self.config.transport, &*protocol)?;
+        let transport = validate_and_select_transport_type(
+            &transport,
+            &self.config.transport,
+            &protocol.get_capabilities(),
+        )?;
         let transport = match transport {
             SelectedTransportType::Single(s) => s,
             SelectedTransportType::Multiple(vec) => vec

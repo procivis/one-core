@@ -55,7 +55,8 @@ async fn test_openid4vc_jsonld_flow(
     let date_format =
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     let interaction_id = Uuid::new_v4();
-    let server_context = TestContext::new_with_token(&format!("{}.test", interaction_id)).await;
+    let server_context =
+        TestContext::new_with_token(&format!("{}.test", interaction_id), None).await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
@@ -213,7 +214,7 @@ async fn test_openid4vc_jsonld_flow(
     let credentials = resp["credential"].as_str().unwrap();
 
     // Valid holder context
-    let holder_context = TestContext::new().await;
+    let holder_context = TestContext::new(None).await;
     let holder_organisation = holder_context.db.organisations.create().await;
     holder_context
         .db
@@ -409,7 +410,8 @@ async fn test_openid4vc_jsonld_flow_array(
     let date_format =
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     let interaction_id = Uuid::new_v4();
-    let server_context = TestContext::new_with_token(&format!("{}.test", interaction_id)).await;
+    let server_context =
+        TestContext::new_with_token(&format!("{}.test", interaction_id), None).await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
@@ -595,7 +597,7 @@ async fn test_openid4vc_jsonld_flow_array(
     let credentials = resp["credential"].as_str().unwrap();
 
     // Valid holder context
-    let holder_context = TestContext::new().await;
+    let holder_context = TestContext::new(None).await;
     let holder_organisation = holder_context.db.organisations.create().await;
     holder_context
         .db

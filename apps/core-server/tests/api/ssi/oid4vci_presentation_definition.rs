@@ -20,7 +20,7 @@ pub struct TestContextWithOID4VCIData {
 }
 
 async fn new_test_data() -> TestContextWithOID4VCIData {
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let nonce = "nonce123";
     let new_claim_schemas: Vec<(Uuid, &'static str, bool, &'static str, bool)> = vec![
@@ -188,7 +188,7 @@ async fn test_get_presentation_definition_success() {
 #[tokio::test]
 async fn test_get_presentation_definition_failed_not_found() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let response = context

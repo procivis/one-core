@@ -19,7 +19,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value() {
     let mock_server = MockServer::start().await;
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema_id = Uuid::new_v4();
     let credential_issuer = format!(
@@ -309,7 +309,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_with_double_layered_nested_claims(
 ) {
     let mock_server = MockServer::start().await;
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema_id = Uuid::new_v4();
     let credential_issuer = format!(
@@ -502,7 +502,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_with_optional_object_array_and_required_field(
 ) {
     let mock_server = MockServer::start().await;
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema_id = Uuid::new_v4();
     let credential_issuer = format!(
@@ -705,7 +705,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_with_similar_prefix_keys(
 ) {
     let mock_server = MockServer::start().await;
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema_id = Uuid::new_v4();
     let credential_issuer = format!(
@@ -907,7 +907,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_matching_succeeds() {
     let mock_server = MockServer::start().await;
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![(
         Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap(),
@@ -1047,7 +1047,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_should_not_match_deleted_schema(
 ) {
     let mock_server = MockServer::start().await;
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![(
         Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap(),
@@ -1225,7 +1225,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_should_not
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_reference() {
     let mock_server = MockServer::start().await;
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_id = Uuid::new_v4();
     let credential_schema_id = Uuid::new_v4();
@@ -1382,7 +1382,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
     let mock_server = MockServer::start().await;
-    let (context, organistion) = TestContext::new_with_organisation().await;
+    let (context, organistion) = TestContext::new_with_organisation(None).await;
 
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
         jwks: vec![],
@@ -1439,7 +1439,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
 
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
-    let (context, organistion) = TestContext::new_with_organisation().await;
+    let (context, organistion) = TestContext::new_with_organisation(None).await;
 
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
         jwks: vec![],
@@ -1481,7 +1481,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
 #[tokio::test]
 async fn test_handle_invitation_mdoc() {
     let mock_server = MockServer::start().await;
-    let (context, organistion) = TestContext::new_with_organisation().await;
+    let (context, organistion) = TestContext::new_with_organisation(None).await;
 
     let credential_schema_id = Uuid::new_v4();
     let credential_issuer = format!(
@@ -1678,7 +1678,7 @@ async fn test_handle_invitation_mdoc() {
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_tx_code_passed() {
     let mock_server = MockServer::start().await;
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema_id = Uuid::new_v4();
     let credential_issuer = format!(
@@ -1837,7 +1837,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_t
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_no_subject() {
     let mock_server = MockServer::start().await;
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema_id = Uuid::new_v4();
     let credential_issuer = format!(
@@ -2107,7 +2107,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_n
 #[tokio::test]
 async fn test_handle_invitation_external_sd_jwt_vc() {
     let mock_server = MockServer::start().await;
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema_id = Uuid::new_v4();
     let credential_issuer = format!(

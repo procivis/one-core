@@ -9,7 +9,7 @@ use crate::utils::server::run_server;
 #[tokio::test]
 async fn test_transport_params_are_filtered_in_config() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.config.get().await;

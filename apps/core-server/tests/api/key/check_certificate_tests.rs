@@ -4,7 +4,7 @@ use crate::utils::db_clients::keys::{eddsa_testing_params, es256_testing_params}
 #[tokio::test]
 async fn test_check_certificate_eddsa_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key = context
         .db
@@ -47,7 +47,7 @@ gEudfmbqXoiDCBYUmNabrVJo6GiBeczXVoU=
 #[tokio::test]
 async fn test_check_certificate_es256_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key = context
         .db

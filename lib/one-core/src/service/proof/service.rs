@@ -18,7 +18,7 @@ use super::ProofService;
 use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{ExchangeType, TransportType};
-use crate::config::validator::exchange::validate_exchange_type;
+use crate::config::validator::exchange::{validate_exchange_operation, validate_exchange_type};
 use crate::config::validator::transport::{
     validate_and_select_transport_type, SelectedTransportType,
 };
@@ -41,7 +41,7 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::EmbeddedCbor;
-use crate::provider::exchange_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::provider::exchange_protocol::dto::{Operation, PresentationDefinitionResponseDTO};
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::iso_mdl::ble_holder::{
     receive_mdl_request, start_mdl_server, MdocBleHolderInteractionData,
@@ -361,11 +361,13 @@ impl ProofService {
         let Some(exchange_protocol) = self.protocol_provider.get_protocol(&request.exchange) else {
             return Err(MissingProviderError::ExchangeProtocol(request.exchange.to_owned()).into());
         };
+        let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
+        validate_exchange_operation(&exchange_protocol_capabilities, &Operation::VERIFICATION)?;
 
         let transport = validate_and_select_transport_type(
             &request.transport,
             &self.config.transport,
-            &*exchange_protocol,
+            &exchange_protocol_capabilities,
         )?;
 
         let mut maybe_interaction_id = None;

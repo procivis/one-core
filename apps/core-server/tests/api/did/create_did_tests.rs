@@ -10,7 +10,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_create_did_key_es256_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key = context
         .db
         .keys
@@ -47,7 +47,7 @@ async fn test_create_did_key_es256_success() {
 #[tokio::test]
 async fn test_create_did_key_dilithium_failure_incapable() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let test_params = TestingKeyParams {
         key_type: Some("Dilithium".to_owned()), // Not capable
@@ -77,7 +77,7 @@ async fn test_create_did_key_dilithium_failure_incapable() {
 #[tokio::test]
 async fn test_create_did_key_eddsa_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key = context
         .db
         .keys
@@ -114,7 +114,7 @@ async fn test_create_did_key_eddsa_success() {
 #[tokio::test]
 async fn test_fail_to_create_did_key_to_much_keys() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key1 = context
         .db
         .keys
@@ -147,7 +147,7 @@ async fn test_fail_to_create_did_key_to_much_keys() {
 #[tokio::test]
 async fn test_create_did_web_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key = context
         .db
         .keys
@@ -184,7 +184,7 @@ async fn test_create_did_web_success() {
 #[tokio::test]
 async fn test_create_did_web_mixed_keys() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key1 = context
         .db
         .keys
@@ -230,7 +230,7 @@ async fn test_create_did_web_mixed_keys() {
 #[tokio::test]
 async fn test_create_did_jwk_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key = context
         .db
         .keys
@@ -267,7 +267,7 @@ async fn test_create_did_jwk_success() {
 #[tokio::test]
 async fn test_create_did_with_same_name_in_different_organisations() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did(None).await;
 
     let organisation1 = context.db.organisations.create().await;
     let key = context
@@ -296,7 +296,7 @@ async fn test_create_did_with_same_name_in_different_organisations() {
 #[tokio::test]
 async fn test_fail_to_create_did_with_same_name_in_same_organisation() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key1 = context
         .db
         .keys
@@ -342,7 +342,7 @@ async fn test_fail_to_create_did_with_same_name_in_same_organisation() {
 #[tokio::test]
 async fn test_fail_to_create_did_with_same_value_in_same_organisation() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key = context
         .db
@@ -383,7 +383,7 @@ async fn test_fail_to_create_did_with_same_value_in_same_organisation() {
 #[tokio::test]
 async fn test_create_did_with_same_value_in_different_organisations() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let organisation1 = context.db.organisations.create().await;
     let key = context
@@ -425,7 +425,7 @@ async fn test_create_did_with_same_value_in_different_organisations() {
 #[tokio::test]
 async fn test_create_did_mdl_eddsa_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key = context
         .db
@@ -490,7 +490,7 @@ gEudfmbqXoiDCBYUmNabrVJo6GiBeczXVoU=
 #[tokio::test]
 async fn test_create_did_mdl_es256_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let key = context
         .db

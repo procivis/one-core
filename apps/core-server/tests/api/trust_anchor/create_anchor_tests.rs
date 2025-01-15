@@ -4,7 +4,7 @@ use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 #[tokio::test]
 async fn test_create_anchor() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context
@@ -20,7 +20,7 @@ async fn test_create_anchor() {
 #[tokio::test]
 async fn test_fail_to_create_anchor_unknown_format() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context
@@ -37,7 +37,7 @@ async fn test_fail_to_create_anchor_unknown_format() {
 #[tokio::test]
 async fn test_fail_to_create_anchor_name_already_taken() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
     context
         .db
         .trust_anchors

@@ -35,7 +35,7 @@ async fn test_revoke_check_success_statuslist2021() {
         .start()
         .await;
 
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -295,7 +295,7 @@ async fn setup_bitstring_status_list_success(
         &key_pair,
     );
 
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -374,7 +374,7 @@ fn sign_jwt_helper(jwt_header_json: &str, payload_json: &str, key_pair: &KeyPair
 
 #[tokio::test]
 async fn test_revoke_check_fail_invalid_cache_bypass_values() {
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     let response = context
         .api
@@ -397,7 +397,7 @@ async fn test_revoke_check_success_lvvc() {
         .start()
         .await;
 
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let holder_key = context
         .db
         .keys
@@ -504,7 +504,7 @@ static CREDENTIAL_CONTENT_VALID: &str = "ompuYW1lU3BhY2VzomRyb290gdgYWFykaGRpZ2V
 #[tokio::test]
 async fn test_revoke_check_mdoc_update() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let local_key = context
         .db
@@ -637,7 +637,7 @@ async fn test_revoke_check_mdoc_update() {
 #[tokio::test]
 async fn test_revoke_check_token_update() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let local_key = context
         .db
@@ -764,7 +764,7 @@ async fn test_revoke_check_token_update() {
 #[tokio::test]
 async fn test_revoke_check_mdoc_tokens_expired() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let local_key = context
         .db
@@ -884,7 +884,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
 #[tokio::test]
 async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let local_key = context
         .db
@@ -1001,7 +1001,7 @@ async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
 #[tokio::test]
 async fn test_suspended_to_valid() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let local_key = context
         .db
@@ -1144,7 +1144,7 @@ async fn test_suspended_to_valid() {
 #[tokio::test]
 async fn test_suspended_to_suspended_update_failed() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let local_key = context
         .db
@@ -1276,7 +1276,7 @@ async fn test_revoke_check_failed_deleted_credential() {
     // contains statusListCredential=http://0.0.0.0:4444/ssi/revocation/v1/list/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf
     let credential_jwt = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDc0MDk2ODksImV4cCI6MTc3MDQ4MTY4OSwibmJmIjoxNzA3NDA5NjI5LCJpc3MiOiJkaWQ6a2V5Ono2TWtrdHJ3bUpwdU1ISGtrcVkzZzV4VVA2S0tCMWVYeExvNktaRFo1THBmQmhyYyIsInN1YiI6ImRpZDprZXk6ejZNa2hodHVjWjY3Uzh5QXZIUG9KdE1WeDI4ejNCZmNQTjFncGpmbmk1RFQ3cVNlIiwianRpIjoiODhmYjlhZDItZWZlMC00YWRlLTgyNTEtMmIzOTc4NjQ5MGFmIiwidmMiOnsiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJhZ2UiOiI1NSJ9LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoiaHR0cDovLzAuMC4wLjA6NDQ0NC9zc2kvcmV2b2NhdGlvbi92MS9saXN0LzI4ODBkOGRkLWNlM2YtNGQ3NC1iNDYzLWEyYzBkYTA3YTVjZiMyIiwidHlwZSI6IkJpdHN0cmluZ1N0YXR1c0xpc3RFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwOi8vMC4wLjAuMDo0NDQ0L3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvMjg4MGQ4ZGQtY2UzZi00ZDc0LWI0NjMtYTJjMGRhMDdhNWNmIiwic3RhdHVzTGlzdEluZGV4IjoiMiJ9fX0.-r0uxZCI2DAaxO8VHZOsZdcP9oMQhCeGjxOtQyDqITu_SPhuVGg2RZXvQT1C9r1p3CyG3bQRV0W0JOnN0QXtBA";
 
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids

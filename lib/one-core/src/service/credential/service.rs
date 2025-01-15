@@ -108,9 +108,18 @@ impl CredentialService {
             .ok_or(MissingProviderError::Formatter(schema.format.to_owned()))?
             .get_capabilities();
 
+        let exchange_capabilities = self
+            .protocol_provider
+            .get_protocol(&request.exchange)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                request.exchange.to_owned(),
+            ))?
+            .get_capabilities();
+
         super::validator::validate_create_request(
             &issuer_did.did_method,
             &request.exchange,
+            &exchange_capabilities,
             &request.claim_values,
             &schema,
             &formatter_capabilities,

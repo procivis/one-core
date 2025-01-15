@@ -44,7 +44,8 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     let date_format =
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     let interaction_id = Uuid::new_v4();
-    let server_context = TestContext::new_with_token(&format!("{}.test", interaction_id)).await;
+    let server_context =
+        TestContext::new_with_token(&format!("{}.test", interaction_id), None).await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
@@ -250,7 +251,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     assert!(credentials.is_some());
 
     // Valid holder context
-    let holder_context = TestContext::new().await;
+    let holder_context = TestContext::new(None).await;
     let holder_organisation = holder_context.db.organisations.create().await;
     holder_context
         .db
@@ -501,7 +502,8 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
     let verifier_key = eddsa_key_2();
 
     let interaction_id = Uuid::new_v4();
-    let server_context = TestContext::new_with_token(&format!("{}.test", interaction_id)).await;
+    let server_context =
+        TestContext::new_with_token(&format!("{}.test", interaction_id), None).await;
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
@@ -707,7 +709,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
     let credentials = resp["credential"].as_str();
 
     // Valid holder context
-    let holder_context = TestContext::new().await;
+    let holder_context = TestContext::new(None).await;
     let holder_organisation = holder_context.db.organisations.create().await;
     holder_context
         .db
@@ -945,7 +947,7 @@ async fn test_opeind4vc_jsonld_only_bbs_supported() {
     let issuer_not_bbs_key = ecdsa_key_1();
     let holder_key = eddsa_key_1();
 
-    let server_context = TestContext::new().await;
+    let server_context = TestContext::new(None).await;
     let server_organisation = server_context.db.organisations.create().await;
     server_context.db.remote_entities.prepare_cache(&[]).await;
 

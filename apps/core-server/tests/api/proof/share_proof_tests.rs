@@ -100,7 +100,7 @@ async fn test_share_proof_success() {
 #[tokio::test]
 async fn test_share_proof_success_mdoc() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did().await;
+    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
 
     let claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
         (
@@ -264,7 +264,7 @@ async fn test_share_proof_success_mdoc() {
 #[tokio::test]
 async fn test_share_proof_success_jsonld() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did().await;
+    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
 
     let claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![(
         Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c42").unwrap(),

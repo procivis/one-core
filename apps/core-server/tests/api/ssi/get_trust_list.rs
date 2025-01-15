@@ -9,7 +9,7 @@ use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 use crate::utils::field_match::FieldHelpers;
 
 pub async fn new_with_trust_list() -> (TestContext, TrustAnchor, TrustEntity, TrustEntity) {
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did(None).await;
 
     let trust_anchor = context
         .db
@@ -80,7 +80,7 @@ async fn test_get_trust_list_success() {
 #[tokio::test]
 async fn test_get_trust_list_failed_missing_trust_anchor() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.ssi.get_trust_list(Uuid::new_v4()).await;
@@ -92,7 +92,7 @@ async fn test_get_trust_list_failed_missing_trust_anchor() {
 #[tokio::test]
 async fn test_get_trust_list_failed_list_is_not_simple_trust_list() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     let trust_anchor = context
         .db

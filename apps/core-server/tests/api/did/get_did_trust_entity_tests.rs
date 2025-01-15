@@ -8,7 +8,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_trust_entity_by_did_success() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did(None).await;
     let trust_anchor_id = Uuid::new_v4();
     let anchor = context
         .db
@@ -47,7 +47,7 @@ async fn test_get_trust_entity_by_did_success() {
 #[tokio::test]
 async fn test_get_trust_entity_by_did_multiple_anchors_success() {
     // GIVEN
-    let (context, org, did1, _) = TestContext::new_with_did().await;
+    let (context, org, did1, _) = TestContext::new_with_did(None).await;
 
     let trust_anchor_id1 = Uuid::new_v4();
     let anchor1 = context
@@ -115,7 +115,7 @@ async fn test_get_trust_entity_by_did_multiple_anchors_success() {
 #[tokio::test]
 async fn test_get_trust_entity_by_did_fail_invalid_url() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did(None).await;
     context
         .db
         .trust_anchors
@@ -136,7 +136,7 @@ async fn test_get_trust_entity_by_did_fail_invalid_url() {
 #[tokio::test]
 async fn test_get_trust_entity_by_did_fail_not_found() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did(None).await;
 
     // WHEN
     let resp = context.api.dids.get_trust_entity(&did.id).await;

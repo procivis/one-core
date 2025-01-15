@@ -12,7 +12,7 @@ use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 async fn test_oidc_issuer_create_token() {
     // GIVEN
 
-    let (context, org, issuer_did, _key) = TestContext::new_with_did().await;
+    let (context, org, issuer_did, _key) = TestContext::new_with_did(None).await;
 
     let interaction_id = Uuid::new_v4();
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
@@ -80,7 +80,7 @@ async fn test_oidc_issuer_create_token() {
 async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
     // GIVEN
 
-    let (context, org, issuer_did, _key) = TestContext::new_with_did().await;
+    let (context, org, issuer_did, _key) = TestContext::new_with_did(None).await;
 
     let interaction_id = Uuid::new_v4();
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
@@ -151,7 +151,7 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
 async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_access_and_refresh_tokens(
 ) {
     // GIVEN
-    let (context, org, issuer_did, _key) = TestContext::new_with_did().await;
+    let (context, org, issuer_did, _key) = TestContext::new_with_did(None).await;
 
     let interaction_id = Uuid::new_v4();
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");

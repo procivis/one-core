@@ -13,7 +13,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_list_proof_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let verifier_key = context
         .db
@@ -104,7 +104,7 @@ async fn test_list_proof_success() {
 #[tokio::test]
 async fn test_list_proofs_by_ids() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let verifier_key = context
         .db
@@ -211,7 +211,7 @@ async fn test_list_proofs_by_ids() {
 #[tokio::test]
 async fn test_list_proofs_by_name() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let verifier_key = context
         .db
@@ -353,7 +353,7 @@ async fn test_list_proofs_by_name() {
 #[tokio::test]
 async fn test_list_proofs_by_schema_ids() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let verifier_key = context
         .db
@@ -495,7 +495,7 @@ async fn test_list_proofs_by_schema_ids() {
 #[tokio::test]
 async fn test_list_proofs_by_state() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let verifier_key = context
         .db
@@ -617,7 +617,7 @@ async fn test_list_proofs_by_state() {
 #[tokio::test]
 async fn test_list_proof_with_retain_date() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let verifier_key = context
         .db

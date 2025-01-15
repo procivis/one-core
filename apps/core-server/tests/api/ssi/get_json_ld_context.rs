@@ -6,7 +6,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_json_ld_context_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let core_base_url = &context.config.app.core_base_url;
 
     let credential_schema = context
@@ -43,7 +43,7 @@ async fn test_get_json_ld_context_success() {
 #[tokio::test]
 async fn test_get_json_ld_context_not_found() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.ssi.get_json_ld_context(Uuid::new_v4()).await;
@@ -55,7 +55,7 @@ async fn test_get_json_ld_context_not_found() {
 #[tokio::test]
 async fn test_get_json_ld_context_with_nested_claims_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let core_base_url = &context.config.app.core_base_url;
 
     let credential_schema = context
@@ -115,7 +115,7 @@ async fn test_get_json_ld_context_with_nested_claims_success() {
 #[tokio::test]
 async fn test_get_json_ld_context_special_chars_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let core_base_url = &context.config.app.core_base_url;
 
     let credential_schema = context

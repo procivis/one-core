@@ -12,7 +12,7 @@ use crate::utils::server::run_server;
 #[tokio::test]
 async fn test_create_proof_success_without_related_key() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -74,7 +74,7 @@ async fn test_create_proof_success_without_related_key() {
 #[tokio::test]
 async fn test_create_proof_success_with_related_key() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did().await;
+    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -289,4 +289,70 @@ async fn test_create_proof_scan_to_verify_invalid_credential() {
     let proof = db.proofs.get(&resp["id"].parse()).await;
     assert_eq!(proof.exchange, "SCAN_TO_VERIFY");
     assert_eq!(proof.state, ProofStateEnum::Error);
+}
+
+#[tokio::test]
+async fn test_create_proof_fail_with_operation_disabled() {
+    // GIVEN
+    let additional_config = Some(
+        indoc::indoc! {"
+        exchange:
+            OPENID4VC:
+                params:
+                    public:
+                        presentation:
+                            disabled: true
+    "}
+        .to_string(),
+    );
+    let (context, organisation, did, key) = TestContext::new_with_did(additional_config).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(
+            &proof_schema.id.to_string(),
+            "OPENID4VC",
+            &did.id.to_string(),
+            None,
+            Some(&key.id.to_string()),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
 }

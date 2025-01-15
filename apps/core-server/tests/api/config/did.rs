@@ -5,7 +5,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_capabilities_are_present_in_config() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.config.get().await;
@@ -54,7 +54,7 @@ async fn test_capabilities_are_present_in_config() {
 #[tokio::test]
 async fn test_multikey_is_present_in_config() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.config.get().await;

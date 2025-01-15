@@ -32,11 +32,11 @@ impl Drop for TestContext {
 }
 
 impl TestContext {
-    pub async fn new() -> Self {
-        Self::new_with_token("test").await
+    pub async fn new(additional_config: Option<String>) -> Self {
+        Self::new_with_token("test", additional_config).await
     }
 
-    pub async fn new_with_token(token: &str) -> Self {
+    pub async fn new_with_token(token: &str, additional_config: Option<String>) -> Self {
         let server_mock = MockServer::new().await;
         let stdout_log = tracing_subscriber::fmt::layer().with_test_writer();
 
@@ -47,7 +47,7 @@ impl TestContext {
             &base_url,
             Some(TestingConfigParams {
                 mock_url: Some(server_mock.uri()),
-                ..Default::default()
+                additional_config,
             }),
         );
         let db = fixtures::create_db(&config).await;
@@ -78,14 +78,14 @@ impl TestContext {
         }
     }
 
-    pub async fn new_with_organisation() -> (Self, Organisation) {
-        let context = Self::new().await;
+    pub async fn new_with_organisation(additional_config: Option<String>) -> (Self, Organisation) {
+        let context = Self::new(additional_config).await;
         let organisation = context.db.organisations.create().await;
         (context, organisation)
     }
 
-    pub async fn new_with_did() -> (Self, Organisation, Did, Key) {
-        let (context, organisation) = Self::new_with_organisation().await;
+    pub async fn new_with_did(additional_config: Option<String>) -> (Self, Organisation, Did, Key) {
+        let (context, organisation) = Self::new_with_organisation(additional_config).await;
         let key = context
             .db
             .keys

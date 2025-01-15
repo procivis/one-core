@@ -7,7 +7,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_delete_all_cache_entries() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     let entry1 = test_entry(CacheType::JsonLdContext, false);
     context.db.remote_entities.add_entry(entry1.clone()).await;
@@ -29,7 +29,7 @@ async fn test_delete_all_cache_entries() {
 #[tokio::test]
 async fn test_delete_cache_entries_with_type() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     let entry1 = test_entry(CacheType::JsonLdContext, false);
     context.db.remote_entities.add_entry(entry1.clone()).await;
@@ -57,7 +57,7 @@ async fn test_delete_cache_entries_with_type() {
 #[tokio::test]
 async fn test_delete_cache_entries_multiple_types() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     let entry1 = test_entry(CacheType::JsonLdContext, false);
     context.db.remote_entities.add_entry(entry1.clone()).await;
@@ -86,7 +86,7 @@ async fn test_delete_cache_entries_multiple_types() {
 #[tokio::test]
 async fn test_invalid_type() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.cache.delete(Some(vec!["invalid"])).await;

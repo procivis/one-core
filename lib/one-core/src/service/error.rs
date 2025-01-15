@@ -469,6 +469,9 @@ pub enum ValidationError {
 
     #[error("Deserialization error: `{0}`")]
     DeserializationError(String),
+
+    #[error("Exchange protocol operation disabled")]
+    InvalidExchangeOperation,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -962,6 +965,9 @@ pub enum ErrorCode {
         to_string = "Suspension not enabled for revocation method that only supports suspension"
     )]
     BR_0191,
+
+    #[strum(to_string = "Exchange protocol operation disabled")]
+    BR_0196,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1155,6 +1161,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::Unauthorized => ErrorCode::BR_0178,
             Self::InvalidUpdateRequest => ErrorCode::BR_0181,
             Self::DeserializationError(_) => ErrorCode::BR_0189,
+            Self::InvalidExchangeOperation { .. } => ErrorCode::BR_0196,
         }
     }
 }

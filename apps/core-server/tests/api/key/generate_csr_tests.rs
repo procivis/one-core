@@ -4,7 +4,7 @@ use crate::utils::db_clients::keys::{eddsa_testing_params, es256_testing_params}
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_generate_csr_for_eddsa_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key = context
         .db
         .keys
@@ -31,7 +31,7 @@ sMe0CTXdZ9fH85I+9x5xOUAakrR0vZuLYD4GOMeN7QY=
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_generate_csr_for_es256_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let key = context
         .db
         .keys

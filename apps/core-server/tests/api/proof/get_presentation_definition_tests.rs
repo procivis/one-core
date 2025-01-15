@@ -205,7 +205,7 @@ fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8>
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_with_match() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did().await;
+    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -275,7 +275,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did().await;
+    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -685,7 +685,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
 #[tokio::test]
 async fn test_get_presentation_definition_open_id_vp_matched_only_complete_credential() {
     // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did().await;
+    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db

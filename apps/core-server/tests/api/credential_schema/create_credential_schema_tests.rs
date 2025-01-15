@@ -9,7 +9,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_create_credential_schema_success() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
@@ -49,7 +49,7 @@ async fn test_create_credential_schema_success() {
 #[tokio::test]
 async fn test_create_credential_schema_with_the_same_name_in_different_organisations() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let organisation1 = context.db.organisations.create().await;
 
     // WHEN
@@ -85,7 +85,7 @@ async fn test_create_credential_schema_with_the_same_name_in_different_organisat
 #[tokio::test]
 async fn test_fail_to_create_credential_schema_with_the_same_name_in_organisation() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
@@ -122,7 +122,7 @@ async fn test_fail_to_create_credential_schema_with_the_same_name_in_organisatio
 async fn test_create_credential_schema_with_the_same_name_and_organisation_as_deleted_credential_schema(
 ) {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let schema_name = "test schema";
     let credential_schema = context
@@ -157,7 +157,7 @@ async fn test_create_credential_schema_with_the_same_name_and_organisation_as_de
 #[tokio::test]
 async fn test_fail_create_credential_schema_with_same_schema_id() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
@@ -194,7 +194,7 @@ async fn test_fail_create_credential_schema_with_same_schema_id() {
 #[tokio::test]
 async fn test_fail_create_credential_schema_with_firbidden_claim_name() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
@@ -218,7 +218,7 @@ async fn test_fail_create_credential_schema_with_firbidden_claim_name() {
 #[tokio::test]
 async fn test_fail_to_create_credential_schema_with_layout_properties_when_its_unsupported() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
@@ -241,7 +241,7 @@ async fn test_fail_to_create_credential_schema_with_layout_properties_when_its_u
 #[tokio::test]
 async fn test_create_credential_schema_revocation_no_suspension_succeeds() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
@@ -265,7 +265,7 @@ async fn test_create_credential_schema_revocation_no_suspension_succeeds() {
 #[tokio::test]
 async fn test_create_credential_schema_revocation_no_suspension_fails() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
@@ -290,7 +290,7 @@ async fn test_create_credential_schema_revocation_no_suspension_fails() {
 #[tokio::test]
 async fn test_duplicate_schema() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     context
         .db
@@ -331,7 +331,7 @@ async fn test_duplicate_schema() {
 async fn test_fail_create_credential_schema_with_suspension_disabled_for_suspension_only_revocation_method(
 ) {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context
@@ -357,7 +357,7 @@ async fn test_fail_create_credential_schema_with_suspension_disabled_for_suspens
 async fn test_fail_create_credential_schema_with_suspension_none_for_suspension_only_revocation_method(
 ) {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     // WHEN
     let resp = context

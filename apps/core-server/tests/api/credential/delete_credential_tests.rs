@@ -6,7 +6,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_delete_credential_success() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas

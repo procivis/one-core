@@ -15,7 +15,7 @@ use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInput
 #[tokio::test]
 async fn test_run_task_suspend_check_no_update() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.tasks.run("SUSPEND_CHECK").await;
@@ -31,7 +31,7 @@ async fn test_run_task_suspend_check_no_update() {
 #[tokio::test]
 async fn test_run_task_suspend_check_with_update() {
     // GIVEN
-    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -83,7 +83,7 @@ async fn test_run_task_suspend_check_with_update() {
 #[tokio::test]
 async fn test_run_retain_proof_check_no_update() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.tasks.run("RETAIN_PROOF_CHECK").await;
@@ -95,7 +95,7 @@ async fn test_run_retain_proof_check_no_update() {
 #[tokio::test]
 async fn test_run_retain_proof_check_with_update() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
 
     let credential_schema = context
         .db

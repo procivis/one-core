@@ -9,7 +9,7 @@ use crate::utils::db_clients::histories::TestingHistoryParams;
 #[tokio::test]
 async fn test_get_history_list_simple() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     context
         .db
         .histories
@@ -42,7 +42,7 @@ async fn test_get_history_list_simple() {
 #[tokio::test]
 async fn test_get_history_list_schema_joins_credentials() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     context
         .db
         .histories
@@ -147,7 +147,7 @@ async fn test_get_history_list_schema_joins_credentials() {
 #[tokio::test]
 async fn test_get_history_filter_by_entity_types() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     context
         .db
         .histories

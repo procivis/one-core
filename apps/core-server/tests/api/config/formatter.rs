@@ -5,7 +5,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_format_capabilities_for_verification_key_algorithms() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.config.get().await;
@@ -39,7 +39,7 @@ async fn test_format_capabilities_for_verification_key_algorithms() {
 #[tokio::test]
 async fn test_expected_format_features() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.config.get().await;
@@ -89,7 +89,7 @@ async fn test_expected_format_features() {
 #[tokio::test]
 async fn test_expected_format_selective_disclosure() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.config.get().await;
@@ -131,7 +131,7 @@ async fn test_expected_format_selective_disclosure() {
 #[tokio::test]
 async fn test_format_params_have_embed_layout_properties() {
     // GIVEN
-    let context = TestContext::new().await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let resp = context.api.config.get().await;

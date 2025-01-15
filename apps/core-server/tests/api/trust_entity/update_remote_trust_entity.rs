@@ -13,7 +13,7 @@ use crate::utils::db_clients::trust_anchors::TestingTrustAnchorParams;
 async fn test_update_remote_trust_entity_success() {
     // GIVEN
     let mock_server = MockServer::start().await;
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did(None).await;
 
     Mock::given(method(Method::PATCH))
         .and(path(format!("/ssi/trust-entity/v1/{}", did.did)))
@@ -58,7 +58,7 @@ async fn test_update_remote_trust_entity_success() {
 #[tokio::test]
 async fn test_update_remote_trust_entity_invalid_action() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did(None).await;
 
     context
         .db

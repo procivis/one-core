@@ -123,7 +123,7 @@ async fn issuer_setup() -> TestPostIssuerCredentialParams {
     let interaction_id = Uuid::new_v4();
     let access_token = format!("{interaction_id}.test");
 
-    let context = TestContext::new_with_token(&access_token).await;
+    let context = TestContext::new_with_token(&access_token, None).await;
 
     let organisation = context.db.organisations.create().await;
 
@@ -243,7 +243,7 @@ async fn test_post_issuer_credential_mdoc() {
     let interaction_id = Uuid::new_v4();
     let access_token = format!("{interaction_id}.test");
 
-    let context = TestContext::new_with_token(&access_token).await;
+    let context = TestContext::new_with_token(&access_token, None).await;
 
     let organisation = context.db.organisations.create().await;
 

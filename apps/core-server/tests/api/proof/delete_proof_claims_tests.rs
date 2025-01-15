@@ -10,7 +10,7 @@ use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInput
 #[tokio::test]
 async fn test_delete_proof_claims_success() {
     // GIVEN
-    let (context, organisation, verifier_did, verifier_key) = TestContext::new_with_did().await;
+    let (context, organisation, verifier_did, verifier_key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db

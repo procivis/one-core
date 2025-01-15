@@ -21,7 +21,7 @@ static COMPLEX_DOCUMENT: &str = r#"{"@context":["https://www.w3.org/ns/credentia
 #[tokio::test]
 async fn test_issuance_accept_openid4vc() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -157,7 +157,7 @@ async fn test_issuance_accept_openid4vc() {
 #[tokio::test]
 async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -284,7 +284,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
 #[tokio::test]
 async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -416,7 +416,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
 #[tokio::test]
 async fn test_issuance_accept_openid4vc_with_key_id() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -551,7 +551,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
 #[tokio::test]
 async fn test_fail_issuance_accept_openid4vc_unknown_did() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -624,7 +624,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
 #[tokio::test]
 async fn test_fail_issuance_accept_openid4vc_unknown_key() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -721,7 +721,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
 #[tokio::test]
 async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -807,7 +807,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
 #[tokio::test]
 async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -893,7 +893,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
 #[tokio::test]
 async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -991,7 +991,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
 #[tokio::test]
 async fn test_issuance_accept_openid4vc_with_tx_code() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -1130,7 +1130,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
 #[tokio::test]
 async fn test_issuance_accept_openid4vc_update_from_vc() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
@@ -1270,7 +1270,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
 #[tokio::test]
 async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
     // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let issuer_did = context
         .db
         .dids
