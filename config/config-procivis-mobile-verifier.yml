@@ -1,5 +1,18 @@
 app:
   allowInsecureHttpTransport: false
+cacheEntities:
+  STATUS_LIST_CREDENTIAL:
+    cacheSize: 100
+  DID_DOCUMENT:
+    cacheSize: 100
+  JSON_LD_CONTEXT:
+    cacheSize: 100
+  VCT_METADATA:
+    cacheSize: 100
+  JSON_SCHEMA:
+    cacheSize: 100
+  TRUST_LIST:
+    cacheSize: 100
 transport:
   HTTP:
     disabled: true

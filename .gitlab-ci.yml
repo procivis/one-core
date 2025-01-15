@@ -1,4 +1,4 @@
-image: $CI_REGISTRY/procivis/one/one-operations/core-base:1.81.0-0.1
+image: $CI_REGISTRY/procivis/one/one-operations/core-base:1.81.0-0.3
 
 include:
   - local: "docs/docs.gitlab-ci.yml"
@@ -16,6 +16,8 @@ variables:
   GITHUB_PROJECT: "procivis/one-core"
   GITHUB_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/
   CARGO_TARGET_DIR: "/build-cache/target"
+  CARGO_HOME: "/build-cache/cargo-home"
+  CARGO_UNSTABLE_GC: "true"
 
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
@@ -86,8 +88,11 @@ before_script:
     - when: on_success
 
 .cargo_build:
+  tags:
+    - rust
   script:
     - cargo build --release
+    - cargo sweep --time 7
   after_script:
     - mkdir -p target/release
     - mv ${CARGO_TARGET_DIR}/release/core-server target/release/core-server
@@ -98,10 +103,8 @@ before_script:
 
 .cargo_tests:
   stage: test
-  variables:
-    # The default amount of codegen-units (256 for dev builds) vastly increases
-    # the RAM usage during compilation, hence we limit it in CI
-    RUSTFLAGS: "-C codegen-units=4"
+  tags:
+    - rust
   script:
     - cargo llvm-cov --no-clean --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
     - cargo llvm-cov report --cobertura --output-path cobertura.xml

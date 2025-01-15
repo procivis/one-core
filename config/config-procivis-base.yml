@@ -127,7 +127,7 @@ revocation:
     params:
       private:
         credentialExpiry: 2592000 # 30 days
-        minimumRefreshTime: 3600 # 1 hour
+        minimumRefreshTime: 300
   TOKENSTATUSLIST:
     display: "revocation.tokenList"
     order: 5
@@ -344,7 +344,7 @@ cacheEntities:
     cacheSize: 1000
   DID_DOCUMENT:
     cacheType: DB
-    refreshAfter: 86400
+    refreshAfter: 300
     cacheRefreshTimeout: 86400
     cacheSize: 1000
   JSON_LD_CONTEXT:

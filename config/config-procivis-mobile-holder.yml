@@ -7,6 +7,12 @@ cacheEntities:
     cacheSize: 100
   JSON_LD_CONTEXT:
     cacheSize: 100
+  VCT_METADATA:
+    cacheSize: 100
+  JSON_SCHEMA:
+    cacheSize: 100
+  TRUST_LIST:
+    cacheSize: 100
 keyStorage:
   SECURE_ELEMENT:
     display: "keyStorage.secureElement"
