@@ -270,6 +270,7 @@ sdk:android:build:
   script:
     - export HOSTNAME=$(docker ps -ql)
     - export CROSS_CONTAINER_OPTS='--env="CI_PIPELINE_ID='$CI_PIPELINE_ID'"'
+    - export PATH="$CARGO_HOME/bin:$PATH"
     - makers build_android
   after_script:
     - mkdir -p target/bindings/android
