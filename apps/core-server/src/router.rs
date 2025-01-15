@@ -69,24 +69,24 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 .layer(DefaultBodyLimit::disable()),
         )
         .route(
-            "/api/credential/v1/:id",
+            "/api/credential/v1/{id}",
             delete(credential::controller::delete_credential)
                 .get(credential::controller::get_credential),
         )
         .route(
-            "/api/credential/v1/:id/reactivate",
+            "/api/credential/v1/{id}/reactivate",
             post(credential::controller::reactivate_credential),
         )
         .route(
-            "/api/credential/v1/:id/revoke",
+            "/api/credential/v1/{id}/revoke",
             post(credential::controller::revoke_credential),
         )
         .route(
-            "/api/credential/v1/:id/suspend",
+            "/api/credential/v1/{id}/suspend",
             post(credential::controller::suspend_credential),
         )
         .route(
-            "/api/credential/v1/:id/share",
+            "/api/credential/v1/{id}/share",
             post(credential::controller::share_credential),
         )
         .route(
@@ -94,11 +94,11 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(credential::controller::revocation_check),
         )
         .route(
-            "/api/proof-request/v1/:id/share",
+            "/api/proof-request/v1/{id}/share",
             post(proof::controller::share_proof),
         )
         .route(
-            "/api/credential-schema/v1/:id",
+            "/api/credential-schema/v1/{id}",
             delete(credential_schema::controller::delete_credential_schema)
                 .get(credential_schema::controller::get_credential_schema),
         )
@@ -112,16 +112,16 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(credential_schema::controller::import_credential_schema),
         )
         .route(
-            "/api/credential-schema/v1/:id/share",
+            "/api/credential-schema/v1/{id}/share",
             post(credential_schema::controller::share_credential_schema),
         )
         .route(
-            "/api/proof-schema/v1/:id",
+            "/api/proof-schema/v1/{id}",
             delete(proof_schema::controller::delete_proof_schema)
                 .get(proof_schema::controller::get_proof_schema_detail),
         )
         .route(
-            "/api/proof-schema/v1/:id/share",
+            "/api/proof-schema/v1/{id}/share",
             post(proof_schema::controller::share_proof_schema),
         )
         .route(
@@ -133,16 +133,16 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(history::controller::get_history_list),
         )
         .route(
-            "/api/history/v1/:id",
+            "/api/history/v1/{id}",
             get(history::controller::get_history_entry),
         )
-        .route("/api/key/v1/:id", get(key::controller::get_key))
+        .route("/api/key/v1/{id}", get(key::controller::get_key))
         .route(
-            "/api/key/v1/:id/check-certificate",
+            "/api/key/v1/{id}/check-certificate",
             post(key::controller::check_certificate),
         )
         .route(
-            "/api/key/v1/:id/generate-csr",
+            "/api/key/v1/{id}/generate-csr",
             post(key::controller::generate_csr),
         )
         .route(
@@ -159,19 +159,19 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(proof::controller::post_proof).get(proof::controller::get_proofs),
         )
         .route(
-            "/api/proof-request/v1/:id",
+            "/api/proof-request/v1/{id}",
             get(proof::controller::get_proof_details),
         )
         .route(
-            "/api/proof-request/v1/:id/presentation-definition",
+            "/api/proof-request/v1/{id}/presentation-definition",
             get(proof::controller::get_proof_presentation_definition),
         )
         .route(
-            "/api/proof-request/v1/:id/retract",
+            "/api/proof-request/v1/{id}/retract",
             post(proof::controller::retract_proof),
         )
         .route(
-            "/api/proof-request/v1/:id/claims",
+            "/api/proof-request/v1/{id}/claims",
             delete(proof::controller::delete_proof_claims),
         )
         .route(
@@ -180,19 +180,19 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 .post(organisation::controller::post_organisation),
         )
         .route(
-            "/api/organisation/v1/:id",
+            "/api/organisation/v1/{id}",
             get(organisation::controller::get_organisation),
         )
-        .route("/api/did/v1/:id", get(did::controller::get_did))
+        .route("/api/did/v1/{id}", get(did::controller::get_did))
         .route(
-            "/api/did/v1/:id/trust-entity",
+            "/api/did/v1/{id}/trust-entity",
             get(did::controller::get_did_trust_entity),
         )
-        .route("/api/did/v1/:id", patch(did::controller::update_did))
+        .route("/api/did/v1/{id}", patch(did::controller::update_did))
         .route("/api/did/v1", get(did::controller::get_did_list))
         .route("/api/did/v1", post(did::controller::post_did))
         .route(
-            "/api/did-resolver/v1/:didvalue",
+            "/api/did-resolver/v1/{didvalue}",
             get(did_resolver::controller::resolve_did),
         )
         .route(
@@ -225,7 +225,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(trust_anchor::controller::create_trust_anchor),
         )
         .route(
-            "/api/trust-anchor/v1/:id",
+            "/api/trust-anchor/v1/{id}",
             get(trust_anchor::controller::get_trust_anchor),
         )
         .route(
@@ -233,7 +233,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(trust_anchor::controller::get_trust_anchors),
         )
         .route(
-            "/api/trust-anchor/v1/:id",
+            "/api/trust-anchor/v1/{id}",
             delete(trust_anchor::controller::delete_trust_anchor),
         )
         .route(
@@ -242,7 +242,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 .get(trust_entity::controller::get_trust_entities),
         )
         .route(
-            "/api/trust-entity/v1/:id",
+            "/api/trust-entity/v1/{id}",
             patch(trust_entity::controller::update_trust_entity)
                 .get(trust_entity::controller::get_trust_entity_details),
         )
@@ -251,7 +251,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(trust_entity::controller::create_remote_trust_entity),
         )
         .route(
-            "/api/trust-entity/remote/v1/:did_id",
+            "/api/trust-entity/remote/v1/{did_id}",
             get(trust_entity::controller::get_remote_trust_entity)
                 .patch(trust_entity::controller::update_remote_trust_entity),
         )
@@ -263,23 +263,23 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
 
     let unprotected = Router::new()
         .route(
-            "/ssi/oidc-issuer/v1/:id/.well-known/openid-credential-issuer",
+            "/ssi/oidc-issuer/v1/{id}/.well-known/openid-credential-issuer",
             get(ssi::controller::oidc_issuer_get_issuer_metadata),
         )
         .route(
-            "/ssi/oidc-issuer/v1/:id/.well-known/openid-configuration",
+            "/ssi/oidc-issuer/v1/{id}/.well-known/openid-configuration",
             get(ssi::controller::oidc_issuer_service_discovery),
         )
         .route(
-            "/ssi/oidc-issuer/v1/:credential_schema_id/offer/:credential_id",
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/offer/{credential_id}",
             get(ssi::controller::oidc_issuer_get_credential_offer),
         )
         .route(
-            "/ssi/oidc-issuer/v1/:id/token",
+            "/ssi/oidc-issuer/v1/{id}/token",
             post(ssi::controller::oidc_issuer_create_token),
         )
         .route(
-            "/ssi/oidc-issuer/v1/:id/credential",
+            "/ssi/oidc-issuer/v1/{id}/credential",
             post(ssi::controller::oidc_issuer_create_credential),
         )
         .route(
@@ -287,51 +287,51 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(ssi::controller::oidc_verifier_direct_post).layer(DefaultBodyLimit::disable()),
         )
         .route(
-            "/ssi/oidc-verifier/v1/:id/presentation-definition",
+            "/ssi/oidc-verifier/v1/{id}/presentation-definition",
             get(ssi::controller::oidc_verifier_presentation_definition),
         )
         .route(
-            "/ssi/oidc-verifier/v1/:id/client-metadata",
+            "/ssi/oidc-verifier/v1/{id}/client-metadata",
             get(ssi::controller::oidc_verifier_client_metadata),
         )
         .route(
-            "/ssi/oidc-verifier/v1/:id/client-request",
+            "/ssi/oidc-verifier/v1/{id}/client-request",
             get(ssi::controller::oidc_verifier_client_request),
         )
         .route(
-            "/ssi/oidc-verifier/v1/:id/request-data",
+            "/ssi/oidc-verifier/v1/{id}/request-data",
             get(ssi::controller::oidc_verifier_request_data),
         )
         .route(
-            "/ssi/revocation/v1/list/:id",
+            "/ssi/revocation/v1/list/{id}",
             get(ssi::controller::get_revocation_list_by_id),
         )
         .route(
-            "/ssi/revocation/v1/lvvc/:id",
+            "/ssi/revocation/v1/lvvc/{id}",
             get(ssi::controller::get_lvvc_by_credential_id),
         )
         .route(
-            "/ssi/did-web/v1/:id/did.json",
+            "/ssi/did-web/v1/{id}/did.json",
             get(ssi::controller::get_did_web_document),
         )
         .route(
-            "/ssi/context/v1/:id",
+            "/ssi/context/v1/{id}",
             get(ssi::controller::get_json_ld_context),
         )
         .route(
-            "/ssi/schema/v1/:id",
+            "/ssi/schema/v1/{id}",
             get(ssi::controller::ssi_get_credential_schema),
         )
         .route(
-            "/ssi/proof-schema/v1/:id",
+            "/ssi/proof-schema/v1/{id}",
             get(ssi::controller::ssi_get_proof_schema),
         )
         .route(
-            "/ssi/trust/v1/:trustAnchorId",
+            "/ssi/trust/v1/{trustAnchorId}",
             get(ssi::controller::ssi_get_trust_list),
         )
         .route(
-            "/ssi/trust-entity/v1/:didValue",
+            "/ssi/trust-entity/v1/{didValue}",
             get(ssi::controller::ssi_get_trust_entity)
                 .patch(ssi::controller::ssi_patch_trust_entity),
         )
@@ -340,7 +340,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(ssi::controller::ssi_post_trust_entity),
         )
         .route(
-            "/ssi/vct/v1/:organisationId/:vctType",
+            "/ssi/vct/v1/{organisationId}/{vctType}",
             get(ssi::controller::ssi_get_sd_jwt_vc_type_metadata),
         );
 
@@ -369,7 +369,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                     post(vc_api::controller::verify_presentation),
                 )
                 .route(
-                    "/vc-api/identifiers/:identifier",
+                    "/vc-api/identifiers/{identifier}",
                     get(vc_api::controller::resolve_identifier),
                 );
 

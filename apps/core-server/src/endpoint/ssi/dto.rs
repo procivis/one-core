@@ -340,7 +340,7 @@ pub struct OpenID4VPDirectPostRequestRestDTO {
     #[schema(example = "<jwt/sd_jwt token>")]
     #[into(with_fn = convert_inner)]
     pub vp_token: Option<String>,
-    #[schema(example = "<UUID>")]
+    #[schema(example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")]
     #[into(with_fn = convert_inner)]
     pub state: Option<Uuid>,
     #[into(with_fn = convert_inner)]

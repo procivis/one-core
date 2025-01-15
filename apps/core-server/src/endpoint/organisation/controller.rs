@@ -1,3 +1,4 @@
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
 use axum::Json;
 use shared_types::OrganisationId;
@@ -71,12 +72,12 @@ pub(crate) async fn get_organisations(
         supports the creation of as many organisations as is needed.
     "},
 )]
+#[axum::debug_handler]
 pub(crate) async fn post_organisation(
     state: State<AppState>,
-    // In this case fail turns into None.
-    request: Option<Json<CreateOrganisationRequestRestDTO>>,
+    request: Result<Json<CreateOrganisationRequestRestDTO>, JsonRejection>,
 ) -> CreatedOrErrorResponse<CreateOrganisationResponseRestDTO> {
-    let id = request.and_then(|body| body.0.id);
+    let id = request.ok().and_then(|body| body.0.id);
 
     let result = state
         .core

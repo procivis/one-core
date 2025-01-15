@@ -16,7 +16,7 @@ doctest = false
 strict = []
 
 [dependencies]
-axum-extra = { version = "0.9", features = ["typed-header"] }
+axum-extra = { version = "0.10", features = ["typed-header"] }
 axum.workspace = true
 clap = { version = "4.5", features = ["derive"] }
 ct-codecs.workspace = true
@@ -54,7 +54,8 @@ utoipa = { workspace = true, features = [
     "preserve_path_order",
     "indexmap",
 ] }
-utoipa-swagger-ui = { version = "8.0", features = ["axum"] }
+utoipa-swagger-ui = { version = "8.1", features = ["axum"] }
+utoipauto = {version = "0.2"}
 uuid.workspace = true
 validator.workspace = true
 
@@ -64,6 +65,7 @@ serde_json.workspace = true
 shadow-rs.workspace  = true
 
 [dev-dependencies]
+async-trait        = { version = "0.1" }
 hex-literal        = { version = "0.4" }
 indoc              = { version = "2.0" }
 rand.workspace     = true

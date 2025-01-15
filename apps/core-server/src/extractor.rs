@@ -1,4 +1,3 @@
-use axum::async_trait;
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use axum::http::StatusCode;
@@ -6,9 +5,9 @@ use serde_qs::Config;
 
 pub struct Qs<T>(pub T);
 
-#[async_trait]
 impl<S, T> FromRequestParts<S> for Qs<T>
 where
+    S: Send + Sync,
     T: serde::de::DeserializeOwned,
 {
     type Rejection = (StatusCode, String);
@@ -24,9 +23,9 @@ where
 
 pub struct QsOpt<T>(pub T);
 
-#[async_trait]
 impl<S, T> FromRequestParts<S> for QsOpt<T>
 where
+    S: Send + Sync,
     T: serde::de::DeserializeOwned + Default,
 {
     type Rejection = (StatusCode, String);

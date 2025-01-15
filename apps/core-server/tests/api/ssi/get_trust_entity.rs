@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use axum::async_trait;
+use async_trait::async_trait;
 use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::organisation::Organisation;
 use one_core::model::trust_entity::{TrustEntityRole, TrustEntityState};

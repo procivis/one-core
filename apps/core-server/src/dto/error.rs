@@ -8,7 +8,7 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 #[derive(Serialize, From, ToSchema)]
-#[schema(example = "BR_XXXX")]
+#[schema(example = "BR_0000")]
 #[from("one_core::service::error::ErrorCode")]
 #[allow(non_camel_case_types)]
 pub enum ErrorCode {
