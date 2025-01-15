@@ -1377,6 +1377,7 @@ pub struct GetTrustEntityResponseBindingDTO {
 #[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(UpdateTrustEntityActionFromDidRequestDTO)]
 pub enum TrustEntityUpdateActionBindingEnum {
+    AdminActivate,
     Activate,
     Withdraw,
     Remove,

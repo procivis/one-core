@@ -861,6 +861,7 @@ pub struct PatchTrustEntityRequestRestDTO {
 #[into(UpdateTrustEntityActionFromDidRequestDTO)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PatchTrustEntityActionRestDTO {
+    AdminActivate,
     Activate,
     Withdraw,
     Remove,
