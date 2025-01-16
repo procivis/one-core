@@ -4,7 +4,7 @@ use std::vec;
 use async_trait::async_trait;
 use model::OptiocalBarcodeCredential;
 use one_crypto::CryptoProvider;
-use shared_types::DidValue;
+use shared_types::{CredentialSchemaId, DidValue};
 
 use super::json_ld::model::ContextType;
 use super::json_ld_classic::verify_credential_signature;
@@ -21,6 +21,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 mod mappers;
 mod model;
@@ -166,6 +167,21 @@ impl CredentialFormatter for PhysicalCardFormatter {
         _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
         todo!()
+    }
+
+    fn credential_schema_id(
+        &self,
+        _id: CredentialSchemaId,
+        request: &CreateCredentialSchemaRequestDTO,
+        _core_base_url: &str,
+    ) -> Result<String, FormatterError> {
+        Ok(request
+            .schema_id
+            .as_ref()
+            .ok_or(FormatterError::Failed(
+                "No schema_id specified for PHYSICAL_CARD".to_string(),
+            ))?
+            .to_owned())
     }
 }
 
