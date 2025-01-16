@@ -654,6 +654,7 @@ fn try_extract_holder_public_key(
 
             let key = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                 r#use: None,
+                kid: None,
                 crv: "P-256".to_owned(),
                 x,
                 y: Some(y),
@@ -678,6 +679,7 @@ fn try_extract_holder_public_key(
 
             let key = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 r#use: None,
+                kid: None,
                 crv: "Ed25519".to_owned(),
                 x,
                 y: None,

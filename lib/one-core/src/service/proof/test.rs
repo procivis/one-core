@@ -2659,6 +2659,7 @@ async fn test_share_proof_created_success() {
     key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
         Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
+            kid: None,
             crv: "123".to_string(),
             x: "456".to_string(),
             y: None,
@@ -2766,6 +2767,7 @@ async fn test_share_proof_pending_success() {
     key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
         Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
             r#use: Some("enc".to_string()),
+            kid: None,
             crv: "123".to_string(),
             x: "456".to_string(),
             y: None,

@@ -3,12 +3,13 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use dto::generate_document;
+use futures::TryFutureExt;
 use shared_types::{DidId, DidValue};
 use url::Url;
 
 use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::jwk::jwk_helpers::{encode_to_did, generate_document};
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
 use crate::provider::did_method::sd_jwt_vc_issuer_metadata::dto::{
@@ -62,26 +63,45 @@ impl DidMethod for SdJwtVcIssuerMetadataDidMethod {
             )));
         };
 
-        let mut url =
+        let issuer_url =
             Url::parse(&url_decoded).map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
 
-        if !self.params.resolve_to_insecure_http.unwrap_or_default() && url.scheme() != "https" {
+        if !self.params.resolve_to_insecure_http.unwrap_or_default()
+            && issuer_url.scheme() != "https"
+        {
             return Err(DidMethodError::ResolutionError(
                 "URL must use HTTPS scheme".to_string(),
             ));
         }
 
-        const PATH_PREFIX: &str = "/.well-known/jwt-vc-issuer";
+        let issuer_url_path = if issuer_url.path() == "/" {
+            "".to_string()
+        } else {
+            issuer_url.path().to_owned()
+        };
 
-        let old_path = if url.path() == "/" { "" } else { url.path() };
+        const JWKS_URI_SUFFIX: &str = "/.well-known/jwt-vc-issuer";
+        const FALLBACK_URI_SUFFIX: &str = "/.well-known/openid-configuration";
 
-        let new_path = format!("{PATH_PREFIX}{old_path}");
-        url.set_path(&new_path);
+        let (jwks_endpoint, fallback_jwks_endpoint) = {
+            let mut jwks_endpoint = issuer_url.clone();
+            jwks_endpoint.set_path(&format!("{JWKS_URI_SUFFIX}{issuer_url_path}"));
+
+            // See ONE-4412
+            // Workaround for interoperability with the https://eudiw-issuer.eudi.dev deployment which does not support the jwks_uri
+            // and falls back to the openid-configuration endpoint to advertise the jwks endpoint.
+            let mut fallback_jwks_endpoint = issuer_url.clone();
+            fallback_jwks_endpoint.set_path(&format!("{FALLBACK_URI_SUFFIX}{issuer_url_path}"));
+
+            (jwks_endpoint, fallback_jwks_endpoint)
+        };
 
         let response: SdJwtVcIssuerMetadataDTO = self
             .http_client
-            .get(url.as_str())
+            .get(jwks_endpoint.as_str())
             .send()
+            .and_then(|response| async { response.error_for_status() })
+            .or_else(|_| self.http_client.get(fallback_jwks_endpoint.as_str()).send())
             .await
             .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?
             .error_for_status()
@@ -89,15 +109,23 @@ impl DidMethod for SdJwtVcIssuerMetadataDidMethod {
             .json()
             .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
 
-        if response.issuer != url_decoded {
+        let response_issuer = Url::parse(&response.issuer)
+            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
+
+        if response_issuer != issuer_url {
             return Err(DidMethodError::ResolutionError(
                 "Issuer and did issuer mismatch".to_string(),
             ));
         }
 
-        let key = self.get_first_jwk_from_dto(&response).await?;
-        let did_jwk = encode_to_did(&key.jwk)?;
-        Ok(generate_document(&did_jwk, key.jwk))
+        let keys = self
+            .get_jwks_list(&response)
+            .await?
+            .into_iter()
+            .map(|key| key.jwk)
+            .collect();
+
+        Ok(generate_document(did_value, keys))
     }
 
     fn update(&self) -> Result<(), DidMethodError> {
@@ -125,19 +153,15 @@ impl DidMethod for SdJwtVcIssuerMetadataDidMethod {
 }
 
 impl SdJwtVcIssuerMetadataDidMethod {
-    async fn get_first_jwk_from_dto(
+    async fn get_jwks_list(
         &self,
         dto: &SdJwtVcIssuerMetadataDTO,
-    ) -> Result<SdJwtVcIssuerMetadataJwkKeyDTO, DidMethodError> {
+    ) -> Result<Vec<SdJwtVcIssuerMetadataJwkKeyDTO>, DidMethodError> {
         if let Some(jwks) = &dto.jwks {
-            jwks.keys
-                .first()
-                .ok_or(DidMethodError::ResolutionError(
-                    "`jwks` are empty".to_string(),
-                ))
-                .cloned()
+            Ok(jwks.keys.clone())
         } else if let Some(jwks_uri) = &dto.jwks_uri {
-            self.http_client
+            Ok(self
+                .http_client
                 .get(jwks_uri.as_str())
                 .send()
                 .await
@@ -146,12 +170,7 @@ impl SdJwtVcIssuerMetadataDidMethod {
                 .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?
                 .json::<SdJwtVcIssuerMetadataJwkDTO>()
                 .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?
-                .keys
-                .first()
-                .ok_or(DidMethodError::ResolutionError(
-                    "`jwks` are empty".to_string(),
-                ))
-                .cloned()
+                .keys)
         } else {
             Err(DidMethodError::ResolutionError(
                 "Missing `jwks` or `jwks_uri`".to_string(),

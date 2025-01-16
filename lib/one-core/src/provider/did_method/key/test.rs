@@ -41,6 +41,7 @@ async fn test_did_key_resolve_details_eddsa() {
         .returning(|_, _| {
             Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 r#use: None,
+                kid: None,
                 crv: "Ed25519".to_owned(),
                 x: "4zvwRjXUKGfvwnParsHAS3HuSVzV5cA4McphgmoCtajS".to_owned(),
                 y: None,
@@ -73,6 +74,7 @@ async fn test_did_key_resolve_details_eddsa() {
                 public_key_jwk: PublicKeyJwk::Okp(
                     PublicKeyJwkEllipticData {
                         r#use: None,
+                        kid: None,
                         crv: "Ed25519".to_owned(),
                         x: "4zvwRjXUKGfvwnParsHAS3HuSVzV5cA4McphgmoCtajS".to_owned(),
                         y: None,
@@ -126,6 +128,7 @@ async fn test_did_key_resolve_details_es256() {
         .returning(|_, _| {
             Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                 r#use: None,
+                kid: None,
                 crv: "P-256".to_string(),
                 x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
                 y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
@@ -158,6 +161,7 @@ async fn test_did_key_resolve_details_es256() {
                 public_key_jwk: PublicKeyJwk::Ec(
                     PublicKeyJwkEllipticData {
                         r#use: None,
+                        kid: None,
                         crv: "P-256".to_owned(),
                         x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
                         y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
@@ -211,6 +215,7 @@ async fn test_did_key_resolve_details_bbs() {
         .returning(|_, _| {
             Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 r#use: None,
+                kid: None,
                 crv: "Bls12381G2".to_string(),
                 x: "Ajs8lstTgoTgXMF6QXdyh3m8k2ixxURGYLMaYylVK_x0F8HhE8zk0YWiGV3CHwpQEa2sH4PBZLaYCn8se-1clmCORDsKxbbw3Js_Alu4OmkV9gmbJsy1YF2rt7Vxzs6S".to_owned(),
                 y: Some("BVkkrVEib-P_FMPHNtqxJymP3pV-H8fCdvPkoWInpFfM9tViyqD8JAmwDf64zU2hBV_vvCQ632ScAooEExXuz1IeQH9D2o-uY_dAjZ37YHuRMEyzh8Tq-90JHQvicOqx".to_owned()),
@@ -240,6 +245,7 @@ async fn test_did_key_resolve_details_bbs() {
                 public_key_jwk: PublicKeyJwk::Okp(
                     PublicKeyJwkEllipticData {
                         r#use: None,
+                        kid: None,
                         crv: "Bls12381G2".to_string(),
                         x: "Ajs8lstTgoTgXMF6QXdyh3m8k2ixxURGYLMaYylVK_x0F8HhE8zk0YWiGV3CHwpQEa2sH4PBZLaYCn8se-1clmCORDsKxbbw3Js_Alu4OmkV9gmbJsy1YF2rt7Vxzs6S".to_owned(),
                         y: Some("BVkkrVEib-P_FMPHNtqxJymP3pV-H8fCdvPkoWInpFfM9tViyqD8JAmwDf64zU2hBV_vvCQ632ScAooEExXuz1IeQH9D2o-uY_dAjZ37YHuRMEyzh8Tq-90JHQvicOqx".to_owned()),

@@ -61,6 +61,7 @@ impl KeyAlgorithm for MlDsa {
     ) -> Result<PublicKeyJwk, KeyAlgorithmError> {
         Ok(PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
             r#use,
+            kid: None,
             alg: self.get_signer_algorithm_id(),
             x: Base64UrlSafeNoPadding::encode_to_string(bytes)
                 .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?,

@@ -27,54 +27,59 @@ fn mock_http_get_request(http_client: &mut MockHttpClient, url: &'static str, re
         .return_once(move |url| RequestBuilder::new(Arc::new(new_client), Method::Get, url));
 }
 
-fn expected_did_document() -> DidDocument {
+fn expected_did_document(did: &str) -> DidDocument {
     DidDocument {
         context: json!([
             "https://www.w3.org/ns/did/v1",
             "https://w3id.org/security/suites/jws-2020/v1"
         ]),
-        id:
-            "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IlpVUU5Ca252LWF5YUNCZTN6dVBPeGtSb0JCUWFtNEUtdFdiUXRRS1A5XzAifQ".parse().unwrap(),
+        id: did.parse().unwrap(),
         verification_method: vec![
             DidVerificationMethod {
-                id: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IlpVUU5Ca252LWF5YUNCZTN6dVBPeGtSb0JCUWFtNEUtdFdiUXRRS1A5XzAifQ#0".to_string(),
+                id: format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk"),
                 r#type: "JsonWebKey2020".to_string(),
-                controller: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IlpVUU5Ca252LWF5YUNCZTN6dVBPeGtSb0JCUWFtNEUtdFdiUXRRS1A5XzAifQ".to_string(),
-                public_key_jwk: PublicKeyJwk::Okp(
-                    PublicKeyJwkEllipticData {
-                        r#use: None,
-                        crv: "Ed25519".to_string(),
-                        x: "ZUQNBknv-ayaCBe3zuPOxkRoBBQam4E-tWbQtQKP9_0".to_string(),
-                        y: None,
-                    },
-                ),
+                controller: did.to_string(),
+                public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    r#use: None,
+                    kid: Some("2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk".to_string()),
+                    crv: "Ed25519".to_string(),
+                    x: "ZUQNBknv-ayaCBe3zuPOxkRoBBQam4E-tWbQtQKP9_0".to_string(),
+                    y: None,
+                }),
+            },
+            DidVerificationMethod {
+                id: format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk-second"),
+                r#type: "JsonWebKey2020".to_string(),
+                controller: did.to_string(),
+                public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    r#use: None,
+                    kid: Some("2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk-second".to_string()),
+                    crv: "Ed25519".to_string(),
+                    x: "ZUQNBknv-ayaCBe3zuPOxkRoBBQam4E-tWbQtQKP9_0-second".to_string(),
+                    y: None,
+                }),
             },
         ],
-        authentication: Some(
-            vec![
-                "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IlpVUU5Ca252LWF5YUNCZTN6dVBPeGtSb0JCUWFtNEUtdFdiUXRRS1A5XzAifQ#0".to_string(),
-            ],
-        ),
-        assertion_method: Some(
-            vec![
-                "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IlpVUU5Ca252LWF5YUNCZTN6dVBPeGtSb0JCUWFtNEUtdFdiUXRRS1A5XzAifQ#0".to_string(),
-            ],
-        ),
-        key_agreement: Some(
-            vec![
-                "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IlpVUU5Ca252LWF5YUNCZTN6dVBPeGtSb0JCUWFtNEUtdFdiUXRRS1A5XzAifQ#0".to_string(),
-            ],
-        ),
-        capability_invocation: Some(
-            vec![
-                "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IlpVUU5Ca252LWF5YUNCZTN6dVBPeGtSb0JCUWFtNEUtdFdiUXRRS1A5XzAifQ#0".to_string(),
-            ],
-        ),
-        capability_delegation: Some(
-            vec![
-                "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IlpVUU5Ca252LWF5YUNCZTN6dVBPeGtSb0JCUWFtNEUtdFdiUXRRS1A5XzAifQ#0".to_string(),
-            ],
-        ),
+        authentication: Some(vec![
+            format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk"),
+            format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk-second"),
+        ]),
+        assertion_method: Some(vec![
+            format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk"),
+            format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk-second"),
+        ]),
+        key_agreement: Some(vec![
+            format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk"),
+            format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk-second"),
+        ]),
+        capability_invocation: Some(vec![
+            format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk"),
+            format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk-second"),
+        ]),
+        capability_delegation: Some(vec![
+            format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk"),
+            format!("{did}#2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk-second"),
+        ]),
         rest: json!(null),
     }
 }
@@ -94,6 +99,11 @@ async fn test_resolve_through_jwks_with_path() {
                     "crv": "Ed25519",
                     "kid": "2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk",
                     "x": "ZUQNBknv-ayaCBe3zuPOxkRoBBQam4E-tWbQtQKP9_0"
+                }, {
+                    "kty": "OKP",
+                    "crv": "Ed25519",
+                    "kid": "2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk-second",
+                    "x": "ZUQNBknv-ayaCBe3zuPOxkRoBBQam4E-tWbQtQKP9_0-second"
                 }
             ]
         }
@@ -131,7 +141,7 @@ async fn test_resolve_through_jwks_with_path() {
     );
 
     assert_eq!(
-        expected_did_document(),
+        expected_did_document(&did),
         provider.resolve(&did.parse().unwrap()).await.unwrap()
     );
 }
@@ -155,6 +165,11 @@ async fn test_resolve_through_jwk_url_without_path() {
                 "crv": "Ed25519",
                 "kid": "2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk",
                 "x": "ZUQNBknv-ayaCBe3zuPOxkRoBBQam4E-tWbQtQKP9_0"
+            }, {
+                "kty": "OKP",
+                "crv": "Ed25519",
+                "kid": "2ZLVwwjX7E3BOs2EKTvNqeLq1ieBMwFIJU_KTI933fk-second",
+                "x": "ZUQNBknv-ayaCBe3zuPOxkRoBBQam4E-tWbQtQKP9_0-second"
             }
         ]
     });
@@ -208,7 +223,7 @@ async fn test_resolve_through_jwk_url_without_path() {
     );
 
     assert_eq!(
-        expected_did_document(),
+        expected_did_document(&did),
         provider.resolve(&did.parse().unwrap()).await.unwrap()
     );
 }

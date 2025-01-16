@@ -248,6 +248,7 @@ mod tests {
             controller: "did:test:123-controller".to_string(),
             public_key_jwk: PublicKeyJwk::Oct(PublicKeyJwkOctData {
                 r#use: None,
+                kid: None,
                 k: "dummy key".to_string(),
             }),
         }

@@ -316,6 +316,7 @@ async fn test_share_proof() {
     let key_id = Uuid::new_v4().into();
     let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
         r#use: None,
+        kid: None,
         crv: "P-256".to_string(),
         x: "x".to_string(),
         y: None,
@@ -490,6 +491,7 @@ async fn test_share_proof_with_use_request_uri() {
     let key_id = Uuid::new_v4().into();
     let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
         r#use: None,
+        kid: None,
         crv: "P-256".to_string(),
         x: "x".to_string(),
         y: None,
@@ -2007,6 +2009,7 @@ async fn test_share_proof_custom_scheme() {
     let key_id = Uuid::new_v4().into();
     let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
         r#use: None,
+        kid: None,
         crv: "P-256".to_string(),
         x: "x".to_string(),
         y: None,

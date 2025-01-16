@@ -4,6 +4,7 @@ use super::*;
 fn test_jwk_to_bytes() {
     let jwk = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
         r#use: None,
+        kid: None,
         crv: "Ed25519".to_owned(),
         x: "m7AE5UQdjLuCOnZHB1gCFfo2uvhM6W_4xFmpJK02r7s".to_owned(),
         y: None,

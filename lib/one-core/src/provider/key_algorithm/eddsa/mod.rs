@@ -64,6 +64,7 @@ impl KeyAlgorithm for Eddsa {
     ) -> Result<PublicKeyJwk, KeyAlgorithmError> {
         Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
             r#use,
+            kid: None,
             crv: "Ed25519".to_string(),
             x: Base64UrlSafeNoPadding::encode_to_string(bytes)
                 .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?,

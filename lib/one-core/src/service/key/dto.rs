@@ -107,6 +107,16 @@ impl PublicKeyJwkDTO {
             Self::Mlwe(val) => &val.r#use,
         }
     }
+
+    pub fn get_kid(&self) -> &Option<String> {
+        match self {
+            Self::Ec(val) => &val.kid,
+            Self::Rsa(val) => &val.kid,
+            Self::Okp(val) => &val.kid,
+            Self::Oct(val) => &val.kid,
+            Self::Mlwe(val) => &val.kid,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Into, From)]
@@ -115,6 +125,7 @@ impl PublicKeyJwkDTO {
 pub struct PublicKeyJwkRsaDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,
+    pub kid: Option<String>,
     pub e: String,
     pub n: String,
 }
@@ -125,6 +136,7 @@ pub struct PublicKeyJwkRsaDataDTO {
 pub struct PublicKeyJwkOctDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,
+    pub kid: Option<String>,
     pub k: String,
 }
 
@@ -134,6 +146,7 @@ pub struct PublicKeyJwkOctDataDTO {
 pub struct PublicKeyJwkMlweDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,
+    pub kid: Option<String>,
     pub alg: String,
     pub x: String,
 }
@@ -144,6 +157,8 @@ pub struct PublicKeyJwkMlweDataDTO {
 pub struct PublicKeyJwkEllipticDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kid: Option<String>,
     pub crv: String,
     pub x: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]

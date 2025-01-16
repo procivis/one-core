@@ -114,6 +114,7 @@ mod test {
                     public_key_jwk: PublicKeyJwk::Ec(
                         PublicKeyJwkEllipticData {
                             r#use: None,
+                            kid: None,
                             crv: "P-256".to_owned(),
                             x: "AjDk2GBBiI_M6HvEmgfzXiVhJCWiVFqvoItknJgc-oEE".to_owned(),
                             y: None,

@@ -63,6 +63,7 @@ pub enum PublicKeyJwk {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PublicKeyJwkRsaData {
     pub r#use: Option<String>,
+    pub kid: Option<String>,
     pub e: String,
     pub n: String,
 }
@@ -70,12 +71,14 @@ pub struct PublicKeyJwkRsaData {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PublicKeyJwkOctData {
     pub r#use: Option<String>,
+    pub kid: Option<String>,
     pub k: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PublicKeyJwkMlweData {
     pub r#use: Option<String>,
+    pub kid: Option<String>,
     pub alg: String,
     pub x: String,
 }
@@ -83,6 +86,7 @@ pub struct PublicKeyJwkMlweData {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PublicKeyJwkEllipticData {
     pub r#use: Option<String>,
+    pub kid: Option<String>,
     pub crv: String,
     pub x: String,
     pub y: Option<String>,

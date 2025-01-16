@@ -65,6 +65,7 @@ impl KeyAlgorithm for Es256 {
         let (x, y) = ES256Signer::get_public_key_coordinates(bytes)?;
         Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
             r#use,
+            kid: None,
             crv: "P-256".to_string(),
             x: Base64UrlSafeNoPadding::encode_to_string(x)
                 .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?,

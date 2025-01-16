@@ -755,6 +755,7 @@ pub fn dummy_did_document(did: &DidValue) -> DidDocument {
             controller: "did-vm-controller".to_string(),
             public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                 r#use: None,
+                kid: None,
                 crv: "P-256".to_string(),
                 x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
                 y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),

@@ -234,6 +234,7 @@ async fn test_credential_formatting_ok_for_es256() {
                     controller: "did-vm-controller".to_string(),
                     public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
+                        kid: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
                         y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
@@ -427,6 +428,7 @@ async fn test_unverified_credential_extraction() {
                     controller: "did-vm-controller".to_string(),
                     public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
+                        kid: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
                         y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
@@ -630,6 +632,7 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
                     controller: "did-vm-controller".to_string(),
                     public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
                         r#use: None,
+                        kid: None,
                         crv: "P-256".to_string(),
                         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
                         y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),

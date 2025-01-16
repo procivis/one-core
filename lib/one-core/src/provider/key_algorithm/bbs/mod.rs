@@ -43,6 +43,7 @@ impl KeyAlgorithm for BBS {
         let (x, y) = BBSSigner::get_public_key_coordinates(bytes)?;
         Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
             r#use,
+            kid: None,
             crv: "Bls12381G2".to_string(),
             x: Base64UrlSafeNoPadding::encode_to_string(x)
                 .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?,
