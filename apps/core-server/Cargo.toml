@@ -54,7 +54,7 @@ utoipa = { workspace = true, features = [
     "preserve_path_order",
     "indexmap",
 ] }
-utoipa-swagger-ui = { version = "8.1", features = ["axum"] }
+utoipa-swagger-ui = { version = "9.0", features = ["axum"] }
 utoipauto = {version = "0.2"}
 uuid.workspace = true
 validator.workspace = true
