@@ -125,6 +125,7 @@ impl PublicKeyJwkDTO {
 pub struct PublicKeyJwkRsaDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kid: Option<String>,
     pub e: String,
     pub n: String,
@@ -136,6 +137,7 @@ pub struct PublicKeyJwkRsaDataDTO {
 pub struct PublicKeyJwkOctDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kid: Option<String>,
     pub k: String,
 }
@@ -146,6 +148,7 @@ pub struct PublicKeyJwkOctDataDTO {
 pub struct PublicKeyJwkMlweDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kid: Option<String>,
     pub alg: String,
     pub x: String,
