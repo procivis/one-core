@@ -37,8 +37,8 @@ impl KeyAlgorithm for MlDsa {
     }
 
     fn jose_alg(&self) -> Vec<String> {
-        // invalid value for backward compatibility
-        vec!["CRYDI3".to_string()]
+        // invalid values for backward compatibility
+        vec!["CRYDI3".to_string(), "DILITHIUM".to_string()]
     }
 
     fn get_multibase(&self, _public_key: &[u8]) -> Result<String, KeyAlgorithmError> {
