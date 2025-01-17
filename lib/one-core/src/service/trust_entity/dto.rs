@@ -89,6 +89,8 @@ pub type ListTrustEntitiesQueryDTO =
 pub enum SortableTrustEntityColumnEnum {
     Name,
     Role,
+    LastModified,
+    State,
 }
 
 #[derive(Clone, Debug)]

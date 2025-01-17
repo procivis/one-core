@@ -78,6 +78,8 @@ impl IntoSortingColumn for SortableTrustEntityColumnEnum {
         match self {
             Self::Name => trust_entity::Column::Name.into_simple_expr(),
             Self::Role => trust_entity::Column::Role.into_simple_expr(),
+            Self::LastModified => trust_entity::Column::LastModified.into_simple_expr(),
+            Self::State => trust_entity::Column::State.into_simple_expr(),
         }
     }
 }

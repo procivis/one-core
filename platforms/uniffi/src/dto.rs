@@ -1234,6 +1234,8 @@ pub struct TrustAnchorsListBindingDTO {
 pub enum SortableTrustEntityColumnBindings {
     Name,
     Role,
+    LastModified,
+    State,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, uniffi::Enum)]

@@ -92,6 +92,8 @@ pub struct GetTrustEntityResponseRestDTO {
 pub enum SortableTrustEntityColumnRestEnum {
     Name,
     Role,
+    LastModified,
+    State,
 }
 
 pub type ListTrustEntitiesQuery =
