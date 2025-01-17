@@ -1,5 +1,6 @@
 use std::sync::OnceLock;
 
+use headers::HeaderMap;
 use jsonld::JsonLdApi;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -128,6 +129,10 @@ pub struct Response {
 impl Response {
     pub fn status(&self) -> u16 {
         self.resp.status().into()
+    }
+
+    pub fn headers(&self) -> &HeaderMap {
+        self.resp.headers()
     }
 
     pub async fn text(self) -> String {

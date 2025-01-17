@@ -416,6 +416,9 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .layer(middleware::from_fn(
             crate::middleware::add_disable_cache_headers,
         ))
+        .layer(middleware::from_fn(
+            crate::middleware::add_x_content_type_options_no_sniff_header,
+        ))
         .with_state(state)
 }
 

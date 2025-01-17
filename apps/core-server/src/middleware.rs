@@ -155,3 +155,15 @@ pub async fn add_disable_cache_headers(
         .insert("Pragma", HeaderValue::from_static("no-cache"));
     Ok(response)
 }
+
+pub async fn add_x_content_type_options_no_sniff_header(
+    request: Request<Body>,
+    next: Next,
+) -> Result<axum::response::Response, StatusCode> {
+    let mut response = next.run(request).await;
+    response.headers_mut().insert(
+        "X-Content-Type-Options",
+        HeaderValue::from_static("nosniff"),
+    );
+    Ok(response)
+}
