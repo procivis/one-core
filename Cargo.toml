@@ -34,7 +34,7 @@ mockall            = { version = "0.13" }
 one-dto-mapper     = { version = "0.1" }
 rand               = { version = "0.8" }
 regex              = { version = "1.10" }
-reqwest            = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
+reqwest            = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }
 sea-orm            = { version = "1.1", default-features = false }
 serde              = { version = "1.0" }
 serde_json         = { version = "1.0" }
