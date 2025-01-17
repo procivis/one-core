@@ -8,7 +8,7 @@ use oidc_mqtt_verifier::{mqtt_verifier_flow, Topics};
 use rand::rngs::OsRng;
 use rand::Rng;
 use serde::Deserialize;
-use shared_types::{KeyId, ProofId};
+use shared_types::{DidValue, KeyId, ProofId};
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
@@ -23,6 +23,7 @@ use super::model::{
     InvitationResponseDTO, OpenID4VCParams, OpenID4VPPresentationDefinition, PresentedCredential,
     UpdateResponse,
 };
+use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::config::core_config::{CoreConfig, ExchangeType, TransportType};
 use crate::model::did::{Did, KeyRole};
 use crate::model::interaction::{Interaction, InteractionId};
@@ -51,6 +52,7 @@ use crate::provider::exchange_protocol::{
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::mqtt_client::{MqttClient, MqttTopic};
+use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::util::key_verification::KeyVerification;
@@ -71,6 +73,7 @@ pub struct OpenId4VcMqtt {
 
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
+    did_repository: Arc<dyn DidRepository>,
 
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -97,6 +100,7 @@ impl OpenId4VcMqtt {
         openid_params: OpenID4VCParams,
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
+        did_repository: Arc<dyn DidRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -109,6 +113,7 @@ impl OpenId4VcMqtt {
             openid_params,
             handle: Mutex::new(None),
             interaction_repository,
+            did_repository,
             key_algorithm_provider,
             proof_repository,
             formatter_provider,
@@ -227,6 +232,32 @@ impl OpenId4VcMqtt {
         .await
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
+        let organisation = Some(organisation);
+        let verifier_did = {
+            let did_value =
+                DidValue::from_did_url(presentation_request.payload.custom.client_id.as_str())
+                    .map_err(|_| {
+                        ExchangeProtocolError::InvalidRequest(format!(
+                            "invalid client_id: {}",
+                            presentation_request.payload.custom.client_id
+                        ))
+                    })?;
+
+            get_or_create_did(
+                self.did_repository.as_ref(),
+                &organisation,
+                &did_value,
+                DidRole::Verifier,
+            )
+            .await
+            .map_err(|_| {
+                ExchangeProtocolError::Failed(format!(
+                    "failed to resolve or create did: {}",
+                    presentation_request.payload.custom.client_id
+                ))
+            })?
+        };
+
         let interaction_data = MQTTOpenID4VPInteractionData {
             broker_url: host.to_string(),
             broker_port: port,
@@ -251,7 +282,7 @@ impl OpenId4VcMqtt {
             data: Some(serde_json::to_vec(&interaction_data).map_err(|err| {
                 ExchangeProtocolError::Failed(format!("Interaction data: {err}"))
             })?),
-            organisation: Some(organisation.clone()),
+            organisation,
         };
 
         let interaction_id = self
@@ -265,7 +296,7 @@ impl OpenId4VcMqtt {
             &proof_id,
             ExchangeType::OpenId4Vc.as_ref(),
             None,
-            None,
+            Some(verifier_did),
             interaction,
             OffsetDateTime::now_utc(),
             None,

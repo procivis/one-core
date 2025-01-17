@@ -42,6 +42,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::mqtt_client::{MockMqttClient, MockMqttTopic};
+use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::service::test_utilities::generic_config;
@@ -52,6 +53,7 @@ struct TestInputs<'a> {
     pub mqtt_client: MockMqttClient,
     pub interaction_repository: MockInteractionRepository,
     pub proof_repository: MockProofRepository,
+    pub did_repository: MockDidRepository,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub did_method_provider: MockDidMethodProvider,
@@ -105,6 +107,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
         },
         Arc::new(inputs.interaction_repository),
         Arc::new(inputs.proof_repository),
+        Arc::new(inputs.did_repository),
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.did_method_provider),
@@ -197,6 +200,30 @@ async fn test_handle_invitation_success() {
         .expect_create_interaction()
         .once()
         .returning(|_| Ok(Uuid::new_v4()));
+
+    let mut did_repository = MockDidRepository::default();
+
+    did_repository
+        .expect_get_did_by_value()
+        .withf({
+            let client_id = client_id.clone();
+            move |did, _| did == &client_id
+        })
+        .once()
+        .returning(|did, _| {
+            Ok(Some(Did {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: did.clone(),
+                did_type: DidType::Remote,
+                did_method: "KEY".to_string(),
+                deactivated: false,
+                keys: None,
+                organisation: None,
+            }))
+        });
 
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn
@@ -331,6 +358,7 @@ async fn test_handle_invitation_success() {
         mqtt_client,
         interaction_repository,
         did_method_provider,
+        did_repository,
         key_algorithm_provider: mock_key_algorithm_provider,
         ..Default::default()
     });

@@ -6,7 +6,7 @@ use anyhow::Context;
 use futures::{stream, Stream, StreamExt, TryFutureExt};
 use rand::rngs::OsRng;
 use rand::Rng;
-use shared_types::ProofId;
+use shared_types::{DidValue, ProofId};
 use time::OffsetDateTime;
 use tokio::select;
 use uuid::Uuid;
@@ -16,6 +16,8 @@ use super::{
     DISCONNECT_UUID, IDENTITY_UUID, OIDC_BLE_FLOW, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID,
     TRANSFER_SUMMARY_REPORT_UUID,
 };
+use crate::common_mapper::{get_or_create_did, DidRole};
+use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::ProofStateEnum;
@@ -34,12 +36,14 @@ use crate::provider::exchange_protocol::openid4vc::openidvc_ble::{
     PRESENTATION_REQUEST_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
+use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::util::ble_resource::{Abort, BleWaiter, OnConflict};
 
 pub struct OpenID4VCBLEHolder {
     pub proof_repository: Arc<dyn ProofRepository>,
+    pub did_repository: Arc<dyn DidRepository>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
     pub ble: BleWaiter,
 }
@@ -48,11 +52,13 @@ impl OpenID4VCBLEHolder {
     pub fn new(
         proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
+        did_repository: Arc<dyn DidRepository>,
         ble: BleWaiter,
     ) -> Self {
         Self {
             proof_repository,
             interaction_repository,
+            did_repository,
             ble,
         }
     }
@@ -75,8 +81,9 @@ impl OpenID4VCBLEHolder {
         verification_fn: VerificationFn,
         interaction_id: Uuid,
         organisation: Organisation,
-    ) -> Result<(), ExchangeProtocolError> {
+    ) -> Result<Did, ExchangeProtocolError> {
         let interaction_repository = self.interaction_repository.clone();
+        let did_repository = self.did_repository.clone();
 
         let result = self
             .ble
@@ -97,8 +104,7 @@ impl OpenID4VCBLEHolder {
                         .context("failed to connect to verifier")
                         .map_err(ExchangeProtocolError::Transport)?;
 
-                    subscribe_to_notifications(&*central, &device_info.address)
-                        .await?;
+                    subscribe_to_notifications(&*central, &device_info.address).await?;
 
                     let interaction = select! {
                         biased;
@@ -106,7 +112,7 @@ impl OpenID4VCBLEHolder {
                         _ = verifier_disconnect_event(central.clone(), device_info.address.clone()) => {
                             Err(ExchangeProtocolError::Failed("Verifier disconnected".into()))
                         },
-                        interaction = async {
+                        interaction_data = async {
                             tracing::debug!("session_key_and_identity_request");
                             let (identity_request, ble_peer) =
                                 session_key_and_identity_request(device_info.clone(), verifier_public_key)?;
@@ -126,34 +132,68 @@ impl OpenID4VCBLEHolder {
 
                             tracing::debug!("read_presentation_definition");
                             let request =
-                                read_presentation_request(&ble_peer,  verification_fn, central.clone()).await?;
+                                read_presentation_request(&ble_peer, verification_fn, central.clone())
+                                    .await?;
 
                             let now = OffsetDateTime::now_utc();
+                            let organisation = Some(organisation);
+                            let verifier_did = {
+                                let did_value = DidValue::from_did_url(request.client_id.as_str())
+                                    .map_err(|_| {
+                                        ExchangeProtocolError::InvalidRequest(format!(
+                                            "invalid client_id: {}",
+                                            request.client_id
+                                        ))
+                                    })?;
 
-                            Ok(Interaction {
+                                get_or_create_did(&*did_repository, &organisation, &did_value, DidRole::Verifier)
+                                    .await
+                                    .map_err(|_| {
+                                        ExchangeProtocolError::Failed(format!(
+                                            "failed to resolve or create did: {}",
+                                            request.client_id
+                                        ))
+                                    })?
+                            };
+
+                            Ok((verifier_did, Interaction {
                                 id: interaction_id,
                                 created_date: now,
                                 last_modified: now,
                                 host: None,
-                                organisation: Some(organisation),
+                                organisation,
                                 data: Some(
                                     serde_json::to_vec(&BLEOpenID4VPInteractionData {
-                                        nonce: request.nonce.clone().ok_or(ExchangeProtocolError::InvalidRequest("nonce missing".to_string()))?,
+                                        nonce: request.nonce.clone().ok_or(
+                                            ExchangeProtocolError::InvalidRequest(
+                                                "nonce missing".to_string(),
+                                            ),
+                                        )?,
                                         task_id,
                                         peer: ble_peer,
-                                        presentation_definition: Some(request.presentation_definition.clone().ok_or(ExchangeProtocolError::InvalidRequest("presentation_definition missing".to_string()))?),
+                                        presentation_definition: Some(
+                                            request.presentation_definition.clone().ok_or(
+                                                ExchangeProtocolError::InvalidRequest(
+                                                    "presentation_definition missing".to_string(),
+                                                ),
+                                            )?,
+                                        ),
                                         openid_request: request,
                                         identity_request_nonce: Some(hex::encode(identity_request.nonce)),
-                                        presentation_submission: None
+                                        presentation_submission: None,
                                     })
                                     .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?,
                                 ),
-                            })
-                        } => interaction
+                            }))
+                        } => interaction_data
                     };
 
                     if interaction.is_err() {
-                        let _ = unsubscribe_from_characteristic_notifications(&*central, &device_info.address).await;
+                        let _ = unsubscribe_from_characteristic_notifications(
+                            &*central,
+                            &device_info.address,
+                        )
+                        .await;
                         let _ = central.disconnect(device_info.address).await;
                     }
 
@@ -177,10 +217,10 @@ impl OpenID4VCBLEHolder {
                     };
                     let verifier_address = interaction_data.peer.device_info.address.clone();
 
-                    let _ = unsubscribe_from_characteristic_notifications(&*central, &verifier_address).await;
-                    let _ = central
-                        .disconnect(verifier_address)
-                        .await;
+                    let _ =
+                        unsubscribe_from_characteristic_notifications(&*central, &verifier_address)
+                            .await;
+                    let _ = central.disconnect(verifier_address).await;
                 },
                 OnConflict::ReplaceIfSameFlow,
                 true,
@@ -196,12 +236,12 @@ impl OpenID4VCBLEHolder {
             .and_then(std::convert::identity);
 
         match result {
-            Ok(interaction) => {
+            Ok((verifier_did, interaction)) => {
                 self.interaction_repository
                     .update_interaction(interaction)
                     .await
                     .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
-                Ok(())
+                Ok(verifier_did)
             }
             Err(err) => {
                 let _ = self

@@ -60,8 +60,8 @@ args    = ["watch", "--ignore", "*.md", "--ignore", "*.yaml", "--ignore", "*.yml
 command = "cargo"
 
 [tasks.test]
-args      = ["test"]
-command   = "cargo"
+args    = ["test"]
+command = "cargo"
 
 [tasks.unit-tests]
 args    = ["test", "--lib"]

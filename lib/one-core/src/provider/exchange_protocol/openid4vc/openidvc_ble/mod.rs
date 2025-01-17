@@ -44,6 +44,7 @@ use crate::provider::exchange_protocol::openid4vc::{FormatMapper, TypeToDescript
 use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::util::ble_resource::{Abort, BleWaiter};
@@ -177,6 +178,7 @@ const PRESENTATION_DEFINITION_BLE_KEY: &str = "key";
 pub(crate) struct OpenID4VCBLE {
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
+    did_repository: Arc<dyn DidRepository>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -191,6 +193,7 @@ impl OpenID4VCBLE {
     pub fn new(
         proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
+        did_repository: Arc<dyn DidRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -202,6 +205,7 @@ impl OpenID4VCBLE {
         Self {
             proof_repository,
             interaction_repository,
+            did_repository,
             formatter_provider,
             did_method_provider,
             key_algorithm_provider,
@@ -255,6 +259,7 @@ impl OpenID4VCBLE {
         let mut ble_holder = OpenID4VCBLEHolder::new(
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
+            self.did_repository.clone(),
             ble,
         );
 
@@ -280,7 +285,7 @@ impl OpenID4VCBLE {
             .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
         let proof_id = Uuid::new_v4().into();
-        let proof = proof_from_handle_invitation(
+        let mut proof = proof_from_handle_invitation(
             &proof_id,
             "OPENID4VC",
             None,
@@ -299,7 +304,7 @@ impl OpenID4VCBLE {
             cache_preferences: None,
         });
 
-        ble_holder
+        let verifier_did = ble_holder
             .handle_invitation(
                 name,
                 key,
@@ -310,6 +315,7 @@ impl OpenID4VCBLE {
             )
             .await?;
 
+        proof.verifier_did = Some(verifier_did);
         Ok(InvitationResponseDTO::ProofRequest {
             interaction_id,
             proof: Box::new(proof),
@@ -320,6 +326,7 @@ impl OpenID4VCBLE {
         let ble_holder = OpenID4VCBLEHolder::new(
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
+            self.did_repository.clone(),
             self.ble.clone().ok_or_else(|| {
                 ExchangeProtocolError::Failed("Missing BLE central for reject proof".to_string())
             })?,
@@ -360,6 +367,7 @@ impl OpenID4VCBLE {
         let ble_holder = OpenID4VCBLEHolder::new(
             self.proof_repository.clone(),
             self.interaction_repository.clone(),
+            self.did_repository.clone(),
             ble,
         );
 
