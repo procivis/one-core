@@ -1,316 +1,225 @@
 [
     {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "https://www.procivis.ch/specs/v1/eudi/schemas/pid.json",
+        "$id": "https://www.procivis.ch/specs/v1/eudi/schemas/pid-credential.json",
+        "title": "EUDI PID Credential",
+        "description": "Schema for a Physical PID credential as issued by the eudiw dev issuance service",
         "type": "object",
-        "required": [
-            "vct",
-            "vct#integrity",
-            "family_name",
-            "given_name",
-            "birthdate",
-            "age_equal_or_over",
-            "issuance_date",
-            "expiry_date",
-            "issuing_authority",
-            "issuing_country"
-        ],
         "properties": {
-            "vct": {
+            "iss": {
+                "description": "Issuer identifier (URL or other unique ID)",
                 "type": "string",
-                "format": "uri-reference"
+                "format": "uri"
             },
-            "vct#integrity": {
+            "jti": {
+                "description": "Unique token or credential ID (JWT ID)",
                 "type": "string"
             },
-            "family_name": {
+            "iat": {
+                "description": "Issued-at timestamp (numeric, typically Unix epoch seconds)",
+                "type": "number"
+            },
+            "exp": {
+                "description": "Expiration timestamp (numeric, typically Unix epoch seconds)",
+                "type": "number"
+            },
+            "status": {
+                "description": "URL or reference for credential validation/revocation status",
                 "type": "string"
             },
-            "given_name": {
+            "type": {
+                "description": "Credential type identifier, e.g. 'eu.europa.ec.eudi.pid.1'",
                 "type": "string"
             },
-            "birthdate": {
-                "type": "string"
-            },
-            "source_document_type": {
-                "type": "string",
-                "enum": [
-                    "id_card",
-                    "residence_permit",
-                    "eu_citizen_eid_card"
-                ]
-            },
-            "nationalities": {
-                "type": "string"
-            },
-            "gender": {
-                "type": "string"
-            },
-            "middle_name": {
-                "type": "string"
-            },
-            "birth_given_name": {
-                "type": "string"
-            },
-            "birth_family_name": {
-                "type": "string"
-            },
-            "title": {
-                "type": "string"
-            },
-            "salutation": {
-                "type": "string"
-            },
-            "also_known_as": {
-                "type": "string"
-            },
-            "issuance_date": {
-                "type": "string"
-            },
-            "expiry_date": {
-                "type": "string"
-            },
-            "issuing_authority": {
-                "type": "string"
-            },
-            "issuing_country": {
-                "type": "string"
-            },
-            "place_of_birth": {
+            "verified_claims": {
+                "description": "Object containing the verification data and the disclosed claims",
                 "type": "object",
                 "properties": {
-                    "locality": {
-                        "type": "string"
-                    },
-                    "region": {
-                        "type": "string"
-                    },
-                    "country": {
-                        "type": "string"
-                    }
-                },
-                "additionalProperties": true
-            },
-            "address": {
-                "type": "object",
-                "properties": {
-                    "street_address": {
-                        "type": "string"
-                    },
-                    "locality": {
-                        "type": "string"
-                    },
-                    "region": {
-                        "type": "string"
-                    },
-                    "postal_code": {
-                        "type": "string"
-                    },
-                    "country": {
-                        "type": "string"
-                    }
-                },
-                "additionalProperties": true
-            },
-            "age_equal_or_over": {
-                "type": "object",
-                "required": [
-                    "12",
-                    "14",
-                    "16",
-                    "18",
-                    "21",
-                    "65"
-                ],
-                "properties": {
-                    "12": {
-                        "type": "boolean"
-                    },
-                    "14": {
-                        "type": "boolean"
-                    },
-                    "16": {
-                        "type": "boolean"
-                    },
-                    "18": {
-                        "type": "boolean"
-                    },
-                    "21": {
-                        "type": "boolean"
-                    },
-                    "65": {
-                        "type": "boolean"
-                    }
-                },
-                "additionalProperties": false
-            }
-        },
-        "additionalProperties": true
-    },
-    {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "https://www.procivis.ch/specs/v1/eudi/schemas/pid-metadata.json",
-        "type": "object",
-        "required": [
-            "vct",
-            "name",
-            "description",
-            "display",
-            "claims",
-            "schema_url"
-        ],
-        "properties": {
-            "vct": {
-                "type": "string",
-                "format": "uri-reference"
-            },
-            "vct#integrity": {
-                "type": "string"
-            },
-            "extends": {
-                "type": "string",
-                "format": "uri-reference"
-            },
-            "extends#integrity": {
-                "type": "string"
-            },
-            "schema_url": {
-                "type": "string",
-                "format": "uri-reference"
-            },
-            "schema_url#integrity": {
-                "type": "string"
-            },
-            "name": {
-                "type": "string"
-            },
-            "description": {
-                "type": "string"
-            },
-            "display": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "lang": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "description": {
-                            "type": "string"
-                        },
-                        "rendering": {
-                            "type": "object",
-                            "properties": {
-                                "simple": {
-                                    "type": "object",
-                                    "properties": {
-                                        "logo": {
-                                            "type": "object",
-                                            "properties": {
-                                                "uri": {
-                                                    "type": "string",
-                                                    "format": "uri-reference"
-                                                },
-                                                "uri#integrity": {
-                                                    "type": "string"
-                                                },
-                                                "alt_text": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "additionalProperties": false
-                                        },
-                                        "background_color": {
-                                            "type": "string"
-                                        },
-                                        "text_color": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "additionalProperties": false
-                                },
-                                "svg_templates": {
-                                    "type": "object",
-                                    "properties": {
-                                        "uri": {
-                                            "type": "string",
-                                            "format": "uri-reference"
-                                        },
-                                        "uri#integrity": {
-                                            "type": "string"
-                                        },
-                                        "properties": {
-                                            "type": "object",
-                                            "properties": {
-                                                "orientation": {
-                                                    "type": "string"
-                                                },
-                                                "color_scheme": {
-                                                    "type": "string"
-                                                },
-                                                "contrast": {
-                                                    "type": "string"
-                                                },
-                                                "additionalProperties": false
-                                            }
-                                        }
-                                    },
-                                    "additionalProperties": false
-                                }
-                            }
-                        }
-                    },
-                    "additionalProperties": false
-                },
-                "additionalProperties": false
-            }
-        },
-        "claims": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "display": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "lang": {
-                                    "type": "string"
-                                },
-                                "label": {
-                                    "type": "string"
-                                },
-                                "description": {
-                                    "type": "string"
-                                }
+                    "verification": {
+                        "description": "Verification details: trust framework, assurance level, etc.",
+                        "type": "object",
+                        "properties": {
+                            "trust_framework": {
+                                "description": "e.g. 'eidas'",
+                                "type": "string"
                             },
-                            "additionalProperties": false
-                        }
+                            "assurance_level": {
+                                "description": "e.g. 'high', 'substantial', 'low'",
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "trust_framework",
+                            "assurance_level"
+                        ],
+                        "additionalProperties": true
                     },
-                    "sd": {
-                        "type": "string"
-                    },
-                    "svg_id": {
-                        "type": "string"
+                    "claims": {
+                        "description": "Container for claims, namespaced by credential type (PID).",
+                        "type": "object",
+                        "properties": {
+                            "eu.europa.ec.eudi.pid.1": {
+                                "description": "PID-specific claim values, possibly hashed & selectively disclosed",
+                                "type": "object",
+                                "properties": {
+                                    "family_name": {
+                                        "type": "string",
+                                        "description": "Family name(s)/surname(s)"
+                                    },
+                                    "given_name": {
+                                        "type": "string",
+                                        "description": "Given name(s)"
+                                    },
+                                    "birth_date": {
+                                        "type": "string",
+                                        "description": "Birth date in YYYY-MM-DD format"
+                                    },
+                                    "resident_address": {
+                                        "type": "string",
+                                        "description": "Address string (e.g., combined or free-form address)"
+                                    },
+                                    "resident_street": {
+                                        "type": "string",
+                                        "description": "Street or thoroughfare name"
+                                    },
+                                    "resident_city": {
+                                        "type": "string",
+                                        "description": "City, town, or village"
+                                    },
+                                    "resident_state": {
+                                        "type": "string",
+                                        "description": "Region, province, or state"
+                                    },
+                                    "resident_postal_code": {
+                                        "type": "string",
+                                        "description": "Postal code or ZIP code"
+                                    },
+                                    "resident_country": {
+                                        "type": "string",
+                                        "description": "Alpha-2 country code as per ISO 3166-1"
+                                    },
+                                    "age_over_18": {
+                                        "type": "boolean",
+                                        "description": "Indicates subject is 18 or older"
+                                    },
+                                    "issuance_date": {
+                                        "type": "string",
+                                        "description": "Date of credential issuance (YYYY-MM-DD)"
+                                    },
+                                    "expiry_date": {
+                                        "type": "string",
+                                        "description": "Date when credential expires (YYYY-MM-DD)"
+                                    },
+                                    "issuing_authority": {
+                                        "type": "string",
+                                        "description": "Organization or authority name issuing the PID"
+                                    },
+                                    "issuing_country": {
+                                        "type": "string",
+                                        "description": "Alpha-2 code for the issuing country (ISO 3166-1)"
+                                    },
+                                    "age_over_12": {
+                                        "type": "boolean"
+                                    },
+                                    "age_over_14": {
+                                        "type": "boolean"
+                                    },
+                                    "age_over_16": {
+                                        "type": "boolean"
+                                    },
+                                    "age_over_21": {
+                                        "type": "boolean"
+                                    },
+                                    "age_over_65": {
+                                        "type": "boolean"
+                                    },
+                                    "gender": {
+                                        "type": "string"
+                                    },
+                                    "nationality": {
+                                        "type": "string",
+                                        "description": "Alpha-2 code for nationality"
+                                    },
+                                    "document_number": {
+                                        "type": "string"
+                                    },
+                                    "administrative_number": {
+                                        "type": "string"
+                                    },
+                                    "issuing_jurisdiction": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "family_name",
+                                    "given_name",
+                                    "birth_date",
+                                    "age_over_18",
+                                    "issuance_date",
+                                    "expiry_date",
+                                    "issuing_authority",
+                                    "issuing_country"
+                                ],
+                                "additionalProperties": false
+                            }
+                        },
+                        "required": [
+                            "eu.europa.ec.eudi.pid.1"
+                        ],
+                        "additionalProperties": false
                     }
                 },
                 "required": [
-                    "path",
-                    "sd"
+                    "verification",
+                    "claims"
+                ],
+                "additionalProperties": true
+            },
+            "cnf": {
+                "description": "Proof-of-possession confirmation. Typically includes a JWK.",
+                "type": "object",
+                "properties": {
+                    "jwk": {
+                        "description": "Public key in JWK format",
+                        "type": "object",
+                        "properties": {
+                            "kty": {
+                                "type": "string"
+                            },
+                            "crv": {
+                                "type": "string"
+                            },
+                            "x": {
+                                "type": "string"
+                            },
+                            "y": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "kty",
+                            "crv",
+                            "x",
+                            "y"
+                        ],
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "jwk"
                 ],
                 "additionalProperties": false
             }
         },
-        "additionalProperties": true
+        "required": [
+            "iss",
+            "jti",
+            "iat",
+            "exp",
+            "status",
+            "type",
+            "verified_claims"
+        ],
+        "additionalProperties": false
     }
 ]

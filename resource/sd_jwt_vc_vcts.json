@@ -1,113 +1,22 @@
 [
     {
-        "vct": "https://example.eudi.eu/credential/pid/1.0",
-        "vct#integrity": "sha256-jo8433ot48utul8ura33",
-        "family_name": "Dougherty",
-        "given_name": "Jack",
-        "birthdate": "1980-05-23",
-        "source_document_type": "id_card",
-        "address": {
-            "street_address": "123 Via Appia",
-            "locality": "Rome",
-            "region": "Lazio",
-            "postal_code": "00100",
-            "country": "IT"
-        },
-        "nationalities": [
-            "DE",
-            "IT"
-        ],
-        "gender": "male",
-        "middle_name": "",
-        "birth_given_name": "",
-        "birth_family_name": "",
-        "place_of_birth": {
-            "locality": "Leipzig",
-            "region": "Saxony",
-            "country": "DD"
-        },
-        "title": "Dr.",
-        "salutation": "Mr.",
-        "also_known_as": "Jeff",
-        "age_equal_or_over": {
-            "12": true,
-            "14": true,
-            "16": true,
-            "18": true,
-            "21": true,
-            "65": false
-        },
-        "issuance_date": "2020-05-23",
-        "expiry_date": "2030-05-23",
-        "issuing_authority": "DE",
-        "issuing_country": "DE",
-        "cnf": {
-            "jwk": {
-                "kty": "EC",
-                "crv": "P-256",
-                "x": "52aDI_ur05n1f_p3jiYGUU82oKZr3m4LsAErM536crQ",
-                "y": "ckhZ-KQ5aXNL91R8Eufg1aOf8Z5pZJnIvuCzNGfdnzo"
-            }
-        }
-    },
-    {
-        "vct": "https://example.eudi.eu/credential/pid/1.0",
-        "name": "Credential - Preliminary Version",
-        "description": "This is our development version of the credential.",
-        "extends": "https://galaxy.example.com/galactic-education-credential-0.9",
-        "extends#integrity": "sha256-9cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1VLmXfh-WRL5",
+        "vct": "eu.europa.ec.eudi.pid_jwt_vc_json",
+        "name": "PID",
+        "description": "PID Credential",
         "display": [
             {
                 "lang": "en-US",
-                "name": "Betelgeuse Education Credential",
-                "description": "An education credential for all carbon-based life forms on Betelgeusians",
+                "name": "PID",
+                "description": "National ID credential",
                 "rendering": {
                     "simple": {
                         "logo": {
-                            "uri": "https://betelgeuse.example.com/public/education-logo.png",
-                            "uri#integrity": "sha256-LmXfh-9cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1V",
-                            "alt_text": "Betelgeuse Ministry of Education logo"
+                            "uri": "data:image/png;base64,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",
+                            "alt_text": "EUDI PID logo"
                         },
                         "background_color": "#12107c",
                         "text_color": "#FFFFFF"
-                    },
-                    "svg_templates": [
-                        {
-                            "uri": "https://betelgeuse.example.com/public/credential-english.svg",
-                            "uri#integrity": "sha256-8cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1VLmXfh-9c",
-                            "properties": {
-                                "orientation": "landscape",
-                                "color_scheme": "light",
-                                "contrast": "high"
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                "lang": "de-DE",
-                "name": "Betelgeuse-Bildungsnachweis",
-                "rendering": {
-                    "simple": {
-                        "logo": {
-                            "uri": "https://betelgeuse.example.com/public/education-logo-de.png",
-                            "uri#integrity": "sha256-LmXfh-9cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1V",
-                            "alt_text": "Logo des Betelgeusischen Bildungsministeriums"
-                        },
-                        "background_color": "#12107c",
-                        "text_color": "#FFFFFF"
-                    },
-                    "svg_templates": [
-                        {
-                            "uri": "https://betelgeuse.example.com/public/credential-german.svg",
-                            "uri#integrity": "sha256-8cLlJNXN-TsMk-PmKjZ5t0WRL5ca_xGgX3c1VLmXfh-9c",
-                            "properties": {
-                                "orientation": "landscape",
-                                "color_scheme": "light",
-                                "contrast": "high"
-                            }
-                        }
-                    ]
+                    }
                 }
             }
         ],
@@ -128,7 +37,7 @@
                         "description": "The name"
                     }
                 ],
-                "sd": "allowed"
+                "sd": "always"
             },
             {
                 "path": [
@@ -146,11 +55,11 @@
                         "description": "The given name"
                     }
                 ],
-                "sd": "allowed"
+                "sd": "always"
             },
             {
                 "path": [
-                    "birthdate"
+                    "birth_date"
                 ],
                 "display": [
                     {
@@ -159,24 +68,11 @@
                         "description": "Birth Date"
                     }
                 ],
-                "sd": "allowed"
+                "sd": "always"
             },
             {
                 "path": [
-                    "source_document_type"
-                ],
-                "display": [
-                    {
-                        "lang": "en-US",
-                        "label": "Document Type",
-                        "description": "Document Type"
-                    }
-                ],
-                "sd": "allowed"
-            },
-            {
-                "path": [
-                    "address"
+                    "resident_address"
                 ],
                 "display": [
                     {
@@ -194,8 +90,7 @@
             },
             {
                 "path": [
-                    "address",
-                    "street_address"
+                    "resident_street"
                 ],
                 "display": [
                     {
@@ -207,13 +102,11 @@
                         "label": "Street Address"
                     }
                 ],
-                "sd": "always",
-                "svg_id": "address_street_address"
+                "sd": "always"
             },
             {
                 "path": [
-                    "address",
-                    "locality"
+                    "resident_city"
                 ],
                 "display": [
                     {
@@ -225,13 +118,11 @@
                         "label": "Locality"
                     }
                 ],
-                "sd": "always",
-                "svg_id": "address_locality"
+                "sd": "always"
             },
             {
                 "path": [
-                    "address",
-                    "region"
+                    "resident_state"
                 ],
                 "display": [
                     {
@@ -243,13 +134,11 @@
                         "label": "Region"
                     }
                 ],
-                "sd": "always",
-                "svg_id": "address_region"
+                "sd": "always"
             },
             {
                 "path": [
-                    "address",
-                    "postal_code"
+                    "resident_postal_code"
                 ],
                 "display": [
                     {
@@ -261,13 +150,11 @@
                         "label": "Postal Code"
                     }
                 ],
-                "sd": "always",
-                "svg_id": "address_postal_code"
+                "sd": "always"
             },
             {
                 "path": [
-                    "address",
-                    "country"
+                    "resident_country"
                 ],
                 "display": [
                     {
@@ -279,51 +166,29 @@
                         "label": "Country"
                     }
                 ],
-                "sd": "always",
-                "svg_id": "address_country"
+                "sd": "always"
             },
             {
                 "path": [
-                    "age_equal_or_over"
+                    "age_over_12"
                 ],
                 "display": [
                     {
                         "lang": "de-DE",
                         "label": "Age",
-                        "description": "Age"
+                        "description": "Age over 12"
                     },
                     {
                         "lang": "en-US",
                         "label": "Age",
-                        "description": "Age"
+                        "description": "Age over 12"
                     }
                 ],
                 "sd": "allowed"
             },
             {
                 "path": [
-                    "age_equal_or_over",
-                    "12"
-                ],
-                "display": [
-                    {
-                        "lang": "de-DE",
-                        "label": "Age",
-                        "description": "Age over 12"
-                    },
-                    {
-                        "lang": "en-US",
-                        "label": "Age",
-                        "description": "Age over 12"
-                    }
-                ],
-                "sd": "allowed",
-                "svg_id": "age_equal_or_over_12"
-            },
-            {
-                "path": [
-                    "age_equal_or_over",
-                    "14"
+                    "age_over_14"
                 ],
                 "display": [
                     {
@@ -337,13 +202,11 @@
                         "description": "Age over 14"
                     }
                 ],
-                "sd": "allowed",
-                "svg_id": "age_equal_or_over_14"
+                "sd": "allowed"
             },
             {
                 "path": [
-                    "age_equal_or_over",
-                    "16"
+                    "age_over_16"
                 ],
                 "display": [
                     {
@@ -357,13 +220,11 @@
                         "description": "Age over 16"
                     }
                 ],
-                "sd": "allowed",
-                "svg_id": "age_equal_or_over_16"
+                "sd": "allowed"
             },
             {
                 "path": [
-                    "age_equal_or_over",
-                    "18"
+                    "age_over_18"
                 ],
                 "display": [
                     {
@@ -377,13 +238,11 @@
                         "description": "Age over 18"
                     }
                 ],
-                "sd": "allowed",
-                "svg_id": "age_equal_or_over_18"
+                "sd": "always"
             },
             {
                 "path": [
-                    "age_equal_or_over",
-                    "21"
+                    "age_over_21"
                 ],
                 "display": [
                     {
@@ -397,13 +256,11 @@
                         "description": "Age over 21"
                     }
                 ],
-                "sd": "allowed",
-                "svg_id": "age_equal_or_over_21"
+                "sd": "allowed"
             },
             {
                 "path": [
-                    "age_equal_or_over",
-                    "65"
+                    "age_over_65"
                 ],
                 "display": [
                     {
@@ -417,11 +274,153 @@
                         "description": "Age over 65"
                     }
                 ],
-                "sd": "allowed",
-                "svg_id": "age_equal_or_over_65"
+                "sd": "allowed"
+            },
+            {
+                "path": [
+                    "gender"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Geschlecht"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Gender"
+                    }
+                ],
+                "sd": "allowed"
+            },
+            {
+                "path": [
+                    "nationality"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Nationalität"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Nationality"
+                    }
+                ],
+                "sd": "allowed"
+            },
+            {
+                "path": [
+                    "issuance_date"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Ausstellungsdatum"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Issuance Date"
+                    }
+                ],
+                "sd": "always"
+            },
+            {
+                "path": [
+                    "expiry_date"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Ablaufdatum"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Expiry Date"
+                    }
+                ],
+                "sd": "always"
+            },
+            {
+                "path": [
+                    "issuing_authority"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Ausstellende Behörde"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Issuing Authority"
+                    }
+                ],
+                "sd": "always"
+            },
+            {
+                "path": [
+                    "document_number"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Dokumentennummer"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Document Number"
+                    }
+                ],
+                "sd": "allowed"
+            },
+            {
+                "path": [
+                    "administrative_number"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Verwaltungsnummer"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Administrative Number"
+                    }
+                ],
+                "sd": "allowed"
+            },
+            {
+                "path": [
+                    "issuing_country"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Ausstellungsland"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Issuing Country"
+                    }
+                ],
+                "sd": "always"
+            },
+            {
+                "path": [
+                    "issuing_jurisdiction"
+                ],
+                "display": [
+                    {
+                        "lang": "de-DE",
+                        "label": "Ausstellungszuständigkeit"
+                    },
+                    {
+                        "lang": "en-US",
+                        "label": "Issuing Jurisdiction"
+                    }
+                ],
+                "sd": "allowed"
             }
         ],
-        "schema_url": "https://exampleuniversity.com/public/credential-schema-0.9",
-        "schema_url#integrity": "sha256-o984vn819a48ui1llkwPmKjZ5t0WRL5ca_xGgX3c1VLmXfh"
+        "schema_url": "https://www.procivis.ch/specs/v1/eudi/schemas/pid.json"
     }
 ]
