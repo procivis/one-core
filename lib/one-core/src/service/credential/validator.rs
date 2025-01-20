@@ -6,7 +6,9 @@ use regex::Regex;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::config::validator::datatype::{validate_datatype_value, DatatypeValidationError};
-use crate::config::validator::exchange::{validate_exchange_operation, validate_exchange_type};
+use crate::config::validator::exchange::{
+    validate_exchange_did_compatibility, validate_exchange_operation, validate_exchange_type,
+};
 use crate::config::ConfigValidationError;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
@@ -26,6 +28,7 @@ pub(crate) fn validate_create_request(
 ) -> Result<(), ServiceError> {
     validate_exchange_type(exchange, &config.exchange)?;
     validate_exchange_operation(exchange_capabilities, &Operation::ISSUANCE)?;
+    validate_exchange_did_compatibility(exchange_capabilities, &Operation::ISSUANCE, did_method)?;
     validate_format_and_exchange_protocol_compatibility(exchange, formatter_capabilities, config)?;
     validate_format_and_did_method_compatibility(did_method, formatter_capabilities, config)?;
 

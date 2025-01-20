@@ -18,7 +18,9 @@ use super::ProofService;
 use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{ExchangeType, TransportType};
-use crate::config::validator::exchange::{validate_exchange_operation, validate_exchange_type};
+use crate::config::validator::exchange::{
+    validate_exchange_did_compatibility, validate_exchange_operation, validate_exchange_type,
+};
 use crate::config::validator::transport::{
     validate_and_select_transport_type, SelectedTransportType,
 };
@@ -363,6 +365,11 @@ impl ProofService {
         };
         let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
         validate_exchange_operation(&exchange_protocol_capabilities, &Operation::VERIFICATION)?;
+        validate_exchange_did_compatibility(
+            &exchange_protocol_capabilities,
+            &Operation::VERIFICATION,
+            &verifier_did.did_method,
+        )?;
 
         let transport = validate_and_select_transport_type(
             &request.transport,

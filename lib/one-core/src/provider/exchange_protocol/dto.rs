@@ -125,9 +125,12 @@ pub struct CredentialGroupItem {
 }
 
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExchangeProtocolCapabilities {
     pub supported_transports: Vec<String>,
     pub operations: Vec<Operation>,
+    pub issuance_did_methods: Vec<String>,
+    pub verification_did_methods: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize)]

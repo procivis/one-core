@@ -23,11 +23,11 @@ async fn test_exchange_protocol_capabilities() {
         json!(["VERIFICATION"])
     );
     assert_eq!(
-        resp["exchange"]["OPENID4VC"]["capabilities"]["supported_transports"],
+        resp["exchange"]["OPENID4VC"]["capabilities"]["supportedTransports"],
         json!(["HTTP", "BLE", "MQTT"])
     );
     assert_eq!(
-        resp["exchange"]["MDOC_OPENID4VP"]["capabilities"]["supported_transports"],
+        resp["exchange"]["MDOC_OPENID4VP"]["capabilities"]["supportedTransports"],
         json!(["HTTP", "BLE", "MQTT"])
     );
 }

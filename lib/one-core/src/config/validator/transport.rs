@@ -106,6 +106,8 @@ mod test {
         let capabilities = ExchangeProtocolCapabilities {
             supported_transports: vec!["BLE".into(), "MQTT".into()],
             operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+            issuance_did_methods: vec![],
+            verification_did_methods: vec![],
         };
 
         let selected =
@@ -122,6 +124,8 @@ mod test {
         let capabilities = ExchangeProtocolCapabilities {
             supported_transports: vec!["MQTT".into()],
             operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+            issuance_did_methods: vec![],
+            verification_did_methods: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -142,6 +146,8 @@ mod test {
         let capabilities = ExchangeProtocolCapabilities {
             supported_transports: vec!["BLE".into(), "MQTT".into()],
             operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+            issuance_did_methods: vec![],
+            verification_did_methods: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -163,6 +169,8 @@ mod test {
         let capabilities = ExchangeProtocolCapabilities {
             supported_transports: vec![],
             operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+            issuance_did_methods: vec![],
+            verification_did_methods: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -183,6 +191,8 @@ mod test {
         let capabilities = ExchangeProtocolCapabilities {
             supported_transports: vec!["BLE".into(), "MQTT".into(), "HTTP".into()],
             operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+            issuance_did_methods: vec![],
+            verification_did_methods: vec![],
         };
 
         let selected = validate_and_select_transport_type(

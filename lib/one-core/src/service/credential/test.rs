@@ -2770,6 +2770,8 @@ fn generic_capabilities() -> ExchangeProtocolCapabilities {
             exchange_protocol::dto::Operation::ISSUANCE,
             exchange_protocol::dto::Operation::VERIFICATION,
         ],
+        issuance_did_methods: vec!["KEY".to_owned()],
+        verification_did_methods: vec![],
     }
 }
 
@@ -2894,6 +2896,56 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
         result,
         Err(ServiceError::Validation(
             ValidationError::CredentialMissingClaim { .. }
+        ))
+    ));
+}
+
+#[test]
+fn test_validate_create_request_did_methods() {
+    let address_claim_id = Uuid::new_v4().into();
+    let now = OffsetDateTime::now_utc();
+    let schema = generate_credential_schema_with_claim_schemas(vec![CredentialSchemaClaim {
+        schema: ClaimSchema {
+            array: false,
+            id: address_claim_id,
+            key: "address".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+        },
+        required: true,
+    }]);
+
+    let claims = vec![CredentialRequestClaimDTO {
+        claim_schema_id: address_claim_id,
+        value: "Somewhere".to_string(),
+        path: "address".to_string(),
+    }];
+
+    validate_create_request(
+        "KEY",
+        "OPENID4VC",
+        &generic_capabilities(),
+        &claims,
+        &schema,
+        &generic_formatter_capabilities(),
+        &generic_config().core,
+    )
+    .unwrap();
+
+    let result = validate_create_request(
+        "INVALID",
+        "OPENID4VC",
+        &generic_capabilities(),
+        &claims,
+        &schema,
+        &generic_formatter_capabilities(),
+        &generic_config().core,
+    );
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::InvalidDidMethod { .. }
         ))
     ));
 }
@@ -3028,6 +3080,8 @@ fn test_validate_create_exchange_protocol_disabled_operation() {
     let capabilities = ExchangeProtocolCapabilities {
         supported_transports: vec![],
         operations: vec![exchange_protocol::dto::Operation::VERIFICATION],
+        issuance_did_methods: vec!["KEY".to_owned()],
+        verification_did_methods: vec![],
     };
     let result = validate_create_request(
         "KEY",

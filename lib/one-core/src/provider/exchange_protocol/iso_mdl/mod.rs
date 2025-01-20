@@ -439,6 +439,13 @@ impl ExchangeProtocolImpl for IsoMdl {
         ExchangeProtocolCapabilities {
             supported_transports: vec!["BLE".to_owned()],
             operations: vec![Operation::VERIFICATION],
+            issuance_did_methods: vec![],
+            verification_did_methods: vec![
+                "KEY".to_owned(),
+                "JWK".to_owned(),
+                "WEB".to_owned(),
+                "MDL".to_owned(),
+            ],
         }
     }
 }

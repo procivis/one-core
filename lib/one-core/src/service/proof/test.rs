@@ -1965,6 +1965,129 @@ async fn test_get_proof_list_success() {
 }
 
 #[tokio::test]
+async fn test_create_proof_using_invalid_did_method() {
+    let exchange = "OPENID4VC".to_string();
+    let request = CreateProofRequestDTO {
+        proof_schema_id: Uuid::new_v4().into(),
+        verifier_did_id: Uuid::new_v4().into(),
+        exchange: exchange.to_owned(),
+        redirect_uri: None,
+        verifier_key: None,
+        scan_to_verify: None,
+        iso_mdl_engagement: None,
+        transport: None,
+    };
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .once()
+        .withf(move |id, _| &request.proof_schema_id == id)
+        .returning(|id, _| {
+            Ok(Some(ProofSchema {
+                id: id.to_owned(),
+                imported_source_url: Some("CORE_URL".to_string()),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: None,
+                input_schemas: Some(vec![generic_proof_input_schema()]),
+            }))
+        });
+
+    let verifier_key_id = Uuid::new_v4();
+
+    let request_clone = request.clone();
+    let mut did_repository = MockDidRepository::default();
+    did_repository
+        .expect_get_did()
+        .once()
+        .withf(move |id, _| &request_clone.verifier_did_id == id)
+        .returning(move |id, _| {
+            Ok(Some(Did {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did:example:123".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "INVALID".to_string(),
+                organisation: None,
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: Key {
+                        id: verifier_key_id.into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        public_key: vec![],
+                        name: "key".to_string(),
+                        key_reference: vec![],
+                        storage_type: "INTERNAL".to_string(),
+                        key_type: "EDDSA".to_string(),
+                        organisation: None,
+                    },
+                }]),
+                deactivated: false,
+            }))
+        });
+
+    let mut formatter = MockCredentialFormatter::default();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
+    let exchange_copy = exchange.to_owned();
+    formatter
+        .expect_get_capabilities()
+        .times(2)
+        .returning(move || FormatterCapabilities {
+            proof_exchange_protocols: vec![exchange_copy.clone()],
+            verification_key_storages: vec!["INTERNAL".to_string()],
+            ..Default::default()
+        });
+
+    let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
+    credential_formatter_provider
+        .expect_get_formatter()
+        .times(2)
+        .returning(move |_| Some(formatter.clone()));
+
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockExchangeProtocol::default();
+
+        protocol
+            .inner
+            .expect_get_capabilities()
+            .times(1)
+            .returning(|| ExchangeProtocolCapabilities {
+                supported_transports: vec!["HTTP".to_owned()],
+                operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+                issuance_did_methods: vec![],
+                verification_did_methods: vec!["KEY".to_owned()],
+            });
+
+        Some(Arc::new(protocol))
+    });
+
+    let service = setup_service(Repositories {
+        did_repository,
+        proof_schema_repository,
+        credential_formatter_provider,
+        protocol_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.create_proof(request.to_owned()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::InvalidDidMethod { .. }
+        ))
+    ));
+}
+
+#[tokio::test]
 async fn test_create_proof_without_related_key() {
     let exchange = "OPENID4VC".to_string();
     let request = CreateProofRequestDTO {
@@ -2070,6 +2193,8 @@ async fn test_create_proof_without_related_key() {
             .returning(|| ExchangeProtocolCapabilities {
                 supported_transports: vec!["HTTP".to_owned()],
                 operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+                issuance_did_methods: vec![],
+                verification_did_methods: vec!["KEY".to_owned()],
             });
 
         Some(Arc::new(protocol))
@@ -2194,6 +2319,8 @@ async fn test_create_proof_with_related_key() {
             .returning(|| ExchangeProtocolCapabilities {
                 supported_transports: vec!["HTTP".to_owned()],
                 operations: vec![Operation::ISSUANCE, Operation::VERIFICATION],
+                issuance_did_methods: vec![],
+                verification_did_methods: vec!["KEY".to_owned()],
             });
 
         Some(Arc::new(protocol))

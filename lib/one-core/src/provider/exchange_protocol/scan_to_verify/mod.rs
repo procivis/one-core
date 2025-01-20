@@ -207,6 +207,13 @@ impl ExchangeProtocolImpl for ScanToVerify {
         ExchangeProtocolCapabilities {
             supported_transports: vec!["HTTP".to_owned()],
             operations: vec![Operation::VERIFICATION],
+            issuance_did_methods: vec![],
+            verification_did_methods: vec![
+                "KEY".to_owned(),
+                "JWK".to_owned(),
+                "WEB".to_owned(),
+                "MDL".to_owned(),
+            ],
         }
     }
 }

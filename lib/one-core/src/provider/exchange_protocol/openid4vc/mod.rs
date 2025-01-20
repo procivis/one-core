@@ -579,9 +579,35 @@ impl ExchangeProtocolImpl for OpenID4VC {
         if !self.params.presentation.disabled {
             operations.push(Operation::VERIFICATION)
         }
+
+        let issuance_did_methods = vec![
+            "KEY".to_owned(),
+            "JWK".to_owned(),
+            "WEB".to_owned(),
+            "MDL".to_owned(),
+        ];
+
+        let mut verification_did_methods = vec![
+            "KEY".to_owned(),
+            "JWK".to_owned(),
+            "WEB".to_owned(),
+            "MDL".to_owned(),
+        ];
+        if self
+            .params
+            .presentation
+            .verifier
+            .supported_client_id_schemes
+            .contains(&ClientIdSchemaType::X509SanDns)
+        {
+            verification_did_methods = vec!["MDL".to_owned()];
+        }
+
         ExchangeProtocolCapabilities {
             supported_transports: vec!["HTTP".to_owned(), "BLE".to_owned(), "MQTT".to_owned()],
             operations,
+            issuance_did_methods,
+            verification_did_methods,
         }
     }
 }
