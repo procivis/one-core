@@ -540,6 +540,7 @@ impl OpenId4VcMqtt {
             proof,
             type_to_descriptor,
             format_to_type_mapper,
+            &*self.formatter_provider,
         )?;
 
         if !self

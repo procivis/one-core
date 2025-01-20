@@ -428,6 +428,15 @@ pub struct OpenID4VPPresentationDefinitionConstraint {
     pub fields: Vec<OpenID4VPPresentationDefinitionConstraintField>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub validity_credential_nbf: Option<OffsetDateTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit_disclosure: Option<OpenID4VPPresentationDefinitionLimitDisclosurePreference>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum OpenID4VPPresentationDefinitionLimitDisclosurePreference {
+    Required,
+    Preferred,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]

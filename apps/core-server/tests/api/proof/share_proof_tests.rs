@@ -243,7 +243,8 @@ async fn test_share_proof_success_mdoc() {
               ]
             }
           ],
-          "validity_credential_nbf": null
+          "validity_credential_nbf": null,
+          "limit_disclosure": "required"
         },
         "format": {
           "mso_mdoc": {

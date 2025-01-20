@@ -859,6 +859,7 @@ impl OpenID4VCHTTP {
             proof,
             type_to_descriptor.clone(),
             format_to_type_mapper.clone(),
+            &*self.formatter_provider,
         )?;
 
         let Some(base_url) = &self.base_url else {
@@ -880,6 +881,7 @@ impl OpenID4VCHTTP {
             type_to_descriptor,
             format_to_type_mapper,
             client_id_schema,
+            &*self.formatter_provider,
         )?;
 
         let interaction_content = OpenID4VPInteractionContent {

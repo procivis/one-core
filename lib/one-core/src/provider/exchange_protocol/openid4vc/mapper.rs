@@ -22,7 +22,8 @@ use super::model::{
     OpenID4VPInteractionData, OpenID4VPPresentationDefinition,
     OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
-    OpenID4VPPresentationDefinitionInputDescriptor, ProvedCredential, Timestamp,
+    OpenID4VPPresentationDefinitionInputDescriptor,
+    OpenID4VPPresentationDefinitionLimitDisclosurePreference, ProvedCredential, Timestamp,
 };
 use super::service::create_open_id_for_vp_client_metadata;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
@@ -45,6 +46,7 @@ use crate::provider::credential_formatter::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{AuthenticationFn, ExtractPresentationCtx};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::exchange_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -1027,6 +1029,7 @@ pub fn create_open_id_for_vp_presentation_definition(
     proof: &Proof,
     format_type_to_input_descriptor_format: TypeToDescriptorMapper,
     format_to_type_mapper: FormatMapper, // Credential schema format to format type mapper
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<OpenID4VPPresentationDefinition, ExchangeProtocolError> {
     let proof_schema = proof.schema.as_ref().ok_or(ExchangeProtocolError::Failed(
         "Proof schema not found".to_string(),
@@ -1074,6 +1077,7 @@ pub fn create_open_id_for_vp_presentation_definition(
                     claim_schemas.unwrap_or_default(),
                     &format_type,
                     format_type_to_input_descriptor_format.clone(),
+                    formatter_provider,
                 )
             })
             .collect::<Result<Vec<_>, _>>()?,
@@ -1086,6 +1090,7 @@ pub fn create_open_id_for_vp_presentation_definition_input_descriptor(
     claim_schemas: Vec<ProofInputClaimSchema>,
     presentation_format_type: &str,
     format_to_type_mapper: TypeToDescriptorMapper,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, ExchangeProtocolError> {
     let schema_id_field = OpenID4VPPresentationDefinitionConstraintField {
         id: None,
@@ -1103,6 +1108,21 @@ pub fn create_open_id_for_vp_presentation_definition_input_descriptor(
     let intent_to_retain = match presentation_format_type {
         "MDOC" => Some(true),
         _ => None,
+    };
+
+    let selectively_disclosable = !formatter_provider
+        .get_formatter(&credential_schema.format)
+        .ok_or(ExchangeProtocolError::Failed(
+            "missing provider".to_string(),
+        ))?
+        .get_capabilities()
+        .selective_disclosure
+        .is_empty();
+
+    let limit_disclosure = if selectively_disclosable {
+        Some(OpenID4VPPresentationDefinitionLimitDisclosurePreference::Required)
+    } else {
+        None
     };
 
     let constraint_fields = claim_schemas
@@ -1131,6 +1151,7 @@ pub fn create_open_id_for_vp_presentation_definition_input_descriptor(
         constraints: OpenID4VPPresentationDefinitionConstraint {
             fields,
             validity_credential_nbf: None,
+            limit_disclosure,
         },
     })
 }
@@ -1191,6 +1212,7 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     type_to_descriptor: TypeToDescriptorMapper,
     format_to_type_mapper: FormatMapper,
     client_id_schema: ClientIdSchemaType,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<String, ExchangeProtocolError> {
     let params = match client_id_schema {
         ClientIdSchemaType::RedirectUri => {
@@ -1209,6 +1231,7 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
                     vp_formats,
                     type_to_descriptor,
                     format_to_type_mapper,
+                    formatter_provider,
                 )?
             }
         }
@@ -1295,6 +1318,7 @@ fn get_params_for_redirect_uri(
     vp_formats: HashMap<String, OpenID4VPFormat>,
     type_to_descriptor: TypeToDescriptorMapper,
     format_to_type_mapper: FormatMapper,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<OpenID4VPAuthorizationRequestQueryParams, ExchangeProtocolError> {
     let mut presentation_definition = None;
     let mut presentation_definition_uri = None;
@@ -1304,6 +1328,7 @@ fn get_params_for_redirect_uri(
             proof,
             type_to_descriptor,
             format_to_type_mapper,
+            formatter_provider,
         )?)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
