@@ -133,7 +133,6 @@ async fn test_create_trust_entity_success() {
             terms_url: None,
             privacy_url: None,
             role: TrustEntityRole::Issuer,
-            state: TrustEntityState::Active,
             trust_anchor_id,
             did_id,
         })
@@ -196,7 +195,6 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_create_for_one_d
             terms_url: None,
             privacy_url: None,
             role: TrustEntityRole::Issuer,
-            state: TrustEntityState::Active,
             trust_anchor_id,
             did_id,
         })
@@ -212,7 +210,6 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_create_for_one_d
                 terms_url: None,
                 privacy_url: None,
                 role: TrustEntityRole::Issuer,
-                state: TrustEntityState::Active,
                 trust_anchor_id,
                 did_id,
             })

@@ -1,5 +1,4 @@
 use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
-use one_core::model::trust_entity::TrustEntityState;
 use one_core::service::trust_entity::dto::{CreateTrustEntityRequestDTO, TrustEntityFilterValue};
 
 use super::dto::{CreateTrustEntityRequestRestDTO, TrustEntityFilterQueryParamsRestDto};
@@ -53,7 +52,6 @@ impl From<CreateTrustEntityRequestRestDTO> for CreateTrustEntityRequestDTO {
             terms_url: value.terms_url,
             privacy_url: value.privacy_url,
             role: value.role.into(),
-            state: TrustEntityState::Active,
             trust_anchor_id: value.trust_anchor_id,
             did_id: value.did_id,
         }

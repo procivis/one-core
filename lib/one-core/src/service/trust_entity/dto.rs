@@ -17,7 +17,6 @@ pub struct CreateTrustEntityRequestDTO {
     pub terms_url: Option<String>,
     pub privacy_url: Option<String>,
     pub role: TrustEntityRole,
-    pub state: TrustEntityState,
     pub trust_anchor_id: TrustAnchorId,
     pub did_id: DidId,
 }

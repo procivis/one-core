@@ -1306,8 +1306,6 @@ pub struct CreateTrustEntityRequestBindingDTO {
     pub privacy_url: Option<String>,
     #[try_into(infallible)]
     pub role: TrustEntityRoleBindingEnum,
-    #[try_into(infallible)]
-    pub state: TrustEntityStateBindingEnum,
     #[try_into(with_fn_ref = into_id)]
     pub trust_anchor_id: String,
     #[try_into(with_fn_ref = into_id)]
