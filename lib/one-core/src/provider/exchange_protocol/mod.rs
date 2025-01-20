@@ -109,6 +109,25 @@ pub(crate) fn exchange_protocol_providers_from_config(
                     }
                 })?;
 
+                // x_509_san_dns client_id scheme requires a X.509 CA certificate to be configured
+                if params
+                    .presentation
+                    .holder
+                    .supported_client_id_schemes
+                    .contains(&ClientIdSchemaType::X509SanDns)
+                    || params
+                        .presentation
+                        .verifier
+                        .supported_client_id_schemes
+                        .contains(&ClientIdSchemaType::X509SanDns)
+                {
+                    params
+                        .presentation
+                        .x509_ca_certificate
+                        .as_ref()
+                        .ok_or(ConfigValidationError::MissingX509CaCertificate)?;
+                };
+
                 // URL schemes are used to select provider, hence must not be duplicated
                 if !params.issuance.disabled {
                     validate_url_scheme_unique(

@@ -1029,7 +1029,8 @@ impl ErrorCodeMixin for ConfigValidationError {
             | Self::FieldsDeserialization { .. }
             | Self::InvalidType(_, _)
             | Self::DatatypeValidation(_)
-            | Self::DuplicateUrlScheme { .. } => ErrorCode::BR_0051,
+            | Self::DuplicateUrlScheme { .. }
+            | Self::MissingX509CaCertificate => ErrorCode::BR_0051,
         }
     }
 }

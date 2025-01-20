@@ -118,6 +118,7 @@ fn generic_presentation_params(url_scheme: Option<&str>) -> OpenID4VCPresentatio
     OpenID4VCPresentationParams {
         disabled: false,
         url_scheme: url_scheme.unwrap_or("openid4vp").to_string(),
+        x509_ca_certificate: None,
         holder: OpenID4VCPresentationHolderParams {
             supported_client_id_schemes: vec![
                 ClientIdSchemaType::RedirectUri,

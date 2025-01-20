@@ -372,4 +372,5 @@ pub enum ClientIdSchemaTypeRestDTO {
     RedirectUri,
     VerifierAttestation,
     Did,
+    X509SanDns,
 }

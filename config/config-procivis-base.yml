@@ -87,12 +87,12 @@ exchange:
           disabled: true
         presentation:
           urlScheme: mdoc-openid4vp
-          # TODO: switch to x509_san_dns
+          x509CaCertificate: todo_certificate_value
           verifier:
-            supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
-            defaultClientIdSchema: verifier_attestation
+            supportedClientIdSchemes: [ x509_san_dns ]
+            defaultClientIdSchema: x509_san_dns
           holder:
-            supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
+            supportedClientIdSchemes: [ x509_san_dns ]
 transport:
   HTTP:
     type: "HTTP"

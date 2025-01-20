@@ -1220,6 +1220,9 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
                 "client_id_scheme type 'did' not supported in this context".to_string(),
             ))
         }
+        ClientIdSchemaType::X509SanDns => {
+            todo!("ONE-4268")
+        }
     };
 
     let encoded_params = serde_urlencoded::to_string(params)

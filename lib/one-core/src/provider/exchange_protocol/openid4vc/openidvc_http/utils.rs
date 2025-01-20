@@ -165,6 +165,9 @@ pub async fn interaction_data_from_query(
                     "did client_id_scheme not supported".to_string(),
                 ));
             }
+            ClientIdSchemaType::X509SanDns => {
+                todo!("ONE-4268")
+            }
         }?;
 
         // client_id from the query params must match client_id inisde the token

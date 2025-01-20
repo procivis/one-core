@@ -42,4 +42,6 @@ pub enum ConfigValidationError {
     DatatypeValidation(#[from] DatatypeValidationError),
     #[error("configuration entry `{key}` specifies URL scheme `{scheme}` that is already in use")]
     DuplicateUrlScheme { key: String, scheme: String },
+    #[error("Missing CA certificate for the client id scheme x509_san_dns")]
+    MissingX509CaCertificate,
 }

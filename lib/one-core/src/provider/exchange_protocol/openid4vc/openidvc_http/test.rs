@@ -94,6 +94,7 @@ fn generic_presentation_params() -> OpenID4VCPresentationParams {
     OpenID4VCPresentationParams {
         disabled: false,
         url_scheme: "openid4vp".to_string(),
+        x509_ca_certificate: None,
         holder: OpenID4VCPresentationHolderParams {
             supported_client_id_schemes: vec![
                 ClientIdSchemaType::RedirectUri,
@@ -2048,6 +2049,7 @@ fn test_params(issuance_url_scheme: &str, presentation_url_scheme: &str) -> Open
         presentation: OpenID4VCPresentationParams {
             disabled: false,
             url_scheme: presentation_url_scheme.to_string(),
+            x509_ca_certificate: None,
             holder: OpenID4VCPresentationHolderParams {
                 supported_client_id_schemes: vec![
                     ClientIdSchemaType::RedirectUri,
