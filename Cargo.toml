@@ -64,4 +64,4 @@ dbg_macro       = "warn"
 redundant_clone = "warn"
 
 [patch.crates-io]
-json-ld = { git = "https://github.com/strozynskiw/json-ld-rustls", rev = "cfab4c341b4c2514aa3c5799a0494c5b399692a6" }
+json-ld = { git = "https://github.com/procivis/json-ld", rev = "cfab4c341b4c2514aa3c5799a0494c5b399692a6" }

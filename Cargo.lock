@@ -665,7 +665,7 @@ dependencies = [
 [[package]]
 name = "blstrs"
 version = "0.6.1"
-source = "git+https://github.com/mattrglobal/blstrs?rev=a0cb960#a0cb960198e4d6c1a86e6c0eddf8bdb576858cb2"
+source = "git+https://github.com/procivis/blstrs.git?rev=a0cb960#a0cb960198e4d6c1a86e6c0eddf8bdb576858cb2"
 dependencies = [
  "blst",
  "byte-slice-cast",
@@ -2720,7 +2720,7 @@ dependencies = [
 [[package]]
 name = "json-ld"
 version = "0.15.1"
-source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
+source = "git+https://github.com/procivis/json-ld?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "contextual",
  "futures",
@@ -2759,7 +2759,7 @@ dependencies = [
 [[package]]
 name = "json-ld-compaction"
 version = "0.15.1"
-source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
+source = "git+https://github.com/procivis/json-ld?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "contextual",
  "derivative",
@@ -2802,7 +2802,7 @@ dependencies = [
 [[package]]
 name = "json-ld-context-processing"
 version = "0.15.1"
-source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
+source = "git+https://github.com/procivis/json-ld?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "contextual",
  "futures",
@@ -2835,7 +2835,7 @@ dependencies = [
 [[package]]
 name = "json-ld-core"
 version = "0.15.1"
-source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
+source = "git+https://github.com/procivis/json-ld?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "bytes",
  "contextual",
@@ -2893,7 +2893,7 @@ dependencies = [
 [[package]]
 name = "json-ld-expansion"
 version = "0.15.1"
-source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
+source = "git+https://github.com/procivis/json-ld?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "contextual",
  "derivative",
@@ -2950,7 +2950,7 @@ dependencies = [
 [[package]]
 name = "json-ld-syntax"
 version = "0.15.1"
-source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
+source = "git+https://github.com/procivis/json-ld?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "contextual",
  "decoded-char",
@@ -3993,7 +3993,7 @@ dependencies = [
 [[package]]
 name = "pairing_crypto"
 version = "0.4.2"
-source = "git+https://github.com/mattrglobal/pairing_crypto?rev=58519e5#58519e556ad2a2f48ac02936c742d475a7d3b87d"
+source = "git+https://github.com/procivis/pairing_crypto?rev=7b977af#7b977af155de259bc396cfa74f62a3d0300a7e8e"
 dependencies = [
  "blstrs 0.6.1",
  "digest 0.9.0",
@@ -4237,7 +4237,7 @@ dependencies = [
 [[package]]
 name = "pqc_dilithium"
 version = "0.2.0"
-source = "git+https://github.com/Iskander508/dilithium?rev=7fdfe6b#7fdfe6b21cba02b2b218b85454d0582dd8d5e233"
+source = "git+https://github.com/procivis/dilithium?rev=7fdfe6b#7fdfe6b21cba02b2b218b85454d0582dd8d5e233"
 dependencies = [
  "rand",
  "rand_core",
