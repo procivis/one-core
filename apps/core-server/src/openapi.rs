@@ -79,7 +79,8 @@ pub fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             .build(),
     );
     if let Some(l) = &mut docs.info.license {
-        l.url = Some("https://github.com/procivis/one-core/blob/main/LICENSE".into())
+        l.url = Some("https://github.com/procivis/one-core/blob/main/LICENSE".into());
+        l.identifier = None;
     };
 
     docs
