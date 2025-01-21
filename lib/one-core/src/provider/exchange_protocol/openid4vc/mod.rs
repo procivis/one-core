@@ -402,7 +402,11 @@ impl ExchangeProtocolImpl for OpenID4VC {
                     context: serde_json::to_value(CreateProofInteractionData {
                         transport: transport.iter().map(ToString::to_string).collect(),
                     })
-                    .unwrap(),
+                    .map_err(|e| {
+                        ExchangeProtocolError::Failed(format!(
+                            "Failed to serialize create proof interaction data: {e}"
+                        ))
+                    })?,
                 })
             }
             other => Err(ExchangeProtocolError::Failed(format!(

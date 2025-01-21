@@ -349,12 +349,16 @@ fn get_or_insert<'a>(
             match parent_arrays.entry(tail.to_string()) {
                 Entry::Occupied(occupied_entry) => {
                     let array_items = occupied_entry.into_mut();
-                    array_items.first_mut().unwrap()
+                    array_items.first_mut().ok_or(OpenID4VCIError::RuntimeError(
+                        "object array is empty".to_string(),
+                    ))
                 }
                 Entry::Vacant(vacant_entry) => {
                     let array_items =
                         vacant_entry.insert(vec![OpenID4VCICredentialSubjectItem::default()]);
-                    array_items.first_mut().unwrap()
+                    array_items.first_mut().ok_or(OpenID4VCIError::RuntimeError(
+                        "object array is empty".to_string(),
+                    ))
                 }
             }
         }
@@ -363,9 +367,9 @@ fn get_or_insert<'a>(
         (true, false) => {
             let parent_claims = parent_claim.claims.get_or_insert(IndexMap::new());
             match parent_claims.entry(tail.to_string()) {
-                Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
+                Entry::Occupied(occupied_entry) => Ok(occupied_entry.into_mut()),
                 Entry::Vacant(vacant_entry) => {
-                    vacant_entry.insert(OpenID4VCICredentialSubjectItem::default())
+                    Ok(vacant_entry.insert(OpenID4VCICredentialSubjectItem::default()))
                 }
             }
         }
@@ -374,22 +378,22 @@ fn get_or_insert<'a>(
         (false, is_object) => {
             let parent_claims = parent_claim.claims.get_or_insert(IndexMap::new());
             match parent_claims.entry(tail.to_string()) {
-                Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
+                Entry::Occupied(occupied_entry) => Ok(occupied_entry.into_mut()),
                 Entry::Vacant(vacant_entry) => {
                     if is_object {
-                        vacant_entry.insert(OpenID4VCICredentialSubjectItem::default())
+                        Ok(vacant_entry.insert(OpenID4VCICredentialSubjectItem::default()))
                     } else {
-                        vacant_entry.insert(OpenID4VCICredentialSubjectItem {
+                        Ok(vacant_entry.insert(OpenID4VCICredentialSubjectItem {
                             value_type: Some(item_schema.schema.data_type.to_lowercase()),
                             mandatory: Some(item_schema.required),
                             order: None,
                             ..Default::default()
-                        })
+                        }))
                     }
                 }
             }
         }
-    };
+    }?;
 
     Ok(result)
 }

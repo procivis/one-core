@@ -33,6 +33,7 @@ use service::task::TaskService;
 use service::trust_anchor::TrustAnchorService;
 use service::trust_entity::TrustEntityService;
 use service::vc_api::VCAPIService;
+use thiserror::Error;
 use util::ble_resource::BleWaiter;
 
 use crate::config::core_config::{DidConfig, RevocationConfig};
@@ -150,6 +151,18 @@ pub struct OneCoreBuilder {
     client: Option<Arc<dyn HttpClient>>,
 }
 
+#[derive(Debug, Error)]
+pub enum OneCoreBuildError {
+    #[error("Missing required field: `{0}`")]
+    MissingRequiredField(&'static str),
+
+    #[error("Config error: `{0}`")]
+    Config(ConfigError),
+
+    #[error("Reqwest error: `{0}`")]
+    Reqwest(reqwest::Error),
+}
+
 impl OneCoreBuilder {
     pub fn new(core_config: CoreConfig) -> Self {
         OneCoreBuilder {
@@ -262,10 +275,12 @@ impl OneCoreBuilder {
         self
     }
 
-    pub fn build(self) -> Result<OneCore, ConfigError> {
+    pub fn build(self) -> Result<OneCore, OneCoreBuildError> {
         OneCore::new(
             self.data_provider_creator
-                .expect("Data provider is required"),
+                .ok_or(OneCoreBuildError::MissingRequiredField(
+                    "Data provider is required",
+                ))?,
             self.core_config,
             self.ble_peripheral,
             self.ble_central,
@@ -274,10 +289,17 @@ impl OneCoreBuilder {
             self.jsonld_caching_loader,
             self.client.unwrap_or(Arc::new(ReqwestClient::default())),
             self.vct_type_metadata_cache
-                .expect("VCT type metadata cache is required"),
+                .ok_or(OneCoreBuildError::MissingRequiredField(
+                    "VCT type metadata cache is required",
+                ))?,
             self.json_schema_cache
-                .expect("JSON schema cache is required"),
-            self.trust_list_cache.expect("Trust list cache is required"),
+                .ok_or(OneCoreBuildError::MissingRequiredField(
+                    "JSON schema cache is required",
+                ))?,
+            self.trust_list_cache
+                .ok_or(OneCoreBuildError::MissingRequiredField(
+                    "Trust list cache is required",
+                ))?,
         )
     }
 }
@@ -296,7 +318,7 @@ impl OneCore {
         vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
         json_schema_cache: Arc<JsonSchemaCache>,
         trust_list_cache: Arc<TrustListCache>,
-    ) -> Result<OneCore, ConfigError> {
+    ) -> Result<OneCore, OneCoreBuildError> {
         // For now we will just put them here.
         // We will introduce a builder later.
 
@@ -312,35 +334,47 @@ impl OneCore {
         let did_method_provider = providers
             .did_method_provider
             .as_ref()
-            .expect("Did method provider is required")
+            .ok_or(OneCoreBuildError::MissingRequiredField(
+                "Did method provider is required",
+            ))?
             .clone();
 
         let key_algorithm_provider = providers
             .key_algorithm_provider
             .as_ref()
-            .expect("Key algorithm provider is required")
+            .ok_or(OneCoreBuildError::MissingRequiredField(
+                "Key algorithm provider is required",
+            ))?
             .clone();
 
         let key_provider = providers
             .key_storage_provider
             .as_ref()
-            .expect("Key provider is required")
+            .ok_or(OneCoreBuildError::MissingRequiredField(
+                "Key provider is required",
+            ))?
             .clone();
 
         let revocation_method_provider = providers
             .revocation_method_provider
             .as_ref()
-            .expect("Revocation method provider is required")
+            .ok_or(OneCoreBuildError::MissingRequiredField(
+                "Revocation method provider is required",
+            ))?
             .clone();
 
-        let jsonld_caching_loader = jsonld_caching_loader.expect("Caching loader is required");
+        let jsonld_caching_loader = jsonld_caching_loader.ok_or(
+            OneCoreBuildError::MissingRequiredField("Caching loader is required"),
+        )?;
 
         let data_provider = data_provider_creator();
 
         let formatter_provider = providers
             .formatter_provider
             .as_ref()
-            .expect("Formatter provider is required")
+            .ok_or(OneCoreBuildError::MissingRequiredField(
+                "Formatter provider is required",
+            ))?
             .clone();
 
         let task_providers = tasks_from_config(
@@ -356,14 +390,16 @@ impl OneCore {
             key_algorithm_provider.to_owned(),
             data_provider.get_proof_repository(),
             providers.core_base_url.clone(),
-        )?;
+        )
+        .map_err(OneCoreBuildError::Config)?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
 
         let trust_managers = crate::provider::trust_management::provider::from_config(
             client.clone(),
             &mut core_config.trust_management,
             trust_list_cache,
-        )?;
+        )
+        .map_err(OneCoreBuildError::Config)?;
         let trust_management_provider = Arc::new(TrustManagementProviderImpl::new(trust_managers));
 
         let exchange_protocols = exchange_protocol_providers_from_config(
@@ -379,7 +415,8 @@ impl OneCore {
             ble_waiter.clone(),
             client.clone(),
             mqtt_client,
-        )?;
+        )
+        .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
 
         let config = Arc::new(core_config);
         let protocol_provider = Arc::new(ExchangeProtocolProviderCoreImpl::new(

@@ -70,7 +70,7 @@ impl JsonSchemaCache {
                 last_modified: OffsetDateTime::now_utc(),
                 entity_type: self.inner.remote_entity_type,
                 key: schema.key.clone(),
-                value: serde_json::to_vec(&schema).unwrap(),
+                value: serde_json::to_vec(&schema).context("Failed to serialize schema")?,
                 hit_counter: 0,
                 media_type: None,
                 persistent: true,

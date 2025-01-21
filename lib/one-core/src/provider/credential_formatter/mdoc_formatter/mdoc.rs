@@ -230,7 +230,7 @@ impl Serialize for DateTime {
         self.0
             .replace_microsecond(0)
             // SAFETY: 0 is a valid microsecond
-            .unwrap()
+            .map_err(ser::Error::custom)?
             .format(&Rfc3339)
             .map(ciborium::tag::Required::<String, DATE_TIME_CBOR_TAG>)
             .map_err(ser::Error::custom)?

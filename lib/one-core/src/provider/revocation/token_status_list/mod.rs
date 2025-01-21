@@ -344,7 +344,15 @@ pub fn create_credential_status(
 ) -> Result<CredentialStatus, RevocationError> {
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
     Ok(CredentialStatus {
-        id: Some(uuid::Uuid::new_v4().urn().to_string().parse().unwrap()),
+        id: Some(
+            uuid::Uuid::new_v4()
+                .urn()
+                .to_string()
+                .parse()
+                .map_err(|e| {
+                    RevocationError::ValidationError(format!("Failed to parse URL: `{e}`"))
+                })?,
+        ),
         r#type: CREDENTIAL_STATUS_TYPE.to_string(),
         status_purpose: Some(purpose.to_string()),
         additional_fields: HashMap::from([

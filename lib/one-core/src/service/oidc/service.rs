@@ -321,13 +321,13 @@ impl OIDCService {
         let wallet_storage_type = credential
             .schema
             .as_ref()
-            .unwrap()
+            .ok_or(ServiceError::MappingError("schema missing".to_string()))?
             .wallet_storage_type
             .clone();
 
         let claims = credential
             .claims
-            .unwrap()
+            .ok_or(ServiceError::MappingError("claims missing".to_string()))?
             .iter()
             .map(|claim| claim.to_owned())
             .collect::<Vec<_>>();

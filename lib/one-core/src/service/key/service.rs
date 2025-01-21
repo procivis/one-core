@@ -183,7 +183,8 @@ impl KeyService {
             tokio::runtime::Handle::current(),
         )
         .map_err(|err| ServiceError::Other(format!("Failed creating remote key {err}")))?;
-        let key_pair = KeyPair::from_remote(remote_key).unwrap();
+        let key_pair = KeyPair::from_remote(remote_key)
+            .map_err(|err| ServiceError::Other(format!("Failed creating remote key {err}")))?;
 
         let content = request_to_certificate_params(request)
             .serialize_request(&key_pair)

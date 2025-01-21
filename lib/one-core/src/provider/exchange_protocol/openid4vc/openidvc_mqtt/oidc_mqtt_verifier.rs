@@ -120,12 +120,13 @@ pub(super) async fn mqtt_verifier_flow(
                     continue;
                 };
 
-                let timestamp_date = OffsetDateTime::from_unix_timestamp(timestamp).unwrap();
-                let now = OffsetDateTime::now_utc();
+                if let Ok(timestamp_date) = OffsetDateTime::from_unix_timestamp(timestamp) {
+                    let now = OffsetDateTime::now_utc();
 
-                let diff = now - timestamp_date;
-                if diff < Duration::minutes(5) {
-                    break;
+                    let diff = now - timestamp_date;
+                    if diff < Duration::minutes(5) {
+                        break;
+                    }
                 }
             }
         };

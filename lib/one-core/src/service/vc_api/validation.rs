@@ -38,6 +38,9 @@ pub enum VcValidationError {
 
     #[error(transparent)]
     JsonLd(#[from] JsonLdError),
+
+    #[error("Failed (de)serialization: `{0}`")]
+    Serde(serde_json::Error),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -64,6 +67,9 @@ pub enum VpValidationError {
 
     #[error(transparent)]
     JsonLd(#[from] JsonLdError),
+
+    #[error("Failed (de)serialization: `{0}`")]
+    Serde(serde_json::Error),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -74,7 +80,11 @@ pub(super) async fn validate_verifiable_credential(
     credential: &LdCredential,
     document_loader: &impl json_ld_0_21::Loader,
 ) -> Result<(), VcValidationError> {
-    validate_json_ld(&serde_json::to_string(credential).unwrap(), document_loader).await?;
+    validate_json_ld(
+        &serde_json::to_string(credential).map_err(VcValidationError::Serde)?,
+        document_loader,
+    )
+    .await?;
 
     match credential
         .context
@@ -143,7 +153,7 @@ pub(super) async fn validate_verifiable_presentation(
     document_loader: &impl json_ld_0_21::Loader,
 ) -> Result<(), VpValidationError> {
     validate_json_ld(
-        &serde_json::to_string(presentation).unwrap(),
+        &serde_json::to_string(presentation).map_err(VpValidationError::Serde)?,
         document_loader,
     )
     .await?;

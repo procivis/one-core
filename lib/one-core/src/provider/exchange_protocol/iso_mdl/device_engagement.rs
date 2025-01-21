@@ -268,7 +268,7 @@ impl Serialize for BleOptions {
             let address: Vec<u8> =
                 serialize_mac_address::<S>(peripheral_server_mac_address)?.into();
             data.as_map_mut()
-                .unwrap()
+                .ok_or(ser::Error::custom("data map is not a map"))?
                 .push((20.into(), ciborium::Value::Bytes(address)));
         }
 

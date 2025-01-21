@@ -307,7 +307,11 @@ impl RevocationMethod for LvvcProvider {
                     id: Some(
                         format!("{base_url}/ssi/revocation/v1/lvvc/{}", credential.id)
                             .parse()
-                            .unwrap(),
+                            .map_err(|e| {
+                                RevocationError::ValidationError(format!(
+                                    "Failed to parse URL: `{e}`"
+                                ))
+                            })?,
                     ),
                     r#type: self.get_status_type(),
                     status_purpose: None,

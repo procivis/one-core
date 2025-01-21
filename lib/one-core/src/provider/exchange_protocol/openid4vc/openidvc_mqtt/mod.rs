@@ -523,7 +523,9 @@ impl OpenId4VcMqtt {
         let url = {
             let mut url: Url = format!("{}://connect", self.openid_params.presentation.url_scheme)
                 .parse()
-                .unwrap();
+                .map_err(|e| {
+                    ExchangeProtocolError::Failed(format!("Failed to parse url: `{e}`"))
+                })?;
             url.query_pairs_mut()
                 .append_pair("key", &hex::encode(key_agreement.public_key_bytes()))
                 .append_pair(

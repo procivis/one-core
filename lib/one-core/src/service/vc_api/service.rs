@@ -27,7 +27,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::bitstring_status_list;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
-use crate::service::error::ServiceError;
+use crate::service::error::{MissingProviderError, ServiceError};
 use crate::util::key_verification::KeyVerification;
 use crate::util::revocation_update::get_or_create_revocation_list_id;
 
@@ -120,14 +120,14 @@ impl VCAPIService {
             .flat_map(|claim| value_to_published_claim(claim, "", false))
             .collect();
 
+        let credential_format = credential_format.as_deref().unwrap_or("JSON_LD_CLASSIC");
+
         let formatter = self
             .credential_formatter
-            .get_formatter(
-                credential_format
-                    .as_ref()
-                    .unwrap_or(&"JSON_LD_CLASSIC".to_string()),
-            )
-            .unwrap();
+            .get_formatter(credential_format)
+            .ok_or(ServiceError::MissingProvider(
+                MissingProviderError::Formatter(credential_format.to_string()),
+            ))?;
 
         let mut credential_status = create_request.credential.credential_status;
 
@@ -164,16 +164,14 @@ impl VCAPIService {
                 &StatusListType::BitstringStatusList,
                 &crate::model::revocation_list::StatusListCredentialFormat::JsonLdClassic,
             )
-            .await
-            .unwrap();
+            .await?;
 
             let status = bitstring_status_list::create_credential_status(
                 &self.base_url,
                 &revocation_list_id,
                 0,
                 "revocation",
-            )
-            .unwrap();
+            )?;
 
             credential_status.push(status);
         }
@@ -293,10 +291,14 @@ impl VCAPIService {
         )
         .await?;
 
+        const CREDENTIAL_FORMAT: &str = "JSON_LD_CLASSIC";
+
         let formatter = self
             .credential_formatter
-            .get_formatter("JSON_LD_CLASSIC")
-            .unwrap();
+            .get_formatter(CREDENTIAL_FORMAT)
+            .ok_or(ServiceError::MissingProvider(
+                MissingProviderError::Formatter(CREDENTIAL_FORMAT.to_string()),
+            ))?;
 
         let string_token =
             serde_json::to_string(&verify_request.verifiable_presentation).map_err(|e| {
