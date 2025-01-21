@@ -24,6 +24,88 @@ use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
+async fn test_revoke_check_failed_if_not_holder_role() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("JWT".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let issuer_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Issuer),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let verifier_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Verifier),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let issuer_revocation_check_response = context
+        .api
+        .credentials
+        .revocation_check(issuer_credential.id, vec![])
+        .await;
+
+    let verifier_revocation_check_response = context
+        .api
+        .credentials
+        .revocation_check(verifier_credential.id, vec![])
+        .await;
+
+    assert_eq!(issuer_revocation_check_response.status(), 400);
+    assert_eq!(verifier_revocation_check_response.status(), 400);
+}
+
+#[tokio::test]
 async fn test_revoke_check_success_statuslist2021() {
     // GIVEN
     // contains statusListCredential=http://0.0.0.0:3000/ssi/revocation/v1/list/8bf6dc8f-228f-415c-83f2-95d851c1927b
@@ -67,6 +149,7 @@ async fn test_revoke_check_success_statuslist2021() {
             "OPENID4VC",
             TestingCredentialParams {
                 credential: Some(credential_jwt),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )
@@ -329,6 +412,7 @@ async fn setup_bitstring_status_list_success(
             "OPENID4VC",
             TestingCredentialParams {
                 credential: Some(&credential_jwt),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )
@@ -596,6 +680,7 @@ async fn test_revoke_check_mdoc_update() {
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_did: Some(issuer_did.clone()),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )
@@ -728,6 +813,7 @@ async fn test_revoke_check_token_update() {
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_did: Some(issuer_did.clone()),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )
@@ -852,6 +938,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_did: Some(issuer_did.clone()),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )
@@ -973,6 +1060,7 @@ async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_did: Some(issuer_did.clone()),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )
@@ -1097,6 +1185,7 @@ async fn test_suspended_to_valid() {
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_did: Some(issuer_did.clone()),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )
@@ -1236,6 +1325,7 @@ async fn test_suspended_to_suspended_update_failed() {
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_did: Some(issuer_did.clone()),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )

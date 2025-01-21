@@ -714,6 +714,14 @@ impl CredentialService {
             return Err(EntityNotFoundError::Credential(credential_id).into());
         }
 
+        if credential.role != CredentialRole::Holder {
+            return Err(BusinessLogicError::RevocationCheckNotAllowedForRole {
+                role: credential.role,
+                credential_id,
+            }
+            .into());
+        }
+
         let credential_schema = credential
             .schema
             .as_ref()

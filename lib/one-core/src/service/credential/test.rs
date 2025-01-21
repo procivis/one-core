@@ -130,7 +130,7 @@ fn generic_credential() -> Credential {
         credential: vec![],
         exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
-        role: CredentialRole::Issuer,
+        role: CredentialRole::Holder,
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(vec![Claim {
@@ -1228,6 +1228,59 @@ async fn test_create_credential_schema_deleted() {
             BusinessLogicError::MissingCredentialSchema
         )) = result
     );
+}
+
+#[tokio::test]
+async fn test_check_revocation_invalid_role() {
+    let credential_issuer_role = Credential {
+        role: CredentialRole::Issuer,
+        ..generic_credential()
+    };
+
+    let credential_verifier_role = Credential {
+        role: CredentialRole::Verifier,
+        ..generic_credential()
+    };
+
+    let issuer_credential_id = credential_issuer_role.id;
+    let verifier_credential_id = credential_verifier_role.id;
+
+    let mut credential_repository = MockCredentialRepository::default();
+
+    credential_repository
+        .expect_get_credential()
+        .with(eq(credential_issuer_role.id), always())
+        .returning(move |_, _| Ok(Some(credential_issuer_role.clone())));
+
+    credential_repository
+        .expect_get_credential()
+        .with(eq(credential_verifier_role.id), always())
+        .returning(move |_, _| Ok(Some(credential_verifier_role.clone())));
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        ..Default::default()
+    });
+
+    let issuer_revocation_check_resp = service
+        .check_revocation(vec![issuer_credential_id], None)
+        .await;
+
+    let verifier_revocation_check_resp = service
+        .check_revocation(vec![verifier_credential_id], None)
+        .await;
+
+    assert!(issuer_revocation_check_resp.is_err());
+    assert!(matches!(
+        issuer_revocation_check_resp.unwrap_err(),
+        ServiceError::BusinessLogic(BusinessLogicError::RevocationCheckNotAllowedForRole { .. })
+    ));
+
+    assert!(verifier_revocation_check_resp.is_err());
+    assert!(matches!(
+        verifier_revocation_check_resp.unwrap_err(),
+        ServiceError::BusinessLogic(BusinessLogicError::RevocationCheckNotAllowedForRole { .. })
+    ));
 }
 
 #[tokio::test]

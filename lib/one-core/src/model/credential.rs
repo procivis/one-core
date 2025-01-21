@@ -87,7 +87,7 @@ pub struct UpdateCredentialRequest {
     pub claims: Option<Vec<Claim>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Display)]
 pub enum CredentialRole {
     Holder,
     Issuer,

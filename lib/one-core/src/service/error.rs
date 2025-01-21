@@ -10,7 +10,7 @@ use uuid::Uuid;
 use super::did::DidDeactivationError;
 use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
-use crate::model::credential::CredentialStateEnum;
+use crate::model::credential::{CredentialRole, CredentialStateEnum};
 use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofStateEnum;
 use crate::model::revocation_list::RevocationListId;
@@ -252,6 +252,12 @@ pub enum BusinessLogicError {
 
     #[error("Revocation method does not support state ({operation})")]
     OperationNotSupportedByRevocationMethod { operation: String },
+
+    #[error("Credential role must be Holder, received {role}, credential id: {credential_id}")]
+    RevocationCheckNotAllowedForRole {
+        role: CredentialRole,
+        credential_id: CredentialId,
+    },
 
     #[error("Wallet storage type requirement cannot be fulfilled")]
     UnfulfilledWalletStorageType,
@@ -968,6 +974,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Exchange protocol operation disabled")]
     BR_0196,
+
+    #[strum(to_string = "Credential role must be Holder for revocation check")]
+    BR_0197,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1115,6 +1124,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::TrustAnchorIsDisabled => ErrorCode::BR_0187,
             Self::MissingTrustEntity(_) => ErrorCode::BR_0186,
             Self::SuspensionNotEnabledForSuspendOnlyRevocationMethod => ErrorCode::BR_0191,
+            Self::RevocationCheckNotAllowedForRole { .. } => ErrorCode::BR_0197,
         }
     }
 }
