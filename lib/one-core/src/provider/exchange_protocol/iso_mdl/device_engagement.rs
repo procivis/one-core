@@ -396,9 +396,11 @@ mod test {
     #[test]
     fn test_device_engagement_deserialize_iso_example() {
         // ISO 18013-5, D.3.1
-        let data =
-            hex!(
-            "a30063312e30018201d818584ba4010220012158205a88d182bce5f42efa59943f33359d2e8a968ff289d93e5fa444b624343167fe225820b16e8cf858ddc7690407ba61d4c338237a8cfcf3de6aa672fc60a557aa32fc670281830201a300f401f50b5045efef742b2c4837a9a3b0e1d05a6917").to_vec();
+        let data = hex!(
+            "a30063312e30018201d818584ba4010220012158205a88d182bce5f42efa59943f33359d2e8a968ff289d9\
+             3e5fa444b624343167fe225820b16e8cf858ddc7690407ba61d4c338237a8cfcf3de6aa672fc60a557aa32\
+             fc670281830201a300f401f50b5045efef742b2c4837a9a3b0e1d05a6917")
+        .to_vec();
 
         // failing due to unsupported key type
         let failure = ciborium::from_reader::<DeviceEngagement, _>(&data[..]).unwrap_err();
