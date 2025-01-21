@@ -143,7 +143,7 @@ async fn test_share_proof_success_mdoc() {
             "NONE",
             &claim_schemas,
             "MDOC",
-            "test",
+            "org.iso.18013.5.1.mDL",
         )
         .await;
 
@@ -187,7 +187,7 @@ async fn test_share_proof_success_mdoc() {
           "fields": [
             {
               "filter": {
-                "const": "test",
+                "const": "org.iso.18013.5.1.mDL",
                 "type": "string"
               },
               "id": null,
@@ -254,7 +254,7 @@ async fn test_share_proof_success_mdoc() {
             ]
           }
         },
-        "id": "input_0",
+        "id": "org.iso.18013.5.1.mDL",
         "name": "test",
         "purpose": null
     });

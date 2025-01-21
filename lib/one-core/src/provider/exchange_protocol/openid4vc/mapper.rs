@@ -1108,14 +1108,14 @@ pub fn create_open_id_for_vp_presentation_definition_input_descriptor(
         optional: None,
         filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
             r#type: "string".to_string(),
-            r#const: credential_schema.schema_id,
+            r#const: credential_schema.schema_id.clone(),
         }),
         intent_to_retain: None,
     };
 
-    let intent_to_retain = match presentation_format_type {
-        "MDOC" => Some(true),
-        _ => None,
+    let (id, intent_to_retain) = match presentation_format_type {
+        "MDOC" => (credential_schema.schema_id, Some(true)),
+        _ => (format!("input_{index}"), None),
     };
 
     let selectively_disclosable = !formatter_provider
@@ -1152,7 +1152,7 @@ pub fn create_open_id_for_vp_presentation_definition_input_descriptor(
     fields.extend(constraint_fields);
 
     Ok(OpenID4VPPresentationDefinitionInputDescriptor {
-        id: format!("input_{index}"),
+        id,
         name: Some(credential_schema.name),
         purpose: None,
         format: format_to_type_mapper(presentation_format_type)?,
