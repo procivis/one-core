@@ -105,7 +105,7 @@ pub(crate) async fn get_credential_list(
     let filters = GetCredentialQueryDTO {
         pagination: Some(ListPagination {
             page: query.page,
-            page_size: query.page_size,
+            page_size: query.page_size.inner(),
         }),
         sorting: query.sort.map(|column| ListSorting {
             column: column.into(),

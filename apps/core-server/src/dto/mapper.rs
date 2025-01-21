@@ -24,7 +24,7 @@ where
         Self {
             pagination: Some(ListPagination {
                 page: value.page,
-                page_size: value.page_size,
+                page_size: value.page_size.inner(),
             }),
             sorting: value.sort.map(|column| ListSorting {
                 column: column.into(),
@@ -74,6 +74,7 @@ struct PartialQueryParamsRest<SortColumn: ToSchema, Include: ToSchema> {
     /// The page number to retrieve (0-based indexing).
     pub page: u32,
     /// Number of items to return per page. If omitted, defaults to 30.
+    #[param(default = 30, minimum = 1, maximum = 1000)]
     pub page_size: u32,
 
     /// The field value to sort results by.
