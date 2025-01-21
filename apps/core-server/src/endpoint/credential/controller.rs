@@ -274,8 +274,14 @@ pub(crate) async fn share_credential(
     ),
     summary = "Check revocation",
     description = indoc::formatdoc! {"
-        Checks whether a held credential has been revoked. Only applicable to
-        credentials with an associated revocation mechanism.
+        Checks whether a held credential has been revoked.
+
+        This is only applicable to credentials with an associated revocation
+        mechanism.
+
+        This endpoint only works for credentials for which the `role` is `HOLDER`.
+        Issuers and verifiers cannot check the status of credentials with this
+        endpoint.
     "},
 )]
 pub(crate) async fn revocation_check(
