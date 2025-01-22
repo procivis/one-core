@@ -2,6 +2,7 @@ use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
 use shared_types::DidValue;
 use x509_parser::certificate::X509Certificate;
 use x509_parser::oid_registry::OID_X509_EXT_SUBJECT_ALT_NAME;
+use x509_parser::prelude::{GeneralName, ParsedExtension};
 
 use crate::provider::did_method::mdl::parse_x509_from_der;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
@@ -49,11 +50,15 @@ pub(crate) fn extract_x5c_san_dns(
         } else {
             // first in chain, check client_id match
             let dns_names = current
-                .subject()
-                .iter_by_oid(&OID_X509_EXT_SUBJECT_ALT_NAME)
+                .iter_extensions()
+                .filter(|extension| extension.oid == OID_X509_EXT_SUBJECT_ALT_NAME)
                 .try_fold(Vec::new(), |mut aggr, entry| {
-                    if let Ok(cn) = entry.as_str() {
-                        aggr.push(cn.to_string());
+                    if let ParsedExtension::SubjectAlternativeName(san) = entry.parsed_extension() {
+                        for name in &san.general_names {
+                            if let GeneralName::DNSName(dns) = name {
+                                aggr.push(dns.to_string());
+                            }
+                        }
                     }
                     Ok(aggr)
                 })?;
@@ -102,5 +107,28 @@ fn is_dns_name_matching(dns_name: &str, client_id: &str) -> bool {
     } else {
         // simple case
         dns_name == client_id
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    const DOMAIN: &str = "core.dev.procivis-one.com";
+    const X509_CERT: &str = "MIIDrzCCA1SgAwIBAgIUA9IPga3NlWs0nTiYle4Yhz2hljgwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI1MDEyMjExMjMwMFoXDTI4MTIzMTAwMDAwMFowWDELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxIjAgBgNVBAMMGWNvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASfzLZQ6ejktBYcBjTBXPXTkalgkum/R/84Tdm+7Jxm2UR+JTsxJP1ccrHwvySDHbt5EDnHdNovJyCtjH4b9FDgo4IB8DCCAewwDgYDVR0PAQH/BAQDAgeAMBUGA1UdJQEB/wQLMAkGByiBjF0FAQIwDAYDVR0TAQH/BAIwADAkBgNVHREEHTAbghljb3JlLmRldi5wcm9jaXZpcy1vbmUuY29tMB8GA1UdIwQYMBaAFO0asJ3iYEVQADvaWjQyGpi+LbfFMFoGA1UdHwRTMFEwT6BNoEuGSWh0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbS9jcmwvNDBDRDIyNTQ3RjM4MzRDNTI2QzVDMjJFMUEyNkM3RTIwMzMyNDY2OC8wgcoGCCsGAQUFBwEBBIG9MIG6MFsGCCsGAQUFBzAChk9odHRwczovL2NhLmRldi5tZGwtcGx1cy5jb20vaXNzdWVyLzQwQ0QyMjU0N0YzODM0QzUyNkM1QzIyRTFBMjZDN0UyMDMzMjQ2NjguZGVyMFsGCCsGAQUFBzABhk9odHRwczovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAdBgNVHQ4EFgQUruIPHQ4F1HmX3H8EW2knrLczQRQwCgYIKoZIzj0EAwIDSQAwRgIhALk9d8u5OOTMbU3+IFEt9IXQWCQyRQgDUXwaz4zKAJ5AAiEAlSHs1Tz6crYNJ9gJ6enYctzLSaVp7m3okkZiLU2Suhk=";
+    const CERT_AS_DID: &str = "did:mdl:certificate:MIIDrzCCA1SgAwIBAgIUA9IPga3NlWs0nTiYle4Yhz2hljgwCgYIKoZIzj0EAwIwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTI1MDEyMjExMjMwMFoXDTI4MTIzMTAwMDAwMFowWDELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxIjAgBgNVBAMMGWNvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASfzLZQ6ejktBYcBjTBXPXTkalgkum_R_84Tdm-7Jxm2UR-JTsxJP1ccrHwvySDHbt5EDnHdNovJyCtjH4b9FDgo4IB8DCCAewwDgYDVR0PAQH_BAQDAgeAMBUGA1UdJQEB_wQLMAkGByiBjF0FAQIwDAYDVR0TAQH_BAIwADAkBgNVHREEHTAbghljb3JlLmRldi5wcm9jaXZpcy1vbmUuY29tMB8GA1UdIwQYMBaAFO0asJ3iYEVQADvaWjQyGpi-LbfFMFoGA1UdHwRTMFEwT6BNoEuGSWh0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbS9jcmwvNDBDRDIyNTQ3RjM4MzRDNTI2QzVDMjJFMUEyNkM3RTIwMzMyNDY2OC8wgcoGCCsGAQUFBwEBBIG9MIG6MFsGCCsGAQUFBzAChk9odHRwczovL2NhLmRldi5tZGwtcGx1cy5jb20vaXNzdWVyLzQwQ0QyMjU0N0YzODM0QzUyNkM1QzIyRTFBMjZDN0UyMDMzMjQ2NjguZGVyMFsGCCsGAQUFBzABhk9odHRwczovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAdBgNVHQ4EFgQUruIPHQ4F1HmX3H8EW2knrLczQRQwCgYIKoZIzj0EAwIDSQAwRgIhALk9d8u5OOTMbU3-IFEt9IXQWCQyRQgDUXwaz4zKAJ5AAiEAlSHs1Tz6crYNJ9gJ6enYctzLSaVp7m3okkZiLU2Suhk";
+    const CA_CERT: &str = "MIICLDCCAdKgAwIBAgIUQM0iVH84NMUmxcIuGibH4gMyRmgwCgYIKoZIzj0EAwQwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTIyMDExMjEyMDAwMFoXDTMyMDExMDEyMDAwMFowYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaRFtZbpYHFlPgGyZCt6bGKS0hEekPVxiBHRXImo8_NUR-czg-DI2KTE3ikRVNgq2rICatkvkV2jaM2frPEOl1qNmMGQwEgYDVR0TAQH_BAgwBgEB_wIBADAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFO0asJ3iYEVQADvaWjQyGpi-LbfFMB8GA1UdIwQYMBaAFO0asJ3iYEVQADvaWjQyGpi-LbfFMAoGCCqGSM49BAMEA0gAMEUCIQD9kfI800DOj76YsiW4lUNRZowH07j152M3UKHKEaIjUAIgZNINukb4SFKEC4A0qEKgpPEZM7_Vh5aNro-PQn3_rgA";
+
+    #[test]
+    fn test_extract_x5c_san_dns_success() {
+        let did_value = extract_x5c_san_dns(&[X509_CERT.to_string()], DOMAIN, CA_CERT).unwrap();
+        assert_eq!(did_value.as_str(), CERT_AS_DID);
+    }
+
+    #[test]
+    fn test_extract_x5c_san_dns_mismatch_client_id() {
+        let result = extract_x5c_san_dns(&[X509_CERT.to_string()], "invalid.domain", CA_CERT);
+        assert!(matches!(result, Err(ExchangeProtocolError::Failed(_))));
     }
 }

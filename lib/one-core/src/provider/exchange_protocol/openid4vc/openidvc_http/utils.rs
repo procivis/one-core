@@ -99,6 +99,19 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let response_content: OpenID4VPInteractionData = request_token.payload.custom.into();
+
+    // The response_uri must match client_id
+    // https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html#section-5.7-12.2.1
+    if !response_content
+        .response_uri
+        .as_ref()
+        .is_some_and(|uri| uri.domain() == Some(&response_content.client_id))
+    {
+        return Err(ExchangeProtocolError::Failed(
+            "response_uri client_id mismatch".to_string(),
+        ));
+    }
+
     Ok(OpenID4VPInteractionData {
         client_id_scheme: ClientIdSchemaType::X509SanDns,
         verifier_did: Some(did_value.to_string()),
