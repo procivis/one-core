@@ -251,12 +251,11 @@ pub struct CreateCredentialRequestRestDTO {
     /// key listed during DID creation will be used.
     #[into(with_fn = convert_inner)]
     pub issuer_key: Option<KeyId>,
-    /// Exchange protocol used. See the [exchange
-    /// protocols](../api/exchangeProtocols.mdx) guide.
+    /// Exchange protocol to use for issuing the credential to a wallet.
     pub exchange: String,
     /// Attribute from the credential schema, together with the
     /// corresponding claim being made. See the
-    /// [claimValues](../api/credentials.mdx#claimvalues) guide.
+    /// [Claims assertion](../issue/issuanceFlow.mdx#claims-assertion) guide.            
     #[into(with_fn = convert_inner)]
     pub claim_values: Vec<CredentialRequestClaimRestDTO>,
     /// When a credential is accepted, the holder will be redirected to the

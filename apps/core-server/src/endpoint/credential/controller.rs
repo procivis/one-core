@@ -134,7 +134,7 @@ pub(crate) async fn get_credential_list(
         ("bearer" = [])
     ),
     summary = "Create a credential",
-    description = "Creates a credential, which can then be issued to a wallet holder.",
+    description = "Creates a credential, which can then be issued to a wallet holder. See the [Issuance workflow](../issue/issuanceFlow.mdx) guide.",
 )]
 pub(crate) async fn post_credential(
     state: State<AppState>,
