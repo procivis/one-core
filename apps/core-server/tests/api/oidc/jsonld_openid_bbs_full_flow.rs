@@ -139,6 +139,9 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
         .await;
 
     let interaction_data = json!({
+        "client_id_scheme": "redirect_uri",
+        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "nonce": nonce,
         "pre_authorized_code_used": true,
         "access_token": format!("{}.test",interaction_id),
@@ -585,6 +588,9 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
 
     let interaction_data = json!({
+        "client_id_scheme": "redirect_uri",
+        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "nonce": nonce,
         "pre_authorized_code_used": true,
         "access_token": format!("{}.test",interaction_id),

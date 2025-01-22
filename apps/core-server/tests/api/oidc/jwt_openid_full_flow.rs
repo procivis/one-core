@@ -95,6 +95,8 @@ async fn test_openid4vc_jwt_flow(
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
 
     let interaction_data = serde_json::to_vec(&json!({
+        "client_id_scheme": "redirect_uri",
+        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "presentation_definition": {
             "id": interaction_id,
@@ -457,6 +459,8 @@ async fn test_openid4vc_jwt_flow_array(server_key: TestKey, holder_key: TestKey)
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
 
     let interaction_data = serde_json::to_vec(&json!({
+        "client_id_scheme": "redirect_uri",
+        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "presentation_definition": {
             "id": interaction_id,

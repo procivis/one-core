@@ -63,6 +63,7 @@ impl<Payload> Jwt<Payload> {
             key_id,
             jwk,
             jwt: None,
+            x5c: None,
         };
 
         Jwt { header, payload }

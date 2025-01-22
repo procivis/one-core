@@ -109,6 +109,9 @@ async fn test_openid4vc_jsonld_flow(
         .await;
 
     let interaction_data = json!({
+        "client_id_scheme": "redirect_uri",
+        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "nonce": nonce,
         "pre_authorized_code_used": true,
         "access_token": format!("{}.test",interaction_id),
@@ -480,6 +483,9 @@ async fn test_openid4vc_jsonld_flow_array(
         .await;
 
     let interaction_data = json!({
+        "client_id_scheme": "redirect_uri",
+        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
+        "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "nonce": nonce,
         "pre_authorized_code_used": true,
         "access_token": format!("{}.test",interaction_id),

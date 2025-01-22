@@ -3186,7 +3186,6 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     }),
                     client_metadata_uri: None,
                     presentation_definition_uri: None,
-                    request_uri: None,
                     redirect_uri: None,
                 },
                 presentation_submission: None,

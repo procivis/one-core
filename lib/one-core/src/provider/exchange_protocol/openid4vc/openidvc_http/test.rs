@@ -520,6 +520,7 @@ async fn test_share_proof_with_use_request_uri() {
                 "client_id".into(),
                 "http://base_url/ssi/oidc-verifier/v1/response".into()
             ),
+            ("client_id_scheme".into(), "redirect_uri".into()),
             (
                 "request_uri".into(),
                 format!("http://base_url/ssi/oidc-verifier/v1/{proof_id}/client-request").into()

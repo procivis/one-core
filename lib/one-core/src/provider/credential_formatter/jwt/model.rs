@@ -17,8 +17,13 @@ pub struct JWTHeader {
     #[serde(rename = "jwk", default, skip_serializing_if = "Option::is_none")]
     pub jwk: Option<PublicKeyJwkDTO>,
 
+    // https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-verifier-attestation-jwt
     #[serde(rename = "jwt", default, skip_serializing_if = "Option::is_none")]
     pub jwt: Option<String>,
+
+    // https://www.rfc-editor.org/rfc/rfc7515.html#section-4.1.6
+    #[serde(rename = "x5c", default, skip_serializing_if = "Option::is_none")]
+    pub x5c: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

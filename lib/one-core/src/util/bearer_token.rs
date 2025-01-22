@@ -73,6 +73,7 @@ pub(crate) async fn prepare_bearer_token(
             r#type: None,
             jwk: None,
             jwt: None,
+            x5c: None,
         },
         payload,
     }

@@ -115,7 +115,10 @@ async fn test_direct_post_one_credential_correct() {
                     ]
                 }
             }]
-        }
+        },
+        "client_id": "client_id",
+        "client_id_scheme": "redirect_uri",
+        "response_uri": "response_uri"
     });
 
     let interaction = fixtures::create_interaction(
@@ -255,7 +258,10 @@ async fn test_direct_post_one_credential_missing_required_claim() {
                     ]
                 }
             }]
-        }
+        },
+        "client_id": "client_id",
+        "client_id_scheme": "redirect_uri",
+        "response_uri": "response_uri"
     });
 
     let interaction = fixtures::create_interaction(
@@ -487,7 +493,10 @@ async fn test_direct_post_multiple_presentations() {
                     ]
                 }
             }]
-        }
+        },
+        "client_id": "client_id",
+        "client_id_scheme": "redirect_uri",
+        "response_uri": "response_uri"
     });
 
     let interaction = fixtures::create_interaction(
@@ -658,7 +667,10 @@ async fn test_direct_post_wrong_claim_format() {
                     ]
                 }
             }]
-        }
+        },
+        "client_id": "client_id",
+        "client_id_scheme": "redirect_uri",
+        "response_uri": "response_uri"
     });
 
     let interaction = fixtures::create_interaction(

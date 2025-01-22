@@ -322,33 +322,51 @@ pub(crate) struct OpenID4VPAuthorizationRequestQueryParams {
     pub client_metadata_uri: Option<String>,
     pub presentation_definition: Option<String>,
     pub presentation_definition_uri: Option<String>,
+
+    // https://www.rfc-editor.org/rfc/rfc9101.html#name-authorization-request
+    pub request: Option<String>,
     pub request_uri: Option<String>,
+
     pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub(crate) struct OpenID4VPAuthorizationRequestParams {
     pub client_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_id_scheme: Option<ClientIdSchemaType>,
 
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nonce: Option<String>,
 
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub response_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub response_mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub response_uri: Option<Url>,
 
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_with_serde_json")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_with_serde_json"
+    )]
     pub client_metadata: Option<OpenID4VPClientMetadata>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_metadata_uri: Option<Url>,
 
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_with_serde_json")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_with_serde_json"
+    )]
     pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub presentation_definition_uri: Option<Url>,
 
-    pub request_uri: Option<Url>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub redirect_uri: Option<String>,
 }
 
@@ -396,8 +414,9 @@ pub struct OpenID4VPInteractionContent {
     pub nonce: String,
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub presentation_definition: OpenID4VPPresentationDefinition,
-    pub client_id: Option<String>,
-    pub response_uri: Option<String>,
+    pub client_id: String,
+    pub client_id_scheme: ClientIdSchemaType,
+    pub response_uri: String,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -876,8 +895,6 @@ pub struct OpenID4VPInteractionData {
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub client_metadata: Option<OpenID4VPClientMetadata>,
     pub client_metadata_uri: Option<Url>,
-    #[serde(default)]
-    pub request_uri: Option<Url>,
     pub response_mode: Option<String>,
     pub response_uri: Option<Url>,
     #[serde(default)]
@@ -1052,7 +1069,7 @@ pub struct OpenID4VCPresentationVerifierParams {
     pub supported_client_id_schemes: Vec<ClientIdSchemaType>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize, Display)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, Display)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum ClientIdSchemaType {

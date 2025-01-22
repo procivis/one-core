@@ -176,7 +176,6 @@ impl OpenID4VCBLEVerifier {
                             state: None,
                             client_metadata_uri: None,
                             presentation_definition_uri: None,
-                            request_uri: None,
                             redirect_uri: None,
                         };
                         tracing::info!("presentation request: {request:#?}");

@@ -46,6 +46,7 @@ async fn test_get_client_request() {
             }]
         },
         "client_id": "client_id",
+        "client_id_scheme": "redirect_uri",
         "response_uri": "https://response.uri/",
     });
 
@@ -123,7 +124,10 @@ async fn test_get_client_request() {
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap();
 
-    assert_eq!(json!({ "alg": "none"}), header);
+    assert_eq!(
+        json!({ "alg": "none", "typ": "oauth-authz-req+jwt"}),
+        header
+    );
 
     assert_eq!(
         json!({

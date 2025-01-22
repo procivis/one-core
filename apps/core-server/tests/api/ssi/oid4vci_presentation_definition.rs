@@ -53,7 +53,10 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
                     ]
                 }
             }]
-        }
+        },
+        "client_id": "client_id",
+        "client_id_scheme": "redirect_uri",
+        "response_uri": "https://response.uri/",
     });
 
     let schema_id = Uuid::new_v4();

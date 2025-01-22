@@ -163,6 +163,8 @@ async fn test_openid4vc_mdoc_flow(
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
 
     let interaction_data = serde_json::to_vec(&json!({
+        "client_id_scheme": "redirect_uri",
+        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "presentation_definition": {
             "id": interaction_id,
@@ -548,6 +550,8 @@ async fn test_openid4vc_mdoc_flow_selective_nested_multiple_namespaces(
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
 
     let interaction_data = serde_json::to_vec(&json!({
+        "client_id_scheme": "redirect_uri",
+        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "presentation_definition": {
             "id": interaction_id,
@@ -969,6 +973,8 @@ async fn test_openid4vc_mdoc_flow_array(
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
 
     let interaction_data = serde_json::to_vec(&json!({
+        "client_id_scheme": "redirect_uri",
+        "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "response_uri": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "presentation_definition": {
             "id": interaction_id,

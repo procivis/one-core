@@ -1232,8 +1232,9 @@ async fn test_oidc_verifier_presentation_definition_success() {
                 },
             }],
         },
-        client_id: None,
-        response_uri: None,
+        client_id: "client_id".to_string(),
+        client_id_scheme: ClientIdSchemaType::RedirectUri,
+        response_uri: "response_uri".to_string(),
     })
     .unwrap();
 
@@ -1383,8 +1384,9 @@ async fn test_submit_proof_failed_credential_suspended() {
                 },
             }],
         },
-        client_id: None,
-        response_uri: None,
+        client_id: "client_id".to_string(),
+        client_id_scheme: ClientIdSchemaType::RedirectUri,
+        response_uri: "response_uri".to_string(),
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let now = OffsetDateTime::now_utc();

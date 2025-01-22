@@ -66,7 +66,7 @@ exchange:
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
-        useRequestUri: false
+        useRequestUri: true
         presentation:
           verifier:
             supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
@@ -82,12 +82,12 @@ exchange:
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000
-        useRequestUri: false
+        useRequestUri: true
         issuance:
           disabled: true
         presentation:
           urlScheme: mdoc-openid4vp
-          x509CaCertificate: todo_certificate_value
+          x509CaCertificate: MIICLDCCAdKgAwIBAgIUQM0iVH84NMUmxcIuGibH4gMyRmgwCgYIKoZIzj0EAwQwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTIyMDExMjEyMDAwMFoXDTMyMDExMDEyMDAwMFowYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaRFtZbpYHFlPgGyZCt6bGKS0hEekPVxiBHRXImo8_NUR-czg-DI2KTE3ikRVNgq2rICatkvkV2jaM2frPEOl1qNmMGQwEgYDVR0TAQH_BAgwBgEB_wIBADAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFO0asJ3iYEVQADvaWjQyGpi-LbfFMB8GA1UdIwQYMBaAFO0asJ3iYEVQADvaWjQyGpi-LbfFMAoGCCqGSM49BAMEA0gAMEUCIQD9kfI800DOj76YsiW4lUNRZowH07j152M3UKHKEaIjUAIgZNINukb4SFKEC4A0qEKgpPEZM7_Vh5aNro-PQn3_rgA
           verifier:
             supportedClientIdSchemes: [ x509_san_dns ]
             defaultClientIdSchema: x509_san_dns

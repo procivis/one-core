@@ -96,7 +96,6 @@ pub(super) async fn mqtt_verifier_flow(
             state: None,
             client_metadata_uri: None,
             presentation_definition_uri: None,
-            request_uri: None,
             redirect_uri: None,
         };
 

@@ -3,15 +3,17 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    ClientIdSchemaType, OpenID4VPAuthorizationRequestParams,
+    ClientIdSchemaType, OpenID4VCParams, OpenID4VPAuthorizationRequestParams,
     OpenID4VPAuthorizationRequestQueryParams, OpenID4VPInteractionData,
 };
+use crate::provider::exchange_protocol::openid4vc::openidvc_http::x509::extract_x5c_san_dns;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -40,6 +42,68 @@ fn parse_referenced_data_from_unsigned_token(
     let result: OpenID4VPInteractionData = payload.custom.into();
     assert!(result.verifier_did.is_none());
     Ok(result)
+}
+
+async fn parse_referenced_data_from_x509_san_dns_token(
+    token: String,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: &Arc<dyn DidMethodProvider>,
+    x509_ca_certificate: &str,
+) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
+    let request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams> =
+        Jwt::decompose_token(&token).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let x5c = request_token
+        .header
+        .x5c
+        .ok_or(ExchangeProtocolError::Failed("x5c missing".to_string()))?;
+
+    let did_value = extract_x5c_san_dns(
+        &x5c,
+        &request_token.payload.custom.client_id,
+        x509_ca_certificate,
+    )?;
+
+    let did_document = did_method_provider
+        .resolve(&did_value, None)
+        .await
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let (alg, alg_id) = key_algorithm_provider
+        .get_key_algorithm_from_jose_alg(&request_token.header.algorithm)
+        .ok_or(ExchangeProtocolError::Failed(format!(
+            "Missing algorithm: {}",
+            request_token.header.algorithm
+        )))?;
+
+    let key = did_document
+        .find_verification_method(None, Some(KeyRole::AssertionMethod))
+        .ok_or(ExchangeProtocolError::Failed(
+            "Missing key in did".to_string(),
+        ))?;
+
+    let public_key = alg
+        .jwk_to_bytes(&key.public_key_jwk)
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let signer = key_algorithm_provider
+        .get_signer(&alg_id)
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    signer
+        .verify(
+            request_token.unverified_jwt.as_bytes(),
+            &request_token.signature,
+            &public_key,
+        )
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+    let response_content: OpenID4VPInteractionData = request_token.payload.custom.into();
+    Ok(OpenID4VPInteractionData {
+        client_id_scheme: ClientIdSchemaType::X509SanDns,
+        verifier_did: Some(did_value.to_string()),
+        ..response_content
+    })
 }
 
 async fn parse_referenced_data_from_verifier_attestation_token(
@@ -119,21 +183,28 @@ async fn parse_referenced_data_from_verifier_attestation_token(
     })
 }
 
-pub async fn interaction_data_from_query(
+pub(crate) async fn interaction_data_from_query(
     query: &str,
     client: &Arc<dyn HttpClient>,
     allow_insecure_http_transport: bool,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
+    params: &OpenID4VCParams,
 ) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
     let query_params: OpenID4VPAuthorizationRequestQueryParams = serde_qs::from_str(query)
         .map_err(|e| ExchangeProtocolError::InvalidRequest(e.to_string()))?;
 
-    let query_params: OpenID4VPAuthorizationRequestParams = query_params.try_into()?;
+    let mut request = query_params.request.to_owned();
+    if let Some(request_uri) = &query_params.request_uri {
+        if request.is_some() {
+            return Err(ExchangeProtocolError::InvalidRequest(
+                "request and request_uri cannot be set together".to_string(),
+            ));
+        }
 
-    let mut interaction_data: OpenID4VPInteractionData = query_params.into();
+        let request_uri = Url::parse(request_uri)
+            .map_err(|e| ExchangeProtocolError::InvalidRequest(e.to_string()))?;
 
-    if let Some(request_uri) = &interaction_data.request_uri {
         if !allow_insecure_http_transport && request_uri.scheme() != "https" {
             return Err(ExchangeProtocolError::InvalidRequest(
                 "request_uri must use HTTPS scheme".to_string(),
@@ -150,6 +221,23 @@ pub async fn interaction_data_from_query(
             .and_then(|r| String::from_utf8(r.body).context("Invalid response"))
             .map_err(ExchangeProtocolError::Transport)?;
 
+        request = Some(token);
+    }
+
+    if let Some(client_id_scheme) = &query_params.client_id_scheme {
+        if request.is_none()
+            && (client_id_scheme == &ClientIdSchemaType::VerifierAttestation
+                || client_id_scheme == &ClientIdSchemaType::X509SanDns)
+        {
+            return Err(ExchangeProtocolError::InvalidRequest(format!(
+                "request or request_uri missing for client_id_scheme {client_id_scheme}",
+            )));
+        }
+    }
+
+    let mut interaction_data: OpenID4VPInteractionData = query_params.try_into()?;
+
+    if let Some(token) = request {
         let referenced_params = match &interaction_data.client_id_scheme {
             ClientIdSchemaType::VerifierAttestation => {
                 parse_referenced_data_from_verifier_attestation_token(
@@ -166,23 +254,27 @@ pub async fn interaction_data_from_query(
                 ));
             }
             ClientIdSchemaType::X509SanDns => {
-                todo!("ONE-4268")
+                parse_referenced_data_from_x509_san_dns_token(
+                    token,
+                    key_algorithm_provider,
+                    did_method_provider,
+                    params.presentation.x509_ca_certificate.as_ref().ok_or(
+                        ExchangeProtocolError::Failed("missing x509_ca_certificate".to_string()),
+                    )?,
+                )
+                .await
             }
         }?;
 
         // client_id from the query params must match client_id inisde the token
         if referenced_params.client_id != interaction_data.client_id {
             return Err(ExchangeProtocolError::InvalidRequest(
-                "cliet_id mismatch with the referenced token".to_string(),
+                "cliet_id mismatch with the request token".to_string(),
             ));
         }
 
         // use referenced params
         interaction_data = referenced_params;
-    } else if interaction_data.client_id_scheme == ClientIdSchemaType::VerifierAttestation {
-        return Err(ExchangeProtocolError::InvalidRequest(
-            "verifier_attestation without request_uri".to_string(),
-        ));
     }
 
     if interaction_data.client_metadata.is_some() && interaction_data.client_metadata_uri.is_some()

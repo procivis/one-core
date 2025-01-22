@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Add;
+use std::sync::Arc;
 
 use indexmap::map::Entry;
 use indexmap::IndexMap;
@@ -47,6 +48,7 @@ use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{AuthenticationFn, ExtractPresentationCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -69,10 +71,16 @@ use crate::provider::exchange_protocol::openid4vc::{
 use crate::provider::http_client;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::ServiceError;
 use crate::service::key::dto::PublicKeyJwkDTO;
+use crate::service::oidc::proof_request::{
+    generate_authorization_request_client_id_scheme_verifier_attestation,
+    generate_authorization_request_client_id_scheme_x509_san_dns,
+};
 use crate::util::oidc::map_core_to_oidc_format;
 
 pub(super) fn presentation_definition_from_interaction_data(
@@ -1199,52 +1207,66 @@ pub fn create_presentation_submission(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
+pub(crate) async fn create_open_id_for_vp_sharing_url_encoded(
     base_url: &str,
     openidvc_params: &OpenID4VCParams,
-    client_id: &str,
+    client_id: String,
     interaction_id: InteractionId,
-    nonce: &str,
+    interaction_data: &OpenID4VPInteractionContent,
+    nonce: String,
     proof: &Proof,
     key_id: KeyId,
     encryption_key_jwk: PublicKeyJwkDTO,
     vp_formats: HashMap<String, OpenID4VPFormat>,
-    type_to_descriptor: TypeToDescriptorMapper,
-    format_to_type_mapper: FormatMapper,
-    client_id_schema: ClientIdSchemaType,
-    formatter_provider: &dyn CredentialFormatterProvider,
+    client_id_scheme: ClientIdSchemaType,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    key_provider: &dyn KeyProvider,
+    did_method_provider: &dyn DidMethodProvider,
 ) -> Result<String, ExchangeProtocolError> {
-    let params = match client_id_schema {
-        ClientIdSchemaType::RedirectUri => {
-            if openidvc_params.use_request_uri {
-                get_params_for_request_uri(base_url, client_id, proof.id)
-            } else {
-                get_params_for_redirect_uri(
-                    base_url,
-                    openidvc_params,
-                    client_id,
-                    interaction_id,
-                    nonce,
+    let params = if openidvc_params.use_request_uri {
+        get_params_with_request_uri(base_url, proof.id, client_id, client_id_scheme)
+    } else {
+        match client_id_scheme {
+            ClientIdSchemaType::RedirectUri => get_params_for_redirect_uri(
+                base_url,
+                openidvc_params,
+                client_id,
+                interaction_id,
+                nonce,
+                proof,
+                key_id,
+                encryption_key_jwk,
+                vp_formats,
+                interaction_data,
+            )?,
+            ClientIdSchemaType::X509SanDns => {
+                let token = generate_authorization_request_client_id_scheme_x509_san_dns(
                     proof,
-                    key_id,
-                    encryption_key_jwk,
-                    vp_formats,
-                    type_to_descriptor,
-                    format_to_type_mapper,
-                    formatter_provider,
-                )?
+                    interaction_data.to_owned(),
+                    &interaction_id,
+                    key_algorithm_provider,
+                    key_provider,
+                )
+                .await?;
+                get_params_with_request(token, client_id, client_id_scheme)
             }
-        }
-        ClientIdSchemaType::VerifierAttestation => {
-            get_params_for_verifier_attestation(base_url, client_id, proof)
-        }
-        ClientIdSchemaType::Did => {
-            return Err(ExchangeProtocolError::InvalidRequest(
-                "client_id_scheme type 'did' not supported in this context".to_string(),
-            ))
-        }
-        ClientIdSchemaType::X509SanDns => {
-            todo!("ONE-4268")
+            ClientIdSchemaType::VerifierAttestation => {
+                let token = generate_authorization_request_client_id_scheme_verifier_attestation(
+                    proof,
+                    interaction_data.to_owned(),
+                    &interaction_id,
+                    key_algorithm_provider,
+                    key_provider,
+                    did_method_provider,
+                )
+                .await?;
+                get_params_with_request(token, client_id, client_id_scheme)
+            }
+            ClientIdSchemaType::Did => {
+                return Err(ExchangeProtocolError::InvalidRequest(
+                    "client_id_scheme type 'did' not supported in this context".to_string(),
+                ))
+            }
         }
     };
 
@@ -1254,44 +1276,19 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     Ok(encoded_params)
 }
 
-#[allow(clippy::too_many_arguments)]
-fn get_params_for_verifier_attestation(
+fn get_params_with_request_uri(
     base_url: &str,
-    client_id: &str,
-    proof: &Proof,
-) -> OpenID4VPAuthorizationRequestQueryParams {
-    OpenID4VPAuthorizationRequestQueryParams {
-        client_id: client_id.to_string(),
-        client_id_scheme: Some(ClientIdSchemaType::VerifierAttestation),
-        request_uri: Some(format!(
-            "{base_url}/ssi/oidc-verifier/v1/{}/request-data",
-            proof.id
-        )),
-        state: None,
-        nonce: None,
-        response_type: None,
-        response_mode: None,
-        response_uri: None,
-        client_metadata: None,
-        client_metadata_uri: None,
-        presentation_definition: None,
-        presentation_definition_uri: None,
-        redirect_uri: None,
-    }
-}
-
-fn get_params_for_request_uri(
-    base_url: &str,
-    client_id: &str,
     proof_id: ProofId,
+    client_id: String,
+    client_id_scheme: ClientIdSchemaType,
 ) -> OpenID4VPAuthorizationRequestQueryParams {
     OpenID4VPAuthorizationRequestQueryParams {
-        client_id: client_id.to_string(),
+        client_id,
         request_uri: Some(format!(
             "{base_url}/ssi/oidc-verifier/v1/{}/client-request",
             proof_id
         )),
-        client_id_scheme: None,
+        client_id_scheme: Some(client_id_scheme),
         state: None,
         nonce: None,
         response_type: None,
@@ -1301,6 +1298,30 @@ fn get_params_for_request_uri(
         client_metadata_uri: None,
         presentation_definition: None,
         presentation_definition_uri: None,
+        request: None,
+        redirect_uri: None,
+    }
+}
+
+fn get_params_with_request(
+    request: String,
+    client_id: String,
+    client_id_scheme: ClientIdSchemaType,
+) -> OpenID4VPAuthorizationRequestQueryParams {
+    OpenID4VPAuthorizationRequestQueryParams {
+        client_id,
+        request: Some(request),
+        client_id_scheme: Some(client_id_scheme),
+        state: None,
+        nonce: None,
+        response_type: None,
+        response_mode: None,
+        response_uri: None,
+        client_metadata: None,
+        client_metadata_uri: None,
+        presentation_definition: None,
+        presentation_definition_uri: None,
+        request_uri: None,
         redirect_uri: None,
     }
 }
@@ -1309,28 +1330,20 @@ fn get_params_for_request_uri(
 fn get_params_for_redirect_uri(
     base_url: &str,
     openidvc_params: &OpenID4VCParams,
-    client_id: &str,
+    client_id: String,
     interaction_id: InteractionId,
-    nonce: &str,
+    nonce: String,
     proof: &Proof,
     key_id: KeyId,
     encryption_key_jwk: PublicKeyJwkDTO,
     vp_formats: HashMap<String, OpenID4VPFormat>,
-    type_to_descriptor: TypeToDescriptorMapper,
-    format_to_type_mapper: FormatMapper,
-    formatter_provider: &dyn CredentialFormatterProvider,
+    interaction_data: &OpenID4VPInteractionContent,
 ) -> Result<OpenID4VPAuthorizationRequestQueryParams, ExchangeProtocolError> {
     let mut presentation_definition = None;
     let mut presentation_definition_uri = None;
     if openidvc_params.presentation_definition_by_value {
-        let pd = serde_json::to_string(&create_open_id_for_vp_presentation_definition(
-            interaction_id,
-            proof,
-            type_to_descriptor,
-            format_to_type_mapper,
-            formatter_provider,
-        )?)
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+        let pd = serde_json::to_string(&interaction_data.presentation_definition)
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         presentation_definition = Some(pd);
     } else {
@@ -1364,19 +1377,20 @@ fn get_params_for_redirect_uri(
         client_id_scheme: Some(ClientIdSchemaType::RedirectUri),
         response_type: Some("vp_token".to_string()),
         state: Some(interaction_id.to_string()),
-        nonce: Some(nonce.to_string()),
+        nonce: Some(nonce),
         response_mode: Some("direct_post".to_string()),
-        response_uri: Some(client_id.to_string()),
+        response_uri: Some(client_id),
         client_metadata,
         client_metadata_uri,
         presentation_definition,
         presentation_definition_uri,
+        request: None,
         request_uri: None,
         redirect_uri: None,
     })
 }
 
-impl TryFrom<OpenID4VPAuthorizationRequestQueryParams> for OpenID4VPAuthorizationRequestParams {
+impl TryFrom<OpenID4VPAuthorizationRequestQueryParams> for OpenID4VPInteractionData {
     type Error = ExchangeProtocolError;
 
     fn try_from(value: OpenID4VPAuthorizationRequestQueryParams) -> Result<Self, Self::Error> {
@@ -1393,7 +1407,9 @@ impl TryFrom<OpenID4VPAuthorizationRequestQueryParams> for OpenID4VPAuthorizatio
 
         Ok(Self {
             client_id: value.client_id,
-            client_id_scheme: value.client_id_scheme,
+            client_id_scheme: value
+                .client_id_scheme
+                .unwrap_or(ClientIdSchemaType::RedirectUri),
             response_type: value.response_type,
             response_mode: value.response_mode,
             response_uri: value.response_uri.map(url_parse).transpose()?,
@@ -1406,8 +1422,8 @@ impl TryFrom<OpenID4VPAuthorizationRequestQueryParams> for OpenID4VPAuthorizatio
                 .presentation_definition_uri
                 .map(url_parse)
                 .transpose()?,
-            request_uri: value.request_uri.map(url_parse).transpose()?,
             redirect_uri: value.redirect_uri,
+            verifier_did: None,
         })
     }
 }
@@ -1428,7 +1444,6 @@ impl From<OpenID4VPAuthorizationRequestParams> for OpenID4VPInteractionData {
             client_metadata_uri: value.client_metadata_uri,
             presentation_definition: value.presentation_definition,
             presentation_definition_uri: value.presentation_definition_uri,
-            request_uri: value.request_uri,
             redirect_uri: value.redirect_uri,
             verifier_did: None,
         }
@@ -1502,8 +1517,8 @@ pub fn extract_presentation_ctx_from_interaction_content(
 ) -> ExtractPresentationCtx {
     ExtractPresentationCtx {
         nonce: Some(content.nonce),
-        client_id: content.client_id,
-        response_uri: content.response_uri,
+        client_id: Some(content.client_id),
+        response_uri: Some(content.response_uri),
         ..Default::default()
     }
 }
@@ -1840,6 +1855,7 @@ impl OpenID4VPAuthorizationRequestParams {
                 r#type: Some("oauth-authz-req+jwt".to_string()),
                 jwk: None,
                 jwt: None,
+                x5c: None,
             },
             payload: JWTPayload {
                 issued_at: None,

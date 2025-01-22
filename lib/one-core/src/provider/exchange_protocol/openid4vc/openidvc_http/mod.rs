@@ -72,6 +72,7 @@ use crate::util::key_verification::KeyVerification;
 pub mod mappers;
 mod mdoc;
 mod utils;
+mod x509;
 
 #[cfg(test)]
 mod test;
@@ -182,6 +183,7 @@ impl OpenID4VCHTTP {
                     Some(organisation),
                     &self.key_algorithm_provider,
                     &self.did_method_provider,
+                    &self.params,
                 )
                 .await
             }
@@ -849,7 +851,7 @@ impl OpenID4VCHTTP {
         encryption_key_jwk: PublicKeyJwkDTO,
         vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
-        client_id_schema: ClientIdSchemaType,
+        client_id_scheme: ClientIdSchemaType,
     ) -> Result<ShareResponse<OpenID4VPInteractionContent>, ExchangeProtocolError> {
         let interaction_id = Uuid::new_v4();
 
@@ -865,31 +867,52 @@ impl OpenID4VCHTTP {
         let Some(base_url) = &self.base_url else {
             return Err(ExchangeProtocolError::Failed("Missing base_url".into()));
         };
-        let client_id = format!("{base_url}/ssi/oidc-verifier/v1/response");
+        let response_uri = format!("{base_url}/ssi/oidc-verifier/v1/response");
         let nonce = utilities::generate_alphanumeric(32);
+
+        let client_id = match client_id_scheme {
+            ClientIdSchemaType::RedirectUri | ClientIdSchemaType::VerifierAttestation => {
+                response_uri.to_owned()
+            }
+            ClientIdSchemaType::X509SanDns => {
+                let base_url = Url::parse(base_url)
+                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
+
+                base_url
+                    .domain()
+                    .ok_or(ExchangeProtocolError::Failed(
+                        "Invalid base_url".to_string(),
+                    ))?
+                    .to_string()
+            }
+            ClientIdSchemaType::Did => unimplemented!(),
+        };
+
+        let interaction_content = OpenID4VPInteractionContent {
+            nonce: nonce.to_owned(),
+            presentation_definition,
+            client_id: client_id.to_owned(),
+            client_id_scheme,
+            response_uri,
+        };
 
         let encoded_offer = create_open_id_for_vp_sharing_url_encoded(
             base_url,
             &self.params,
-            &client_id,
+            client_id,
             interaction_id,
-            &nonce,
+            &interaction_content,
+            nonce,
             proof,
             key_id,
             encryption_key_jwk,
             vp_formats,
-            type_to_descriptor,
-            format_to_type_mapper,
-            client_id_schema,
-            &*self.formatter_provider,
-        )?;
-
-        let interaction_content = OpenID4VPInteractionContent {
-            nonce,
-            presentation_definition,
-            client_id: Some(client_id.clone()),
-            response_uri: Some(client_id),
-        };
+            client_id_scheme,
+            &self.key_algorithm_provider,
+            &*self.key_provider,
+            &*self.did_method_provider,
+        )
+        .await?;
 
         Ok(ShareResponse {
             url: format!("{}://?{encoded_offer}", self.params.presentation.url_scheme),
@@ -1098,6 +1121,7 @@ async fn resolve_credential_offer(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_proof_invitation(
     url: Url,
     allow_insecure_http_transport: bool,
@@ -1106,6 +1130,7 @@ async fn handle_proof_invitation(
     organisation: Option<Organisation>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
+    params: &OpenID4VCParams,
 ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
         "Query cannot be empty".to_string(),
@@ -1117,6 +1142,7 @@ async fn handle_proof_invitation(
         allow_insecure_http_transport,
         key_algorithm_provider,
         did_method_provider,
+        params,
     )
     .await?;
     validate_interaction_data(&interaction_data)?;
