@@ -24,7 +24,7 @@ use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
-use crate::service::test_utilities::prepare_caching_loader;
+use crate::util::test_utilities::prepare_caching_loader;
 
 #[tokio::test]
 async fn test_format_with_layout() {

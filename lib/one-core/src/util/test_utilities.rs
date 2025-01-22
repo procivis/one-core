@@ -3,39 +3,56 @@ use std::sync::Arc;
 
 use time::{Duration, OffsetDateTime};
 
-use super::context::caching_loader::JsonLdCachingLoader;
+use crate::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntity, RemoteEntityType};
 
-pub fn prepare_caching_loader() -> JsonLdCachingLoader {
+pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCachingLoader {
+    let mut contexts = vec![
+        (
+            "https://www.w3.org/ns/credentials/v2".to_string(),
+            RemoteEntity {
+                last_modified: OffsetDateTime::now_utc(),
+                entity_type: RemoteEntityType::JsonLdContext,
+                key: "https://www.w3.org/ns/credentials/v2".to_string(),
+                value: W3_ORG_NS_CREDENTIALS_V2.to_string().into_bytes(),
+                hit_counter: 0,
+                media_type: None,
+                persistent: false,
+            },
+        ),
+        (
+            "https://www.w3.org/ns/credentials/examples/v2".to_string(),
+            RemoteEntity {
+                last_modified: OffsetDateTime::now_utc(),
+                entity_type: RemoteEntityType::JsonLdContext,
+                key: "https://www.w3.org/ns/credentials/examples/v2".to_string(),
+                value: W3_ORG_NS_CREDENTIALS_EXAMPLES_V2.to_string().into_bytes(),
+                hit_counter: 0,
+                media_type: None,
+                persistent: false,
+            },
+        ),
+    ];
+
+    if let Some((id, content)) = additional {
+        contexts.push((
+            id.to_string(),
+            RemoteEntity {
+                last_modified: OffsetDateTime::now_utc(),
+                entity_type: RemoteEntityType::JsonLdContext,
+                key: id.to_string(),
+                value: content.to_string().into_bytes(),
+                hit_counter: 0,
+                media_type: None,
+                persistent: false,
+            },
+        ))
+    }
+
     JsonLdCachingLoader::new(
         RemoteEntityType::JsonLdContext,
-        Arc::new(InMemoryStorage::new(HashMap::from([
-            (
-                "https://www.w3.org/ns/credentials/v2".to_string(),
-                RemoteEntity {
-                    last_modified: OffsetDateTime::now_utc(),
-                    entity_type: RemoteEntityType::JsonLdContext,
-                    key: "https://www.w3.org/ns/credentials/v2".to_string(),
-                    value: W3_ORG_NS_CREDENTIALS_V2.to_string().into_bytes(),
-                    hit_counter: 0,
-                    media_type: None,
-                    persistent: false,
-                },
-            ),
-            (
-                "https://www.w3.org/ns/credentials/examples/v2".to_string(),
-                RemoteEntity {
-                    last_modified: OffsetDateTime::now_utc(),
-                    entity_type: RemoteEntityType::JsonLdContext,
-                    key: "https://www.w3.org/ns/credentials/examples/v2".to_string(),
-                    value: W3_ORG_NS_CREDENTIALS_EXAMPLES_V2.to_string().into_bytes(),
-                    hit_counter: 0,
-                    media_type: None,
-                    persistent: false,
-                },
-            ),
-        ]))),
+        Arc::new(InMemoryStorage::new(HashMap::from_iter(contexts))),
         10000,
         Duration::seconds(999999),
         Duration::seconds(300),

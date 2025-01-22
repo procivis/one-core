@@ -1,22 +1,6 @@
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
-
-pub(super) fn into_timestamp<S>(dt: &OffsetDateTime, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let formatted = format!(
-        "{}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-        dt.year(),
-        dt.month() as i32,
-        dt.day(),
-        dt.hour(),
-        dt.minute(),
-        dt.second()
-    );
-    formatted.serialize(s)
-}
 
 pub(super) fn from_timestamp<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
 where

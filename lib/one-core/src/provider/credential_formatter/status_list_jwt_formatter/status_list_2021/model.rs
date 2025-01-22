@@ -3,8 +3,9 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::status_list_jwt_formatter::common::{
-    from_timestamp, into_timestamp, StatusPurpose,
+    from_timestamp, StatusPurpose,
 };
+use crate::util::timestamp::into_timestamp;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ContentType {

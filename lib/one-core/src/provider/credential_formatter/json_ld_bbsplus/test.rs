@@ -24,7 +24,6 @@ use crate::provider::credential_formatter::json_ld::is_context_list_valid;
 use crate::provider::credential_formatter::json_ld::model::{
     ContextType, LdCredential, LdCredentialSubject,
 };
-use crate::provider::credential_formatter::json_ld::test_utilities::prepare_caching_loader;
 use crate::provider::credential_formatter::json_ld_bbsplus::remove_undisclosed_keys::remove_undisclosed_keys;
 use crate::provider::credential_formatter::json_ld_bbsplus::{JsonLdBbsplus, Params};
 use crate::provider::credential_formatter::model::{
@@ -47,6 +46,7 @@ use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::util::key_verification::KeyVerification;
+use crate::util::test_utilities::prepare_caching_loader;
 
 #[tokio::test]
 async fn test_canonize_any() {
@@ -65,7 +65,7 @@ async fn test_canonize_any() {
         Some("base".to_owned()),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
-        prepare_caching_loader(),
+        prepare_caching_loader(None),
         Arc::new(MockHttpClient::new()),
     );
 
@@ -104,7 +104,7 @@ async fn test_transform_canonized() {
         Some("base".to_owned()),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
-        prepare_caching_loader(),
+        prepare_caching_loader(None),
         Arc::new(MockHttpClient::new()),
     );
 
@@ -145,7 +145,7 @@ async fn test_transform_grouped() {
         Some("base".to_owned()),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
-        prepare_caching_loader(),
+        prepare_caching_loader(None),
         Arc::new(MockHttpClient::new()),
     );
 
@@ -550,7 +550,7 @@ async fn test_format_extract_round_trip() {
         Some("http://base_url".into()),
         did_method_provider.clone(),
         key_algorithm_provider.clone(),
-        prepare_caching_loader(),
+        prepare_caching_loader(None),
         Arc::new(ReqwestClient::default()),
     );
 
@@ -648,7 +648,7 @@ async fn test_extract_invalid_signature() {
         Some("http://base_url".into()),
         did_method_provider.clone(),
         key_algorithm_provider.clone(),
-        prepare_caching_loader(),
+        prepare_caching_loader(None),
         Arc::new(ReqwestClient::default()),
     );
 
@@ -821,7 +821,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
         Some("http://base_url".into()),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
-        prepare_caching_loader(),
+        prepare_caching_loader(None),
         client,
     );
 

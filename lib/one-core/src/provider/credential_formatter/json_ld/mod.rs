@@ -25,8 +25,6 @@ pub mod model;
 
 #[cfg(test)]
 mod test;
-#[cfg(test)]
-pub mod test_utilities;
 
 type LdDataset = std::collections::HashSet<Spog<SimpleTerm<'static>>>;
 

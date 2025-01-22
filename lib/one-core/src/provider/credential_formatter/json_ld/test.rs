@@ -4,8 +4,8 @@ use serde_json::json;
 
 use crate::provider::credential_formatter::json_ld::canonize_any;
 use crate::provider::credential_formatter::json_ld::context::caching_loader::ContextCache;
-use crate::provider::credential_formatter::json_ld::test_utilities::prepare_caching_loader;
 use crate::provider::http_client::MockHttpClient;
+use crate::util::test_utilities::prepare_caching_loader;
 
 #[tokio::test]
 async fn test_canonize_any() {
@@ -63,7 +63,10 @@ async fn test_canonize_any() {
 
     let result = canonize_any(
         &json,
-        ContextCache::new(prepare_caching_loader(), Arc::new(MockHttpClient::new())),
+        ContextCache::new(
+            prepare_caching_loader(None),
+            Arc::new(MockHttpClient::new()),
+        ),
     )
     .await
     .unwrap();
@@ -123,7 +126,10 @@ async fn test_canonize_any_example_8() {
 
     let result = canonize_any(
         &json,
-        ContextCache::new(prepare_caching_loader(), Arc::new(MockHttpClient::new())),
+        ContextCache::new(
+            prepare_caching_loader(None),
+            Arc::new(MockHttpClient::new()),
+        ),
     )
     .await
     .unwrap();
@@ -158,7 +164,10 @@ async fn test_canonize_any_example_8_proof() {
 
     let result = canonize_any(
         &json,
-        ContextCache::new(prepare_caching_loader(), Arc::new(MockHttpClient::new())),
+        ContextCache::new(
+            prepare_caching_loader(None),
+            Arc::new(MockHttpClient::new()),
+        ),
     )
     .await
     .unwrap();

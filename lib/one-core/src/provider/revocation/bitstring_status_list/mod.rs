@@ -30,6 +30,7 @@ use crate::provider::revocation::model::{
     CredentialRevocationState, JsonLdContext, Operation, RevocationListId,
     RevocationMethodCapabilities, RevocationUpdate,
 };
+use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 use crate::provider::revocation::RevocationMethod;
 use crate::util::key_verification::KeyVerification;
 use crate::util::params::convert_params;
@@ -270,24 +271,7 @@ impl RevocationMethod for BitstringStatusList {
             ))?;
 
         if util::extract_bitstring_index(encoded_list.to_owned(), list_index)? {
-            Ok(match credential_status.status_purpose.as_ref() {
-                Some(purpose) => match purpose.as_str() {
-                    "revocation" => CredentialRevocationState::Revoked,
-                    "suspension" => CredentialRevocationState::Suspended {
-                        suspend_end_date: None,
-                    },
-                    _ => {
-                        return Err(RevocationError::ValidationError(format!(
-                            "Invalid status purpose: {purpose}",
-                        )))
-                    }
-                },
-                None => {
-                    return Err(RevocationError::ValidationError(
-                        "Missing status purpose ".to_string(),
-                    ))
-                }
-            })
+            status_purpose_to_revocation_state(credential_status.status_purpose.as_ref())
         } else {
             Ok(CredentialRevocationState::Valid)
         }

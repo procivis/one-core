@@ -28,7 +28,7 @@ use super::model::{
     ProvedCredential, Timestamp,
 };
 use super::service::create_open_id_for_vp_client_metadata;
-use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_mapper::{value_to_model_claims, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -76,7 +76,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
-use crate::service::error::ServiceError;
+use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::oidc::proof_request::{
     generate_authorization_request_client_id_scheme_verifier_attestation,
@@ -779,28 +779,7 @@ fn validate_and_collect_claims(
         .iter()
         .try_fold(vec![], |claims, (key, field)| {
             let nested_claim = nested_claim_view.claims.get(key);
-
-            match nested_claim {
-                Some(nested_claim) => {
-                    let nested_claims = match field {
-                        Arrayed::Single(CredentialSchemaClaimsNestedTypeView::Field(claim)) => {
-                            visit_nested_field_field(credential_id, now, claim, nested_claim)
-                        }
-                        Arrayed::Single(CredentialSchemaClaimsNestedTypeView::Object(object)) => {
-                            visit_nested_object_field(credential_id, now, object, nested_claim)
-                        }
-                        Arrayed::InArray(array) => {
-                            visit_nested_array_field(credential_id, now, array, nested_claim)
-                        }
-                    }?;
-                    Ok([claims, nested_claims].concat())
-                }
-                None if field.required() => Err(ExchangeProtocolError::Failed(format!(
-                    "Validation Error. Claim key {} missing",
-                    field.key(),
-                ))),
-                None => Ok(claims),
-            }
+            visit_nested_claim(credential_id, now, claims, field, nested_claim)
         })
 }
 
@@ -848,29 +827,38 @@ fn visit_nested_object_field(
         .iter()
         .try_fold(vec![], |claims, (key, field)| {
             let claim = claims_view.get(key);
-
-            match &claim {
-                Some(nested_claim) => {
-                    let nested_claims = match field {
-                        Arrayed::Single(CredentialSchemaClaimsNestedTypeView::Field(claim)) => {
-                            visit_nested_field_field(credential_id, now, claim, nested_claim)
-                        }
-                        Arrayed::Single(CredentialSchemaClaimsNestedTypeView::Object(object)) => {
-                            visit_nested_object_field(credential_id, now, object, nested_claim)
-                        }
-                        Arrayed::InArray(array) => {
-                            visit_nested_array_field(credential_id, now, array, nested_claim)
-                        }
-                    }?;
-                    Ok([claims, nested_claims].concat())
-                }
-                None if field.required() => Err(ExchangeProtocolError::Failed(format!(
-                    "Validation Error. Claim key {} missing",
-                    field.key(),
-                ))),
-                None => Ok(claims),
-            }
+            visit_nested_claim(credential_id, now, claims, field, claim)
         })
+}
+
+fn visit_nested_claim(
+    credential_id: CredentialId,
+    now: OffsetDateTime,
+    claims: Vec<Claim>,
+    field: &Arrayed<CredentialSchemaClaimsNestedTypeView>,
+    claim: Option<&ClaimsNestedFieldView>,
+) -> Result<Vec<Claim>, ExchangeProtocolError> {
+    match claim {
+        Some(nested_claim) => {
+            let nested_claims = match field {
+                Arrayed::Single(CredentialSchemaClaimsNestedTypeView::Field(claim)) => {
+                    visit_nested_field_field(credential_id, now, claim, nested_claim)
+                }
+                Arrayed::Single(CredentialSchemaClaimsNestedTypeView::Object(object)) => {
+                    visit_nested_object_field(credential_id, now, object, nested_claim)
+                }
+                Arrayed::InArray(array) => {
+                    visit_nested_array_field(credential_id, now, array, nested_claim)
+                }
+            }?;
+            Ok([claims, nested_claims].concat())
+        }
+        None if field.required() => Err(ExchangeProtocolError::Failed(format!(
+            "Validation Error. Claim key {} missing",
+            field.key(),
+        ))),
+        None => Ok(claims),
+    }
 }
 
 fn visit_nested_array_field(
@@ -1541,14 +1529,23 @@ pub fn extracted_credential_to_model(
 
     let mut model_claims = vec![];
     for (value, claim_schema) in claims {
-        model_claims.extend(value_to_model_claims(
-            credential_id,
-            claim_schemas,
-            &value,
-            now,
-            &claim_schema,
-            &claim_schema.key,
-        )?);
+        model_claims.extend(
+            value_to_model_claims(
+                credential_id,
+                claim_schemas,
+                &value,
+                now,
+                &claim_schema,
+                &claim_schema.key,
+            )
+            .map_err(|e| match e {
+                ServiceError::MappingError(message) => OpenID4VCError::MappingError(message),
+                ServiceError::BusinessLogic(BusinessLogicError::MissingClaimSchemas) => {
+                    OpenID4VCError::MissingClaimSchemas
+                }
+                _ => OpenID4VCError::Other(e.to_string()),
+            })?,
+        );
     }
 
     Ok(ProvedCredential {
@@ -1576,89 +1573,6 @@ pub fn extracted_credential_to_model(
         holder_did_value: holder_did.to_owned(),
         mdoc_mso,
     })
-}
-
-fn value_to_model_claims(
-    credential_id: CredentialId,
-    claim_schemas: &[CredentialSchemaClaim],
-    json_value: &serde_json::Value,
-    now: OffsetDateTime,
-    claim_schema: &ClaimSchema,
-    path: &str,
-) -> Result<Vec<Claim>, OpenID4VCError> {
-    let mut model_claims = vec![];
-
-    match json_value {
-        serde_json::Value::String(_)
-        | serde_json::Value::Bool(_)
-        | serde_json::Value::Number(_) => {
-            let value = match json_value {
-                serde_json::Value::String(v) => v.to_owned(),
-                serde_json::Value::Bool(v) => {
-                    if *v {
-                        "true".to_string()
-                    } else {
-                        "false".to_string()
-                    }
-                }
-                serde_json::Value::Number(v) => v.to_string(),
-                _ => {
-                    return Err(OpenID4VCError::MappingError(
-                        "invalid value type".to_string(),
-                    ));
-                }
-            };
-
-            model_claims.push(Claim {
-                id: Uuid::new_v4(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value,
-                path: path.to_owned(),
-                schema: Some(claim_schema.to_owned()),
-            });
-        }
-        serde_json::Value::Object(object) => {
-            for (key, value) in object {
-                let this_name = &claim_schema.key;
-                let child_schema_name = format!("{this_name}/{key}");
-                let child_credential_schema_claim = claim_schemas
-                    .iter()
-                    .find(|claim_schema| claim_schema.schema.key == child_schema_name)
-                    .ok_or(OpenID4VCError::MissingClaimSchemas)?;
-                model_claims.extend(value_to_model_claims(
-                    credential_id,
-                    claim_schemas,
-                    value,
-                    now,
-                    &child_credential_schema_claim.schema,
-                    &format!("{path}/{key}"),
-                )?);
-            }
-        }
-        serde_json::Value::Array(array) => {
-            for (index, value) in array.iter().enumerate() {
-                let child_schema_path = format!("{path}/{index}");
-
-                model_claims.extend(value_to_model_claims(
-                    credential_id,
-                    claim_schemas,
-                    value,
-                    now,
-                    claim_schema,
-                    &child_schema_path,
-                )?);
-            }
-        }
-        _ => {
-            return Err(OpenID4VCError::MappingError(
-                "value type is not supported".to_string(),
-            ));
-        }
-    }
-
-    Ok(model_claims)
 }
 
 impl From<CredentialSchemaBackgroundPropertiesRequestDTO> for BackgroundProperties {

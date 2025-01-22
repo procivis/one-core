@@ -73,7 +73,7 @@ impl CredentialFormatter for JsonLdClassic {
         types: Vec<String>,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
-        let mut credential = json_ld::prepare_credential(
+        let credential = json_ld::prepare_credential(
             credential,
             holder_did.as_ref(),
             contexts,
@@ -81,45 +81,11 @@ impl CredentialFormatter for JsonLdClassic {
             self.params.embed_layout_properties.unwrap_or_default(),
         )?;
 
-        let algorithm = auth_fn.get_key_type();
+        let algorithm = auth_fn.get_key_type().to_string();
 
-        let cryptosuite = match algorithm {
-            "EDDSA" => "eddsa-rdfc-2022",
-            "ES256" => "ecdsa-rdfc-2019",
-            _ => {
-                return Err(FormatterError::CouldNotFormat(format!(
-                    "Unsupported algorithm: {algorithm}"
-                )))
-            }
-        };
-
-        let key_id = auth_fn.get_key_id().ok_or(FormatterError::CouldNotFormat(
-            "Missing jwk key id".to_string(),
-        ))?;
-
-        let mut proof = json_ld::prepare_proof_config(
-            "assertionMethod",
-            cryptosuite,
-            key_id,
-            indexset![ContextType::Url(Context::CredentialsV2.to_url())],
-        )
-        .await?;
-
-        let proof_hash = prepare_proof_hash(
-            &credential,
-            &*self.crypto,
-            &proof,
-            self.caching_loader.to_owned(),
-            None,
-        )
-        .await?;
-
-        let signed_proof = sign_proof_hash(&proof_hash, auth_fn).await?;
-
-        proof.proof_value = Some(signed_proof);
-        // we remove the context proof since the same context is already present in the VC
-        proof.context = None;
-        credential.proof = Some(proof);
+        let credential = self
+            .format_credential_internal(auth_fn, credential, &algorithm)
+            .await?;
 
         let resp = serde_json::to_string(&credential)
             .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
@@ -164,7 +130,7 @@ impl CredentialFormatter for JsonLdClassic {
             .collect(),
         };
 
-        let mut credential = LdCredential {
+        let credential = LdCredential {
             context: indexset![ContextType::Url(Context::CredentialsV2.to_url())],
             id: Some(revocation_list_url.parse().map_err(|_| {
                 FormatterError::Failed("Revocation list is not a valid URL".to_string())
@@ -189,42 +155,9 @@ impl CredentialFormatter for JsonLdClassic {
             related_resource: None,
         };
 
-        let cryptosuite = match algorithm.as_str() {
-            "EDDSA" => "eddsa-rdfc-2022",
-            "ES256" => "ecdsa-rdfc-2019",
-            _ => {
-                return Err(FormatterError::CouldNotFormat(format!(
-                    "Unsupported algorithm: {algorithm}"
-                )))
-            }
-        };
-
-        let key_id = auth_fn.get_key_id().ok_or(FormatterError::CouldNotFormat(
-            "Missing jwk key id".to_string(),
-        ))?;
-
-        let mut proof = json_ld::prepare_proof_config(
-            "assertionMethod",
-            cryptosuite,
-            key_id,
-            indexset![ContextType::Url(Context::CredentialsV2.to_url())],
-        )
-        .await?;
-
-        let proof_hash = prepare_proof_hash(
-            &credential,
-            &*self.crypto,
-            &proof,
-            self.caching_loader.to_owned(),
-            None,
-        )
-        .await?;
-
-        let signed_proof = sign_proof_hash(&proof_hash, auth_fn).await?;
-
-        proof.proof_value = Some(signed_proof);
-        proof.context = None;
-        credential.proof = Some(proof);
+        let credential = self
+            .format_credential_internal(auth_fn, credential, &algorithm)
+            .await?;
 
         serde_json::to_string(&credential).map_err(|err| {
             FormatterError::Failed(format!(
@@ -539,6 +472,53 @@ impl JsonLdClassic {
             nonce: presentation.nonce,
             credentials,
         })
+    }
+
+    async fn format_credential_internal(
+        &self,
+        auth_fn: AuthenticationFn,
+        mut credential: LdCredential,
+        algorithm: &str,
+    ) -> Result<LdCredential, FormatterError> {
+        let cryptosuite = match algorithm {
+            "EDDSA" => "eddsa-rdfc-2022",
+            "ES256" => "ecdsa-rdfc-2019",
+            _ => {
+                return Err(FormatterError::CouldNotFormat(format!(
+                    "Unsupported algorithm: {algorithm}"
+                )))
+            }
+        };
+
+        let key_id = auth_fn.get_key_id().ok_or(FormatterError::CouldNotFormat(
+            "Missing jwk key id".to_string(),
+        ))?;
+
+        let mut proof = json_ld::prepare_proof_config(
+            "assertionMethod",
+            cryptosuite,
+            key_id,
+            indexset![ContextType::Url(Context::CredentialsV2.to_url())],
+        )
+        .await?;
+
+        let proof_hash = prepare_proof_hash(
+            &credential,
+            &*self.crypto,
+            &proof,
+            self.caching_loader.to_owned(),
+            None,
+        )
+        .await?;
+
+        let signed_proof = sign_proof_hash(&proof_hash, auth_fn).await?;
+
+        proof.proof_value = Some(signed_proof);
+        // we remove the context proof since the same context is already present in the VC
+        proof.context = None;
+        credential.proof = Some(proof);
+
+        Ok(credential)
     }
 }
 
