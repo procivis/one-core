@@ -1,8 +1,11 @@
+use url::Url;
+
 use super::dto::CreateProofRequestDTO;
 use crate::config::core_config::{CoreConfig, ExchangeConfig, ExchangeType};
 use crate::model::key::Key;
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCParams;
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -93,6 +96,40 @@ pub(super) fn validate_mdl_exchange(
         _ if engagement.is_some() => Err(ServiceError::Validation(
             ValidationError::InvalidMdlParameters,
         )),
+        _ => Ok(()),
+    }
+}
+
+pub(super) fn validate_redirect_uri(
+    exchange: &str,
+    redirect_uri: Option<&str>,
+    config: &ExchangeConfig,
+) -> Result<(), ServiceError> {
+    let fields = config.get_fields(exchange)?;
+    match fields.r#type {
+        ExchangeType::OpenId4Vc => {
+            if let Some(redirect_uri) = redirect_uri {
+                let exchange_params: OpenID4VCParams = config.get(exchange)?;
+
+                if exchange_params.presentation.redirect_uri.disabled {
+                    return Err(ValidationError::InvalidRedirectUri.into());
+                }
+
+                let url =
+                    Url::parse(redirect_uri).map_err(|_| ValidationError::InvalidRedirectUri)?;
+
+                if !exchange_params
+                    .presentation
+                    .redirect_uri
+                    .allowed_schemes
+                    .contains(&url.scheme().to_string())
+                {
+                    return Err(ValidationError::InvalidRedirectUri.into());
+                }
+            }
+
+            Ok(())
+        }
         _ => Ok(()),
     }
 }

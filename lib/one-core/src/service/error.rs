@@ -478,6 +478,9 @@ pub enum ValidationError {
 
     #[error("Exchange protocol operation disabled")]
     InvalidExchangeOperation,
+
+    #[error("Redirect uri disabled or scheme not allowed")]
+    InvalidRedirectUri,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -972,6 +975,9 @@ pub enum ErrorCode {
     )]
     BR_0191,
 
+    #[strum(to_string = "Redirect uri disabled or scheme not allowed")]
+    BR_0192,
+
     #[strum(to_string = "Exchange protocol operation disabled")]
     BR_0196,
 
@@ -1172,6 +1178,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::Unauthorized => ErrorCode::BR_0178,
             Self::InvalidUpdateRequest => ErrorCode::BR_0181,
             Self::DeserializationError(_) => ErrorCode::BR_0189,
+            Self::InvalidRedirectUri => ErrorCode::BR_0192,
             Self::InvalidExchangeOperation { .. } => ErrorCode::BR_0196,
         }
     }

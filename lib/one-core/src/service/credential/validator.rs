@@ -2,9 +2,10 @@ use std::collections::VecDeque;
 
 use itertools::Itertools;
 use regex::Regex;
+use url::Url;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::config::core_config::{CoreConfig, DatatypeType, ExchangeType};
 use crate::config::validator::datatype::{validate_datatype_value, DatatypeValidationError};
 use crate::config::validator::exchange::{
     validate_exchange_did_compatibility, validate_exchange_operation, validate_exchange_type,
@@ -13,6 +14,7 @@ use crate::config::ConfigValidationError;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::exchange_protocol::dto::{ExchangeProtocolCapabilities, Operation};
+use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCParams;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
@@ -95,6 +97,36 @@ pub(crate) fn validate_create_request(
         .collect::<Result<Vec<_>, ServiceError>>()?;
 
     Ok(())
+}
+
+pub(super) fn validate_redirect_uri(
+    exchange: &str,
+    redirect_uri: Option<&str>,
+    config: &CoreConfig,
+) -> Result<(), ServiceError> {
+    let fields = config.exchange.get_fields(exchange)?;
+    match fields.r#type {
+        ExchangeType::OpenId4Vc => {
+            if let Some(redirect_uri) = redirect_uri {
+                let exchange_params: OpenID4VCParams = config.exchange.get(exchange)?;
+                let params = exchange_params.issuance.redirect_uri;
+
+                if params.disabled {
+                    return Err(ValidationError::InvalidRedirectUri.into());
+                }
+
+                let url =
+                    Url::parse(redirect_uri).map_err(|_| ValidationError::InvalidRedirectUri)?;
+
+                if !params.allowed_schemes.contains(&url.scheme().to_string()) {
+                    return Err(ValidationError::InvalidRedirectUri.into());
+                }
+            }
+
+            Ok(())
+        }
+        _ => Ok(()),
+    }
 }
 
 struct PathNode {

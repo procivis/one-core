@@ -67,12 +67,19 @@ exchange:
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
         useRequestUri: true
+        issuance:
+          redirectUri:
+            disabled: false
+            allowedSchemes: ["https"]
         presentation:
           verifier:
             supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
             defaultClientIdSchema: verifier_attestation
           holder:
             supportedClientIdSchemes: [ redirect_uri, verifier_attestation ]
+          redirectUri:
+            disabled: false
+            allowedSchemes: ["https"]
   MDOC_OPENID4VP:
     display: "exchange.mdocOpenid"
     order: 2
@@ -85,6 +92,9 @@ exchange:
         useRequestUri: true
         issuance:
           disabled: true
+          redirectUri:
+            disabled: false
+            allowedSchemes: ["https"]
         presentation:
           urlScheme: mdoc-openid4vp
           x509CaCertificate: MIICLDCCAdKgAwIBAgIUQM0iVH84NMUmxcIuGibH4gMyRmgwCgYIKoZIzj0EAwQwYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMB4XDTIyMDExMjEyMDAwMFoXDTMyMDExMDEyMDAwMFowYjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaRFtZbpYHFlPgGyZCt6bGKS0hEekPVxiBHRXImo8_NUR-czg-DI2KTE3ikRVNgq2rICatkvkV2jaM2frPEOl1qNmMGQwEgYDVR0TAQH_BAgwBgEB_wIBADAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFO0asJ3iYEVQADvaWjQyGpi-LbfFMB8GA1UdIwQYMBaAFO0asJ3iYEVQADvaWjQyGpi-LbfFMAoGCCqGSM49BAMEA0gAMEUCIQD9kfI800DOj76YsiW4lUNRZowH07j152M3UKHKEaIjUAIgZNINukb4SFKEC4A0qEKgpPEZM7_Vh5aNro-PQn3_rgA
@@ -93,6 +103,9 @@ exchange:
             defaultClientIdSchema: x509_san_dns
           holder:
             supportedClientIdSchemes: [ x509_san_dns ]
+          redirectUri:
+            disabled: false
+            allowedSchemes: ["https"]
 transport:
   HTTP:
     type: "HTTP"

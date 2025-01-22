@@ -2309,6 +2309,93 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
 }
 
 #[tokio::test]
+async fn test_create_credential_fail_invalid_redirect_uri() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut did_repository = MockDidRepository::default();
+
+    let mut history_repository = MockHistoryRepository::default();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let credential = generic_credential();
+    let issuer_did = credential.issuer_did.clone().unwrap();
+    let credential_schema = credential.schema.clone().unwrap();
+
+    did_repository.expect_get_did().times(1).returning({
+        let issuer_did = issuer_did.clone();
+        move |_, _| Ok(Some(issuer_did.clone()))
+    });
+
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .times(1)
+        .returning(move |_, _| Ok(Some(credential_schema.clone())));
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(generic_formatter_capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
+    let mut dummy_protocol = MockExchangeProtocol::default();
+    dummy_protocol
+        .inner
+        .expect_get_capabilities()
+        .once()
+        .returning(generic_capabilities);
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+
+    let service = setup_service(Repositories {
+        credential_schema_repository,
+        did_repository,
+        history_repository,
+        formatter_provider,
+        protocol_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
+            issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
+            issuer_key: Some(issuer_did.keys.unwrap()[0].key.id),
+            exchange: "OPENID4VC".to_string(),
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: credential.claims.as_ref().unwrap()[0]
+                    .schema
+                    .as_ref()
+                    .unwrap()
+                    .id
+                    .to_owned(),
+                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+                path: credential.claims.as_ref().unwrap()[0].path.to_owned(),
+            }],
+            redirect_uri: Some("invalid://domain.com".to_string()),
+        })
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::InvalidRedirectUri
+        ))
+    ));
+}
+
+#[tokio::test]
 async fn test_revoke_credential_success_with_accepted_credential() {
     let mut credential = generic_credential();
     credential.state = CredentialStateEnum::Accepted;

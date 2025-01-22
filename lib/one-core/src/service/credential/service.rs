@@ -2,7 +2,7 @@ use shared_types::CredentialId;
 use uuid::Uuid;
 
 use super::mapper::credential_detail_response_from_model;
-use super::validator::verify_suspension_support;
+use super::validator::{validate_redirect_uri, verify_suspension_support};
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::{throw_if_credential_state_eq, throw_if_state_not_in};
 use crate::config::core_config::RevocationType;
@@ -123,6 +123,11 @@ impl CredentialService {
             &request.claim_values,
             &schema,
             &formatter_capabilities,
+            &self.config,
+        )?;
+        validate_redirect_uri(
+            &request.exchange,
+            request.redirect_uri.as_deref(),
             &self.config,
         )?;
 

@@ -36,8 +36,8 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     ClientIdSchemaType, InvitationResponseDTO, OpenID4VCICredentialOfferClaim,
     OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialValueDetails, OpenID4VCIssuanceParams,
     OpenID4VCParams, OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
-    OpenID4VCPresentationVerifierParams, OpenID4VPClientMetadata, OpenID4VPFormat,
-    OpenID4VPInteractionData, OpenID4VPPresentationDefinition, ShareResponse,
+    OpenID4VCPresentationVerifierParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
+    OpenID4VPFormat, OpenID4VPInteractionData, OpenID4VPPresentationDefinition, ShareResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::service::create_credential_offer;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
@@ -84,6 +84,10 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCHTTP {
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
+                redirect_uri: OpenID4VCRedirectUriParams {
+                    disabled: false,
+                    allowed_schemes: vec!["https".to_string()],
+                },
             },
             presentation: generic_presentation_params(),
         }),
@@ -107,6 +111,10 @@ fn generic_presentation_params() -> OpenID4VCPresentationParams {
                 ClientIdSchemaType::RedirectUri,
                 ClientIdSchemaType::VerifierAttestation,
             ],
+        },
+        redirect_uri: OpenID4VCRedirectUriParams {
+            disabled: false,
+            allowed_schemes: vec!["https".to_string()],
         },
     }
 }
@@ -283,6 +291,10 @@ async fn test_generate_share_credentials_offer_by_value() {
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
+                redirect_uri: OpenID4VCRedirectUriParams {
+                    disabled: false,
+                    allowed_schemes: vec!["https".to_string()],
+                },
             },
             presentation: generic_presentation_params(),
         }),
@@ -445,6 +457,10 @@ async fn test_share_proof_with_use_request_uri() {
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
+                redirect_uri: OpenID4VCRedirectUriParams {
+                    disabled: false,
+                    allowed_schemes: vec!["https".to_string()],
+                },
             },
             presentation: generic_presentation_params(),
         }),
@@ -808,6 +824,10 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
+                redirect_uri: OpenID4VCRedirectUriParams {
+                    disabled: false,
+                    allowed_schemes: vec!["https".to_string()],
+                },
             },
             presentation: generic_presentation_params(),
         }),
@@ -1073,6 +1093,10 @@ async fn test_handle_invitation_proof_failed() {
             issuance: OpenID4VCIssuanceParams {
                 disabled: false,
                 url_scheme: "openid-credential-offer".to_string(),
+                redirect_uri: OpenID4VCRedirectUriParams {
+                    disabled: false,
+                    allowed_schemes: vec!["https".to_string()],
+                },
             },
             presentation: generic_presentation_params(),
         }),
@@ -2046,6 +2070,10 @@ fn test_params(issuance_url_scheme: &str, presentation_url_scheme: &str) -> Open
         issuance: OpenID4VCIssuanceParams {
             disabled: false,
             url_scheme: issuance_url_scheme.to_string(),
+            redirect_uri: OpenID4VCRedirectUriParams {
+                disabled: false,
+                allowed_schemes: vec!["https".to_string()],
+            },
         },
         presentation: OpenID4VCPresentationParams {
             disabled: false,
@@ -2063,6 +2091,10 @@ fn test_params(issuance_url_scheme: &str, presentation_url_scheme: &str) -> Open
                     ClientIdSchemaType::RedirectUri,
                     ClientIdSchemaType::VerifierAttestation,
                 ],
+            },
+            redirect_uri: OpenID4VCRedirectUriParams {
+                disabled: false,
+                allowed_schemes: vec!["https".to_string()],
             },
         },
     }

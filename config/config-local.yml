@@ -14,6 +14,21 @@ exchange:
     params:
       public:
         allowInsecureHttpTransport: true
+        issuance:
+          redirectUri:
+            allowedSchemes: ["http", "https"]
+        presentation:
+          redirectUri:
+            allowedSchemes: ["http", "https"]
+  MDOC_OPENID4VP:
+    params:
+      public:
+        issuance:
+          redirectUri:
+            allowedSchemes: ["http", "https"]
+        presentation:
+          redirectUri:
+            allowedSchemes: ["http", "https"]
 transport:
   MQTT:
     type: "MQTT"

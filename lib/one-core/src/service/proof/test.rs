@@ -2078,7 +2078,7 @@ async fn test_create_proof_using_invalid_did_method() {
         ..Default::default()
     });
 
-    let result = service.create_proof(request.to_owned()).await;
+    let result = service.create_proof(request).await;
     assert!(matches!(
         result,
         Err(ServiceError::BusinessLogic(
@@ -2210,7 +2210,7 @@ async fn test_create_proof_without_related_key() {
         ..Default::default()
     });
 
-    let result = service.create_proof(request.to_owned()).await;
+    let result = service.create_proof(request).await;
     assert_eq!(result.unwrap(), proof_id);
 }
 
@@ -2416,7 +2416,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
         ..Default::default()
     });
 
-    let result = service.create_proof(request.to_owned()).await;
+    let result = service.create_proof(request).await;
     assert!(matches!(
         result.unwrap_err(),
         ServiceError::Validation(ValidationError::InvalidKey(_))
@@ -2474,7 +2474,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         ..Default::default()
     });
 
-    let result = service.create_proof(request.to_owned()).await;
+    let result = service.create_proof(request).await;
     assert!(matches!(
         result.unwrap_err(),
         ServiceError::BusinessLogic(BusinessLogicError::IncompatibleProofExchangeProtocol)
@@ -2766,12 +2766,37 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         ..Default::default()
     });
 
-    let result = service.create_proof(request.to_owned()).await;
+    let result = service.create_proof(request).await;
     assert!(matches!(
         result,
         Err(ServiceError::BusinessLogic(
             BusinessLogicError::IncompatibleProofVerificationKeyStorage
         ))
+    ));
+}
+
+#[tokio::test]
+async fn test_create_proof_failed_invalid_redirect_uri() {
+    let service = setup_service(Repositories {
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_proof(CreateProofRequestDTO {
+            proof_schema_id: Uuid::new_v4().into(),
+            verifier_did_id: Uuid::new_v4().into(),
+            exchange: "OPENID4VC".to_string(),
+            redirect_uri: Some("invalid://domain.com".to_string()),
+            verifier_key: None,
+            scan_to_verify: None,
+            iso_mdl_engagement: None,
+            transport: None,
+        })
+        .await;
+    assert!(matches!(
+        result.unwrap_err(),
+        ServiceError::Validation(ValidationError::InvalidRedirectUri)
     ));
 }
 

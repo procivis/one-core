@@ -25,8 +25,8 @@ use crate::provider::exchange_protocol::openid4vc::mapper::create_format_map;
 use crate::provider::exchange_protocol::openid4vc::model::{
     ClientIdSchemaType, InvitationResponseDTO, OpenID4VCIssuanceParams, OpenID4VCParams,
     OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
-    OpenID4VCPresentationVerifierParams, OpenID4VPAuthorizationRequestParams,
-    OpenID4VPPresentationDefinition,
+    OpenID4VCPresentationVerifierParams, OpenID4VCRedirectUriParams,
+    OpenID4VPAuthorizationRequestParams, OpenID4VPPresentationDefinition,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::mappers::parse_identity_request;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest;
@@ -102,6 +102,10 @@ fn setup_protocol(inputs: TestInputs) -> OpenId4VcMqtt {
                     .issuance_url_scheme
                     .unwrap_or("openid-credential-offer")
                     .to_string(),
+                redirect_uri: OpenID4VCRedirectUriParams {
+                    disabled: false,
+                    allowed_schemes: vec!["https".to_string()],
+                },
             },
             presentation: generic_presentation_params(inputs.presentation_url_scheme),
         },
@@ -131,6 +135,10 @@ fn generic_presentation_params(url_scheme: Option<&str>) -> OpenID4VCPresentatio
                 ClientIdSchemaType::RedirectUri,
                 ClientIdSchemaType::VerifierAttestation,
             ],
+        },
+        redirect_uri: OpenID4VCRedirectUriParams {
+            disabled: false,
+            allowed_schemes: vec!["https".to_string()],
         },
     }
 }

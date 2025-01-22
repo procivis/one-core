@@ -7,3 +7,22 @@ transport:
     params:
       private:
         brokerUrl: "mqtts://mqtt.dev.procivis-one.com:8883"
+exchange:
+  OPENID4VC:
+    params:
+      public:
+        issuance:
+          redirectUri:
+            allowedSchemes: ["http", "https"]
+        presentation:
+          redirectUri:
+            allowedSchemes: ["http", "https"]
+  MDOC_OPENID4VP:
+    params:
+      public:
+        issuance:
+          redirectUri:
+            allowedSchemes: ["http", "https"]
+        presentation:
+          redirectUri:
+            allowedSchemes: ["http", "https"]

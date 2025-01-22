@@ -1011,7 +1011,7 @@ pub struct OpenID4VCParams {
     pub allow_insecure_http_transport: bool,
     #[serde(default)]
     pub use_request_uri: bool,
-    #[serde(default)]
+
     pub issuance: OpenID4VCIssuanceParams,
     pub presentation: OpenID4VCPresentationParams,
 }
@@ -1023,15 +1023,8 @@ pub struct OpenID4VCIssuanceParams {
     pub disabled: bool,
     #[serde(default = "default_issuance_url_scheme")]
     pub url_scheme: String,
-}
 
-impl Default for OpenID4VCIssuanceParams {
-    fn default() -> Self {
-        Self {
-            disabled: false,
-            url_scheme: default_issuance_url_scheme(),
-        }
-    }
+    pub redirect_uri: OpenID4VCRedirectUriParams,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -1045,6 +1038,7 @@ pub struct OpenID4VCPresentationParams {
     pub x509_ca_certificate: Option<String>,
     pub holder: OpenID4VCPresentationHolderParams,
     pub verifier: OpenID4VCPresentationVerifierParams,
+    pub redirect_uri: OpenID4VCRedirectUriParams,
 }
 
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368
@@ -1077,4 +1071,11 @@ pub enum ClientIdSchemaType {
     VerifierAttestation,
     Did,
     X509SanDns,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VCRedirectUriParams {
+    pub disabled: bool,
+    pub allowed_schemes: Vec<String>,
 }
