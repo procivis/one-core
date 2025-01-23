@@ -55,7 +55,9 @@ pub struct CreateProofRequestRestDTO {
     pub verifier_did: DidId,
     pub exchange: String,
     /// When a shared proof is accepted, the holder will be redirected to
-    /// the resource specified here.
+    /// the resource specified here, if redirects are enabled in the system
+    /// configuration. The URI must use a scheme (for example `https`, `myapp`)
+    /// that is allowed by the system configuration.
     pub redirect_uri: Option<String>,
     /// If multiple keys are specified for the authentication method of the
     /// DID, use this value to specify which key should be used as the

@@ -259,7 +259,9 @@ pub struct CreateCredentialRequestRestDTO {
     #[into(with_fn = convert_inner)]
     pub claim_values: Vec<CredentialRequestClaimRestDTO>,
     /// When a credential is accepted, the holder will be redirected to the
-    /// resource specified here.
+    /// resource specified here, if redirects are enabled in the system
+    /// configuration. The URI must use a scheme (for example `https`, `myapp`)
+    /// that is allowed by the system configuration.
     pub redirect_uri: Option<String>,
 }
 
