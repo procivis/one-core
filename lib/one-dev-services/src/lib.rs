@@ -20,8 +20,8 @@
 //! enable future certification, e.g. in
 //! the [NIST Cryptographic Module Validation Program (CMVP)][cmvp]), are modular
 //! implementations of the complete range of functionality. Developers can use providers
-//! — or implementations of individual technologies from within a provider — for modular
-//! functionality.
+//! - or implementations of individual technologies from within a provider - for modular
+//!   functionality.
 //!
 //! **one-dev-services** is a service layer that offers developer APIs for orchestrating the whole
 //! suite of providers for simplified workflows in issuing, holding, or verifying. Services

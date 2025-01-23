@@ -860,7 +860,7 @@ async fn test_openid4vc_jsonld_bbsplus_array(revocation_method: &str) {
                                 "const": holder_credential_schema.schema_id
                             }
                         },
-                        // Disclose the whole address
+                        // Disclose the whole address
                         {
                             "id": new_claim_schemas[1].0,
                             "path": ["$.vc.credentialSubject.root/array"],

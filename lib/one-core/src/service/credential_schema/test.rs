@@ -1602,7 +1602,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
 
     let str_of_len_256 = "a".repeat(256);
     let str_of_len_128 = "a".repeat(128);
-    let unicode_str_of_len_130_but_byte_len_of_260 = "é".repeat(130);
+    let unicode_str_of_len_130_but_byte_len_of_260 = "§".repeat(130);
 
     let first_level_fail = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {

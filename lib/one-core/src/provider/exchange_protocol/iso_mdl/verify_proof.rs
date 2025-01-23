@@ -157,7 +157,7 @@ pub async fn validate_proof(
             .extract_credentials(&credential, key_verification_credentials.clone())
             .await?;
 
-        // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
+        // Check if "nbf" attribute of VCs and VP are valid. || Check if VCs are expired.
         validate_issuance_time(&received_credential.invalid_before, leeway)?;
         validate_expiration_time(&received_credential.valid_until, leeway)?;
 
