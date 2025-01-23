@@ -3341,9 +3341,13 @@ async fn test_retract_proof_with_bluetooth_ok() {
         organisation: None,
         data: Some({
             let data = BLEOpenID4VPInteractionData {
+                client_id: "did:example:123".to_string(),
                 nonce: "nonce".to_string(),
                 task_id: Uuid::new_v4(),
-                presentation_definition: None,
+                presentation_definition: OpenID4VPPresentationDefinition {
+                    id: interaction_id,
+                    input_descriptors: vec![],
+                },
                 peer: BLEPeer::new(
                     DeviceInfo::new(device_address.to_owned(), 123),
                     [0; 32],

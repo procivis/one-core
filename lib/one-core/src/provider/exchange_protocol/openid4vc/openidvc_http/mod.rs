@@ -30,8 +30,8 @@ use super::model::{
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProof, OpenID4VCITokenRequestDTO,
     OpenID4VCITokenResponseDTO, OpenID4VCInteractionContent, OpenID4VCParams,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, OpenID4VPInteractionContent,
-    OpenID4VPInteractionData, PresentedCredential, ShareResponse, SubmitIssuerResponse,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPFormat, OpenID4VPHolderInteractionData,
+    OpenID4VPVerifierInteractionContent, PresentedCredential, ShareResponse, SubmitIssuerResponse,
     UpdateResponse,
 };
 use super::proof_formatter::OpenID4VCIProofJWTFormatter;
@@ -215,7 +215,7 @@ impl OpenID4VCHTTP {
             ))?
             .to_owned();
 
-        let interaction_data: OpenID4VPInteractionData =
+        let interaction_data: OpenID4VPHolderInteractionData =
             deserialize_interaction_data(interaction.data)?;
 
         let tokens: Vec<String> = credential_presentations
@@ -852,7 +852,7 @@ impl OpenID4VCHTTP {
         vp_formats: HashMap<String, OpenID4VPFormat>,
         type_to_descriptor: TypeToDescriptorMapper,
         client_id_scheme: ClientIdSchemaType,
-    ) -> Result<ShareResponse<OpenID4VPInteractionContent>, ExchangeProtocolError> {
+    ) -> Result<ShareResponse<OpenID4VPVerifierInteractionContent>, ExchangeProtocolError> {
         let interaction_id = Uuid::new_v4();
 
         // Pass the expected presentation content to interaction for verification
@@ -888,12 +888,12 @@ impl OpenID4VCHTTP {
             ClientIdSchemaType::Did => unimplemented!(),
         };
 
-        let interaction_content = OpenID4VPInteractionContent {
+        let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce: nonce.to_owned(),
             presentation_definition,
             client_id: client_id.to_owned(),
-            client_id_scheme,
-            response_uri,
+            client_id_scheme: Some(client_id_scheme),
+            response_uri: Some(response_uri),
         };
 
         let encoded_offer = create_open_id_for_vp_sharing_url_encoded(

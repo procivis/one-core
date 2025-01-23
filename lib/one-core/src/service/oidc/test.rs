@@ -1208,7 +1208,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
 
     let proof_id: ProofId = Uuid::new_v4().into();
 
-    let interaction_data = serde_json::to_vec(&OpenID4VPInteractionContent {
+    let interaction_data = serde_json::to_vec(&OpenID4VPVerifierInteractionContent {
         nonce: "nonce".to_string(),
         presentation_definition: OpenID4VPPresentationDefinition {
             id: Uuid::new_v4(),
@@ -1233,8 +1233,8 @@ async fn test_oidc_verifier_presentation_definition_success() {
             }],
         },
         client_id: "client_id".to_string(),
-        client_id_scheme: ClientIdSchemaType::RedirectUri,
-        response_uri: "response_uri".to_string(),
+        client_id_scheme: None,
+        response_uri: None,
     })
     .unwrap();
 
@@ -1346,7 +1346,7 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     let claim_id = Uuid::new_v4().into();
     let credential_schema = dummy_credential_schema();
-    let interaction_data = OpenID4VPInteractionContent {
+    let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
         presentation_definition: OpenID4VPPresentationDefinition {
             id: interaction_id.to_owned(),
@@ -1385,8 +1385,8 @@ async fn test_submit_proof_failed_credential_suspended() {
             }],
         },
         client_id: "client_id".to_string(),
-        client_id_scheme: ClientIdSchemaType::RedirectUri,
-        response_uri: "response_uri".to_string(),
+        client_id_scheme: None,
+        response_uri: None,
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let now = OffsetDateTime::now_utc();

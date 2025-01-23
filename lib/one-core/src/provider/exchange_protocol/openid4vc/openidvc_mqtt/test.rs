@@ -31,7 +31,7 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::mappers::parse_identity_request;
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::IdentityRequest;
 use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::model::{
-    MQTTOpenID4VPInteractionData, MQTTSessionKeys,
+    MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::{
     generate_session_keys, ConfigParams, OpenId4VcMqtt,
@@ -414,7 +414,7 @@ async fn test_presentation_reject_success() {
         .with(eq(broker_url.clone()), eq(broker_port), eq(expected_url))
         .return_once(move |_, _, _| Ok(Box::new(reject_topic)));
 
-    let interaction_data = MQTTOpenID4VPInteractionData {
+    let interaction_data = MQTTOpenID4VPInteractionDataHolder {
         broker_url,
         broker_port,
         client_id: "client_id".to_string(),

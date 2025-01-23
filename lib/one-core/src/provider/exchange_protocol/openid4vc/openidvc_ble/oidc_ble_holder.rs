@@ -164,6 +164,7 @@ impl OpenID4VCBLEHolder {
                                 organisation,
                                 data: Some(
                                     serde_json::to_vec(&BLEOpenID4VPInteractionData {
+                                        client_id: request.client_id.to_owned(),
                                         nonce: request.nonce.clone().ok_or(
                                             ExchangeProtocolError::InvalidRequest(
                                                 "nonce missing".to_string(),
@@ -171,13 +172,11 @@ impl OpenID4VCBLEHolder {
                                         )?,
                                         task_id,
                                         peer: ble_peer,
-                                        presentation_definition: Some(
-                                            request.presentation_definition.clone().ok_or(
+                                        presentation_definition:  request.presentation_definition.clone().ok_or(
                                                 ExchangeProtocolError::InvalidRequest(
                                                     "presentation_definition missing".to_string(),
                                                 ),
                                             )?,
-                                        ),
                                         openid_request: request,
                                         identity_request_nonce: Some(hex::encode(identity_request.nonce)),
                                         presentation_submission: None,

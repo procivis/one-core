@@ -19,7 +19,7 @@ use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::mapper::create_open_id_for_vp_formats;
 use crate::provider::exchange_protocol::openid4vc::model::{
     ClientIdSchemaType, OpenID4VPAuthorizationRequestParams, OpenID4VPClientMetadata,
-    OpenID4VPInteractionContent,
+    OpenID4VPVerifierInteractionContent,
 };
 use crate::provider::exchange_protocol::openid4vc::service::{
     create_open_id_for_vp_client_metadata, oidc_verifier_presentation_definition,
@@ -31,7 +31,7 @@ use crate::util::oidc::determine_response_mode;
 
 pub(crate) async fn generate_authorization_request_client_id_scheme_redirect_uri(
     proof: &Proof,
-    interaction_data: OpenID4VPInteractionContent,
+    interaction_data: OpenID4VPVerifierInteractionContent,
     interaction_id: &InteractionId,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<String, ExchangeProtocolError> {
@@ -73,7 +73,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_redirect_uri
 
 pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_attestation(
     proof: &Proof,
-    interaction_data: OpenID4VPInteractionContent,
+    interaction_data: OpenID4VPVerifierInteractionContent,
     interaction_id: &InteractionId,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
@@ -174,7 +174,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
 
 pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns(
     proof: &Proof,
-    interaction_data: OpenID4VPInteractionContent,
+    interaction_data: OpenID4VPVerifierInteractionContent,
     interaction_id: &InteractionId,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
@@ -245,7 +245,7 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_x509_san_dns
 
 fn generate_authorization_request_params(
     proof: &Proof,
-    interaction_data: OpenID4VPInteractionContent,
+    interaction_data: OpenID4VPVerifierInteractionContent,
     interaction_id: &InteractionId,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     client_id_scheme: ClientIdSchemaType,
@@ -253,13 +253,18 @@ fn generate_authorization_request_params(
     let client_metadata =
         generate_client_metadata(proof, key_algorithm_provider, client_id_scheme)?;
 
-    let OpenID4VPInteractionContent {
+    let OpenID4VPVerifierInteractionContent {
         nonce,
         presentation_definition,
         client_id,
-        client_id_scheme,
-        response_uri,
-    } = interaction_data;
+        response_uri: Some(response_uri),
+        ..
+    } = interaction_data
+    else {
+        return Err(ExchangeProtocolError::Failed(
+            "invalid interaction data".to_string(),
+        ));
+    };
 
     let presentation_definition =
         oidc_verifier_presentation_definition(proof, presentation_definition)

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use futures::future::{BoxFuture, Shared};
-use model::{MQTTOpenID4VPInteractionData, MQTTOpenId4VpResponse, MQTTSessionKeys};
+use model::{MQTTOpenID4VPInteractionDataHolder, MQTTOpenId4VpResponse, MQTTSessionKeys};
 use oidc_mqtt_verifier::{mqtt_verifier_flow, Topics};
 use rand::rngs::OsRng;
 use rand::Rng;
@@ -258,7 +258,7 @@ impl OpenId4VcMqtt {
             })?
         };
 
-        let interaction_data = MQTTOpenID4VPInteractionData {
+        let interaction_data = MQTTOpenID4VPInteractionDataHolder {
             broker_url: host.to_string(),
             broker_port: port,
             client_id: presentation_request.payload.custom.client_id,
@@ -311,7 +311,7 @@ impl OpenId4VcMqtt {
     }
 
     pub async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
-        let interaction_data: MQTTOpenID4VPInteractionData = deserialize_interaction_data(
+        let interaction_data: MQTTOpenID4VPInteractionDataHolder = deserialize_interaction_data(
             proof
                 .interaction
                 .as_ref()
@@ -369,7 +369,7 @@ impl OpenId4VcMqtt {
     ) -> Result<UpdateResponse<()>, ExchangeProtocolError> {
         tracing::debug!("Called submit proof");
 
-        let interaction_data: MQTTOpenID4VPInteractionData = deserialize_interaction_data(
+        let interaction_data: MQTTOpenID4VPInteractionDataHolder = deserialize_interaction_data(
             proof
                 .interaction
                 .as_ref()

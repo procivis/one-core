@@ -19,12 +19,13 @@ use super::model::{
     DidListItemResponseDTO, OpenID4VCICredentialConfigurationData, OpenID4VCICredentialSubjectItem,
     OpenID4VCIInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCITokenResponseDTO, OpenID4VCParams, OpenID4VPAuthorizationRequestParams,
-    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPInteractionContent,
-    OpenID4VPInteractionData, OpenID4VPPresentationDefinition,
-    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPHolderInteractionData,
+    OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
+    OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
-    OpenID4VPPresentationDefinitionLimitDisclosurePreference, ProvedCredential, Timestamp,
+    OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVerifierInteractionContent,
+    ProvedCredential, Timestamp,
 };
 use super::service::create_open_id_for_vp_client_metadata;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
@@ -1212,7 +1213,7 @@ pub(crate) async fn create_open_id_for_vp_sharing_url_encoded(
     openidvc_params: &OpenID4VCParams,
     client_id: String,
     interaction_id: InteractionId,
-    interaction_data: &OpenID4VPInteractionContent,
+    interaction_data: &OpenID4VPVerifierInteractionContent,
     nonce: String,
     proof: &Proof,
     key_id: KeyId,
@@ -1337,7 +1338,7 @@ fn get_params_for_redirect_uri(
     key_id: KeyId,
     encryption_key_jwk: PublicKeyJwkDTO,
     vp_formats: HashMap<String, OpenID4VPFormat>,
-    interaction_data: &OpenID4VPInteractionContent,
+    interaction_data: &OpenID4VPVerifierInteractionContent,
 ) -> Result<OpenID4VPAuthorizationRequestQueryParams, ExchangeProtocolError> {
     let mut presentation_definition = None;
     let mut presentation_definition_uri = None;
@@ -1390,7 +1391,7 @@ fn get_params_for_redirect_uri(
     })
 }
 
-impl TryFrom<OpenID4VPAuthorizationRequestQueryParams> for OpenID4VPInteractionData {
+impl TryFrom<OpenID4VPAuthorizationRequestQueryParams> for OpenID4VPHolderInteractionData {
     type Error = ExchangeProtocolError;
 
     fn try_from(value: OpenID4VPAuthorizationRequestQueryParams) -> Result<Self, Self::Error> {
@@ -1428,7 +1429,7 @@ impl TryFrom<OpenID4VPAuthorizationRequestQueryParams> for OpenID4VPInteractionD
     }
 }
 
-impl From<OpenID4VPAuthorizationRequestParams> for OpenID4VPInteractionData {
+impl From<OpenID4VPAuthorizationRequestParams> for OpenID4VPHolderInteractionData {
     fn from(value: OpenID4VPAuthorizationRequestParams) -> Self {
         Self {
             client_id: value.client_id,
@@ -1486,7 +1487,7 @@ impl TryFrom<OpenID4VCIInteractionDataDTO> for OpenID4VCITokenResponseDTO {
 
 pub(super) fn parse_interaction_content(
     data: &[u8],
-) -> Result<OpenID4VPInteractionContent, OpenID4VCError> {
+) -> Result<OpenID4VPVerifierInteractionContent, OpenID4VCError> {
     serde_json::from_slice(data).map_err(|e| OpenID4VCError::MappingError(e.to_string()))
 }
 
@@ -1513,12 +1514,12 @@ pub(crate) fn vec_last_position_from_token_path(path: &str) -> Result<usize, Ope
 }
 
 pub fn extract_presentation_ctx_from_interaction_content(
-    content: OpenID4VPInteractionContent,
+    content: OpenID4VPVerifierInteractionContent,
 ) -> ExtractPresentationCtx {
     ExtractPresentationCtx {
         nonce: Some(content.nonce),
         client_id: Some(content.client_id),
-        response_uri: Some(content.response_uri),
+        response_uri: content.response_uri,
         ..Default::default()
     }
 }

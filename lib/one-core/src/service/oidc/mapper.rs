@@ -6,7 +6,7 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    OpenID4VCIInteractionDataDTO, OpenID4VPInteractionContent, ProvedCredential,
+    OpenID4VCIInteractionDataDTO, OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
 use crate::repository::did_repository::DidRepository;
 use crate::service::error::ServiceError;
@@ -30,7 +30,7 @@ pub(crate) fn interaction_data_to_dto(
 
 pub(super) fn parse_interaction_content(
     data: Option<&Vec<u8>>,
-) -> Result<OpenID4VPInteractionContent, ServiceError> {
+) -> Result<OpenID4VPVerifierInteractionContent, ServiceError> {
     if let Some(interaction_data) = data {
         serde_json::from_slice(interaction_data)
             .map_err(|e| ServiceError::MappingError(e.to_string()))

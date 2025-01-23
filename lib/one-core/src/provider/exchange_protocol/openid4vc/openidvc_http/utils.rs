@@ -11,7 +11,7 @@ use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::model::{
     ClientIdSchemaType, OpenID4VCParams, OpenID4VPAuthorizationRequestParams,
-    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPInteractionData,
+    OpenID4VPAuthorizationRequestQueryParams, OpenID4VPHolderInteractionData,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_http::x509::extract_x5c_san_dns;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
@@ -36,10 +36,10 @@ pub fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
 
 fn parse_referenced_data_from_unsigned_token(
     token: String,
-) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
+) -> Result<OpenID4VPHolderInteractionData, ExchangeProtocolError> {
     let DecomposedToken::<OpenID4VPAuthorizationRequestParams> { payload, .. } =
         Jwt::decompose_token(&token).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-    let result: OpenID4VPInteractionData = payload.custom.into();
+    let result: OpenID4VPHolderInteractionData = payload.custom.into();
     assert!(result.verifier_did.is_none());
     Ok(result)
 }
@@ -49,7 +49,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     x509_ca_certificate: &str,
-) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
+) -> Result<OpenID4VPHolderInteractionData, ExchangeProtocolError> {
     let request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams> =
         Jwt::decompose_token(&token).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -98,7 +98,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         )
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-    let response_content: OpenID4VPInteractionData = request_token.payload.custom.into();
+    let response_content: OpenID4VPHolderInteractionData = request_token.payload.custom.into();
 
     // The response_uri must match client_id
     // https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html#section-5.7-12.2.1
@@ -112,7 +112,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         ));
     }
 
-    Ok(OpenID4VPInteractionData {
+    Ok(OpenID4VPHolderInteractionData {
         client_id_scheme: ClientIdSchemaType::X509SanDns,
         verifier_did: Some(did_value.to_string()),
         ..response_content
@@ -123,7 +123,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
     token: String,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
-) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
+) -> Result<OpenID4VPHolderInteractionData, ExchangeProtocolError> {
     let request_token: DecomposedToken<OpenID4VPAuthorizationRequestParams> =
         Jwt::decompose_token(&token).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -177,7 +177,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         )
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-    let response_content: OpenID4VPInteractionData = request_token.payload.custom.into();
+    let response_content: OpenID4VPHolderInteractionData = request_token.payload.custom.into();
 
     let client_id = attestation_jwt
         .payload
@@ -188,7 +188,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
 
     let verifier_did = attestation_jwt.payload.issuer;
 
-    Ok(OpenID4VPInteractionData {
+    Ok(OpenID4VPHolderInteractionData {
         client_id,
         client_id_scheme: ClientIdSchemaType::VerifierAttestation,
         verifier_did,
@@ -203,7 +203,7 @@ pub(crate) async fn interaction_data_from_query(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     params: &OpenID4VCParams,
-) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
+) -> Result<OpenID4VPHolderInteractionData, ExchangeProtocolError> {
     let query_params: OpenID4VPAuthorizationRequestQueryParams = serde_qs::from_str(query)
         .map_err(|e| ExchangeProtocolError::InvalidRequest(e.to_string()))?;
 
@@ -248,7 +248,7 @@ pub(crate) async fn interaction_data_from_query(
         }
     }
 
-    let mut interaction_data: OpenID4VPInteractionData = query_params.try_into()?;
+    let mut interaction_data: OpenID4VPHolderInteractionData = query_params.try_into()?;
 
     if let Some(token) = request {
         let referenced_params = match &interaction_data.client_id_scheme {
@@ -356,7 +356,7 @@ pub(crate) async fn interaction_data_from_query(
 }
 
 pub fn validate_interaction_data(
-    interaction_data: &OpenID4VPInteractionData,
+    interaction_data: &OpenID4VPHolderInteractionData,
 ) -> Result<(), ExchangeProtocolError> {
     if interaction_data.redirect_uri.is_some() {
         return Err(ExchangeProtocolError::InvalidRequest(

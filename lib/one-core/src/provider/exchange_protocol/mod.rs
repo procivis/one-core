@@ -71,6 +71,12 @@ pub fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     serde_json::from_slice(data).map_err(ExchangeProtocolError::JsonError)
 }
 
+pub fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
+    dto: &DataDTO,
+) -> Result<Vec<u8>, ExchangeProtocolError> {
+    serde_json::to_vec(&dto).map_err(ExchangeProtocolError::JsonError)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn exchange_protocol_providers_from_config(
     config: Arc<CoreConfig>,

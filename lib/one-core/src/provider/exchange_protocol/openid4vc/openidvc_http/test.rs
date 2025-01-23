@@ -39,7 +39,8 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialValueDetails, OpenID4VCIssuanceParams,
     OpenID4VCParams, OpenID4VCPresentationHolderParams, OpenID4VCPresentationParams,
     OpenID4VCPresentationVerifierParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
-    OpenID4VPFormat, OpenID4VPInteractionData, OpenID4VPPresentationDefinition, ShareResponse,
+    OpenID4VPFormat, OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
+    ShareResponse,
 };
 use crate::provider::exchange_protocol::openid4vc::service::create_credential_offer;
 use crate::provider::exchange_protocol::openid4vc::ExchangeProtocolError;
@@ -1238,17 +1239,17 @@ fn test_serialize_and_deserialize_interaction_data() {
 
     let query = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                     , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap().query().unwrap().to_string();
-    let data: OpenID4VPInteractionData = serde_qs::from_str(&query).unwrap();
+    let data: OpenID4VPHolderInteractionData = serde_qs::from_str(&query).unwrap();
     let json = serde_json::to_string(&data).unwrap();
-    let _data_from_json: OpenID4VPInteractionData = serde_json::from_str(&json).unwrap();
+    let _data_from_json: OpenID4VPHolderInteractionData = serde_json::from_str(&json).unwrap();
 
     let presentation_definition_uri = "https://127.0.0.1/presentation-definition";
     let query_with_presentation_definition_uri = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition_uri={}"
                                                                      , nonce, callback_url, client_metadata, callback_url, presentation_definition_uri)).unwrap().query().unwrap().to_string();
-    let data: OpenID4VPInteractionData =
+    let data: OpenID4VPHolderInteractionData =
         serde_qs::from_str(&query_with_presentation_definition_uri).unwrap();
     let json = serde_json::to_string(&data).unwrap();
-    let _data_from_json: OpenID4VPInteractionData = serde_json::from_str(&json).unwrap();
+    let _data_from_json: OpenID4VPHolderInteractionData = serde_json::from_str(&json).unwrap();
 }
 
 #[test]

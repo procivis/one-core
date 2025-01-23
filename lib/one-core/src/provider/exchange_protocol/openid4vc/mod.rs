@@ -7,12 +7,12 @@ use futures::future::BoxFuture;
 use futures::FutureExt;
 use key_agreement_key::KeyAgreementKey;
 use mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
-use model::{ClientIdSchemaType, OpenID4VPInteractionData};
+use model::{ClientIdSchemaType, OpenID4VPHolderInteractionData};
 use one_dto_mapper::convert_inner;
 use openidvc_ble::model::BLEOpenID4VPInteractionData;
 use openidvc_ble::OpenID4VCBLE;
 use openidvc_http::OpenID4VCHTTP;
-use openidvc_mqtt::model::MQTTOpenID4VPInteractionData;
+use openidvc_mqtt::model::MQTTOpenID4VPInteractionDataHolder;
 use openidvc_mqtt::OpenId4VcMqtt;
 use serde_json::json;
 use shared_types::KeyId;
@@ -431,14 +431,14 @@ impl ExchangeProtocolImpl for OpenID4VC {
                 interaction_data.openid_request.presentation_definition
             }
             TransportType::Http => {
-                let interaction_data: OpenID4VPInteractionData =
+                let interaction_data: OpenID4VPHolderInteractionData =
                     serde_json::from_value(interaction_data)
                         .map_err(ExchangeProtocolError::JsonError)?;
 
                 interaction_data.presentation_definition
             }
             TransportType::Mqtt => {
-                let interaction_data: MQTTOpenID4VPInteractionData =
+                let interaction_data: MQTTOpenID4VPInteractionDataHolder =
                     serde_json::from_value(interaction_data)
                         .map_err(ExchangeProtocolError::JsonError)?;
 

@@ -207,12 +207,13 @@ impl OpenID4VCBLEVerifier {
                         }?;
 
                         let new_data = BLEOpenID4VPInteractionData {
+                            client_id: request.client_id.to_owned(),
                             nonce,
                             task_id,
                             peer,
                             openid_request: request,
                             identity_request_nonce: Some(hex::encode(identity_request.nonce)),
-                            presentation_definition: Some(presentation_definition.clone()),
+                            presentation_definition,
                             presentation_submission: Some(presentation_submission)
                         };
 

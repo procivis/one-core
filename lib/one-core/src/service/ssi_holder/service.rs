@@ -40,7 +40,7 @@ use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
 use crate::provider::exchange_protocol::openid4vc::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::provider::exchange_protocol::openid4vc::model::{
-    InvitationResponseDTO, OpenID4VPInteractionData, PresentedCredential, UpdateResponse,
+    InvitationResponseDTO, OpenID4VPHolderInteractionData, PresentedCredential, UpdateResponse,
 };
 use crate::provider::key_storage::model::KeySecurity;
 use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
@@ -788,7 +788,7 @@ impl SSIHolderService {
 
     async fn fill_verifier_did_in_proof(&self, proof: &mut Proof) -> Result<(), ServiceError> {
         if let Some(interaction) = proof.interaction.as_ref() {
-            let deserialized: Result<OpenID4VPInteractionData, _> =
+            let deserialized: Result<OpenID4VPHolderInteractionData, _> =
                 deserialize_interaction_data(interaction.data.as_ref());
             if let Ok(data) = deserialized {
                 if let Some(did_value) = data.verifier_did {

@@ -49,8 +49,8 @@ use crate::provider::exchange_protocol::openid4vc::model::{
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
     OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
     OpenID4VCITokenResponseDTO, OpenID4VPClientMetadata, OpenID4VPDirectPostRequestDTO,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPInteractionContent, OpenID4VPPresentationDefinition,
-    RequestData,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPPresentationDefinition,
+    OpenID4VPVerifierInteractionContent, RequestData,
 };
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
@@ -148,11 +148,17 @@ impl OIDCService {
                 "missing proof interaction".to_string(),
             ))?;
 
-        let interaction_data: OpenID4VPInteractionContent =
+        let interaction_data: OpenID4VPVerifierInteractionContent =
             parse_interaction_content(interaction.data.as_ref())
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-        Ok(match interaction_data.client_id_scheme {
+        let client_id_scheme =
+            interaction_data
+                .client_id_scheme
+                .ok_or(ExchangeProtocolError::Failed(
+                    "missing client_id_scheme".to_string(),
+                ))?;
+        Ok(match client_id_scheme {
             ClientIdSchemaType::RedirectUri => {
                 generate_authorization_request_client_id_scheme_redirect_uri(
                     &proof,

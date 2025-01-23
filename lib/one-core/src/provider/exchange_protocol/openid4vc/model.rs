@@ -409,14 +409,20 @@ pub struct OpenID4VCIProof {
     pub jwt: String,
 }
 
+/// Interaction data used for OpenID4VP on verifier side
+/// - HTTP transport generates this
+///
+/// Important: This structure is used to deserialize
+/// also from all the other verifier interaction data structures
+/// during proof submission validation
 #[derive(Clone, Deserialize, Serialize, Debug)]
-pub struct OpenID4VPInteractionContent {
+pub struct OpenID4VPVerifierInteractionContent {
     pub nonce: String,
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub presentation_definition: OpenID4VPPresentationDefinition,
     pub client_id: String,
-    pub client_id_scheme: ClientIdSchemaType,
-    pub response_uri: String,
+    pub client_id_scheme: Option<ClientIdSchemaType>,
+    pub response_uri: Option<String>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -884,8 +890,9 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
 }
 
+/// Interaction data used for OpenID4VP (HTTP) on holder side
 #[derive(Clone, Deserialize, Serialize, Debug)]
-pub struct OpenID4VPInteractionData {
+pub struct OpenID4VPHolderInteractionData {
     pub response_type: Option<String>,
     pub state: Option<String>,
     pub nonce: Option<String>,
