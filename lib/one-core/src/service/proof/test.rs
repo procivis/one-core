@@ -3448,6 +3448,79 @@ async fn test_retract_proof_with_bluetooth_ok() {
     assert_eq!(proof_id, result);
 }
 
+#[tokio::test]
+async fn test_retract_proof_success_holder_iso_mdl() {
+    let proof_id = ProofId::from(Uuid::new_v4());
+    let interaction_id = InteractionId::from(Uuid::new_v4());
+    let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
+    proof.exchange = "ISO_MDL".to_string();
+    proof.schema = None; // mark as holder
+    proof.interaction = Some(Interaction {
+        id: interaction_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        host: None,
+        data: None,
+        organisation: None,
+    });
+
+    let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
+    protocol_provider.expect_get_protocol().return_once(|_| {
+        let mut protocol = MockExchangeProtocol::default();
+        protocol
+            .inner
+            .expect_retract_proof()
+            .times(1)
+            .returning(|_| Ok(()));
+
+        Some(Arc::new(protocol))
+    });
+
+    let mut proof_repository = MockProofRepository::default();
+
+    proof_repository
+        .expect_get_proof()
+        .once()
+        .withf(move |id, relations| {
+            id == &proof_id
+                && relations
+                    == &ProofRelations {
+                        interaction: Some(InteractionRelations::default()),
+                        schema: Some(Default::default()),
+                        ..Default::default()
+                    }
+        })
+        .returning({
+            let proof = proof.clone();
+            move |_, _| Ok(Some(proof.clone()))
+        });
+    proof_repository
+        .expect_update_proof()
+        .once()
+        .withf(|_, update_proof| {
+            update_proof.interaction == Some(None)
+                && *update_proof.state.as_ref().unwrap() == ProofStateEnum::Error
+        })
+        .returning(move |_, _| Ok(()));
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_delete_interaction()
+        .once()
+        .with(eq(interaction_id))
+        .returning(|_| Ok(()));
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        protocol_provider,
+        interaction_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.retract_proof(proof_id).await;
+    assert!(result.is_ok());
+}
+
 #[test]
 fn test_validate_mdl_exchange() {
     let config = generic_config().core.exchange;

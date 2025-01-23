@@ -556,11 +556,17 @@ impl ProofService {
         // we keep the interaction data if the transport hasn't been established
         let can_remove_interaction = !proof.transport.is_empty();
 
+        let new_state = if proof.schema.is_none() {
+            // A holder cannot reuse retracted proofs hence we go into the error state here.
+            ProofStateEnum::Error
+        } else {
+            ProofStateEnum::Created
+        };
         self.proof_repository
             .update_proof(
                 &proof_id,
                 UpdateProofRequest {
-                    state: Some(ProofStateEnum::Created),
+                    state: Some(new_state),
                     requested_date: Some(None),
                     interaction: can_remove_interaction.then_some(None),
                     ..Default::default()
