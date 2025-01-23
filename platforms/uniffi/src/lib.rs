@@ -3,10 +3,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use error::SDKError;
-use one_core::config::core_config::{self, AppConfig, CacheEntityCacheType, CacheEntityConfig};
+use one_core::config::core_config::{
+    self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, RevocationType,
+};
 use one_core::config::{ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
+use one_core::provider::caching_loader::trust_list::{TrustListCache, TrustListResolver};
 use one_core::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use one_core::provider::credential_formatter::json_ld::context::caching_loader::JsonLdCachingLoader;
 use one_core::provider::credential_formatter::json_ld_bbsplus::JsonLdBbsplus;
@@ -23,6 +25,7 @@ use one_core::provider::did_method::key::KeyDidMethod;
 use one_core::provider::did_method::mdl::{DidMdl, DidMdlValidator};
 use one_core::provider::did_method::provider::DidMethodProviderImpl;
 use one_core::provider::did_method::resolver::DidCachingLoader;
+use one_core::provider::did_method::sd_jwt_vc_issuer_metadata::SdJwtVcIssuerMetadataDidMethod;
 use one_core::provider::did_method::universal::UniversalDidMethod;
 use one_core::provider::did_method::web::WebDidMethod;
 use one_core::provider::did_method::x509::X509Method;
@@ -40,14 +43,20 @@ use one_core::provider::key_storage::provider::KeyProviderImpl;
 use one_core::provider::key_storage::secure_element::SecureElementKeyProvider;
 use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::mqtt_client::rumqttc_client::RumqttcClient;
+use one_core::provider::remote_entity_storage::db_storage::DbStorage;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use one_core::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 use one_core::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
 use one_core::provider::revocation::bitstring_status_list::BitstringStatusList;
 use one_core::provider::revocation::lvvc::LvvcProvider;
+use one_core::provider::revocation::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
+use one_core::provider::revocation::none::NoneRevocation;
 use one_core::provider::revocation::provider::RevocationMethodProviderImpl;
+use one_core::provider::revocation::status_list_2021::StatusList2021;
+use one_core::provider::revocation::token_status_list::TokenStatusList;
 use one_core::provider::revocation::RevocationMethod;
 use one_core::repository::error::DataLayerError;
+use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use one_core::repository::DataRepository;
 use one_core::service::error::ServiceError;
 use one_core::{
@@ -64,42 +73,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sql_data_provider::DataLayer;
 use time::Duration;
-use utils::native_ble_central::BleCentralWrapper;
-use utils::native_ble_peripheral::BlePeripheralWrapper;
-use utils::native_key_storage::NativeKeyStorageWrapper;
 
+use crate::binding::ble::{BleCentral, BleCentralWrapper, BlePeripheral, BlePeripheralWrapper};
+use crate::binding::key_storage::{NativeKeyStorage, NativeKeyStorageWrapper};
+use crate::binding::OneCoreBinding;
 use crate::did_config::{
     DidMdlParams, DidSdJwtVCIssuerMetadataParams, DidUniversalParams, DidWebParams,
 };
-use crate::error::BindingError;
+use crate::error::{BindingError, SDKError};
 
 mod binding;
 mod did_config;
-mod dto;
 mod error;
 mod error_code;
-mod functions;
-mod mapper;
 mod utils;
-
-use binding::OneCoreBinding;
-use dto::*;
-use one_core::config::core_config::{CacheEntitiesConfig, RevocationType};
-use one_core::provider::caching_loader::trust_list::{TrustListCache, TrustListResolver};
-use one_core::provider::did_method::sd_jwt_vc_issuer_metadata::SdJwtVcIssuerMetadataDidMethod;
-use one_core::provider::remote_entity_storage::db_storage::DbStorage;
-use one_core::provider::revocation::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
-use one_core::provider::revocation::none::NoneRevocation;
-use one_core::provider::revocation::status_list_2021::StatusList2021;
-use one_core::provider::revocation::token_status_list::TokenStatusList;
-use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 
 uniffi::setup_scaffolding!();
 
 fn initialize_core(
     data_dir_path: String,
     config_mobile: &'static str,
-    native_key_storage: Option<Box<dyn dto::NativeKeyStorage>>,
+    native_key_storage: Option<Box<dyn NativeKeyStorage>>,
     ble_central: Option<Arc<dyn BleCentral>>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
