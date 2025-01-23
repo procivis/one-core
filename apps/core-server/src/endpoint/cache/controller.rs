@@ -19,7 +19,11 @@ use crate::router::AppState;
     ),
     tag = "cache",
     summary = "Prune cache",
-    description = "Removes cached entities. If types are not specified, all cached entities are pruned.",
+    description = indoc::formatdoc! {"
+        Removes cached entities. If types are not specified, all cached entities are pruned.
+
+        Related guide: [Caching](../api/caching.mdx)
+    "},
 )]
 #[axum::debug_handler]
 pub(crate) async fn prune_cache(
