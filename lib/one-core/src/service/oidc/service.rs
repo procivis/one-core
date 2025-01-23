@@ -127,6 +127,7 @@ impl OIDCService {
                     verifier_key: Some(Default::default()),
                     schema: Some(ProofSchemaRelations {
                         proof_inputs: Some(ProofInputSchemaRelations {
+                            credential_schema: Some(Default::default()),
                             ..Default::default()
                         }),
                         ..Default::default()

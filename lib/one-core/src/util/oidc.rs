@@ -2,8 +2,10 @@ use std::collections::HashMap;
 
 use thiserror::Error;
 
+use crate::model::proof::Proof;
 use crate::provider::credential_formatter::json_ld;
 use crate::provider::credential_formatter::sdjwt::{detect_sdjwt_type_from_token, SdJwtType};
+use crate::provider::exchange_protocol::error::ExchangeProtocolError;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 
 #[derive(Debug, Error)]
@@ -132,4 +134,35 @@ pub fn detect_format_with_crypto_suite(
         credential_schema_format.to_owned()
     };
     Ok(format)
+}
+
+/// Determine the `response_mode` value to set in the authorization request for the given [Proof].
+/// Options are:
+/// - `direct_post.jwt` for `MDOC` presentations
+///     - `MDOC` will only be used for a [Proof] if _all_ credentials presented have the format `MDOC`
+/// - `direct_post` for everything else
+pub fn determine_response_mode(proof: &Proof) -> Result<String, ExchangeProtocolError> {
+    let mut format_iter = proof
+        .schema
+        .iter()
+        .flat_map(|proof_schema| proof_schema.input_schemas.as_ref())
+        .flatten()
+        .flat_map(|input_schema| input_schema.credential_schema.as_ref())
+        .map(|credenial_schema| &credenial_schema.format)
+        .peekable();
+
+    if format_iter.peek().is_none() {
+        return Err(ExchangeProtocolError::Failed(format!(
+            "Cannot determine response mode for proof {}",
+            proof.id
+        )));
+    }
+
+    let mdoc_only = format_iter.all(|format| format == "MDOC");
+
+    let response_mode = match mdoc_only {
+        true => "direct_post.jwt".to_string(),
+        false => "direct_post".to_string(),
+    };
+    Ok(response_mode)
 }

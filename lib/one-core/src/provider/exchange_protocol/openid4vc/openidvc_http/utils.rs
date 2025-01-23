@@ -370,7 +370,7 @@ pub fn validate_interaction_data(
             .ok_or(ExchangeProtocolError::InvalidRequest(
                 "response_type is None".to_string(),
             ))?;
-    assert_query_param(response_type, "vp_token", "response_type")?;
+    assert_query_param(response_type, &["vp_token"], "response_type")?;
 
     let response_mode =
         interaction_data
@@ -379,7 +379,11 @@ pub fn validate_interaction_data(
             .ok_or(ExchangeProtocolError::InvalidRequest(
                 "response_mode is None".to_string(),
             ))?;
-    assert_query_param(response_mode, "direct_post", "response_mode")?;
+    assert_query_param(
+        response_mode,
+        &["direct_post", "direct_post.jwt"],
+        "response_mode",
+    )?;
 
     let client_metadata =
         interaction_data
@@ -442,12 +446,13 @@ pub fn validate_interaction_data(
 
 fn assert_query_param(
     value: &str,
-    expected_value: &str,
+    expected_values: &[&str],
     key: &str,
 ) -> Result<(), ExchangeProtocolError> {
-    if value != expected_value {
+    if !expected_values.contains(&value) {
         return Err(ExchangeProtocolError::InvalidRequest(format!(
-            "{key} must be '{expected_value}'"
+            "{key} must be one of '[{}]'",
+            expected_values.join(", ")
         )));
     }
     Ok(())

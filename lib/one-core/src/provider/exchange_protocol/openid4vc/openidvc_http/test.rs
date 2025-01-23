@@ -27,7 +27,9 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
+use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::mapper::{
     get_parent_claim_paths, map_offered_claims_to_credential_schema,
@@ -317,10 +319,22 @@ async fn test_generate_share_credentials_offer_by_value() {
 
 #[tokio::test]
 async fn test_share_proof() {
-    let protocol = setup_protocol(TestInputs::default());
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let mut credential_formatter = MockCredentialFormatter::new();
+    credential_formatter
+        .expect_get_capabilities()
+        .returning(FormatterCapabilities::default);
+    let arc = Arc::new(credential_formatter);
+    formatter_provider
+        .expect_get_formatter()
+        .returning(move |_| Some(arc.clone()));
+    let protocol = setup_protocol(TestInputs {
+        formatter_provider,
+        ..Default::default()
+    });
 
     let proof_id = Uuid::new_v4();
-    let proof = test_proof(proof_id);
+    let proof = test_proof(proof_id, "JWT");
 
     let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
 
@@ -407,7 +421,56 @@ async fn test_share_proof() {
     );
 }
 
-fn test_proof(proof_id: Uuid) -> Proof {
+#[tokio::test]
+async fn test_response_mode_direct_post_jwt_for_mdoc() {
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let mut credential_formatter = MockCredentialFormatter::new();
+    credential_formatter
+        .expect_get_capabilities()
+        .returning(FormatterCapabilities::default);
+    let arc = Arc::new(credential_formatter);
+    formatter_provider
+        .expect_get_formatter()
+        .returning(move |_| Some(arc.clone()));
+    let protocol = setup_protocol(TestInputs {
+        formatter_provider,
+        ..Default::default()
+    });
+
+    let proof = test_proof(Uuid::new_v4(), "MDOC");
+
+    let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
+
+    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
+
+    let key_id = Uuid::new_v4().into();
+    let encryption_key_jwk = PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+        r#use: None,
+        kid: None,
+        crv: "P-256".to_string(),
+        x: "x".to_string(),
+        y: None,
+    });
+    let vp_formats = HashMap::new();
+
+    let ShareResponse { url, .. } = protocol
+        .verifier_share_proof(
+            &proof,
+            format_type_mapper,
+            key_id,
+            encryption_key_jwk,
+            vp_formats,
+            type_to_descriptor_mapper,
+            ClientIdSchemaType::RedirectUri,
+        )
+        .await
+        .unwrap();
+    let url: Url = url.parse().unwrap();
+    let query_pairs: HashMap<Cow<'_, str>, Cow<'_, str>> = url.query_pairs().collect();
+    assert_eq!("direct_post.jwt", query_pairs.get("response_mode").unwrap());
+}
+
+fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
     Proof {
         id: proof_id.into(),
         created_date: OffsetDateTime::now_utc(),
@@ -431,7 +494,24 @@ fn test_proof(proof_id: Uuid) -> Proof {
             input_schemas: Some(vec![ProofInputSchema {
                 validity_constraint: None,
                 claim_schemas: None,
-                credential_schema: None,
+                credential_schema: Some(CredentialSchema {
+                    id: Uuid::new_v4().into(),
+                    deleted_at: None,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    name: "test-credential-schema".to_string(),
+                    format: credential_format.to_string(),
+                    revocation_method: "NONE".to_string(),
+                    wallet_storage_type: None,
+                    layout_type: LayoutType::Card,
+                    layout_properties: None,
+                    schema_id: "test_schema_id".to_string(),
+                    schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                    imported_source_url: "test_imported_src_url".to_string(),
+                    allow_suspension: false,
+                    claim_schemas: None,
+                    organisation: None,
+                }),
             }]),
         }),
         claims: None,
@@ -2020,13 +2100,23 @@ async fn test_generate_share_credentials_custom_scheme() {
 #[tokio::test]
 async fn test_share_proof_custom_scheme() {
     let url_scheme = "my-custom-scheme";
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let mut credential_formatter = MockCredentialFormatter::new();
+    credential_formatter
+        .expect_get_capabilities()
+        .returning(FormatterCapabilities::default);
+    let arc = Arc::new(credential_formatter);
+    formatter_provider
+        .expect_get_formatter()
+        .returning(move |_| Some(arc.clone()));
     let protocol = setup_protocol(TestInputs {
+        formatter_provider,
         params: Some(test_params("issuance-url-scheme", url_scheme)),
         ..Default::default()
     });
 
     let proof_id = Uuid::new_v4();
-    let proof = test_proof(proof_id);
+    let proof = test_proof(proof_id, "JWT");
 
     let format_type_mapper: FormatMapper = Arc::new(move |input| Ok(input.to_owned()));
 

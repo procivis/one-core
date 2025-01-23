@@ -27,6 +27,7 @@ use crate::provider::exchange_protocol::openid4vc::service::{
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::util::oidc::determine_response_mode;
 
 pub(crate) async fn generate_authorization_request_client_id_scheme_redirect_uri(
     proof: &Proof,
@@ -266,7 +267,7 @@ fn generate_authorization_request_params(
 
     Ok(OpenID4VPAuthorizationRequestParams {
         response_type: Some("vp_token".to_string()),
-        response_mode: Some("direct_post".to_string()),
+        response_mode: Some(determine_response_mode(proof)?),
         client_id,
         client_id_scheme: Some(client_id_scheme),
         client_metadata: Some(client_metadata),

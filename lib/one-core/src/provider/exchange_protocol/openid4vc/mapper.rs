@@ -81,7 +81,7 @@ use crate::service::oidc::proof_request::{
     generate_authorization_request_client_id_scheme_verifier_attestation,
     generate_authorization_request_client_id_scheme_x509_san_dns,
 };
-use crate::util::oidc::map_core_to_oidc_format;
+use crate::util::oidc::{determine_response_mode, map_core_to_oidc_format};
 
 pub(super) fn presentation_definition_from_interaction_data(
     proof_id: ProofId,
@@ -1378,7 +1378,7 @@ fn get_params_for_redirect_uri(
         response_type: Some("vp_token".to_string()),
         state: Some(interaction_id.to_string()),
         nonce: Some(nonce),
-        response_mode: Some("direct_post".to_string()),
+        response_mode: Some(determine_response_mode(proof)?),
         response_uri: Some(client_id),
         client_metadata,
         client_metadata_uri,
