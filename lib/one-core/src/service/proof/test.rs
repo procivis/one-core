@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
-use crate::config::core_config::{CoreConfig, Fields, TransportType};
+use crate::config::core_config::{CoreConfig, ExchangeType, Fields, TransportType};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{
@@ -3073,6 +3073,7 @@ async fn test_retract_proof_ok_for_allowed_state(
                 && relations
                     == &ProofRelations {
                         interaction: Some(InteractionRelations::default()),
+                        schema: Some(Default::default()),
                         ..Default::default()
                     }
         })
@@ -3147,6 +3148,7 @@ async fn test_retract_proof_fails_for_invalid_state(
                 && relations
                     == &ProofRelations {
                         interaction: Some(InteractionRelations::default()),
+                        schema: Some(Default::default()),
                         ..Default::default()
                     }
         })
@@ -3167,6 +3169,158 @@ async fn test_retract_proof_fails_for_invalid_state(
         error,
         ServiceError::BusinessLogic(BusinessLogicError::InvalidProofState { state: got_state }) if got_state == state
     ))
+}
+
+#[tokio::test]
+async fn test_retract_proof_fails_for_holder_openid4vc() {
+    let proof_id = ProofId::from(Uuid::new_v4());
+    let interaction_id = InteractionId::from(Uuid::new_v4());
+    let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
+    proof.exchange = "OPENID4VC".to_string();
+    proof.schema = None; // not having a proof schema indicates that it is holder role
+    proof.interaction = Some(Interaction {
+        id: interaction_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        host: None,
+        data: None,
+        organisation: None,
+    });
+
+    let mut proof_repository = MockProofRepository::default();
+
+    proof_repository
+        .expect_get_proof()
+        .once()
+        .withf(move |id, relations| {
+            id == &proof_id
+                && relations
+                    == &ProofRelations {
+                        interaction: Some(InteractionRelations::default()),
+                        schema: Some(Default::default()),
+                        ..Default::default()
+                    }
+        })
+        .returning({
+            let proof = proof.clone();
+            move |_, _| Ok(Some(proof.clone()))
+        });
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let error = service.retract_proof(proof_id).await.unwrap_err();
+    assert!(
+        matches!(error,ServiceError::BusinessLogic(BusinessLogicError::InvalidProofRoleForRetraction {role}) if role == "holder")
+    )
+}
+
+#[tokio::test]
+async fn test_retract_proof_fails_for_verifier_iso_mdl() {
+    let proof_id = ProofId::from(Uuid::new_v4());
+    let interaction_id = InteractionId::from(Uuid::new_v4());
+    let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
+    proof.exchange = "ISO_MDL".to_string();
+    proof.interaction = Some(Interaction {
+        id: interaction_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        host: None,
+        data: None,
+        organisation: None,
+    });
+
+    let mut proof_repository = MockProofRepository::default();
+
+    proof_repository
+        .expect_get_proof()
+        .once()
+        .withf(move |id, relations| {
+            id == &proof_id
+                && relations
+                    == &ProofRelations {
+                        interaction: Some(InteractionRelations::default()),
+                        schema: Some(Default::default()),
+                        ..Default::default()
+                    }
+        })
+        .returning({
+            let proof = proof.clone();
+            move |_, _| Ok(Some(proof.clone()))
+        });
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let error = service.retract_proof(proof_id).await.unwrap_err();
+    assert!(
+        matches!(error,ServiceError::BusinessLogic(BusinessLogicError::InvalidProofRoleForRetraction {role}) if role == "verifier")
+    )
+}
+
+#[tokio::test]
+async fn test_retract_proof_fails_for_scan_to_verify() {
+    let mut config = generic_config();
+    let fields = Fields::<ExchangeType> {
+        r#type: ExchangeType::ScanToVerify,
+        display: Default::default(),
+        order: None,
+        disabled: None,
+        capabilities: None,
+        params: None,
+    };
+    config
+        .core
+        .exchange
+        .insert("SCAN_TO_VERIFY".to_string(), fields);
+    let proof_id = ProofId::from(Uuid::new_v4());
+    let interaction_id = InteractionId::from(Uuid::new_v4());
+    let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
+    proof.exchange = "SCAN_TO_VERIFY".to_string();
+    proof.interaction = Some(Interaction {
+        id: interaction_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        host: None,
+        data: None,
+        organisation: None,
+    });
+
+    let mut proof_repository = MockProofRepository::default();
+
+    proof_repository
+        .expect_get_proof()
+        .once()
+        .withf(move |id, relations| {
+            id == &proof_id
+                && relations
+                    == &ProofRelations {
+                        interaction: Some(InteractionRelations::default()),
+                        schema: Some(Default::default()),
+                        ..Default::default()
+                    }
+        })
+        .returning({
+            let proof = proof.clone();
+            move |_, _| Ok(Some(proof.clone()))
+        });
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        config: config.core,
+        ..Default::default()
+    });
+
+    let error = service.retract_proof(proof_id).await.unwrap_err();
+    assert!(
+        matches!(error,ServiceError::BusinessLogic(BusinessLogicError::InvalidProofExchangeForRetraction {exchange_type}) if exchange_type == ExchangeType::ScanToVerify)
+    )
 }
 
 #[tokio::test]
@@ -3242,6 +3396,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
                 && relations
                     == &ProofRelations {
                         interaction: Some(InteractionRelations::default()),
+                        schema: Some(Default::default()),
                         ..Default::default()
                     }
         })

@@ -14,7 +14,8 @@ use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
 };
 use super::validator::{
-    validate_mdl_exchange, validate_redirect_uri, validate_verification_key_storage_compatibility,
+    validate_mdl_exchange, validate_proof_retractable, validate_redirect_uri,
+    validate_verification_key_storage_compatibility,
 };
 use super::ProofService;
 use crate::common_mapper::{get_encryption_key_jwk_from_proof, list_response_try_into};
@@ -533,21 +534,14 @@ impl ProofService {
                 &proof_id,
                 &ProofRelations {
                     interaction: Some(Default::default()),
+                    schema: Some(Default::default()),
                     ..Default::default()
                 },
             )
             .await?
             .ok_or(EntityNotFoundError::Proof(proof_id))?;
 
-        if !matches!(
-            proof.state,
-            ProofStateEnum::Pending | ProofStateEnum::Requested
-        ) {
-            return Err(BusinessLogicError::InvalidProofState {
-                state: proof.state.clone(),
-            }
-            .into());
-        }
+        validate_proof_retractable(&proof, &self.config)?;
 
         let interaction = proof.interaction.as_ref().ok_or_else(|| {
             ServiceError::MappingError(format!("Missing interaction in proof {proof_id}"))

@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use super::did::DidDeactivationError;
 use super::proof_schema::ProofSchemaImportError;
+use crate::config::core_config::ExchangeType;
 use crate::config::ConfigValidationError;
 use crate::model::credential::{CredentialRole, CredentialStateEnum};
 use crate::model::interaction::InteractionId;
@@ -193,6 +194,12 @@ pub enum BusinessLogicError {
 
     #[error("Invalid Proof state: {state}")]
     InvalidProofState { state: ProofStateEnum },
+
+    #[error("Invalid role for retract proof: {role}")]
+    InvalidProofRoleForRetraction { role: String },
+
+    #[error("Cannot retract proof with exchange type: {exchange_type}")]
+    InvalidProofExchangeForRetraction { exchange_type: ExchangeType },
 
     #[error(transparent)]
     DidDeactivation(#[from] DidDeactivationError),
@@ -995,6 +1002,12 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Credential role must be Holder for revocation check")]
     BR_0197,
+
+    #[strum(to_string = "Invalid role for retract proof")]
+    BR_0198,
+
+    #[strum(to_string = "Invalid exchange type for retract proof")]
+    BR_0199,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1143,6 +1156,8 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::MissingTrustEntity(_) => ErrorCode::BR_0186,
             Self::SuspensionNotEnabledForSuspendOnlyRevocationMethod => ErrorCode::BR_0191,
             Self::RevocationCheckNotAllowedForRole { .. } => ErrorCode::BR_0197,
+            Self::InvalidProofRoleForRetraction { .. } => ErrorCode::BR_0198,
+            Self::InvalidProofExchangeForRetraction { .. } => ErrorCode::BR_0199,
         }
     }
 }
