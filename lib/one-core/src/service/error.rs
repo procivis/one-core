@@ -481,6 +481,12 @@ pub enum ValidationError {
 
     #[error("Redirect uri disabled or scheme not allowed")]
     InvalidRedirectUri,
+
+    #[error("Empty object not allowed")]
+    EmptyObjectNotAllowed,
+
+    #[error("Empty array value not allowed")]
+    EmptyArrayValueNotAllowed,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -978,6 +984,12 @@ pub enum ErrorCode {
     #[strum(to_string = "Redirect uri disabled or scheme not allowed")]
     BR_0192,
 
+    #[strum(to_string = "Empty object not allowed")]
+    BR_0194,
+
+    #[strum(to_string = "Empty elements in array not allowed")]
+    BR_0195,
+
     #[strum(to_string = "Exchange protocol operation disabled")]
     BR_0196,
 
@@ -1180,6 +1192,8 @@ impl ErrorCodeMixin for ValidationError {
             Self::DeserializationError(_) => ErrorCode::BR_0189,
             Self::InvalidRedirectUri => ErrorCode::BR_0192,
             Self::InvalidExchangeOperation { .. } => ErrorCode::BR_0196,
+            Self::EmptyObjectNotAllowed => ErrorCode::BR_0194,
+            Self::EmptyArrayValueNotAllowed => ErrorCode::BR_0195,
         }
     }
 }

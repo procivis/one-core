@@ -567,3 +567,144 @@ async fn test_fail_to_create_credential_issuance_disabled() {
     // THEN
     assert_eq!(resp.status(), 400);
 }
+
+#[tokio::test]
+async fn test_fail_create_credential_with_empty_array_value() {
+    // GIVEN
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+
+    let str_array_claim_id = Uuid::new_v4();
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "root", true, "OBJECT", false),
+        (str_array_claim_id, "root/str_array", true, "STRING", true),
+    ];
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "schema-1",
+            &organisation,
+            "NONE",
+            &new_claim_schemas,
+            "JWT",
+            "schema-id",
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([
+                {
+                    "claimId": str_array_claim_id.to_string(),
+                    "value": "",
+                    "path": "root/str_array/0"
+                },
+                {
+                    "claimId": str_array_claim_id.to_string(),
+                    "value": "present",
+                    "path": "root/str_array/1"
+                }
+            ]),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0195", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_fail_create_credential_with_empty_object_value() {
+    // GIVEN
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+
+    let name_claim_id = Uuid::new_v4();
+    let nested_object_claim_id = Uuid::new_v4();
+    let nested_object_name_claim_id = Uuid::new_v4();
+
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "root", true, "OBJECT", false),
+        (name_claim_id, "root/name", false, "STRING", false),
+        (
+            nested_object_claim_id,
+            "root/nested",
+            false,
+            "OBJECT",
+            false,
+        ),
+        (
+            nested_object_name_claim_id,
+            "root/nested/name",
+            false,
+            "STRING",
+            false,
+        ),
+    ];
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "schema-1",
+            &organisation,
+            "NONE",
+            &new_claim_schemas,
+            "JWT",
+            "schema-id",
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([
+                {
+                    "claimId": name_claim_id.to_string(),
+                    "value": "",
+                    "path": "root/name"
+                }
+            ]),
+            None,
+        )
+        .await;
+
+    let resp_nested = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([
+                {
+                    "claimId": nested_object_name_claim_id.to_string(),
+                    "value": "",
+                    "path": "root/nested/name"
+                }
+            ]),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0194", resp.error_code().await);
+
+    assert_eq!(resp_nested.status(), 400);
+    assert_eq!("BR_0194", resp_nested.error_code().await);
+}

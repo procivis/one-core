@@ -59,6 +59,8 @@ pub(crate) fn validate_create_request(
             None => return Err(BusinessLogicError::MissingClaimSchema { claim_schema_id }.into()),
             Some(schema) => {
                 validate_path(claim, schema, claim_schemas)?;
+                validate_array_value_non_empty(claim, schema)?;
+                validate_object_value_non_empty(claim, schema)?;
 
                 validate_datatype_value(&claim.value, &schema.schema.data_type, &config.datatype)
                     .map_err(|err| ValidationError::InvalidDatatype {
@@ -266,6 +268,28 @@ fn validate_continuity(
     let array_claim_paths = array_paths_to_claim_paths_regex(&array_paths)?;
 
     tree.check_continuity(&array_claim_paths, None)?;
+
+    Ok(())
+}
+
+fn validate_object_value_non_empty(
+    claim: &CredentialRequestClaimDTO,
+    schema: &CredentialSchemaClaim,
+) -> Result<(), ServiceError> {
+    if claim.path.contains(NESTED_CLAIM_MARKER) && !schema.schema.array && claim.value.is_empty() {
+        return Err(ValidationError::EmptyObjectNotAllowed.into());
+    }
+
+    Ok(())
+}
+
+fn validate_array_value_non_empty(
+    claim: &CredentialRequestClaimDTO,
+    schema: &CredentialSchemaClaim,
+) -> Result<(), ServiceError> {
+    if claim.value.is_empty() && schema.schema.array {
+        return Err(ValidationError::EmptyArrayValueNotAllowed.into());
+    }
 
     Ok(())
 }
