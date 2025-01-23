@@ -70,7 +70,7 @@ pub(crate) async fn update_trust_entity(
         .update_trust_entity_by_trust_entity(id, request_body.into())
         .await;
 
-    EmptyOrErrorResponse::from_result(result, state, "deleting trust entity")
+    EmptyOrErrorResponse::from_result(result, state, "updating trust entity")
 }
 
 #[utoipa::path(

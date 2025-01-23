@@ -197,7 +197,7 @@ impl TrustEntityService {
         entity: TrustEntity,
         request: UpdateTrustEntityFromDidRequestDTO,
     ) -> Result<(), ServiceError> {
-        let request = update_request_from_dto(entity.state.clone(), request)?;
+        let request = update_request_from_dto(entity.state, request)?;
 
         self.trust_entity_repository
             .update(entity.id, request)
@@ -206,7 +206,7 @@ impl TrustEntityService {
         Ok(())
     }
 
-    // PUBLISHER
+    // PUBLISHER or NON-PUBLISHER
     pub async fn update_trust_entity_by_trust_entity(
         &self,
         id: TrustEntityId,
@@ -237,7 +237,14 @@ impl TrustEntityService {
     ) -> Result<(), ServiceError> {
         self.validate_bearer_token(&did_value, bearer_token).await?;
 
-        if let Some(UpdateTrustEntityActionFromDidRequestDTO::Remove) = request.action {
+        // only allowed to withdraw/activate
+        if matches!(
+            request.action,
+            Some(
+                UpdateTrustEntityActionFromDidRequestDTO::Remove
+                    | UpdateTrustEntityActionFromDidRequestDTO::AdminActivate,
+            )
+        ) {
             return Err(ValidationError::InvalidUpdateRequest.into());
         }
 

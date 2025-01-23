@@ -123,42 +123,49 @@ pub(super) fn get_detail_trust_entity_response(
 }
 
 pub(super) fn update_request_from_dto(
-    state: TrustEntityState,
+    current_state: TrustEntityState,
     request: UpdateTrustEntityFromDidRequestDTO,
 ) -> Result<UpdateTrustEntityRequest, ServiceError> {
-    let new_state = match (request.action, state) {
+    let new_state = match (request.action, current_state) {
         (Some(UpdateTrustEntityActionFromDidRequestDTO::Activate), TrustEntityState::Withdrawn) => {
-            Ok(TrustEntityState::Active)
+            Some(TrustEntityState::Active)
         }
         (
             Some(UpdateTrustEntityActionFromDidRequestDTO::Activate),
             TrustEntityState::RemovedAndWithdrawn,
-        ) => Ok(TrustEntityState::Removed),
+        ) => Some(TrustEntityState::Removed),
+
+        (
+            Some(UpdateTrustEntityActionFromDidRequestDTO::AdminActivate),
+            TrustEntityState::Removed,
+        ) => Some(TrustEntityState::Active),
         (
             Some(UpdateTrustEntityActionFromDidRequestDTO::AdminActivate),
             TrustEntityState::RemovedAndWithdrawn,
-        ) => Ok(TrustEntityState::Withdrawn),
+        ) => Some(TrustEntityState::Withdrawn),
+
         (Some(UpdateTrustEntityActionFromDidRequestDTO::Withdraw), TrustEntityState::Active) => {
-            Ok(TrustEntityState::Withdrawn)
+            Some(TrustEntityState::Withdrawn)
         }
         (Some(UpdateTrustEntityActionFromDidRequestDTO::Withdraw), TrustEntityState::Removed) => {
-            Ok(TrustEntityState::RemovedAndWithdrawn)
+            Some(TrustEntityState::RemovedAndWithdrawn)
         }
+
         (Some(UpdateTrustEntityActionFromDidRequestDTO::Remove), TrustEntityState::Active) => {
-            Ok(TrustEntityState::Removed)
-        }
-        (Some(UpdateTrustEntityActionFromDidRequestDTO::Activate), TrustEntityState::Removed) => {
-            Ok(TrustEntityState::Active)
+            Some(TrustEntityState::Removed)
         }
         (Some(UpdateTrustEntityActionFromDidRequestDTO::Remove), TrustEntityState::Withdrawn) => {
-            Ok(TrustEntityState::RemovedAndWithdrawn)
+            Some(TrustEntityState::RemovedAndWithdrawn)
         }
-        (None, state) => Ok(state),
-        _ => Err(ValidationError::InvalidUpdateRequest),
-    }?;
+
+        (None, _) => None,
+        _ => {
+            return Err(ValidationError::InvalidUpdateRequest.into());
+        }
+    };
 
     Ok(UpdateTrustEntityRequest {
-        state: Some(new_state),
+        state: new_state,
         logo: request.logo,
         privacy_url: request.privacy_url,
         website: request.website,
