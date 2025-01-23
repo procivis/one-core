@@ -252,7 +252,7 @@ impl ExchangeProtocolImpl for IsoMdl {
         unimplemented!()
     }
 
-    async fn verifier_retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    async fn retract_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let ble = self
             .ble
             .as_ref()

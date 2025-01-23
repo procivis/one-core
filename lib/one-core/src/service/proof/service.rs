@@ -557,7 +557,7 @@ impl ProofService {
             ServiceError::MissingExchangeProtocol(proof.exchange.clone()),
         )?;
 
-        exchange_protocol.verifier_retract_proof(&proof).await?;
+        exchange_protocol.retract_proof(&proof).await?;
 
         // we keep the interaction data if the transport hasn't been established
         let can_remove_interaction = !proof.transport.is_empty();

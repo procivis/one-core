@@ -3057,7 +3057,7 @@ async fn test_retract_proof_ok_for_allowed_state(
         let mut protocol = MockExchangeProtocol::default();
         protocol
             .inner
-            .expect_verifier_retract_proof()
+            .expect_retract_proof()
             .times(1)
             .returning(|_| Ok(()));
 
@@ -3226,7 +3226,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         let mut protocol = MockExchangeProtocol::default();
         protocol
             .inner
-            .expect_verifier_retract_proof()
+            .expect_retract_proof()
             .times(1)
             .returning(|_| Ok(()));
 

@@ -549,11 +549,11 @@ impl ExchangeProtocolImpl for OpenID4VC {
         unimplemented!()
     }
 
-    async fn verifier_retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
+    async fn retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
         for transport in get_transport(proof)? {
             match transport {
                 TransportType::Http => {}
-                TransportType::Ble => self.openid_ble.verifier_retract_proof().await?,
+                TransportType::Ble => self.openid_ble.retract_proof().await?,
                 TransportType::Mqtt => {
                     self.openid_mqtt
                         .as_ref()
@@ -562,7 +562,7 @@ impl ExchangeProtocolImpl for OpenID4VC {
                                 "MQTT not configured for retract proof".to_string(),
                             )
                         })?
-                        .verifier_retract_proof()
+                        .retract_proof()
                         .await;
                 }
             }

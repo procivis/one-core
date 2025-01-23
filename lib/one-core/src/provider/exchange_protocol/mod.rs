@@ -412,9 +412,6 @@ pub trait ExchangeProtocolImpl: Send + Sync {
     ) -> Result<ShareResponse<Self::VCInteractionContext>, ExchangeProtocolError>;
 
     // Verifier methods:
-    /// Called when proof needs to be retracted. Use this function for closing opened transmissions, buffers, etc.
-    async fn verifier_retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError>;
-
     /// Generates QR-code content to start the proof request flow.
     async fn verifier_share_proof(
         &self,
@@ -434,6 +431,10 @@ pub trait ExchangeProtocolImpl: Send + Sync {
         proof: &Proof,
         submission: &[u8],
     ) -> Result<Vec<DetailCredential>, ExchangeProtocolError>;
+
+    // General methods:
+    /// Called when proof needs to be retracted. Use this function for closing opened transmissions, buffers, etc.
+    async fn retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError>;
 
     fn get_capabilities(&self) -> ExchangeProtocolCapabilities;
 }
@@ -573,8 +574,8 @@ where
             })
     }
 
-    async fn verifier_retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
-        self.inner.verifier_retract_proof(proof).await
+    async fn retract_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
+        self.inner.retract_proof(proof).await
     }
 
     async fn verifier_share_proof(

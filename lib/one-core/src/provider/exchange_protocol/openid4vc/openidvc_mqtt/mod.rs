@@ -676,7 +676,7 @@ impl OpenId4VcMqtt {
         Ok(())
     }
 
-    pub async fn verifier_retract_proof(&self) {
+    pub async fn retract_proof(&self) {
         if let Some(old) = self.handle.lock().await.take() {
             old.task_handle.abort()
         };
