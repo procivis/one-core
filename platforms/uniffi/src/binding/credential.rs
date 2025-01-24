@@ -18,153 +18,141 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::OneCoreBinding;
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
     #[uniffi::method]
-    pub fn get_credential(
+    pub async fn get_credential(
         &self,
         credential_id: String,
     ) -> Result<CredentialDetailBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .credential_service
-                .get_credential(&into_id(&credential_id)?)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .credential_service
+            .get_credential(&into_id(&credential_id)?)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn get_credentials(
+    pub async fn get_credentials(
         &self,
         query: CredentialListQueryBindingDTO,
     ) -> Result<CredentialListBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
+        let core = self.use_core().await?;
 
-            let condition = {
-                if query.name.is_some()
-                    && query.search_type.is_some()
-                    && query.search_text.is_some()
-                {
-                    return Err(ServiceError::BusinessLogic(
-                        BusinessLogicError::GeneralInputValidationError,
-                    )
-                    .into());
+        let condition = {
+            if query.name.is_some() && query.search_type.is_some() && query.search_text.is_some() {
+                return Err(ServiceError::BusinessLogic(
+                    BusinessLogicError::GeneralInputValidationError,
+                )
+                .into());
+            }
+
+            let exact = query.exact.unwrap_or_default();
+            let get_string_match_type = |column| {
+                if exact.contains(&column) {
+                    StringMatchType::Equals
+                } else {
+                    StringMatchType::StartsWith
                 }
-
-                let exact = query.exact.unwrap_or_default();
-                let get_string_match_type = |column| {
-                    if exact.contains(&column) {
-                        StringMatchType::Equals
-                    } else {
-                        StringMatchType::StartsWith
-                    }
-                };
-
-                let organisation =
-                    CredentialFilterValue::OrganisationId(into_id(&query.organisation_id)?)
-                        .condition();
-
-                let name = query.name.map(|name| {
-                    CredentialFilterValue::CredentialSchemaName(StringMatch {
-                        r#match: get_string_match_type(
-                            CredentialListQueryExactColumnBindingEnum::Name,
-                        ),
-                        value: name,
-                    })
-                });
-
-                let search_filters = match (query.search_text, query.search_type) {
-                    (Some(search_test), Some(search_type)) => {
-                        organisation
-                            & ListFilterCondition::Or(
-                                search_type
-                                    .into_iter()
-                                    .map(|filter| {
-                                        match filter {
-                                            SearchTypeBindingEnum::ClaimName => {
-                                                CredentialFilterValue::ClaimName(StringMatch {
-                                                    r#match: StringMatchType::Contains,
-                                                    value: search_test.clone(),
-                                                })
-                                            }
-                                            SearchTypeBindingEnum::ClaimValue => {
-                                                CredentialFilterValue::ClaimValue(StringMatch {
-                                                    r#match: StringMatchType::Contains,
-                                                    value: search_test.clone(),
-                                                })
-                                            }
-                                            SearchTypeBindingEnum::CredentialSchemaName => {
-                                                CredentialFilterValue::CredentialSchemaName(
-                                                    StringMatch {
-                                                        r#match: StringMatchType::Contains,
-                                                        value: search_test.clone(),
-                                                    },
-                                                )
-                                            }
-                                        }
-                                        .condition()
-                                    })
-                                    .collect(),
-                            )
-                    }
-                    _ => organisation,
-                };
-
-                let role = query
-                    .role
-                    .map(|role| CredentialFilterValue::Role(role.into()));
-
-                let ids = match query.ids {
-                    Some(ids) => {
-                        let ids = ids
-                            .iter()
-                            .map(|id| into_id(id))
-                            .collect::<Result<Vec<_>, _>>()?;
-                        Some(CredentialFilterValue::CredentialIds(ids))
-                    }
-                    None => None,
-                };
-
-                let states = query.status.map(|values| {
-                    CredentialFilterValue::State(
-                        values.into_iter().map(|status| status.into()).collect(),
-                    )
-                });
-
-                search_filters & name & role & ids & states
             };
 
-            Ok(core
-                .credential_service
-                .get_credential_list(GetCredentialQueryDTO {
-                    pagination: Some(ListPagination {
-                        page: query.page,
-                        page_size: query.page_size,
-                    }),
-                    sorting: query.sort.map(|column| ListSorting {
-                        column: column.into(),
-                        direction: convert_inner(query.sort_direction),
-                    }),
-                    filtering: Some(condition),
-                    include: query.include.map(convert_inner),
+            let organisation =
+                CredentialFilterValue::OrganisationId(into_id(&query.organisation_id)?).condition();
+
+            let name = query.name.map(|name| {
+                CredentialFilterValue::CredentialSchemaName(StringMatch {
+                    r#match: get_string_match_type(CredentialListQueryExactColumnBindingEnum::Name),
+                    value: name,
                 })
-                .await?
-                .into())
-        })
+            });
+
+            let search_filters = match (query.search_text, query.search_type) {
+                (Some(search_test), Some(search_type)) => {
+                    organisation
+                        & ListFilterCondition::Or(
+                            search_type
+                                .into_iter()
+                                .map(|filter| {
+                                    match filter {
+                                        SearchTypeBindingEnum::ClaimName => {
+                                            CredentialFilterValue::ClaimName(StringMatch {
+                                                r#match: StringMatchType::Contains,
+                                                value: search_test.clone(),
+                                            })
+                                        }
+                                        SearchTypeBindingEnum::ClaimValue => {
+                                            CredentialFilterValue::ClaimValue(StringMatch {
+                                                r#match: StringMatchType::Contains,
+                                                value: search_test.clone(),
+                                            })
+                                        }
+                                        SearchTypeBindingEnum::CredentialSchemaName => {
+                                            CredentialFilterValue::CredentialSchemaName(
+                                                StringMatch {
+                                                    r#match: StringMatchType::Contains,
+                                                    value: search_test.clone(),
+                                                },
+                                            )
+                                        }
+                                    }
+                                    .condition()
+                                })
+                                .collect(),
+                        )
+                }
+                _ => organisation,
+            };
+
+            let role = query
+                .role
+                .map(|role| CredentialFilterValue::Role(role.into()));
+
+            let ids = match query.ids {
+                Some(ids) => {
+                    let ids = ids
+                        .iter()
+                        .map(|id| into_id(id))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    Some(CredentialFilterValue::CredentialIds(ids))
+                }
+                None => None,
+            };
+
+            let states = query.status.map(|values| {
+                CredentialFilterValue::State(
+                    values.into_iter().map(|status| status.into()).collect(),
+                )
+            });
+
+            search_filters & name & role & ids & states
+        };
+
+        Ok(core
+            .credential_service
+            .get_credential_list(GetCredentialQueryDTO {
+                pagination: Some(ListPagination {
+                    page: query.page,
+                    page_size: query.page_size,
+                }),
+                sorting: query.sort.map(|column| ListSorting {
+                    column: column.into(),
+                    direction: convert_inner(query.sort_direction),
+                }),
+                filtering: Some(condition),
+                include: query.include.map(convert_inner),
+            })
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn delete_credential(&self, credential_id: String) -> Result<(), BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .credential_service
-                .delete_credential(&into_id(&credential_id)?)
-                .await?)
-        })
+    pub async fn delete_credential(&self, credential_id: String) -> Result<(), BindingError> {
+        let core = self.use_core().await?;
+        Ok(core
+            .credential_service
+            .delete_credential(&into_id(&credential_id)?)
+            .await?)
     }
 }
 

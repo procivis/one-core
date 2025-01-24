@@ -36,7 +36,7 @@ pub enum VctCacheError {
 
 pub struct VctTypeMetadataCache {
     inner: CachingLoader<VctTypeMetadataResolverError>,
-    resolver: Arc<dyn Resolver<Error = VctTypeMetadataResolverError>>,
+    resolver: Arc<dyn Resolver<Error = VctTypeMetadataResolverError> + Send>,
 }
 
 impl VctTypeMetadataCache {

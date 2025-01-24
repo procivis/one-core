@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use one_core::config::core_config::{
     self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, RevocationType,
@@ -90,7 +90,7 @@ mod utils;
 
 uniffi::setup_scaffolding!();
 
-fn initialize_core(
+async fn initialize_core(
     data_dir_path: String,
     config_mobile: &'static str,
     native_key_storage: Option<Box<dyn NativeKeyStorage>>,
@@ -124,11 +124,6 @@ fn initialize_core(
     let placeholder_config: AppConfig<MobileConfig> =
         core_config::AppConfig::from_yaml_str_configs(vec![config, config_base, config_mobile])
             .map_err(|err| SDKError::InitializationFailure(err.to_string()))?;
-
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .map_err(|err| SDKError::InitializationFailure(err.to_string()))?;
 
     let main_db_path = format!("{data_dir_path}/one_core_db.sqlite");
     let backup_db_path = format!("{data_dir_path}/backup_one_core_db.sqlite");
@@ -641,15 +636,31 @@ fn initialize_core(
     };
 
     let core_binding = Arc::new(OneCoreBinding::new(
-        runtime,
         main_db_path,
         backup_db_path,
         Box::new(core_builder),
     ));
 
-    core_binding.initialize(core_binding.main_db_path.clone())?;
+    core_binding
+        .initialize(core_binding.main_db_path.clone())
+        .await?;
 
     Ok(core_binding)
+}
+
+// Global runtime for all async exports
+static TOKIO_RUNTIME: LazyLock<Result<tokio::runtime::Runtime, std::io::Error>> =
+    LazyLock::new(|| {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()?;
+        runtime.block_on(uniffi::deps::async_compat::Compat::new(async {}));
+        Ok(runtime)
+    });
+fn use_tokio_runtime() -> Result<&'static tokio::runtime::Runtime, BindingError> {
+    TOKIO_RUNTIME
+        .as_ref()
+        .map_err(|err| SDKError::InitializationFailure(err.to_string()).into())
 }
 
 #[uniffi::export]
@@ -659,13 +670,16 @@ fn initialize_verifier_core(
     ble_central: Option<Arc<dyn BleCentral>>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
-    initialize_core(
-        data_dir_path,
-        include_str!("../../../config/config-procivis-mobile-verifier.yml"),
-        native_key_storage,
-        ble_central,
-        ble_peripheral,
-    )
+    use_tokio_runtime()?.block_on(async {
+        initialize_core(
+            data_dir_path,
+            include_str!("../../../config/config-procivis-mobile-verifier.yml"),
+            native_key_storage,
+            ble_central,
+            ble_peripheral,
+        )
+        .await
+    })
 }
 
 #[uniffi::export]
@@ -675,13 +689,16 @@ fn initialize_holder_core(
     ble_central: Option<Arc<dyn BleCentral>>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
-    initialize_core(
-        data_dir_path,
-        include_str!("../../../config/config-procivis-mobile-holder.yml"),
-        native_key_storage,
-        ble_central,
-        ble_peripheral,
-    )
+    use_tokio_runtime()?.block_on(async {
+        initialize_core(
+            data_dir_path,
+            include_str!("../../../config/config-procivis-mobile-holder.yml"),
+            native_key_storage,
+            ble_central,
+            ble_peripheral,
+        )
+        .await
+    })
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

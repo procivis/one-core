@@ -14,113 +14,99 @@ use super::OneCoreBinding;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{from_id_opt, into_id, into_id_opt, TimestampFormat};
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
     #[uniffi::method]
-    pub fn create_trust_entity(
+    pub async fn create_trust_entity(
         &self,
         request: CreateTrustEntityRequestBindingDTO,
     ) -> Result<String, BindingError> {
         let request = request.try_into()?;
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            let id = core
-                .trust_entity_service
-                .create_trust_entity(request)
-                .await?;
-            Ok(id.to_string())
-        })
+        let core = self.use_core().await?;
+        let id = core
+            .trust_entity_service
+            .create_trust_entity(request)
+            .await?;
+        Ok(id.to_string())
     }
 
     #[uniffi::method]
-    pub fn create_remote_trust_entity(
+    pub async fn create_remote_trust_entity(
         &self,
         request: CreateRemoteTrustEntityRequestBindingDTO,
     ) -> Result<String, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .trust_entity_service
-                .create_remote_trust_entity_for_did(request.try_into()?)
-                .await?
-                .to_string())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .trust_entity_service
+            .create_remote_trust_entity_for_did(request.try_into()?)
+            .await?
+            .to_string())
     }
 
     #[uniffi::method]
-    pub fn get_remote_trust_entity(
+    pub async fn get_remote_trust_entity(
         &self,
         did_id: String,
     ) -> Result<GetTrustEntityResponseBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .trust_entity_service
-                .get_remote_trust_entity_for_did(into_id(&did_id)?)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .trust_entity_service
+            .get_remote_trust_entity_for_did(into_id(&did_id)?)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn update_remote_trust_entity(
+    pub async fn update_remote_trust_entity(
         &self,
         request: UpdateRemoteTrustEntityFromDidRequestBindingDTO,
     ) -> Result<(), BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .trust_entity_service
-                .update_remote_trust_entity_for_did(into_id(&request.did_id)?, request.try_into()?)
-                .await?)
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .trust_entity_service
+            .update_remote_trust_entity_for_did(into_id(&request.did_id)?, request.try_into()?)
+            .await?)
     }
 
     #[uniffi::method]
-    pub fn get_trust_entity(
+    pub async fn get_trust_entity(
         &self,
         trust_entity_id: String,
     ) -> Result<GetTrustEntityResponseBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .trust_entity_service
-                .get_trust_entity(into_id(&trust_entity_id)?)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .trust_entity_service
+            .get_trust_entity(into_id(&trust_entity_id)?)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn get_trust_entity_by_did(
+    pub async fn get_trust_entity_by_did(
         &self,
         did_id: String,
     ) -> Result<GetTrustEntityResponseBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            let trust_entity = core
-                .trust_entity_service
-                .lookup_did(into_id(&did_id)?)
-                .await?;
+        let core = self.use_core().await?;
+        let trust_entity = core
+            .trust_entity_service
+            .lookup_did(into_id(&did_id)?)
+            .await?;
 
-            Ok(trust_entity.into())
-        })
+        Ok(trust_entity.into())
     }
 
     #[uniffi::method]
-    pub fn list_trust_entities(
+    pub async fn list_trust_entities(
         &self,
         filters: ListTrustEntitiesFiltersBindings,
     ) -> Result<TrustEntitiesListBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .trust_entity_service
-                .list_trust_entities(filters.try_into()?)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .trust_entity_service
+            .list_trust_entities(filters.try_into()?)
+            .await?
+            .into())
     }
 }
 

@@ -30,94 +30,84 @@ use crate::error::BindingError;
 use crate::utils::{format_timestamp_opt, into_id, into_id_opt, TimestampFormat};
 use crate::OneCoreBinding;
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
     #[uniffi::method]
-    pub fn create_proof(
+    pub async fn create_proof(
         &self,
         request: CreateProofRequestBindingDTO,
     ) -> Result<String, BindingError> {
         let request = request.try_into()?;
-
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core.proof_service.create_proof(request).await?.to_string())
-        })
+        let core = self.use_core().await?;
+        Ok(core.proof_service.create_proof(request).await?.to_string())
     }
 
     #[uniffi::method]
-    pub fn get_proof(&self, proof_id: String) -> Result<ProofRequestBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            let proof = core.proof_service.get_proof(&into_id(&proof_id)?).await?;
-            Ok(proof.into())
-        })
+    pub async fn get_proof(
+        &self,
+        proof_id: String,
+    ) -> Result<ProofRequestBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        let proof = core.proof_service.get_proof(&into_id(&proof_id)?).await?;
+        Ok(proof.into())
     }
 
     #[uniffi::method]
-    pub fn get_proofs(
+    pub async fn get_proofs(
         &self,
         query: ProofListQueryBindingDTO,
     ) -> Result<ProofListBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            let proofs = core.proof_service.get_proof_list(query.try_into()?).await?;
-            Ok(proofs.into())
-        })
+        let core = self.use_core().await?;
+        let proofs = core.proof_service.get_proof_list(query.try_into()?).await?;
+        Ok(proofs.into())
     }
 
     #[uniffi::method]
-    pub fn holder_reject_proof(&self, interaction_id: String) -> Result<(), BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .ssi_holder_service
-                .reject_proof_request(&into_id(&interaction_id)?)
-                .await?)
-        })
+    pub async fn holder_reject_proof(&self, interaction_id: String) -> Result<(), BindingError> {
+        let core = self.use_core().await?;
+        Ok(core
+            .ssi_holder_service
+            .reject_proof_request(&into_id(&interaction_id)?)
+            .await?)
     }
 
     #[uniffi::method]
-    pub fn holder_submit_proof(
+    pub async fn holder_submit_proof(
         &self,
         interaction_id: String,
         submit_credentials: HashMap<String, PresentationSubmitCredentialRequestBindingDTO>,
         did_id: String,
         key_id: Option<String>,
     ) -> Result<(), BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            core.ssi_holder_service
-                .submit_proof(PresentationSubmitRequestDTO {
-                    interaction_id: into_id(&interaction_id)?,
-                    submit_credentials: try_convert_inner(submit_credentials)?,
-                    did_id: into_id(&did_id)?,
-                    key_id: key_id.map(|key_id| into_id(&key_id)).transpose()?,
-                })
-                .await?;
+        let core = self.use_core().await?;
+        core.ssi_holder_service
+            .submit_proof(PresentationSubmitRequestDTO {
+                interaction_id: into_id(&interaction_id)?,
+                submit_credentials: try_convert_inner(submit_credentials)?,
+                did_id: into_id(&did_id)?,
+                key_id: key_id.map(|key_id| into_id(&key_id)).transpose()?,
+            })
+            .await?;
 
-            Ok(())
-        })
+        Ok(())
     }
 
     #[uniffi::method]
-    pub fn propose_proof(
+    pub async fn propose_proof(
         &self,
         exchange: String,
         organisation_id: String,
     ) -> Result<ProposeProofResponseBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .proof_service
-                .propose_proof(exchange, into_id(&organisation_id)?)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .proof_service
+            .propose_proof(exchange, into_id(&organisation_id)?)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn share_proof(
+    pub async fn share_proof(
         &self,
         proof_id: String,
         params: ShareProofRequestBindingDTO,
@@ -125,61 +115,53 @@ impl OneCoreBinding {
         let id = into_id(&proof_id)?;
         let request = params.into();
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            let oidc_service = core.oidc_service.clone();
-            let callback = Some(
-                async move {
-                    oidc_service.oidc_verifier_ble_mqtt_presentation(id).await;
-                }
-                .boxed(),
-            );
+        let core = self.use_core().await?;
+        let oidc_service = core.oidc_service.clone();
+        let callback = Some(
+            async move {
+                oidc_service.oidc_verifier_ble_mqtt_presentation(id).await;
+            }
+            .boxed(),
+        );
 
-            let response = core
-                .proof_service
-                .share_proof(&id, request, callback)
-                .await?;
+        let response = core
+            .proof_service
+            .share_proof(&id, request, callback)
+            .await?;
 
-            Ok(ShareProofResponseBindingDTO::from(response))
-        })
+        Ok(ShareProofResponseBindingDTO::from(response))
     }
 
     #[uniffi::method]
-    pub fn retract_proof(&self, proof_id: String) -> Result<String, BindingError> {
+    pub async fn retract_proof(&self, proof_id: String) -> Result<String, BindingError> {
         let proof_id = into_id(&proof_id)?;
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            let response = core.proof_service.retract_proof(proof_id).await?;
+        let core = self.use_core().await?;
+        let response = core.proof_service.retract_proof(proof_id).await?;
 
-            Ok(response.to_string())
-        })
+        Ok(response.to_string())
     }
 
     #[uniffi::method]
-    pub fn delete_proof_claims(&self, proof_id: String) -> Result<(), BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            core.proof_service
-                .delete_proof_claims(into_id(&proof_id)?)
-                .await?;
-            Ok(())
-        })
+    pub async fn delete_proof_claims(&self, proof_id: String) -> Result<(), BindingError> {
+        let core = self.use_core().await?;
+        core.proof_service
+            .delete_proof_claims(into_id(&proof_id)?)
+            .await?;
+        Ok(())
     }
 
     #[uniffi::method]
-    pub fn get_presentation_definition(
+    pub async fn get_presentation_definition(
         &self,
         proof_id: String,
     ) -> Result<PresentationDefinitionBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .proof_service
-                .get_proof_presentation_definition(&into_id(&proof_id)?)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .proof_service
+            .get_proof_presentation_definition(&into_id(&proof_id)?)
+            .await?
+            .into())
     }
 }
 

@@ -23,27 +23,25 @@ use super::OneCoreBinding;
 use crate::error::BindingError;
 use crate::utils::{into_id, into_timestamp, TimestampFormat};
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
     #[uniffi::method]
-    pub fn get_credential_schema(
+    pub async fn get_credential_schema(
         &self,
         credential_schema_id: String,
     ) -> Result<CredentialSchemaDetailBindingDTO, BindingError> {
         let credential_schema_id: CredentialSchemaId = into_id(&credential_schema_id)?;
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .credential_schema_service
-                .get_credential_schema(&credential_schema_id)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .credential_schema_service
+            .get_credential_schema(&credential_schema_id)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn get_credential_schemas(
+    pub async fn get_credential_schemas(
         &self,
         query: CredentialSchemaListQueryBindingDTO,
     ) -> Result<CredentialSchemaListBindingDTO, BindingError> {
@@ -76,73 +74,65 @@ impl OneCoreBinding {
             conditions.push(CredentialSchemaFilterValue::CredentialSchemaIds(ids).condition());
         }
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .credential_schema_service
-                .get_credential_schema_list(GetCredentialSchemaQueryDTO {
-                    pagination: Some(ListPagination {
-                        page: query.page,
-                        page_size: query.page_size,
-                    }),
-                    filtering: Some(ListFilterCondition::And(conditions)),
-                    sorting,
-                    include: query
-                        .include
-                        .map(|incl| incl.into_iter().map(Into::into).collect()),
-                })
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .credential_schema_service
+            .get_credential_schema_list(GetCredentialSchemaQueryDTO {
+                pagination: Some(ListPagination {
+                    page: query.page,
+                    page_size: query.page_size,
+                }),
+                filtering: Some(ListFilterCondition::And(conditions)),
+                sorting,
+                include: query
+                    .include
+                    .map(|incl| incl.into_iter().map(Into::into).collect()),
+            })
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn share_credential_schema(
+    pub async fn share_credential_schema(
         &self,
         credential_schema_id: String,
     ) -> Result<CredentialSchemaShareResponseBindingDTO, BindingError> {
-        self.block_on(async {
-            let credential_schema_id: CredentialSchemaId = into_id(&credential_schema_id)?;
-            let core = self.use_core().await?;
-            Ok(core
-                .credential_schema_service
-                .share_credential_schema(&credential_schema_id)
-                .await?
-                .into())
-        })
+        let credential_schema_id: CredentialSchemaId = into_id(&credential_schema_id)?;
+        let core = self.use_core().await?;
+        Ok(core
+            .credential_schema_service
+            .share_credential_schema(&credential_schema_id)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn import_credential_schema(
+    pub async fn import_credential_schema(
         &self,
         request: ImportCredentialSchemaRequestBindingDTO,
     ) -> Result<String, BindingError> {
         let request = request.try_into()?;
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .credential_schema_service
-                .import_credential_schema(request)
-                .await
-                .map(|schema| schema.to_string())?)
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .credential_schema_service
+            .import_credential_schema(request)
+            .await
+            .map(|schema| schema.to_string())?)
     }
 
     #[uniffi::method]
-    pub fn delete_credential_schema(
+    pub async fn delete_credential_schema(
         &self,
         credential_schema_id: String,
     ) -> Result<(), BindingError> {
         let credential_schema_id: CredentialSchemaId = into_id(&credential_schema_id)?;
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .credential_schema_service
-                .delete_credential_schema(&credential_schema_id)
-                .await?)
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .credential_schema_service
+            .delete_credential_schema(&credential_schema_id)
+            .await?)
     }
 }
 

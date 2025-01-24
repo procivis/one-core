@@ -21,101 +21,89 @@ use super::OneCoreBinding;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{into_id, into_timestamp, TimestampFormat};
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
     #[uniffi::method]
-    pub fn create_proof_schema(
+    pub async fn create_proof_schema(
         &self,
         request: CreateProofSchemaRequestDTO,
     ) -> Result<String, BindingError> {
         let request = request.try_into()?;
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .proof_schema_service
-                .create_proof_schema(request)
-                .await?
-                .to_string())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .proof_schema_service
+            .create_proof_schema(request)
+            .await?
+            .to_string())
     }
 
     #[uniffi::method]
-    pub fn get_proof_schema(
+    pub async fn get_proof_schema(
         &self,
         proof_schema_id: String,
     ) -> Result<GetProofSchemaBindingDTO, BindingError> {
         let id: ProofSchemaId = into_id(&proof_schema_id)?;
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .proof_schema_service
-                .get_proof_schema(&id)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .proof_schema_service
+            .get_proof_schema(&id)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn get_proof_schemas(
+    pub async fn get_proof_schemas(
         &self,
         filter: ListProofSchemasFiltersBindingDTO,
     ) -> Result<ProofSchemaListBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .proof_schema_service
-                .get_proof_schema_list(filter.try_into()?)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .proof_schema_service
+            .get_proof_schema_list(filter.try_into()?)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn share_proof_schema(
+    pub async fn share_proof_schema(
         &self,
         proof_schema_id: String,
     ) -> Result<ProofSchemaShareResponseBindingDTO, BindingError> {
-        self.block_on(async {
-            let proof_schema_id: ProofSchemaId = into_id(&proof_schema_id)?;
-            let core = self.use_core().await?;
-            Ok(core
-                .proof_schema_service
-                .share_proof_schema(proof_schema_id)
-                .await?
-                .into())
-        })
+        let proof_schema_id: ProofSchemaId = into_id(&proof_schema_id)?;
+        let core = self.use_core().await?;
+        Ok(core
+            .proof_schema_service
+            .share_proof_schema(proof_schema_id)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn import_proof_schema(
+    pub async fn import_proof_schema(
         &self,
         request: ImportProofSchemaRequestBindingsDTO,
     ) -> Result<String, BindingError> {
         let request = request.try_into()?;
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .proof_schema_service
-                .import_proof_schema(request)
-                .await
-                .map(|schema| schema.id.to_string())?)
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .proof_schema_service
+            .import_proof_schema(request)
+            .await
+            .map(|schema| schema.id.to_string())?)
     }
 
     #[uniffi::method]
-    pub fn delete_proof_schema(&self, proof_schema_id: String) -> Result<(), BindingError> {
+    pub async fn delete_proof_schema(&self, proof_schema_id: String) -> Result<(), BindingError> {
         let proof_schema_id: ProofSchemaId = into_id(&proof_schema_id)?;
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .proof_schema_service
-                .delete_proof_schema(&proof_schema_id)
-                .await?)
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .proof_schema_service
+            .delete_proof_schema(&proof_schema_id)
+            .await?)
     }
 }
 

@@ -3,7 +3,6 @@ use std::pin::Pin;
 
 use one_core::service::error::ServiceError;
 use tokio::fs;
-use tokio::runtime::Runtime;
 use tokio::sync::{RwLock, RwLockReadGuard};
 
 use crate::error::{BindingError, SDKError};
@@ -32,53 +31,48 @@ pub mod trust_entity;
 pub mod version;
 
 type CoreBuilder = Box<
-    dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<one_core::OneCore, BindingError>>>>
+    dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<one_core::OneCore, BindingError>> + Send>>
         + Send
         + Sync,
 >;
 
 #[derive(uniffi::Object)]
 pub(crate) struct OneCoreBinding {
-    runtime: Runtime,
     inner: RwLock<Option<one_core::OneCore>>,
     pub(crate) main_db_path: String,
     pub(crate) backup_db_path: String,
     core_builder: CoreBuilder,
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
     #[uniffi::method]
-    pub fn uninitialize(&self, delete_data: bool) -> Result<(), BindingError> {
-        self.block_on(async {
-            let mut guard = self.inner.write().await;
-            if guard.take().is_none() {
-                return Err(SDKError::NotInitialized.into());
-            }
+    pub async fn uninitialize(&self, delete_data: bool) -> Result<(), BindingError> {
+        let mut guard = self.inner.write().await;
+        if guard.take().is_none() {
+            return Err(SDKError::NotInitialized.into());
+        }
 
-            if !delete_data {
-                return Ok(());
-            }
+        if !delete_data {
+            return Ok(());
+        }
 
-            let _ = fs::remove_file(&self.backup_db_path).await;
-            fs::remove_file(&self.main_db_path)
-                .await
-                .map_err(|err| ServiceError::Other(err.to_string()))?;
+        let _ = fs::remove_file(&self.backup_db_path).await;
+        fs::remove_file(&self.main_db_path)
+            .await
+            .map_err(|err| ServiceError::Other(err.to_string()))?;
 
-            Ok(())
-        })
+        Ok(())
     }
 }
 
 impl OneCoreBinding {
     pub(crate) fn new(
-        runtime: Runtime,
         main_db_path: String,
         backup_db_path: String,
         core_builder: CoreBuilder,
     ) -> Self {
         Self {
-            runtime,
             inner: RwLock::new(None),
             main_db_path,
             backup_db_path,
@@ -86,13 +80,11 @@ impl OneCoreBinding {
         }
     }
 
-    pub(crate) fn initialize(&self, db_path: String) -> Result<(), BindingError> {
-        self.runtime.block_on(async {
-            let mut guard = self.inner.write().await;
-            let new_core = (self.core_builder)(db_path).await?;
-            guard.replace(new_core);
-            Ok(())
-        })
+    pub(crate) async fn initialize(&self, db_path: String) -> Result<(), BindingError> {
+        let mut guard = self.inner.write().await;
+        let new_core = (self.core_builder)(db_path).await?;
+        guard.replace(new_core);
+        Ok(())
     }
 
     /// helper function to get shared access to the initialized core
@@ -103,9 +95,5 @@ impl OneCoreBinding {
         let guard = self.inner.read().await;
         RwLockReadGuard::try_map(guard, |core| core.as_ref())
             .map_err(|_| SDKError::NotInitialized.into())
-    }
-
-    pub(crate) fn block_on<F: Future>(&self, future: F) -> F::Output {
-        self.runtime.block_on(future)
     }
 }

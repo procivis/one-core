@@ -9,10 +9,10 @@ use crate::error::BindingError;
 use crate::utils::into_id;
 use crate::OneCoreBinding;
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
     #[uniffi::method]
-    pub fn handle_invitation(
+    pub async fn handle_invitation(
         &self,
         url: String,
         organisation_id: String,
@@ -20,50 +20,47 @@ impl OneCoreBinding {
     ) -> Result<HandleInvitationResponseBindingEnum, BindingError> {
         let url = Url::parse(&url).map_err(|e| ServiceError::ValidationError(e.to_string()))?;
 
-        self.block_on(async {
-            let organisation_id = into_id(&organisation_id)?;
+        let organisation_id = into_id(&organisation_id)?;
 
-            let core = self.use_core().await?;
-            let invitation_response = core
-                .ssi_holder_service
-                .handle_invitation(url, organisation_id, transport)
-                .await?;
+        let core = self.use_core().await?;
+        let invitation_response = core
+            .ssi_holder_service
+            .handle_invitation(url, organisation_id, transport)
+            .await?;
 
-            Ok(invitation_response.into())
-        })
+        Ok(invitation_response.into())
     }
 
     #[uniffi::method]
-    pub fn holder_accept_credential(
+    pub async fn holder_accept_credential(
         &self,
         interaction_id: String,
         did_id: String,
         key_id: Option<String>,
         tx_code: Option<String>,
     ) -> Result<(), BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .ssi_holder_service
-                .accept_credential(
-                    &into_id(&interaction_id)?,
-                    into_id(&did_id)?,
-                    key_id.map(|key_id| into_id(&key_id)).transpose()?,
-                    tx_code,
-                )
-                .await?)
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .ssi_holder_service
+            .accept_credential(
+                &into_id(&interaction_id)?,
+                into_id(&did_id)?,
+                key_id.map(|key_id| into_id(&key_id)).transpose()?,
+                tx_code,
+            )
+            .await?)
     }
 
     #[uniffi::method]
-    pub fn holder_reject_credential(&self, interaction_id: String) -> Result<(), BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .ssi_holder_service
-                .reject_credential(&into_id(&interaction_id)?)
-                .await?)
-        })
+    pub async fn holder_reject_credential(
+        &self,
+        interaction_id: String,
+    ) -> Result<(), BindingError> {
+        let core = self.use_core().await?;
+        Ok(core
+            .ssi_holder_service
+            .reject_credential(&into_id(&interaction_id)?)
+            .await?)
     }
 }
 

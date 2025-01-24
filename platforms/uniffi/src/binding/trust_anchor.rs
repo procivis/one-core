@@ -10,66 +10,58 @@ use super::OneCoreBinding;
 use crate::error::BindingError;
 use crate::utils::{into_id, TimestampFormat};
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
     #[uniffi::method]
-    pub fn create_trust_anchor(
+    pub async fn create_trust_anchor(
         &self,
         anchor: CreateTrustAnchorRequestBindingDTO,
     ) -> Result<String, BindingError> {
         let request = anchor.into();
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            let id = core
-                .trust_anchor_service
-                .create_trust_anchor(request)
-                .await?;
-            Ok(id.to_string())
-        })
+        let core = self.use_core().await?;
+        let id = core
+            .trust_anchor_service
+            .create_trust_anchor(request)
+            .await?;
+        Ok(id.to_string())
     }
 
     #[uniffi::method]
-    pub fn get_trust_anchor(
+    pub async fn get_trust_anchor(
         &self,
         trust_anchor_id: String,
     ) -> Result<GetTrustAnchorResponseBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .trust_anchor_service
-                .get_trust_anchor(into_id(&trust_anchor_id)?)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .trust_anchor_service
+            .get_trust_anchor(into_id(&trust_anchor_id)?)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn list_trust_anchors(
+    pub async fn list_trust_anchors(
         &self,
         filters: ListTrustAnchorsFiltersBindings,
     ) -> Result<TrustAnchorsListBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .trust_anchor_service
-                .list_trust_anchors(filters.try_into()?)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .trust_anchor_service
+            .list_trust_anchors(filters.try_into()?)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn delete_trust_anchor(&self, anchor_id: String) -> Result<(), BindingError> {
+    pub async fn delete_trust_anchor(&self, anchor_id: String) -> Result<(), BindingError> {
         let trust_anchor_id: TrustAnchorId = into_id(&anchor_id)?;
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .trust_anchor_service
-                .delete_trust_anchor(trust_anchor_id)
-                .await?)
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .trust_anchor_service
+            .delete_trust_anchor(trust_anchor_id)
+            .await?)
     }
 }
 

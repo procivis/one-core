@@ -41,7 +41,7 @@ use validity_credential_repository::ValidityCredentialRepository;
 
 use self::trust_entity_repository::TrustEntityRepository;
 
-pub trait DataRepository {
+pub trait DataRepository: Send + Sync {
     fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository>;
     fn get_did_repository(&self) -> Arc<dyn DidRepository>;
     fn get_claim_repository(&self) -> Arc<dyn ClaimRepository>;

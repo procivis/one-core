@@ -13,68 +13,62 @@ use super::OneCoreBinding;
 use crate::error::BindingError;
 use crate::utils::TimestampFormat;
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
     #[uniffi::method]
-    pub fn create_backup(
+    pub async fn create_backup(
         &self,
         password: String,
         output_path: String,
     ) -> Result<BackupCreateBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core
-                .backup_service
-                .create_backup(password, output_path)
-                .await?
-                .into())
-        })
+        let core = self.use_core().await?;
+        Ok(core
+            .backup_service
+            .create_backup(password, output_path)
+            .await?
+            .into())
     }
 
     #[uniffi::method]
-    pub fn backup_info(&self) -> Result<UnexportableEntitiesBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            Ok(core.backup_service.backup_info().await?.into())
-        })
+    pub async fn backup_info(&self) -> Result<UnexportableEntitiesBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        Ok(core.backup_service.backup_info().await?.into())
     }
 
     #[uniffi::method]
-    pub fn finalize_import(&self) -> Result<(), BindingError> {
+    pub async fn finalize_import(&self) -> Result<(), BindingError> {
         if !Path::new(&self.backup_db_path).exists() {
             return Err(ServiceError::ValidationError("no active backup file found".into()).into());
         }
 
-        self.uninitialize(false)?;
+        self.uninitialize(false).await?;
         std::fs::copy(&self.backup_db_path, &self.main_db_path)
             .map_err(|e| ServiceError::Other(e.to_string()))?;
-        self.initialize(self.main_db_path.clone())?;
+        self.initialize(self.main_db_path.clone()).await?;
         std::fs::remove_file(&self.backup_db_path)
             .map_err(|e| ServiceError::Other(e.to_string()))?;
 
-        self.block_on(async {
-            let core = self.use_core().await?;
-            core.backup_service.finalize_import().await;
-            Ok(())
-        })
+        let core = self.use_core().await?;
+        core.backup_service.finalize_import().await;
+        Ok(())
     }
 
     #[uniffi::method]
-    pub fn rollback_import(&self) -> Result<(), BindingError> {
+    pub async fn rollback_import(&self) -> Result<(), BindingError> {
         if !Path::new(&self.backup_db_path).exists() {
             return Err(
                 ServiceError::ValidationError("no active backup file found".to_string()).into(),
             );
         }
 
-        self.initialize(self.main_db_path.clone())?;
+        self.initialize(self.main_db_path.clone()).await?;
         std::fs::remove_file(&self.backup_db_path)
             .map_err(|e| ServiceError::Other(e.to_string()))?;
         Ok(())
     }
 
     #[uniffi::method]
-    pub fn unpack_backup(
+    pub async fn unpack_backup(
         &self,
         password: String,
         input_path: String,
@@ -83,17 +77,15 @@ impl OneCoreBinding {
             return Err(ServiceError::ValidationError("backup file already exists".into()).into());
         }
 
-        let metadata = self.block_on(async {
+        let metadata: MetadataBindingDTO = {
             let core = self.use_core().await?;
-            Ok::<_, BindingError>(
-                core.backup_service
-                    .unpack_backup(password, input_path, self.backup_db_path.clone())
-                    .await?
-                    .into(),
-            )
-        })?;
+            core.backup_service
+                .unpack_backup(password, input_path, self.backup_db_path.clone())
+                .await?
+                .into()
+        };
 
-        self.initialize(self.backup_db_path.clone())?;
+        self.initialize(self.backup_db_path.clone()).await?;
         Ok(metadata)
     }
 }

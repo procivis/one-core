@@ -6,15 +6,13 @@ use one_dto_mapper::From;
 use super::OneCoreBinding;
 use crate::error::BindingError;
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
     #[uniffi::method]
-    pub fn get_config(&self) -> Result<ConfigBindingDTO, BindingError> {
-        self.block_on(async {
-            let core = self.use_core().await?;
-            let config = core.config_service.get_config()?;
-            Ok(config.into())
-        })
+    pub async fn get_config(&self) -> Result<ConfigBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        let config = core.config_service.get_config()?;
+        Ok(config.into())
     }
 }
 

@@ -69,33 +69,34 @@ use crate::service::revocation_list::RevocationListService;
 
 pub type DidMethodCreator = Box<
     dyn FnOnce(
-        &mut DidConfig,
-        &OneCoreBuilderProviders,
-    ) -> (Arc<dyn DidMethodProvider>, Option<Arc<dyn DidMdlValidator>>),
+            &mut DidConfig,
+            &OneCoreBuilderProviders,
+        ) -> (Arc<dyn DidMethodProvider>, Option<Arc<dyn DidMdlValidator>>)
+        + Send,
 >;
 
 pub type KeyAlgorithmCreator = Box<
-    dyn FnOnce(&mut KeyAlgorithmConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyAlgorithmProvider>,
+    dyn FnOnce(&mut KeyAlgorithmConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyAlgorithmProvider>
+        + Send,
 >;
 
 pub type KeyStorageCreator =
-    Box<dyn FnOnce(&mut KeyStorageConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyProvider>>;
+    Box<dyn FnOnce(&mut KeyStorageConfig, &OneCoreBuilderProviders) -> Arc<dyn KeyProvider> + Send>;
 
 pub type FormatterProviderCreator = Box<
     dyn FnOnce(
-        &mut FormatConfig,
-        &DatatypeConfig,
-        &OneCoreBuilderProviders,
-    ) -> Arc<dyn CredentialFormatterProvider>,
+            &mut FormatConfig,
+            &DatatypeConfig,
+            &OneCoreBuilderProviders,
+        ) -> Arc<dyn CredentialFormatterProvider>
+        + Send,
 >;
 
-pub type DataProviderCreator = Box<dyn FnOnce() -> Arc<dyn DataRepository>>;
+pub type DataProviderCreator = Box<dyn FnOnce() -> Arc<dyn DataRepository> + Send>;
 
 pub type RevocationMethodCreator = Box<
-    dyn FnOnce(
-        &mut RevocationConfig,
-        &OneCoreBuilderProviders,
-    ) -> Arc<dyn RevocationMethodProvider>,
+    dyn FnOnce(&mut RevocationConfig, &OneCoreBuilderProviders) -> Arc<dyn RevocationMethodProvider>
+        + Send,
 >;
 
 pub struct OneCore {
