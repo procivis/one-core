@@ -99,10 +99,6 @@ impl RumqttcClient {
                         Err(_) => continue,
                     };
 
-                    if msg.sender_id == id {
-                        continue;
-                    }
-
                     let topics = topics.read().await;
 
                     let Some(subscription) = topics.get(&p.topic) else {
