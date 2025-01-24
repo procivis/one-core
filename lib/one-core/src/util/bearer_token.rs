@@ -21,24 +21,14 @@ pub(crate) async fn prepare_bearer_token(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &dyn DidMethodProvider,
 ) -> Result<String, ServiceError> {
-    let keys = did
-        .keys
-        .as_ref()
-        .ok_or(ServiceError::MappingError("keys is None".to_string()))?;
-
-    let authentication_key = keys
-        .iter()
-        .find(|key| key.role == KeyRole::Authentication)
-        .ok_or(ServiceError::MappingError(
-            "No authentication keys found for DID".to_string(),
-        ))?;
+    let authentication_key = did.find_first_key_by_role(KeyRole::Authentication)?;
 
     let key_algorithm = key_algorithm_provider
-        .get_key_algorithm(&authentication_key.key.key_type)
+        .get_key_algorithm(&authentication_key.key_type)
         .ok_or(ServiceError::MissingProvider(
             MissingProviderError::KeyAlgorithmProvider(
                 KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                    authentication_key.key.key_type.to_owned(),
+                    authentication_key.key_type.to_owned(),
                 ),
             ),
         ))?;
@@ -58,11 +48,11 @@ pub(crate) async fn prepare_bearer_token(
     };
 
     let key_id = did_method_provider
-        .get_verification_method_id_from_did_and_key(did, &authentication_key.key)
+        .get_verification_method_id_from_did_and_key(did, authentication_key)
         .await?;
 
     let signer = key_provider.get_signature_provider(
-        &authentication_key.key,
+        authentication_key,
         None,
         key_algorithm_provider.clone(),
     )?;

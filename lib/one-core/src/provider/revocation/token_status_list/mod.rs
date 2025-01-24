@@ -408,32 +408,19 @@ pub async fn format_status_list_credential(
 ) -> Result<String, RevocationError> {
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
-    let keys = issuer_did
-        .keys
-        .as_ref()
-        .ok_or(RevocationError::MappingError(
-            "Issuer has no keys".to_string(),
-        ))?;
+    let key = issuer_did
+        .find_first_key_by_role(KeyRole::AssertionMethod)
+        .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?;
 
-    let key = keys
-        .iter()
-        .find(|k| k.role == KeyRole::AssertionMethod)
-        .ok_or(RevocationError::KeyWithRoleNotFound(
-            KeyRole::AssertionMethod,
-        ))?;
-
-    let auth_fn = key_provider.get_signature_provider(
-        &key.key.to_owned(),
-        Some(key_id),
-        key_algorithm_provider.clone(),
-    )?;
+    let auth_fn =
+        key_provider.get_signature_provider(key, Some(key_id), key_algorithm_provider.clone())?;
 
     let status_list = formatter
         .format_status_list(
             revocation_list_url,
             issuer_did,
             encoded_list,
-            key.key.key_type.to_owned(),
+            key.key_type.to_owned(),
             auth_fn,
             StatusPurpose::Revocation,
             StatusListType::TokenStatusList,
