@@ -9,6 +9,7 @@ include:
       - "gitlab/rules.gitlab-ci.yml"
       - "gitlab/ci-tools.gitlab-ci.yml"
 
+
 variables:
   DOCKER_DRIVER: overlay2
   DEPENDENCY_TRACK_PROJECT_NAME: "ONE-Core"
@@ -129,6 +130,7 @@ before_script:
     strategy: depend
 
 .run_api_tests:
+  allow_failure: false
   variables:
     CORE_IMAGE_TAG: ${APP_VERSION}
     API_TEST_RUN_CORE: true
@@ -137,6 +139,8 @@ before_script:
     project: procivis/one/one-tests
     branch: main
     strategy: depend
+    forward:
+      pipeline_variables: true
 
 
 build:
