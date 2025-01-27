@@ -39,7 +39,7 @@ pub enum CacheType {
     #[sea_orm(string_value = "JSON_LD_CONTEXT")]
     JsonLdContext,
 
-    #[sea_orm(string_value = "STATUSLIST_CREDENTIAL")]
+    #[sea_orm(string_value = "STATUS_LIST_CREDENTIAL")]
     StatusListCredential,
 
     #[sea_orm(string_value = "VCT_METADATA")]
