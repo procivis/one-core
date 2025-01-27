@@ -8,7 +8,7 @@ include:
       - "gitlab/github.gitlab-ci.yml"
       - "gitlab/rules.gitlab-ci.yml"
       - "gitlab/ci-tools.gitlab-ci.yml"
-
+      - "gitlab/dtrack.gitlab-ci.yml"
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -481,11 +481,10 @@ api:trigger_tests:
     - .run_api_tests
     - .rule:except_main_branch
 
-dtrack:upload-bom:
+dtrack:generate-bom:
   stage: scan
   needs: []
   variables:
-    D_TRACK_PATH: ${DEPENDENCY_TRACK_BASE_URL}/api/v1/bom
     SBOM_FILE_PATH: "one-core.json"
     SBOM_FILES: >-
       apps/core-server/core-server.cdx.json
@@ -499,27 +498,31 @@ dtrack:upload-bom:
     - .rule:only_main_or_tag
   script:
     - cargo cyclonedx -f json
-    - cyclonedx-cli merge --input-files ${SBOM_FILES} --input-format=json --output-format=json --group apps > ${SBOM_FILE_PATH}
-    - file_content=$(base64 -i $SBOM_FILE_PATH)
-    - |
-      curl -i --fail -X PUT \
-        -H "Content-Type: application/json" \
-        -H "X-API-Key: ${DEPENDENCY_TRACK_API_KEY}" \
-        --data @- ${D_TRACK_PATH} << EOF
-      {
-        "projectName": "${DEPENDENCY_TRACK_PROJECT_NAME}",
-        "projectVersion": "${D_TRACK_PROJECT_VERSION}",
-        "autoCreate": true,
-        "bom": "${file_content}"
-      }
-      EOF
+    - > 
+      cyclonedx-cli merge 
+      --input-files ${SBOM_FILES} 
+      --input-format=json 
+      --output-format=json 
+      --group apps 
+      --name "One-Core"
+      --output-file ${SBOM_FILE_PATH}
   artifacts:
     when: always
     paths:
       - ${SBOM_FILE_PATH}
-    reports:
-      cyclonedx:
-        - ${SBOM_FILE_PATH}
+    expire_in: 5 days
+
+
+dtrack:upload-bom:
+  stage: scan
+  needs:
+    - job: dtrack:generate-bom
+      artifacts: true
+  variables:
+    SBOM_FILE_PATH: "one-core.json"
+  extends:
+    - .dtrack:upload-bom:curl
+    - .rule:only_main_or_tag
 
 .dTrack_metrics: &dTrack_metrics
   - base_url=${DEPENDENCY_TRACK_BASE_URL}/api/v1/project/lookup

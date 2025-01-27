@@ -19,7 +19,7 @@ ed25519-compact      = { version = "2.1" }
 hmac                 = { version = "0.12" }
 mockall              = { workspace = true, optional = true }
 p256                 = { version = "0.13", features = ["jwk", "ecdh"] }
-pairing_crypto       = { version = "0.4.2", git = "https://github.com/procivis/pairing_crypto", rev = "7b977af" }
+pairing_crypto       = { version = "0.4.2", git = "https://github.com/procivis/pairing_crypto", rev = "6d9f5df" }
 pbkdf2               = { version = "0.12", features = ["simple"] }
 pqc_dilithium        = { version = "0.2.0", git = "https://github.com/procivis/dilithium", rev = "7fdfe6b" }
 rand.workspace       = true
