@@ -519,17 +519,6 @@ dtrack:upload-bom:
     - .dtrack:upload-bom:curl
     - .rule:only_main_or_tag
 
-.dTrack_metrics: &dTrack_metrics
-  - base_url=${DEPENDENCY_TRACK_BASE_URL}/api/v1/project/lookup
-  - url="${base_url}?name=${DEPENDENCY_TRACK_PROJECT_NAME}&version=${D_TRACK_PROJECT_VERSION}"
-  - echo "URL=$url"
-  - >
-    result=$(curl -X GET "${url}" \
-      -H "X-Api-Key: ${DEPENDENCY_TRACK_API_KEY}" \
-      -H "Accept: application/json")
-  - metrics=$(echo $result | jq -r .metrics)
-  - echo "Dependency Track Project Version metrics=${metrics}"
-
 dtrack:policy_violations:
   stage: scan
   allow_failure: true
@@ -537,15 +526,7 @@ dtrack:policy_violations:
     - job: dtrack:upload-bom
   extends:
     - .rule:only_main_or_tag
-  script:
-    - *dTrack_metrics
-    - violated_licences=$(echo ${metrics} | jq -r .policyViolationsFail)
-    - echo "Count of violated_licences=${violated_licences}"
-    - >
-      if [[ ${violated_licences} -gt 0 ]]; then
-        echo "Violated licences more that 0."
-        exit 1;
-      fi
+    - .dTrack:validation:policy
 
 dtrack:metrics:
   stage: scan
@@ -554,17 +535,7 @@ dtrack:metrics:
     - job: dtrack:upload-bom
   extends:
     - .rule:only_main_or_tag
-  script:
-    - *dTrack_metrics
-    - critical=$(echo ${metrics} | jq -r .critical)
-    - high=$(echo ${metrics} | jq -r .high)
-    - echo "Critical vulnerabilities=${critical}"
-    - echo "High vulnerabilities=${high}"
-    - >
-      if [[ ${critical} -gt 0  || ${high} -gt 0  ]]; then
-          echo "Lib vulnerabilities more that 0."
-          exit 1;
-      fi
+    - .dTrack:validation:metrics
 
 github:push:
   stage: github
