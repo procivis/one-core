@@ -9,6 +9,7 @@ include:
       - "gitlab/rules.gitlab-ci.yml"
       - "gitlab/ci-tools.gitlab-ci.yml"
       - "gitlab/dtrack.gitlab-ci.yml"
+      - "gitlab/bitrise.gitlab-ci.yml"
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -92,7 +93,7 @@ before_script:
   tags:
     - rust
   script:
-    - cargo build --release
+    - cargo build --release -p core-server
     - cargo sweep --time 7
   after_script:
     - mkdir -p target/release
@@ -244,31 +245,25 @@ publish:
 
 sdk:ios:bitrise:
   stage: sdk_build
-  image: $CI_REGISTRY/procivis/one/one-operations/bitrise-builder:0.2.0
-  needs: []
+  extends:
+    - .bitrise:default
   when: manual
   variables:
     # ONE-wallet project on Bitrise
     BITRISE_PROJECT_SLUG: 6ee8c26f-6d7b-4bcb-8ddc-be1ba3cd2687
     BITRISE_WORKFLOW: iOS_Core_SDK
-  script:
-    - >
-      /etc/gitrise.sh
-      --access-token $BITRISE_API_ACCESS_TOKEN
-      --slug $BITRISE_PROJECT_SLUG
-      --workflow $BITRISE_WORKFLOW
-      --commit "$CI_COMMIT_SHA"
-      --env "CI_PIPELINE_ID:$CI_PIPELINE_ID"
-      --output "artifacts"
+    ARTIFACTS: true
   artifacts:
     paths:
-      - artifacts
+      - ${ARTIFACTS_DIR}
     expire_in: 10 days
 
 sdk:android:build:
   services:
     - docker:dind
   stage: sdk_build
+  tags:
+    - rust
   needs: []
   when: manual
   script:
