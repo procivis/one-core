@@ -23,6 +23,8 @@ mod test;
 pub mod mapper;
 pub mod model;
 
+pub type AnyPayload = serde_json::Map<String, serde_json::Value>;
+
 #[async_trait]
 impl TokenVerifier for Box<dyn TokenVerifier> {
     async fn verify<'a>(

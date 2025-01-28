@@ -713,7 +713,7 @@ pub fn create_format_map(
     ExchangeProtocolError,
 > {
     match format_type {
-        "JWT" | "SD_JWT" | "MDOC" => {
+        "JWT" | "SD_JWT" | "MDOC" | "SD_JWT_VC" => {
             let key = map_core_to_oidc_format(format_type)
                 .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
             Ok(HashMap::from([(

@@ -200,10 +200,18 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 "X509".to_string(),
             ],
             issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
-            proof_exchange_protocols: vec![],
+            proof_exchange_protocols: vec!["OPENID4VC".to_string()],
             revocation_methods: vec!["NONE".to_string(), "TOKENSTATUSLIST".to_string()],
-            verification_key_algorithms: vec![],
-            verification_key_storages: vec![],
+            verification_key_algorithms: vec![
+                "EDDSA".to_string(),
+                "ES256".to_string(),
+                "DILITHIUM".to_string(),
+            ],
+            verification_key_storages: vec![
+                "INTERNAL".to_string(),
+                "AZURE_VAULT".to_string(),
+                "SECURE_ELEMENT".to_string(),
+            ],
             forbidden_claim_names: vec!["0".to_string()],
         }
     }

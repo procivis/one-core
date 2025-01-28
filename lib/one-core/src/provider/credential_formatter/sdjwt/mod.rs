@@ -9,10 +9,9 @@ use super::jwt::model::JWTPayload;
 use super::model::TokenVerifier;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt::model::DecomposedToken;
-use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::credential_formatter::jwt::{AnyPayload, Jwt};
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::credential_formatter::sdjwt::disclosures::{parse_token, select_disclosures};
-use crate::provider::credential_formatter::sdjwt::model::Sdvc;
 
 pub mod disclosures;
 pub mod mapper;
@@ -31,7 +30,7 @@ pub(crate) fn detect_sdjwt_type_from_token(token: &str) -> Result<SdJwtType, For
         None => token,
         Some((without_claims, _)) => without_claims,
     };
-    let jwt: DecomposedToken<Sdvc> = Jwt::decompose_token(without_claims)?;
+    let jwt: DecomposedToken<AnyPayload> = Jwt::decompose_token(without_claims)?;
 
     if jwt.payload.vc_type.is_some() {
         Ok(SdJwtType::SdJwtVc)
