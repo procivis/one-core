@@ -8,8 +8,8 @@ use url::Url;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SdJwtVc {
-    #[serde(rename = "_sd", default)]
-    pub disclosures: Vec<String>,
+    #[serde(rename = "_sd", default, skip_serializing_if = "Vec::is_empty")]
+    pub digests: Vec<String>,
 
     /// Hash algorithm
     /// https://www.iana.org/assignments/named-information/named-information.xhtml

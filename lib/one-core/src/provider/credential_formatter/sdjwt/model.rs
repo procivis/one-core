@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use serde_with::{serde_as, OneOrMany};
 use time::OffsetDateTime;
 
@@ -45,6 +48,9 @@ pub struct VPContent {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Sdvc {
+    #[serde(rename = "_sd", default, skip_serializing_if = "Vec::is_empty")]
+    pub digests: Vec<String>,
+
     pub vc: VCContent,
     /// Hash algorithm
     /// https://www.iana.org/assignments/named-information/named-information.xhtml
@@ -71,8 +77,10 @@ pub struct Disclosure {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SDCredentialSubject {
-    #[serde(rename = "_sd")]
+    #[serde(rename = "_sd", default, skip_serializing_if = "Vec::is_empty")]
     pub digests: Vec<String>,
+    #[serde(flatten)]
+    pub public_claims: HashMap<String, Value>,
 }
 
 pub struct DecomposedToken<'a> {

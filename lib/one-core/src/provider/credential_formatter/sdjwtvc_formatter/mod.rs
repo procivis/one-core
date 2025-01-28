@@ -2,7 +2,6 @@
 //
 // https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html
 
-mod disclosures;
 pub(crate) mod model;
 
 #[cfg(test)]
@@ -15,6 +14,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
+use serde_json::Value;
 use shared_types::{CredentialSchemaId, DidValue};
 use time::Duration;
 use url::Url;
@@ -30,11 +30,10 @@ use crate::provider::credential_formatter::model::{
     ExtractPresentationCtx, Features, FormatPresentationCtx, FormatterCapabilities, Presentation,
     SelectiveDisclosure, VerificationFn,
 };
-use crate::provider::credential_formatter::sdjwt::disclosures::{parse_token, to_hashmap};
-use crate::provider::credential_formatter::sdjwt::mapper::{claims_to_json_object, unpack_arrays};
+use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
+use crate::provider::credential_formatter::sdjwt::mapper::claims_to_json_object;
 use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Sdvp};
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
-use crate::provider::credential_formatter::sdjwtvc_formatter::disclosures::extract_claims_from_disclosures;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::{
     SdJwtVc, SdJwtVcStatus, SdJwtVcStatusList,
 };
@@ -246,22 +245,36 @@ pub(super) async fn extract_credentials_internal(
     verification: Option<VerificationFn>,
     crypto: &dyn CryptoProvider,
 ) -> Result<DetailCredential, FormatterError> {
-    let DecomposedToken { disclosures, jwt } = parse_token(token)?;
+    let jwt: Jwt<SdJwtVc> =
+        Jwt::build_from_token_with_disclosures(token, crypto, verification).await?;
 
-    let jwt: Jwt<SdJwtVc> = Jwt::build_from_token(jwt, verification).await?;
+    // EUDIW issuer uses a disclosure called "verified_claims" to store the disclosed claims
+    // this does not seem to be a standard, see point 3 in https://github.com/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py/issues/78
+    let public_claims = jwt.payload.custom.public_claims;
+    let claims = match &public_claims
+        .get("verified_claims")
+        .and_then(|verified_claims| verified_claims.get("claims"))
+    {
+        None => public_claims.into_iter().collect(),
+        Some(Value::Object(claims)) => {
+            let inner_claims = if claims.len() > 1 {
+                claims.clone()
+            } else {
+                claims
+                    .values()
+                    .next()
+                    .and_then(|v| v.as_object().cloned())
+                    .unwrap_or(serde_json::Map::new())
+            };
 
-    let hasher =
-        crypto.get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
-
-    let selective_disclosure_hashes = &jwt.payload.custom.disclosures;
-    let public_claims = &jwt.payload.custom.public_claims;
-
-    let claims = extract_claims_from_disclosures(
-        &disclosures,
-        public_claims.clone(),
-        selective_disclosure_hashes,
-        &*hasher,
-    )?;
+            inner_claims.into_iter().collect()
+        }
+        Some(_) => {
+            return Err(FormatterError::CouldNotExtractCredentials(
+                "Expected verified_claims to contain a claims object".to_string(),
+            ));
+        }
+    };
 
     Ok(DetailCredential {
         id: jwt.payload.jwt_id,
@@ -281,9 +294,7 @@ pub(super) async fn extract_credentials_internal(
             .map(|did| DidValue::from_str(&did))
             .transpose()
             .map_err(|e| FormatterError::Failed(e.to_string()))?,
-        claims: CredentialSubject {
-            values: to_hashmap(unpack_arrays(&claims)?)?,
-        },
+        claims: CredentialSubject { values: claims },
         status: credential_status_from_sdjwt_status(&jwt.payload.custom.status),
         credential_schema: None,
     })
@@ -368,7 +379,7 @@ pub(crate) fn vc_from_credential(
     hashed_claims.sort_unstable();
 
     Ok(SdJwtVc {
-        disclosures: hashed_claims,
+        digests: hashed_claims,
         hash_alg: Some(algorithm.to_owned()),
         status: status.map(|status| SdJwtVcStatus {
             status_list: status,

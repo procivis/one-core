@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Context;
 use rand::seq::SliceRandom;
 
@@ -40,11 +42,15 @@ pub(crate) fn vc_from_credential(
     }
 
     Ok(Sdvc {
+        digests: vec![],
         vc: VCContent {
             context: additional_context,
             r#type: types,
             id: credential.id,
-            credential_subject: SDCredentialSubject { digests },
+            credential_subject: SDCredentialSubject {
+                digests,
+                public_claims: HashMap::new(),
+            },
             credential_status: credential.status,
             credential_schema,
             issuer: Some(credential.issuer_did),
@@ -71,80 +77,6 @@ pub(crate) fn claims_to_json_object(
     }
 
     Ok(data)
-}
-
-pub(crate) fn unpack_arrays(
-    value: &serde_json::Value,
-) -> Result<serde_json::Value, FormatterError> {
-    let mut result = serde_json::Value::Object(Default::default());
-
-    let result_obj = result.as_object_mut().ok_or(FormatterError::JsonMapping(
-        "freshly created object is not an Object".to_string(),
-    ))?;
-
-    value
-        .as_object()
-        .ok_or(FormatterError::JsonMapping(
-            "value is not an Object".to_string(),
-        ))?
-        .into_iter()
-        .try_for_each(|(k, v)| {
-            match v {
-                serde_json::Value::String(subvalue) => {
-                    match serde_json::from_str::<serde_json::Value>(subvalue) {
-                        Ok(parsed) => match parsed.as_array() {
-                            None => {
-                                if parsed.is_object() {
-                                    result_obj.insert(k.to_owned(), unpack_arrays(&parsed)?);
-                                } else {
-                                    result_obj.insert(k.to_owned(), v.to_owned());
-                                }
-                            }
-                            Some(array) => {
-                                let mut inner = serde_json::Value::Array(vec![]);
-                                let inner_array =
-                                    inner.as_array_mut().ok_or(FormatterError::JsonMapping(
-                                        "freshly created array is not an Array".to_string(),
-                                    ))?;
-
-                                array.iter().for_each(|element| {
-                                    inner_array.push(element.to_owned());
-                                });
-                                result_obj.insert(k.to_owned(), inner);
-                            }
-                        },
-                        Err(_) => {
-                            result_obj.insert(k.to_owned(), v.to_owned());
-                        }
-                    };
-                }
-                serde_json::Value::Array(subvalue) => {
-                    let mut array = vec![];
-
-                    subvalue.iter().try_for_each(|item| {
-                        if item.is_object() {
-                            array.push(unpack_arrays(item)?);
-                        } else {
-                            array.push(item.to_owned());
-                        }
-
-                        Ok::<(), FormatterError>(())
-                    })?;
-
-                    result_obj.insert(k.to_owned(), serde_json::Value::Array(array));
-                }
-                serde_json::Value::Object(_) => {
-                    result_obj.insert(k.to_owned(), unpack_arrays(v)?);
-                }
-                _ => {
-                    result_obj.insert(k.to_owned(), v.to_owned());
-                }
-            }
-
-            Ok::<(), FormatterError>(())
-        })?;
-
-    Ok(result)
 }
 
 impl TryFrom<Jwt<Sdvp>> for Presentation {

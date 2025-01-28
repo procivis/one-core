@@ -28,10 +28,10 @@ mod test;
 
 use super::json_ld::model::ContextType;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
-    compute_object_disclosures, extract_claims_from_disclosures, parse_token, to_hashmap,
+    compute_object_disclosures, parse_token,
 };
 use crate::provider::credential_formatter::sdjwt::mapper::{
-    claims_to_json_object, unpack_arrays, vc_from_credential,
+    claims_to_json_object, vc_from_credential,
 };
 use crate::provider::credential_formatter::sdjwt::model::*;
 use crate::provider::credential_formatter::sdjwt::{model, prepare_sd_presentation};
@@ -223,15 +223,8 @@ pub(super) async fn extract_credentials_internal(
     verification: Option<VerificationFn>,
     crypto: &dyn CryptoProvider,
 ) -> Result<DetailCredential, FormatterError> {
-    let model::DecomposedToken { disclosures, jwt } = parse_token(token)?;
-
-    let jwt: Jwt<Sdvc> = Jwt::build_from_token(jwt, verification).await?;
-    let digests = jwt.payload.custom.vc.credential_subject.digests;
-
-    let hasher =
-        crypto.get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
-
-    let claims = extract_claims_from_disclosures(digests, disclosures, &*hasher)?;
+    let jwt: Jwt<Sdvc> =
+        Jwt::build_from_token_with_disclosures(token, crypto, verification).await?;
 
     Ok(DetailCredential {
         id: jwt.payload.jwt_id,
@@ -252,7 +245,7 @@ pub(super) async fn extract_credentials_internal(
             .transpose()
             .map_err(|e| FormatterError::Failed(e.to_string()))?,
         claims: CredentialSubject {
-            values: to_hashmap(unpack_arrays(&claims)?)?,
+            values: jwt.payload.custom.vc.credential_subject.public_claims,
         },
         status: jwt.payload.custom.vc.credential_status,
         credential_schema: jwt.payload.custom.vc.credential_schema,

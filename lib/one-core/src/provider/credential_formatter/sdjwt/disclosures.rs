@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::Hasher;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -92,19 +93,6 @@ impl Disclosure {
     }
 }
 
-pub(crate) fn to_hashmap(
-    value: serde_json::Value,
-) -> Result<HashMap<String, serde_json::Value>, FormatterError> {
-    Ok(value
-        .as_object()
-        .ok_or(FormatterError::JsonMapping(
-            "value is not an Object".to_string(),
-        ))?
-        .into_iter()
-        .map(|(k, v)| (k.to_owned(), v.to_owned()))
-        .collect())
-}
-
 // The algorithm follows: https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-14#section-4.2.1
 pub(crate) fn compute_object_disclosures(
     value: &serde_json::Value,
@@ -159,76 +147,6 @@ fn compute_disclosure_for(key: &str, value: &serde_json::Value) -> Result<String
     let array = serde_json::json!([salt, key, value]).to_string();
 
     string_to_b64url_string(&array)
-}
-
-// Note that currently we only pass digests coming from `credentialSubject`(digests parameter)
-pub(crate) fn extract_claims_from_disclosures(
-    digests: Vec<String>,
-    disclosures: Vec<Disclosure>,
-    hasher: &dyn Hasher,
-) -> Result<serde_json::Value, FormatterError> {
-    let digest_by_disclosure = compute_digests(disclosures, hasher)?;
-
-    extract_claims(digests, digest_by_disclosure)
-}
-
-fn extract_claims(
-    digests: Vec<String>,
-    mut digest_by_disclosure: HashMap<String, Disclosure>,
-) -> Result<serde_json::Value, FormatterError> {
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum DisclosureValueKind {
-        NestedDigests {
-            #[serde(rename = "_sd")]
-            digests: Vec<String>,
-        },
-        JsonValue(serde_json::Value),
-    }
-
-    fn extract_inner(
-        digests: Vec<String>,
-        digest_by_disclosure: &mut HashMap<String, Disclosure>,
-    ) -> Result<serde_json::Value, FormatterError> {
-        let mut object: serde_json::Map<String, serde_json::Value> = serde_json::Map::default();
-
-        for digest in digests {
-            let Some(disclosure) = digest_by_disclosure.remove(&digest) else {
-                continue;
-            };
-
-            let key = disclosure.key;
-            if key == "_sd" || key == "..." {
-                return Err(FormatterError::Failed(format!("Invalid claim name: {key}")));
-            }
-
-            let disclosure_value_kind: DisclosureValueKind =
-                serde_json::from_value(disclosure.value)
-                    .map_err(|err| FormatterError::Failed(err.to_string()))?;
-            let value = match disclosure_value_kind {
-                DisclosureValueKind::NestedDigests { digests } => {
-                    extract_inner(digests, digest_by_disclosure)?
-                }
-                DisclosureValueKind::JsonValue(value) => value,
-            };
-
-            match object.entry(key) {
-                serde_json::map::Entry::Occupied(entry) => {
-                    return Err(FormatterError::Failed(format!(
-                        "Duplicate claim name: `{}`",
-                        entry.key()
-                    )))
-                }
-                serde_json::map::Entry::Vacant(entry) => {
-                    entry.insert(value);
-                }
-            }
-        }
-
-        Ok(serde_json::Value::Object(object))
-    }
-
-    extract_inner(digests, &mut digest_by_disclosure)
 }
 
 pub(crate) fn parse_token(token: &str) -> Result<DecomposedToken, FormatterError> {
@@ -363,4 +281,65 @@ fn collect_all_subdisclosures(disclosure: &DisclosureTree) -> Vec<String> {
             res
         })
         .collect()
+}
+
+fn gather_disclosures_from_sd(
+    disclosures: &[(&Disclosure, (String, String))],
+    sd_hashes: &[String],
+) -> serde_json::Map<String, serde_json::Value> {
+    let mut result = serde_json::Map::new();
+
+    sd_hashes.iter().for_each(|hash| {
+        if let Some((disclosure, _)) = disclosures
+            .iter()
+            .find(|(_, disclosure_hash)| *hash == *disclosure_hash.0 || *hash == *disclosure_hash.1)
+        {
+            result.insert(disclosure.key.clone(), disclosure.value.clone());
+        }
+    });
+
+    result
+}
+
+fn gather_hashes_from_sd(sd: &serde_json::Value) -> Option<Vec<String>> {
+    sd.as_array().map(|array| {
+        array
+            .iter()
+            .filter_map(|hash| hash.as_str().map(str::to_string))
+            .collect()
+    })
+}
+
+fn gather_insertables_from_value(
+    disclosures: &[(&Disclosure, (String, String))],
+    map: &serde_json::Map<String, serde_json::Value>,
+) -> serde_json::Map<String, serde_json::Value> {
+    if let Some(sd) = map.get(SELECTIVE_DISCLOSURE_MARKER) {
+        if let Some(hashes) = gather_hashes_from_sd(sd) {
+            return gather_disclosures_from_sd(disclosures, &hashes);
+        }
+    }
+
+    Default::default()
+}
+
+pub fn recursively_expand_disclosures(
+    disclosures: &[(&Disclosure, (String, String))],
+    claims: &mut serde_json::Value,
+) {
+    if let Some(map) = claims.as_object_mut() {
+        let values: serde_json::Map<String, Value> =
+            gather_insertables_from_value(disclosures, map);
+
+        map.remove(SELECTIVE_DISCLOSURE_MARKER);
+        map.extend(values);
+
+        map.iter_mut().for_each(|(_, v)| {
+            recursively_expand_disclosures(disclosures, v);
+        });
+    } else if let Some(array) = claims.as_array_mut() {
+        for v in array.iter_mut() {
+            recursively_expand_disclosures(disclosures, v);
+        }
+    }
 }

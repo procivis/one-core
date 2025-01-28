@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use one_crypto::hasher::sha256::SHA256;
 use one_crypto::MockHasher;
 use serde_json::{json, Value};
 use time::OffsetDateTime;
@@ -12,8 +11,7 @@ use crate::provider::credential_formatter::model::{
     PublishedClaim,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::{
-    compute_object_disclosures, extract_claims_from_disclosures, parse_disclosure,
-    select_disclosures, DisclosureArray,
+    compute_object_disclosures, parse_disclosure, select_disclosures, DisclosureArray,
 };
 use crate::provider::credential_formatter::sdjwt::model::Disclosure;
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
@@ -305,73 +303,6 @@ fn generic_disclosures() -> Vec<Disclosure> {
             disclosure:"WyJ4dHlCZXFnbHBUZnZYcnFRenNYTUZ3Iiwib2JqIix7Il9zZCI6WyJoTm02aU9WLS1pMzNsQXZUZXVIX3JZUUJ3eDhnX210RFE5VDdRTE5kSDhzIiwiZ1hzQmpDSTVWNktmUXJqbURsS1h0dHdENXYtSG9Sd0hIX0JXX3VXc3U2VSJdfV0".to_string(),
         }
     ]
-}
-
-#[test]
-fn test_extract_claims_from_disclosures() {
-    let hasher = SHA256 {};
-
-    let disclosures = generic_disclosures();
-    let first_two_disclosures = disclosures[0..2].to_vec();
-
-    assert_eq!(
-        extract_claims_from_disclosures(
-            vec![
-                "54nR6daXsl_LDczSaZc48coL-UHR72WyIpzz6AkDUyA".to_string(),
-                "9RzaXaJF3BCDitmMRNhHqzbRIRc6pbfS-7YbM_PObk8".to_string(),
-            ],
-            first_two_disclosures,
-            &hasher
-        )
-        .unwrap(),
-        json!({
-            "str": "stronk",
-            "another": "week"
-        })
-    );
-
-    assert_eq!(
-        extract_claims_from_disclosures(
-            vec!["MC2GasDMsSN8pHZN4VTW6_H-oMDab_r68Ny5lfyj3go".to_string()],
-            disclosures.clone(),
-            &hasher
-        )
-        .unwrap(),
-        json!({
-            "obj": {
-                "str": "stronk",
-                "another": "week"
-            }
-        })
-    );
-
-    let additional_level = Disclosure {
-        salt: "pggVbYzzu6oOGXrmNVGPHP".to_string(),
-        key: "root".to_string(),
-        value: json!({
-          "_sd": [
-            "bvvBS7QQFb8-9K8PVvZ4W3iJNfafA51YUF6wNOW807I"
-          ]
-        }),
-        disclosure_array: "[\"pggVbYzzu6oOGXrmNVGPHP\",\"root\",{\"_sd\":[\"bvvBS7QQFb8-9K8PVvZ4W3iJNfafA51YUF6wNOW807I\"]}]".to_string(),
-        disclosure:"WyJwZ2dWYll6enU2b09HWHJtTlZHUEhQIiwicm9vdCIseyJfc2QiOlsiYnZ2QlM3UVFGYjgtOUs4UFZ2WjRXM2lKTmZhZkE1MVlVRjZ3Tk9XODA3SSJdfV0".to_string(),
-    };
-    assert_eq!(
-        extract_claims_from_disclosures(
-            vec!["eeLFhFC3kkfJ5NQ3PLSzoXnimTyjTxseI83bLS1fIQE".to_string()],
-            [disclosures, vec![additional_level]].concat(),
-            &hasher
-        )
-        .unwrap(),
-        json!({
-            "root": {
-                "obj": {
-                    "str": "stronk",
-                    "another": "week"
-                }
-            }
-        })
-    );
 }
 
 #[test]

@@ -142,7 +142,7 @@ async fn test_format_credential() {
     let vc = payload.custom;
 
     assert!(vc
-        .disclosures
+        .digests
         .iter()
         .all(|hashed_claim| hashed_claim == "YWJjMTIz"));
 
