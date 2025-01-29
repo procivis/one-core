@@ -93,7 +93,7 @@ pub fn create_config(
     .chain(allow_insecure_http);
 
     let mut app_config: AppConfig<ServerConfig> =
-        core_config::AppConfig::from_yaml_str_configs(configs.collect()).unwrap();
+        core_config::AppConfig::from_yaml(configs).unwrap();
 
     app_config.app = ServerConfig {
         database_url: std::env::var("ONE_app__databaseUrl").unwrap_or("sqlite::memory:".into()),

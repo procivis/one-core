@@ -13,14 +13,6 @@ cacheEntities:
     cacheSize: 100
   TRUST_LIST:
     cacheSize: 100
-keyStorage:
-  SECURE_ELEMENT:
-    display: "keyStorage.secureElement"
-    type: "SECURE_ELEMENT"
-    order: 3
-    params:
-      private:
-        aliasPrefix: "ch.procivis.one.wallet.keys"
 transport:
   BLE:
     type: "BLE"
@@ -36,10 +28,23 @@ transport:
       private:
         brokerUrl: "mqtts://mqtt.dev.procivis-one.com:8883"
 exchange:
+  SCAN_TO_VERIFY:
+    type: "SCAN_TO_VERIFY"
+    disabled: true
+    display: "exchange.scanToVerify"
+    order: 2
   ISO_MDL:
     type: "ISO_MDL"
     display: "exchange.isoMdl"
     order: 3
+keyStorage:
+  SECURE_ELEMENT:
+    display: "keyStorage.secureElement"
+    type: "SECURE_ELEMENT"
+    order: 3
+    params:
+      private:
+        aliasPrefix: "ch.procivis.one.wallet.keys"
 datatype:
   FULL-DATE:
     display: "datatype.string"

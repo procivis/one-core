@@ -4,7 +4,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
 use one_core::config::core_config::{
-    self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, RevocationType,
+    self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, InputFormat,
+    RevocationType,
 };
 use one_core::config::{ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
@@ -90,9 +91,46 @@ mod utils;
 
 uniffi::setup_scaffolding!();
 
-async fn initialize_core(
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+struct MobileConfig {
+    pub allow_insecure_http_transport: bool,
+}
+
+#[uniffi::export]
+fn initialize_core(
+    config_json: String,
     data_dir_path: String,
-    config_mobile: &'static str,
+    native_key_storage: Option<Box<dyn NativeKeyStorage>>,
+    ble_central: Option<Arc<dyn BleCentral>>,
+    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+) -> Result<Arc<OneCoreBinding>, BindingError> {
+    // Sets tokio as global runtime for all async exports
+    static TOKIO_RUNTIME: LazyLock<Result<tokio::runtime::Runtime, std::io::Error>> =
+        LazyLock::new(|| {
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()?;
+
+            runtime.block_on(uniffi::deps::async_compat::Compat::new(async {}));
+            Ok(runtime)
+        });
+    let rt = TOKIO_RUNTIME
+        .as_ref()
+        .map_err(|err| BindingError::from(SDKError::InitializationFailure(err.to_string())))?;
+
+    rt.block_on(initialize(
+        config_json,
+        data_dir_path,
+        native_key_storage,
+        ble_central,
+        ble_peripheral,
+    ))
+}
+
+async fn initialize(
+    config_json: String,
+    data_dir_path: String,
     native_key_storage: Option<Box<dyn NativeKeyStorage>>,
     ble_central: Option<Arc<dyn BleCentral>>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
@@ -118,19 +156,14 @@ async fn initialize_core(
     let ble_peripheral =
         ble_peripheral.map(|peripheral| Arc::new(BlePeripheralWrapper(peripheral)) as _);
 
-    let config = include_str!("../../../config/config.yml");
-    let config_base = include_str!("../../../config/config-procivis-base.yml");
-
-    let placeholder_config: AppConfig<MobileConfig> =
-        core_config::AppConfig::from_yaml_str_configs(vec![config, config_base, config_mobile])
-            .map_err(|err| SDKError::InitializationFailure(err.to_string()))?;
+    let cfg = build_config(&config_json)?;
 
     let main_db_path = format!("{data_dir_path}/one_core_db.sqlite");
     let backup_db_path = format!("{data_dir_path}/backup_one_core_db.sqlite");
     let _ = std::fs::remove_file(&backup_db_path);
 
     let core_builder = move |db_path: String| {
-        let core_config = placeholder_config.core.clone();
+        let core_config = cfg.core.clone();
 
         let native_key_storage = native_key_storage.clone();
         let ble_peripheral = ble_peripheral.clone();
@@ -245,7 +278,7 @@ async fn initialize_core(
 
             let cache_entities_config = core_config.cache_entities.to_owned();
             let reqwest_client = reqwest::Client::builder()
-                .https_only(!placeholder_config.app.allow_insecure_http_transport)
+                .https_only(!cfg.app.allow_insecure_http_transport)
                 .build()
                 .expect("Failed to create reqwest::Client");
 
@@ -648,66 +681,7 @@ async fn initialize_core(
     Ok(core_binding)
 }
 
-// Global runtime for all async exports
-static TOKIO_RUNTIME: LazyLock<Result<tokio::runtime::Runtime, std::io::Error>> =
-    LazyLock::new(|| {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()?;
-        runtime.block_on(uniffi::deps::async_compat::Compat::new(async {}));
-        Ok(runtime)
-    });
-fn use_tokio_runtime() -> Result<&'static tokio::runtime::Runtime, BindingError> {
-    TOKIO_RUNTIME
-        .as_ref()
-        .map_err(|err| SDKError::InitializationFailure(err.to_string()).into())
-}
-
-#[uniffi::export]
-fn initialize_verifier_core(
-    data_dir_path: String,
-    native_key_storage: Option<Box<dyn NativeKeyStorage>>,
-    ble_central: Option<Arc<dyn BleCentral>>,
-    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
-) -> Result<Arc<OneCoreBinding>, BindingError> {
-    use_tokio_runtime()?.block_on(async {
-        initialize_core(
-            data_dir_path,
-            include_str!("../../../config/config-procivis-mobile-verifier.yml"),
-            native_key_storage,
-            ble_central,
-            ble_peripheral,
-        )
-        .await
-    })
-}
-
-#[uniffi::export]
-fn initialize_holder_core(
-    data_dir_path: String,
-    native_key_storage: Option<Box<dyn NativeKeyStorage>>,
-    ble_central: Option<Arc<dyn BleCentral>>,
-    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
-) -> Result<Arc<OneCoreBinding>, BindingError> {
-    use_tokio_runtime()?.block_on(async {
-        initialize_core(
-            data_dir_path,
-            include_str!("../../../config/config-procivis-mobile-holder.yml"),
-            native_key_storage,
-            ble_central,
-            ble_peripheral,
-        )
-        .await
-    })
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct MobileConfig {
-    pub allow_insecure_http_transport: bool,
-}
-
-pub fn initialize_jsonld_cache_loader(
+fn initialize_jsonld_cache_loader(
     cache_entities_config: CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
 ) -> JsonLdCachingLoader {
@@ -738,7 +712,7 @@ pub fn initialize_jsonld_cache_loader(
     )
 }
 
-pub fn initialize_did_caching_loader(
+fn initialize_did_caching_loader(
     cache_entities_config: &CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
 ) -> DidCachingLoader {
@@ -769,7 +743,7 @@ pub fn initialize_did_caching_loader(
     )
 }
 
-pub fn initialize_statuslist_loader(
+fn initialize_statuslist_loader(
     cache_entities_config: &CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
 ) -> StatusListCachingLoader {
@@ -800,7 +774,7 @@ pub fn initialize_statuslist_loader(
     )
 }
 
-pub async fn initialize_vct_type_metadata_cache(
+async fn initialize_vct_type_metadata_cache(
     cache_entities_config: CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
     client: Arc<dyn HttpClient>,
@@ -840,7 +814,7 @@ pub async fn initialize_vct_type_metadata_cache(
     cache
 }
 
-pub async fn initialize_json_schema_cache(
+async fn initialize_json_schema_cache(
     cache_entities_config: CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
     client: Arc<dyn HttpClient>,
@@ -880,7 +854,7 @@ pub async fn initialize_json_schema_cache(
     cache
 }
 
-pub async fn initialize_trust_list_cache(
+async fn initialize_trust_list_cache(
     cache_entities_config: &CacheEntitiesConfig,
     repo: Arc<dyn RemoteEntityCacheRepository>,
     client: Arc<dyn HttpClient>,
@@ -908,4 +882,24 @@ pub async fn initialize_trust_list_cache(
         config.cache_refresh_timeout,
         config.refresh_after,
     )
+}
+
+fn build_config(config: &str) -> Result<AppConfig<MobileConfig>, SDKError> {
+    core_config::AppConfig::parse([
+        InputFormat::yaml(include_str!("../../../config/config.yml")),
+        InputFormat::yaml(include_str!("../../../config/config-procivis-base.yml")),
+        InputFormat::yaml(include_str!("../../../config/config-procivis-mobile.yml")),
+        InputFormat::json(config),
+    ])
+    .map_err(|err| SDKError::InitializationFailure(err.to_string()))
+}
+
+#[cfg(test)]
+mod test {
+    use crate::build_config;
+
+    #[test]
+    fn test_build_config_parses_static_configs() {
+        assert!(build_config("{}").is_ok());
+    }
 }

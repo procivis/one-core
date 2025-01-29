@@ -153,7 +153,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
         cacheEntities: {}
     "};
 
-    AppConfig::from_yaml_str_configs(vec![config]).unwrap()
+    AppConfig::from_yaml(vec![config]).unwrap()
 }
 
 pub fn dummy_credential() -> Credential {

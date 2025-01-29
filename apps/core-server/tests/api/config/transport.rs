@@ -28,11 +28,9 @@ async fn test_server_starts_with_base_config() {
         format!("{}/../../config/config.yml", root),
         format!("{}/../../config/config-procivis-base.yml", root),
     ]
-    .into_iter()
     .map(|path| std::fs::read_to_string(path).unwrap());
 
-    let mut app_config: AppConfig<ServerConfig> =
-        AppConfig::from_yaml_str_configs(configs.collect()).unwrap();
+    let mut app_config: AppConfig<ServerConfig> = AppConfig::from_yaml(configs).unwrap();
     app_config.app = ServerConfig {
         database_url: "sqlite::memory:".into(),
         auth_token: "test".to_string(),

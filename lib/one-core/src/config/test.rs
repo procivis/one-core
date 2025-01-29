@@ -158,21 +158,11 @@ rusty_fork_test! {
         env::set_var("ONE_app__serverIp", "192.168.1.1");
 
         let config = AppConfig::<SystemConfig>::parse(vec![
-            InputFormat::Yaml {
-                content: config1.to_owned(),
-            },
-            InputFormat::Yaml {
-                content: config2.to_owned(),
-            },
-            InputFormat::Yaml {
-                content: config3.to_owned(),
-            },
-            InputFormat::Yaml {
-                content: config4.to_owned(),
-            },
-            InputFormat::Json {
-                content: config5.to_owned(),
-            },
+            InputFormat::yaml(config1),
+            InputFormat::yaml(config2),
+            InputFormat::yaml(config3),
+            InputFormat::yaml(config4),
+            InputFormat::yaml(config5),
         ])
         .unwrap();
 

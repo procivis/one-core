@@ -16,7 +16,7 @@ strict = []
 [dependencies]
 async-trait              = { version = "0.1" }
 futures.workspace        = true
-one-core                 = { version = "0.1.0", path = "../../lib/one-core" }
+one-core                 = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json"] }
 one-crypto               = { version = "0.1.0", path = "../../lib/one-crypto" }
 one-dto-mapper.workspace = true
 reqwest                  = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }

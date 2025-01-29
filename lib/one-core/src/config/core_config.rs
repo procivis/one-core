@@ -90,11 +90,22 @@ pub struct CacheEntityConfig {
 }
 
 #[derive(Debug)]
-pub(super) enum InputFormat {
+pub enum InputFormat {
     #[cfg(feature = "config_yaml")]
-    Yaml { content: String },
+    Yaml(String),
     #[cfg(feature = "config_json")]
-    Json { content: String },
+    Json(String),
+}
+
+impl InputFormat {
+    pub fn yaml(s: impl Into<String>) -> Self {
+        Self::Yaml(s.into())
+    }
+
+    #[cfg(feature = "config_json")]
+    pub fn json(s: impl Into<String>) -> Self {
+        Self::Json(s.into())
+    }
 }
 
 impl<Custom> AppConfig<Custom>
@@ -114,17 +125,13 @@ where
                 .extension()
                 .is_some_and(|ext| ext == "yml" || ext == "yaml")
             {
-                inputs.push(InputFormat::Yaml {
-                    content: file_content,
-                });
+                inputs.push(InputFormat::Yaml(file_content));
                 continue;
             }
 
             #[cfg(feature = "config_json")]
             if path.as_ref().extension() == Some("json".as_ref()) {
-                inputs.push(InputFormat::Json {
-                    content: file_content,
-                });
+                inputs.push(InputFormat::Json(file_content));
                 continue;
             }
 
@@ -137,28 +144,25 @@ where
         AppConfig::parse(inputs)
     }
 
-    pub fn from_yaml_str_configs(
-        configs: Vec<impl AsRef<str>>,
+    pub fn from_yaml(
+        configs: impl IntoIterator<Item = impl Into<String>>,
     ) -> Result<Self, ConfigParsingError> {
-        let inputs = configs
-            .into_iter()
-            .map(|input| InputFormat::Yaml {
-                content: input.as_ref().to_owned(),
-            })
-            .collect();
+        let inputs = configs.into_iter().map(InputFormat::yaml);
 
         AppConfig::parse(inputs)
     }
 
-    pub(super) fn parse(inputs: Vec<InputFormat>) -> Result<Self, ConfigParsingError> {
+    pub fn parse(
+        inputs: impl IntoIterator<Item = InputFormat>,
+    ) -> Result<Self, ConfigParsingError> {
         let mut figment = Figment::new();
 
         for data in inputs {
             figment = match data {
                 #[cfg(feature = "config_yaml")]
-                InputFormat::Yaml { content } => figment.merge(Yaml::string(&content)),
+                InputFormat::Yaml(content) => figment.merge(Yaml::string(&content)),
                 #[cfg(feature = "config_json")]
-                InputFormat::Json { content } => figment.merge(Json::string(&content)),
+                InputFormat::Json(content) => figment.merge(Json::string(&content)),
             };
         }
 
