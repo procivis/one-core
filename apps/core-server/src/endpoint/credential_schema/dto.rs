@@ -15,7 +15,6 @@ use crate::dto::common::ListQueryParamsRest;
 use crate::serialize::{front_time, front_time_option};
 
 /// Credential schema details.
-/// See the [credential schemas](../api/credentialSchemas.mdx) guide.
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(CredentialSchemaListItemResponseDTO)]
@@ -36,14 +35,14 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
-    /// Indication of what type of key storage the wallet should
-    /// use. See the [wallet storage type](../api/credentialSchemas.mdx#wallet-storage-type) guide.
+    /// Indication of what type of key storage the wallet should use.
     #[from(with_fn = convert_inner)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     pub imported_source_url: String,
-    /// See the [credentialSchema property](../api/credentialSchemas.mdx#credentialschema-property) guide.
+    /// Part of the `credentialSchema` property.
     pub schema_id: String,
+    /// Part of the `credentialSchema` property.
     pub schema_type: CredentialSchemaType,
     #[from(with_fn = convert_inner)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -54,7 +53,7 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     pub allow_suspension: bool,
 }
 
-/// See the [credentialSchema property](../api/credentialSchemas.mdx#credentialschema-property) guide.
+/// Part of the `credentialSchema` property.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, From, Into)]
 #[from(one_core::service::credential::dto::CredentialSchemaType)]
 #[into(one_core::service::credential::dto::CredentialSchemaType)]
@@ -118,8 +117,9 @@ pub struct CredentialSchemaResponseRestDTO {
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
-    /// See the [credentialSchema property](../api/credentialSchemas.mdx#credentialschema-property) guide.
+    /// Part of the `credentialSchema` property.
     pub schema_id: String,
+    /// Part of the `credentialSchema` property.
     pub schema_type: CredentialSchemaType,
     pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
@@ -162,14 +162,20 @@ pub enum CredentialSchemasExactColumn {
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemasFilterQueryParamsRest {
     pub organisation_id: OrganisationId,
+    /// Return only entities with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
+    /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<CredentialSchemasExactColumn>>,
+    /// Return only the credential schemas specified here by their UUID.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<CredentialSchemaId>>,
+    /// Return credential schemas associated with the specified `schemaId` or document
+    /// type for ISO mdocs.
     #[param(nullable = false)]
     pub schema_id: Option<String>,
+    /// Return only credential schemas which use the specified credential format.
     #[param(nullable = false)]
     pub format: Option<String>,
 }
@@ -212,35 +218,25 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     pub name: String,
     /// Choose a credential format for credentials issued using this
-    /// credential schema. See the [credential
-    /// formats](../api/credentialSchemas.mdx#credential-formats)
-    /// guide.
+    /// credential schema.
     pub format: String,
     /// Choose a revocation method for credentials issued using this
-    /// credential schema. See the [revocation
-    /// methods](../api/credentialSchemas.mdx#revocation-methods)
-    /// guide.
+    /// credential schema.
     pub revocation_method: String,
     /// Specify the organization.
     pub organisation_id: Uuid,
     /// Defines the set of claims to be asserted when using this credential
-    /// schema. See the [claims
-    /// object](../api/credentialSchemas.mdx#claims-object) guide.
+    /// schema.
     #[into(with_fn = convert_inner)]
     #[validate(length(min = 1))]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
-    /// Indication of what type of key storage the wallet should use. See
-    /// the [wallet storage
-    /// type](../api/credentialSchemas.mdx#wallet-storage-type) guide.
+    /// Indication of what type of key storage the wallet should use.
     /// Note that credentials with different `walletStorageType` cannot be
     /// combined into the same proof schema.
     #[into(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     /// Determines the general appearance of the credential in the holder's
-    /// wallet and the options supported in `layoutProperties`. See the
-    /// [credentials
-    /// designer](../api/credentialSchemas.mdx#credentials-designer)
-    /// guide.
+    /// wallet and the options supported in `layoutProperties`.
     #[serde(default)]
     #[schema(default = CredentialSchemaLayoutType::default)]
     pub layout_type: CredentialSchemaLayoutType,
@@ -248,7 +244,6 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     /// For credential formats requiring a schema ID, pass it here.
     /// For other formats, pass no value here.
-    /// See the [schema ID](../api/credentialSchemas.mdx#schemaid) guide.
     pub schema_id: Option<String>,
     /// If `true` and the chosen revocation method allows for suspension,
     /// credentials issued with this schema can be suspended.
@@ -277,14 +272,14 @@ pub struct CredentialClaimSchemaRequestRestDTO {
     /// If `true`, an array can be passed for this attribute during issuance.
     pub array: Option<bool>,
     /// If the `datatype` is `OBJECT`, the nested claims go in this array.
-    /// Otherwise this array is empty. See the [claims object](../api/credentialSchemas.mdx#claims-object) guide.
+    /// Otherwise this array is empty.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[into(with_fn = convert_inner)]
     #[schema(no_recursion)]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
 }
 
-/// Design the appearance of the credential in the holder's wallet. See the [credentials designer](../api/credentialSchemas.mdx#credentials-designer) guide.
+/// Design the appearance of the credential in the holder's wallet.
 #[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[into(one_core::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO)]

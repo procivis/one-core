@@ -91,32 +91,45 @@ pub enum SortableHistoryColumnRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryFilterQueryParamsRest {
+    /// Return only events associated with the specified entity type(s).
     #[param(rename = "entityTypes[]", inline, nullable = false)]
     pub entity_types: Option<Vec<HistoryEntityType>>,
+    /// Return only events associated with the provided entity UUID.
     #[param(nullable = false)]
     pub entity_id: Option<EntityId>,
+    /// Return only events of the specified action(s).
     #[param(nullable = false)]
     pub action: Option<HistoryAction>,
-    /// timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z')
+    /// Return only events which occurred after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(value_type = String)]
     pub created_date_from: Option<OffsetDateTime>,
-    /// timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z')
+    /// Return only events which occurred before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(value_type = String)]
     pub created_date_to: Option<OffsetDateTime>,
+    /// Return only events associated with the provided DID UUID.
     #[param(nullable = false)]
     pub did_id: Option<DidId>,
+    /// Return only events associated with the provided credential UUID.
     #[param(nullable = false)]
     pub credential_id: Option<CredentialId>,
+    /// Return only events associated with the provided credential schema UUID.
     #[param(nullable = false)]
     pub credential_schema_id: Option<CredentialSchemaId>,
+    /// Return only events associated with the provided proof schema UUID.
     #[param(nullable = false)]
     pub proof_schema_id: Option<ProofSchemaId>,
+    /// Search for a string.
     #[param(nullable = false)]
     pub search_text: Option<String>,
+    /// Changes where `searchText` is searched. If no value is provided, events
+    /// that have any field matching `searchText` will be returned.
     #[param(nullable = false)]
     pub search_type: Option<HistorySearchEnumRest>,
+    /// Specify the organizaton from which to return history events.
     pub organisation_id: OrganisationId,
 }
 

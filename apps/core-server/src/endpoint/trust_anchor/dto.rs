@@ -15,7 +15,7 @@ use crate::serialize::front_time;
 #[into(CreateTrustAnchorRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTrustAnchorRequestRestDTO {
-    /// Must be unique
+    /// Must be unique.
     pub name: String,
     /// Specify the type of trust management anchor to publish or subscribe
     /// to. Possible values from the configuration.
@@ -26,7 +26,7 @@ pub struct CreateTrustAnchorRequestRestDTO {
     #[schema(nullable = false)]
     pub is_publisher: Option<bool>,
     /// URL of the remote trust anchor to subscribe to.
-    /// It must be provided if and only if `isPublisher=false`.
+    /// This must be provided if and only if `isPublisher=false`.
     #[schema(nullable = false)]
     pub publisher_reference: Option<String>,
 }
@@ -80,12 +80,18 @@ pub enum ExactTrustAnchorFilterColumnRestEnum {
 #[derive(Clone, Debug, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustAnchorsFilterQueryParamsRest {
+    /// Return only trust anchors with a name starting with this string.
+    /// Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
+    /// Filter by trust anchors either published or subscribed to.
     #[param(inline, nullable = false)]
     pub is_publisher: Option<Boolean>,
+    /// Return only trust anchors with a type starting with this string.
+    /// Not case-sensitive.
     #[param(nullable = false)]
     pub r#type: Option<String>,
+    /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactTrustAnchorFilterColumnRestEnum>>,
 }

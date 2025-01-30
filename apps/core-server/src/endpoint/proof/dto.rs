@@ -28,7 +28,7 @@ use crate::endpoint::proof_schema::dto::{
 };
 use crate::serialize::{front_time, front_time_option};
 
-/// See the [proof request states](../api/proofRequests.mdx#proof-request-states) guide.
+/// The state representation of the proof request in the system.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(ProofStateEnum)]
@@ -42,8 +42,7 @@ pub enum ProofStateRestEnum {
     Error,
 }
 
-/// Exchange protocol being used. See the [exchange
-/// protocols](../api/exchangeProtocols.mdx) guide.
+/// Exchange protocol being used.
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -53,6 +52,7 @@ pub struct CreateProofRequestRestDTO {
     #[into(rename = "verifier_did_id")]
     #[schema(example = "<uuid; did identifier>")]
     pub verifier_did: DidId,
+    /// Specify the exchange protocol to use for credential exchange.
     pub exchange: String,
     /// When a shared proof is accepted, the holder will be redirected to
     /// the resource specified here, if redirects are enabled in the system
@@ -65,17 +65,19 @@ pub struct CreateProofRequestRestDTO {
     /// specified here, the first key listed during DID creation will be
     /// used.
     pub verifier_key: Option<KeyId>,
+    /// Only for use when verifying VC Barcodes.
     #[into(with_fn = convert_inner)]
     pub scan_to_verify: Option<ScanToVerifyRequestRestDTO>,
     /// Not for use via the API; for ISO mDL verification over BLE using the
-    /// SDK. See the [ISO mDL](/guides/iso_mdl_offline_protocol) guide.
+    /// SDK.
     #[into(with_fn = convert_inner)]
     pub iso_mdl_engagement: Option<String>,
+    /// Specify the transport protocol to use for credential exchange.
     #[into(with_fn = convert_inner)]
     pub transport: Option<Vec<String>>,
 }
 
-/// Only for use when verifying physical credentials. See the [physical credentials](../guides/physicalCredentials.mdx) guide.
+/// Only for use when verifying VC Barcodes.
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(ScanToVerifyRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -107,15 +109,23 @@ pub enum SortableProofColumnRestEnum {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofsFilterQueryParamsRest {
+    /// Specify the organization from which to return proof requests.
     pub organisation_id: OrganisationId,
+    /// Return only proof requests with a name starting with this string.
+    /// Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
+    /// Return proof requests according to their current state in the system.
     #[param(rename = "proofStates[]", inline, nullable = false)]
     pub proof_states: Option<Vec<ProofStateRestEnum>>,
+    /// Filter proof requests by their associated proof schema. Pass an array
+    /// of UUID strings.
     #[param(rename = "proofSchemaIds[]", inline, nullable = false)]
     pub proof_schema_ids: Option<Vec<ProofSchemaId>>,
+    /// Specify proof requests to be returned by their UUID.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<ProofId>>,
+    /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
 }
@@ -165,7 +175,7 @@ pub struct ProofListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub verifier_did: Option<DidListItemResponseRestDTO>,
     pub exchange: String,
-    /// Exchange protocol being used. See the [exchange protocols](../api/exchangeProtocols.mdx) guide.
+    /// Exchange protocol being used.
     pub transport: String,
     pub state: ProofStateRestEnum,
     #[from(with_fn = convert_inner)]
@@ -337,7 +347,6 @@ pub enum ProofClaimValueRestDTO {
 #[from(ProofInputDTO)]
 pub struct ProofInputRestDTO {
     /// The set of claims being asserted by the credential shared during the proof request.
-    /// See the [claims object](../api/credentialSchemas.mdx#claims-object) guide.
     #[from(with_fn = convert_inner)]
     pub claims: Vec<ProofClaimRestDTO>,
     /// The credentials exchanged as part of the successfully shared proof.
@@ -345,7 +354,6 @@ pub struct ProofInputRestDTO {
     pub credential: Option<GetCredentialResponseRestDTO>,
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
     /// Defines the maximum age at which an LVVC will be validated.
-    /// See the [LVVC guide](../guides/lvvc.mdx).
     pub validity_constraint: Option<i64>,
 }
 

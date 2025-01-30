@@ -22,7 +22,6 @@ use crate::router::AppState;
     summary = "Resolve a DID",
     description = indoc::formatdoc! {"
         Resolves a DID to its DID document, returning its verification relationships.
-        See the [DID Resolver](../api/dids.mdx#did-resolver) guide for more information.
     "},
 )]
 pub(crate) async fn resolve_did(

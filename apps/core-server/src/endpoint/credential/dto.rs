@@ -88,8 +88,9 @@ pub struct GetCredentialResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
     pub redirect_uri: Option<String>,
+    /// The role the system has in relation to the credential.
     pub role: CredentialRoleRestEnum,
-    /// See the [LVVC guide](../guides/lvvc.mdx).
+    /// When the current LVVC was issued.
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub lvvc_issuance_date: Option<OffsetDateTime>,
@@ -102,7 +103,7 @@ pub struct GetCredentialResponseRestDTO {
     pub holder_did: Option<DidListItemResponseRestDTO>,
 }
 
-/// See the [credential roles](../api/credentials.mdx#credential-roles) guide.
+/// The role the system has in relation to the credential.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[from(CredentialRole)]
 #[into(CredentialRole)]
@@ -135,10 +136,10 @@ pub struct CredentialDetailSchemaResponseRestDTO {
     pub format: String,
     pub revocation_method: String,
     pub organisation_id: Uuid,
-    /// Indication of what type of key storage the wallet should use. See the [wallet storage type](../api/credentialSchemas.mdx#wallet-storage-type) guide.
+    /// Indication of what type of key storage the wallet should use.
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
-    /// See the [credentialSchema property](../api/credentialSchemas.mdx#credentialschema-property) guide.
+    /// Part of the `credentialSchema` property.
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     #[from(with_fn = convert_inner)]
@@ -169,7 +170,7 @@ pub enum CredentialDetailClaimValueResponseRestDTO {
     Nested(#[from(with_fn = convert_inner)] Vec<CredentialDetailClaimResponseRestDTO>),
 }
 
-/// See the [credential states](../api/credentials.mdx#credential-states) guide.
+/// The state represenation of the credential in the system.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(CredentialStateEnum)]
@@ -196,19 +197,29 @@ pub enum SearchType {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialsFilterQueryParamsRest {
+    /// Specify the organization from which to return credentials.
     pub organisation_id: OrganisationId,
+    /// Return only credentials with a name starting with this string.
     #[param(nullable = false)]
     pub name: Option<String>,
+    /// Filter credentials by whether they were issued by the system,
+    /// verified by the system or are held by the system as with a wallet.
     #[param(nullable = false)]
     pub role: Option<CredentialRoleRestEnum>,
+    /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
+    /// Specify credentials to be returned by their UUID.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<CredentialId>>,
+    /// Return only credentials with the specified credential state.
     #[param(rename = "status[]", inline, nullable = false)]
     pub status: Option<Vec<CredentialStateRestEnum>>,
+    /// Search for a string.
     #[param(nullable = false)]
     pub search_text: Option<String>,
+    /// Changes where `searchText` is searched. To search credentials,
+    /// choose one or more `searchType`s and pass a `searchText`.
     #[param(rename = "searchType[]", inline, nullable = false)]
     pub search_type: Option<Vec<SearchType>>,
 }

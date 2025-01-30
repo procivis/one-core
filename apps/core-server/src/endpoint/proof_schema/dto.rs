@@ -46,18 +46,16 @@ pub struct ProofInputSchemaRequestRestDTO {
     /// ID of the credential schema from which the `claimSchemas` object
     /// is assembled.
     pub credential_schema_id: Uuid,
-    /// Defines the maximum age at which an LVVC will be validated. See the [LVVC guide](../guides/lvvc.mdx).
+    /// Defines the maximum age at which an LVVC will be validated.
     pub validity_constraint: Option<i64>,
     /// Defines the set of attributes being requested when making proof requests using this schema.
-    /// See the [claimSchemas object](../api/proofSchemas.mdx#claimschemas-object) guide.
     #[into(with_fn = convert_inner)]
     #[schema(min_items = 1)]
     pub claim_schemas: Vec<ClaimProofSchemaRequestRestDTO>,
 }
 
 /// Defines the set of attributes being requested when making proof requests
-/// using this schema. See the [claimSchemas
-/// object](../api/proofSchemas.mdx#claimschemas-object) guide.
+/// using this schema.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateProofSchemaClaimRequestDTO)]
@@ -162,11 +160,16 @@ pub type GetProofSchemaQuery =
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofSchemasFilterQueryParamsRest {
+    /// Specify the organization from which to return proof schemas.
     pub organisation_id: OrganisationId,
+    /// Return only proof schemas with a name starting with this string.
+    /// Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
+    /// Specify proof schemas to be returned by their UUID.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<ProofSchemaId>>,
+    /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
 }
@@ -215,7 +218,6 @@ pub struct GetProofSchemaResponseRestDTO {
 }
 
 /// The set of attributes being requested when using this proof schema.
-/// See the [claimSchemas object](../api/proofSchemas.mdx#claimschemas-object) guide.
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProofClaimSchemaResponseDTO)]
@@ -226,7 +228,7 @@ pub struct ProofClaimSchemaResponseRestDTO {
     /// Requested as mandatory or optional
     pub required: bool,
     pub key: String,
-    /// The type of data accepted for this attribute. See the [datatypes](../api/configuration.mdx#datatype-object) guide.
+    /// The type of data accepted for this attribute.
     #[schema(example = "STRING")]
     pub data_type: String,
     #[from(with_fn = convert_inner)]
@@ -241,11 +243,10 @@ pub struct ProofClaimSchemaResponseRestDTO {
 #[from(ProofInputSchemaResponseDTO)]
 pub struct ProofInputSchemaResponseRestDTO {
     /// Defines the set of attributes being requested when making proof requests using this schema.
-    /// See the [claimSchemas object](../api/proofSchemas.mdx#claimschemas-object) guide.
     #[from(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
-    /// Defines the maximum age at which an LVVC will be validated. See the [LVVC guide](../guides/lvvc.mdx).
+    /// Defines the maximum age at which an LVVC will be validated.
     pub validity_constraint: Option<i64>,
 }
 

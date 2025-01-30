@@ -21,22 +21,21 @@ use crate::serialize::front_time;
 pub struct KeyRequestRestDTO {
     /// Specify the organization.
     pub organisation_id: Uuid,
-    /// Corresponds to the associated `property name*` of the `keyAlgorithm`
-    /// object of the configuration. See the [key algorithm](../api/keys.mdx#key-algorithms) guide.
+    /// Choose which key algorithm to use to create the key pair. Check
+    /// the `keyAlgorithm` object of the configuration for supported options.
     #[schema(example = "EDDSA")]
     pub key_type: String,
     /// The parameters passed into the key algorithm.
-    /// See the [key algorithm parameters](../api/keys.mdx#keyparams) guide.
     #[schema(value_type = Object)]
     pub key_params: serde_json::Value,
+    /// Must be unique within the organization.
     pub name: String,
-    /// Corresponds to the associated `property name*` of the `keyStorage`
-    /// object of the configuration. See the [key storage](../api/keys.mdx#key-storage) guide.
+    /// Choose a key storage type. Check the `keyStorage`
+    /// object of the configuration for supported options.
     #[schema(example = "INTERNAL")]
     pub storage_type: String,
-    /// The parameters passed into the storage type. See the
-    /// [key storage parameters](../api/keys.mdx#storageparams) guide.
-    #[schema(value_type = Object)]
+    /// The parameters passed into the storage type.
+    #[schema(value_type = Option<Object>)]
     pub storage_params: serde_json::Value,
 }
 
@@ -104,15 +103,21 @@ pub enum SortableKeyColumnRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct KeyFilterQueryParamsRest {
+    /// Specify the organization from which to retrieve keys.
     pub organisation_id: OrganisationId,
+    /// Return all keys with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
+    /// Return only keys of the specified algorithm.
     #[param(nullable = false)]
     pub key_type: Option<String>,
+    /// Return only keys stored in the specified storage type.
     #[param(nullable = false)]
     pub key_storage: Option<String>,
+    /// Specify keys to be returned by their UUID.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<KeyId>>,
+    /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
 }

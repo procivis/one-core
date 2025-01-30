@@ -27,7 +27,6 @@ pub enum DidType {
 }
 
 /// DID details.
-/// See the [DIDs](../api/dids.mdx) guide.
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(DidListItemResponseDTO)]
@@ -80,7 +79,6 @@ pub struct DidResponseRestDTO {
 }
 
 /// The key, or keys, defining the verification relationships of the DID.
-/// See the [keys object](../api/dids.mdx#keys-object) guide.
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, TryFrom)]
 #[try_from(T = DidResponseKeysDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
@@ -100,24 +98,22 @@ pub struct DidResponseKeysRestDTO {
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateDidRequestRestDTO {
-    /// The DID name must be unique within the organization or DID creation
-    /// will not complete successfully.
+    /// The DID name must be unique within the organization.
     pub name: String,
+    /// Specify the organization.
     pub organisation_id: OrganisationId,
-    /// Choose a DID method to create the DID. Corresponds to the associated
-    /// `property name*` of the `did` object of the configuration. See the
-    /// [DID method](../api/dids.mdx) guide.
+    /// Choose a DID method to create the DID. Check the `did` object of the
+    /// configuration for supported options.
     pub method: String,
     pub keys: CreateDidRequestKeysRestDTO,
-    /// The parameters passed into the DID method. See the [DID
-    /// parameters](../api/dids.mdx#did-parameters) guide.
-    #[schema(value_type = Object)]
+    /// The parameters passed into the DID method.
+    #[schema(value_type = Option<Object>)]
     pub params: Option<serde_json::Value>,
 }
 
 /// Each DID has five verification relationships defining the verification
-/// method used for different purposes. See the [keys
-/// object](../api/dids.mdx#keys-object) guide.
+/// method used for different purposes. Related guide: [DIDs: keys
+/// object](../api/dids.mdx)
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
 #[into(CreateDidRequestKeysDTO)]
 #[serde(rename_all = "camelCase")]
@@ -167,25 +163,38 @@ pub enum KeyRoleRestEnum {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct DidFilterQueryParamsRest {
+    /// Return only DIDs with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
+    /// Return all DIDs with addresses starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub did: Option<String>,
+    /// Filter by DIDs created locally or DIDs of remote wallets from credentials
+    /// issued or proofs requested.
     #[param(nullable = false)]
     pub r#type: Option<DidType>,
+    /// Set which filters apply in an exact wayh.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactDidFilterColumnRestEnum>>,
     pub organisation_id: OrganisationId,
+    /// Filter by active or deactivated DIDs.
     #[param(inline, nullable = false)]
     pub deactivated: Option<Boolean>,
+    /// Return only DIDs which support the key algorithms specified here. Uses values
+    /// from the configuration.
     #[param(rename = "keyAlgorithms[]", nullable = false)]
     pub key_algorithms: Option<Vec<String>>,
     #[param(rename = "keyRoles[]", inline, nullable = false)]
     pub key_roles: Option<Vec<KeyRoleRestEnum>>,
+    /// Return only DIDs whose keys use the specified key storage type. Check the
+    /// `keyStorage` object of the configuration for supported options.
     #[param(rename = "keyStorages[]", nullable = false)]
     pub key_storages: Option<Vec<String>>,
+    /// Return only DIDs which use the specified keys.
     #[param(rename = "keyIds[]", inline, nullable = false)]
     pub key_ids: Option<Vec<KeyId>>,
+    /// Return only DIDs of the method(s) specified here. Check the `did` object
+    /// of the configuration for supported options.
     #[param(rename = "didMethods[]", nullable = false)]
     pub did_methods: Option<Vec<String>>,
 }
