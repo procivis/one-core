@@ -407,11 +407,10 @@ deploy:dev:
   resource_group: core-dev
   extends:
     - .deploy_trigger
+    - .rule:deploy:dev
   variables:
     VALUES_PATH: values/dev
     K8S_NAMESPACE: default
-  rules:
-    - if: $CI_COMMIT_REF_NAME == "main"
 
 deploy:test:
   extends:

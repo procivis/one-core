@@ -14,7 +14,7 @@ build:docs:
     paths:
       - target/doc
   extends:
-    - .only_main
+    - .rule:deploy:test
 
 publish:docs:
   stage: docs
@@ -26,7 +26,7 @@ publish:docs:
     APP_FLAVOR: docs
   extends:
     - .docker_publish
-    - .only_main
+    - .rule:deploy:test
 
 deploy:docs:
   stage: docs
@@ -34,7 +34,7 @@ deploy:docs:
     - job: publish:docs
   extends:
     - .deploy_trigger
-    - .only_main
+    - .rule:deploy:test
   variables:
     HELM_APP_NAME: one-core-docs
     HELM_PATH: charts/one-core-docs-chart
