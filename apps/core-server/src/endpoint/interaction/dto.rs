@@ -28,11 +28,14 @@ pub struct HandleInvitationRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct HandleInvitationResponseRestDTO {
     pub interaction_id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_ids: Option<Vec<CredentialId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub proof_id: Option<ProofId>,
     /// If a pre-authorized code is issued with a transaction code object, the
     /// wallet user must input a transaction code to receive the offered credential.
     /// This code is typically sent through a separate channel such as SMS or email.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub tx_code: Option<OpenID4VCITxCodeRestDTO>,
 }
 

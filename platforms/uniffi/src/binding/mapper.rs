@@ -5,7 +5,6 @@ use one_core::model::list_filter::{
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::proof_schema::GetProofSchemaQuery;
 use one_core::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
-use one_core::provider::exchange_protocol::openid4vc::model::InvitationResponseDTO;
 use one_core::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialSchemaType,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -26,6 +25,7 @@ use one_core::service::proof::dto::{
 use one_core::service::proof_schema::dto::{
     ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterValue,
 };
+use one_core::service::ssi_holder::dto::HandleInvitationResultDTO;
 use one_core::service::trust_anchor::dto::{ListTrustAnchorsQueryDTO, TrustAnchorFilterValue};
 use one_core::service::trust_entity::dto::{ListTrustEntitiesQueryDTO, TrustEntityFilterValue};
 use one_dto_mapper::{convert_inner, try_convert_inner};
@@ -190,24 +190,24 @@ impl From<DetailCredentialClaimValueResponseDTO> for ClaimValueBindingDTO {
     }
 }
 
-impl From<InvitationResponseDTO> for HandleInvitationResponseBindingEnum {
-    fn from(value: InvitationResponseDTO) -> Self {
+impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
+    fn from(value: HandleInvitationResultDTO) -> Self {
         match value {
-            InvitationResponseDTO::Credential {
-                credentials,
+            HandleInvitationResultDTO::Credential {
+                credential_ids,
                 interaction_id,
                 tx_code,
             } => Self::CredentialIssuance {
                 interaction_id: interaction_id.to_string(),
-                credential_ids: credentials.iter().map(|item| item.id.to_string()).collect(),
+                credential_ids: credential_ids.iter().map(|item| item.to_string()).collect(),
                 tx_code: convert_inner(tx_code),
             },
-            InvitationResponseDTO::ProofRequest {
+            HandleInvitationResultDTO::ProofRequest {
                 interaction_id,
-                proof,
+                proof_id,
             } => Self::ProofRequest {
                 interaction_id: interaction_id.to_string(),
-                proof_id: proof.id.to_string(),
+                proof_id: proof_id.to_string(),
             },
         }
     }

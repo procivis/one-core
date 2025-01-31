@@ -651,10 +651,10 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
         self.protocols.get(protocol_id).cloned()
     }
 
-    fn detect_protocol(&self, url: &Url) -> Option<Arc<dyn ExchangeProtocol>> {
+    fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn ExchangeProtocol>)> {
         self.protocols
-            .values()
-            .find(|protocol| protocol.holder_can_handle(url))
-            .cloned()
+            .iter()
+            .find(|(_, protocol)| protocol.holder_can_handle(url))
+            .map(|(id, protocol)| (id.to_owned(), protocol.to_owned()))
     }
 }

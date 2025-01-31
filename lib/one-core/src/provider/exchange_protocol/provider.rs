@@ -56,7 +56,7 @@ pub trait ExchangeProtocol:
 #[async_trait::async_trait]
 pub trait ExchangeProtocolProvider: Send + Sync {
     fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn ExchangeProtocol>>;
-    fn detect_protocol(&self, url: &Url) -> Option<Arc<dyn ExchangeProtocol>>;
+    fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn ExchangeProtocol>)>;
 }
 
 #[async_trait::async_trait]
@@ -75,7 +75,7 @@ mockall::mock! {
     #[async_trait::async_trait]
     impl ExchangeProtocolProvider for ExchangeProtocolProviderExtra {
         fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn ExchangeProtocol>>;
-        fn detect_protocol(&self, url: &Url) -> Option<Arc<dyn ExchangeProtocol>>;
+        fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn ExchangeProtocol>)>;
     }
 
     #[async_trait::async_trait]
@@ -185,7 +185,7 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderCoreImpl {
         self.inner.get_protocol(protocol_id)
     }
 
-    fn detect_protocol(&self, url: &Url) -> Option<Arc<dyn ExchangeProtocol>> {
+    fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn ExchangeProtocol>)> {
         self.inner.detect_protocol(url)
     }
 }

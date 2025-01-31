@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use super::dto::PresentationSubmitRequestDTO;
+use super::dto::{HandleInvitationResultDTO, PresentationSubmitRequestDTO};
 use super::SSIHolderService;
 use crate::common_mapper::{
     encode_cbor_base64, get_or_create_did, value_to_model_claims, DidRole, NESTED_CLAIM_MARKER,
@@ -60,14 +60,14 @@ impl SSIHolderService {
         url: Url,
         organisation_id: OrganisationId,
         transport: Option<Vec<String>>,
-    ) -> Result<InvitationResponseDTO, ServiceError> {
+    ) -> Result<HandleInvitationResultDTO, ServiceError> {
         let organisation = self
             .organisation_repository
             .get_organisation(&organisation_id, &Default::default())
             .await?
             .ok_or(EntityNotFoundError::Organisation(organisation_id))?;
 
-        let protocol = self.protocol_provider.detect_protocol(&url).ok_or(
+        let (exchange, exchange_protocol) = self.protocol_provider.detect_protocol(&url).ok_or(
             ServiceError::MissingExchangeProtocol("Cannot detect exchange protocol".to_string()),
         )?;
 
@@ -90,7 +90,7 @@ impl SSIHolderService {
         let transport = validate_and_select_transport_type(
             &transport,
             &self.config.transport,
-            &protocol.get_capabilities(),
+            &exchange_protocol.get_capabilities(),
         )?;
         let transport = match transport {
             SelectedTransportType::Single(s) => s,
@@ -100,7 +100,7 @@ impl SSIHolderService {
                 .ok_or_else(|| ValidationError::TransportNotAllowedForExchange)?,
         };
 
-        let response = protocol
+        let response = exchange_protocol
             .holder_handle_invitation(
                 url,
                 organisation,
@@ -109,15 +109,34 @@ impl SSIHolderService {
                 transport,
             )
             .await?;
-        match &response {
-            InvitationResponseDTO::Credential { credentials, .. } => {
-                for credential in credentials {
+
+        Ok(match response {
+            InvitationResponseDTO::Credential {
+                credentials,
+                interaction_id,
+                tx_code,
+            } => {
+                let result = HandleInvitationResultDTO::Credential {
+                    interaction_id,
+                    credential_ids: credentials.iter().map(|c| c.id).collect(),
+                    tx_code,
+                };
+
+                for mut credential in credentials {
+                    credential.exchange = exchange.to_owned();
                     self.credential_repository
-                        .create_credential(credential.to_owned())
+                        .create_credential(credential)
                         .await?;
                 }
+
+                result
             }
-            InvitationResponseDTO::ProofRequest { proof, .. } => {
+            InvitationResponseDTO::ProofRequest {
+                mut proof,
+                interaction_id,
+            } => {
+                proof.exchange = exchange;
+
                 let _ = self
                     .history_repository
                     .create_history(history_event(
@@ -128,7 +147,6 @@ impl SSIHolderService {
                     ))
                     .await;
 
-                let mut proof = proof.clone();
                 self.fill_verifier_did_in_proof(proof.as_mut()).await?;
 
                 self.proof_repository
@@ -144,10 +162,13 @@ impl SSIHolderService {
                         HistoryAction::Pending,
                     ))
                     .await;
-            }
-        }
 
-        Ok(response)
+                HandleInvitationResultDTO::ProofRequest {
+                    interaction_id,
+                    proof_id: proof.id,
+                }
+            }
+        })
     }
 
     pub async fn reject_proof_request(
