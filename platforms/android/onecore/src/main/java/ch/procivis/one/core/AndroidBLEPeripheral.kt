@@ -1,6 +1,7 @@
 package ch.procivis.one.core
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
@@ -77,49 +78,9 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                 mServer = server
 
                 for (service in services) {
-                    val uuid = UUID.fromString(service.uuid)
-                    val s = BluetoothGattService(
-                        uuid,
-                        BluetoothGattService.SERVICE_TYPE_PRIMARY
-                    )
-
-                    for (characteristic in service.characteristics) {
-                        val ch = BluetoothGattCharacteristic(
-                            UUID.fromString(characteristic.uuid),
-                            getCharacteristicProperties(characteristic.properties),
-                            getCharacteristicPermissions(characteristic.permissions)
-                        )
-
-                        if (characteristic.properties.contains(CharacteristicPropertyBindingEnum.NOTIFY)) {
-                            val descriptor = BluetoothGattDescriptor(
-                                CLIENT_CONFIG_DESCRIPTOR,
-                                BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
-                            )
-                            descriptor.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
-                            ch.addDescriptor(descriptor)
-                        }
-
-                        if (!s.addCharacteristic(ch)) {
-                            throw BleException.Unknown("Failed to add characteristic ${characteristic.uuid}")
-                        }
-                    }
-
+                    val s = addServiceToBuilders(service, advertiseDataBuilder, scanResultBuilder)
                     if (!server.addService(s)) {
                         throw BleException.Unknown("Failed to add service ${service.uuid}")
-                    }
-
-                    val parcelId = ParcelUuid(uuid)
-                    if (service.advertise) {
-                        advertiseDataBuilder.addServiceUuid(parcelId)
-
-                        if (service.advertisedServiceData != null) {
-                            advertiseDataBuilder.addServiceData(
-                                parcelId,
-                                service.advertisedServiceData
-                            )
-                        }
-                    } else if (service.advertisedServiceData != null) {
-                        scanResultBuilder.addServiceData(parcelId, service.advertisedServiceData)
                     }
                 }
 
@@ -130,26 +91,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                     .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
                     .build()
 
-                val callback = object : AdvertiseCallback() {
-                    @SuppressLint("HardwareIds")
-                    override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
-                        super.onStartSuccess(settingsInEffect)
-                        // https://developer.android.com/about/versions/marshmallow/android-6.0-changes.html#behavior-hardware-id
-                        promise.succeed(if (Build.VERSION.SDK_INT < 23) adapter.address else null)
-                    }
-
-                    override fun onStartFailure(errorCode: Int) {
-                        super.onStartFailure(errorCode)
-                        Log.w(TAG, "Failed to start BLE Advertiser: $errorCode")
-
-                        synchronized(lock) {
-                            promise.fail(BleException.Unknown("Failed to start BLE Advertiser: $errorCode"))
-                            server.close()
-                            mServer = null
-                            mAdvertisement = null
-                        }
-                    }
-                }
+                val callback = getAdvertiseCallback(server, adapter, promise)
 
                 mAdvertisement = Advertisement(callback, advertiser)
                 advertiser.startAdvertising(
@@ -158,6 +100,83 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                     scanResultBuilder.build(),
                     callback
                 )
+            }
+        }
+    }
+
+    private fun addServiceToBuilders(
+        service: ServiceDescriptionBindingDto,
+        advertiseDataBuilder: AdvertiseData.Builder,
+        scanResultBuilder: AdvertiseData.Builder
+    ): BluetoothGattService {
+        val uuid = UUID.fromString(service.uuid)
+        val s = BluetoothGattService(
+            uuid,
+            BluetoothGattService.SERVICE_TYPE_PRIMARY
+        )
+
+        for (characteristic in service.characteristics) {
+            val ch = BluetoothGattCharacteristic(
+                UUID.fromString(characteristic.uuid),
+                getCharacteristicProperties(characteristic.properties),
+                getCharacteristicPermissions(characteristic.permissions)
+            )
+
+            if (characteristic.properties.contains(CharacteristicPropertyBindingEnum.NOTIFY)) {
+                val descriptor = BluetoothGattDescriptor(
+                    CLIENT_CONFIG_DESCRIPTOR,
+                    BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
+                )
+                descriptor.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
+                ch.addDescriptor(descriptor)
+            }
+
+            if (!s.addCharacteristic(ch)) {
+                throw BleException.Unknown("Failed to add characteristic ${characteristic.uuid}")
+            }
+        }
+
+        val parcelId = ParcelUuid(uuid)
+        if (service.advertise) {
+            advertiseDataBuilder.addServiceUuid(parcelId)
+
+            if (service.advertisedServiceData != null) {
+                advertiseDataBuilder.addServiceData(
+                    parcelId,
+                    service.advertisedServiceData
+                )
+            }
+        } else if (service.advertisedServiceData != null) {
+            scanResultBuilder.addServiceData(parcelId, service.advertisedServiceData)
+        }
+
+        return s
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun getAdvertiseCallback(
+        server: BluetoothGattServer,
+        adapter: BluetoothAdapter,
+        advertisePromise: Promise<String?>
+    ): AdvertiseCallback {
+        return object : AdvertiseCallback() {
+            @SuppressLint("HardwareIds")
+            override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
+                super.onStartSuccess(settingsInEffect)
+                // https://developer.android.com/about/versions/marshmallow/android-6.0-changes.html#behavior-hardware-id
+                advertisePromise.succeed(if (Build.VERSION.SDK_INT < 23) adapter.address else null)
+            }
+
+            override fun onStartFailure(errorCode: Int) {
+                super.onStartFailure(errorCode)
+                Log.w(TAG, "Failed to start BLE Advertiser: $errorCode")
+
+                synchronized(lock) {
+                    advertisePromise.fail(BleException.Unknown("Failed to start BLE Advertiser: $errorCode"))
+                    server.close()
+                    mServer = null
+                    mAdvertisement = null
+                }
             }
         }
     }
@@ -262,21 +281,21 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
         HashMap()
 
     override suspend fun setCharacteristicData(
-        serviceUuid: String,
-        characteristicUuid: String,
+        service: String,
+        characteristic: String,
         data: ByteArray
     ) {
         return exceptionWrapper {
             synchronized(lock) {
-                val (characteristic, characteristicAddress) = getCharacteristic(
-                    serviceUuid,
-                    characteristicUuid
+                val (ch, characteristicAddress) = getCharacteristic(
+                    service,
+                    characteristic
                 )
-                if ((characteristic.properties and BluetoothGattCharacteristic.PROPERTY_READ) == 0) {
-                    Log.w(TAG, "Characteristic doesn't have read property: $characteristicUuid")
+                if ((ch.properties and BluetoothGattCharacteristic.PROPERTY_READ) == 0) {
+                    Log.w(TAG, "Characteristic doesn't have read property: $characteristic")
                     throw BleException.InvalidCharacteristicOperation(
-                        serviceUuid,
-                        characteristicUuid,
+                        service,
+                        characteristic,
                         "read"
                     )
                 }
@@ -287,8 +306,8 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                     throw BleException.AnotherOperationInProgress()
                 }
 
-                if (!characteristic.setValue(data)) {
-                    Log.w(TAG, "Characteristic value not set: $characteristicUuid")
+                if (!ch.setValue(data)) {
+                    Log.w(TAG, "Characteristic value not set: $characteristic")
                     throw BleException.Unknown("Characteristic value not set")
                 }
 
@@ -394,29 +413,29 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     @SuppressLint("MissingPermission")
     override suspend fun notifyCharacteristicData(
         deviceAddress: String,
-        serviceUuid: String,
-        characteristicUuid: String,
+        service: String,
+        characteristic: String,
         data: ByteArray
     ) {
         return asyncCallback { promise ->
             synchronized(lock) {
                 val server = mServer ?: throw BleException.ServerNotRunning()
-                val (characteristic, characteristicAddress) = getCharacteristic(
-                    serviceUuid,
-                    characteristicUuid
+                val (ch, characteristicAddress) = getCharacteristic(
+                    service,
+                    characteristic
                 )
-                if ((characteristic.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY) == 0) {
-                    Log.w(TAG, "Characteristic doesn't have notify property: $characteristicUuid")
+                if ((ch.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY) == 0) {
+                    Log.w(TAG, "Characteristic doesn't have notify property: $characteristic")
                     throw BleException.InvalidCharacteristicOperation(
-                        serviceUuid,
-                        characteristicUuid,
+                        service,
+                        characteristic,
                         "notify"
                     )
                 }
 
-                val descriptorValue = characteristic.getDescriptor(CLIENT_CONFIG_DESCRIPTOR)?.value
+                val descriptorValue = ch.getDescriptor(CLIENT_CONFIG_DESCRIPTOR)?.value
                 if (!BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE.contentEquals(descriptorValue)) {
-                    Log.w(TAG, "Descriptor notifications disabled: $characteristicUuid")
+                    Log.w(TAG, "Descriptor notifications disabled: $characteristic")
                     throw BleException.BroadcastNotStarted()
                 }
 
@@ -433,13 +452,7 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                 }
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    val statusCode =
-                        server.notifyCharacteristicChanged(
-                            device,
-                            characteristic,
-                            false,
-                            data
-                        )
+                    val statusCode = server.notifyCharacteristicChanged(device, ch, false, data)
                     if (statusCode != BluetoothStatusCodes.SUCCESS) {
                         throw statusCodeException(
                             statusCode,
@@ -448,13 +461,13 @@ class AndroidBLEPeripheral(context: Context) : BlePeripheral,
                         )
                     }
                 } else {
-                    if (!characteristic.setValue(data) || !server.notifyCharacteristicChanged(
+                    if (!ch.setValue(data) || !server.notifyCharacteristicChanged(
                             device,
-                            characteristic,
+                            ch,
                             false
                         )
                     ) {
-                        Log.w(TAG, "Characteristic notification failure: $characteristicUuid")
+                        Log.w(TAG, "Characteristic notification failure: $characteristic")
                         throw BleException.Unknown("Characteristic notification failure")
                     }
                 }

@@ -12,9 +12,10 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-abstract class AndroidBLEBase(val context: Context, val TAG: String) {
+abstract class AndroidBLEBase(val context: Context, logTag: String) {
     val MAX_MTU = 512
     val CLIENT_CONFIG_DESCRIPTOR = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+    val TAG = logTag
 
     private var bluetoothManager: BluetoothManager? = null
     protected fun getBluetoothManager(): BluetoothManager {

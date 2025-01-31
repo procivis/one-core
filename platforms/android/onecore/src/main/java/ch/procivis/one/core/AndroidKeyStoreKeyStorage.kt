@@ -42,11 +42,9 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
                 .setDigests(KeyProperties.DIGEST_SHA256)
 
             var strongbox = strongBoxSupported()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                if (strongbox) {
-                    builder.setIsStrongBoxBacked(true)
-                        .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_NONE)
-                }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && strongbox) {
+                builder.setIsStrongBoxBacked(true)
+                    .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_NONE)
             }
 
             keyPairGenerator.initialize(builder.build())
