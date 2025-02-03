@@ -386,4 +386,5 @@ pub struct ImportCredentialSchemaLayoutPropertiesBindingDTO {
 pub enum WalletStorageTypeBindingEnum {
     Hardware,
     Software,
+    RemoteSecureElement,
 }

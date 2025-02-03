@@ -114,10 +114,11 @@ pub enum LayoutType {
 }
 
 #[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "UPPERCASE")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum WalletStorageTypeEnum {
     Hardware,
     Software,
+    RemoteSecureElement,
 }
 
 #[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Default)]

@@ -19,6 +19,7 @@ pub struct CreateSchemaParams {
     pub schema_id: Option<String>,
     pub revocation_method: Option<String>,
     pub suspension_allowed: Option<bool>,
+    pub wallet_storage_type: Option<String>,
 }
 
 impl CredentialSchemasApi {
@@ -58,6 +59,9 @@ impl CredentialSchemasApi {
         });
         if let Some(suspension_allowed) = params.suspension_allowed {
             body["allowSuspension"] = json!(suspension_allowed);
+        }
+        if let Some(wallet_storage_type) = params.wallet_storage_type {
+            body["walletStorageType"] = json!(wallet_storage_type);
         }
 
         self.client.post("/api/credential-schema/v1", body).await

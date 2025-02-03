@@ -203,12 +203,13 @@ pub enum SortableCredentialSchemaColumnRestEnum {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
-#[serde(rename_all = "UPPERCASE")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[into("one_core::model::credential_schema::WalletStorageTypeEnum")]
 #[from("one_core::model::credential_schema::WalletStorageTypeEnum")]
 pub enum WalletStorageTypeRestEnum {
     Software,
     Hardware,
+    RemoteSecureElement,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate, Into)]

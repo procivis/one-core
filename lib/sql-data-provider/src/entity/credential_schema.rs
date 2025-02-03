@@ -143,12 +143,14 @@ impl sea_orm::sea_query::Nullable for CredentialSchemaType {
     db_type = "Enum",
     enum_name = "wallet_storage_type"
 )]
-#[serde(rename_all = "UPPERCASE")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum WalletStorageType {
     #[sea_orm(string_value = "HARDWARE")]
     Hardware,
     #[sea_orm(string_value = "SOFTWARE")]
     Software,
+    #[sea_orm(string_value = "REMOTE_SECURE_ELEMENT")]
+    RemoteSecureElement,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]

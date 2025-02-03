@@ -1,4 +1,4 @@
-use one_core::model::credential_schema::CredentialSchemaType;
+use one_core::model::credential_schema::{CredentialSchemaType, WalletStorageTypeEnum};
 use one_core::repository::error::DataLayerError;
 
 use crate::utils::api_clients::credential_schemas::CreateSchemaParams;
@@ -43,6 +43,39 @@ async fn test_create_credential_schema_success() {
     assert_eq!(
         credential_schema.schema_type,
         CredentialSchemaType::ProcivisOneSchema2024
+    );
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_remote_secure_element_success() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create(CreateSchemaParams {
+            name: "some credential schema".into(),
+            organisation_id: organisation.id.into(),
+            wallet_storage_type: Some("REMOTE_SECURE_ELEMENT".into()),
+            format: "JWT".into(),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let id = resp["id"].parse();
+    let credential_schema = context.db.credential_schemas.get(&id).await;
+
+    assert_eq!(credential_schema.name, "some credential schema");
+    assert_eq!(credential_schema.claim_schemas.unwrap().len(), 2);
+    assert_eq!(
+        credential_schema.wallet_storage_type,
+        Some(WalletStorageTypeEnum::RemoteSecureElement)
     );
 }
 
@@ -345,6 +378,7 @@ async fn test_fail_create_credential_schema_with_suspension_disabled_for_suspens
             claim_name: "firstName".into(),
             schema_id: Some("schema id".into()),
             suspension_allowed: Some(false),
+            ..Default::default()
         })
         .await;
 
@@ -370,7 +404,7 @@ async fn test_fail_create_credential_schema_with_suspension_none_for_suspension_
             revocation_method: Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
             claim_name: "firstName".into(),
             schema_id: Some("schema id".into()),
-            suspension_allowed: None,
+            ..Default::default()
         })
         .await;
 
