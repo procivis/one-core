@@ -17,7 +17,7 @@ import java.security.spec.ECGenParameterSpec
 import java.util.Arrays
 
 class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage {
-    override fun generateKey(keyAlias: String): GeneratedKeyBindingDto {
+    override suspend fun generateKey(keyAlias: String): GeneratedKeyBindingDto {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
                 throw NativeKeyStorageException.KeyGenerationFailure("Insufficient SDK version `${Build.VERSION.SDK_INT}`");
@@ -87,7 +87,7 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
         }
     }
 
-    override fun sign(keyReference: ByteArray, message: ByteArray): ByteArray {
+    override suspend fun sign(keyReference: ByteArray, message: ByteArray): ByteArray {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
                 throw NativeKeyStorageException.KeyGenerationFailure("Insufficient SDK version `${Build.VERSION.SDK_INT}`");

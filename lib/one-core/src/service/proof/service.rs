@@ -362,7 +362,6 @@ impl ProofService {
         }
 
         validate_verification_key_storage_compatibility(
-            &self.config,
             &proof_schema,
             &verifier_key,
             &*self.credential_formatter_provider,

@@ -318,7 +318,28 @@ pub enum DatatypeType {
 
 pub type KeyAlgorithmConfig = ConfigBlock<String>;
 
-pub type KeyStorageConfig = ConfigBlock<String>;
+pub type KeyStorageConfig = ConfigBlock<KeyStorageType>;
+
+#[derive(
+    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+)]
+pub enum KeyStorageType {
+    #[serde(rename = "INTERNAL")]
+    #[strum(serialize = "INTERNAL")]
+    Internal,
+    #[serde(rename = "AZURE_VAULT")]
+    #[strum(serialize = "AZURE_VAULT")]
+    AzureVault,
+    #[serde(rename = "PKCS11")]
+    #[strum(serialize = "PKCS11")]
+    PKCS11,
+    #[serde(rename = "SECURE_ELEMENT")]
+    #[strum(serialize = "SECURE_ELEMENT")]
+    SecureElement,
+    #[serde(rename = "REMOTE_SECURE_ELEMENT")]
+    #[strum(serialize = "REMOTE_SECURE_ELEMENT")]
+    RemoteSecureElement,
+}
 
 pub type TaskConfig = ConfigBlock<TaskType>;
 

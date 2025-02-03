@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use one_core::config::core_config::{
-    AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, Fields, Params,
-    RevocationType,
+    AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, Fields,
+    KeyStorageType, Params, RevocationType,
 };
 use one_core::config::{core_config, ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
@@ -278,8 +278,8 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
             let mut key_providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
 
             for (name, field) in config.iter() {
-                let provider = match field.r#type.as_str() {
-                    "INTERNAL" => {
+                let provider = match field.r#type {
+                    KeyStorageType::Internal => {
                         let params = config
                             .get(name)
                             .expect("Internal key provider config is required");
@@ -292,8 +292,8 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
                             params,
                         )) as _
                     }
-                    "PKCS11" => Arc::new(PKCS11KeyProvider::new()) as _,
-                    "AZURE_VAULT" => {
+                    KeyStorageType::PKCS11 => Arc::new(PKCS11KeyProvider::new()) as _,
+                    KeyStorageType::AzureVault => {
                         let params = config.get(name).expect("AzureVault config is required");
                         Arc::new(AzureVaultKeyProvider::new(
                             params,

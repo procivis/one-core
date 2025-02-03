@@ -139,7 +139,6 @@ pub(super) fn validate_redirect_uri(
 }
 
 pub(super) fn validate_verification_key_storage_compatibility(
-    config: &CoreConfig,
     proof_schema: &ProofSchema,
     verifier_key: &Key,
     formatter_provider: &dyn CredentialFormatterProvider,
@@ -150,12 +149,6 @@ pub(super) fn validate_verification_key_storage_compatibility(
         .ok_or(ServiceError::MappingError(
             "input_schemas is None".to_string(),
         ))?;
-
-    let key_storage_type = config
-        .key_storage
-        .get_fields(&verifier_key.storage_type)?
-        .r#type
-        .to_owned();
 
     input_schemas.iter().try_for_each(|input_schema| {
         let credential_schema =
@@ -175,7 +168,7 @@ pub(super) fn validate_verification_key_storage_compatibility(
         let capabilities = formatter.get_capabilities();
         if !capabilities
             .verification_key_storages
-            .contains(&key_storage_type)
+            .contains(&verifier_key.storage_type)
         {
             return Err(ServiceError::BusinessLogic(
                 BusinessLogicError::IncompatibleProofVerificationKeyStorage,

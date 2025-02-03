@@ -11,6 +11,7 @@ pub mod internal;
 pub mod model;
 pub mod pkcs11;
 pub mod provider;
+pub mod remote_secure_element;
 pub mod secure_element;
 
 /// Generate key pairs and sign via key references.

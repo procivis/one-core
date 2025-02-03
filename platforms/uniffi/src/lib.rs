@@ -5,7 +5,7 @@ use std::sync::{Arc, LazyLock};
 
 use one_core::config::core_config::{
     self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, InputFormat,
-    RevocationType,
+    KeyStorageType, RevocationType,
 };
 use one_core::config::{ConfigError, ConfigParsingError, ConfigValidationError};
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
@@ -41,6 +41,7 @@ use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_storage::internal::InternalKeyProvider;
 use one_core::provider::key_storage::provider::KeyProviderImpl;
+use one_core::provider::key_storage::remote_secure_element::RemoteSecureElementKeyProvider;
 use one_core::provider::key_storage::secure_element::SecureElementKeyProvider;
 use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::mqtt_client::rumqttc_client::RumqttcClient;
@@ -101,7 +102,8 @@ struct MobileConfig {
 fn initialize_core(
     config_json: String,
     data_dir_path: String,
-    native_key_storage: Option<Box<dyn NativeKeyStorage>>,
+    native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
+    remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     ble_central: Option<Arc<dyn BleCentral>>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
@@ -122,7 +124,8 @@ fn initialize_core(
     rt.block_on(initialize(
         config_json,
         data_dir_path,
-        native_key_storage,
+        native_secure_element,
+        remote_secure_element,
         ble_central,
         ble_peripheral,
     ))
@@ -131,7 +134,8 @@ fn initialize_core(
 async fn initialize(
     config_json: String,
     data_dir_path: String,
-    native_key_storage: Option<Box<dyn NativeKeyStorage>>,
+    native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
+    remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     ble_central: Option<Arc<dyn BleCentral>>,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
@@ -148,9 +152,13 @@ async fn initialize(
             .try_init();
     }
 
-    let native_key_storage: Option<
+    let native_secure_element: Option<
         Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>,
-    > = native_key_storage.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
+    > = native_secure_element.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
+
+    let remote_secure_element: Option<
+        Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>,
+    > = remote_secure_element.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
 
     let ble_central = ble_central.map(|central| Arc::new(BleCentralWrapper(central)) as _);
     let ble_peripheral =
@@ -165,7 +173,8 @@ async fn initialize(
     let core_builder = move |db_path: String| {
         let core_config = cfg.core.clone();
 
-        let native_key_storage = native_key_storage.clone();
+        let native_secure_element = native_secure_element.clone();
+        let remote_secure_element = remote_secure_element.clone();
         let ble_peripheral = ble_peripheral.clone();
         let ble_central = ble_central.clone();
 
@@ -226,38 +235,41 @@ async fn initialize(
             let key_storage_creator: KeyStorageCreator = Box::new(move |config, providers| {
                 let mut key_providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
 
-                for (name, field) in config.iter() {
-                    let provider = match (field.r#type.as_str(), field.disabled()) {
-                        ("SECURE_ELEMENT", false) => {
-                            let local_native_key_storage: Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage> =
-                                native_key_storage.clone().expect("Missing native key provider");
+                for (name, field) in config.iter().filter(|(_, field)| !field.disabled()) {
+                    let provider = match field.r#type {
+                        KeyStorageType::SecureElement => {
+                            let native_storage = native_secure_element
+                                .clone()
+                                .expect("Missing native key provider");
                             let params =
                                 config.get(name).expect("Secure element config is required");
-                            Some(Arc::new(SecureElementKeyProvider::new(
-                                local_native_key_storage.clone(),
-                                params,
-                            )) as _)
+                            Arc::new(SecureElementKeyProvider::new(native_storage, params)) as _
                         }
-                        ("INTERNAL", false) => {
+                        KeyStorageType::RemoteSecureElement => {
+                            let native_storage = remote_secure_element
+                                .clone()
+                                .expect("Missing native remote key provider");
+                            Arc::new(RemoteSecureElementKeyProvider::new(native_storage)) as _
+                        }
+                        KeyStorageType::Internal => {
                             let params = config
                                 .get(name)
                                 .expect("Internal key provider config is required");
-                            Some(Arc::new(InternalKeyProvider::new(
+                            Arc::new(InternalKeyProvider::new(
                                 providers
                                     .key_algorithm_provider
                                     .as_ref()
                                     .expect("Missing key algorithm provider")
                                     .clone(),
                                 params,
-                            )) as _)
+                            )) as _
                         }
-                        (other, false) => panic!("Unexpected key storage: {other}"),
-                        (_, true) => None,
+                        _ => {
+                            panic!("Unexpected key storage: {name}")
+                        }
                     };
 
-                    if let Some(provider) = provider {
-                        key_providers.insert(name.to_owned(), provider);
-                    };
+                    key_providers.insert(name.to_owned(), provider);
                 }
 
                 for (key, value) in config.iter_mut() {

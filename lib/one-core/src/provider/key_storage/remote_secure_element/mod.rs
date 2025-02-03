@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use one_crypto::SignerError;
-use serde::Deserialize;
 use shared_types::KeyId;
 use zeroize::Zeroizing;
 
+use super::secure_element::NativeKeyStorage;
 use crate::model::key::Key;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
@@ -12,49 +12,30 @@ use crate::provider::key_storage::model::{
 };
 use crate::provider::key_storage::KeyStorage;
 
-#[cfg_attr(test, mockall::automock)]
-#[async_trait::async_trait]
-pub trait NativeKeyStorage: Send + Sync {
-    async fn generate_key(&self, key_alias: String)
-        -> Result<StorageGeneratedKey, KeyStorageError>;
-    async fn sign(&self, key_reference: &[u8], message: &[u8]) -> Result<Vec<u8>, SignerError>;
-}
-
-pub struct SecureElementKeyProvider {
+pub struct RemoteSecureElementKeyProvider {
     native_storage: Arc<dyn NativeKeyStorage>,
-    params: Params,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Params {
-    alias_prefix: String,
 }
 
 #[async_trait::async_trait]
-impl KeyStorage for SecureElementKeyProvider {
+impl KeyStorage for RemoteSecureElementKeyProvider {
     async fn generate(
         &self,
         key_id: Option<KeyId>,
         key_type: &str,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
-        if key_type != "ES256" {
+        if key_type != "EDDSA" {
             return Err(KeyStorageError::UnsupportedKeyType {
                 key_type: key_type.to_owned(),
             });
         }
 
         let key_id = key_id.ok_or(KeyStorageError::Failed("Missing key id".to_string()))?;
-        let key_alias = format!("{}.{}", self.params.alias_prefix, key_id);
-        self.native_storage.generate_key(key_alias).await
+        self.native_storage.generate_key(key_id.to_string()).await
     }
 
     async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        let message = message.to_vec();
-        let key_reference = key.key_reference.clone();
-
         self.native_storage
-            .sign(&key_reference, &message)
+            .sign(&key.key_reference, message)
             .await
             .map_err(|error| SignerError::CouldNotSign(error.to_string()))
     }
@@ -65,19 +46,16 @@ impl KeyStorage for SecureElementKeyProvider {
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
-            algorithms: vec!["ES256".to_string()],
+            algorithms: vec!["EDDSA".to_string()],
             security: vec![KeySecurity::Hardware],
             features: vec![],
         }
     }
 }
 
-impl SecureElementKeyProvider {
-    pub fn new(native_storage: Arc<dyn NativeKeyStorage>, params: Params) -> Self {
-        SecureElementKeyProvider {
-            native_storage,
-            params,
-        }
+impl RemoteSecureElementKeyProvider {
+    pub fn new(native_storage: Arc<dyn NativeKeyStorage>) -> Self {
+        Self { native_storage }
     }
 }
 

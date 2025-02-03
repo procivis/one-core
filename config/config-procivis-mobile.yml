@@ -45,6 +45,11 @@ keyStorage:
     params:
       private:
         aliasPrefix: "ch.procivis.one.wallet.keys"
+  UBIQU_RSE:
+    display: "keyStorage.ubiqu"
+    type: "REMOTE_SECURE_ELEMENT"
+    disabled: true
+    order: 10
 datatype:
   FULL-DATE:
     display: "datatype.string"
