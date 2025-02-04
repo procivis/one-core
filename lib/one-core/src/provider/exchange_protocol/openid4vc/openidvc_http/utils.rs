@@ -65,7 +65,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
     )?;
 
     let did_document = did_method_provider
-        .resolve(&did_value, None)
+        .resolve(&did_value)
         .await
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -138,7 +138,6 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         key_algorithm_provider: key_algorithm_provider.to_owned(),
         did_method_provider: did_method_provider.to_owned(),
         key_role: KeyRole::AssertionMethod,
-        cache_preferences: None,
     });
 
     let attestation_jwt = Jwt::<()>::build_from_token(&attestation_jwt, Some(key_verification))

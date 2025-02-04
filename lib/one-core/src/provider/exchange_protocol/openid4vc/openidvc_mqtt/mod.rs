@@ -218,7 +218,6 @@ impl OpenId4VcMqtt {
             did_method_provider: self.did_method_provider.clone(),
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             key_role: KeyRole::AssertionMethod,
-            cache_preferences: None,
         });
 
         let presentation_request: String = encryption

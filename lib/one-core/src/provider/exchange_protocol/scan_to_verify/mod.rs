@@ -192,7 +192,6 @@ impl ExchangeProtocolImpl for ScanToVerify {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
-            cache_preferences: None,
         });
 
         let credential = formatter

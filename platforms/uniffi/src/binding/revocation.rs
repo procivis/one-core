@@ -1,6 +1,5 @@
-use one_core::model::cache::CachePreferences;
 use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
-use one_dto_mapper::{convert_inner, From, Into};
+use one_dto_mapper::{convert_inner, From};
 
 use super::credential::CredentialStateBindingEnum;
 use super::OneCoreBinding;
@@ -13,12 +12,9 @@ impl OneCoreBinding {
     pub async fn check_revocation(
         &self,
         credential_ids: Vec<String>,
-        bypass_cache: Option<Vec<BypassCacheBindingDTO>>,
+        force_refresh: Option<bool>,
     ) -> Result<Vec<CredentialRevocationCheckResponseBindingDTO>, BindingError> {
         let core = self.use_core().await?;
-        let cache_preferences = bypass_cache.map(|vec| CachePreferences {
-            bypass: convert_inner(vec),
-        });
         Ok(convert_inner(
             core.credential_service
                 .check_revocation(
@@ -26,18 +22,11 @@ impl OneCoreBinding {
                         .iter()
                         .map(|id| into_id(id))
                         .collect::<Result<Vec<_>, _>>()?,
-                    cache_preferences,
+                    force_refresh.unwrap_or_default(),
                 )
                 .await?,
         ))
     }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Into, uniffi::Enum)]
-#[into("one_core::model::remote_entity_cache::CacheType")]
-pub enum BypassCacheBindingDTO {
-    DidDocument,
-    StatusListCredential,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

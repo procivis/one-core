@@ -541,7 +541,7 @@ impl OpenID4VCHTTP {
                 if methods.contains(&"jwk".to_string()) {
                     let resolved = self
                         .did_method_provider
-                        .resolve(&holder_did.did, None)
+                        .resolve(&holder_did.did)
                         .await
                         .map_err(|_| {
                             ExchangeProtocolError::Failed(
@@ -635,7 +635,6 @@ impl OpenID4VCHTTP {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
-            cache_preferences: None,
         });
         let response_credential = formatter
             .extract_credentials(&response_value.credential, verification_fn)

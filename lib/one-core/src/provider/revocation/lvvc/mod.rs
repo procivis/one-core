@@ -15,7 +15,6 @@ use uuid::Uuid;
 
 use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
-use crate::model::cache::CachePreferences;
 use crate::model::credential::Credential;
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::credential_formatter::json_ld::model::ContextType;
@@ -183,6 +182,7 @@ impl LvvcProvider {
         &self,
         credential: &Credential,
         credential_status: &CredentialStatus,
+        force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {
         let lvvc = holder_get_lvvc(
             credential,
@@ -193,6 +193,7 @@ impl LvvcProvider {
             &*self.did_method_provider,
             &*self.client,
             &self.params,
+            force_refresh,
         )
         .await?;
 
@@ -348,7 +349,7 @@ impl RevocationMethod for LvvcProvider {
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
         additional_credential_data: Option<CredentialDataByRole>,
-        _cache_preferences: Option<CachePreferences>,
+        force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {
         let additional_credential_data = additional_credential_data.ok_or(
             RevocationError::ValidationError("additional_credential_data is None".to_string()),
@@ -359,8 +360,12 @@ impl RevocationMethod for LvvcProvider {
                 self.check_revocation_status_as_issuer(&credential).await
             }
             CredentialDataByRole::Holder(credential) => {
-                self.check_revocation_status_as_holder(&credential, credential_status)
-                    .await
+                self.check_revocation_status_as_holder(
+                    &credential,
+                    credential_status,
+                    force_refresh,
+                )
+                .await
             }
             CredentialDataByRole::Verifier(data) => {
                 self.check_revocation_status_as_verifier(issuer_did, *data)
@@ -415,7 +420,7 @@ pub async fn create_lvvc_with_status(
         .ok_or_else(|| RevocationError::MappingError("LVVC issuance is missing key".to_string()))?
         .to_owned();
 
-    let did_document = did_method_provider.resolve(&issuer_did.did, None).await?;
+    let did_document = did_method_provider.resolve(&issuer_did.did).await?;
     let assertion_methods = did_document
         .assertion_method
         .ok_or(RevocationError::MappingError(

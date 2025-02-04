@@ -7,7 +7,6 @@ use shared_types::DidValue;
 
 use super::dto::DidDocumentDTO;
 use super::resolver::{DidCachingLoader, DidResolver};
-use crate::model::cache::CachePreferences;
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodProviderError;
@@ -19,11 +18,7 @@ use crate::provider::did_method::DidMethod;
 pub trait DidMethodProvider: Send + Sync {
     fn get_did_method(&self, did_method_id: &str) -> Option<Arc<dyn DidMethod>>;
 
-    async fn resolve(
-        &self,
-        did: &DidValue,
-        cache_preferences: Option<CachePreferences>,
-    ) -> Result<DidDocument, DidMethodProviderError>;
+    async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError>;
 
     async fn get_verification_method_id_from_did_and_key(
         &self,
@@ -61,14 +56,10 @@ impl DidMethodProvider for DidMethodProviderImpl {
         self.did_methods.get(did_method_id).cloned()
     }
 
-    async fn resolve(
-        &self,
-        did: &DidValue,
-        cache_preferences: Option<CachePreferences>,
-    ) -> Result<DidDocument, DidMethodProviderError> {
+    async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {
         let (content, _media_type) = self
             .caching_loader
-            .get(did.as_str(), self.resolver.clone(), cache_preferences)
+            .get(did.as_str(), self.resolver.clone(), false)
             .await?;
         let dto: DidDocumentDTO = serde_json::from_slice(&content)?;
         Ok(dto.into())
@@ -90,7 +81,7 @@ impl DidMethodProvider for DidMethodProviderImpl {
             }
         }
 
-        let did_document = self.resolve(&did.did, None).await?;
+        let did_document = self.resolve(&did.did).await?;
         let verification_methods = did_document.verification_method;
         let verification_method = match verification_methods
             .iter()

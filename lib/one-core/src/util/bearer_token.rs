@@ -83,7 +83,6 @@ pub(crate) async fn validate_bearer_token(
         key_algorithm_provider,
         did_method_provider,
         key_role: KeyRole::Authentication,
-        cache_preferences: None,
     });
 
     let jwt: Jwt<BearerTokenPayload> =

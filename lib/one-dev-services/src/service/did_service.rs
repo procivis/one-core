@@ -39,7 +39,7 @@ impl DidService {
         did: &DidValue,
         allow_fallback_resolver: bool,
     ) -> Result<DidDocument, DidMethodProviderError> {
-        let resolution = self.did_provider.resolve(did, None).await;
+        let resolution = self.did_provider.resolve(did).await;
 
         if !allow_fallback_resolver {
             return resolution;

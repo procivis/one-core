@@ -1,5 +1,4 @@
 pub mod backup;
-pub mod cache;
 pub mod claim;
 pub mod claim_schema;
 pub mod common;

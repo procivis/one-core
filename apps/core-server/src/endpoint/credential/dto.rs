@@ -296,6 +296,7 @@ pub struct CredentialRequestClaimRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct CredentialRevocationCheckRequestRestDTO {
     pub credential_ids: Vec<CredentialId>,
+    pub force_refresh: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, IntoParams)]
@@ -317,20 +318,4 @@ pub struct CredentialRevocationCheckResponseRestDTO {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[into("one_core::model::remote_entity_cache::CacheType")]
-pub enum CacheTypeRestEnum {
-    DidDocument,
-    StatusListCredential,
-}
-
-#[derive(Clone, Deserialize, Debug, Default, IntoParams, PartialEq, Eq, ToSchema)]
-#[serde(rename_all = "camelCase")]
-#[into_params(parameter_in = Query)]
-pub struct BypassCacheQueryRestDTO {
-    #[param(rename = "bypassCache[]", inline, nullable = false)]
-    pub bypass_cache: Option<Vec<CacheTypeRestEnum>>,
 }

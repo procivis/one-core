@@ -442,6 +442,7 @@ impl SSIHolderService {
                     &*self.did_method_provider,
                     &*self.client,
                     &revocation_params,
+                    false,
                 )
                 .await?;
 

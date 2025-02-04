@@ -29,14 +29,17 @@ pub(crate) async fn holder_get_lvvc(
     did_method_provider: &dyn DidMethodProvider,
     http_client: &dyn HttpClient,
     params: &Params,
+    force_refresh: bool,
 ) -> Result<ValidityCredential, RevocationError> {
     let locally_stored_lvvc = validity_credential_repository
         .get_latest_by_credential_id(linked_credential.id, ValidityCredentialType::Lvvc)
         .await
         .map_err(|err| RevocationError::ValidationError(err.to_string()))?;
     if let Some(lvvc) = &locally_stored_lvvc {
-        if lvvc.created_date + params.minimum_refresh_time > OffsetDateTime::now_utc() {
-            // the stored credential is fresh, no need to fetch an update
+        if !force_refresh
+            && lvvc.created_date + params.minimum_refresh_time > OffsetDateTime::now_utc()
+        {
+            // the stored credential is fresh and preferences allow caching, no need to fetch an update
             return Ok(lvvc.to_owned());
         }
     }

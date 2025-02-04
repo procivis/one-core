@@ -7,8 +7,7 @@ use one_dto_mapper::convert_inner;
 use shared_types::CredentialId;
 
 use super::dto::{
-    BypassCacheQueryRestDTO, CredentialRevocationCheckRequestRestDTO,
-    CredentialRevocationCheckResponseRestDTO,
+    CredentialRevocationCheckRequestRestDTO, CredentialRevocationCheckResponseRestDTO,
 };
 use crate::dto::common::{
     EntityResponseRestDTO, EntityShareResponseRestDTO, GetCredentialsResponseDTO,
@@ -21,7 +20,7 @@ use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, GetCredentialQuery, GetCredentialResponseRestDTO,
     SuspendCredentialRequestRestDTO,
 };
-use crate::extractor::{Qs, QsOpt};
+use crate::extractor::Qs;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -278,7 +277,6 @@ pub(crate) async fn share_credential(
     post,
     path = "/api/credential/v1/revocation-check",
     request_body = CredentialRevocationCheckRequestRestDTO,
-    params(BypassCacheQueryRestDTO),
     responses(OkOrErrorResponse<VecResponse<CredentialRevocationCheckResponseRestDTO>>),
     tag = "credential_management",
     security(
@@ -305,10 +303,6 @@ pub(crate) async fn share_credential(
 )]
 pub(crate) async fn revocation_check(
     state: State<AppState>,
-    WithRejection(QsOpt(query), _): WithRejection<
-        QsOpt<BypassCacheQueryRestDTO>,
-        ErrorResponseRestDTO,
-    >,
     WithRejection(Json(request), _): WithRejection<
         Json<CredentialRevocationCheckRequestRestDTO>,
         ErrorResponseRestDTO,
@@ -317,7 +311,10 @@ pub(crate) async fn revocation_check(
     let result = state
         .core
         .credential_service
-        .check_revocation(request.credential_ids, query.into())
+        .check_revocation(
+            request.credential_ids,
+            request.force_refresh.unwrap_or_default(),
+        )
         .await;
 
     OkOrErrorResponse::from_result(result, state, "checking credentials")

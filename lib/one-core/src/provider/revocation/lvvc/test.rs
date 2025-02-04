@@ -188,7 +188,7 @@ async fn test_check_revocation_status_as_issuer() {
             &status,
             &did.did,
             Some(CredentialDataByRole::Issuer(credential)),
-            None,
+            false,
         )
         .await
         .unwrap();
@@ -289,7 +289,7 @@ async fn test_check_revocation_status_as_holder_not_cached() {
             &status,
             &did.did,
             Some(CredentialDataByRole::Holder(credential)),
-            None,
+            false,
         )
         .await
         .unwrap();
@@ -345,7 +345,7 @@ async fn test_check_revocation_status_as_holder_cached() {
             &status,
             &did.did,
             Some(CredentialDataByRole::Holder(credential)),
-            None,
+            false,
         )
         .await
         .unwrap();

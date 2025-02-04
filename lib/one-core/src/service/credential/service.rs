@@ -6,7 +6,6 @@ use super::validator::{validate_redirect_uri, verify_suspension_support};
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::{throw_if_credential_state_eq, throw_if_state_not_in};
 use crate::config::core_config::RevocationType;
-use crate::model::cache::CachePreferences;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
@@ -376,12 +375,12 @@ impl CredentialService {
     pub async fn check_revocation(
         &self,
         credential_ids: Vec<CredentialId>,
-        cache_preferences: Option<CachePreferences>,
+        force_refresh: bool,
     ) -> Result<Vec<CredentialRevocationCheckResponseDTO>, ServiceError> {
         let mut result = vec![];
         for credential_id in credential_ids {
             result.push(
-                self.check_credential_revocation_status(credential_id, cache_preferences.clone())
+                self.check_credential_revocation_status(credential_id, force_refresh)
                     .await?,
             );
         }
@@ -577,7 +576,7 @@ impl CredentialService {
             .as_ref()
             .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
-        let did_document = self.did_method_provider.resolve(&issuer.did, None).await?;
+        let did_document = self.did_method_provider.resolve(&issuer.did).await?;
 
         let Some(verification_method) =
             did_document.find_verification_method(None, Some(KeyRole::AssertionMethod))
@@ -684,7 +683,7 @@ impl CredentialService {
     async fn check_credential_revocation_status(
         &self,
         credential_id: CredentialId,
-        cache_preferences: Option<CachePreferences>,
+        force_refresh: bool,
     ) -> Result<CredentialRevocationCheckResponseDTO, ServiceError> {
         let credential = self
             .credential_repository
@@ -751,7 +750,7 @@ impl CredentialService {
 
         if format == "MDOC" {
             let new_state = self
-                .check_mdoc_update(&credential, &detail_credential)
+                .check_mdoc_update(&credential, &detail_credential, force_refresh)
                 .await?;
 
             if new_state != current_state {
@@ -842,7 +841,7 @@ impl CredentialService {
                     &status,
                     &issuer_did.did,
                     credential_data_by_role.to_owned(),
-                    cache_preferences.clone(),
+                    force_refresh,
                 )
                 .await
             {

@@ -579,7 +579,6 @@ async fn test_format_extract_round_trip() {
         key_algorithm_provider,
         did_method_provider,
         key_role: KeyRole::AssertionMethod,
-        cache_preferences: None,
     });
 
     let token = formatter
@@ -656,7 +655,6 @@ async fn test_extract_invalid_signature() {
         key_algorithm_provider,
         did_method_provider,
         key_role: KeyRole::AssertionMethod,
-        cache_preferences: None,
     });
 
     let token = json!({
@@ -747,9 +745,9 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
         .withf({
             let holder_did = holder_did.clone();
 
-            move |did, _| did == &holder_did
+            move |did| did == &holder_did
         })
-        .returning(|holder_did, _| {
+        .returning(|holder_did| {
             Ok(DidDocument {
                 context: json!({}),
                 id: holder_did.to_owned(),

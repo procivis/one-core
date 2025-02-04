@@ -122,7 +122,7 @@ impl ProofService {
                     status,
                     issuer_did,
                     Some(additional_data.to_owned()),
-                    None,
+                    false,
                 )
                 .await?;
 

@@ -5,7 +5,6 @@ use one_crypto::SignerError;
 use shared_types::DidValue;
 use tracing::info;
 
-use crate::model::cache::CachePreferences;
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -16,7 +15,6 @@ pub struct KeyVerification {
     pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     pub key_role: KeyRole,
-    pub cache_preferences: Option<CachePreferences>,
 }
 
 #[async_trait]
@@ -34,7 +32,6 @@ impl TokenVerifier for KeyVerification {
             .resolve(
                 &issuer_did_value
                     .ok_or(SignerError::CouldNotVerify("Missing issuer".to_string()))?,
-                self.cache_preferences.clone(),
             )
             .await
             .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
@@ -137,7 +134,7 @@ mod test {
         did_method_provider
             .expect_resolve()
             .once()
-            .returning(|_, _| Ok(get_dummy_did_document()));
+            .returning(|_| Ok(get_dummy_did_document()));
 
         let mut signer = MockSigner::default();
         signer
@@ -183,7 +180,6 @@ mod test {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
             key_role: KeyRole::Authentication,
-            cache_preferences: None,
         };
 
         let result = verification
@@ -204,7 +200,7 @@ mod test {
         did_method_provider
             .expect_resolve()
             .once()
-            .returning(|_, _| Err(DidMethodProviderError::Other("test-error".to_string())));
+            .returning(|_| Err(DidMethodProviderError::Other("test-error".to_string())));
 
         let key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
@@ -212,7 +208,6 @@ mod test {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
             key_role: KeyRole::Authentication,
-            cache_preferences: None,
         };
 
         let result = verification
@@ -233,7 +228,7 @@ mod test {
         did_method_provider
             .expect_resolve()
             .once()
-            .returning(|_, _| Ok(get_dummy_did_document()));
+            .returning(|_| Ok(get_dummy_did_document()));
 
         let mut signer = MockSigner::default();
         signer
@@ -273,7 +268,6 @@ mod test {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
             key_role: KeyRole::Authentication,
-            cache_preferences: None,
         };
 
         let result = verification

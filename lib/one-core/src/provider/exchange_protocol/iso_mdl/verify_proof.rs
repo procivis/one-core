@@ -47,14 +47,12 @@ pub async fn validate_proof(
         key_algorithm_provider: key_algorithm_provider.clone(),
         did_method_provider: did_method_provider.clone(),
         key_role: KeyRole::Authentication,
-        cache_preferences: None,
     });
 
     let key_verification_credentials = Box::new(KeyVerification {
         key_algorithm_provider,
         did_method_provider,
         key_role: KeyRole::AssertionMethod,
-        cache_preferences: None,
     });
 
     let format = "MDOC";

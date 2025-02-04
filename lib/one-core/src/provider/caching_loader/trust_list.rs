@@ -58,7 +58,7 @@ impl TrustListCache {
     }
 
     pub async fn get(&self, key: &str) -> Result<serde_json::Value, TrustListResolverError> {
-        let (schema, _) = self.inner.get(key, self.resolver.clone(), None).await?;
+        let (schema, _) = self.inner.get(key, self.resolver.clone(), false).await?;
 
         Ok(serde_json::from_slice(&schema)?)
     }

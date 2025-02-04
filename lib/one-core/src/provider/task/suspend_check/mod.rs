@@ -127,7 +127,7 @@ impl Task for SuspendCheckProvider {
                 .as_ref()
                 .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
-            let did_document = self.did_method_provider.resolve(&issuer.did, None).await?;
+            let did_document = self.did_method_provider.resolve(&issuer.did).await?;
 
             let Some(verification_method) =
                 did_document.find_verification_method(None, Some(KeyRole::AssertionMethod))

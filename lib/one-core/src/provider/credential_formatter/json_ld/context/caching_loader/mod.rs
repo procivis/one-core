@@ -152,7 +152,7 @@ impl Loader<ArcIri, Location<ArcIri>> for ContextCache {
         async move {
             let (context, media_type) = self
                 .loader
-                .get(url.as_str(), self.resolver.clone(), None)
+                .get(url.as_str(), self.resolver.clone(), false)
                 .await?;
             let context_str = String::from_utf8(context)?;
 
@@ -188,7 +188,7 @@ impl json_ld_0_21::Loader for ContextCache {
 
         let (context, media_type) = self
             .loader
-            .get(url, self.resolver.clone(), None)
+            .get(url, self.resolver.clone(), false)
             .await
             .map_err(|err| json_ld_0_21::LoadError::new(url.to_owned(), err))?;
 

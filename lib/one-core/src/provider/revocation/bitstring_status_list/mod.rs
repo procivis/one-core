@@ -7,7 +7,6 @@ use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, DidValue};
 
-use crate::model::cache::CachePreferences;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{Did, KeyRole};
 use crate::model::revocation_list::{
@@ -203,7 +202,7 @@ impl RevocationMethod for BitstringStatusList {
         credential_status: &CredentialStatus,
         _issuer_did: &DidValue,
         _additional_credential_data: Option<CredentialDataByRole>,
-        cache_preferences: Option<CachePreferences>,
+        force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(RevocationError::ValidationError(format!(
@@ -233,7 +232,7 @@ impl RevocationMethod for BitstringStatusList {
 
         let (content, media_type) = &self
             .caching_loader
-            .get(list_url, self.resolver.clone(), cache_preferences.clone())
+            .get(list_url, self.resolver.clone(), force_refresh)
             .await?;
 
         let response: StatusListCacheEntry = serde_json::from_slice(content)?;
@@ -253,7 +252,6 @@ impl RevocationMethod for BitstringStatusList {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
-            cache_preferences,
         });
 
         let status_credential = self
@@ -376,10 +374,7 @@ impl BitstringStatusList {
             ))?
             .clone();
 
-        let did_document = self
-            .did_method_provider
-            .resolve(&issuer_did.did, None)
-            .await?;
+        let did_document = self.did_method_provider.resolve(&issuer_did.did).await?;
 
         let assertion_methods =
             did_document

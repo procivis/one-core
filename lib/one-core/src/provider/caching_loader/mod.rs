@@ -19,8 +19,6 @@ use tokio::sync::Mutex;
 use super::remote_entity_storage::{
     RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
 };
-use crate::model::cache::CachePreferences;
-use crate::model::remote_entity_cache::CacheType;
 
 pub mod json_schema;
 pub mod trust_list;
@@ -82,19 +80,14 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
         &self,
         url: &str,
         resolver: Arc<dyn Resolver<Error = E>>,
-        preferences: Option<CachePreferences>,
+        force_refresh: bool,
     ) -> Result<(Vec<u8>, Option<String>), E> {
-        let bypass_cache = match preferences {
-            Some(p) => p.bypass.contains(&CacheType::from(self.remote_entity_type)),
-            None => false,
-        };
-
         let entry_opt = self.storage.get_by_key(url).await?;
         let entry_persistent = entry_opt
             .as_ref()
             .map(|val| val.persistent)
             .unwrap_or(false);
-        let context = if bypass_cache && !entry_persistent {
+        let context = if force_refresh && !entry_persistent {
             self.new_cache_entry(url, &resolver).await?
         } else {
             self.resolve_with_caching(url, entry_opt, &resolver).await?

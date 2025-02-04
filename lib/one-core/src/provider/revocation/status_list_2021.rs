@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use shared_types::DidValue;
 
-use crate::model::cache::CachePreferences;
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::CredentialStatus;
@@ -61,7 +60,7 @@ impl RevocationMethod for StatusList2021 {
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
         _additional_credential_data: Option<CredentialDataByRole>,
-        cache_preferences: Option<CachePreferences>,
+        _force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError> {
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(RevocationError::ValidationError(format!(
@@ -98,7 +97,6 @@ impl RevocationMethod for StatusList2021 {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
             key_role: KeyRole::AssertionMethod,
-            cache_preferences,
         });
 
         let encoded_list =

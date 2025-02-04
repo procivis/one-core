@@ -1263,11 +1263,11 @@ async fn test_check_revocation_invalid_role() {
     });
 
     let issuer_revocation_check_resp = service
-        .check_revocation(vec![issuer_credential_id], None)
+        .check_revocation(vec![issuer_credential_id], false)
         .await;
 
     let verifier_revocation_check_resp = service
-        .check_revocation(vec![verifier_credential_id], None)
+        .check_revocation(vec![verifier_credential_id], false)
         .await;
 
     assert!(issuer_revocation_check_resp.is_err());
@@ -1347,7 +1347,7 @@ async fn test_check_revocation_invalid_state() {
         ..Default::default()
     });
 
-    let result = service.check_revocation(vec![credential.id], None).await;
+    let result = service.check_revocation(vec![credential.id], false).await;
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.len(), 1);
@@ -1420,7 +1420,7 @@ async fn test_check_revocation_non_revocable() {
     });
 
     let result = service
-        .check_revocation(vec![credential.id, Uuid::new_v4().into()], None)
+        .check_revocation(vec![credential.id, Uuid::new_v4().into()], false)
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -1514,7 +1514,7 @@ async fn test_check_revocation_already_revoked() {
     });
 
     let result = service
-        .check_revocation(vec![credential.id, Uuid::new_v4().into()], None)
+        .check_revocation(vec![credential.id, Uuid::new_v4().into()], false)
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -1626,7 +1626,7 @@ async fn test_check_revocation_being_revoked() {
         ..Default::default()
     });
 
-    let result = service.check_revocation(vec![credential.id], None).await;
+    let result = service.check_revocation(vec![credential.id], false).await;
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.len(), 1);
@@ -2406,7 +2406,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     did_method_provider
         .expect_resolve()
         .once()
-        .returning(|did, _| Ok(dummy_did_document(did)));
+        .returning(|did| Ok(dummy_did_document(did)));
     {
         let clone = credential.clone();
         credential_repository
@@ -2480,7 +2480,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     did_method_provider
         .expect_resolve()
         .once()
-        .returning(|did, _| Ok(dummy_did_document(did)));
+        .returning(|did| Ok(dummy_did_document(did)));
 
     {
         let clone = credential.clone();
@@ -2560,7 +2560,7 @@ async fn test_suspend_credential_success() {
     did_method_provider
         .expect_resolve()
         .once()
-        .returning(|did, _| Ok(dummy_did_document(did)));
+        .returning(|did| Ok(dummy_did_document(did)));
 
     {
         let clone = credential.clone();
@@ -2657,7 +2657,7 @@ async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
     did_method_provider
         .expect_resolve()
         .once()
-        .returning(|did, _| Ok(dummy_did_document(did)));
+        .returning(|did| Ok(dummy_did_document(did)));
 
     let service = setup_service(Repositories {
         credential_repository,
@@ -2694,7 +2694,7 @@ async fn test_reactivate_credential_success() {
 
     did_method_provider
         .expect_resolve()
-        .returning(|did, _| Ok(dummy_did_document(did)));
+        .returning(|did| Ok(dummy_did_document(did)));
     {
         let clone = credential.clone();
         credential_repository
@@ -2775,7 +2775,7 @@ async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential(
         did_method_provider
             .expect_resolve()
             .once()
-            .returning(|did, _| Ok(dummy_did_document(did)));
+            .returning(|did| Ok(dummy_did_document(did)));
     }
 
     let service = setup_service(Repositories {

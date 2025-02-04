@@ -531,7 +531,6 @@ fn build_key_verification(
         key_algorithm_provider,
         did_method_provider,
         key_role,
-        cache_preferences: None,
     })
 }
 

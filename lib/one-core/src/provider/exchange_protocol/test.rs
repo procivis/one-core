@@ -163,7 +163,7 @@ async fn test_issuer_submit_succeeds() {
     did_method_provider
         .expect_resolve()
         .times(2)
-        .returning(move |did, _| Ok(dummy_did_document(did)));
+        .returning(move |did| Ok(dummy_did_document(did)));
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
@@ -718,7 +718,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     did_method_provider
         .expect_resolve()
         .times(2)
-        .returning(move |did, _| Ok(dummy_did_document(did)));
+        .returning(move |did| Ok(dummy_did_document(did)));
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository
@@ -851,7 +851,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     did_method_provider
         .expect_resolve()
         .times(2)
-        .returning(move |did, _| Ok(dummy_did_document(did)));
+        .returning(move |did| Ok(dummy_did_document(did)));
 
     let mut revocation_list_repository = MockRevocationListRepository::default();
     revocation_list_repository

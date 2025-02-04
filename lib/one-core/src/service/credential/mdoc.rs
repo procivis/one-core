@@ -28,6 +28,7 @@ impl CredentialService {
         &self,
         credential: &Credential,
         detail_credential: &DetailCredential,
+        force_refresh: bool,
     ) -> Result<CredentialStateEnum, ServiceError> {
         let mut interaction_data: HolderInteractionData = deserialize_interaction_data(
             credential
@@ -50,33 +51,34 @@ impl CredentialService {
         )
         .await;
 
-        if let Ok(TokenCheckResult {
+        let Ok(TokenCheckResult {
             mso_refresh_possible,
         }) = result
-        {
-            if !mso_refresh_possible && is_mso_expired(detail_credential) {
-                new_state = CredentialStateEnum::Revoked;
-            }
+        else {
+            return Ok(new_state);
+        };
 
-            if mso_refresh_possible && mso_requires_update(detail_credential) {
-                let result = obtain_and_update_new_mso(
-                    credential,
-                    &*self.credential_repository,
-                    &*self.key_provider,
-                    &self.key_algorithm_provider,
-                    &*self.did_method_provider,
-                    &interaction_data,
-                    &*self.client,
-                )
-                .await;
-
-                // If we have managed to refresh mso
-                if result.is_ok() {
-                    new_state = CredentialStateEnum::Accepted;
-                }
-            }
+        if !mso_refresh_possible && is_mso_expired(detail_credential) {
+            new_state = CredentialStateEnum::Revoked;
         }
 
+        if mso_refresh_possible && (force_refresh || mso_requires_update(detail_credential)) {
+            let result = obtain_and_update_new_mso(
+                credential,
+                &*self.credential_repository,
+                &*self.key_provider,
+                &self.key_algorithm_provider,
+                &*self.did_method_provider,
+                &interaction_data,
+                &*self.client,
+            )
+            .await;
+
+            // If we have managed to refresh mso
+            if result.is_ok() {
+                new_state = CredentialStateEnum::Accepted;
+            }
+        }
         Ok(new_state)
     }
 }

@@ -12,7 +12,6 @@ use one_crypto::Signer;
 use serde_json::json;
 use time::macros::format_description;
 use time::OffsetDateTime;
-use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -92,13 +91,13 @@ async fn test_revoke_check_failed_if_not_holder_role() {
     let issuer_revocation_check_response = context
         .api
         .credentials
-        .revocation_check(issuer_credential.id, vec![])
+        .revocation_check(issuer_credential.id, None)
         .await;
 
     let verifier_revocation_check_response = context
         .api
         .credentials
-        .revocation_check(verifier_credential.id, vec![])
+        .revocation_check(verifier_credential.id, None)
         .await;
 
     assert_eq!(issuer_revocation_check_response.status(), 400);
@@ -174,7 +173,7 @@ async fn test_revoke_check_success_statuslist2021() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     // THEN
@@ -200,7 +199,7 @@ async fn test_revoke_check_success_bitstring_status_list() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     // THEN
@@ -214,7 +213,7 @@ async fn test_revoke_check_success_bitstring_status_list() {
 }
 
 #[tokio::test]
-async fn test_revoke_check_success_bitstring_status_list_with_cache_bypass() {
+async fn test_revoke_check_success_bitstring_status_list_with_force_refresh() {
     // GIVEN
     let mock_server = MockServer::start().await;
 
@@ -231,7 +230,7 @@ async fn test_revoke_check_success_bitstring_status_list_with_cache_bypass() {
     context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     // THEN
@@ -252,7 +251,7 @@ async fn test_revoke_check_success_bitstring_status_list_with_cache_bypass() {
     context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     let statuslist_credential_entry = context
@@ -264,23 +263,11 @@ async fn test_revoke_check_success_bitstring_status_list_with_cache_bypass() {
 
     assert_eq!(statuslist_credential_entry.hit_counter, 1);
 
-    let did_document_entry = context
-        .db
-        .remote_entities
-        .get_by_key(issuer_did.did.as_str())
-        .await
-        .unwrap();
-
-    assert_eq!(did_document_entry.hit_counter, 1);
-
     // bypassing the cache
     context
         .api
         .credentials
-        .revocation_check(
-            credential.id,
-            vec!["DID_DOCUMENT", "STATUS_LIST_CREDENTIAL"],
-        )
+        .revocation_check(credential.id, Some(true))
         .await;
 
     let statuslist_credential_entry2 = context
@@ -292,16 +279,6 @@ async fn test_revoke_check_success_bitstring_status_list_with_cache_bypass() {
 
     assert_eq!(statuslist_credential_entry2.hit_counter, 0);
     assert!(statuslist_credential_entry.created_date < statuslist_credential_entry2.created_date);
-
-    let did_document_entry2 = context
-        .db
-        .remote_entities
-        .get_by_key(issuer_did.did.as_str())
-        .await
-        .unwrap();
-
-    assert_eq!(did_document_entry2.hit_counter, 0);
-    assert!(did_document_entry.created_date < did_document_entry2.created_date);
 }
 
 async fn setup_bitstring_status_list_success(
@@ -457,19 +434,6 @@ fn sign_jwt_helper(jwt_header_json: &str, payload_json: &str, key_pair: &KeyPair
 }
 
 #[tokio::test]
-async fn test_revoke_check_fail_invalid_cache_bypass_values() {
-    let context = TestContext::new(None).await;
-
-    let response = context
-        .api
-        .credentials
-        .revocation_check(Uuid::new_v4(), vec!["INVALID"])
-        .await;
-
-    assert_eq!(response.status(), 400);
-}
-
-#[tokio::test]
 async fn test_revoke_check_success_lvvc() {
     // GIVEN
     // contains id=http://0.0.0.0:4445/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf
@@ -569,7 +533,7 @@ async fn test_revoke_check_success_lvvc() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     // THEN
@@ -700,7 +664,7 @@ async fn test_revoke_check_mdoc_update() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     // THEN
@@ -828,7 +792,7 @@ async fn test_revoke_check_token_update() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     // THEN
@@ -948,7 +912,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     // THEN
@@ -1070,7 +1034,7 @@ async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     // THEN
@@ -1210,7 +1174,7 @@ async fn test_suspended_to_valid() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     // THEN
@@ -1340,7 +1304,7 @@ async fn test_suspended_to_suspended_update_failed() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     // THEN
@@ -1420,7 +1384,7 @@ async fn test_revoke_check_failed_deleted_credential() {
     let resp = context
         .api
         .credentials
-        .revocation_check(credential.id, vec![])
+        .revocation_check(credential.id, None)
         .await;
 
     // THEN
