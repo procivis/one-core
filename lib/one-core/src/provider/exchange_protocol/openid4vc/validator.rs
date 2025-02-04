@@ -8,7 +8,6 @@ use time::OffsetDateTime;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::interaction::Interaction;
-use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::MobileSecurityObject;
@@ -31,18 +30,6 @@ use crate::provider::revocation::model::{
 };
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::util::key_verification::KeyVerification;
-
-pub fn throw_if_proof_state_not_eq(
-    proof: &Proof,
-    state: ProofStateEnum,
-) -> Result<(), OpenID4VCError> {
-    if proof.state != state {
-        return Err(OpenID4VCError::InvalidProofState {
-            state: proof.state.clone(),
-        });
-    }
-    Ok(())
-}
 
 pub(super) async fn peek_presentation(
     presentation_string: &str,

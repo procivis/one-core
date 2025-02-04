@@ -22,6 +22,7 @@ use super::model::{
     ValidatedProofClaimDTO,
 };
 use super::validator::throw_if_credential_state_not_eq;
+use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -45,9 +46,8 @@ use crate::provider::exchange_protocol::openid4vc::model::{
 };
 use crate::provider::exchange_protocol::openid4vc::validator::{
     peek_presentation, throw_if_interaction_created_date,
-    throw_if_interaction_pre_authorized_code_used, throw_if_proof_state_not_eq,
-    throw_if_token_request_invalid, validate_claims, validate_credential, validate_presentation,
-    validate_refresh_token,
+    throw_if_interaction_pre_authorized_code_used, throw_if_token_request_invalid, validate_claims,
+    validate_credential, validate_presentation, validate_refresh_token,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::lvvc::util::is_lvvc_credential;
@@ -217,8 +217,6 @@ pub fn oidc_verifier_presentation_definition(
     proof: &Proof,
     mut presentation_definition: OpenID4VPPresentationDefinition,
 ) -> Result<OpenID4VPPresentationDefinition, OpenID4VCError> {
-    throw_if_proof_state_not_eq(proof, ProofStateEnum::Pending)?;
-
     let proof_schema = proof.schema.as_ref().ok_or(OpenID4VCError::MappingError(
         "Proof schema not found".to_string(),
     ))?;
@@ -255,7 +253,7 @@ pub fn oidc_verifier_presentation_definition(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn oidc_verifier_direct_post(
+pub(crate) async fn oidc_verifier_direct_post(
     request: RequestData,
     proof: Proof,
     interaction_data: &[u8],
@@ -265,9 +263,12 @@ pub async fn oidc_verifier_direct_post(
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     map_oidc_to_external: FnMapOidcFormatToExternalDetailed,
 ) -> Result<(AcceptProofResult, OpenID4VPDirectPostResponseDTO), OpenID4VCError> {
-    throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending).or(
-        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested),
-    )?;
+    throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)
+        .or(throw_if_latest_proof_state_not_eq(
+            &proof,
+            ProofStateEnum::Requested,
+        ))
+        .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
 
     let proved_claims = process_proof_submission(
         request,

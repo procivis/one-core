@@ -264,8 +264,18 @@ async fn test_share_proof_success_mdoc() {
 
 #[tokio::test]
 async fn test_share_proof_success_jsonld() {
-    // GIVEN
-    let (context, organisation, did, key) = TestContext::new_with_did(None).await;
+    // check that sharing works also when not using request_uri
+    let additional_config = Some(
+        indoc::indoc! {"
+      exchange:
+        OPENID4VC:
+          params:
+            public:
+              useRequestUri: false
+  "}
+        .to_string(),
+    );
+    let (context, organisation, did, key) = TestContext::new_with_did(additional_config).await;
 
     let claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![(
         Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c42").unwrap(),

@@ -1,7 +1,6 @@
 use thiserror::Error;
 
 use crate::model::credential::CredentialStateEnum;
-use crate::model::proof::ProofStateEnum;
 use crate::provider::revocation::error::RevocationError;
 
 #[derive(Clone, Debug, Error)]
@@ -36,8 +35,6 @@ pub enum OpenID4VCError {
     CredentialIsRevokedOrSuspended,
     #[error("Invalid credential state: `{state}`")]
     InvalidCredentialState { state: CredentialStateEnum },
-    #[error("Invalid proof state: `{state}`")]
-    InvalidProofState { state: ProofStateEnum },
     #[error("Mapping error: `{0}`")]
     MappingError(String),
     #[error("Missing claim schemas")]
