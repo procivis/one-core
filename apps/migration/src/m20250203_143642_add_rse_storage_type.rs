@@ -14,9 +14,10 @@ impl MigrationTrait for Migration {
                         Table::alter()
                             .table(CredentialSchema::Table)
                             .modify_column(
-                                ColumnDef::new(CredentialSchema::WalletStorageType)
-                                    .enumeration(CredentialSchema::Table, WalletStorageType::iter())
-                                    .not_null(),
+                                ColumnDef::new(CredentialSchema::WalletStorageType).enumeration(
+                                    CredentialSchema::Table,
+                                    WalletStorageType::iter(),
+                                ),
                             )
                             .to_owned(),
                     )
