@@ -351,7 +351,7 @@ See [Verifiable Credentials Barcode v0.7][vcbarcode].
 
 #### ISO mdoc
 
-- [ISO/IEC 18013-5:2021][iso] standard for mdoc credentials.
+- [ISO/IEC 18013-5:2021][iso5] standard for mdoc credentials.
   - [COSE][cose] proofs
     - ECDSA [ES256][es2]
     - EdDSA [Ed25519][ed255]
