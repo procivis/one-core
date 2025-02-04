@@ -4,12 +4,11 @@ use futures::TryFutureExt;
 use shared_types::{CredentialId, DidId, DidValue, KeyId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use url::Url;
-use uuid::Uuid;
 
 use super::dto::{HandleInvitationResultDTO, PresentationSubmitRequestDTO};
 use super::SSIHolderService;
 use crate::common_mapper::{
-    encode_cbor_base64, get_or_create_did, value_to_model_claims, DidRole, NESTED_CLAIM_MARKER,
+    get_or_create_did, value_to_model_claims, DidRole, NESTED_CLAIM_MARKER,
 };
 use crate::common_validator::{
     throw_if_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
@@ -32,12 +31,9 @@ use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum};
-use crate::model::validity_credential::Mdoc;
-use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
-use crate::provider::exchange_protocol::openid4vc::error::OpenID4VCError;
 use crate::provider::exchange_protocol::openid4vc::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::provider::exchange_protocol::openid4vc::model::{
     InvitationResponseDTO, OpenID4VPHolderInteractionData, PresentedCredential, UpdateResponse,
@@ -634,27 +630,6 @@ impl SSIHolderService {
                 .await?;
 
             let issuer_response = self.resolve_update_response(None, issuer_response).await?;
-
-            let now = OffsetDateTime::now_utc();
-            if format == "mso_mdoc" {
-                let mso = try_extracting_mso_from_token(&issuer_response.credential).await?;
-                let mso_cbor = encode_cbor_base64(mso).map_err(|e| {
-                    ServiceError::OpenID4VCError(OpenID4VCError::Other(e.to_string()))
-                })?;
-
-                self.validity_credential_repository
-                    .insert(
-                        Mdoc {
-                            id: Uuid::new_v4(),
-                            created_date: now,
-                            credential: mso_cbor.into_bytes(),
-                            linked_credential_id: credential.id,
-                        }
-                        .into(),
-                    )
-                    .await?;
-            }
-
             let claims = self
                 .extract_claims(&credential.id, &issuer_response.credential, schema)
                 .await?;
