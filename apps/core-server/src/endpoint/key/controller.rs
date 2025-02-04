@@ -65,7 +65,15 @@ pub(crate) async fn get_key(
         ("bearer" = [])
     ),
     summary = "Create a key",
-    description = "Creates a key within an organization, which can be used to create a DID.",
+    description = indoc::formatdoc! {"
+    Creates a key within an organization, which can be used to create a DID.
+
+    The `keyType` and `storageType` values must reference specific configuration
+    instances from your system configuration. This is because the system allows
+    multiple configurations of the same type.
+
+    Related guide: [Keys](../api/keys.mdx)
+"},
 )]
 pub(crate) async fn post_key(
     state: State<AppState>,

@@ -18,7 +18,9 @@ pub struct CreateTrustAnchorRequestRestDTO {
     /// Must be unique.
     pub name: String,
     /// Specify the type of trust management anchor to publish or subscribe
-    /// to. Possible values from the configuration.
+    /// to. Check the `trustManagement` object of the configuration for supported
+    /// options and reference the configuration instance.
+    #[schema(example = "SIMPLE_TRUST_LIST")]
     pub r#type: String,
     /// If true the created trust anchor will be published. If subscribing
     /// to an existing trust anchor, omit or set to false. The remote anchor has

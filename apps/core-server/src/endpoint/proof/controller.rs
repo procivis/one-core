@@ -99,7 +99,17 @@ pub(crate) async fn get_proofs(
         ("bearer" = [])
     ),
     summary = "Create a proof request",
-    description = "Creates a proof request, which can then be shared with a wallet holder.",
+    description = indoc::formatdoc! {"
+    Creates a proof request, which can then be shared with a wallet holder.
+
+    Choose what information to request (proof schema), the DID to be used
+    for identification as a verifier and which exchange protocol to be used
+    for verification.
+
+    The `exchange` and `transport` values must reference specific configuration
+    instances from your system configuration. This is because the system allows
+    multiple configurations of the same type.
+"},
 )]
 pub(crate) async fn post_proof(
     state: State<AppState>,

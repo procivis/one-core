@@ -137,7 +137,13 @@ pub(crate) async fn import_credential_schema(
     summary = "Create credential schema",
     description = indoc::formatdoc! {"
         Creates a credential schema, for issuing credentials.
-        See the [credential schemas](../api/credentialSchemas.mdx) guide.
+
+        The `format`, `revocationMethod` and `datatype` values must
+        reference specific configuration instances from your system
+        configuration. This is because the system allows multiple
+        configurations of the same type.
+
+        Related guide: [Credential schemas](../api/credentialSchemas.mdx)
     "},
 )]
 pub(crate) async fn post_credential_schema(

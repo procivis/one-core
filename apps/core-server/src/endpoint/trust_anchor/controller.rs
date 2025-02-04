@@ -22,7 +22,13 @@ use crate::router::AppState;
         ("bearer" = [])
     ),
     summary = "Add a trust anchor",
-    description = "Publishes a new trust anchor or subscribes to an existing trust anchor.",
+    description = indoc::formatdoc! {"
+    Publishes a new trust anchor or subscribes to an existing trust anchor.
+
+    The `type` value must reference specific configuration instances from
+    your system configuration. This is because the system allows multiple
+    configurations of the same type.
+"},
 )]
 pub(crate) async fn create_trust_anchor(
     state: State<AppState>,

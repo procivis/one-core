@@ -219,10 +219,14 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     pub name: String,
     /// Choose a credential format for credentials issued using this
-    /// credential schema.
+    /// credential schema. Check the `format` object of the configuration
+    /// for supported options and reference the configuration instance.
+    #[schema(example = "SD_JWT_VC")]
     pub format: String,
     /// Choose a revocation method for credentials issued using this
-    /// credential schema.
+    /// credential schema. Check the `revocation` object of the configuration
+    /// for supported options and reference the configuration instance.
+    #[schema(example = "TOKENSTATUSLIST")]
     pub revocation_method: String,
     /// Specify the organization.
     pub organisation_id: Uuid,
@@ -243,8 +247,10 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     pub layout_type: CredentialSchemaLayoutType,
     #[into(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
-    /// For credential formats requiring a schema ID, pass it here.
+    /// For credential formats requiring a schema ID, such as ISO mdoc, IETF
+    /// SD-JWT VC or VC Barcodes, pass it here.
     /// For other formats, pass no value here.
+    #[schema(example = "org.iso.18013.5.1.mDL")]
     pub schema_id: Option<String>,
     /// If `true` and the chosen revocation method allows for suspension,
     /// credentials issued with this schema can be suspended.
@@ -266,8 +272,10 @@ pub enum CredentialSchemaLayoutType {
 #[into(CredentialClaimSchemaRequestDTO)]
 pub struct CredentialClaimSchemaRequestRestDTO {
     pub key: String,
-    /// The type of data accepted for this attribute. See the
-    /// [datatypes](../api/configuration.mdx#datatype-object) guide.
+    /// The type of data accepted for this attribute. The `DATE` datatype
+    /// only accepts full date-time. See the
+    /// [datatypes](../setup/configuration.mdx#datatype-object) guide for
+    /// the full reference of datatypes.
     pub datatype: String,
     pub required: bool,
     /// If `true`, an array can be passed for this attribute during issuance.

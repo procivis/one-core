@@ -22,16 +22,18 @@ pub struct KeyRequestRestDTO {
     /// Specify the organization.
     pub organisation_id: Uuid,
     /// Choose which key algorithm to use to create the key pair. Check
-    /// the `keyAlgorithm` object of the configuration for supported options.
+    /// the `keyAlgorithm` object of the configuration for supported options
+    /// and reference the configuration instance.
     #[schema(example = "EDDSA")]
     pub key_type: String,
     /// The parameters passed into the key algorithm.
-    #[schema(value_type = Object)]
+    #[schema(value_type = Option<Object>)]
     pub key_params: serde_json::Value,
     /// Must be unique within the organization.
     pub name: String,
     /// Choose a key storage type. Check the `keyStorage`
-    /// object of the configuration for supported options.
+    /// object of the configuration for supported options and reference the
+    /// configuration instance.
     #[schema(example = "INTERNAL")]
     pub storage_type: String,
     /// The parameters passed into the storage type.

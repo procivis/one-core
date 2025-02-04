@@ -52,7 +52,10 @@ pub struct CreateProofRequestRestDTO {
     #[into(rename = "verifier_did_id")]
     #[schema(example = "<uuid; did identifier>")]
     pub verifier_did: DidId,
-    /// Specify the exchange protocol to use for credential exchange.
+    /// Specify the exchange protocol to use for credential exchange. Check
+    /// the `exchange` object of the configuration for supported options and
+    /// reference the configuration instance.
+    #[schema(example = "OPENID4VC")]
     pub exchange: String,
     /// When a shared proof is accepted, the holder will be redirected to
     /// the resource specified here, if redirects are enabled in the system
@@ -72,8 +75,11 @@ pub struct CreateProofRequestRestDTO {
     /// SDK.
     #[into(with_fn = convert_inner)]
     pub iso_mdl_engagement: Option<String>,
-    /// Specify the transport protocol to use for credential exchange.
+    /// Specify the transport protocol to use for credential exchange. Check
+    /// the `transport` object of the configuration for supported options and
+    /// reference the configuration instance.
     #[into(with_fn = convert_inner)]
+    #[schema(example = "HTTP")]
     pub transport: Option<Vec<String>>,
 }
 
@@ -346,7 +352,8 @@ pub enum ProofClaimValueRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(ProofInputDTO)]
 pub struct ProofInputRestDTO {
-    /// The set of claims being asserted by the credential shared during the proof request.
+    /// The set of claims being asserted by the credential shared during the
+    /// proof request.
     #[from(with_fn = convert_inner)]
     pub claims: Vec<ProofClaimRestDTO>,
     /// The credentials exchanged as part of the successfully shared proof.

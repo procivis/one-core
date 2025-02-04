@@ -85,8 +85,13 @@ pub(crate) async fn get_did_list(
     ),
     summary = "Create a DID",
     description = indoc::formatdoc! {"
-        Creates a DID using a key, or keys, and a method. See the
-        [DIDs](../api/dids.mdx) guide for more information.
+        Creates a DID using a key, or keys, and a method.
+
+        The `method` value must reference specific configuration instances
+        from your system configuration. This is because the system allows
+        multiple configurations of the same type.
+
+        Related guide: [DIDs](../api/dids.mdx)
     "},
 )]
 pub(crate) async fn post_did(

@@ -134,7 +134,19 @@ pub(crate) async fn get_credential_list(
         ("bearer" = [])
     ),
     summary = "Create a credential",
-    description = "Creates a credential, which can then be issued to a wallet holder. See the [Issuance workflow](../issue/issuanceFlow.mdx) guide.",
+    description = indoc::formatdoc! {"
+    Creates a credential, which can then be issued to a wallet holder.
+
+    Choose the type of credential to issue (credential schema), the DID
+    to be used for identification, an exchange protocol for issuance, and
+    make claims about the subject.
+
+    The `exchange` value must reference specific configuration instances
+    from your system configuration. This is because the system allows
+    multiple configurations of the same type.
+
+    Related guide: [Issuance workflow](../issue/issuanceFlow.mdx)
+"},
 )]
 pub(crate) async fn post_credential(
     state: State<AppState>,

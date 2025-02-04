@@ -103,7 +103,9 @@ pub struct CreateDidRequestRestDTO {
     /// Specify the organization.
     pub organisation_id: OrganisationId,
     /// Choose a DID method to create the DID. Check the `did` object of the
-    /// configuration for supported options.
+    /// configuration for supported options and reference the configuration
+    /// instance.
+    #[schema(example = "WEB")]
     pub method: String,
     pub keys: CreateDidRequestKeysRestDTO,
     /// The parameters passed into the DID method.

@@ -11,14 +11,24 @@ use utoipa::ToSchema;
 #[schema(example = json!({"format": {}, "exchange": {}, "transport": {}, "revocation": {}, "did": {}, "datatype": {}, "keyAlgorithm": {}, "keyStorage": {}, "trustManagement": {}, "cacheEntities": {}}))]
 #[from(ConfigDTO)]
 pub struct ConfigRestDTO {
+    /// Credential formats for issuing, holding and verifying.
     pub format: HashMap<String, Value>,
+    /// Exchange protocols for the direct exchange of credentials.
     pub exchange: HashMap<String, Value>,
+    /// Transport protocols over which to communicate.
     pub transport: HashMap<String, Value>,
+    /// Revocation methods for credential status.
     pub revocation: HashMap<String, Value>,
+    /// DID methods used for identifying agents.
     pub did: HashMap<String, Value>,
+    /// Datatypes for claim validation.
     pub datatype: HashMap<String, Value>,
+    /// Key algorithms used for signatures.
     pub key_algorithm: HashMap<String, Value>,
+    /// How keys are stored.
     pub key_storage: HashMap<String, Value>,
+    /// Trust management solutions.
     pub trust_management: HashMap<String, Value>,
+    /// Entities held in temporary storage.
     pub cache_entities: HashMap<String, Value>,
 }

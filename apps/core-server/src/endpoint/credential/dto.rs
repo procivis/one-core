@@ -262,11 +262,13 @@ pub struct CreateCredentialRequestRestDTO {
     /// key listed during DID creation will be used.
     #[into(with_fn = convert_inner)]
     pub issuer_key: Option<KeyId>,
-    /// Exchange protocol to use for issuing the credential to a wallet.
+    /// Exchange protocol to use for issuing the credential to a wallet. Check
+    /// the `exchange` object of the configuration for supported options and
+    /// reference the configuration instance.
+    #[schema(example = "OPENID4VC")]
     pub exchange: String,
     /// Attribute from the credential schema, together with the
-    /// corresponding claim being made. See the
-    /// [Claims assertion](../issue/issuanceFlow.mdx#claims-assertion) guide.            
+    /// corresponding claim being made.
     #[into(with_fn = convert_inner)]
     pub claim_values: Vec<CredentialRequestClaimRestDTO>,
     /// When a credential is accepted, the holder will be redirected to the
