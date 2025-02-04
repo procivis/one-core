@@ -3,10 +3,11 @@
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize, Eq, PartialEq)]
-#[serde(rename_all = "UPPERCASE")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum KeySecurity {
     Hardware,
     Software,
+    RemoteSecureElement,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]

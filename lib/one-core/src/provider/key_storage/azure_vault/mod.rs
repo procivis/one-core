@@ -148,7 +148,7 @@ impl KeyStorage for AzureVaultKeyProvider {
         KeyStorageCapabilities {
             features: vec![Features::Exportable],
             algorithms: vec!["ES256".to_string()],
-            security: vec![KeySecurity::Hardware],
+            security: vec![KeySecurity::RemoteSecureElement],
         }
     }
 }

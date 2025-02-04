@@ -580,12 +580,14 @@ impl SSIHolderService {
                 .as_ref()
                 .and_then(|schema| schema.wallet_storage_type.as_ref())
             {
-                Some(WalletStorageTypeEnum::Hardware)
-                | Some(WalletStorageTypeEnum::RemoteSecureElement) => {
+                Some(WalletStorageTypeEnum::Hardware) => {
                     key_security.contains(&KeySecurity::Hardware)
                 }
                 Some(WalletStorageTypeEnum::Software) => {
                     key_security.contains(&KeySecurity::Software)
+                }
+                Some(WalletStorageTypeEnum::RemoteSecureElement) => {
+                    key_security.contains(&KeySecurity::RemoteSecureElement)
                 }
                 None => true,
             };

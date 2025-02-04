@@ -47,7 +47,7 @@ impl KeyStorage for RemoteSecureElementKeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
             algorithms: vec!["EDDSA".to_string()],
-            security: vec![KeySecurity::Hardware],
+            security: vec![KeySecurity::RemoteSecureElement],
             features: vec![],
         }
     }

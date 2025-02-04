@@ -9,7 +9,7 @@ use shared_types::DidValue;
 use time::macros::datetime;
 use uuid::Uuid;
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingKeyParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::es256_testing_params;
@@ -802,6 +802,114 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!("BR_0096", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let key = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                ..es256_testing_params()
+            },
+        )
+        .await;
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: key.clone(),
+                }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                wallet_storage_type: Some(WalletStorageTypeEnum::RemoteSecureElement),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": "http://127.0.0.1",
+        "credential_endpoint": format!("{}/credential", context.server_mock.uri()),
+        "access_token": "123",
+        "access_token_expires_at": null,
+    }))
+    .unwrap();
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &issuer_did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                interaction: Some(interaction.to_owned()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id), None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0097", resp.error_code().await);
 }
 
 #[tokio::test]
