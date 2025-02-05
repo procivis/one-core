@@ -16,7 +16,6 @@ use uuid::Uuid;
 use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
 use crate::model::credential::Credential;
-use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::credential_formatter::json_ld::model::ContextType;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchemaData, CredentialStatus, Issuer,
@@ -145,36 +144,6 @@ impl LvvcProvider {
                 )
                 .await?,
             )?,
-        })
-    }
-
-    async fn check_revocation_status_as_issuer(
-        &self,
-        credential: &Credential,
-    ) -> Result<CredentialRevocationState, RevocationError> {
-        let latest_lvvc = self
-            .validity_credential_repository
-            .get_latest_by_credential_id(credential.id, ValidityCredentialType::Lvvc)
-            .await
-            .map_err(|err| RevocationError::ValidationError(err.to_string()))?
-            .ok_or(RevocationError::CredentialNotFound(credential.id))?;
-
-        let credential_content = std::str::from_utf8(&latest_lvvc.credential)
-            .map_err(|e| RevocationError::MappingError(e.to_string()))?;
-
-        let formatter = self.formatter(credential)?;
-
-        let lvvc = formatter
-            .extract_credentials_unverified(credential_content)
-            .await?;
-
-        let status = status_from_lvvc_claims(&lvvc.claims.values)?;
-        Ok(match status {
-            LvvcStatus::Accepted => CredentialRevocationState::Valid,
-            LvvcStatus::Revoked => CredentialRevocationState::Revoked,
-            LvvcStatus::Suspended { suspend_end_date } => {
-                CredentialRevocationState::Suspended { suspend_end_date }
-            }
         })
     }
 
@@ -356,9 +325,6 @@ impl RevocationMethod for LvvcProvider {
         )?;
 
         match additional_credential_data {
-            CredentialDataByRole::Issuer(credential) => {
-                self.check_revocation_status_as_issuer(&credential).await
-            }
             CredentialDataByRole::Holder(credential) => {
                 self.check_revocation_status_as_holder(
                     &credential,

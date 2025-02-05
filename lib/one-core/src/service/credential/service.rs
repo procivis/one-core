@@ -829,9 +829,10 @@ impl CredentialService {
             .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
         let credential_data_by_role = match credential.role {
-            CredentialRole::Holder => Some(CredentialDataByRole::Holder(credential.clone())),
-            CredentialRole::Issuer => Some(CredentialDataByRole::Issuer(credential.clone())),
-            CredentialRole::Verifier => None,
+            CredentialRole::Holder => {
+                Some(CredentialDataByRole::Holder(Box::new(credential.clone())))
+            }
+            CredentialRole::Issuer | CredentialRole::Verifier => None,
         };
 
         let mut worst_revocation_state = CredentialRevocationState::Valid;

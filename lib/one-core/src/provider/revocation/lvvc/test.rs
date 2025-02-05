@@ -140,62 +140,6 @@ fn create_provider(
 }
 
 #[tokio::test]
-async fn test_check_revocation_status_as_issuer() {
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
-    formatter_provider.expect_get_formatter().returning(|_| {
-        let mut formatter = MockCredentialFormatter::new();
-        formatter
-            .expect_extract_credentials_unverified()
-            .returning(|_| Ok(extracted_credential("ACCEPTED")));
-
-        Some(Arc::new(formatter))
-    });
-
-    let (did, credential) = generic_did_credential(CredentialRole::Issuer);
-
-    let mut validity_credential_repository = MockValidityCredentialRepository::new();
-    let credential_id = credential.id;
-    validity_credential_repository
-        .expect_get_latest_by_credential_id()
-        .once()
-        .returning(move |_, _| {
-            Ok(Some(ValidityCredential {
-                id: Uuid::new_v4(),
-                created_date: OffsetDateTime::now_utc(),
-                credential: "this.is.jwt".to_string().into_bytes(),
-                linked_credential_id: credential_id,
-                r#type: ValidityCredentialType::Lvvc,
-            }))
-        });
-
-    let status = CredentialStatus {
-        id: None,
-        r#type: "".to_string(),
-        status_purpose: None,
-        additional_fields: Default::default(),
-    };
-
-    let provider = create_provider(
-        formatter_provider,
-        MockKeyProvider::new(),
-        MockKeyAlgorithmProvider::new(),
-        validity_credential_repository,
-        MockDidMethodProvider::new(),
-    );
-
-    let result = provider
-        .check_credential_revocation_status(
-            &status,
-            &did.did,
-            Some(CredentialDataByRole::Issuer(credential)),
-            false,
-        )
-        .await
-        .unwrap();
-    assert_eq!(CredentialRevocationState::Valid, result);
-}
-
-#[tokio::test]
 async fn test_check_revocation_status_as_holder_not_cached() {
     let mock_server = MockServer::start().await;
 
@@ -288,7 +232,7 @@ async fn test_check_revocation_status_as_holder_not_cached() {
         .check_credential_revocation_status(
             &status,
             &did.did,
-            Some(CredentialDataByRole::Holder(credential)),
+            Some(CredentialDataByRole::Holder(Box::new(credential))),
             false,
         )
         .await
@@ -344,7 +288,7 @@ async fn test_check_revocation_status_as_holder_cached() {
         .check_credential_revocation_status(
             &status,
             &did.did,
-            Some(CredentialDataByRole::Holder(credential)),
+            Some(CredentialDataByRole::Holder(Box::new(credential))),
             false,
         )
         .await

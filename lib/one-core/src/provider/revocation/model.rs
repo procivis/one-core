@@ -19,8 +19,8 @@ pub struct CredentialAdditionalData {
 
 #[derive(Clone)]
 pub enum CredentialDataByRole {
-    Holder(Credential),
-    Issuer(Credential),
+    // issuer variant is missing because issuers should simply check the credential state
+    Holder(Box<Credential>),
     Verifier(Box<VerifierCredentialData>),
 }
 
