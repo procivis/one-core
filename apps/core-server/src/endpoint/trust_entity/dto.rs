@@ -3,13 +3,13 @@ use one_core::service::trust_entity::dto::{
     CreateRemoteTrustEntityRequestDTO, GetTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
     TrustEntitiesResponseItemDTO,
 };
-use one_dto_mapper::{From, Into};
+use one_dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
-use crate::dto::common::{ExactColumn, ListQueryParamsRest};
+use crate::dto::common::{ExactColumn, ListQueryParamsRest, TrustListLogo};
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::trust_anchor::dto::{
     GetTrustAnchorDetailResponseRestDTO, GetTrustAnchorResponseRestDTO,
@@ -22,7 +22,7 @@ pub struct CreateTrustEntityRequestRestDTO {
     /// Specify the entity name.
     pub(super) name: String,
     /// base64 encoded image.
-    pub(super) logo: Option<String>,
+    pub(super) logo: Option<TrustListLogo>,
     /// Specify the entity's domain name.
     pub(super) website: Option<String>,
     /// Specify a Terms of Service url.
@@ -153,7 +153,8 @@ pub struct CreateRemoteTrustEntityRequestRestDTO {
     pub name: String,
     /// image URL
     #[schema(nullable = false)]
-    pub logo: Option<String>,
+    #[into(with_fn = convert_inner)]
+    pub logo: Option<TrustListLogo>,
     /// Specify the entity's domain name.
     #[schema(nullable = false)]
     pub website: Option<String>,

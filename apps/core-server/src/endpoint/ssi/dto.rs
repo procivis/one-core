@@ -52,6 +52,7 @@ use url::Url;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
+use crate::dto::common::TrustListLogo;
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
 };
@@ -832,7 +833,8 @@ pub struct PatchTrustEntityRequestRestDTO {
         skip_serializing_if = "Option::is_none",
         with = "::serde_with::rust::double_option"
     )]
-    pub logo: Option<Option<String>>,
+    #[into(with_fn = convert_inner_of_inner)]
+    pub logo: Option<Option<TrustListLogo>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -879,7 +881,8 @@ pub struct SSIPostTrustEntityRequestRestDTO {
     /// Specify the entity name.
     pub name: String,
     /// base64 encoded image.
-    pub logo: Option<String>,
+    #[into(with_fn = convert_inner)]
+    pub logo: Option<TrustListLogo>,
     /// Specify the entity's domain name.
     pub website: Option<String>,
     /// Specify a Terms of Service url.

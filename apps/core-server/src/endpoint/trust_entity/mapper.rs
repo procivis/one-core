@@ -47,7 +47,7 @@ impl From<CreateTrustEntityRequestRestDTO> for CreateTrustEntityRequestDTO {
     fn from(value: CreateTrustEntityRequestRestDTO) -> Self {
         Self {
             name: value.name,
-            logo: value.logo,
+            logo: value.logo.map(From::from),
             website: value.website,
             terms_url: value.terms_url,
             privacy_url: value.privacy_url,
