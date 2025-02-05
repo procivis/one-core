@@ -68,6 +68,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 public:
                   msoExpiresIn: 259200 # 72h in seconds
                   msoExpectedUpdateIn: 86400 # 24h in seconds
+                  msoMinimumRefreshTime: 300 # 5min in seconds
                   leeway: 60
         exchange:
             OPENID4VC:

@@ -82,6 +82,7 @@ impl MockServer {
         bearer_auth: impl Display,
         credential: impl Display,
         format: impl Display,
+        expected_calls: u64,
     ) {
         Mock::given(method(Method::POST))
             .and(path(format!(
@@ -93,7 +94,7 @@ impl MockServer {
                 "credential": credential.to_string(),
                 "format": format.to_string(),
             })))
-            .expect(1)
+            .expect(expected_calls)
             .mount(&self.mock)
             .await;
     }

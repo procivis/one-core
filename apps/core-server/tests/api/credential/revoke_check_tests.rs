@@ -657,6 +657,7 @@ async fn test_revoke_check_mdoc_update() {
             "123",
             CREDENTIAL_CONTENT_VALID,
             "mso_mdoc",
+            1,
         )
         .await;
 
@@ -681,6 +682,155 @@ async fn test_revoke_check_mdoc_update() {
         updated_credentials.credential,
         CREDENTIAL_CONTENT_VALID.as_bytes()
     );
+}
+
+#[tokio::test]
+async fn test_revoke_check_mdoc_update_force_refresh() {
+    // GIVEN
+    let additional_config = Some(
+        indoc::indoc! {"
+        format:
+            MDOC:
+                params:
+                    public:
+                        msoMinimumRefreshTime: 0
+    "}
+        .to_string(),
+    );
+    let (context, organisation) = TestContext::new_with_organisation(additional_config).await;
+
+    let local_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: local_key.clone(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    // Token is up to date
+    let a_couple_of_seconds_in_future = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
+        .format(&format)
+        .unwrap();
+    let issuer_url = format!(
+        "{}/ssi/oidc-issuer/v1/{}",
+        context.server_mock.uri(),
+        credential_schema.id,
+    );
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": issuer_url,
+        "credential_endpoint": format!("{}/credential", issuer_url),
+        "token_endpoint": format!("{}/token", issuer_url),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
+        "access_token": "123",
+        "access_token_expires_at": a_couple_of_seconds_in_future,
+        "refresh_token": "123",
+        "refresh_token_expires_at": a_couple_of_seconds_in_future,
+    }))
+    .unwrap();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &context.server_mock.uri(),
+            &interaction_data,
+            &organisation,
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                credential: Some(CREDENTIAL_CONTENT_OUTDATED),
+                interaction: Some(interaction),
+                key: Some(local_key),
+                holder_did: Some(issuer_did.clone()),
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .server_mock
+        .ssi_credential_endpoint(
+            &credential_schema.id,
+            "123",
+            CREDENTIAL_CONTENT_VALID,
+            "mso_mdoc",
+            2,
+        )
+        .await;
+
+    // WHEN
+    for _ in 0..2 {
+        let before_refresh = OffsetDateTime::now_utc();
+        let resp = context
+            .api
+            .credentials
+            .revocation_check(credential.id, Some(true))
+            .await;
+
+        // THEN
+        assert_eq!(resp.status(), 200);
+        let resp = resp.json_value().await;
+
+        resp[0]["credentialId"].assert_eq(&credential.id);
+        assert_eq!("ACCEPTED", resp[0]["status"]);
+        assert_eq!(true, resp[0]["success"]);
+        assert!(resp[0]["reason"].is_null());
+
+        let updated_credentials = context.db.credentials.get(&credential.id).await;
+        assert_eq!(
+            updated_credentials.credential,
+            CREDENTIAL_CONTENT_VALID.as_bytes()
+        );
+        assert!(updated_credentials.last_modified > before_refresh);
+    }
 }
 
 #[tokio::test]
@@ -1167,6 +1317,7 @@ async fn test_suspended_to_valid() {
             "321",
             CREDENTIAL_CONTENT_VALID,
             "mso_mdoc",
+            1,
         )
         .await;
 

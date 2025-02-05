@@ -78,6 +78,8 @@ pub struct Params {
     pub mso_expires_in: Duration,
     #[serde_as(as = "DurationSeconds<i64>")]
     pub mso_expected_update_in: Duration,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub mso_minimum_refresh_time: Duration,
     pub leeway: u64,
     pub embed_layout_properties: Option<bool>,
 }

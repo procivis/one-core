@@ -934,6 +934,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             params: Some(Params {
                 public: Some(json!({
                     "msoExpectedUpdateIn": Duration::days(3).whole_seconds(),
+                    "msoMinimumRefreshTime": Duration::days(3).whole_seconds(),
                     "msoExpiresIn": 10,
                     "leeway": 5,
                 })),
@@ -1011,6 +1012,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
             params: Some(Params {
                 public: Some(json!({
                     "msoExpectedUpdateIn": Duration::days(3).whole_seconds(),
+                    "msoMinimumRefreshTime": Duration::days(3).whole_seconds(),
                     "msoExpiresIn": 10,
                     "leeway": 5,
                 })),

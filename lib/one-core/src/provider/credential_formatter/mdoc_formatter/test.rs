@@ -250,8 +250,9 @@ async fn test_credential_formatting_ok_for_es256() {
         });
 
     let params = Params {
-        mso_expires_in: time::Duration::seconds(10),
-        mso_expected_update_in: time::Duration::days(10),
+        mso_expires_in: Duration::seconds(10),
+        mso_expected_update_in: Duration::days(10),
+        mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
         embed_layout_properties: None,
     };
@@ -444,8 +445,9 @@ async fn test_unverified_credential_extraction() {
         });
 
     let params = Params {
-        mso_expires_in: time::Duration::seconds(10),
-        mso_expected_update_in: time::Duration::days(10),
+        mso_expires_in: Duration::seconds(10),
+        mso_expected_update_in: Duration::days(10),
+        mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
         embed_layout_properties: None,
     };
@@ -648,8 +650,9 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
         });
 
     let params = Params {
-        mso_expires_in: time::Duration::seconds(10),
-        mso_expected_update_in: time::Duration::days(10),
+        mso_expires_in: Duration::seconds(10),
+        mso_expected_update_in: Duration::days(10),
+        mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
         embed_layout_properties: Some(embed_layout),
     };
@@ -718,6 +721,7 @@ fn test_credential_schema_id() {
     let params = Params {
         mso_expires_in: Duration::seconds(10),
         mso_expected_update_in: Duration::days(10),
+        mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
         embed_layout_properties: None,
     };

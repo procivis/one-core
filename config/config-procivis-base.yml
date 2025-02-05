@@ -46,6 +46,7 @@ format:
       public:
         msoExpiresIn: 259200 # 72h in seconds
         msoExpectedUpdateIn: 86400 # 24h in seconds
+        msoMinimumRefreshTime: 300 # 5 min in seconds
         leeway: 60
         embedLayoutProperties: true
   SD_JWT_VC:

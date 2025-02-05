@@ -132,14 +132,14 @@ impl ExchangeProtocolProviderCoreImpl {
         }
     }
 
-    fn mso_expected_update_in(&self) -> Result<Duration, ConfigValidationError> {
+    fn mso_minimum_refresh_time(&self) -> Result<Duration, ConfigValidationError> {
         self.config
             .format
             .get::<mdoc_formatter::Params>("MDOC")
-            .map(|p| p.mso_expected_update_in)
+            .map(|p| p.mso_minimum_refresh_time)
     }
 
-    async fn validate(
+    async fn validate_credential_issuable(
         &self,
         credential_id: &CredentialId,
         latest_state: &CredentialStateEnum,
@@ -147,7 +147,7 @@ impl ExchangeProtocolProviderCoreImpl {
     ) -> Result<(), ServiceError> {
         match (latest_state, credential_schema.format.as_str()) {
             (CredentialStateEnum::Accepted, "MDOC") => {
-                let mdoc_validity_credentials = self
+                let mdoc_validity_credential = self
                     .validity_credential_repository
                     .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
                     .await?
@@ -157,9 +157,8 @@ impl ExchangeProtocolProviderCoreImpl {
                         ))
                     })?;
 
-                let mso_expected_update_in = self.mso_expected_update_in()?;
                 let can_be_updated_at =
-                    mdoc_validity_credentials.created_date + mso_expected_update_in;
+                    mdoc_validity_credential.created_date + self.mso_minimum_refresh_time()?;
 
                 if can_be_updated_at > OffsetDateTime::now_utc() {
                     return Err(ServiceError::OpenID4VCIError(
@@ -242,7 +241,7 @@ impl ExchangeProtocolProviderExtra for ExchangeProtocolProviderCoreImpl {
             .clone();
         let credential_state = credential.state;
 
-        self.validate(credential_id, &credential_state, &credential_schema)
+        self.validate_credential_issuable(credential_id, &credential_state, &credential_schema)
             .await?;
 
         let format = credential_schema.format.to_owned();
