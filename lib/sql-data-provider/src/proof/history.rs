@@ -68,12 +68,41 @@ impl ProofHistoryDecorator {
             Err(anyhow::anyhow!("organisation is None").into())
         }
     }
+
+    async fn write_history_entry(
+        &self,
+        proof_id: &ProofId,
+        action: HistoryAction,
+    ) -> Result<(), DataLayerError> {
+        let organisation = self.get_organisation_for_proof(proof_id).await?;
+
+        let result = self
+            .history_repository
+            .create_history(History {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                action,
+                entity_id: Some((*proof_id).into()),
+                entity_type: HistoryEntityType::Proof,
+                metadata: None,
+                organisation: Some(organisation),
+            })
+            .await;
+
+        if let Err(err) = result {
+            tracing::debug!("failed to insert proof history event: {err:?}");
+        }
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
 impl ProofRepository for ProofHistoryDecorator {
     async fn create_proof(&self, request: Proof) -> Result<ProofId, DataLayerError> {
-        self.inner.create_proof(request).await
+        let history_action = HistoryAction::from(request.state.clone());
+        let proof_id = self.inner.create_proof(request).await?;
+        self.write_history_entry(&proof_id, history_action).await?;
+        Ok(proof_id)
     }
 
     async fn get_proof(
@@ -107,35 +136,8 @@ impl ProofRepository for ProofHistoryDecorator {
         state: ProofStateEnum,
     ) -> Result<(), DataLayerError> {
         self.inner.set_proof_state(proof_id, state.clone()).await?;
-
-        let action = match state {
-            ProofStateEnum::Created => HistoryAction::Created,
-            ProofStateEnum::Pending => HistoryAction::Pending,
-            ProofStateEnum::Requested => HistoryAction::Requested,
-            ProofStateEnum::Accepted => HistoryAction::Accepted,
-            ProofStateEnum::Rejected => HistoryAction::Rejected,
-            ProofStateEnum::Error => HistoryAction::Errored,
-        };
-
-        let organisation = self.get_organisation_for_proof(proof_id).await?;
-
-        let result = self
-            .history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                action,
-                entity_id: Some((*proof_id).into()),
-                entity_type: HistoryEntityType::Proof,
-                metadata: None,
-                organisation: Some(organisation),
-            })
-            .await;
-
-        if let Err(err) = result {
-            tracing::debug!("failed to insert proof history event: {err:?}");
-        }
-
+        self.write_history_entry(proof_id, HistoryAction::from(state))
+            .await?;
         Ok(())
     }
 
@@ -157,26 +159,8 @@ impl ProofRepository for ProofHistoryDecorator {
 
     async fn delete_proof_claims(&self, proof_id: &ProofId) -> Result<(), DataLayerError> {
         self.inner.delete_proof_claims(proof_id).await?;
-
-        let organisation = self.get_organisation_for_proof(proof_id).await?;
-
-        let result = self
-            .history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                action: HistoryAction::ClaimsRemoved,
-                entity_id: Some((*proof_id).into()),
-                entity_type: HistoryEntityType::Proof,
-                metadata: None,
-                organisation: Some(organisation),
-            })
-            .await;
-
-        if let Err(err) = result {
-            tracing::debug!("failed to insert proof history event: {err:?}");
-        }
-
+        self.write_history_entry(proof_id, HistoryAction::ClaimsRemoved)
+            .await?;
         Ok(())
     }
 

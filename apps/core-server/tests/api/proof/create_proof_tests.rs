@@ -1,7 +1,11 @@
+use one_core::model::history::HistoryAction;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::{json, Value};
 
-use crate::fixtures::{self, TestingConfigParams, TestingCredentialSchemaParams, TestingDidParams};
+use crate::fixtures::{
+    self, assert_history_count, TestingConfigParams, TestingCredentialSchemaParams,
+    TestingDidParams,
+};
 use crate::utils;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
@@ -69,6 +73,7 @@ async fn test_create_proof_success_without_related_key() {
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
     assert_eq!(proof.exchange, "OPENID4VC");
     assert_eq!(proof.transport, "HTTP");
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Created, 1).await;
 }
 
 #[tokio::test]

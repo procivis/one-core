@@ -23,7 +23,7 @@ use crate::model::did::{Did, DidRelations, DidType, KeyRole};
 use crate::model::history::HistoryAction;
 use crate::model::key::PublicKeyJwk;
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
+use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::resolver::did_method_id_from_value;
 use crate::provider::exchange_protocol::openid4vc::model::OpenID4VCParams;
@@ -446,6 +446,19 @@ impl From<CredentialStateEnum> for HistoryAction {
             CredentialStateEnum::Revoked => HistoryAction::Revoked,
             CredentialStateEnum::Suspended => HistoryAction::Suspended,
             CredentialStateEnum::Error => HistoryAction::Errored,
+        }
+    }
+}
+
+impl From<ProofStateEnum> for HistoryAction {
+    fn from(state: ProofStateEnum) -> Self {
+        match state {
+            ProofStateEnum::Created => HistoryAction::Created,
+            ProofStateEnum::Pending => HistoryAction::Pending,
+            ProofStateEnum::Requested => HistoryAction::Requested,
+            ProofStateEnum::Accepted => HistoryAction::Accepted,
+            ProofStateEnum::Rejected => HistoryAction::Rejected,
+            ProofStateEnum::Error => HistoryAction::Errored,
         }
     }
 }
