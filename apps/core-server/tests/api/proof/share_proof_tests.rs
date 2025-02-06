@@ -1,28 +1,21 @@
 use std::str::FromStr;
 
-use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::history::HistoryAction;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::Value;
-use shared_types::DidValue;
 use uuid::Uuid;
 
-use crate::fixtures::TestingDidParams;
+use crate::fixtures::assert_history_count;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
-use crate::utils::server::run_server;
 use crate::{fixtures, utils};
 
 #[tokio::test]
 async fn test_share_proof_success() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
-
-    let organisation = fixtures::create_organisation(&db_conn).await;
-
-    let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
+    let (context, organisation, did, _) = TestContext::new_with_did(None).await;
+    let credential_schema =
+        fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
         .as_ref()
@@ -33,7 +26,7 @@ async fn test_share_proof_success() {
         .to_owned();
 
     let proof_schema = fixtures::create_proof_schema(
-        &db_conn,
+        &context.db.db_conn,
         "test",
         &organisation,
         &[CreateProofInputSchema {
@@ -50,26 +43,8 @@ async fn test_share_proof_success() {
     )
     .await;
 
-    let key = fixtures::create_eddsa_key(&db_conn, &organisation).await;
-    let did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::KeyAgreement,
-                key,
-            }]),
-            did: Some(
-                DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")
-                    .unwrap(),
-            ),
-            ..Default::default()
-        }),
-    )
-    .await;
-
     let proof = fixtures::create_proof(
-        &db_conn,
+        &context.db.db_conn,
         &did,
         None,
         Some(&proof_schema),
@@ -80,9 +55,10 @@ async fn test_share_proof_success() {
     .await;
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn).await;
-
-    let url = format!("{base_url}/api/proof-request/v1/{}/share", proof.id);
+    let url = format!(
+        "{}/api/proof-request/v1/{}/share",
+        context.config.app.core_base_url, proof.id
+    );
     let resp = utils::client()
         .post(url)
         .bearer_auth("test")
@@ -95,6 +71,7 @@ async fn test_share_proof_success() {
     let resp: Value = resp.json().await.unwrap();
     let url = resp["url"].as_str().unwrap();
     assert!(url.starts_with("openid4vp"));
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
 }
 
 #[tokio::test]

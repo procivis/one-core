@@ -520,8 +520,7 @@ impl ProofService {
         clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
 
         let _ =
-            log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Requested)
-                .await;
+            log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Shared).await;
 
         Ok(EntityShareResponseDTO { url })
     }

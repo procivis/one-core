@@ -46,12 +46,14 @@ pub struct DbClient {
     pub interactions: InteractionsDB,
     pub trust_anchors: TrustAnchorDB,
     pub trust_entities: TrustEntityDB,
+    pub db_conn: DbConn,
 }
 
 impl DbClient {
     pub fn new(db: DbConn) -> Self {
-        let layer = DataLayer::build(db, vec![]);
+        let layer = DataLayer::build(db.clone(), vec![]);
         Self {
+            db_conn: db,
             organisations: OrganisationsDB::new(layer.get_organisation_repository()),
             dids: DidsDB::new(layer.get_did_repository()),
             credential_schemas: CredentialSchemasDB::new(layer.get_credential_schema_repository()),
