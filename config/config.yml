@@ -8,3 +8,4 @@ datatype: {}
 task: {}
 trustManagement: {}
 transport: {}
+cacheEntities: {}
