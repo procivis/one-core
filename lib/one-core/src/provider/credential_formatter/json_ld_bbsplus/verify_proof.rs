@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use one_crypto::signer::bbs::{BBSSigner, BbsProofInput};
 use sha2::Sha256;
 
 use super::super::json_ld::model::LdCredential;
@@ -17,6 +16,7 @@ use crate::provider::credential_formatter::json_ld_bbsplus::model::{
 use crate::provider::credential_formatter::model::{
     DetailCredential, TokenVerifier, VerificationFn,
 };
+use crate::provider::key_algorithm::key::MultiMessageSignatureKeyHandle;
 
 impl JsonLdBbsplus {
     pub(super) async fn verify(
@@ -119,7 +119,7 @@ impl JsonLdBbsplus {
             .verify(
                 credential.issuer_did.clone(),
                 Some(&ld_proof.verification_method),
-                "BBS_PLUS",
+                "BBS",
                 &signature_input,
                 &proof_components.bbs_signature,
             )
@@ -176,22 +176,21 @@ impl JsonLdBbsplus {
 
         let bbs_header = [transformed_proof_config_hash, mandatory_nquads_hash].concat();
 
-        let public_key = self
-            .get_public_key(&ld_credential, &ld_proof.verification_method)
+        let handle = self
+            .get_public_signature_handle(&ld_credential, &ld_proof.verification_method)
             .await?;
-
-        let verify_proof_input = BbsProofInput {
-            header: bbs_header,
-            presentation_header: Some(proof_components.presentation_header),
-            proof: proof_components.bbs_proof,
-            messages: non_mandatory_nquads
-                .into_iter()
-                .enumerate()
-                .map(|(i, value)| (proof_components.selective_indices[i], value.into_bytes()))
-                .collect(),
-        };
-
-        if let Err(error) = BBSSigner::verify_proof(&verify_proof_input, &public_key) {
+        if let Err(error) = handle.public().verify_proof(
+            Some(bbs_header),
+            Some(
+                non_mandatory_nquads
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, value)| (proof_components.selective_indices[i], value.into_bytes()))
+                    .collect(),
+            ),
+            Some(proof_components.presentation_header),
+            &proof_components.bbs_proof,
+        ) {
             return Err(FormatterError::CouldNotVerify(format!(
                 "Could not verify proof: {error}"
             )));
@@ -200,11 +199,11 @@ impl JsonLdBbsplus {
         ld_credential.try_into()
     }
 
-    async fn get_public_key(
+    async fn get_public_signature_handle(
         &self,
         ld_credential: &LdCredential,
         method_id: &str,
-    ) -> Result<Vec<u8>, FormatterError> {
+    ) -> Result<MultiMessageSignatureKeyHandle, FormatterError> {
         let did_document = self
             .did_method_provider
             .resolve(&ld_credential.issuer.to_did_value()?)
@@ -212,7 +211,7 @@ impl JsonLdBbsplus {
             .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
         let algo_provider = self
             .key_algorithm_provider
-            .get_key_algorithm("BBS_PLUS")
+            .key_algorithm_from_name("BBS_PLUS")
             .ok_or(FormatterError::CouldNotVerify(
                 "Missing BBS_PLUS algorithm".to_owned(),
             ))?;
@@ -230,12 +229,16 @@ impl JsonLdBbsplus {
                 .ok_or(FormatterError::Failed("Missing issuer key".to_string()))?
         };
 
-        let public_key = algo_provider
-            .jwk_to_bytes(&verification_method.public_key_jwk)
+        algo_provider
+            .parse_jwk(&verification_method.public_key_jwk)
             .map_err(|e| {
                 FormatterError::CouldNotVerify(format!("Could not get public key from JWK: {e}"))
-            })?;
-        Ok(public_key)
+            })?
+            .multi_message_signature()
+            .ok_or(FormatterError::CouldNotVerify(
+                "Missing multi-message signature key handle".to_string(),
+            ))
+            .cloned()
     }
 }
 

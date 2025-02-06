@@ -19,7 +19,7 @@ fn test_jwk_to_bytes() {
             155, 176, 4, 229, 68, 29, 140, 187, 130, 58, 118, 71, 7, 88, 2, 21, 250, 54, 186, 248,
             76, 233, 111, 248, 196, 89, 169, 36, 173, 54, 175, 187,
         ],
-        alg.jwk_to_bytes(&jwk).unwrap()
+        alg.parse_jwk(&jwk).unwrap().public_key_as_raw()
     )
 }
 
@@ -37,5 +37,5 @@ fn test_jwk_to_bytes_fail_wrong_variant() {
         algorithm: Algorithm::Crydi3,
     });
 
-    assert!(alg.jwk_to_bytes(&jwk).is_err());
+    assert!(alg.parse_jwk(&jwk).is_err());
 }

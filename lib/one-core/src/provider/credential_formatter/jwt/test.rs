@@ -121,9 +121,16 @@ async fn test_build_from_token() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm_from_jose_alg()
+        .expect_key_algorithm_from_jose_alg()
         .once()
-        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "Algorithm1".to_string())));
+        .returning(move |_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_id()
+                .return_once(|| "Algorithm1".to_string());
+
+            Some(("Algorithm1".to_string(), Arc::new(key_algorithm)))
+        });
 
     let jwt_part = extract_jwt_part(reference_token.clone());
     let jwt: Jwt<Payload> = Jwt::build_from_token(

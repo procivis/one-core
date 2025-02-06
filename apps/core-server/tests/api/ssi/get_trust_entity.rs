@@ -14,7 +14,7 @@ use one_core::provider::key_algorithm::es256::{Algorithm, Es256, Es256Params};
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_crypto::signer::es256::ES256Signer;
-use one_crypto::{CryptoProviderImpl, Signer, SignerError};
+use one_crypto::{Signer, SignerError};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -107,15 +107,13 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
         )
         .await;
 
-    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-        HashMap::from_iter(vec![(
+    let key_algorithm_provider =
+        Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
             "ES256".to_owned(),
             Arc::new(Es256::new(Es256Params {
                 algorithm: Algorithm::Es256,
             })) as Arc<dyn KeyAlgorithm>,
-        )]),
-        Arc::new(CryptoProviderImpl::new(HashMap::new(), HashMap::new())),
-    ));
+        )])));
     let did_method = KeyDidMethod::new(key_algorithm_provider.clone());
     let did_value = did_method
         .create(None, &None, Some(vec![key.clone()]))

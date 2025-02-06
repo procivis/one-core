@@ -73,8 +73,8 @@ impl SignatureProvider for SignatureProviderImpl {
 
     fn jose_alg(&self) -> Option<String> {
         self.key_algorithm_provider
-            .get_key_algorithm(&self.key.key_type)
-            .and_then(|key_algorithm| key_algorithm.jose_alg().first().cloned())
+            .key_algorithm_from_name(&self.key.key_type)
+            .and_then(|key_algorithm| key_algorithm.issuance_jose_alg_id())
     }
 
     fn get_public_key(&self) -> Vec<u8> {

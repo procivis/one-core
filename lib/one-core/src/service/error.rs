@@ -21,6 +21,7 @@ use crate::provider::did_method::mdl::DidMdlValidationError;
 use crate::provider::exchange_protocol::error::{ExchangeProtocolError, TxCodeError};
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
+use crate::provider::key_algorithm::key::KeyHandleError;
 use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
 use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::error::RevocationError;
@@ -71,6 +72,9 @@ pub enum ServiceError {
 
     #[error(transparent)]
     KeyAlgorithmProviderError(#[from] KeyAlgorithmProviderError),
+
+    #[error(transparent)]
+    KeyHandleError(#[from] KeyHandleError),
 
     #[error("Did method error `{0}`")]
     DidMethodError(#[from] DidMethodError),
@@ -1008,6 +1012,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Invalid exchange type for retract proof")]
     BR_0199,
+
+    #[strum(to_string = "Key handle error")]
+    BR_0201,
 }
 
 impl From<FormatError> for ServiceError {
@@ -1056,6 +1063,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::ValidationError(_) | Self::Other(_) => ErrorCode::BR_0000,
             Self::Revocation(_) => ErrorCode::BR_0101,
             Self::TrustManagementError(_) => ErrorCode::BR_0185,
+            Self::KeyHandleError(_) => ErrorCode::BR_0201,
         }
     }
 }

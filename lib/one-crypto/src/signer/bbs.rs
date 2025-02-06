@@ -71,7 +71,7 @@ impl Signer for BBSSigner {
 
 /// The BBS signature input is structured. Try to parse it, otherwise use the input
 /// just as plain key. The latter is used for e.g. revocation lists signature.
-fn parse_bbs_input(input: &[u8]) -> BbsInput {
+pub fn parse_bbs_input(input: &[u8]) -> BbsInput {
     if let Ok(parsed_input) = serde_json::from_slice(input) {
         parsed_input
     } else {

@@ -9,6 +9,9 @@ pub enum KeyAlgorithmProviderError {
     MissingAlgorithmImplementation(String),
     #[error("Cannot find signer `{0}`")]
     MissingSignerImplementation(String),
+
+    #[error("Key algorithm error: `{0}`")]
+    KeyAlgorithm(KeyAlgorithmError),
 }
 
 #[derive(Debug, Error)]

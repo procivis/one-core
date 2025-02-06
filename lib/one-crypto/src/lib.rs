@@ -60,7 +60,7 @@ impl CryptoProvider for CryptoProviderImpl {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Error)]
+#[derive(Debug, PartialEq, Eq, Error, Clone)]
 pub enum CryptoProviderError {
     #[error("Missing hasher: `{0}`")]
     MissingHasher(String),
@@ -76,7 +76,7 @@ pub enum HasherError {
     CryptoError(#[from] CryptoProviderError),
 }
 
-#[derive(Debug, PartialEq, Eq, Error)]
+#[derive(Debug, PartialEq, Eq, Error, Clone)]
 pub enum SignerError {
     #[error("Crypto provider error: `{0}`")]
     CryptoError(#[from] CryptoProviderError),

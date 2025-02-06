@@ -1,78 +1,99 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use one_crypto::{CryptoProvider, Signer};
+use zeroize::Zeroizing;
 
 use super::error::KeyAlgorithmProviderError;
-use super::model::ParsedPublicKeyJwk;
 use super::KeyAlgorithm;
 use crate::model::key::PublicKeyJwk;
+use crate::provider::key_algorithm::key::KeyHandle;
+
+#[derive(Clone)]
+pub struct ParsedKey {
+    pub algorithm_id: String,
+    pub key: KeyHandle,
+}
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait KeyAlgorithmProvider: Send + Sync {
-    fn get_key_algorithm(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>>;
+    fn key_algorithm_from_name(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>>;
+    fn key_algorithm_from_id(&self, algorithm_id: &str) -> Option<Arc<dyn KeyAlgorithm>>;
 
-    fn get_key_algorithm_from_jose_alg(
+    fn key_algorithm_from_jose_alg(
         &self,
         jose_alg: &str,
-    ) -> Option<(Arc<dyn KeyAlgorithm>, String)>;
+    ) -> Option<(String, Arc<dyn KeyAlgorithm>)>;
+    fn key_algorithm_from_cose_alg(&self, cose_alg: i32)
+        -> Option<(String, Arc<dyn KeyAlgorithm>)>;
 
-    fn get_signer(&self, algorithm: &str) -> Result<Arc<dyn Signer>, KeyAlgorithmProviderError>;
+    fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<ParsedKey, KeyAlgorithmProviderError>;
+    fn parse_multibase(&self, multibase: &str) -> Result<ParsedKey, KeyAlgorithmProviderError>;
+    fn parse_raw(&self, public_key_der: &[u8]) -> Result<ParsedKey, KeyAlgorithmProviderError>;
 
-    fn parse_jwk(
+    fn reconstruct_key(
         &self,
-        key: &PublicKeyJwk,
-    ) -> Result<ParsedPublicKeyJwk, KeyAlgorithmProviderError>;
+        algorithm: &str,
+        public_key: &[u8],
+        private_key: Option<Zeroizing<Vec<u8>>>,
+        r#use: Option<String>,
+    ) -> Result<KeyHandle, KeyAlgorithmProviderError>;
 }
 
 pub struct KeyAlgorithmProviderImpl {
     algorithms: HashMap<String, Arc<dyn KeyAlgorithm>>,
-    crypto: Arc<dyn CryptoProvider>,
 }
 
 impl KeyAlgorithmProviderImpl {
-    pub fn new(
-        algorithms: HashMap<String, Arc<dyn KeyAlgorithm>>,
-        crypto: Arc<dyn CryptoProvider>,
-    ) -> Self {
-        Self { algorithms, crypto }
+    pub fn new(algorithms: HashMap<String, Arc<dyn KeyAlgorithm>>) -> Self {
+        Self { algorithms }
     }
 }
 
 impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
-    fn get_key_algorithm(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>> {
+    fn key_algorithm_from_name(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>> {
         self.algorithms.get(algorithm).cloned()
     }
 
-    fn get_key_algorithm_from_jose_alg(
+    fn key_algorithm_from_id(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>> {
+        self.algorithms.iter().find_map(|(_, alg)| {
+            if alg.algorithm_id() == algorithm {
+                Some(alg.clone())
+            } else {
+                None
+            }
+        })
+    }
+
+    fn key_algorithm_from_jose_alg(
         &self,
         jose_alg: &str,
-    ) -> Option<(Arc<dyn KeyAlgorithm>, String)> {
+    ) -> Option<(String, Arc<dyn KeyAlgorithm>)> {
         self.algorithms
             .iter()
-            .find(|(_, alg)| alg.jose_alg().contains(&jose_alg.to_string()))
-            .map(|(id, alg)| (alg.clone(), id.to_owned()))
+            .find(|(_, alg)| {
+                alg.verification_jose_alg_ids()
+                    .iter()
+                    .any(|v| v == jose_alg)
+            })
+            .map(|(id, alg)| (id.to_owned(), alg.clone()))
     }
 
-    fn get_signer(&self, algorithm: &str) -> Result<Arc<dyn Signer>, KeyAlgorithmProviderError> {
-        let key_algorithm = self.get_key_algorithm(algorithm).ok_or(
-            KeyAlgorithmProviderError::MissingAlgorithmImplementation(algorithm.to_owned()),
-        )?;
-        let signer_algorithm = key_algorithm.get_signer_algorithm_id();
-        self.crypto
-            .get_signer(&signer_algorithm)
-            .map_err(|e| KeyAlgorithmProviderError::MissingSignerImplementation(e.to_string()))
-    }
-
-    fn parse_jwk(
+    fn key_algorithm_from_cose_alg(
         &self,
-        key: &PublicKeyJwk,
-    ) -> Result<ParsedPublicKeyJwk, KeyAlgorithmProviderError> {
+        cose_alg: i32,
+    ) -> Option<(String, Arc<dyn KeyAlgorithm>)> {
+        self.algorithms
+            .iter()
+            .find(|(_, alg)| alg.cose_alg_id().is_some_and(|alg| alg == cose_alg))
+            .map(|(id, alg)| (id.to_owned(), alg.clone()))
+    }
+
+    fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<ParsedKey, KeyAlgorithmProviderError> {
         for algorithm in self.algorithms.values() {
-            if let Ok(public_key_bytes) = algorithm.jwk_to_bytes(key) {
-                return Ok(ParsedPublicKeyJwk {
-                    public_key_bytes,
-                    signer_algorithm_id: algorithm.get_signer_algorithm_id(),
+            if let Ok(public_key) = algorithm.parse_jwk(key) {
+                return Ok(ParsedKey {
+                    algorithm_id: algorithm.algorithm_id(),
+                    key: public_key,
                 });
             }
         }
@@ -80,5 +101,50 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         Err(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
             "None of the algorithms supports given key".to_string(),
         ))
+    }
+
+    fn parse_multibase(&self, multibase: &str) -> Result<ParsedKey, KeyAlgorithmProviderError> {
+        for algorithm in self.algorithms.values() {
+            if let Ok(public_key) = algorithm.parse_multibase(multibase) {
+                return Ok(ParsedKey {
+                    algorithm_id: algorithm.algorithm_id(),
+                    key: public_key,
+                });
+            }
+        }
+
+        Err(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+            "None of the algorithms supports given key".to_string(),
+        ))
+    }
+
+    fn parse_raw(&self, public_key_der: &[u8]) -> Result<ParsedKey, KeyAlgorithmProviderError> {
+        for algorithm in self.algorithms.values() {
+            if let Ok(public_key) = algorithm.parse_raw(public_key_der) {
+                return Ok(ParsedKey {
+                    algorithm_id: algorithm.algorithm_id(),
+                    key: public_key,
+                });
+            }
+        }
+
+        Err(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+            "None of the algorithms supports given key".to_string(),
+        ))
+    }
+
+    fn reconstruct_key(
+        &self,
+        algorithm: &str,
+        public_key: &[u8],
+        private_key: Option<Zeroizing<Vec<u8>>>,
+        r#use: Option<String>,
+    ) -> Result<KeyHandle, KeyAlgorithmProviderError> {
+        let algorithm = self.algorithms.get(algorithm).ok_or(
+            KeyAlgorithmProviderError::MissingAlgorithmImplementation(algorithm.to_string()),
+        )?;
+        algorithm
+            .reconstruct_key(public_key, private_key, r#use)
+            .map_err(KeyAlgorithmProviderError::KeyAlgorithm)
     }
 }

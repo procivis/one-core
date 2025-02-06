@@ -1,11 +1,15 @@
 use std::sync::Arc;
 
-use one_crypto::MockSigner;
+use mockall::predicate::{always, eq};
 use time::OffsetDateTime;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 use super::InternalKeyProvider;
 use crate::model::key::Key;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
 use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
@@ -15,19 +19,22 @@ use crate::provider::key_storage::KeyStorage;
 #[tokio::test]
 async fn test_internal_generate() {
     let mut mock_key_algorithm = MockKeyAlgorithm::default();
-    mock_key_algorithm
-        .expect_generate_key_pair()
-        .times(1)
-        .returning(|| GeneratedKey {
+    mock_key_algorithm.expect_generate_key().return_once(|| {
+        Ok(GeneratedKey {
+            key: KeyHandle::SignatureOnly(SignatureKeyHandle::WithPrivateKey {
+                private: Arc::new(MockSignaturePrivateKeyHandle::default()),
+                public: Arc::new(MockSignaturePublicKeyHandle::default()),
+            }),
             public: vec![1],
-            private: vec![1, 2, 3],
-        });
+            private: Zeroizing::new(vec![1, 2, 3]),
+        })
+    });
 
     let arc = Arc::new(mock_key_algorithm);
 
     let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
     mock_key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .times(1)
         .returning(move |_| Some(arc.clone()));
 
@@ -43,19 +50,22 @@ async fn test_internal_generate() {
 #[tokio::test]
 async fn test_internal_generate_with_encryption() {
     let mut mock_key_algorithm = MockKeyAlgorithm::default();
-    mock_key_algorithm
-        .expect_generate_key_pair()
-        .times(1)
-        .returning(|| GeneratedKey {
+    mock_key_algorithm.expect_generate_key().return_once(|| {
+        Ok(GeneratedKey {
+            key: KeyHandle::SignatureOnly(SignatureKeyHandle::WithPrivateKey {
+                private: Arc::new(MockSignaturePrivateKeyHandle::default()),
+                public: Arc::new(MockSignaturePublicKeyHandle::default()),
+            }),
             public: vec![1],
-            private: vec![1, 2, 3],
-        });
+            private: Zeroizing::new(vec![1, 2, 3]),
+        })
+    });
 
     let arc = Arc::new(mock_key_algorithm);
 
     let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
     mock_key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .times(1)
         .returning(move |_| Some(arc.clone()));
 
@@ -75,31 +85,47 @@ async fn test_internal_sign_with_encryption() {
     let expected_signed_response = vec![1u8];
 
     let mut mock_key_algorithm = MockKeyAlgorithm::default();
+    let signed = expected_signed_response.clone();
     mock_key_algorithm
-        .expect_generate_key_pair()
-        .times(1)
-        .returning(|| GeneratedKey {
-            public: vec![1],
-            private: vec![1, 2, 3],
+        .expect_generate_key()
+        .return_once(move || {
+            Ok(GeneratedKey {
+                key: KeyHandle::SignatureOnly(SignatureKeyHandle::WithPrivateKey {
+                    private: Arc::new(MockSignaturePrivateKeyHandle::default()),
+                    public: Arc::new(MockSignaturePublicKeyHandle::default()),
+                }),
+                public: vec![1],
+                private: Zeroizing::new(vec![1, 2, 3]),
+            })
         });
-    let mut mock_signer = MockSigner::default();
-    mock_signer
-        .expect_sign()
-        .times(1)
-        .returning(move |_, _, _| Ok(expected_signed_response.clone()));
+    mock_key_algorithm
+        .expect_reconstruct_key()
+        .with(
+            eq(vec![1]),
+            eq(Some(Zeroizing::new(vec![1, 2, 3]))),
+            always(),
+        )
+        .return_once(|_, _, _| {
+            let mut private_key_handle = MockSignaturePrivateKeyHandle::default();
+            private_key_handle
+                .expect_sign()
+                .return_once(move |_| Ok(signed));
+
+            Ok(KeyHandle::SignatureOnly(
+                SignatureKeyHandle::WithPrivateKey {
+                    private: Arc::new(private_key_handle),
+                    public: Arc::new(MockSignaturePublicKeyHandle::default()),
+                },
+            ))
+        });
 
     let arc_key_algorithm = Arc::new(mock_key_algorithm);
-    let arc_signer = Arc::new(mock_signer);
 
     let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
     mock_key_algorithm_provider
-        .expect_get_key_algorithm()
-        .times(1)
+        .expect_key_algorithm_from_name()
+        .times(2)
         .returning(move |_| Some(arc_key_algorithm.clone()));
-    mock_key_algorithm_provider
-        .expect_get_signer()
-        .times(1)
-        .returning(move |_| Ok(arc_signer.clone()));
 
     let provider = InternalKeyProvider::new(
         Arc::new(mock_key_algorithm_provider),

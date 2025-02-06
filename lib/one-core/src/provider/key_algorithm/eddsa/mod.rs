@@ -1,10 +1,18 @@
+use std::sync::Arc;
+
+use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::signer::eddsa::EDDSASigner;
+use one_crypto::{Signer, SignerError};
 use serde::Deserialize;
 use zeroize::Zeroizing;
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
+    SignaturePublicKeyHandle,
+};
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
 use crate::provider::key_algorithm::KeyAlgorithm;
 
@@ -33,68 +41,163 @@ impl Eddsa {
 }
 
 impl KeyAlgorithm for Eddsa {
-    fn get_signer_algorithm_id(&self) -> String {
+    fn algorithm_id(&self) -> String {
         "Ed25519".to_string()
     }
 
-    fn jose_alg(&self) -> Vec<String> {
-        vec!["EdDSA".to_string(), "EDDSA".to_string()]
-    }
-
-    fn get_multibase(&self, public_key: &[u8]) -> Result<String, KeyAlgorithmError> {
-        let codec = &[0xed, 0x1];
-        let key = EDDSASigner::check_public_key(public_key)?;
-        let data = [codec, key.as_slice()].concat();
-        Ok(format!("z{}", bs58::encode(data).into_string()))
-    }
-
-    fn generate_key_pair(&self) -> GeneratedKey {
-        let key_pair = EDDSASigner::generate_key_pair();
-
-        GeneratedKey {
-            public: key_pair.public,
-            private: key_pair.private.to_vec(),
+    fn get_capabilities(&self) -> KeyAlgorithmCapabilities {
+        KeyAlgorithmCapabilities {
+            features: vec![Features::GenerateCSR],
         }
     }
 
-    fn bytes_to_jwk(
-        &self,
-        bytes: &[u8],
-        r#use: Option<String>,
-    ) -> Result<PublicKeyJwk, KeyAlgorithmError> {
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
-            r#use,
-            kid: None,
-            crv: "Ed25519".to_string(),
-            x: Base64UrlSafeNoPadding::encode_to_string(bytes)
-                .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?,
-            y: None,
-        }))
+    fn generate_key(&self) -> Result<GeneratedKey, KeyAlgorithmError> {
+        let key_pair = EDDSASigner::generate_key_pair();
+
+        Ok(GeneratedKey {
+            key: KeyHandle::SignatureOnly(SignatureKeyHandle::WithPrivateKey {
+                private: Arc::new(EddsaPrivateKeyHandle::new(
+                    key_pair.private.clone(),
+                    key_pair.public.clone(),
+                )),
+                public: Arc::new(EddsaPublicKeyHandle::new(key_pair.public.clone(), None)),
+            }),
+            public: key_pair.public,
+            private: Zeroizing::new(key_pair.private.to_vec()),
+        })
     }
 
-    fn jwk_to_bytes(&self, jwk: &PublicKeyJwk) -> Result<Vec<u8>, KeyAlgorithmError> {
-        if let PublicKeyJwk::Okp(data) = jwk {
+    fn reconstruct_key(
+        &self,
+        public_key: &[u8],
+        private_key: Option<Zeroizing<Vec<u8>>>,
+        r#use: Option<String>,
+    ) -> Result<KeyHandle, KeyAlgorithmError> {
+        if let Some(private_key) = private_key {
+            Ok(KeyHandle::SignatureOnly(
+                SignatureKeyHandle::WithPrivateKey {
+                    private: Arc::new(EddsaPrivateKeyHandle::new(private_key, public_key.to_vec())),
+                    public: Arc::new(EddsaPublicKeyHandle::new(public_key.to_vec(), r#use)),
+                },
+            ))
+        } else {
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(EddsaPublicKeyHandle::new(public_key.to_vec(), r#use)),
+            )))
+        }
+    }
+
+    fn issuance_jose_alg_id(&self) -> Option<String> {
+        Some("EdDSA".to_string())
+    }
+
+    fn verification_jose_alg_ids(&self) -> Vec<String> {
+        vec!["EdDSA".to_string(), "EDDSA".to_string()]
+    }
+
+    fn cose_alg_id(&self) -> Option<i32> {
+        todo!()
+    }
+
+    fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<KeyHandle, KeyAlgorithmError> {
+        if let PublicKeyJwk::Okp(data) = key {
             let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
                 .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
 
-            Ok(x)
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(EddsaPublicKeyHandle::new(x, data.r#use.clone())),
+            )))
         } else {
             Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
         }
     }
 
-    fn private_key_as_jwk(
-        &self,
-        secret_key: Zeroizing<Vec<u8>>,
-    ) -> Result<Zeroizing<String>, KeyAlgorithmError> {
-        let key_pair = EDDSASigner::parse_private_key(&secret_key)?;
+    fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError> {
+        let x = Base64UrlSafeNoPadding::decode_to_vec(multibase, None)
+            .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
+        Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+            Arc::new(EddsaPublicKeyHandle::new(x, None)),
+        )))
+    }
+
+    fn parse_raw(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError> {
+        let key = EDDSASigner::public_key_from_der(public_key_der)?;
+        Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+            Arc::new(EddsaPublicKeyHandle::new(key, None)),
+        )))
+    }
+}
+
+struct EddsaPublicKeyHandle {
+    public_key: Vec<u8>,
+    r#use: Option<String>,
+}
+
+impl EddsaPublicKeyHandle {
+    fn new(public_key: Vec<u8>, r#use: Option<String>) -> Self {
+        Self { public_key, r#use }
+    }
+}
+
+struct EddsaPrivateKeyHandle {
+    private_key: Zeroizing<Vec<u8>>,
+    public_key: Vec<u8>,
+}
+
+impl EddsaPrivateKeyHandle {
+    fn new(private_key: Zeroizing<Vec<u8>>, public_key: Vec<u8>) -> Self {
+        Self {
+            private_key,
+            public_key,
+        }
+    }
+}
+
+impl SignaturePublicKeyHandle for EddsaPublicKeyHandle {
+    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            r#use: self.r#use.clone(),
+            kid: None,
+            crv: "Ed25519".to_string(),
+            x: Base64UrlSafeNoPadding::encode_to_string(&self.public_key)
+                .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
+            y: None,
+        }))
+    }
+
+    fn as_multibase(&self) -> Result<String, KeyHandleError> {
+        let codec = &[0xed, 0x1];
+        let key = EDDSASigner::check_public_key(&self.public_key)
+            .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
+        let data = [codec, key.as_slice()].concat();
+        Ok(format!("z{}", bs58::encode(data).into_string()))
+    }
+
+    fn as_raw(&self) -> Vec<u8> {
+        self.public_key.clone()
+    }
+
+    fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
+        EDDSASigner {}.verify(message, signature, &self.public_key)
+    }
+}
+
+#[async_trait]
+impl SignaturePrivateKeyHandle for EddsaPrivateKeyHandle {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+        EDDSASigner {}.sign(message, &self.public_key, &self.private_key)
+    }
+
+    fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
+        let key_pair = EDDSASigner::parse_private_key(&self.private_key)
+            .map_err(|e| KeyHandleError::EncodingPrivateJwk(e.to_string()))?;
 
         let x = Base64UrlSafeNoPadding::encode_to_string(key_pair.public.as_slice())
-            .map_err(|err| KeyAlgorithmError::Failed(err.to_string()))?;
+            .map_err(|err| KeyHandleError::EncodingPrivateJwk(err.to_string()))?;
 
         let d = Base64UrlSafeNoPadding::encode_to_string(key_pair.private.as_slice())
             .map(Zeroizing::new)
-            .map_err(|err| KeyAlgorithmError::Failed(err.to_string()))?;
+            .map_err(|err| KeyHandleError::EncodingPrivateJwk(err.to_string()))?;
 
         let jwk = serde_json::json!({
             "kty": "OKP",
@@ -105,15 +208,5 @@ impl KeyAlgorithm for Eddsa {
         .to_string();
 
         Ok(Zeroizing::new(jwk))
-    }
-
-    fn public_key_from_der(&self, public_key_der: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
-        Ok(EDDSASigner::public_key_from_der(public_key_der)?)
-    }
-
-    fn get_capabilities(&self) -> KeyAlgorithmCapabilities {
-        KeyAlgorithmCapabilities {
-            features: vec![Features::GenerateCSR],
-        }
     }
 }

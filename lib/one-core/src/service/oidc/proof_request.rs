@@ -95,7 +95,9 @@ pub(crate) async fn generate_authorization_request_client_id_scheme_verifier_att
     } = get_jwt_signer(proof, key_algorithm_provider, key_provider)?;
 
     let jwk = key_algorithm
-        .bytes_to_jwk(&verifier_key.public_key, None)
+        .reconstruct_key(&verifier_key.public_key, None, None)
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+        .public_key_as_jwk()
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
     let proof_of_possession_key = Some(ProofOfPossessionKey {
         key_id: None,
@@ -329,18 +331,17 @@ fn get_jwt_signer<'a>(
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let key_algorithm = key_algorithm_provider
-        .get_key_algorithm(&verifier_key.key_type)
+        .key_algorithm_from_name(&verifier_key.key_type)
         .ok_or(ExchangeProtocolError::Failed(
             "algorithm not found".to_string(),
         ))?;
 
-    let jose_algorithm = key_algorithm
-        .jose_alg()
-        .first()
-        .ok_or(ExchangeProtocolError::Failed(
-            "JOSE algorithm not found".to_string(),
-        ))?
-        .to_owned();
+    let jose_algorithm =
+        key_algorithm
+            .issuance_jose_alg_id()
+            .ok_or(ExchangeProtocolError::Failed(
+                "JOSE algorithm not found".to_string(),
+            ))?;
 
     Ok(JWTSigner {
         auth_fn,

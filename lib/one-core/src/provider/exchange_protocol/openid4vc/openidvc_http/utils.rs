@@ -69,8 +69,8 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         .await
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-    let (alg, alg_id) = key_algorithm_provider
-        .get_key_algorithm_from_jose_alg(&request_token.header.algorithm)
+    let (_alg_id, alg) = key_algorithm_provider
+        .key_algorithm_from_jose_alg(&request_token.header.algorithm)
         .ok_or(ExchangeProtocolError::Failed(format!(
             "Missing algorithm: {}",
             request_token.header.algorithm
@@ -82,19 +82,16 @@ async fn parse_referenced_data_from_x509_san_dns_token(
             "Missing key in did".to_string(),
         ))?;
 
-    let public_key = alg
-        .jwk_to_bytes(&key.public_key_jwk)
+    let handle = alg
+        .parse_jwk(&key.public_key_jwk)
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-    let signer = key_algorithm_provider
-        .get_signer(&alg_id)
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-    signer
+    handle
+        .signature()
+        .unwrap()
+        .public()
         .verify(
             request_token.unverified_jwt.as_bytes(),
             &request_token.signature,
-            &public_key,
         )
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
@@ -144,8 +141,8 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         .await
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
-    let (alg, alg_id) = key_algorithm_provider
-        .get_key_algorithm_from_jose_alg(&request_token.header.algorithm)
+    let (_alg_id, alg) = key_algorithm_provider
+        .key_algorithm_from_jose_alg(&request_token.header.algorithm)
         .ok_or(ExchangeProtocolError::Failed(format!(
             "Missing algorithm: {}",
             request_token.header.algorithm
@@ -160,19 +157,14 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         .jwk
         .into();
 
-    let public_key = alg
-        .jwk_to_bytes(&public_key_cnf)
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-    let signer = key_algorithm_provider
-        .get_signer(&alg_id)
-        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
-
-    signer
+    alg.parse_jwk(&public_key_cnf)
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+        .signature()
+        .unwrap()
+        .public()
         .verify(
             request_token.unverified_jwt.as_bytes(),
             &request_token.signature,
-            &public_key,
         )
         .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 

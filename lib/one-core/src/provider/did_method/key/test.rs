@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use mockall::predicate;
-use one_crypto::MockCryptoProvider;
 use serde_json::json;
 use shared_types::DidId;
 use time::OffsetDateTime;
@@ -12,6 +11,9 @@ use super::KeyDidMethod;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::did_method::model::{AmountOfKeys, DidDocument, DidVerificationMethod};
 use crate::provider::did_method::DidMethod;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 
@@ -19,8 +21,7 @@ fn setup_key_did_method(key_algorithm: MockKeyAlgorithm, algorithm_id: &str) -> 
     let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
     key_algorithms.insert(algorithm_id.to_string(), Arc::new(key_algorithm));
 
-    let key_algorithm_provider =
-        KeyAlgorithmProviderImpl::new(key_algorithms, Arc::new(MockCryptoProvider::new()));
+    let key_algorithm_provider = KeyAlgorithmProviderImpl::new(key_algorithms);
 
     KeyDidMethod::new(Arc::new(key_algorithm_provider))
 }
@@ -29,23 +30,30 @@ fn setup_key_did_method(key_algorithm: MockKeyAlgorithm, algorithm_id: &str) -> 
 async fn test_did_key_resolve_details_eddsa() {
     let mut key_algorithm = MockKeyAlgorithm::default();
     key_algorithm
-        .expect_bytes_to_jwk()
+        .expect_reconstruct_key()
         .with(
             predicate::eq(vec![
                 59, 106, 39, 188, 206, 182, 164, 45, 98, 163, 168, 208, 42, 111, 13, 115, 101, 50,
                 21, 119, 29, 226, 67, 166, 58, 192, 72, 161, 139, 89, 218, 41,
             ]),
             predicate::eq(None),
+            predicate::always(),
         )
-        .once()
-        .returning(|_, _| {
-            Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
-                r#use: None,
-                kid: None,
-                crv: "Ed25519".to_owned(),
-                x: "4zvwRjXUKGfvwnParsHAS3HuSVzV5cA4McphgmoCtajS".to_owned(),
-                y: None,
-            }))
+        .return_once(|_, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    r#use: None,
+                    kid: None,
+                    crv: "Ed25519".to_owned(),
+                    x: "4zvwRjXUKGfvwnParsHAS3HuSVzV5cA4McphgmoCtajS".to_owned(),
+                    y: None,
+                }))
+            });
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
         });
 
     let did_method = setup_key_did_method(key_algorithm, "EDDSA");
@@ -116,23 +124,30 @@ async fn test_did_key_resolve_details_eddsa() {
 async fn test_did_key_resolve_details_es256() {
     let mut key_algorithm = MockKeyAlgorithm::default();
     key_algorithm
-        .expect_bytes_to_jwk()
+        .expect_reconstruct_key()
         .with(
             predicate::eq(vec![
                 3, 138, 10, 197, 154, 45, 48, 134, 232, 161, 42, 120, 253, 71, 115, 166, 213, 42,
                 12, 166, 30, 246, 193, 65, 158, 21, 160, 91, 204, 109, 175, 206, 123,
             ]),
             predicate::eq(None),
+            predicate::always(),
         )
-        .once()
-        .returning(|_, _| {
-            Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-                r#use: None,
-                kid: None,
-                crv: "P-256".to_string(),
-                x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
-                y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
-            }))
+        .return_once(|_, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    r#use: None,
+                    kid: None,
+                    crv: "P-256".to_string(),
+                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                }))
+            });
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
         });
 
     let did_method = setup_key_did_method(key_algorithm, "ES256");
@@ -202,24 +217,34 @@ async fn test_did_key_resolve_details_es256() {
 async fn test_did_key_resolve_details_bbs() {
     let mut key_algorithm = MockKeyAlgorithm::default();
     key_algorithm
-        .expect_bytes_to_jwk()
-        .with(predicate::eq(vec![
-            130, 59, 60, 150, 203, 83, 130, 132, 224, 92, 193, 122, 65, 119, 114, 135, 121, 188,
-            147, 104, 177, 197, 68, 70, 96, 179, 26, 99, 41, 85, 43, 252, 116, 23, 193, 225, 19,
-            204, 228, 209, 133, 162, 25, 93, 194, 31, 10, 80, 17, 173, 172, 31, 131, 193, 100, 182,
-            152, 10, 127, 44, 123, 237, 92, 150, 96, 142, 68, 59, 10, 197, 182, 240, 220, 155, 63,
-            2, 91, 184, 58, 105, 21, 246, 9, 155, 38, 204, 181, 96, 93, 171, 183, 181, 113, 206,
-            206, 146
-        ]), predicate::eq(None))
-        .once()
-        .returning(|_, _| {
-            Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+        .expect_reconstruct_key()
+        .with(
+            predicate::eq(vec![
+                130, 59, 60, 150, 203, 83, 130, 132, 224, 92, 193, 122, 65, 119, 114, 135, 121,
+                188, 147, 104, 177, 197, 68, 70, 96, 179, 26, 99, 41, 85, 43, 252, 116, 23, 193,
+                225, 19, 204, 228, 209, 133, 162, 25, 93, 194, 31, 10, 80, 17, 173, 172, 31, 131,
+                193, 100, 182, 152, 10, 127, 44, 123, 237, 92, 150, 96, 142, 68, 59, 10, 197, 182,
+                240, 220, 155, 63, 2, 91, 184, 58, 105, 21, 246, 9, 155, 38, 204, 181, 96, 93, 171,
+                183, 181, 113, 206, 206, 146,
+            ]),
+            predicate::eq(None),
+            predicate::always(),
+        )
+        .return_once(|_, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle
+                .expect_as_jwk()
+                .return_once(||  Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
                 r#use: None,
                 kid: None,
                 crv: "Bls12381G2".to_string(),
                 x: "Ajs8lstTgoTgXMF6QXdyh3m8k2ixxURGYLMaYylVK_x0F8HhE8zk0YWiGV3CHwpQEa2sH4PBZLaYCn8se-1clmCORDsKxbbw3Js_Alu4OmkV9gmbJsy1YF2rt7Vxzs6S".to_owned(),
                 y: Some("BVkkrVEib-P_FMPHNtqxJymP3pV-H8fCdvPkoWInpFfM9tViyqD8JAmwDf64zU2hBV_vvCQ632ScAooEExXuz1IeQH9D2o-uY_dAjZ37YHuRMEyzh8Tq-90JHQvicOqx".to_owned()),
-            }))
+            })));
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
         });
 
     let did_method = setup_key_did_method(key_algorithm, "BBS_PLUS");
@@ -300,9 +325,17 @@ async fn test_create_did_success() {
 
     let mut key_algorithm = MockKeyAlgorithm::default();
     key_algorithm
-        .expect_get_multibase()
-        .times(1)
-        .returning(|_| Ok("MULTIBASE".to_string()));
+        .expect_reconstruct_key()
+        .return_once(|_, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle
+                .expect_as_multibase()
+                .return_once(|| Ok("MULTIBASE".to_string()));
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
 
     let did_method = setup_key_did_method(key_algorithm, "EDDSA");
     let result = did_method

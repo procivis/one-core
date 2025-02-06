@@ -130,14 +130,12 @@ impl CredentialFormatter for JWTFormatter {
 
         let key_algorithm = self
             .key_algorithm_provider
-            .get_key_algorithm(&algorithm)
+            .key_algorithm_from_name(&algorithm)
             .ok_or(FormatterError::Failed("Missing key algorithm".to_string()))?;
 
         let jose_alg = key_algorithm
-            .jose_alg()
-            .first()
-            .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?
-            .to_owned();
+            .issuance_jose_alg_id()
+            .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?;
 
         match status_list_type {
             StatusListType::BitstringStatusList => {
@@ -271,14 +269,12 @@ impl CredentialFormatter for JWTFormatter {
 
         let key_algorithm = self
             .key_algorithm_provider
-            .get_key_algorithm(algorithm)
+            .key_algorithm_from_name(algorithm)
             .ok_or(FormatterError::Failed("Missing key algorithm".to_string()))?;
 
         let jose_alg = key_algorithm
-            .jose_alg()
-            .first()
-            .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?
-            .to_owned();
+            .issuance_jose_alg_id()
+            .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?;
 
         let jwt = Jwt::new("JWT".to_owned(), jose_alg, key_id, None, payload);
 

@@ -135,7 +135,7 @@ async fn create_token(include_layout: bool) -> Value {
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .never()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);
@@ -295,7 +295,7 @@ async fn test_format_presentation_multi_tokens() {
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .never()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);
@@ -505,7 +505,7 @@ async fn test_parse_presentation_multi_tokens() {
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .never()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);

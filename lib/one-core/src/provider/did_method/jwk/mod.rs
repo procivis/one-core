@@ -49,10 +49,12 @@ impl DidMethod for JWKDidMethod {
 
         let key_algorithm = self
             .key_algorithm_provider
-            .get_key_algorithm(&key.key_type)
+            .key_algorithm_from_name(&key.key_type)
             .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
         let jwk = key_algorithm
-            .bytes_to_jwk(&key.public_key, None)
+            .reconstruct_key(&key.public_key, None, None)
+            .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?
+            .public_key_as_jwk()
             .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
 
         encode_to_did(&jwk.into())

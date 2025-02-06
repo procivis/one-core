@@ -2,7 +2,6 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use mockall::predicate::eq;
-use one_crypto::MockSigner;
 use serde_json::json;
 use shared_types::{DidValue, KeyId};
 use time::{Duration, OffsetDateTime};
@@ -38,6 +37,9 @@ use crate::provider::exchange_protocol::openid4vc::openidvc_mqtt::{
 };
 use crate::provider::exchange_protocol::openid4vc::peer_encryption::PeerEncryption;
 use crate::provider::exchange_protocol::{FormatMapper, TypeToDescriptorMapper};
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -275,26 +277,26 @@ async fn test_handle_invitation_success() {
 
     let mut mock_key_algorithm = MockKeyAlgorithm::default();
     mock_key_algorithm
-        .expect_jwk_to_bytes()
-        .returning(|_| Ok(vec![]));
+        .expect_algorithm_id()
+        .return_once(|| "ES256".to_string());
+    mock_key_algorithm.expect_parse_jwk().return_once(|_| {
+        let mut key_handle = MockSignaturePublicKeyHandle::default();
+        key_handle.expect_verify().return_once(|_, _| Ok(()));
+
+        Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+            Arc::new(key_handle),
+        )))
+    });
     let mock_key_algorithm = Arc::new(mock_key_algorithm);
 
     let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::new();
     let mock_key_algorithm_clone = mock_key_algorithm.clone();
     mock_key_algorithm_provider
-        .expect_get_key_algorithm_from_jose_alg()
-        .returning(move |_| Some((mock_key_algorithm_clone.clone(), "ES256".to_string())));
+        .expect_key_algorithm_from_jose_alg()
+        .returning(move |_| Some(("ES256".to_string(), mock_key_algorithm_clone.clone())));
     mock_key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_id()
         .returning(move |_| Some(mock_key_algorithm.clone()));
-
-    let mut mock_signer = MockSigner::default();
-    mock_signer.expect_verify().returning(|_, _, _| Ok(()));
-    let mock_signer = Arc::new(mock_signer);
-
-    mock_key_algorithm_provider
-        .expect_get_signer()
-        .returning(move |_| Ok(mock_signer.clone()));
 
     let (verifier_key, verifier_public_key) = generate_verifier_key();
     let holder_identity_request = Arc::new(Mutex::new(None));

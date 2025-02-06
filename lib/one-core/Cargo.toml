@@ -40,6 +40,8 @@ mrtd                     = { version = "0.5.2" }
 one-crypto               = { version = "0.1.0", path = "../one-crypto" }
 one-dto-mapper.workspace = true
 ouroboros                = { version = "0.18" }
+pairing_crypto.workspace = true
+pqc_dilithium.workspace = true
 rand.workspace           = true
 rcgen                    = { version = "0.13" }
 rdf-types                = { version = "0.15" }

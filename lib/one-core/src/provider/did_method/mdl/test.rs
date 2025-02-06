@@ -62,12 +62,12 @@ async fn test_create_mdl_did_for(
 
     let key = rcgen::KeyPair::generate_for(signature_algorithm).unwrap();
     let public_key = key.public_key_der();
-    let public_key = key_algorithm.public_key_from_der(&public_key).unwrap();
+    let public_key = key_algorithm.parse_raw(&public_key).unwrap();
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
 
     key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .returning(move |_| Some(key_algorithm.clone()));
 
     let service = DidMdl::new(
@@ -94,7 +94,7 @@ async fn test_create_mdl_did_for(
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
-        public_key,
+        public_key: public_key.public_key_as_raw(),
         name: "test-did-mld".to_string(),
         key_reference: vec![],
         storage_type: "INTERNAL".to_string(),

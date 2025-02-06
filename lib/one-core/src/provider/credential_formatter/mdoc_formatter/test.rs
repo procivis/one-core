@@ -15,6 +15,9 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::did_method::mdl::validator::MockDidMdlValidator;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::service::test_utilities::generic_config;
@@ -260,7 +263,7 @@ async fn test_credential_formatting_ok_for_es256() {
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .never()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);
@@ -453,19 +456,20 @@ async fn test_unverified_credential_extraction() {
     };
 
     let mut key_algorithm = MockKeyAlgorithm::new();
-    key_algorithm
-        .expect_jwk_to_bytes()
-        .once()
-        .returning(|_| Ok(b"abcd".to_vec()));
+    key_algorithm.expect_parse_jwk().return_once(|_| {
+        let mut public_key_handle = MockSignaturePublicKeyHandle::default();
+        public_key_handle
+            .expect_as_multibase()
+            .return_once(|| Ok("zAbCd".to_string()));
 
-    key_algorithm
-        .expect_get_multibase()
-        .withf(|pk| pk == b"abcd")
-        .returning(|_| Ok("zAbCd".to_string()));
+        Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+            Arc::new(public_key_handle),
+        )))
+    });
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .once()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);
@@ -657,19 +661,20 @@ async fn format_and_extract_es256(embed_layout: bool) -> DetailCredential {
         embed_layout_properties: Some(embed_layout),
     };
     let mut key_algorithm = MockKeyAlgorithm::new();
-    key_algorithm
-        .expect_jwk_to_bytes()
-        .once()
-        .returning(|_| Ok(b"abcd".to_vec()));
+    key_algorithm.expect_parse_jwk().return_once(|_| {
+        let mut public_key_handle = MockSignaturePublicKeyHandle::default();
+        public_key_handle
+            .expect_as_multibase()
+            .return_once(|| Ok("abcd".to_string()));
 
-    key_algorithm
-        .expect_get_multibase()
-        .withf(|pk| pk == b"abcd")
-        .returning(|_| Ok("zAbCd".to_string()));
+        Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+            Arc::new(public_key_handle),
+        )))
+    });
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .once()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);

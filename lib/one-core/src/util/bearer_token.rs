@@ -24,7 +24,7 @@ pub(crate) async fn prepare_bearer_token(
     let authentication_key = did.find_first_key_by_role(KeyRole::Authentication)?;
 
     let key_algorithm = key_algorithm_provider
-        .get_key_algorithm(&authentication_key.key_type)
+        .key_algorithm_from_name(&authentication_key.key_type)
         .ok_or(ServiceError::MissingProvider(
             MissingProviderError::KeyAlgorithmProvider(
                 KeyAlgorithmProviderError::MissingAlgorithmImplementation(
@@ -34,8 +34,7 @@ pub(crate) async fn prepare_bearer_token(
         ))?;
 
     let algorithm = key_algorithm
-        .jose_alg()
-        .first()
+        .issuance_jose_alg_id()
         .ok_or(ServiceError::MappingError("Missing JOSE alg".to_string()))?
         .to_owned();
 

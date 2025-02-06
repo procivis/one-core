@@ -248,7 +248,7 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
             .returning(move |_, _| Ok(Some(key.clone())));
 
         key_algorithm_provider
-            .expect_get_key_algorithm()
+            .expect_key_algorithm_from_name()
             .once()
             .withf(move |alg| {
                 assert_eq!(alg, "BBS_PLUS");

@@ -187,10 +187,7 @@ impl OneDevCore {
             ),
             (KeyAlgorithmType::BbsPlus.to_string(), Arc::new(BBS) as _),
         ]);
-        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-            key_algorithms,
-            crypto_provider.clone(),
-        ));
+        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms));
 
         // initialize key storage provider
         let key_storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::from_iter(vec![(

@@ -630,7 +630,7 @@ pub(super) async fn verify_proof_signature(
 
     let algorithm = match cryptosuite {
         // todo: check if `eddsa-2022` is correct as the VCDM test suite is sending this
-        "eddsa-rdfc-2022" | "eddsa-2022" => "EDDSA",
+        "eddsa-rdfc-2022" | "eddsa-2022" => "Ed25519",
         "ecdsa-rdfc-2019" => "ES256",
         "ecdsa-xi-2023" => "ES256",
         _ => {

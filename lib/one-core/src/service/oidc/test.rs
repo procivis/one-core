@@ -31,6 +31,9 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::exchange_protocol::openid4vc::error::{OpenID4VCError, OpenID4VCIError};
 use crate::provider::exchange_protocol::openid4vc::model::{ClientIdSchemaType, *};
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -1723,17 +1726,26 @@ async fn test_get_client_metadata_success() {
             .times(1)
             .return_once(move |_, _| Ok(Some(proof)));
 
-        key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
-            Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
-                r#use: Some("enc".to_string()),
-                kid: None,
-                crv: "123".to_string(),
-                x: "456".to_string(),
-                y: None,
-            }))
-        });
+        key_algorithm
+            .expect_reconstruct_key()
+            .return_once(|_, _, _| {
+                let mut key_handle = MockSignaturePublicKeyHandle::default();
+                key_handle.expect_as_jwk().return_once(|| {
+                    Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                        r#use: Some("enc".to_string()),
+                        kid: None,
+                        crv: "123".to_string(),
+                        x: "456".to_string(),
+                        y: None,
+                    }))
+                });
+                Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                    Arc::new(key_handle),
+                )))
+            });
+
         key_algorithm_provider
-            .expect_get_key_algorithm()
+            .expect_key_algorithm_from_name()
             .return_once(|_| Some(Arc::new(key_algorithm)));
     }
     let service = setup_service(Mocks {

@@ -98,7 +98,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
         if let Some(verification) = verification {
             let (_, algorithm) = verification
                 .key_algorithm_provider()
-                .get_key_algorithm_from_jose_alg(&header.algorithm)
+                .key_algorithm_from_jose_alg(&header.algorithm)
                 .ok_or(FormatterError::CouldNotVerify(format!(
                     "Missing key algorithm for {}",
                     header.algorithm
@@ -113,7 +113,7 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
                         .transpose()
                         .map_err(|e| FormatterError::Failed(e.to_string()))?,
                     header.key_id.as_deref(),
-                    &algorithm,
+                    &algorithm.algorithm_id(),
                     unverified_jwt.as_bytes(),
                     &signature,
                 )

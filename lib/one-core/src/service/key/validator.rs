@@ -25,7 +25,7 @@ pub(super) fn validate_key_algorithm_for_csr(
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), ServiceError> {
     let key_algorithm = &key_algorithm_provider
-        .get_key_algorithm(key_type)
+        .key_algorithm_from_name(key_type)
         .ok_or(KeyAlgorithmError::NotSupported(key_type.to_owned()))?;
     if !key_algorithm
         .get_capabilities()

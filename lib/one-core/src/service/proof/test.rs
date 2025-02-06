@@ -48,6 +48,9 @@ use crate::provider::exchange_protocol::openid4vc::openidvc_ble::model::BLEOpenI
 use crate::provider::exchange_protocol::openid4vc::openidvc_ble::BLEPeer;
 use crate::provider::exchange_protocol::provider::MockExchangeProtocolProviderExtra;
 use crate::provider::exchange_protocol::MockExchangeProtocol;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -2808,24 +2811,28 @@ async fn test_share_proof_created_success() {
     let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
 
     let mut key_algorithm = MockKeyAlgorithm::new();
-    key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
-            r#use: Some("enc".to_string()),
-            kid: None,
-            crv: "123".to_string(),
-            x: "456".to_string(),
-            y: None,
-        }))
-    });
+    key_algorithm
+        .expect_reconstruct_key()
+        .return_once(|_, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    r#use: Some("enc".to_string()),
+                    kid: None,
+                    crv: "123".to_string(),
+                    x: "456".to_string(),
+                    y: None,
+                }))
+            });
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm()
-        .once()
-        .returning({
-            let key_algorithm = Arc::new(key_algorithm);
-            move |_| Some(key_algorithm.clone())
-        });
+        .expect_key_algorithm_from_name()
+        .return_once(|_| Some(Arc::new(key_algorithm)));
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
@@ -2916,24 +2923,28 @@ async fn test_share_proof_pending_success() {
     let mut protocol_provider = MockExchangeProtocolProviderExtra::default();
 
     let mut key_algorithm = MockKeyAlgorithm::new();
-    key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
-            r#use: Some("enc".to_string()),
-            kid: None,
-            crv: "123".to_string(),
-            x: "456".to_string(),
-            y: None,
-        }))
-    });
+    key_algorithm
+        .expect_reconstruct_key()
+        .return_once(|_, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    r#use: Some("enc".to_string()),
+                    kid: None,
+                    crv: "123".to_string(),
+                    x: "456".to_string(),
+                    y: None,
+                }))
+            });
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm()
-        .once()
-        .returning({
-            let key_algorithm = Arc::new(key_algorithm);
-            move |_| Some(key_algorithm.clone())
-        });
+        .expect_key_algorithm_from_name()
+        .return_once(|_| Some(Arc::new(key_algorithm)));
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();

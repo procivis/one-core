@@ -44,18 +44,6 @@ impl InternalKeyProvider {
 
 #[async_trait::async_trait]
 impl KeyStorage for InternalKeyProvider {
-    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        let signer = self
-            .key_algorithm_provider
-            .get_signer(&key.key_type)
-            .map_err(|e| SignerError::MissingAlgorithm(e.to_string()))?;
-
-        let private_key = decrypt_if_password_is_provided(&key.key_reference, &self.encryption_key)
-            .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
-
-        signer.sign(message, &key.public_key, &private_key)
-    }
-
     async fn generate(
         &self,
         _key_id: Option<KeyId>,
@@ -63,9 +51,10 @@ impl KeyStorage for InternalKeyProvider {
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         let key_pair = self
             .key_algorithm_provider
-            .get_key_algorithm(key_type)
+            .key_algorithm_from_name(key_type)
             .ok_or(KeyStorageError::InvalidKeyAlgorithm(key_type.to_owned()))?
-            .generate_key_pair();
+            .generate_key()
+            .map_err(KeyStorageError::KeyAlgorithmError)?;
 
         Ok(StorageGeneratedKey {
             public_key: key_pair.public,
@@ -76,6 +65,24 @@ impl KeyStorage for InternalKeyProvider {
         })
     }
 
+    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+        let algorithm = self
+            .key_algorithm_provider
+            .key_algorithm_from_name(&key.key_type)
+            .ok_or(SignerError::MissingAlgorithm(key.key_type.clone()))?;
+
+        let private_key = Zeroizing::new(
+            decrypt_if_password_is_provided(&key.key_reference, &self.encryption_key)
+                .map_err(|_| SignerError::CouldNotExtractKeyPair)?,
+        );
+
+        algorithm
+            .reconstruct_key(&key.public_key, Some(private_key), None)
+            .map_err(|_| SignerError::CouldNotExtractKeyPair)?
+            .sign(message)
+            .await
+    }
+
     fn secret_key_as_jwk(&self, key: &Key) -> Result<Zeroizing<String>, KeyStorageError> {
         let private_key = decrypt_if_password_is_provided(&key.key_reference, &self.encryption_key)
             .map(Zeroizing::new)
@@ -84,14 +91,16 @@ impl KeyStorage for InternalKeyProvider {
             })?;
 
         let key_type = &key.key_type;
-        let provider = self
+        let algorithm = self
             .key_algorithm_provider
-            .get_key_algorithm(key_type)
+            .key_algorithm_from_name(key_type)
             .ok_or_else(|| KeyStorageError::NotSupported(key_type.to_owned()))?;
 
-        provider
-            .private_key_as_jwk(private_key)
-            .map_err(|err| err.into())
+        algorithm
+            .reconstruct_key(&key.public_key, Some(private_key), None)
+            .map_err(KeyStorageError::KeyAlgorithmError)?
+            .private_key_as_jwk()
+            .map_err(|e| KeyStorageError::Failed(e.to_string()))
     }
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {

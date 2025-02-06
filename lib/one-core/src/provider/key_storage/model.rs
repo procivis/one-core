@@ -24,6 +24,7 @@ pub enum Features {
 }
 
 pub struct StorageGeneratedKey {
+    // todo: add KeyHandle here?
     pub public_key: Vec<u8>,
     pub key_reference: Vec<u8>,
 }

@@ -274,9 +274,16 @@ async fn test_extract_presentation() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm_from_jose_alg()
+        .expect_key_algorithm_from_jose_alg()
         .once()
-        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_id()
+                .return_once(|| "algorithm".to_string());
+
+            Some(("algorithm".to_string(), Arc::new(key_algorithm)))
+        });
     verify_mock
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));
@@ -370,13 +377,11 @@ async fn test_format_extract_round_trip() {
     let key_alg = Eddsa::new(EddsaParams {
         algorithm: crate::provider::key_algorithm::eddsa::Algorithm::Ed25519,
     });
-    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-        HashMap::from_iter(vec![(
+    let key_algorithm_provider =
+        Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
             "EDDSA".to_owned(),
             Arc::new(key_alg) as Arc<dyn KeyAlgorithm>,
-        )]),
-        crypto.clone(),
-    ));
+        )])));
     let key_pair = EDDSASigner::generate_key_pair();
     let key = Key {
         id: Uuid::new_v4().into(),
@@ -487,11 +492,11 @@ async fn test_format_extract_round_trip() {
         .unwrap();
     let result = formatter
         .extract_credentials(token.as_str(), key_verification)
-        .await;
+        .await
+        .unwrap();
 
-    assert2::let_assert!(Ok(credential) = result);
     assert_eq!(
-        credential.claims.values,
+        result.claims.values,
         hashmap! {
             "object".into() => json!({
                 "name": "Mike",

@@ -63,21 +63,16 @@ impl TokenVerifier for KeyVerification {
         info!("Verification algorithm: {algorithm}");
         let alg = self
             .key_algorithm_provider
-            .get_key_algorithm(algorithm)
+            .key_algorithm_from_id(algorithm)
             .ok_or(SignerError::CouldNotVerify(format!(
                 "Invalid algorithm: {algorithm}"
             )))?;
 
         let public_key = alg
-            .jwk_to_bytes(&method.public_key_jwk)
+            .parse_jwk(&method.public_key_jwk)
             .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
 
-        let signer = self
-            .key_algorithm_provider
-            .get_signer(algorithm)
-            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
-
-        signer.verify(token, signature, &public_key)
+        public_key.verify(token, signature)
     }
 
     fn key_algorithm_provider(&self) -> &dyn KeyAlgorithmProvider {
@@ -88,7 +83,6 @@ impl TokenVerifier for KeyVerification {
 #[cfg(test)]
 mod test {
     use mockall::predicate::*;
-    use one_crypto::MockSigner;
     use serde_json::json;
 
     use super::*;
@@ -96,6 +90,9 @@ mod test {
     use crate::provider::did_method::error::DidMethodProviderError;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
     use crate::provider::did_method::provider::MockDidMethodProvider;
+    use crate::provider::key_algorithm::key::{
+        KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+    };
     use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
     use crate::provider::key_algorithm::MockKeyAlgorithm;
 
@@ -136,39 +133,28 @@ mod test {
             .once()
             .returning(|_| Ok(get_dummy_did_document()));
 
-        let mut signer = MockSigner::default();
-        signer
-            .expect_verify()
-            .with(
-                eq("token".as_bytes()),
-                eq(b"signature".as_slice()),
-                eq(b"public_key".as_slice()),
-            )
-            .once()
-            .returning(|_, _, _| Ok(()));
-
-        let signer = Arc::new(signer);
-
         let mut key_alg = MockKeyAlgorithm::default();
-        key_alg
-            .expect_jwk_to_bytes()
-            .once()
-            .returning(|_| Ok(b"public_key".to_vec()));
+        key_alg.expect_parse_jwk().return_once(|_| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle
+                .expect_as_raw()
+                .return_once(|| b"public_key".to_vec());
+            key_handle
+                .expect_verify()
+                .with(eq("token".as_bytes()), eq(b"signature".as_slice()))
+                .once()
+                .returning(|_, _| Ok(()));
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
 
         let key_alg = Arc::new(key_alg);
 
         let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
         key_algorithm_provider
-            .expect_get_signer()
-            .once()
-            .withf(move |alg| {
-                assert_eq!(alg, "ES256");
-                true
-            })
-            .returning(move |_| Ok(signer.clone()));
-
-        key_algorithm_provider
-            .expect_get_key_algorithm()
+            .expect_key_algorithm_from_id()
             .once()
             .withf(move |alg| {
                 assert_eq!(alg, "ES256");
@@ -230,33 +216,28 @@ mod test {
             .once()
             .returning(|_| Ok(get_dummy_did_document()));
 
-        let mut signer = MockSigner::default();
-        signer
-            .expect_verify()
-            .returning(|_, _, _| Err(SignerError::InvalidSignature));
-
-        let signer = Arc::new(signer);
-
         let mut key_alg = MockKeyAlgorithm::default();
-        key_alg
-            .expect_jwk_to_bytes()
-            .once()
-            .returning(|_| Ok(b"public_key".to_vec()));
+        key_alg.expect_parse_jwk().return_once(|_| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle
+                .expect_as_raw()
+                .return_once(|| b"public_key".to_vec());
+            key_handle
+                .expect_verify()
+                .with(eq("token".as_bytes()), eq(b"signature".as_slice()))
+                .once()
+                .returning(|_, _| Err(SignerError::InvalidSignature));
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
 
         let key_alg = Arc::new(key_alg);
 
         let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
         key_algorithm_provider
-            .expect_get_signer()
-            .once()
-            .withf(move |alg| {
-                assert_eq!(alg, "ES256");
-                true
-            })
-            .returning(move |_| Ok(signer.clone()));
-
-        key_algorithm_provider
-            .expect_get_key_algorithm()
+            .expect_key_algorithm_from_id()
             .once()
             .withf(move |alg| {
                 assert_eq!(alg, "ES256");

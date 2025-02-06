@@ -44,10 +44,12 @@ impl DidMethod for KeyDidMethod {
 
         let key_algorithm = self
             .key_algorithm_provider
-            .get_key_algorithm(&key.key_type)
+            .key_algorithm_from_name(&key.key_type)
             .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
         let multibase = key_algorithm
-            .get_multibase(&key.public_key)
+            .reconstruct_key(&key.public_key, None, None)
+            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?
+            .public_key_as_multibase()
             .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
         format!("did:key:{}", multibase)
             .parse()
@@ -65,11 +67,19 @@ impl DidMethod for KeyDidMethod {
 
         let jwk = self
             .key_algorithm_provider
-            .get_key_algorithm(key_type)
+            .key_algorithm_from_name(key_type)
             .ok_or(DidMethodError::KeyAlgorithmNotFound)?
-            .bytes_to_jwk(&decoded.decoded_multibase, None)
-            .map_err(|_| {
-                DidMethodError::ResolutionError("Could not create jwk representation".to_string())
+            .reconstruct_key(&decoded.decoded_multibase, None, None)
+            .map_err(|err| {
+                DidMethodError::ResolutionError(format!(
+                    "Could not create jwk representation: {err}"
+                ))
+            })?
+            .public_key_as_jwk()
+            .map_err(|err| {
+                DidMethodError::ResolutionError(format!(
+                    "Could not create jwk representation: {err}"
+                ))
             })?;
 
         generate_document(decoded, did_value, jwk)

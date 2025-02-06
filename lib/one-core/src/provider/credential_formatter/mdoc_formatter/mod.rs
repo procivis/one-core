@@ -599,19 +599,18 @@ fn try_extract_holder_did_mdl_public_key(
         }
     };
 
-    let Some(key_algorithm) = key_algorithm_provider.get_key_algorithm(algorithm) else {
-        return Err(FormatterError::CouldNotVerify(format!(
+    let key_algorithm = key_algorithm_provider
+        .key_algorithm_from_name(algorithm)
+        .ok_or(FormatterError::CouldNotVerify(format!(
             "Key algorithm `{algorithm}` not configured"
-        )));
-    };
-    let public_key = key_algorithm
-        .jwk_to_bytes(&holder_public_key)
-        .map_err(|err| FormatterError::Failed(format!("Cannot convert jwk: {err}")))?;
-    let encoded_public_key = key_algorithm
-        .get_multibase(&public_key)
+        )))?;
+    let multibase_public_key = key_algorithm
+        .parse_jwk(&holder_public_key)
+        .map_err(|err| FormatterError::Failed(format!("Cannot convert jwk: {err}")))?
+        .public_key_as_multibase()
         .map_err(|err| FormatterError::Failed(format!("Cannot convert to multibase: {err}")))?;
 
-    format!("did:mdl:public_key:{encoded_public_key}")
+    format!("did:mdl:public_key:{multibase_public_key}")
         .parse()
         .context("did parsing error")
         .map_err(|e| FormatterError::Failed(e.to_string()))
@@ -1201,7 +1200,7 @@ fn extract_algorithm_from_header(cose_sign1: &coset::CoseSign1) -> Option<String
     if let Some(RegisteredLabelWithPrivate::Assigned(algorithm)) = alg {
         match algorithm {
             iana::Algorithm::ES256 => Some("ES256".to_owned()),
-            iana::Algorithm::EdDSA => Some("EDDSA".to_owned()),
+            iana::Algorithm::EdDSA => Some("Ed25519".to_owned()),
             _ => None,
         }
     } else {

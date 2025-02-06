@@ -1,6 +1,9 @@
 //! `struct`s for key algorithm provider.
 
 use serde::Serialize;
+use zeroize::Zeroizing;
+
+use crate::provider::key_algorithm::key::KeyHandle;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParsedPublicKeyJwk {
@@ -8,10 +11,13 @@ pub struct ParsedPublicKeyJwk {
     pub signer_algorithm_id: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct GeneratedKey {
+    pub key: KeyHandle,
+
+    // to be used for DB (Internal key storage)
     pub public: Vec<u8>,
-    pub private: Vec<u8>,
+    pub private: Zeroizing<Vec<u8>>,
 }
 
 #[derive(Serialize, Clone, Default)]

@@ -352,9 +352,16 @@ async fn test_extract_credentials() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm_from_jose_alg()
+        .expect_key_algorithm_from_jose_alg()
         .once()
-        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_id()
+                .return_once(|| "algorithm".to_string());
+
+            Some(("algorithm".to_string(), Arc::new(key_algorithm)))
+        });
     verify_mock
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));
@@ -474,9 +481,16 @@ async fn test_extract_credentials_with_array() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm_from_jose_alg()
+        .expect_key_algorithm_from_jose_alg()
         .once()
-        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_id()
+                .return_once(|| "algorithm".to_string());
+
+            Some(("algorithm".to_string(), Arc::new(key_algorithm)))
+        });
     verify_mock
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));
@@ -577,9 +591,16 @@ async fn test_extract_credentials_with_array_stripped() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm_from_jose_alg()
+        .expect_key_algorithm_from_jose_alg()
         .once()
-        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_id()
+                .return_once(|| "algorithm".to_string());
+
+            Some(("algorithm".to_string(), Arc::new(key_algorithm)))
+        });
     verify_mock
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));
@@ -635,9 +656,16 @@ async fn test_extract_presentation() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm_from_jose_alg()
+        .expect_key_algorithm_from_jose_alg()
         .once()
-        .returning(|_| Some((Arc::new(MockKeyAlgorithm::new()), "algorithm".to_string())));
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_id()
+                .return_once(|| "algorithm".to_string());
+
+            Some(("algorithm".to_string(), Arc::new(key_algorithm)))
+        });
     verify_mock
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));

@@ -29,12 +29,18 @@ fn get_test_key() -> TestData {
 fn test_jwk_to_bytes() {
     let TestData { jwk, serialized } = get_test_key();
     let alg = BBS;
-    assert_eq!(serialized, alg.jwk_to_bytes(&jwk).unwrap())
+    assert_eq!(serialized, alg.parse_jwk(&jwk).unwrap().public_key_as_raw())
 }
 
 #[test]
 fn test_bytes_to_jwk() {
     let TestData { jwk, serialized } = get_test_key();
     let alg = BBS;
-    assert_eq!(alg.bytes_to_jwk(&serialized, None).unwrap(), jwk)
+    assert_eq!(
+        alg.reconstruct_key(&serialized, None, None)
+            .unwrap()
+            .public_key_as_jwk()
+            .unwrap(),
+        jwk
+    )
 }

@@ -37,12 +37,12 @@ impl SignatureService {
     ) -> Result<GeneratedKey, SignatureServiceError> {
         let selected_algorithm = self
             .key_algorithm_provider
-            .get_key_algorithm(&algorithm.to_string())
+            .key_algorithm_from_name(&algorithm.to_string())
             .ok_or(SignatureServiceError::MissingAlgorithm(
                 algorithm.to_string(),
             ))?;
 
-        Ok(selected_algorithm.generate_key_pair())
+        Ok(selected_algorithm.generate_key()?)
     }
 
     pub fn sign(
@@ -54,12 +54,12 @@ impl SignatureService {
     ) -> Result<Vec<u8>, SignatureServiceError> {
         let algorithm = self
             .key_algorithm_provider
-            .get_key_algorithm(&algorithm.to_string())
+            .key_algorithm_from_name(&algorithm.to_string())
             .ok_or(SignatureServiceError::MissingAlgorithm(
                 algorithm.to_string(),
             ))?;
 
-        let signer_algorithm_id = algorithm.get_signer_algorithm_id();
+        let signer_algorithm_id = algorithm.algorithm_id();
 
         let signer = self.crypto_provider.get_signer(&signer_algorithm_id)?;
 
@@ -75,12 +75,12 @@ impl SignatureService {
     ) -> Result<(), SignatureServiceError> {
         let algorithm = self
             .key_algorithm_provider
-            .get_key_algorithm(&algorithm.to_string())
+            .key_algorithm_from_name(&algorithm.to_string())
             .ok_or(SignatureServiceError::MissingAlgorithm(
                 algorithm.to_string(),
             ))?;
 
-        let signer_algorithm_id = algorithm.get_signer_algorithm_id();
+        let signer_algorithm_id = algorithm.algorithm_id();
 
         let signer = self.crypto_provider.get_signer(&signer_algorithm_id)?;
 

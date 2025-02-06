@@ -32,7 +32,7 @@ async fn main() -> Result<(), CredentialServiceError> {
         public_key: key_pair.public,
         name: "My New Key".to_owned(),
         //Encryption is disabled so key_reference just holds private key
-        key_reference: key_pair.private,
+        key_reference: key_pair.private.to_vec(),
         storage_type: StorageType::Internal.to_string(),
         key_type: KeyAlgorithmType::Es256.to_string(),
         organisation: None,

@@ -103,7 +103,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
         HashMap::from_iter(signers),
     ));
 
-    let key_algo_creator: KeyAlgorithmCreator = Box::new(|config, providers| {
+    let key_algo_creator: KeyAlgorithmCreator = Box::new(|config, _providers| {
         let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
 
         for (name, field) in config.iter() {
@@ -134,14 +134,7 @@ pub async fn initialize_core(app_config: &AppConfig<ServerConfig>, db_conn: DbCo
             }
         }
 
-        Arc::new(KeyAlgorithmProviderImpl::new(
-            key_algorithms,
-            providers
-                .crypto
-                .as_ref()
-                .expect("Crypto is required")
-                .clone(),
-        ))
+        Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms))
     });
 
     let data_repository = Arc::new(DataLayer::build(

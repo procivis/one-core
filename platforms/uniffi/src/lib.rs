@@ -199,7 +199,7 @@ async fn initialize(
                 HashMap::from_iter(signers),
             ));
 
-            let key_algo_creator: KeyAlgorithmCreator = Box::new(|config, providers| {
+            let key_algo_creator: KeyAlgorithmCreator = Box::new(|config, _| {
                 let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
 
                 for (name, field) in config.iter() {
@@ -222,14 +222,7 @@ async fn initialize(
                     key_algorithms.insert(name.to_owned(), key_algorithm);
                 }
 
-                Arc::new(KeyAlgorithmProviderImpl::new(
-                    key_algorithms,
-                    providers
-                        .crypto
-                        .as_ref()
-                        .expect("Crypto is required to start")
-                        .clone(),
-                ))
+                Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms))
             });
 
             let key_storage_creator: KeyStorageCreator = Box::new(move |config, providers| {

@@ -11,6 +11,9 @@ use crate::provider::did_method::model::{
     AmountOfKeys, DidDocument, DidVerificationMethod, Operation,
 };
 use crate::provider::did_method::DidMethod;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 
@@ -169,21 +172,27 @@ async fn test_fail_to_resolve_jwk_did_invalid_jwk_format() {
 async fn test_create_did_jwk_success() {
     let mut key_algorithm = MockKeyAlgorithm::default();
     key_algorithm
-        .expect_bytes_to_jwk()
-        .once()
-        .returning(|_, _| {
-            Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-                r#use: None,
-                kid: None,
-                crv: "crv".to_string(),
-                x: "x".to_string(),
-                y: None,
-            }))
+        .expect_reconstruct_key()
+        .return_once(|_, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    r#use: None,
+                    kid: None,
+                    crv: "crv".to_string(),
+                    x: "x".to_string(),
+                    y: None,
+                }))
+            });
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
         });
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .with(eq("key_type"))
         .once()
         .return_once(move |_| Some(Arc::new(key_algorithm)));

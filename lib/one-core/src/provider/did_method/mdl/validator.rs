@@ -60,18 +60,20 @@ impl DidMdlValidator for DidMdl {
     ) -> Result<(), DidMdlValidationError> {
         check_is_valid_now(certificate)?;
 
-        let Some(key_algorithm) = self.key_algorithm_provider.get_key_algorithm(&key.key_type)
-        else {
-            return Err(DidMdlValidationError::KeyTypeNotSupported(
+        let key_algorithm = self
+            .key_algorithm_provider
+            .key_algorithm_from_name(&key.key_type)
+            .ok_or(DidMdlValidationError::KeyTypeNotSupported(
                 key.key_type.to_string(),
-            ));
-        };
+            ))?;
 
         let subject_public_key = key_algorithm
-            .public_key_from_der(certificate.subject_pki.raw)
+            .parse_raw(certificate.subject_pki.raw)
             .map_err(DidMdlValidationError::SubjectPublicKeyInvalidDer)?;
 
-        if key.public_key != subject_public_key {
+        let subject_raw_public_key = subject_public_key.public_key_as_raw();
+
+        if key.public_key != subject_raw_public_key {
             return Err(DidMdlValidationError::SubjectPublicKeyNotMatching);
         }
 

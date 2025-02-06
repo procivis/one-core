@@ -15,7 +15,6 @@ use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodProviderError;
-use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::repository::error::DataLayerError;
 use crate::service::did::mapper::{
     map_did_model_to_did_web_response, map_key_to_verification_method,
@@ -72,16 +71,18 @@ impl DidService {
             &grouped_key
                 .iter()
                 .map(|(key, value)| {
-                    let key_algorithm = self
-                        .key_algorithm_provider
-                        .get_key_algorithm(&value.key_type)
-                        .ok_or(KeyAlgorithmError::NotSupported(value.key_type.to_owned()))?;
+                    let public_key = self.key_algorithm_provider.reconstruct_key(
+                        &value.key_type,
+                        &value.public_key,
+                        None,
+                        None,
+                    )?;
                     Ok((
                         key.to_owned(),
                         map_key_to_verification_method(
                             &did.did,
                             key,
-                            key_algorithm.bytes_to_jwk(&value.public_key, None)?.into(),
+                            public_key.public_key_as_jwk()?.into(),
                         )?,
                     ))
                 })

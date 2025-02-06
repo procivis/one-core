@@ -4,7 +4,6 @@ use hex_literal::hex;
 use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_dev_services::model::KeyAlgorithmType;
 use one_dev_services::OneDevCore;
-use zeroize::Zeroizing;
 
 fn main() {
     let core = OneDevCore::new(None, Arc::new(ReqwestClient::default())).unwrap();
@@ -21,7 +20,7 @@ fn main() {
         .sign(
             &KeyAlgorithmType::Es256,
             &key_pair.public,
-            Zeroizing::new(key_pair.private),
+            key_pair.private,
             &bytes,
         )
         .expect("Signing failed");

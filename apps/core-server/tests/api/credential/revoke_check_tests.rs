@@ -289,7 +289,14 @@ async fn setup_bitstring_status_list_success(
     let key_pair = EDDSASigner::generate_key_pair();
     let issuer_did = format!(
         "did:key:{}",
-        key_alg.get_multibase(&key_pair.public).unwrap()
+        key_alg
+            .reconstruct_key(&key_pair.public, None, None)
+            .unwrap()
+            .signature()
+            .unwrap()
+            .public()
+            .as_multibase()
+            .unwrap()
     );
 
     let revocation_list_url = format!(

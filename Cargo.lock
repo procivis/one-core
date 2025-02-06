@@ -3727,6 +3727,8 @@ dependencies = [
  "one-crypto",
  "one-dto-mapper",
  "ouroboros",
+ "pairing_crypto",
+ "pqc_dilithium",
  "rand",
  "rcgen",
  "rdf-types 0.15.4",

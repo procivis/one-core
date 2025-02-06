@@ -486,13 +486,11 @@ async fn test_format_extract_round_trip() {
         Duration::minutes(1),
     );
 
-    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-        HashMap::from_iter(vec![(
+    let key_algorithm_provider =
+        Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
             "BBS_PLUS".to_owned(),
             Arc::new(BBS) as Arc<dyn KeyAlgorithm>,
-        )]),
-        crypto.clone(),
-    ));
+        )])));
 
     let key_raw = BBSSigner::generate_key_pair();
     let key = Key {
@@ -592,11 +590,10 @@ async fn test_format_extract_round_trip() {
         )
         .await
         .unwrap();
-    let result = formatter
+    formatter
         .extract_credentials(token.as_str(), key_verification)
-        .await;
-
-    assert!(result.is_ok());
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -626,13 +623,11 @@ async fn test_extract_invalid_signature() {
         Duration::minutes(1),
     );
 
-    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-        HashMap::from_iter(vec![(
+    let key_algorithm_provider =
+        Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
             "BBS_PLUS".to_owned(),
             Arc::new(BBS) as Arc<dyn KeyAlgorithm>,
-        )]),
-        crypto.clone(),
-    ));
+        )])));
 
     let did_method_provider = Arc::new(DidMethodProviderImpl::new(
         caching_loader,
@@ -781,7 +776,7 @@ async fn create_token(include_layout: bool) -> serde_json::Value {
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .never()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);

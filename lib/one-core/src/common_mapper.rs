@@ -291,14 +291,16 @@ pub fn get_encryption_key_jwk_from_proof(
     .to_owned();
 
     let key_algorithm = key_algorithm_provider
-        .get_key_algorithm(&encryption_key.key_type)
+        .key_algorithm_from_name(&encryption_key.key_type)
         .ok_or(KeyAlgorithmError::NotSupported(
             encryption_key.key_type.to_owned(),
         ))?;
 
     Ok(PublicKeyWithJwk {
         key_id: encryption_key.id,
-        jwk: key_algorithm.bytes_to_jwk(&encryption_key.public_key, Some("enc".to_string()))?,
+        jwk: key_algorithm
+            .reconstruct_key(&encryption_key.public_key, None, Some("enc".to_string()))?
+            .public_key_as_jwk()?,
     })
 }
 

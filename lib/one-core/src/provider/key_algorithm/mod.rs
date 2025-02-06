@@ -3,11 +3,14 @@ use model::GeneratedKey;
 use zeroize::Zeroizing;
 
 use crate::model::key::PublicKeyJwk;
+use crate::provider::key_algorithm::key::KeyHandle;
+use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 
 pub mod bbs;
 pub mod eddsa;
 pub mod error;
 pub mod es256;
+pub mod key;
 pub mod ml_dsa;
 pub mod model;
 pub mod provider;
@@ -15,50 +18,30 @@ pub mod provider;
 /// Find signer IDs and convert key representations.
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait KeyAlgorithm: Send + Sync {
-    /// Finds related crypto signer ID.
-    fn get_signer_algorithm_id(&self) -> String;
+    fn algorithm_id(&self) -> String;
 
-    /// Returns base58-btc representation of a public key.
-    fn get_multibase(&self, public_key: &[u8]) -> Result<String, KeyAlgorithmError>;
+    fn get_capabilities(&self) -> KeyAlgorithmCapabilities;
 
     /// Generates a new in-memory key-pair.
-    fn generate_key_pair(&self) -> GeneratedKey;
+    fn generate_key(&self) -> Result<GeneratedKey, KeyAlgorithmError>;
 
-    /// Converts public key bytes to JWK.
-    fn bytes_to_jwk(
+    fn reconstruct_key(
         &self,
-        bytes: &[u8],
+        public_key: &[u8],
+        private_key: Option<Zeroizing<Vec<u8>>>,
         r#use: Option<String>,
-    ) -> Result<PublicKeyJwk, KeyAlgorithmError>;
+    ) -> Result<KeyHandle, KeyAlgorithmError>;
 
-    /// Converts JWK to key bytes.
-    fn jwk_to_bytes(&self, jwk: &PublicKeyJwk) -> Result<Vec<u8>, KeyAlgorithmError>;
-
-    /// Converts a private key to JWK. **Use carefully.**
-    ///
-    /// This can be useful for certain APIs that require JWK. Not supported by all
-    /// storage methods.
-    ///
-    /// Zeroize is used to ensure memory erasure.
-    fn private_key_as_jwk(
-        &self,
-        _secret_key: Zeroizing<Vec<u8>>,
-    ) -> Result<Zeroizing<String>, KeyAlgorithmError> {
-        Err(KeyAlgorithmError::NotSupported(
-            std::any::type_name::<Self>().to_string(),
-        ))
-    }
-
-    /// Converts a public key from DER to bytes.
-    fn public_key_from_der(&self, public_key_der: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError>;
-    fn get_capabilities(&self) -> model::KeyAlgorithmCapabilities;
-
-    /// get JOSE algorithm identifier
+    /// IANA jose/cose identifiers
     /// https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms
-    ///
-    /// First entry (if any) is the correct identifier according to IANA
-    ///
-    /// Optional additional entries are for backward compatibility,
-    /// intended to be used when parsing an incoming JOSE header
-    fn jose_alg(&self) -> Vec<String>;
+    /// https://www.iana.org/assignments/cose/cose.xhtml#algorithms
+    /// https://datatracker.ietf.org/doc/html/draft-ietf-cose-dilithium
+    fn issuance_jose_alg_id(&self) -> Option<String>;
+    fn verification_jose_alg_ids(&self) -> Vec<String>;
+    fn cose_alg_id(&self) -> Option<i32>;
+
+    /// parse public keys coming from an external source
+    fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<KeyHandle, KeyAlgorithmError>;
+    fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError>;
+    fn parse_raw(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError>;
 }

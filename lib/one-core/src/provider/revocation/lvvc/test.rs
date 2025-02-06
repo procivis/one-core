@@ -203,12 +203,12 @@ async fn test_check_revocation_status_as_holder_not_cached() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_get_key_algorithm()
+        .expect_key_algorithm_from_name()
         .returning(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
             key_algorithm
-                .expect_jose_alg()
-                .returning(|| vec!["ES256".to_string()]);
+                .expect_issuance_jose_alg_id()
+                .returning(|| Some("ES256".to_string()));
             Some(Arc::new(key_algorithm))
         });
 

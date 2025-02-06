@@ -116,7 +116,7 @@ impl DidMethod for DidMdl {
             let key_algorithm = match &x509.subject_pki.algorithm.algorithm {
                 alg if alg == &OID_SIG_ED25519 => self
                     .key_algorithm_provider
-                    .get_key_algorithm("EDDSA")
+                    .key_algorithm_from_name("EDDSA")
                     .ok_or_else(|| DidMethodError::KeyAlgorithmNotFound)?,
                 alg if alg == &OID_KEY_TYPE_EC_PUBLIC_KEY => {
                     let curve_oid = x509
@@ -137,7 +137,7 @@ impl DidMethod for DidMdl {
                     }
 
                     self.key_algorithm_provider
-                        .get_key_algorithm("ES256")
+                        .key_algorithm_from_name("ES256")
                         .ok_or_else(|| DidMethodError::KeyAlgorithmNotFound)?
                 }
                 other => {
@@ -150,8 +150,9 @@ impl DidMethod for DidMdl {
             let id = format!("{did}#key-0");
 
             let public_key_jwk = key_algorithm
-                .public_key_from_der(x509.subject_pki.raw)
-                .and_then(|key| key_algorithm.bytes_to_jwk(&key, None))
+                .parse_raw(x509.subject_pki.raw)
+                .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?
+                .public_key_as_jwk()
                 .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?;
 
             let verification_method = DidVerificationMethod {
@@ -190,14 +191,16 @@ impl DidMethod for DidMdl {
                 )));
             };
 
-            let Some(key_algorithm) = self.key_algorithm_provider.get_key_algorithm(algorithm)
-            else {
-                return Err(DidMethodError::ResolutionError(format!(
+            let key_algorithm = self
+                .key_algorithm_provider
+                .key_algorithm_from_name(algorithm)
+                .ok_or(DidMethodError::ResolutionError(format!(
                     "Missing algorithm for mdl public key: {algorithm}",
-                )));
-            };
+                )))?;
             let public_key_jwk = key_algorithm
-                .bytes_to_jwk(&decoded_did_key.decoded_multibase, None)
+                .reconstruct_key(&decoded_did_key.decoded_multibase, None, None)
+                .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?
+                .public_key_as_jwk()
                 .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?;
 
             generate_document(decoded_did_key, &did_key, public_key_jwk)
