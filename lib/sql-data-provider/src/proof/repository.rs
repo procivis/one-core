@@ -3,7 +3,6 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::model::claim::{Claim, ClaimId};
-use one_core::model::did::Did;
 use one_core::model::interaction::InteractionId;
 use one_core::model::proof::{
     GetProofList, GetProofQuery, Proof, ProofClaim, ProofRelations, ProofStateEnum,
@@ -22,7 +21,6 @@ use uuid::Uuid;
 use super::mapper::{create_list_response, get_proof_claim_active_model};
 use super::model::ProofListItemModel;
 use super::ProofProvider;
-use crate::entity::proof::ProofRequestState;
 use crate::entity::{did, proof, proof_claim, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_update_data_layer_error;
@@ -118,66 +116,6 @@ impl ProofRepository for ProofProvider {
         create_list_response(proofs, limit.unwrap_or(items_count), items_count)
     }
 
-    async fn set_proof_state(
-        &self,
-        proof_id: &ProofId,
-        state: ProofStateEnum,
-    ) -> Result<(), DataLayerError> {
-        let now = OffsetDateTime::now_utc();
-
-        let model = match state {
-            ProofStateEnum::Pending => proof::ActiveModel {
-                id: Unchanged(*proof_id),
-                last_modified: Set(now),
-                state: Set(state.into()),
-                requested_date: Set(Some(now)),
-                ..Default::default()
-            },
-            ProofStateEnum::Accepted => proof::ActiveModel {
-                id: Unchanged(*proof_id),
-                last_modified: Set(now),
-                state: Set(state.into()),
-                completed_date: Set(Some(now)),
-                ..Default::default()
-            },
-            _ => proof::ActiveModel {
-                id: Unchanged(*proof_id),
-                last_modified: Set(now),
-                state: Set(state.into()),
-                ..Default::default()
-            },
-        };
-
-        model
-            .update(&self.db)
-            .await
-            .map_err(to_update_data_layer_error)?;
-
-        Ok(())
-    }
-
-    async fn set_proof_holder_did(
-        &self,
-        proof_id: &ProofId,
-        holder_did: Did,
-    ) -> Result<(), DataLayerError> {
-        let now = OffsetDateTime::now_utc();
-
-        let model = proof::ActiveModel {
-            id: Unchanged(*proof_id),
-            holder_did_id: Set(Some(holder_did.id)),
-            last_modified: Set(now),
-            ..Default::default()
-        };
-
-        model
-            .update(&self.db)
-            .await
-            .map_err(to_update_data_layer_error)?;
-
-        Ok(())
-    }
-
     async fn delete_proof_claims(&self, proof_id: &ProofId) -> Result<(), DataLayerError> {
         proof_claim::Entity::delete_many()
             .filter(proof_claim::Column::ProofId.eq(proof_id))
@@ -236,11 +174,6 @@ impl ProofRepository for ProofProvider {
             Some(transport) => Set(transport),
         };
 
-        let state = match proof.state {
-            None => Unchanged(ProofRequestState::Created),
-            Some(state) => Set(state.into()),
-        };
-
         let requested_date = match proof.requested_date {
             None => Unchanged(Default::default()),
             Some(datetime) => Set(datetime),
@@ -251,18 +184,27 @@ impl ProofRepository for ProofProvider {
             Some(datetime) => Set(datetime),
         };
 
-        let update_model = proof::ActiveModel {
+        let now = OffsetDateTime::now_utc();
+        let mut update_model = proof::ActiveModel {
             id: Unchanged(*proof_id),
-            last_modified: Set(OffsetDateTime::now_utc()),
+            last_modified: Set(now),
             holder_did_id,
             verifier_did_id,
             interaction_id,
             redirect_uri,
             transport,
-            state,
             requested_date,
             completed_date,
             ..Default::default()
+        };
+
+        if let Some(state) = proof.state {
+            match &state {
+                ProofStateEnum::Pending => update_model.requested_date = Set(Some(now)),
+                ProofStateEnum::Accepted => update_model.completed_date = Set(Some(now)),
+                _ => {}
+            };
+            update_model.state = Set(state.into());
         };
 
         update_model

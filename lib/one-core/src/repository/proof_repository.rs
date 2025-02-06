@@ -2,11 +2,8 @@ use shared_types::ProofId;
 
 use super::error::DataLayerError;
 use crate::model::claim::Claim;
-use crate::model::did::Did;
 use crate::model::interaction::InteractionId;
-use crate::model::proof::{
-    GetProofList, GetProofQuery, Proof, ProofRelations, ProofStateEnum, UpdateProofRequest,
-};
+use crate::model::proof::{GetProofList, GetProofQuery, Proof, ProofRelations, UpdateProofRequest};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -29,18 +26,6 @@ pub trait ProofRepository: Send + Sync {
         &self,
         query_params: GetProofQuery,
     ) -> Result<GetProofList, DataLayerError>;
-
-    async fn set_proof_state(
-        &self,
-        proof_id: &ProofId,
-        state: ProofStateEnum,
-    ) -> Result<(), DataLayerError>;
-
-    async fn set_proof_holder_did(
-        &self,
-        proof_id: &ProofId,
-        holder_did: Did,
-    ) -> Result<(), DataLayerError>;
 
     async fn set_proof_claims(
         &self,

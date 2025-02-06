@@ -8,7 +8,7 @@ use crate::config::validator::transport::get_first_available_transport_type;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchemaClaim;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::exchange_protocol::provider::ExchangeProtocol;
 use crate::provider::revocation::model::{
@@ -55,12 +55,24 @@ impl ProofService {
                     .await?;
 
                 self.proof_repository
-                    .set_proof_state(&proof.id, ProofStateEnum::Accepted)
+                    .update_proof(
+                        &proof.id,
+                        UpdateProofRequest {
+                            state: Some(ProofStateEnum::Accepted),
+                            ..Default::default()
+                        },
+                    )
                     .await?;
             }
             Err(_) => {
                 self.proof_repository
-                    .set_proof_state(&proof.id, ProofStateEnum::Error)
+                    .update_proof(
+                        &proof.id,
+                        UpdateProofRequest {
+                            state: Some(ProofStateEnum::Error),
+                            ..Default::default()
+                        },
+                    )
                     .await?;
             }
         }

@@ -29,7 +29,7 @@ use crate::model::did::{Did, KeyRole};
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::{
     OID4VPHandover, SessionTranscript,
@@ -718,7 +718,13 @@ async fn set_proof_state(
     proof_repository: &dyn ProofRepository,
 ) -> Result<(), ExchangeProtocolError> {
     if let Err(error) = proof_repository
-        .set_proof_state(&proof.id, state.clone())
+        .update_proof(
+            &proof.id,
+            UpdateProofRequest {
+                state: Some(state.clone()),
+                ..Default::default()
+            },
+        )
         .await
     {
         tracing::error!(%error, proof_id=%proof.id, ?state, "Failed setting proof state");

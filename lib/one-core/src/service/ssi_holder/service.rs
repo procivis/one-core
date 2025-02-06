@@ -30,7 +30,7 @@ use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{Proof, ProofRelations, ProofStateEnum};
+use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::exchange_protocol::deserialize_interaction_data;
 use crate::provider::exchange_protocol::error::ExchangeProtocolError;
@@ -207,7 +207,13 @@ impl SSIHolderService {
             ProofStateEnum::Error
         };
         self.proof_repository
-            .set_proof_state(&proof.id, state)
+            .update_proof(
+                &proof.id,
+                UpdateProofRequest {
+                    state: Some(state),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         Ok(())
@@ -484,23 +490,24 @@ impl SSIHolderService {
             })
             .await;
 
+        let state = if submit_result.is_ok() {
+            ProofStateEnum::Accepted
+        } else {
+            ProofStateEnum::Error
+        };
         self.proof_repository
-            .set_proof_holder_did(&proof.id, holder_did.to_owned())
+            .update_proof(
+                &proof.id,
+                UpdateProofRequest {
+                    holder_did_id: Some(holder_did.id),
+                    state: Some(state),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         self.proof_repository
             .set_proof_claims(&proof.id, submitted_claims)
-            .await?;
-
-        self.proof_repository
-            .set_proof_state(
-                &proof.id,
-                if submit_result.is_ok() {
-                    ProofStateEnum::Accepted
-                } else {
-                    ProofStateEnum::Error
-                },
-            )
             .await?;
 
         submit_result

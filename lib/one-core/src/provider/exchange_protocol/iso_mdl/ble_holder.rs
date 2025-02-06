@@ -15,7 +15,7 @@ use super::common::{
 use super::device_engagement::DeviceEngagement;
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::model::interaction::Interaction;
-use crate::model::proof::ProofStateEnum;
+use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
@@ -187,7 +187,13 @@ pub(crate) async fn receive_mdl_request(
                         .map_err(ExchangeProtocolError::Other)?;
 
                     proof_repository
-                        .set_proof_state(&proof_id, ProofStateEnum::Requested)
+                        .update_proof(
+                            &proof_id,
+                            UpdateProofRequest {
+                                state: Some(ProofStateEnum::Requested),
+                                ..Default::default()
+                            },
+                        )
                         .await
                         .context("failed to update proof state")
                         .map_err(ExchangeProtocolError::Other)?;
@@ -404,7 +410,13 @@ pub(crate) async fn abort(
 
 pub async fn set_proof_error(proof_repository: &dyn ProofRepository, proof_id: &ProofId) {
     let _ = proof_repository
-        .set_proof_state(proof_id, ProofStateEnum::Error)
+        .update_proof(
+            proof_id,
+            UpdateProofRequest {
+                state: Some(ProofStateEnum::Error),
+                ..Default::default()
+            },
+        )
         .await;
 }
 

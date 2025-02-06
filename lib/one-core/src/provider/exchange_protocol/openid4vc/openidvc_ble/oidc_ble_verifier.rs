@@ -195,10 +195,9 @@ impl OpenID4VCBLEVerifier {
                                 write_presentation_request(signed, &peer, peripheral.clone()).await?;
 
                                 proof_repository
-                                    .set_proof_state(
-                                        &proof.id,
-                                        ProofStateEnum::Requested,
-                                    )
+                                    .update_proof(&proof.id, UpdateProofRequest {
+                            state: Some(ProofStateEnum::Requested), ..Default::default()
+                        })
                                     .await
                                     .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
@@ -276,10 +275,9 @@ impl OpenID4VCBLEVerifier {
                         tracing::info!("BLE task failure: {err}, stopping BLE server");
                         let _ = peripheral.stop_server().await;
                         let _ = proof_repository
-                            .set_proof_state(
-                                &proof.id,
-                                ProofStateEnum::Error,
-                            )
+                            .update_proof(&proof.id, UpdateProofRequest {
+                                state: Some(ProofStateEnum::Error), ..Default::default()
+                            })
                             .await;
                     };
 

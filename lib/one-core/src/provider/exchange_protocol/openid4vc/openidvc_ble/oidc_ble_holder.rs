@@ -20,7 +20,7 @@ use crate::common_mapper::{get_or_create_did, DidRole};
 use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
-use crate::model::proof::ProofStateEnum;
+use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::provider::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
 use crate::provider::bluetooth_low_energy::BleError;
@@ -245,7 +245,13 @@ impl OpenID4VCBLEHolder {
             Err(err) => {
                 let _ = self
                     .proof_repository
-                    .set_proof_state(&proof_id, ProofStateEnum::Error)
+                    .update_proof(
+                        &proof_id,
+                        UpdateProofRequest {
+                            state: Some(ProofStateEnum::Error),
+                            ..Default::default()
+                        },
+                    )
                     .await;
                 Err(err)
             }

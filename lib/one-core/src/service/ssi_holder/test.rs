@@ -82,10 +82,10 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         });
 
     proof_repository
-        .expect_set_proof_state()
+        .expect_update_proof()
         .withf(move |actual_proof_id, actual_proof_state| {
             assert_eq!(actual_proof_id, &proof_id);
-            assert_eq!(*actual_proof_state, ProofStateEnum::Rejected);
+            assert_eq!(actual_proof_state.state, Some(ProofStateEnum::Rejected));
             true
         })
         .once()
@@ -225,12 +225,7 @@ async fn test_submit_proof_succeeds() {
         .returning(|_, _| Ok(()));
 
     proof_repository
-        .expect_set_proof_holder_did()
-        .once()
-        .returning(|_, _| Ok(()));
-
-    proof_repository
-        .expect_set_proof_state()
+        .expect_update_proof()
         .once()
         .returning(|_, _| Ok(()));
 
@@ -517,11 +512,6 @@ async fn test_submit_proof_repeating_claims() {
         .return_once(move |_| Some(Arc::new(exchange_protocol)));
 
     proof_repository
-        .expect_set_proof_holder_did()
-        .once()
-        .returning(|_, _| Ok(()));
-
-    proof_repository
         .expect_set_proof_claims()
         .once()
         .withf(move |_proof_id, claims| {
@@ -533,7 +523,7 @@ async fn test_submit_proof_repeating_claims() {
         .returning(|_, _| Ok(()));
 
     proof_repository
-        .expect_set_proof_state()
+        .expect_update_proof()
         .once()
         .returning(|_, _| Ok(()));
 

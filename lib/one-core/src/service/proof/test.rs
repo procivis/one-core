@@ -2868,10 +2868,10 @@ async fn test_share_proof_created_success() {
     }
 
     proof_repository
-        .expect_set_proof_state()
+        .expect_update_proof()
         .once()
         .in_sequence(&mut seq)
-        .withf(move |id, state| id == &proof_id && *state == ProofStateEnum::Pending)
+        .withf(move |id, update| id == &proof_id && update.state == Some(ProofStateEnum::Pending))
         .returning(|_, _| Ok(()));
 
     let mut interaction_repository = MockInteractionRepository::new();

@@ -444,7 +444,13 @@ impl ProofService {
         match proof.state {
             ProofStateEnum::Created => {
                 self.proof_repository
-                    .set_proof_state(id, ProofStateEnum::Pending)
+                    .update_proof(
+                        &proof.id,
+                        UpdateProofRequest {
+                            state: Some(ProofStateEnum::Pending),
+                            ..Default::default()
+                        },
+                    )
                     .await?;
             }
             ProofStateEnum::Pending => {}

@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use one_core::model::claim::Claim;
-use one_core::model::did::{Did, DidRelations};
+use one_core::model::did::DidRelations;
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
 use one_core::model::interaction::{InteractionId, InteractionRelations};
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{
-    GetProofList, GetProofQuery, Proof, ProofRelations, ProofStateEnum, UpdateProofRequest,
+    GetProofList, GetProofQuery, Proof, ProofRelations, UpdateProofRequest,
 };
 use one_core::model::proof_schema::ProofSchemaRelations;
 use one_core::repository::error::DataLayerError;
@@ -130,25 +130,6 @@ impl ProofRepository for ProofHistoryDecorator {
         self.inner.get_proof_list(query_params).await
     }
 
-    async fn set_proof_state(
-        &self,
-        proof_id: &ProofId,
-        state: ProofStateEnum,
-    ) -> Result<(), DataLayerError> {
-        self.inner.set_proof_state(proof_id, state.clone()).await?;
-        self.write_history_entry(proof_id, HistoryAction::from(state))
-            .await?;
-        Ok(())
-    }
-
-    async fn set_proof_holder_did(
-        &self,
-        proof_id: &ProofId,
-        holder_did: Did,
-    ) -> Result<(), DataLayerError> {
-        self.inner.set_proof_holder_did(proof_id, holder_did).await
-    }
-
     async fn set_proof_claims(
         &self,
         proof_id: &ProofId,
@@ -169,6 +150,10 @@ impl ProofRepository for ProofHistoryDecorator {
         proof_id: &ProofId,
         proof: UpdateProofRequest,
     ) -> Result<(), DataLayerError> {
+        if let Some(ref state) = proof.state {
+            self.write_history_entry(proof_id, HistoryAction::from(state.clone()))
+                .await?;
+        }
         self.inner.update_proof(proof_id, proof).await
     }
 }

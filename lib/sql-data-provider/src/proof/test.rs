@@ -32,7 +32,6 @@ use uuid::Uuid;
 
 use super::ProofProvider;
 use crate::entity::key_did::KeyRole;
-use crate::entity::proof::ProofRequestState;
 use crate::entity::{claim, credential, proof_claim};
 use crate::test_utilities::*;
 
@@ -754,91 +753,6 @@ async fn test_get_proof_by_interaction_id_success() {
 
     assert_eq!(proof.id, proof_id);
     assert_eq!(proof.interaction.unwrap().id, interaction_id);
-}
-
-#[tokio::test]
-async fn test_set_proof_state() {
-    let TestSetupWithProof {
-        repository,
-        proof_id,
-        db,
-        ..
-    } = setup_with_proof(
-        get_credential_repository_mock(),
-        get_proof_schema_repository_mock(),
-        get_claim_repository_mock(),
-        get_did_repository_mock(),
-        get_interaction_repository_mock(),
-        get_key_repository_mock(),
-    )
-    .await;
-
-    let result = repository
-        .set_proof_state(&proof_id, ProofStateEnum::Pending)
-        .await;
-
-    assert!(result.is_ok());
-
-    let db_proofs = crate::entity::proof::Entity::find_by_id(proof_id)
-        .one(&db)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(ProofRequestState::Pending, db_proofs.state);
-}
-
-#[tokio::test]
-async fn test_set_proof_holder_did() {
-    let TestSetupWithProof {
-        repository,
-        proof_id,
-        organisation_id,
-        db,
-        ..
-    } = setup_with_proof(
-        get_credential_repository_mock(),
-        get_proof_schema_repository_mock(),
-        get_claim_repository_mock(),
-        get_did_repository_mock(),
-        get_interaction_repository_mock(),
-        get_key_repository_mock(),
-    )
-    .await;
-
-    let holder_did_id = &insert_did_key(
-        &db,
-        "holder",
-        Uuid::new_v4(),
-        "did:holder:123".to_owned().parse().unwrap(),
-        "KEY",
-        organisation_id,
-    )
-    .await
-    .unwrap();
-
-    let result = repository
-        .set_proof_holder_did(
-            &proof_id,
-            Did {
-                id: *holder_did_id,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                name: "holder".to_string(),
-                did: "did:holder:123".parse().unwrap(),
-                did_type: DidType::Remote,
-                did_method: "KEY".to_string(),
-                organisation: None,
-                keys: None,
-                deactivated: false,
-            },
-        )
-        .await;
-
-    assert!(result.is_ok());
-
-    let proof = get_proof_by_id(&db, &proof_id).await.unwrap().unwrap();
-    assert!(proof.holder_did_id.is_some());
-    assert_eq!(&proof.holder_did_id.unwrap(), holder_did_id);
 }
 
 #[tokio::test]

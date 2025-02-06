@@ -1462,7 +1462,7 @@ async fn test_submit_proof_failed_credential_suspended() {
         });
 
     proof_repository
-        .expect_set_proof_state()
+        .expect_update_proof()
         .withf(move |_proof_id, _| {
             assert_eq!(_proof_id, &proof_id);
             true

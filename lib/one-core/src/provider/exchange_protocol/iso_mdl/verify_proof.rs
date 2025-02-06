@@ -12,7 +12,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::provider::credential_formatter::mdoc_formatter::mdoc::SessionTranscript;
 use crate::provider::credential_formatter::model::{DetailCredential, ExtractPresentationCtx};
@@ -435,15 +435,18 @@ pub async fn accept_proof(
     }
 
     proof_repository
-        .set_proof_holder_did(&proof.id, holder_did)
-        .await?;
-
+        .update_proof(
+            &proof.id,
+            UpdateProofRequest {
+                holder_did_id: Some(holder_did.id),
+                state: Some(ProofStateEnum::Accepted),
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(ServiceError::from)?;
     proof_repository
         .set_proof_claims(&proof.id, proof_claims)
         .await?;
-
-    proof_repository
-        .set_proof_state(&proof.id, ProofStateEnum::Accepted)
-        .await
-        .map_err(ServiceError::from)
+    Ok(())
 }

@@ -36,7 +36,7 @@ use crate::model::did::DidRelations;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::proof::{Proof, ProofRelations, ProofStateEnum};
+use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
@@ -797,7 +797,13 @@ impl OIDCService {
                     .await?;
 
                 self.proof_repository
-                    .set_proof_state(&proof.id, ProofStateEnum::Accepted)
+                    .update_proof(
+                        &proof.id,
+                        UpdateProofRequest {
+                            state: Some(ProofStateEnum::Accepted),
+                            ..Default::default()
+                        },
+                    )
                     .await?;
 
                 Ok(response)
@@ -851,7 +857,13 @@ impl OIDCService {
 
     async fn mark_proof_as_failed(&self, id: &ProofId) -> Result<(), ServiceError> {
         self.proof_repository
-            .set_proof_state(id, ProofStateEnum::Error)
+            .update_proof(
+                id,
+                UpdateProofRequest {
+                    state: Some(ProofStateEnum::Error),
+                    ..Default::default()
+                },
+            )
             .await
             .map_err(ServiceError::from)
     }
