@@ -2,12 +2,13 @@ use std::str::FromStr;
 
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::history::HistoryAction;
 use one_core::model::revocation_list::RevocationListPurpose;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::fixtures::{assert_history_count, TestingCredentialParams, TestingDidParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 
@@ -73,6 +74,7 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(CredentialStateEnum::Revoked, credential.state);
+    assert_history_count(&context, &credential.id.into(), HistoryAction::Revoked, 1).await;
 }
 
 #[tokio::test]

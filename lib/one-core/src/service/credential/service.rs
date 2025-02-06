@@ -670,13 +670,6 @@ impl CredentialService {
             })
             .await?;
 
-        let _ = log_history_event_credential(
-            &*self.history_repository,
-            &credential,
-            credential_revocation_state_to_model_state(revocation_state.to_owned()).into(),
-        )
-        .await;
-
         Ok(())
     }
 

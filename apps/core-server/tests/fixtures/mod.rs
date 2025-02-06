@@ -10,6 +10,7 @@ use one_core::model::credential_schema::{
     LayoutProperties, LayoutType, WalletStorageTypeEnum,
 };
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
+use one_core::model::history::HistoryAction;
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
@@ -25,13 +26,14 @@ use one_core::repository::DataRepository;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use sea_orm::ConnectionTrait;
-use shared_types::{CredentialSchemaId, DidId, DidValue, KeyId, ProofId};
+use shared_types::{CredentialSchemaId, DidId, DidValue, EntityId, KeyId, ProofId};
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
+use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 pub fn unwrap_or_random(op: Option<String>) -> String {
@@ -723,4 +725,22 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
         .await
         .unwrap()
         .unwrap()
+}
+
+pub async fn assert_history_count(
+    context: &TestContext,
+    entity_id: &EntityId,
+    action: HistoryAction,
+    expected_count: usize,
+) {
+    let num_entries = context
+        .db
+        .histories
+        .get_by_entity_id(entity_id)
+        .await
+        .values
+        .iter()
+        .filter(|entry| entry.action == action)
+        .count();
+    assert_eq!(num_entries, expected_count, "expected {expected_count} entries with action {:?} for entity {entity_id}, but found {num_entries}", action);
 }
