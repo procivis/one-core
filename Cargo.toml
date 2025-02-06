@@ -32,8 +32,6 @@ hex                = { version = "0.4", features = ["serde"] }
 indexmap           = { version = "2.6", features = ["serde"] }
 mockall            = { version = "0.13" }
 one-dto-mapper     = { version = "0.1" }
-pairing_crypto     = { version = "0.4.2", git = "https://github.com/procivis/pairing_crypto", rev = "6d9f5df" }
-pqc_dilithium      = { version = "0.2.0", git = "https://github.com/procivis/dilithium", rev = "7fdfe6b" }
 rand               = { version = "0.8" }
 regex              = { version = "1.10" }
 reqwest            = { version = "0.12", default-features = false, features = ["native-tls-vendored", "json"] }

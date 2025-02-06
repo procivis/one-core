@@ -3,8 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::signer::crydi3::CRYDI3Signer;
-use one_crypto::SignerError;
-use pqc_dilithium::{verify, Keypair};
+use one_crypto::{Signer, SignerError};
 use serde::Deserialize;
 use zeroize::Zeroizing;
 
@@ -175,17 +174,16 @@ impl SignaturePublicKeyHandle for MlDsaPublicKeyHandle {
     }
 
     fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), SignerError> {
-        verify(signature, message, &self.public_key).map_err(|_| SignerError::InvalidSignature)
+        CRYDI3Signer {}
+            .verify(message, signature, &self.public_key)
+            .map_err(|_| SignerError::InvalidSignature)
     }
 }
 
 #[async_trait]
 impl SignaturePrivateKeyHandle for MlDsaPrivateKeyHandle {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        let key_pair = Keypair::new(self.public_key.clone(), self.private_key.to_vec())
-            .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
-
-        Ok(key_pair.sign(message).to_vec())
+        CRYDI3Signer {}.sign(message, &self.public_key, &self.private_key)
     }
 
     fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {

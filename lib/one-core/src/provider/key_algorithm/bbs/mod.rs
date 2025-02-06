@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use one_crypto::signer::bbs::BBSSigner;
+use one_crypto::signer::bbs::{BBSSigner, BbsProofInput};
 use one_crypto::SignerError;
-use pairing_crypto::bbs::ciphersuites::bls12_381::{PublicKey, SecretKey};
-use pairing_crypto::bbs::ciphersuites::bls12_381_g1_sha_256::{proof_verify, sign, verify};
-use pairing_crypto::bbs::{BbsProofVerifyRequest, BbsSignRequest, BbsVerifyRequest};
 use zeroize::Zeroizing;
 
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
@@ -178,24 +175,7 @@ impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
         let header = header.ok_or(SignerError::CouldNotSign("missing header".to_string()))?;
         let messages = messages.ok_or(SignerError::CouldNotSign("missing messages".to_string()))?;
 
-        let public_key = PublicKey::from_vec(&self.public_key)
-            .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
-
-        let result = verify(&BbsVerifyRequest {
-            public_key: &public_key.to_octets(),
-            header: Some(header),
-            messages: Some(&messages),
-            signature: signature
-                .try_into()
-                .map_err(|_| SignerError::InvalidSignature)?,
-        })
-        .map_err(|err| SignerError::CouldNotVerify(format!("couldn't verify: {err}")))?;
-
-        if !result {
-            return Err(SignerError::InvalidSignature);
-        }
-
-        Ok(())
+        BBSSigner::verify_bbs(header, messages, signature, &self.public_key)
     }
 
     fn derive_proof(
@@ -218,25 +198,14 @@ impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
         let header = header.ok_or(SignerError::CouldNotSign("missing header".to_string()))?;
         let messages = messages.ok_or(SignerError::CouldNotSign("missing messages".to_string()))?;
 
-        let public_key = PublicKey::from_vec(&self.public_key)
-            .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
-
-        let verified = proof_verify(&BbsProofVerifyRequest {
-            public_key: &public_key.to_octets(),
-            proof,
-            header: Some(header),
-            messages: Some(messages.as_slice()),
+        let input = BbsProofInput {
+            header,
             presentation_header,
-        })
-        .map_err(|e| SignerError::CouldNotVerify(e.to_string()));
+            proof: proof.to_vec(),
+            messages,
+        };
 
-        if !(verified?) {
-            return Err(SignerError::CouldNotVerify(
-                "Bbs proof verification error".to_owned(),
-            ));
-        }
-
-        Ok(())
+        BBSSigner::verify_proof(&input, &self.public_key)
     }
 }
 
@@ -249,19 +218,7 @@ impl MultiMessageSignaturePrivateKeyHandle for BBSPrivateKeyHandle {
         let header = header.ok_or(SignerError::CouldNotSign("missing header".to_string()))?;
         let messages = messages.ok_or(SignerError::CouldNotSign("missing messages".to_string()))?;
 
-        let secret_key = SecretKey::from_vec(&self.private_key)
-            .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
-        let public_key = PublicKey::from_vec(&self.public_key)
-            .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
-
-        let signature = sign(&BbsSignRequest {
-            secret_key: &secret_key.to_bytes(),
-            public_key: &public_key.to_octets(),
-            header: Some(header),
-            messages: Some(&messages),
-        })
-        .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
-        Ok(signature.to_vec())
+        BBSSigner::sign_bbs(header, messages, &self.private_key, &self.public_key)
     }
 
     fn as_jwk(&self) -> Result<Zeroizing<String>, KeyHandleError> {
